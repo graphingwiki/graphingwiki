@@ -150,7 +150,7 @@ if len(paths) == 0:
 
 if shortest:
     shortest_paths = {}
-    for idx, path in zip(range(len(paths)), paths):
+    for idx, path in enumerate(paths):
         # go through paths between endpoints,
         # save len and idx of shortest paths
         endpoints = path[0] + path[-1]
@@ -180,14 +180,13 @@ for i in paths:
         for j in i:
             nodes.add(j)
 
-
 if output == 'pajek':
     # make new indices for nodes, starting from 0
     # add their names after them
     print "*Vertices " + str(len(nodes)) + '\x0d'
     pajek_idx = {}
-    for i, j in zip(range(1, (len(nodes) + 1)), list(nodes)):
-        i = str(i)
+    for i, j in enumerate(list(nodes)):
+        i = str(i+1)
         print i + ' "rfc' + j + '"' + '\x0d'
         pajek_idx[j] = i
                 

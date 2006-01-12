@@ -559,7 +559,7 @@ def traverse_path(chain, shortest, cycles, data):
 
     if shortest:
         shortest_paths = {}
-        for idx, path in zip(range(len(paths)), paths):
+        for idx, path in enumerate(paths):
             # go through paths between endpoints,
             # save len and idx of shortest paths
             endpoints = path[0] + path[-1]
