@@ -1,6 +1,6 @@
 import sys, cPickle, pydot, sets, getopt
 
-k = file('rfc-data.pickle')
+k = file('../rfc-data/rfc-data.pickle')
 data = cPickle.load(k)
 types = ['refs', 'obs', 'upd', 'seealso']
 intypes = ['refed', 'updby', 'obsby', 'seealso']
