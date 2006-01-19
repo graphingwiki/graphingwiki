@@ -57,7 +57,7 @@ def execute(pagename, request, text, pagedir):
                 # If there was a match we liked, not in preformat area
                 if hit is not None and type in types and not inpre:
                     outgraph.nodes.add(hit)
-                    outgraph.edges.add(pagename, hit)
+                    e = outgraph.edges.add(pagename, hit)
                     e.type = type
 
     cPickle.dump(outgraph, f)
