@@ -54,7 +54,7 @@ def execute(pagename, request, text, pagedir):
                 # Don't get links from inside preformatted/processor
                 if type in pretypes and hit is not None:
                     inpre = not inpre
-                # If there was a match we liked, not in preformat area
+                # save desired matches outside of preformat area
                 if hit is not None and type in types and not inpre:
                     outgraph.nodes.add(hit)
                     e = outgraph.edges.add(pagename, hit)

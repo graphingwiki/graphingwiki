@@ -1,4 +1,4 @@
-# Configuration variables, change these to fit your style
+# Configuration variables, change these to fit your install
 PKGDIR    = /usr/lib/python2.4/site-packages/MoinMoin
 WIKIDIR   = $(HOME)/public_access/wiki
 

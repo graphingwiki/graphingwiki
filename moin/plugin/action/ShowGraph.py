@@ -47,9 +47,9 @@ def execute(pagename, request):
             urlformatter = urler(request)
 
             if urlformatter is None:
-                raise wikiutil.PluginMissingError
-
-# those do not exist?!?
+                raise "Plugin not found!"
+# The proper exception classes seem to exist in documentation only
+#                raise wikiutil.PluginMissingError
 #         except wikiutil.PluginMissingError:
 #             request.write(formatter.text("Plugin not found"))
 #             urlformatter = formatter
