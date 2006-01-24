@@ -6,12 +6,17 @@
     @license: GNU GPL, see COPYING for details.
 """
     
-import os, errno, codecs, sys, re
+import os, cPickle, tempfile
+
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter 
 from MoinMoin.parser.wiki import Parser
+
+# cpe imports
+import graph
+import graphrepr
 
 def execute(pagename, request):
     _ = request.getText
@@ -35,83 +40,29 @@ def execute(pagename, request):
     gfn = os.path.join(pageobj.getPagePath(), 'graphdata.pickle')
 
     try:
-        gf = codecs.open(gfn, 'rb', config.charset)
-        # gf = open(gfn)
-        request.write(formatter.preformatted(1))
+        gf = file(gfn)
+        graphdata = cPickle.load(gf)
+        gr = graphrepr.GraphRepr(graphdata)
 
-        data = gf.read()
-        gf.close()
-        
-        try:
-            urler = wikiutil.importPlugin(request.cfg, 'formatter', 'text_url', "Formatter")
-            urlformatter = urler(request)
-
-            if urlformatter is None:
-                raise "Plugin not found!"
-# The proper exception classes seem to exist in documentation only
-#                raise wikiutil.PluginMissingError
-#         except wikiutil.PluginMissingError:
-#             request.write(formatter.text("Plugin not found"))
-#             urlformatter = formatter
-#         except wikiutil.PluginAttributeError:
-#             request.write(formatter.text("Something wrong with plugin"))
-#             urlformatter = formatter
-        except:
-            request.write(formatter.text("What error??" + str(sys.exc_info()[0])))
-            urlformatter = formatter
-
-        urlparser = Parser(data, request)
-        urlparser.formatter = urlformatter
-        urlformatter.setPage(pageobj)
-
-        dotdata = "digraph G {\n"
-        # skip empty after last line break
-        lines = data.split('\n')[:-1]
-
-        # placeholder for links
-        links = []
-
-        for line, i in zip(lines, range(len(lines))):
-            items = line.split(' ')
-            # link type
-            type = items[0]
-            # strip the link type info
-            value = ' '.join(items[1:])
-
-            # get the function doing the link handling in formatter
-            replace = getattr(urlparser, '_' + type + '_repl')
-            attrs = replace(value)
-
-            # Grab the link from attrs
-            link = re.search(r'((?:(?:[^"])|(?:\\"))+?(?<!\\))"',
-                             attrs).group(1)
-
-            # if the link is unique, add to graph
-            if link not in links:
-                links.append(link)
-                dotdata = (dotdata + '  ' + str(i) + " [" +
-                           'URL=' + attrs + "]\n")
-                dotdata = dotdata + '  ' + pagename + ' -> ' + str(i) + "\n"
-
-        dotdata = dotdata + "}"
-
-        request.write(formatter.text(dotdata))
-
-        request.write(formatter.preformatted(0))
+        # Set proto attributes before the data is loaded, because
+        # currently proto attributes affect only items added after
+        # adding the proto!
+        gr.dot.set(proto='edge', len='3')
+        graphdata.commit()
 
         from base64 import b64encode
 
-        w,r = os.popen2("neato -Elen=3 -T cmap")
-        w.write(dotdata)
-        w.close()
-        mappi = r.read()
-        r.close()
-        
-        w,r = os.popen2("neato -Elen=3 -T png")
-        w.write(dotdata)
-        w.close()
-        img = r.read()
-        r.close()
+        tmp_fileno, tmp_name = tempfile.mkstemp()
+        gr.dot.engine = 'neato'
+        gr.dot.format = 'png'
+        gr.dot.write(file=tmp_name)
+        f = file(tmp_name)
+        img = f.read()
+
+        gr.dot.format = 'cmapx'
+        gr.dot.write(file=tmp_name)
+        f = file(tmp_name)
+        mappi = f.read()
 
         imgbase = "data:image/png;base64," + b64encode(img)
 
@@ -120,6 +71,17 @@ def execute(pagename, request):
                 '<map id="G" name="G">' + mappi + '</map>')
              
         request.write(page)
+
+        # just to get the graph data out
+        gr.dot.format = 'dot'
+        gr.dot.write(file=tmp_name)
+        f = file(tmp_name)
+        gtext = f.read()
+        os.close(tmp_fileno)
+        
+        request.write(formatter.preformatted(1))
+        request.write(formatter.text(gtext))
+        request.write(formatter.preformatted(0))
 
         args = filter(lambda x: x != 'action', request.form.keys())
         if args:

@@ -21,6 +21,7 @@ class Formatter(FormatterBase):
         self._text = None
         self._in_heading = 0
         self._in_list = 0
+        self._in_link = 0
 
     def null(self, *args, **kw):
         return ''
@@ -88,7 +89,8 @@ class Formatter(FormatterBase):
         # Remove unnecessary spaces from listitems
         # FIXME: a mess with links and such, better solution needed
         if self._in_list:
-            return text.strip()
+            if not self._in_link:
+                return "x" + text.strip()
 
         # Default case
         return text
@@ -114,7 +116,11 @@ class Formatter(FormatterBase):
 
     # FIXME: just to make it work
     def pagelink(self, on, pagename='', page=None, **kw):
-        return ''
+        if on:
+            self._in_link = 1
+        else:
+            self._in_link = 0
+        return str(self._in_link)
 
     def bullet_list(self, on):
         if on:

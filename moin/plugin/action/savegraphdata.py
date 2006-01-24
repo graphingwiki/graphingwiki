@@ -58,7 +58,8 @@ def execute(pagename, request, text, pagedir):
                 if hit is not None and type in types and not inpre:
                     outgraph.nodes.add(hit)
                     e = outgraph.edges.add(pagename, hit)
-                    e.type = type
+                    # kludge
+                    e.type = str(type)
 
     cPickle.dump(outgraph, f)
     f.close()

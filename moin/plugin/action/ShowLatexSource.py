@@ -11,6 +11,9 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
+class TexException(Exception):
+    pass
+
 def execute(pagename, request):
     # _ = request.getText
     request.http_headers(["Content-type: text/plain;charset=%s" %
@@ -21,7 +24,7 @@ def execute(pagename, request):
         Formatter = wikiutil.importPlugin(request.cfg, 'formatter',
                                           'application_x_tex', "Formatter")
         if Formatter is None:
-            raise "Plugin not found!"
+            raise TexException("Plugin not found!")
         formatter = Formatter(request)
         # The proper exception classes seem to exist in documentation only
         #                raise wikiutil.PluginMissingError
