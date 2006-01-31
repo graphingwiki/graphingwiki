@@ -807,7 +807,7 @@ If you don't want that, hit '''%(cancel_button_text)s''' to cancel your changes.
                 graphsaver = wikiutil.importPlugin(self.request.cfg,
                                                        'action',
                                                        'savegraphdata')
-                graphsaver(self.page_name, self.request, text, pagedir)
+                graphsaver(self.page_name, self.request, text, pagedir, self)
                 #                except:
                 #                    pass
                 

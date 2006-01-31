@@ -66,13 +66,20 @@ def execute(pagename, request):
 
         imgbase = "data:image/png;base64," + b64encode(img)
 
-        page = ('<img border=0 src="' + imgbase +
-                '" alt="visualisation" usemap="#G">' + "\n" +
-                '<map id="G" name="G">' + mappi + '</map>')
-             
+        page = ('<img src="' + imgbase +
+                '" alt="visualisation" usemap="#' +
+                gr.graphattrs['name'] + '">\n' + mappi + "\n")
+
         request.write(page)
 
-        # just to get the graph data out
+        request.write(formatter.preformatted(1))
+        request.write(formatter.text(mappi))
+        request.write(formatter.preformatted(0))
+
+        # Tähäns nyt sitten eri linktypet eri väreillä ja legend
+
+        # debug:
+        # just to get the graph data out 
         gr.dot.format = 'dot'
         gr.dot.write(file=tmp_name)
         f = file(tmp_name)
@@ -83,7 +90,8 @@ def execute(pagename, request):
         request.write(formatter.text(gtext))
         request.write(formatter.preformatted(0))
 
-        args = filter(lambda x: x != 'action', request.form.keys())
+        # args = filter(lambda x: x != 'action', request.form.keys())
+        args = [x for x in request.form.keys() if x != 'action']
         if args:
             request.write(formatter.preformatted(1))
             for arg in args:

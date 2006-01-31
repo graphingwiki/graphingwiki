@@ -62,15 +62,20 @@ class Formatter(FormatterBase):
     formatAttributes = null
 
     def text(self, text):
-        return '" label="' + text + '"'
+        return [text]
 
     def url(self, on, url=None, css=None, **kw):
         if url is not None and on:
             if url[0][0] == '#':
-                url = self.request.request_uri.split('?')[0] + url
-            return '"' + wikiutil.escape(wikiutil.mapURL(self.request, url), 1)
+                url = "." + self.request.request_uri.split('?')[0] + url
+                kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
+            esc_url = wikiutil.mapURL(self.request, url)
+            if kw.has_key('local'):
+                return [esc_url, kw['local']]
+            else:
+                return [esc_url]
 
-        return ''
+        return []
 
     def pagelink(self, on, pagename='', page=None, **kw):
         """ Link to a page.
@@ -81,11 +86,13 @@ class Formatter(FormatterBase):
             See wikiutil.link_tag() for possible keyword parameters.
         """
         if not on:
-            return ''
+            return []
 
         apply(FormatterBase.pagelink, (self, on, pagename, page), kw)
         if page is None:
             page = Page(self.request, pagename, formatter=self);
+
+        kw['local'] = wikiutil.quoteWikinameURL(pagename)
 
         if self.request.user.show_nonexist_qm and not page.exists():
             return page.link_to(self.request, on=1, **kw) + "?"
@@ -94,7 +101,7 @@ class Formatter(FormatterBase):
         
     def interwikilink(self, on, interwiki='', pagename='', **kw):
         if not on:
-            return ''
+            return []
 
         wikitag, wikiurl, wikitail, wikitag_bad = wikiutil.resolve_wiki(self.request, '%s:%s' % (interwiki, pagename))
         wikiurl = wikiutil.mapURL(self.request, wikiurl)
@@ -104,6 +111,7 @@ class Formatter(FormatterBase):
             if wikitail.find('#')>-1:
                 wikitail, kw['anchor'] = wikitail.split('#', 1)
             wikitail = urllib.unquote(wikitail)
+            kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
             return apply(self.pagelink, (on, wikiutil.AbsPageName(self.request,
 self.page.page_name, wikitail)), kw)
         else: # return InterWiki hyperlink
