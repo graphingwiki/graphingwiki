@@ -1,4 +1,4 @@
-import re, os, codecs, cPickle
+import re, os, cPickle
 from codecs import getencoder
 from urllib import quote, unquote
 
@@ -12,17 +12,16 @@ from MoinMoin import wikiutil
 import graph
 
 def execute(pagename, request, text, pagedir, page):
-
     # Filename to save data to
     gfn = os.path.join(pagedir,'graphdata.pickle')
     f = open(gfn, 'wb')
 
+    # Encoder from unicode to charset selected in config
     encoder = getencoder(config.charset)
-    # f = codecs.open(gfn, 'wb', config.charset)
-
     def _e(str):
         return encoder(str, 'replace')[0]
 
+    # import text_url -formatter
     try:
         Formatter = wikiutil.importPlugin(request.cfg, 'formatter',
                                           'text_url', "Formatter")
@@ -61,10 +60,13 @@ def execute(pagename, request, text, pagedir, page):
     inpre = False
     pretypes = ["pre", "processor"]
 
+    # Init graph to be saved
     outgraph = graph.Graph()
     outgraph.charset = config.charset
+    # add a node for current page to graph
     selfname = quote(pagename)
     pagenode = outgraph.nodes.add(selfname)
+    pagenode.label = _e(pagename)
 
     for line in lines:
         # Comments not processed
@@ -75,9 +77,11 @@ def execute(pagename, request, text, pagedir, page):
             continue
         for match in all_re.finditer(line):
             for type, hit in match.groupdict().items():
-                # Don't get links from inside preformatted/processor
+                # We don't want to handle anything inside preformatted
                 if type in pretypes and hit is not None:
                     inpre = not inpre
+
+                # Handling of MetaData-macro
                 if hit is not None and type == 'macro' and not inpre:
                     if not hit.startswith('[[MetaData'):
                         continue
@@ -94,37 +98,42 @@ def execute(pagename, request, text, pagedir, page):
                     for key, val in zip(args[::2], args[1::2]):
                         setattr(pagenode, key, val)
 
-                # save desired matches outside of preformat area
+                # Handling of links
                 if hit is not None and type in types and not inpre:
+                    # urlformatter
                     replace = getattr(wikiparse, '_' + type + '_repl')
                     attrs = replace(hit)
                     if len(attrs) == 3:
-                        # Name of node for local nodes = url-enc pagename
+                        # Name of node for local nodes = pagename
                         nodename = _e(attrs[1])
-                    else:
-                        # Name of other nodes = quoted url
+                    elif len(attrs) == 2:
+                        # Name of other nodes = url
                         nodename = _e(attrs[0])
-
-                    # If node already found, go on
-                    if outgraph.nodes.get(nodename):
-                        continue
-                    
-                    # Else add node, retaining any augmented link data
-                    n = outgraph.nodes.add(nodename)
-                    # temp: add url, label
-                    n.URL = _e(attrs[0])
-                    n.label = unquote(nodename).replace('_', ' ')
-
-                    augdata = _e(attrs[-1]).split(': ')
-                    e = outgraph.edges.add(selfname, nodename)
-                    e.type = _e(type)
-                    if len(augdata) == 1:
-                        e.comment = ''.join(augdata)
                     else:
-                        setattr(e, 'linktype', augdata[0])
+                        # Image link, or what have you
+                        continue
 
+                    # Add node w/ URL, label if not already added
+                    if not outgraph.nodes.get(nodename):
+                        n = outgraph.nodes.add(nodename)
+                        n.URL = _e(attrs[0])
+                        n.label = unquote(nodename).replace('_', ' ')
+
+                    edge = [selfname, nodename]
+                    # Augmented links, eg. [PaGe:Ooh: PaGe]
+                    augdata = _e(attrs[-1]).split(': ')
+                    # in-links
+                    if len(augdata) > 1 and augdata[0].endswith('From'):
+                        augdata[0] = augdata[0][:-4]
+                        edge.reverse()
+                    # Add edge if not already added
+                    if not outgraph.edges.get(*edge):
+                        e = outgraph.edges.add(*edge)
+                    if len(augdata) > 1:
+                        e.linktype = augdata[0]
+                    # Debug for urlformatter
+                    # e.type = _e(type)
+
+    # Save graph as pickle
     cPickle.dump(outgraph, f)
     f.close()
-
-#for recursive: fs name by
-#wikiutil.quoteWikinameFS(pagename)

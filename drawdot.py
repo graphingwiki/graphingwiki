@@ -30,14 +30,14 @@ specification.",
 
 # dependency type abbreviations and names
 
-typelabels = {'R': ['refs', 'refed', 'seealso'],
-              'O': ['obs', 'obsby'],
-              'U': ['upd', 'updby']}
+typelabels = {'R': ['Reference', 'ReferenceFrom', 'seealso'],
+              'O': ['Obsolete', 'ObsoleteFrom'],
+              'U': ['Update', 'UpdateFrom']}
 
 typetext = {'seealso': 'References',
-            'refs': 'References', 'refed': 'References',
-            'obs': 'Obsoletes', 'obsby': 'Obsoletes',
-            'upd': 'Updates', 'updby': 'Updates'}
+            'Reference': 'References', 'ReferenceFrom': 'References',
+            'Obsolete': 'Obsoletes', 'ObsoleteFrom': 'Obsoletes',
+            'Update': 'Updates', 'UpdateFrom': 'Updates'}
 
 ## reftypes and inreftypes are the variables that contain the
 ## dependency types that will be used by the graph-generating methods:
@@ -47,8 +47,8 @@ typetext = {'seealso': 'References',
 # one line between two nodes is allowed and only the latest changes
 # remain in effect
 
-reftypes = ['refs', 'seealso', 'upd', 'obs']
-inreftypes = ['refed', 'seealso', 'updby', 'obsby']
+reftypes = ['Reference', 'seealso', 'Update', 'Obsolete']
+inreftypes = ['ReferenceFrom', 'seealso', 'UpdateFrom', 'ObsoleteFrom']
 
 # a selection of dot colors
 
@@ -138,10 +138,10 @@ def hashcolor(string):
 
 # Add notes on the rfc publication years.
 def add_to_years(rfc):
-    if per_year.has_key('Year' + rfc['year']):
-        per_year['Year' + rfc['year']].append(rfc['number'])
+    if per_year.has_key('Year' + rfc['Year']):
+        per_year['Year' + rfc['Year']].append(rfc['number'])
     else:
-        per_year['Year' + rfc['year']] = [rfc['number']]
+        per_year['Year' + rfc['Year']] = [rfc['number']]
 
 # Generate graph ordering based on the collected publication year data
 # pf the rfcs present in the graph. This is done adding rfcs per year
@@ -158,7 +158,7 @@ def add_years_to_graph():
             sg.add_node(pydot.Node(rfc))
         graph.add_subgraph(sg)
 
-        graph.add_node(pydot.Node(year, group='year',
+        graph.add_node(pydot.Node(year, group='Year',
                                   shape='plaintext'))
         if prev_year is not None:
             graph.add_edge(pydot.Edge(prev_year, year, dir='none',
@@ -173,8 +173,8 @@ def gimme_edges(data, whom, reason, inout, **args):
     if whom.has_key(reason):
         for i in whom[reason]:
             # limit-arg: Don't allow edges from rfcs with certain status
-            if data[i].has_key('status'):
-                if data[i]['status'] in limit:
+            if data[i].has_key('Status'):
+                if data[i]['Status'] in limit:
                     continue
             # Don't allow statusless if limited
             elif 'N' in limit:
@@ -246,8 +246,8 @@ def add_rfcnode(rfc):
     else:
         labelstr = "rfc" + numb
 
-    if rfc.has_key('status'):
-        status = rfc['status']
+    if rfc.has_key('Status'):
+        status = rfc['Status']
         statuscolor = hashcolor(status)
     else:
         status = 'N'
@@ -261,7 +261,7 @@ def add_rfcnode(rfc):
                               URL="http://www.ietf.org/rfc/rfc" +
                               numb + ".txt",
                               # URL=baseurl + numb,
-                              tooltip=rfc['name']))
+                              tooltip=rfc['Name']))
 
 # For noded that have already been added ot graph by being assigned as
 # edge endpoints, but that have no attributes
@@ -272,8 +272,8 @@ def change_rfcnode(rfc):
 
     olmi = graph.get_node(rfc['number'])
     
-    if rfc.has_key('status'):
-        status = rfc['status']
+    if rfc.has_key('Status'):
+        status = rfc['Status']
         statuscolor = hashcolor(status)
     else:
         status = 'N'
@@ -291,7 +291,7 @@ def change_rfcnode(rfc):
 
     olmi.set_URL("http://www.ietf.org/rfc/rfc" + rfc['number'] + ".txt")
 #    olmi.set_URL(baseurl + rfc['number'])
-    olmi.set_tooltip(rfc['name'])
+    olmi.set_tooltip(rfc['Name'])
 
 # Start from a node, add node and all reference edges (adds nodes
 # also), add attributes to added nodes.
@@ -481,8 +481,8 @@ def appendreftypes(data, rfc, reftypes):
             # else, make it pretty darn hard
             else:
                 for dst in rfc[type]:
-                    if data[dst].has_key('status'):
-                        if data[dst]['status'] in limit:
+                    if data[dst].has_key('Status'):
+                        if data[dst]['Status'] in limit:
                             continue
                     elif 'N' in limit:
                         continue
@@ -697,8 +697,8 @@ def main():
 
         # if the a node in path in limit, give up
         for proto in protos:
-            if data[proto].has_key('status'):
-                if data[proto]['status'] in limit:
+            if data[proto].has_key('Status'):
+                if data[proto]['Status'] in limit:
                     graph_error("No path found")
             elif 'N' in limit:
                 graph_error("No path found")
@@ -718,7 +718,7 @@ def main():
         for node in nodes:
             add_rfcnode(data[node])
 
-        keywords = ['obs', 'upd', 'seealso', 'refs']
+        keywords = ['Obsolete', 'Update', 'seealso', 'Reference']
         strings = ['Obsoletes', 'Updates', 'References', 'References']
 
         for edge in pairs:

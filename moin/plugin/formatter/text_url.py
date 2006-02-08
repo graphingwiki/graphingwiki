@@ -109,7 +109,8 @@ class Formatter(FormatterBase):
         if wikitag == 'Self': # for own wiki, do simple links
             import urllib
             if wikitail.find('#')>-1:
-                wikitail, kw['anchor'] = wikitail.split('#', 1)
+                # Anchors removed here
+                wikitail, kw['anchor-removed'] = wikitail.split('#', 1)
             wikitail = urllib.unquote(wikitail)
             kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
             return apply(self.pagelink, (on, wikiutil.AbsPageName(self.request,

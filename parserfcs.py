@@ -27,11 +27,11 @@ def rfcformat():
         number = Word(nums).setResultsName('number')
         status = (Optional('-') +
                   Optional(oneOf('S DS PS I E H') +
-                           FollowedBy(White())).setResultsName('status'))
+                           FollowedBy(White())).setResultsName('Status'))
 
-        name = SkipTo(',').setResultsName('name')
+        name = SkipTo(',').setResultsName('Name')
         authors = SkipTo((Word(nums, exact=4) + "/")).suppress()
-        year = Word(nums).setResultsName('year') + SkipTo('(')
+        year = Word(nums).setResultsName('Year') + SkipTo('(')
 
         pages = Optional(Literal('(') + Word(nums) + Literal('pp)')).suppress()
         format = Optional(Literal('(') +
@@ -39,29 +39,29 @@ def rfcformat():
                   Word(nums)) + Literal(')')).suppress()
 
         standard = Optional(Suppress('(') +
-                            Word(alphas).setResultsName('stdtype') +
+                            Word(alphas).setResultsName('Standard type') +
                             (Literal('-') + Word(nums) +
                              Literal(')')).suppress())
 
         refs = (Suppress('(Refs') +
-                delimitedList(Word(nums)).setResultsName('refs') +
+                delimitedList(Word(nums)).setResultsName('Reference') +
                 Suppress(')'))
         refed = (Suppress('(Ref\'ed') + Suppress('By') +
-                 delimitedList(Word(nums)).setResultsName('refed') +
+                 delimitedList(Word(nums)).setResultsName('ReferenceFrom') +
                  Suppress(')'))
 
         obs = (Suppress('(Obsoletes') +
-               delimitedList(Word(nums)).setResultsName('obs') +
+               delimitedList(Word(nums)).setResultsName('Obsolete') +
                Suppress(')'))
         obsby = (Suppress('(Obsoleted') + Suppress('by') + 
-                 delimitedList(Word(nums)).setResultsName('obsby') +
+                 delimitedList(Word(nums)).setResultsName('ObsoleteFrom') +
                  Suppress(')'))
 
         upd = (Suppress('(Updates') +
-               delimitedList(Word(nums)).setResultsName('upd') +
+               delimitedList(Word(nums)).setResultsName('Update') +
                Suppress(')'))
         updby = (Suppress('(Updated') + Suppress('by') +
-                 delimitedList(Word(nums)).setResultsName('updby') +
+                 delimitedList(Word(nums)).setResultsName('UpdateFrom') +
                  Suppress(')'))
 
         seealso = (Suppress('(See') + Suppress('Also') +
@@ -69,7 +69,7 @@ def rfcformat():
                    Suppress(')'))
 
         protocol = Optional(Suppress('(') +
-                            Word(alphanums+'-/').setResultsName('proto') +
+                            Word(alphanums+'-/').setResultsName('Protocol') +
                             Suppress(')'))
 
         notissued = (number.suppress() + Suppress('Not') + Suppress('Issued'))
@@ -89,7 +89,7 @@ def makemapentry(data):
             for j in data[i]:
                 map[i].append(j)
         # strip extra line feeds and spaces from name
-        elif i == 'name':
+        elif i == 'Name':
             map[i] = re.compile("\s+").sub(" ", data[i])
         else:
             map[i] = data[i]
@@ -97,9 +97,9 @@ def makemapentry(data):
     # If the Wheeler data misses status but rfc-index.txt has
     # it,insert it.
 
-    if not map.has_key('status'):
+    if not map.has_key('Status'):
         if refdata.has_key(map['number']):
-            map['status'] = refdata[map['number']]
+            map['Status'] = refdata[map['number']]
 
     return map
 
@@ -115,15 +115,15 @@ def getrefdata():
 
     stdmatch = (Word(nums).setResultsName('number') +
                 SkipTo('(Status:', include=True).suppress() +
-                SkipTo(')').setResultsName('status'))
+                SkipTo(')').setResultsName('Status'))
     notissued = (Word(nums).suppress() + Suppress('Not') +
-                 Literal('Issued').setResultsName('status'))
+                 Literal('Issued').setResultsName('Status'))
     
     matchstr = stdmatch | notissued
 
     for i in data:
         match = matchstr.parseString(i)
-        status = re.sub('\s+', ' ', match['status'])
+        status = re.sub('\s+', ' ', match['Status'])
         if stdlabels.has_key(status):
             refdata[match['number']] = stdlabels[status]
 
