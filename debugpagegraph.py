@@ -15,12 +15,9 @@ filepath = os.path.join(wikipath, page, "graphdata.pickle")
 f = file(filepath)
 g = cPickle.load(f)
 
-nonconstants_p = lambda x: x not in ['belongs_to_patterns', 'label']
-
 for i in g.nodes.getall():
     print i[0]
-    print [(x, getattr(g.nodes.get(*i), x)) for x in dict(g.nodes.get(*i))
-           if nonconstants_p(x)]
+    print [(x, getattr(g.nodes.get(*i), x)) for x in dict(g.nodes.get(*i))]
 
 for i in g.edges.getall():
     print i

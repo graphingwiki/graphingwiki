@@ -20,6 +20,8 @@ def execute(pagename, request, text, pagedir, page):
     encoder = getencoder(config.charset)
     def _e(str):
         return encoder(str, 'replace')[0]
+    def _u(str):
+        return unquote(str).replace('_', ' ')
 
     # import text_url -formatter
     try:
@@ -66,7 +68,11 @@ def execute(pagename, request, text, pagedir, page):
     # add a node for current page to graph
     selfname = quote(pagename)
     pagenode = outgraph.nodes.add(selfname)
-    pagenode.label = _e(pagename)
+    # Add nicer looking label if necessary
+    name = _e(pagename)
+    unqname = _u(name)
+    if unqname != name:
+        pagenode.label = unqname
 
     for line in lines:
         # Comments not processed
@@ -117,7 +123,10 @@ def execute(pagename, request, text, pagedir, page):
                     if not outgraph.nodes.get(nodename):
                         n = outgraph.nodes.add(nodename)
                         n.URL = _e(attrs[0])
-                        n.label = unquote(nodename).replace('_', ' ')
+                        # Nicer looking labels for nodes
+                        unqname = _u(nodename)
+                        if unqname != nodename:
+                            n.label = unqname
 
                     edge = [selfname, nodename]
                     # Augmented links, eg. [PaGe:Ooh: PaGe]

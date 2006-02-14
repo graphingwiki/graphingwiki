@@ -138,10 +138,11 @@ def hashcolor(string):
 
 # Add notes on the rfc publication years.
 def add_to_years(rfc):
-    if per_year.has_key('Year' + rfc['Year']):
-        per_year['Year' + rfc['Year']].append(rfc['number'])
+    key = 'Year' + rfc['Year']
+    if per_year.has_key(key):
+        per_year[key].add(rfc['number'])
     else:
-        per_year['Year' + rfc['Year']] = [rfc['number']]
+        per_year[key] = set([rfc['number']])
 
 # Generate graph ordering based on the collected publication year data
 # pf the rfcs present in the graph. This is done adding rfcs per year
@@ -162,6 +163,7 @@ def add_years_to_graph():
                                   shape='plaintext'))
         if prev_year is not None:
             graph.add_edge(pydot.Edge(prev_year, year, dir='none',
+                                      minlen=1,
                                       style='invis', weight=10))
         prev_year = year
 
@@ -309,12 +311,12 @@ def spread_from_node(rfc, data):
     for linktype in reftypes:
         gimme_edges(data, rfc, linktype, 'out',
                     color=hashcolor(typetext[linktype]),
-                    constraint='false', comment=typetext[linktype])
+                    comment=typetext[linktype])
 
     for linktype in inreftypes:
         gimme_edges(data, rfc, linktype, 'in',
                     color=hashcolor(typetext[linktype]),
-                    constraint='false', comment=typetext[linktype])
+                    comment=typetext[linktype])
 
     for i in unhandled:
         change_rfcnode(data[i])
@@ -559,7 +561,7 @@ def traverse_path(chain, shortest, cycles, data):
 
     if shortest:
         shortest_paths = {}
-        for idx, path in enumerate(paths):
+        for idx, path in zip(range(len(paths)), paths):
             # go through paths between endpoints,
             # save len and idx of shortest paths
             endpoints = path[0] + path[-1]
@@ -731,7 +733,6 @@ def main():
                         # -> everything all right, add edge
                         graph.add_edge(pydot.Edge(src, dst,
                                                   color=hashcolor(str),
-                                                  constraint='false',
                                                   comment=str))
                         # next pair, please
                         break
@@ -759,8 +760,47 @@ def main():
     # invisible edges between them
     tie_statusnodes()
 
-    # print out graph in dot format or in png format, depending on args
-    print graph.to_string()
+    # Now, layout graph again to a new graph to achieve better ranking
+    global per_year
+
+    # first, sort the years the rfc:s (nodes) are from
+    years = per_year.keys()
+    years.sort()
+
+    # go through edges, except the year-edges
+    for e in graph.edge_list:
+        if e.src[0] == 'Y':
+            continue
+        # find out how many ranks the endpoints of the edges are apart
+        minlen = years.index("Year"+data[e.src]['Year']) - \
+                 years.index("Year"+data[e.dst]['Year'])
+        # insert that as edge minimum length
+        e.minlen = minlen
+
+    # make the new graph, add legends
+    ordered = pydot.Dot(clusterrank='local', rankdir='LR', compound='true')
+    ordered.add_subgraph(legend)
+    ordered.add_subgraph(legend_pruned)
+    
+    # import pdb
+    # pdb.set_trace()
+
+    # insert nodes in year ordering, oldest first
+    for year in years:
+        for rfc in per_year[year]:
+            ordered.add_node(graph.get_node(rfc))
+
+    # insert subgraphs, with the exception of clusters
+    for sg in graph.subgraph_list:
+        if sg.graph_name[:14] != "cluster_legend":
+            ordered.add_subgraph(sg)
+
+    # add edges
+    for e in graph.edge_list:
+        ordered.add_edge(e)
+
+    # print out dot
+    print ordered.to_string()
 
     return 0
 
