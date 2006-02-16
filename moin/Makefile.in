@@ -1,0 +1,23 @@
+# Configuration variables, change these to fit your install
+PKGDIR    = /usr/lib/python2.4/site-packages/MoinMoin
+WIKIDIR   = --wikitemplate--
+
+# Destination dirs
+MOINDIR   = $(WIKIDIR)/config/MoinMoin
+PLUGINDIR = $(WIKIDIR)/data/plugin
+
+default:
+	@echo "Copying MoinMoin-files"
+	@mkdir -p -m 777 $(MOINDIR)
+	@sed -e "s!MOINDIR!'$(MOINDIR)'!; s!PKGDIR!'$(PKGDIR)'!" \
+	MoinMoin/__init__.py > $(MOINDIR)/__init__.py
+	@find MoinMoin -name '[^_]*.py' | xargs -I {} cp {} $(MOINDIR)
+	@chmod a+r $(MOINDIR)/*.py
+
+	@echo "Copying plugins"
+	@cp -R plugin/* $(PLUGINDIR)
+	@find $(PLUGINDIR) -name 'CVS' | xargs -I {} rm -rf {}
+	@find $(PLUGINDIR) -name '*~*' | xargs -I {} rm -rf {}
+	@find $(PLUGINDIR) -name '*.py' | xargs -I {} chmod a+r {}
+	@echo "Make sure that your moin.cgi has cpe in sys.path, and that your"
+	@echo "cpe- plugin- and config/MoinMoin dirs have permissions for apache!"
