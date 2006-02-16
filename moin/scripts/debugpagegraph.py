@@ -5,12 +5,16 @@ import sys
 import os
 import cPickle
 
-sys.path.insert(0, '/home/secpelle/cpe/supervisor')
+sys.path.insert(0, CPEDIR)
 from graphrepr import GraphRepr
 
-wikipath = '/home/secpelle/public_access/wiki/data/pages/'
-page = sys.argv[1]
-filepath = os.path.join(wikipath, page, "graphdata.pickle")
+try:
+    wikipath = sys.argv[2]
+    page = sys.argv[1]
+    filepath = os.path.join(wikipath, page, "graphdata.pickle")
+except:
+    print "Usage: " + sys.argv[0] + " <pagename> <path-to-wiki>" 
+    raise
 
 f = file(filepath)
 g = cPickle.load(f)

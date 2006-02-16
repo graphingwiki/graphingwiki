@@ -3,16 +3,19 @@
 import os
 import sys
 
+try:
+    wikipath = sys.argv[1]
+    os.chdir(wikipath)
+except:
+    print "Usage: " + sys.argv[0] + " <path-to-wiki>"
+    raise
+
 # Moin dirs
-sys.path.insert(0, '/home/secpelle/public_access/wiki/config')
-sys.path.insert(0, '/home/secpelle/cpe/supervisor')
+sys.path.insert(0, os.path.join(wikipath, 'config'))
+sys.path.insert(0, CPEDIR)
 from MoinMoin import wikiutil
 from MoinMoin import request
 from MoinMoin.Page import Page
-
-wikipath = '/home/secpelle/public_access/wiki/data/pages/'
-
-os.chdir(wikipath)
 
 pages = []
 
