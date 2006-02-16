@@ -12,14 +12,12 @@ except:
 
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
-sys.path.insert(0, CPEDIR)
 from MoinMoin import wikiutil
 from MoinMoin import request
 from MoinMoin.Page import Page
 
 pagename = sys.argv[1]
 
-# print "Rehashing " + pagename
 # Make a new request for the page, get raw text
 req = request.RequestCLI(pagename=pagename)
 req.form['action'] = ['ShowGraphNow']
@@ -30,5 +28,5 @@ pagedir = p.getPagePath()
 text = p.get_raw_body()
 
 # Apply the showgraph-action to the page
-showgraph = wikiutil.importPlugin(req.cfg, 'action', 'ShowGraphNow')
+showgraph = wikiutil.importPlugin(req.cfg, 'action', 'ShowGraph')
 showgraph(pagename, req)

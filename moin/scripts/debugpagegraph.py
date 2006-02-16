@@ -11,7 +11,7 @@ from graphrepr import GraphRepr
 try:
     wikipath = sys.argv[2]
     page = sys.argv[1]
-    filepath = os.path.join(wikipath, page, "graphdata.pickle")
+    filepath = os.path.join(wikipath, 'data/pages', page, "graphdata.pickle")
 except:
     print "Usage: " + sys.argv[0] + " <pagename> <path-to-wiki>" 
     raise
