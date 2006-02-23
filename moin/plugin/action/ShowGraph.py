@@ -10,6 +10,7 @@ import os, cPickle, tempfile
 from codecs import getencoder
 from random import choice, seed
 
+from MoinMoin import search
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -85,6 +86,34 @@ def execute(pagename, request):
     nodeitem.URL = './' + pagename
 
     # Handling form arguments
+    # category-argument (true/false), otherpages
+    # other ones: engine, (dot, neato, circo)
+
+    allcategories = pageobj.getCategories(request)
+
+    categories = []
+    catpages = [pagename]
+
+    # categories as received from the form
+    if request.form.has_key('categories'):
+        categories = [_e(x) for x in request.form['categories']]
+
+    for cat in categories:
+        query = search.QueryParser().parse_query(cat)
+        results = search.searchPages(request, query)
+        for page in results.hits:
+            newname = _e(page.page_name)
+            if pagename != newname:
+                catpages.append(newname)
+                n = graphdata.nodes.add(newname)
+                n.URL = './' + newname
+
+# nodeitem = graphdata.nodes.add(pagename)
+# nodeitem.URL = './' + pagename
+# catpages = []
+
+# for page in catpages:
+
     colorby = ''
     if request.form.has_key('colorby'):
         colorby = _e(''.join(request.form['colorby']))
@@ -131,7 +160,7 @@ def execute(pagename, request):
     unordernodes = set()
 
     # Start all pattern searches from the current page
-    nodes = set([pagename])
+    nodes = set(catpages)
 
     # The working with patterns goes a bit like this:
     # First, get a sequence, add it to outgraph
@@ -347,8 +376,18 @@ def execute(pagename, request):
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
+    request.write(u"<table>\n<tr>\n")
+
+    # categories
+    request.write(u"<td>\nInclude page categories:<br>\n")
+    for type in allcategories:
+        request.write(u'<input type="checkbox" name="categories" ' +
+                      u'value="%s"%s%s<br>\n' %
+                      (type, type in categories and " checked>" or ">",
+                       type))
+
     # colorby
-    request.write(u"<table>\n<tr>\n<td>\nColor by:<br>\n")
+    request.write(u"<td>\nColor by:<br>\n")
     for type in nodeattrs:
         request.write(u'<input type="radio" name="colorby" ' +
                       u'value="%s"%s%s<br>\n' %

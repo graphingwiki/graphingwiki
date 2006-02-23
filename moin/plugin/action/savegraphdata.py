@@ -129,7 +129,7 @@ def execute(pagename, request, text, pagedir, page):
                             n.label = unqname
 
                     edge = [selfname, nodename]
-                    # Augmented links, eg. [PaGe:Ooh: PaGe]
+                    # Augmented links, eg. [:PaGe:Ooh: PaGe]
                     augdata = _e(attrs[-1]).split(': ')
                     # in-links
                     if len(augdata) > 1 and augdata[0].endswith('From'):

@@ -191,7 +191,7 @@ class WikiNode(object):
         nodeitem = graph.nodes.get(node)
         k = getattr(nodeitem, 'URL', '')
         # If local link
-        if not k.startswith('./'):
+        if not (k.startswith('./') or k.startswith('/')):
             return None
 #        WikiNode.request.write("Ldata " + node + "\n")
         # and we're allowed to read it
@@ -223,6 +223,10 @@ class HeadNode(WikiNode):
         # Add new nodes, edges that are the children of da node
 #        WikiNode.request.write("Child " + node + "\n")
         for parent, child in adata.edges.getall(parent=node):
+            # filter out category pages
+            if child.startswith("Category"):
+                continue
+
             newnode = graph.nodes.get(child)
             if not newnode:
                 newnode = graph.nodes.add(child)
@@ -258,6 +262,10 @@ class TailNode(WikiNode):
         # Add new nodes, edges that are the parents of da node
 #        WikiNode.request.write("Parent " + node + "\n")
         for parent, child in adata.edges.getall(child=node):
+            # filter out category pages
+            if parent.startswith("Category"):
+                continue
+
             newnode = graph.nodes.get(parent)
             if not newnode:
                 newnode = graph.nodes.add(parent)

@@ -20,11 +20,16 @@ class Formatter(FormatterBase):
     def null(self, *args, **kw):
         return ''
 
+    # images inside bracketed urls need to return list to avoid breaking
+    def null_list(self, *args, **kw):
+        return ['']
+
     # All these must be overriden here because they raise
     # NotImplementedError!@#! or return html?! in the base class.
+    image = null_list
+
     set_highlight_re = null
     url = null
-    image = null
     smiley = null
     text = null
     strong = null
