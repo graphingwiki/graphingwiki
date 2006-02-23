@@ -5,7 +5,7 @@ import sys
 
 try:
     wikipath = sys.argv[1]
-    os.chdir(wikipath)
+    os.chdir(os.path.join(wikipath, 'data/pages'))
 except:
     print "Usage: " + sys.argv[0] + " <path-to-wiki>"
     raise
@@ -16,13 +16,14 @@ sys.path.insert(0, CPEDIR)
 from MoinMoin import wikiutil
 from MoinMoin import request
 from MoinMoin.Page import Page
+from MoinMoin.wikiutin import unquoteWikiname
 
 pages = []
 
 # List pages with graphdata
 for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
     if 'graphdata.pickle' in os.listdir(dir):
-        pages.append(dir)
+        pages.append(str(unquoteWikiname(dir)))
 
 for pagename in pages:
     # print "Rehashing " + pagename
