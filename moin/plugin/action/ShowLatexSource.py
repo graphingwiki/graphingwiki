@@ -3,7 +3,7 @@
     MoinMoin - ShowTexSource action, shows page with LaTeX markup
 
     @copyright: 2005 by Juhani Eronen <exec@ee.oulu.fi>
-    @license: GNU GPL, see COPYING for details.
+    @license: BSD-something
 """
     
 from MoinMoin import wikiutil
