@@ -11,6 +11,7 @@ except:
     raise
 
 # Moin dirs
+sys.path.insert(0, CPEDIR)
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
 from MoinMoin import request
@@ -20,7 +21,7 @@ pagename = sys.argv[1]
 
 # Make a new request for the page, get raw text
 req = request.RequestCLI(pagename=pagename)
-req.form['action'] = ['ShowGraphNow']
+req.form['action'] = ['ShowGraph']
 req.form['colorby'] = ['Status']
 req.form['orderby'] = ['Year']
 p = Page(req, pagename)

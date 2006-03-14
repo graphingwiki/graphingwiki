@@ -3,13 +3,14 @@
     MoinMoin - ShowGraph action
 
     @copyright: 2005 by Juhani Eronen <exec@ee.oulu.fi>
-    @license: GNU GPL
+    @license: BSD-something
 """
     
-import os, cPickle, tempfile
+import re, os, cPickle, tempfile
 from codecs import getencoder
 from random import choice, seed
 from base64 import b64encode
+from urllib import quote
 
 from MoinMoin import search
 from MoinMoin import config
@@ -114,17 +115,6 @@ def execute(pagename, request):
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
                 n.URL = './' + newpage
-
-#     for cat in categories:
-#         query = search.QueryParser().parse_query(cat)
-#         results = search.searchPages(request, query)
-#         for page in results.hits:
-#             newname = _e(page.page_name)
-#             # No duplicates of current page
-#             if newname != pagename:
-#                 startpages.append(newname)
-#                 n = graphdata.nodes.add(newname)
-#                 n.URL = './' + newname
 
     # Other form variables
     colorby = ''
@@ -385,6 +375,12 @@ def execute(pagename, request):
             legend.edges.add((prev, cur), style="invis", dir='none')
         prev = cur
 
+    # Escape quotes to numeric char references, remove outer quotes.
+    def _quoteformstr(str):
+        str = str.strip("\"'")
+        str = str.replace('"', '&#x22;')
+        return _e('&#x22;' + str + '&#x22;')
+
     # Begin form
     request.write(u'<form method="GET" action="%s">\n' % pagename)
     request.write(u'<input type=hidden name=action value="%s">' %
@@ -446,7 +442,8 @@ def execute(pagename, request):
         for type in allcolor:
             request.write(u'<input type="checkbox" name="filtercolor" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type, type in filtercolor and " checked>" or ">",
+                          (_quoteformstr(type),
+                           type in filtercolor and " checked>" or ">",
                            type))
         request.write(u'<input type="checkbox" name="filtercolor" ' +
                       u'value="%s"%s%s<br>\n' %
@@ -461,7 +458,8 @@ def execute(pagename, request):
         for type in allorder:
             request.write(u'<input type="checkbox" name="filterorder" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type, type in filterorder and " checked>" or ">",
+                          (_quoteformstr(type),
+                           type in filterorder and " checked>" or ">",
                            type))
         request.write(u'<input type="checkbox" name="filterorder" ' +
                       u'value="%s"%s%s<br>\n' %
@@ -500,12 +498,12 @@ def execute(pagename, request):
 
     # debug:
     # just to get the graph data out 
-#     gr.dot.layout(file=tmp_name)
-#     f = file(tmp_name)
-#     gtext = f.read()
-#     request.write(formatter.preformatted(1))
-#     request.write(formatter.text(gtext))
-#     request.write(formatter.preformatted(0))
+    gr.dot.layout(file=tmp_name)
+    f = file(tmp_name)
+    gtext = f.read()
+    request.write(formatter.preformatted(1))
+    request.write(formatter.text(gtext))
+    request.write(formatter.preformatted(0))
 
     os.close(tmp_fileno)
     os.remove(tmp_name)

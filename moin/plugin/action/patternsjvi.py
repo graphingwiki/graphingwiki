@@ -284,17 +284,21 @@ class TailNode(WikiNode):
         if not globaldata['inlinks'].has_key(dst):
             return
         for src in globaldata['inlinks'][dst]:
-            newnode = graph.nodes.get(src)
-            if not newnode:
-                newnode = graph.nodes.add(src)
-            newnode.URL = './' + src
-            graph.edges.add(src, dst)
+            dstnode = graph.nodes.get(dst)
+            if not dstnode:
+                graph.nodes.add(dst)
+            srcnode = graph.nodes.get(src)
+            if not srcnode:
+                srcnode = graph.nodes.add(src)
+                srcnode.URL = './' + src
+            if not graph.edges.get(src, dst):
+                graph.edges.add(src, dst)
     
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
             # get in-links from the global shelve
-            self._addinlinks(graph, node)
+            #self._addinlinks(graph, node)
             # Add detailed graphdata to the search graph
             if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)

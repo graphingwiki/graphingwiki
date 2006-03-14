@@ -66,21 +66,13 @@ def execute(pagename, request, text, pagedir, page):
         return encoder(str, 'replace')[0]
     def _u(str):
         return unquote(str).replace('_', ' ')
-    # Escape quotes inside str, remove existing quotes, add outer
-    # quotes. All of this may not be needed...
+    # Escape quotes in str, remove existing quotes, add outer quotes.
     def _quotestring(str):
         escq = re.compile(r'(?<!\\)"')
-        if str[0] == str[-1] == '"':
-            str = escq.subn('\\"', str[1:-1])[0]
-        elif (str.startswith('"""') and
-              str.endswith('"""')):
-            str = escq.subn('\\"', str[3:-3])[0]
-        elif str[0] == str[-1] == "'":
-            str = escq.subn('\\"', str[1:-1])[0]
-        else:
-            str = escq.subn('\\"', str)[0]
-
+        str = str.strip("\"'")
+        str = escq.subn('\\"', str)[0]
         return '"' + str + '"'
+
     # Quote names with namespace/interwiki (for rdf/n3 use)
     def _quotens(str):
         return ':'.join([_e(quote(x)) for x in str.split(':')])
