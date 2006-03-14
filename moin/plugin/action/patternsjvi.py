@@ -1,4 +1,4 @@
-import cPickle, os
+import cPickle, os, shelve
 from MoinMoin.Page import Page
 
 class LazyItem(object):
@@ -239,6 +239,7 @@ class HeadNode(WikiNode):
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
+            # Add detailed graphdata to the search graph
             if node + "head" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "head")
@@ -275,9 +276,26 @@ class TailNode(WikiNode):
             edgedata = adata.edges.get(parent, child)
             newedge.update(edgedata)
 
+    def _addinlinks(self, graph, dst):
+        inc_page = Page(WikiNode.request, dst)
+        graphshelve = os.path.join(inc_page.getPagePath(), '../',
+                                   'graphdata.shelve')
+        globaldata = shelve.open(graphshelve, 'r')
+        if not globaldata['inlinks'].has_key(dst):
+            return
+        for src in globaldata['inlinks'][dst]:
+            newnode = graph.nodes.get(src)
+            if not newnode:
+                newnode = graph.nodes.add(src)
+            newnode.URL = './' + src
+            graph.edges.add(src, dst)
+    
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
+            # get in-links from the global shelve
+            self._addinlinks(graph, node)
+            # Add detailed graphdata to the search graph
             if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "tail")

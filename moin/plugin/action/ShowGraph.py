@@ -9,6 +9,7 @@
 import os, cPickle, tempfile
 from codecs import getencoder
 from random import choice, seed
+from base64 import b64encode
 
 from MoinMoin import search
 from MoinMoin import config
@@ -86,34 +87,46 @@ def execute(pagename, request):
     nodeitem.URL = './' + pagename
 
     # Handling form arguments
-    # category-argument (true/false), otherpages
-    # other ones: engine, (dot, neato, circo)
+    # include otherpages, include pages with certain metadata?
+    # engine, (dot, neato, circo)
+    # search depth?
 
+    # Get categories for current page, for the category form
     allcategories = pageobj.getCategories(request)
 
     categories = []
-    catpages = [pagename]
+    startpages = [pagename]
 
     # categories as received from the form
     if request.form.has_key('categories'):
         categories = [_e(x) for x in request.form['categories']]
 
+    # If categories specified in form, add category pages to startpages
     for cat in categories:
-        query = search.QueryParser().parse_query(cat)
-        results = search.searchPages(request, query)
-        for page in results.hits:
-            newname = _e(page.page_name)
-            if pagename != newname:
-                catpages.append(newname)
-                n = graphdata.nodes.add(newname)
-                n.URL = './' + newname
+        graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
+        globaldata = shelve.open(graphshelve, 'r')
+        if not globaldata['categories'].has_key(cat):
+            # graphdata not in sync on disk -> malicious input 
+            # or something has gone very, very wrong
+            break
+        for newpage in globaldata['categories'][cat]:
+            if newpage != pagename:
+                startpages.append(newpage)
+                n = graphdata.nodes.add(newpage)
+                n.URL = './' + newpage
 
-# nodeitem = graphdata.nodes.add(pagename)
-# nodeitem.URL = './' + pagename
-# catpages = []
+#     for cat in categories:
+#         query = search.QueryParser().parse_query(cat)
+#         results = search.searchPages(request, query)
+#         for page in results.hits:
+#             newname = _e(page.page_name)
+#             # No duplicates of current page
+#             if newname != pagename:
+#                 startpages.append(newname)
+#                 n = graphdata.nodes.add(newname)
+#                 n.URL = './' + newname
 
-# for page in catpages:
-
+    # Other form variables
     colorby = ''
     if request.form.has_key('colorby'):
         colorby = _e(''.join(request.form['colorby']))
@@ -155,12 +168,13 @@ def execute(pagename, request):
 
     # node attributes
     nodeattrs = set()
-    # nodes that have the attribute designated with colorby, and not
+    # nodes that do and do not have the attribute designated with orderby
     ordernodes = {}
     unordernodes = set()
 
-    # Start all pattern searches from the current page
-    nodes = set(catpages)
+    # Start pattern searches from current page +
+    # nodes gathered as per form args
+    nodes = set(startpages)
 
     # The working with patterns goes a bit like this:
     # First, get a sequence, add it to outgraph
@@ -458,8 +472,6 @@ def execute(pagename, request):
     request.write(u"</table>\n")
     request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
-    from base64 import b64encode
-
     tmp_fileno, tmp_name = tempfile.mkstemp()
     gr.dot.layout(file=tmp_name, format='png')
     f = file(tmp_name)
@@ -484,7 +496,6 @@ def execute(pagename, request):
         imgbase = "data:image/png;base64," + b64encode(img)
         request.write('<img src="' + imgbase + '">\n')
 
-    # filter by node type
     # edge pruning etc??
 
     # debug:
@@ -496,21 +507,8 @@ def execute(pagename, request):
 #     request.write(formatter.text(gtext))
 #     request.write(formatter.preformatted(0))
 
-#     request.write(formatter.preformatted(1))
-#     request.write(formatter.text(str(filteredges)))
-#     request.write(formatter.preformatted(0))
-
     os.close(tmp_fileno)
-
-    args = [x for x in request.form if x != 'action']
-    if args:
-        request.write(formatter.preformatted(1))
-        for arg in args:
-            request.write(arg)
-            for val in request.form[arg]:
-                request.write(" " + val)
-            request.write("\n")
-        request.write(formatter.preformatted(0))
+    os.remove(tmp_name)
 
     # End content
     request.write(formatter.endContent()) # end content div

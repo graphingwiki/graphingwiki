@@ -16,7 +16,7 @@ sys.path.insert(0, CPEDIR)
 from MoinMoin import wikiutil
 from MoinMoin import request
 from MoinMoin.Page import Page
-from MoinMoin.wikiutin import unquoteWikiname
+from MoinMoin.wikiutil import unquoteWikiname
 
 pages = []
 
@@ -26,7 +26,7 @@ for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
         pages.append(str(unquoteWikiname(dir)))
 
 for pagename in pages:
-    # print "Rehashing " + pagename
+    print "Rehashing " + pagename
     # Make a new request for the page, get raw text
     req = request.RequestCLI(pagename=pagename)
     p = Page(req, pagename)
