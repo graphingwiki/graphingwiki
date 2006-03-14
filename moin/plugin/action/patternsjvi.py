@@ -174,6 +174,8 @@ class Edge:
             yield edge, (edge,), (children, graph), bindings
 
 class WikiNode(object):
+    # List of startpages -> pages to which gather in-links from global
+    startpages = []
     # Pages that have been loaded
     loaded = []
     # request associated with the page
@@ -181,11 +183,13 @@ class WikiNode(object):
     # url addition from action
     urladd = ""
 
-    def __init__(self, request="", urladd=""):
-        if request: 
+    def __init__(self, request=None, urladd=None, startpages=None):
+        if request is not None: 
             WikiNode.request = request
-        if urladd:
+        if urladd is not None:
             WikiNode.urladd = urladd
+        if startpages is not None:
+            WikiNode.startpages = startpages
 
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
@@ -208,9 +212,31 @@ class WikiNode(object):
             return adata
         return None
 
+    def _addinlinks(self, graph, dst):
+        if dst not in WikiNode.startpages:
+            return
+        inc_page = Page(WikiNode.request, dst)
+        graphshelve = os.path.join(inc_page.getPagePath(), '../',
+                                   'graphdata.shelve')
+        globaldata = shelve.open(graphshelve, 'r')
+        if not globaldata['inlinks'].has_key(dst):
+            # should not happen if page has graphdata
+            return
+        for src in globaldata['inlinks'][dst]:
+            dstnode = graph.nodes.get(dst)
+            if not dstnode:
+                # should not happen if page has graphdata
+                return
+            srcnode = graph.nodes.get(src)
+            if not srcnode:
+                srcnode = graph.nodes.add(src)
+                srcnode.URL = './' + src
+            if not graph.edges.get(src, dst):
+                graph.edges.add(src, dst)
+
 class HeadNode(WikiNode):
-    def __init__(self, request="", urladd=""):
-        super(HeadNode, self).__init__(request, urladd)
+    def __init__(self, request=None, urladd=None, startpages=None):
+        super(HeadNode, self).__init__(request, urladd, startpages)
 
     def loadpage(self, graph, node):
         # Get new data for current node
@@ -249,8 +275,8 @@ class HeadNode(WikiNode):
             yield node, (node,), (children, graph), bindings
 
 class TailNode(WikiNode):
-    def __init__(self, request="", urladd=""):
-        super(TailNode, self).__init__(request, urladd)
+    def __init__(self, request=None, urladd=None, startpages=None):
+        super(TailNode, self).__init__(request, urladd, startpages)
 
     def loadpage(self, graph, node):
         # Get new data for current node
@@ -275,30 +301,12 @@ class TailNode(WikiNode):
             newedge = graph.edges.add(parent, child)
             edgedata = adata.edges.get(parent, child)
             newedge.update(edgedata)
-
-    def _addinlinks(self, graph, dst):
-        inc_page = Page(WikiNode.request, dst)
-        graphshelve = os.path.join(inc_page.getPagePath(), '../',
-                                   'graphdata.shelve')
-        globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata['inlinks'].has_key(dst):
-            return
-        for src in globaldata['inlinks'][dst]:
-            dstnode = graph.nodes.get(dst)
-            if not dstnode:
-                graph.nodes.add(dst)
-            srcnode = graph.nodes.get(src)
-            if not srcnode:
-                srcnode = graph.nodes.add(src)
-                srcnode.URL = './' + src
-            if not graph.edges.get(src, dst):
-                graph.edges.add(src, dst)
     
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
             # get in-links from the global shelve
-            #self._addinlinks(graph, node)
+            self._addinlinks(graph, node)
             # Add detailed graphdata to the search graph
             if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)

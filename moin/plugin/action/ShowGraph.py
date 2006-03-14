@@ -213,7 +213,8 @@ def execute(pagename, request):
 
     # The following code traverses 1 to children
     # Init WikiNode at the same
-    pattern = Sequence(Fixed(HeadNode(request=request, urladd=urladd)),
+    pattern = Sequence(Fixed(HeadNode(request=request, urladd=urladd,
+                                      startpages=startpages)),
                        Fixed(HeadNode()))
     for obj1, obj2 in match(pattern, (nodes, graphdata)):
         addseqtograph(obj1, obj2)
@@ -251,7 +252,8 @@ def execute(pagename, request):
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
 
-        node1 = Fixed(HeadNode())
+        # no need to gather more in-links, clear startpages
+        node1 = Fixed(HeadNode(startpages=[]))
         node2 = Fixed(HeadNode())
         cond2 = Cond(node2, lazyhas(node2, colorby))
         pattern = Sequence(node1, cond2)
