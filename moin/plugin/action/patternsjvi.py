@@ -204,7 +204,7 @@ class WikiNode(object):
         # and we're allowed to read it
         if not WikiNode.request.user.may.read(node):
             return None
-        node = unquote(node)
+        node = quoteWikinameFS(unquote(node))
         inc_page = Page(WikiNode.request, node)
         afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
         if os.path.exists(afn):
@@ -235,7 +235,7 @@ class WikiNode(object):
             srcnode = graph.nodes.get(src)
             if not srcnode:
                 srcnode = graph.nodes.add(src)
-                srcnode.URL = './' + src
+                srcnode.URL = './' + quoteWikinameFS(unquote(src))
             if not graph.edges.get(src, dst):
                 graph.edges.add(src, dst)
 
@@ -255,7 +255,8 @@ class HeadNode(WikiNode):
 #        WikiNode.request.write("Child " + node + "\n")
         for parent, child in adata.edges.getall(parent=node):
             # filter out category pages
-            if child.startswith("Category"):
+            if (child.startswith("Category") or
+                child.endswith("Template")):
                 continue
 
             newnode = graph.nodes.get(child)
@@ -291,21 +292,25 @@ class TailNode(WikiNode):
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))
 
-        # Add new nodes, edges that are the parents of da node
-#        WikiNode.request.write("Parent " + node + "\n")
-        for parent, child in adata.edges.getall(child=node):
-            # filter out category pages
-            if parent.startswith("Category"):
-                continue
+        # Add new nodes, edges that are the parents of either the
+        # current node, or the start nodes
+        for parent, child in adata.edges.getall():
+            if child in [node] + WikiNode.startpages:
+                # filter out category pages
+                if (parent.startswith("Category") or
+                    parent.endswith("Template")):
+                    continue
 
-            newnode = graph.nodes.get(parent)
-            if not newnode:
-                newnode = graph.nodes.add(parent)
-            newnode.update(adata.nodes.get(parent))
+                newnode = graph.nodes.get(parent)
+                if not newnode:
+                    newnode = graph.nodes.add(parent)
+                newnode.update(adata.nodes.get(parent))
 
-            newedge = graph.edges.add(parent, child)
-            edgedata = adata.edges.get(parent, child)
-            newedge.update(edgedata)
+                newedge = graph.edges.get(parent, child)
+                if not newedge:
+                    newedge = graph.edges.add(parent, child)
+                edgedata = adata.edges.get(parent, child)
+                newedge.update(edgedata)
     
     def match(self, data, bindings):
         nodes, graph = data

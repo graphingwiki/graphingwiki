@@ -10,7 +10,7 @@ import re, os, cPickle, tempfile
 from codecs import getencoder
 from random import choice, seed
 from base64 import b64encode
-from urllib import quote
+from urllib import quote, unquote
 
 from MoinMoin import search
 from MoinMoin import config
@@ -144,7 +144,8 @@ def execute(pagename, request):
         filtercolor.update([_e(attr) for attr in request.form['filtercolor']])
 
     # This is the URL addition to the nodes that have graph data
-    urladd = "?" + '&'.join([str(x + "=" + ''.join(request.form[x]))
+    urladd = "?" + '&'.join([str(quote(x) + "=" +
+                                 quote(''.join(request.form[x])))
                              for x in request.form])
 
     # link/node attributes that have been assigned colors
@@ -262,6 +263,20 @@ def execute(pagename, request):
         for obj1, obj2 in match(pattern, (nodes, outgraph)):
             updatecolors(obj1, obj2)
 
+        node1 = Fixed(HeadNode())
+        node2 = Fixed(HeadNode())
+        cond2 = Cond(node2, lazyhas(node2, colorby))
+        pattern = Sequence(cond2, node1)
+        for obj1, obj2 in match(pattern, (nodes, outgraph)):
+            updatecolors(obj2, obj1)
+
+        node1 = Fixed(TailNode())
+        node2 = Fixed(TailNode())
+        cond1 = Cond(node1, lazyhas(node1, colorby))
+        pattern = Sequence(node2, cond1)
+        for obj1, obj2 in match(pattern, (nodes, outgraph)):
+            updatecolors(obj1, obj2)
+
         node1 = Fixed(TailNode())
         node2 = Fixed(TailNode())
         cond1 = Cond(node1, lazyhas(node1, colorby))
@@ -311,7 +326,8 @@ def execute(pagename, request):
             cur_ordernode = 'orderkey: ' + key
             sg = gr.dot.subg.add(cur_ordernode, rank='same')
             sg.nodes.add(cur_ordernode)
-            gr.dot.nodes.add(cur_ordernode, label=key)
+            # [1:-1] removes quotes from label
+            gr.dot.nodes.add(cur_ordernode, label=key[1:-1])
             for node in ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -363,7 +379,7 @@ def execute(pagename, request):
         legend.nodes.add(ln1, style='invis', label='')
         legend.nodes.add(ln2, style='invis', label='')
         legend.edges.add((ln1, ln2), color=hashcolor(linktype),
-                         label=linktype)
+                         label=unquote(linktype))
 
     # Nodes
     prev = ''
@@ -371,7 +387,7 @@ def execute(pagename, request):
     legendnodes.sort()
     for nodetype in legendnodes:
         cur = 'colornodes: ' + nodetype
-        legend.nodes.add(cur, label=nodetype, style='filled',
+        legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
                          fillcolor=hashcolor(nodetype))
         if prev:
             legend.edges.add((prev, cur), style="invis", dir='none')
@@ -383,7 +399,8 @@ def execute(pagename, request):
         str = str.replace('"', '&#x22;')
         return _e('&#x22;' + str + '&#x22;')
 
-    # Begin form
+
+    ## Begin form
     request.write(u'<form method="GET" action="%s">\n' % pagename)
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
@@ -404,7 +421,7 @@ def execute(pagename, request):
         request.write(u'<input type="radio" name="colorby" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type == colorby and " checked>" or ">",
-                       type))
+                       unquote(type)))
     request.write(u'<input type="radio" name="colorby" ' +
                   u'value=""%s%s<br>\n' %
                   (colorby == '' and " checked>" or ">",
@@ -416,7 +433,7 @@ def execute(pagename, request):
         request.write(u'<input type="radio" name="orderby" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type == orderby and " checked>" or ">",
-                       type))
+                       unquote(type)))
     request.write(u'<input type="radio" name="orderby" ' +
                   u'value=""%s%s<br>\n' %
                   (orderby == '' and " checked>" or ">",
@@ -430,7 +447,7 @@ def execute(pagename, request):
         request.write(u'<input type="checkbox" name="filteredges" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type in filteredges and " checked>" or ">",
-                       type))
+                       unquote(type)))
     request.write(u'<input type="checkbox" name="filteredges" ' +
                   u'value="%s"%s%s<br>\n' %
                   ("_notype", "_notype" in filteredges and " checked>"
@@ -446,7 +463,7 @@ def execute(pagename, request):
                           u'value="%s"%s%s<br>\n' %
                           (_quoteformstr(type),
                            type in filtercolor and " checked>" or ">",
-                           type))
+                           type[1:-1]))
         request.write(u'<input type="checkbox" name="filtercolor" ' +
                       u'value="%s"%s%s<br>\n' %
                       ("_notype", "_notype" in filtercolor and " checked>"
@@ -462,7 +479,7 @@ def execute(pagename, request):
                           u'value="%s"%s%s<br>\n' %
                           (_quoteformstr(type),
                            type in filterorder and " checked>" or ">",
-                           type))
+                           type[1:-1]))
         request.write(u'<input type="checkbox" name="filterorder" ' +
                       u'value="%s"%s%s<br>\n' %
                       ("_notype", "_notype" in filterorder and " checked>"

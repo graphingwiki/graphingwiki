@@ -121,7 +121,7 @@ def execute(pagename, request, text, pagedir, page):
     pagegraph.charset = config.charset
     
     # add a node for current page to different data stores
-    quotedname = _e(quote(pagename))
+    quotedname = _e(quote(_u(pagename)))
     pagenode = pagegraph.nodes.add(quotedname)
 
     page_n3 = wikiname + ":" + quotedname + " " + \
@@ -165,7 +165,8 @@ def execute(pagename, request, text, pagedir, page):
                         args = args[:-1]
                     # set attributes for this page
                     for key, val in zip(args[::2], args[1::2]):
-                        val = _quotestring(val)
+                        key = quote(key.strip())
+                        val = _quotestring(val.strip())
                         setattr(pagenode, key, val)
 
                         # Make n3 entry for the metadata,
@@ -253,7 +254,8 @@ def execute(pagename, request, text, pagedir, page):
                     if not pagegraph.edges.get(*edge):
                         e = pagegraph.edges.add(*edge)
                     if len(augdata) > 1:
-                        e.linktype = augdata[0]
+                        # quote all link types
+                        e.linktype = quote(augdata[0])
                         if ':' in augdata[0]:
                             # links with namespace!
                             n3_linktype = _quotens(augdata[0])
