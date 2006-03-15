@@ -62,11 +62,15 @@ def execute(pagename, request):
     n3file = os.path.join(pagedir, '../', 'rdfdata.shelve')
     pagename = _e(pagename)
 
+    request.http_headers(["Content-type: text/plain;charset=%s" %
+                          config.charset])
+
+    request.write('starting to write')
+
     n3 = rdfdump(n3file, wikiname, request.getBaseURL() + '/',
                  [pagename])
 
-    request.http_headers(["Content-type: text/plain;charset=%s" %
-                          config.charset])
+    request.write('stopped')
 
     request.write(n3)
     raise MoinMoinNoFooter

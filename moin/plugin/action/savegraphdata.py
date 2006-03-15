@@ -128,10 +128,12 @@ def execute(pagename, request, text, pagedir, page):
               wikiname + ":" + "URL" + " " + \
               wikiname + ":" + pagename + " .\n"
 
+    # all in-links from this page, to eliminate removed ones
+    inlinks = set()
+    
     # Add nicer looking label if necessary
-    encname = _e(pagename)
-    unqname = _u(encname)
-    if unqname != encname:
+    unqname = _u(quotedname)
+    if unqname != quotedname:
         pagenode.label = unqname
 
     for line in lines:
@@ -182,7 +184,7 @@ def execute(pagename, request, text, pagedir, page):
                     attrs = replace(hit)
                     if len(attrs) == 3:
                         # Name of node for local nodes = pagename
-                        nodename = _e(attrs[1])
+                        nodename = _e(quote(_u(attrs[1])))
                     elif len(attrs) == 2:
                         # Name of other nodes = url
                         nodename = _e(attrs[0])
@@ -265,6 +267,7 @@ def execute(pagename, request, text, pagedir, page):
                     # FIXME: sux, add namespaces everywhere
                     if not edge[0].startswith('http://'):
                         shelve_add_link(globaldata, edge)
+                        inlinks.add(edge[1])
 
                     # n3 data for link
                     # (links do property refs only)
@@ -275,6 +278,12 @@ def execute(pagename, request, text, pagedir, page):
                     # Don't add duplicate links
                     if not link in page_n3:
                         page_n3 = page_n3 + link
+
+    # Remove old links, ie. links not in inlinks
+    for page in globaldata['inlinks'].keys():
+        if (quotedname in globaldata['inlinks'][page] and
+            page not in inlinks):
+            globaldata['inlinks'][page].remove(quotedname)
 
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)

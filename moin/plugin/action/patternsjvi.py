@@ -1,4 +1,7 @@
 import cPickle, os, shelve
+from urllib import unquote
+
+from MoinMoin.wikiutil import quoteWikinameFS
 from MoinMoin.Page import Page
 
 class LazyItem(object):
@@ -201,6 +204,7 @@ class WikiNode(object):
         # and we're allowed to read it
         if not WikiNode.request.user.may.read(node):
             return None
+        node = unquote(node)
         inc_page = Page(WikiNode.request, node)
         afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
         if os.path.exists(afn):
@@ -215,7 +219,8 @@ class WikiNode(object):
     def _addinlinks(self, graph, dst):
         if dst not in WikiNode.startpages:
             return
-        inc_page = Page(WikiNode.request, dst)
+        dstdir = unquote(dst)
+        inc_page = Page(WikiNode.request, dstdir)
         graphshelve = os.path.join(inc_page.getPagePath(), '../',
                                    'graphdata.shelve')
         globaldata = shelve.open(graphshelve, 'r')
@@ -312,7 +317,7 @@ class TailNode(WikiNode):
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "tail")
             parents = set(parent for parent, child
-                           in graph.edges.getall(child=node))
+                          in graph.edges.getall(child=node))
             node = graph.nodes.get(node)
             yield node, (node,), (parents, graph), bindings
 

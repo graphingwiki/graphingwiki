@@ -55,8 +55,7 @@ def execute(pagename, request):
         rdfdump = wikiutil.importPlugin(request.cfg, 'action',
                                         'N3Dump', 'rdfdump')
 
-        n3data = rdfdump(n3file, wikiname, request.getBaseURL() + '/',
-                         [pagename])
+        n3data = rdfdump(n3file, wikiname, request.getBaseURL() + '/')
 
 #         request.write(formatter.preformatted(1))
 #         request.write(n3data + infer)

@@ -82,10 +82,12 @@ def execute(pagename, request):
 
     # Init search graph, output graph, start node and its path
     pagename = _e(pagename)
+    pagefilename = wikiutil.quoteWikinameFS(pagename)
+    pagename = quote(pagename)
     graphdata = Graph()
     outgraph = Graph()
     nodeitem = graphdata.nodes.add(pagename)
-    nodeitem.URL = './' + pagename
+    nodeitem.URL = './' + pagefilename
 
     # Handling form arguments
     # include otherpages, include pages with certain metadata?
@@ -257,17 +259,15 @@ def execute(pagename, request):
         node2 = Fixed(HeadNode())
         cond2 = Cond(node2, lazyhas(node2, colorby))
         pattern = Sequence(node1, cond2)
-
         for obj1, obj2 in match(pattern, (nodes, outgraph)):
             updatecolors(obj1, obj2)
 
         node1 = Fixed(TailNode())
         node2 = Fixed(TailNode())
-        cond2 = Cond(node2, lazyhas(node2, colorby))
-        pattern = Sequence(node1, cond2)
-
+        cond1 = Cond(node1, lazyhas(node1, colorby))
+        pattern = Sequence(cond1, node2)
         for obj1, obj2 in match(pattern, (nodes, outgraph)):
-            updatecolors(obj1, obj2)
+            updatecolors(obj2, obj1)
 
     # Add color to edges with linktype, gather legend data
     edges = outgraph.edges.getall()
@@ -291,7 +291,7 @@ def execute(pagename, request):
     if graphengine == 'neato':
         gr.dot.set(proto='edge', len='3')
 
-    # Make legend (FIXME, to separate graph if by neato?)
+    # Make legend
     if coloredges or colornodes:
         legendgraph = Dot('legend', rankdir='LR')
         legend = legendgraph.subg.add("clusterLegend", label='Legend')
