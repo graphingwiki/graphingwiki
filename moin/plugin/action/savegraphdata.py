@@ -167,7 +167,13 @@ def execute(pagename, request, text, pagedir, page):
                     for key, val in zip(args[::2], args[1::2]):
                         key = quote(key.strip())
                         val = _quotestring(val.strip())
-                        setattr(pagenode, key, val)
+                        # set change here
+                        vars = getattr(pagenode, key, None)
+                        if not vars:
+                            setattr(pagenode, key, set([val]))
+                        else:
+                            vars.add(val)
+                            setattr(pagenode, key, vars)
 
                         # Make n3 entry for the metadata,
                         # quoted text as literals

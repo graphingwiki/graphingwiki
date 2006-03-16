@@ -116,7 +116,7 @@ def execute(pagename, request):
             if newpage != pagename:
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
-                n.URL = './' + newpage
+                n.URL = './' + wikiutil.quoteWikinameFS(unquote(newpage))
 
     # Other form variables
     colorby = ''
@@ -159,6 +159,9 @@ def execute(pagename, request):
     # Node filter of an existing type
     oftype_p = lambda x: x != '_notype'
 
+    # For stripping lists of quoted strings
+    qstrip_p = lambda lst: '"' + ','.join([x.strip('"') for x in lst]) + '"'
+
     # node attributes
     nodeattrs = set()
     # nodes that do and do not have the attribute designated with orderby
@@ -187,13 +190,13 @@ def execute(pagename, request):
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
             # filter
-            if getattr(obj, orderby, '_notype') in filterorder:
-                if hasattr(obj, orderby):
-                    filterorder.add(getattr(obj, orderby))
+            # set change
+            if getattr(obj, orderby,
+                       set(['_notype'])).intersection(filterorder) != set():
                 return
-            if getattr(obj, colorby, '_notype') in filtercolor:
-                if hasattr(obj, colorby):
-                    filtercolor.add(getattr(obj, colorby))
+            # set change
+            if getattr(obj, colorby,
+                       set(['_notype'])).intersection(filtercolor) != set():
                 return
             if outgraph.nodes.get(obj.node):
                 continue
@@ -203,6 +206,12 @@ def execute(pagename, request):
             if orderby:
                 value = getattr(obj, orderby, None)
                 if value:
+                    # set change here
+                    # Add to ordernodes by smallest value, baby
+                    value = list(value)
+                    value.sort()
+                    value = value[0]
+                    n.__order = value
                     if ordernodes.has_key(value):
                         ordernodes[value].add(obj.node)
                     else:
@@ -236,6 +245,9 @@ def execute(pagename, request):
             rule = getattr(obj1, colorby, None)
             color = getattr(obj1, 'fillcolor', None)
             if rule and not color:
+                # set change here
+                colornodes.update(rule)
+                rule = qstrip_p(rule)
                 colornodes.add(rule)
                 obj1.fillcolor = hashcolor(rule)
                 obj1.style = 'filled'
@@ -246,6 +258,9 @@ def execute(pagename, request):
             rule = getattr(obj2, colorby)
             color = getattr(obj2, 'fillcolor', None)
             if not color:
+                # set change here
+                colornodes.update(rule)
+                rule = qstrip_p(rule)
                 colornodes.add(rule)
                 obj2.fillcolor = hashcolor(rule)
                 obj2.style = 'filled'
@@ -256,6 +271,7 @@ def execute(pagename, request):
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
 
         # no need to gather more in-links, clear startpages
+        # FIXME: do use or, my good man!
         node1 = Fixed(HeadNode(startpages=[]))
         node2 = Fixed(HeadNode())
         cond2 = Cond(node2, lazyhas(node2, colorby))
@@ -300,7 +316,7 @@ def execute(pagename, request):
         node.URL = './\N'
 
     # Add all data to graph
-    gr = GraphRepr(outgraph, engine=graphengine, order=orderby)
+    gr = GraphRepr(outgraph, engine=graphengine, order='__order')
 
     # Set proto attributes before graph commit to affect all items
     if graphengine == 'neato':
@@ -341,8 +357,9 @@ def execute(pagename, request):
         for edge in outgraph.edges.getall():
             tail, head = edge
             edge = gr.dot.edges.get(edge)
-            taily = getattr(gr.dot.nodes.get(head), orderby, '')
-            heady = getattr(gr.dot.nodes.get(tail), orderby, '')
+            # set change
+            taily = getattr(gr.dot.nodes.get(head), '__order', '')
+            heady = getattr(gr.dot.nodes.get(tail), '__order', '')
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
             if not heady and not taily:
@@ -456,7 +473,10 @@ def execute(pagename, request):
     # filter nodes (related to colorby)
     if colorby:
         request.write(u'<td>\nFilter from colored:<br>\n')
-        allcolor = list(colornodes) + filter(oftype_p, filtercolor)
+        # set change
+        allcolor = set(filter(oftype_p, filtercolor))
+        allcolor.update(colornodes)
+        allcolor = list(allcolor)
         allcolor.sort()
         for type in allcolor:
             request.write(u'<input type="checkbox" name="filtercolor" ' +
@@ -472,7 +492,8 @@ def execute(pagename, request):
     # filter nodes (related to orderby)
     if orderby:
         request.write(u'<td>\nFilter from ordered:<br>\n')
-        allorder = ordernodes.keys() + filter(oftype_p, filterorder)
+        # set change
+        allorder = list(set(ordernodes.keys() + filter(oftype_p, filterorder)))
         allorder.sort()
         for type in allorder:
             request.write(u'<input type="checkbox" name="filterorder" ' +
