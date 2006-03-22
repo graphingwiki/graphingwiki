@@ -14,16 +14,18 @@ import graph
 
 # shelve modifications go here
 def shelve_add_category(shelve, cat, page):
-    if not shelve['categories'].has_key(cat):
-        shelve['categories'][cat] = set([page])
-    elif page not in shelve['categories'][cat]:
-        shelve['categories'][cat].add(page)
+    shelve['categories'].setdefault(cat, set()).add(page)
+#    if not shelve['categories'].has_key(cat):
+#        shelve['categories'][cat] = set([page])
+#    elif page not in shelve['categories'][cat]:
+#        shelve['categories'][cat].add(page)
 
 def shelve_add_link(shelve, (frm, to)):
-    if not shelve['inlinks'].has_key(to):
-        shelve['inlinks'][to] = set([frm])
-    elif frm not in shelve['inlinks'][to]:
-        shelve['inlinks'][to].add(frm)
+    shelve['inlinks'].setdefault(to, set()).add(frm)
+#    if not shelve['inlinks'].has_key(to):
+#        shelve['inlinks'][to] = set([frm])
+#    elif frm not in shelve['inlinks'][to]:
+#        shelve['inlinks'][to].add(frm)
 
 def execute(pagename, request, text, pagedir, page):
     if request.cfg.interwikiname:
@@ -53,11 +55,9 @@ def execute(pagename, request, text, pagedir, page):
     # FIXME: to be removed, in due time
     rdfdata = shelve.open(rdfshelve, flag='c')
 
-    # add categories, pages if nonexisting
-    if not globaldata.has_key('categories'):
-        globaldata['categories'] = {}
-    if not globaldata.has_key('inlinks'):
-        globaldata['inlinks'] = {}
+    # add categories, inlinks if nonexisting
+    globaldata.setdefault('categories', {})
+    globaldata.setdefault('inlinks', {})
 
     ## Different encoding/quoting functions
     # Encoder from unicode to charset selected in config
@@ -254,10 +254,11 @@ def execute(pagename, request, text, pagedir, page):
                         edge.reverse()
                         n3_link.reverse()
 
-                    n3_linktype = wikiname + ":LinkType" + _e(type)
+                    n3_linktype = wikiname + ":Property" + _e(type)
 
                     # Add edge if not already added
-                    if not pagegraph.edges.get(*edge):
+                    e = pagegraph.edges.get(*edge)
+                    if not e:
                         e = pagegraph.edges.add(*edge)
                     if len(augdata) > 1:
                         # quote all link types
@@ -267,7 +268,7 @@ def execute(pagename, request, text, pagedir, page):
                             n3_linktype = _quotens(augdata[0])
                         else:
                             # links with link type from this wiki
-                            n3_linktype = wikiname + ":LinkType" + \
+                            n3_linktype = wikiname + ":Property" + \
                                           quote(augdata[0])
                     # Debug for urlformatter
                     # e.type = _e(type)

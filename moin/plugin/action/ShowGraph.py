@@ -90,9 +90,6 @@ def execute(pagename, request):
     nodeitem.URL = './' + pagefilename
 
     # Handling form arguments
-    # include otherpages, include pages with certain metadata?
-    # engine, (dot, neato, circo)
-    # search depth?
 
     # Get categories for current page, for the category form
     allcategories = pageobj.getCategories(request)
@@ -117,6 +114,7 @@ def execute(pagename, request):
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
                 n.URL = './' + wikiutil.quoteWikinameFS(unquote(newpage))
+        globaldata.close()
 
     # Other form variables
     colorby = ''
@@ -130,6 +128,10 @@ def execute(pagename, request):
         outgraph.clusterrank = 'local'
         outgraph.compound = 'true'
         outgraph.rankdir = 'LR'
+
+    # Add neato-specific layout stuff
+    if graphengine == 'neato':
+        outgraph.overlap = 'false'
 
     filteredges = set()
     if request.form.has_key('filteredges'):
@@ -152,7 +154,7 @@ def execute(pagename, request):
     coloredges = set()
     colornodes = set()
 
-    # node attributes that are not guaranteed
+    # node attributes that are not guaranteed to be there (by sync/savegraph)
     nonguaranteeds_p = lambda x: x not in ['belongs_to_patterns',
                                            'label', 'URL']
 
@@ -161,6 +163,7 @@ def execute(pagename, request):
 
     # For stripping lists of quoted strings
     qstrip_p = lambda lst: '"' + ','.join([x.strip('"') for x in lst]) + '"'
+    qpirts_p = lambda txt: ['"' + x + '"' for x in txt.strip('"').split(',')]
 
     # node attributes
     nodeattrs = set()
@@ -172,16 +175,15 @@ def execute(pagename, request):
     # nodes gathered as per form args
     nodes = set(startpages)
 
+    # Init WikiNode-pattern
+    WikiNode(request=request, urladd=urladd, startpages=startpages)
+
     # The working with patterns goes a bit like this:
     # First, get a sequence, add it to outgraph
     # Then, match from outgraph, add dot attrs
-
-    def addseqtograph(obj1, obj2, dir='out'):
+    def addseqtograph(obj1, obj2):
         # Get edge from match, skip if filtered
-        edge = [obj1.node, obj2.node]
-        if dir == 'in':
-            edge.reverse()
-        olde = graphdata.edges.get(*edge)
+        olde = graphdata.edges.get(obj1.node, obj2.node)
         if getattr(olde, 'linktype', '_notype') in filteredges:
             if hasattr(olde, 'linktype'):
                 filteredges.add(olde.linktype)
@@ -189,44 +191,61 @@ def execute(pagename, request):
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
-            # filter
-            # set change
-            if getattr(obj, orderby,
-                       set(['_notype'])).intersection(filterorder) != set():
-                return
-            # set change
-            if getattr(obj, colorby,
-                       set(['_notype'])).intersection(filtercolor) != set():
-                return
+            # If node already added, nothing to do
             if outgraph.nodes.get(obj.node):
                 continue
+
+            # Node filters
+            for filt, doby in [(filterorder, orderby),
+                               (filtercolor, colorby)]:
+                # If no filters, continue
+                if not doby or not filt:
+                    continue
+                
+                # Filter notypes away if asked
+                if not hasattr(obj, doby) and '_notype' in filt:
+                    return
+
+                # Filtering by multiple metadata values
+                target = getattr(obj, doby)
+                for rule in [set(qpirts_p(x)) for x in filt if ',' in x]:
+                    if rule == rule.intersection(target):
+                        left = target.difference(rule)
+                        if left:
+                            setattr(obj, doby, left)
+                        else:
+                            return
+
+                # Filtering by single values
+                target = getattr(obj, doby)
+                if target.intersection(filt) != set():
+                    # If so, see if any metadata is left
+                    left = target.difference(filt)
+                    if left:
+                        setattr(obj, doby, left)
+                    else:
+                        return
+
+            # update nodeattrlist with non-graph/sync ones
             nodeattrs.update(filter(nonguaranteeds_p, dict(obj)))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
             if orderby:
                 value = getattr(obj, orderby, None)
                 if value:
-                    # set change here
-                    # Add to ordernodes by smallest value, baby
-                    value = list(value)
-                    value.sort()
-                    value = value[0]
+                    # Add to ordernodes by combined value of metadata
+                    value = qstrip_p(value)
                     n.__order = value
-                    if ordernodes.has_key(value):
-                        ordernodes[value].add(obj.node)
-                    else:
-                        ordernodes[value] = set([obj.node])
+                    ordernodes.setdefault(value, set()).add(obj.node)
                 else:
                     unordernodes.add(obj.node)
 
         # Add edge
-        e = outgraph.edges.add(*edge)
+        e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
 
     # The following code traverses 1 to children
-    # Init WikiNode at the same
-    pattern = Sequence(Fixed(HeadNode(request=request, urladd=urladd,
-                                      startpages=startpages)),
+    pattern = Sequence(Fixed(HeadNode()),
                        Fixed(HeadNode()))
     for obj1, obj2 in match(pattern, (nodes, graphdata)):
         addseqtograph(obj1, obj2)
@@ -235,70 +254,28 @@ def execute(pagename, request):
     pattern = Sequence(Fixed(TailNode()),
                        Fixed(TailNode()))
     for obj1, obj2 in match(pattern, (nodes, graphdata)):
-        addseqtograph(obj1, obj2, 'in')
+        addseqtograph(obj2, obj1)
 
     # If we should color nodes, gather nodes with attribute from
     # the form (ie. variable colorby) and change their colors, plus
     # gather legend data
     if colorby:
-        def updatecolors(obj1, obj2):
-            rule = getattr(obj1, colorby, None)
-            color = getattr(obj1, 'fillcolor', None)
+        def updatecolors(obj):
+            rule = getattr(obj, colorby, None)
+            color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                # set change here
-                colornodes.update(rule)
                 rule = qstrip_p(rule)
                 colornodes.add(rule)
-                obj1.fillcolor = hashcolor(rule)
-                obj1.style = 'filled'
-                n = outgraph.nodes.get(obj1.node)
-                n.fillcolor = obj1.fillcolor
-                n.style = 'filled'
-
-            rule = getattr(obj2, colorby)
-            color = getattr(obj2, 'fillcolor', None)
-            if not color:
-                # set change here
-                colornodes.update(rule)
-                rule = qstrip_p(rule)
-                colornodes.add(rule)
-                obj2.fillcolor = hashcolor(rule)
-                obj2.style = 'filled'
-                n = outgraph.nodes.get(obj2.node)
-                n.fillcolor = obj2.fillcolor
-                n.style = 'filled'
+                obj.fillcolor = hashcolor(rule)
+                obj.style = 'filled'
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
 
-        # no need to gather more in-links, clear startpages
-        # FIXME: do use or, my good man!
-        node1 = Fixed(HeadNode(startpages=[]))
-        node2 = Fixed(HeadNode())
-        cond2 = Cond(node2, lazyhas(node2, colorby))
-        pattern = Sequence(node1, cond2)
-        for obj1, obj2 in match(pattern, (nodes, outgraph)):
-            updatecolors(obj1, obj2)
-
-        node1 = Fixed(HeadNode())
-        node2 = Fixed(HeadNode())
-        cond2 = Cond(node2, lazyhas(node2, colorby))
-        pattern = Sequence(cond2, node1)
-        for obj1, obj2 in match(pattern, (nodes, outgraph)):
-            updatecolors(obj2, obj1)
-
-        node1 = Fixed(TailNode())
-        node2 = Fixed(TailNode())
-        cond1 = Cond(node1, lazyhas(node1, colorby))
-        pattern = Sequence(node2, cond1)
-        for obj1, obj2 in match(pattern, (nodes, outgraph)):
-            updatecolors(obj1, obj2)
-
-        node1 = Fixed(TailNode())
-        node2 = Fixed(TailNode())
-        cond1 = Cond(node1, lazyhas(node1, colorby))
-        pattern = Sequence(cond1, node2)
-        for obj1, obj2 in match(pattern, (nodes, outgraph)):
-            updatecolors(obj2, obj1)
+        nodes = outgraph.nodes.getall()
+        node = Fixed(Node())
+        cond = Cond(node, lazyhas(node, colorby))
+        for obj in match(cond, (nodes, outgraph)):
+            updatecolors(obj)
 
     # Add color to edges with linktype, gather legend data
     edges = outgraph.edges.getall()
@@ -317,10 +294,6 @@ def execute(pagename, request):
 
     # Add all data to graph
     gr = GraphRepr(outgraph, engine=graphengine, order='__order')
-
-    # Set proto attributes before graph commit to affect all items
-    if graphengine == 'neato':
-        gr.dot.set(proto='edge', len='3')
 
     # Make legend
     if coloredges or colornodes:
@@ -365,7 +338,7 @@ def execute(pagename, request):
             if not heady and not taily:
                 minlen = 0
             elif not heady:
-                minlen = len(orderkeys) - orderkeys.index(taily)
+                minlen = orderkeys.index(taily) - len(orderkeys)
             elif not taily:
                 minlen = len(orderkeys) - orderkeys.index(heady)
             else:
@@ -415,7 +388,6 @@ def execute(pagename, request):
         str = str.strip("\"'")
         str = str.replace('"', '&#x22;')
         return _e('&#x22;' + str + '&#x22;')
-
 
     ## Begin form
     request.write(u'<form method="GET" action="%s">\n' % pagename)
@@ -476,6 +448,8 @@ def execute(pagename, request):
         # set change
         allcolor = set(filter(oftype_p, filtercolor))
         allcolor.update(colornodes)
+        for txt in [x for x in colornodes if ',' in x]:
+            allcolor.update(qpirts_p(txt))
         allcolor = list(allcolor)
         allcolor.sort()
         for type in allcolor:

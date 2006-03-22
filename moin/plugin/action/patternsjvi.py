@@ -165,7 +165,7 @@ class Node:
         nodes, graph = data
         for node in nodes:
             children = set(child for parent, child in graph.edges.getall(parent = node))
-            #node = graph.nodes.get(node)
+            node = graph.nodes.get(*node)
             yield node, (node,), (children, graph), bindings
 
 class Edge:
