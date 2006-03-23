@@ -1,12 +1,14 @@
-# Configuration variables, change these to fit your install
+## Configuration variables, change these to fit your install
+# MoinMoin is found here
 PKGDIR    = /usr/lib/python2.4/site-packages/MoinMoin
+# Main directory of your wiki
 WIKIDIR   = --wikitemplate--
-CPEDIR    = --cpetemplate--
-
-# Destination dirs
+# MoinMoin 1.35 PageEditor overriding extension will be installed here
 MOINDIR   = $(WIKIDIR)/config/MoinMoin
-PLUGINDIR = $(WIKIDIR)/data/plugin
+# Install dir of housekeeping scripts
 SCRIPTDIR = $(WIKIDIR)/../../scripts
+# Wiki's plugin dir, normally needs no change
+PLUGINDIR = $(WIKIDIR)/data/plugin
 
 default:
 	@echo "Copying MoinMoin-files"
@@ -25,8 +27,6 @@ default:
 	@echo "Copying scripts"
 	@mkdir -p ${SCRIPTDIR}
 	@find scripts -name '*.py' | xargs -I {} cp {} $(SCRIPTDIR)
-	@find $(SCRIPTDIR) -name '*.py' | xargs -I {} \
-	sed -i "s!CPEDIR!'$(CPEDIR)'!" {} 
 
 	@echo "Make sure that your moin.cgi has cpe in sys.path, and that your"
 	@echo "cpe- plugin- and config/MoinMoin dirs have permissions for apache!"

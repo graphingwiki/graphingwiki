@@ -11,7 +11,6 @@ except:
     raise
 
 # Moin dirs
-sys.path.insert(0, CPEDIR)
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
 from MoinMoin import request

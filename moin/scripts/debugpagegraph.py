@@ -5,8 +5,7 @@ import sys
 import os
 import cPickle
 
-sys.path.insert(0, CPEDIR)
-from graphrepr import GraphRepr
+from graphingwiki.graphrepr import GraphRepr
 
 try:
     wikipath = sys.argv[2]
@@ -28,11 +27,11 @@ for i in g.edges.getall():
     print dict(g.edges.get(*i))
 
 gr = GraphRepr(g, engine='neato')
-gr.dot.set(proto='edge', len='3')
+gr.graphviz.set(proto='edge', len='3')
 g.commit()
 
 from tempfile import mkstemp
 no, name = mkstemp()
-gr.dot.layout(file=name)
+gr.graphviz.layout(file=name)
 f = file(name)
 print f.read()

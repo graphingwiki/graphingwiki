@@ -10,7 +10,7 @@ from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
 # cpe imports
-import graph
+from graphingwiki import graph
 
 # shelve modifications go here
 def shelve_add_category(shelve, cat, page):
@@ -42,12 +42,12 @@ def execute(pagename, request, text, pagedir, page):
 
     # lock on graphdata
     graphlock = graphshelve + '.lock'
-    os.system('lockfile ' + graphlock)
+    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
 
     # FIXME: to be removed, in due time
     # lock on rdfdata
     rdflock = rdfshelve + '.lock'
-    os.system('lockfile ' + rdflock)
+    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', rdflock)
 
     # Open file db for global graph data, creating it if needed
     globaldata = shelve.open(graphshelve, writeback=True, flag='c')
@@ -154,7 +154,6 @@ def execute(pagename, request, text, pagedir, page):
                     if not hit.startswith('[[MetaData'):
                         continue
                     # decode to target charset, grab comma-separated args
-                    # TODO: lists of meta-values instead of overwrite?
                     hit = _e(hit[11:-3])
                     args = hit.split(',')
                     # Skip hidden argument
@@ -167,7 +166,6 @@ def execute(pagename, request, text, pagedir, page):
                     for key, val in zip(args[::2], args[1::2]):
                         key = quote(key.strip())
                         val = _quotestring(val.strip())
-                        # set change here
                         vars = getattr(pagenode, key, None)
                         if not vars:
                             setattr(pagenode, key, set([val]))
@@ -298,9 +296,9 @@ def execute(pagename, request, text, pagedir, page):
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
     # Remove locks, close shelves
-    os.system('rm -f ' + graphlock)
+    os.unlink(graphlock)
     globaldata.close()
 
-    os.system('rm -f ' + rdflock)
+    os.unlink(rdflock)
     rdfdata[quotedname] = page_n3
     rdfdata.close()

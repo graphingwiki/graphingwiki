@@ -19,12 +19,11 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter 
 from MoinMoin.parser.wiki import Parser
 
-# cpe imports
-from graph import Graph
-from graphrepr import GraphRepr, Dot
-from patternsjvi import *
+from graphingwiki.graph import Graph
+from graphingwiki.graphrepr import GraphRepr, Graphviz
+from graphingwiki.patterns import *
 
-dotcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
+graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
 "darkolivegreen3", "darksalmon", "darkseagreen", "darkslateblue",
 "darkslategray", "darkviolet", "deeppink", "deepskyblue", "gray33",
@@ -38,7 +37,7 @@ dotcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "slategray", "springgreen", "steelblue", "tomato3", "turquoise",
 "violetred", "yellow", "yellowgreen"]
 
-colors = dotcolors
+colors = graphvizcolors
 used_colors = []
 used_colorlabels = []
 
@@ -180,7 +179,7 @@ def execute(pagename, request):
 
     # The working with patterns goes a bit like this:
     # First, get a sequence, add it to outgraph
-    # Then, match from outgraph, add dot attrs
+    # Then, match from outgraph, add graphviz attrs
     def addseqtograph(obj1, obj2):
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
@@ -297,14 +296,14 @@ def execute(pagename, request):
 
     # Make legend
     if coloredges or colornodes:
-        legendgraph = Dot('legend', rankdir='LR')
+        legendgraph = Graphviz('legend', rankdir='LR')
         legend = legendgraph.subg.add("clusterLegend", label='Legend')
 
-    # After this, edit gr.dot, not outgraph!
+    # After this, edit gr.graphviz, not outgraph!
     outgraph.commit()
 
     # Now it's time to order the nodes
-    # Kludges via outgraph as iterating gr.dot.edges bugs w/ gv_python
+    # Kludges via outgraph as iterating gr.graphviz.edges bugs w/ gv_python
     if orderby:
         orderkeys = ordernodes.keys()
         orderkeys.sort()
@@ -313,15 +312,15 @@ def execute(pagename, request):
         # New subgraphs, nodes to help ranking
         for key in orderkeys:
             cur_ordernode = 'orderkey: ' + key
-            sg = gr.dot.subg.add(cur_ordernode, rank='same')
+            sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
             sg.nodes.add(cur_ordernode)
             # [1:-1] removes quotes from label
-            gr.dot.nodes.add(cur_ordernode, label=key[1:-1])
+            gr.graphviz.nodes.add(cur_ordernode, label=key[1:-1])
             for node in ordernodes[key]:
                 sg.nodes.add(node)
 
             if prev_ordernode:
-                gr.dot.edges.add((prev_ordernode, cur_ordernode),
+                gr.graphviz.edges.add((prev_ordernode, cur_ordernode),
                                  dir='none', style='invis',
                                  minlen='1', weight='10')
             prev_ordernode = cur_ordernode
@@ -329,10 +328,10 @@ def execute(pagename, request):
         # Edge minimum lengths
         for edge in outgraph.edges.getall():
             tail, head = edge
-            edge = gr.dot.edges.get(edge)
+            edge = gr.graphviz.edges.get(edge)
             # set change
-            taily = getattr(gr.dot.nodes.get(head), '__order', '')
-            heady = getattr(gr.dot.nodes.get(tail), '__order', '')
+            taily = getattr(gr.graphviz.nodes.get(head), '__order', '')
+            heady = getattr(gr.graphviz.nodes.get(tail), '__order', '')
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
             if not heady and not taily:
@@ -348,11 +347,11 @@ def execute(pagename, request):
             if minlen >= 0:
                 edge.set(minlen=str(minlen))
             else:
-                backedge = gr.dot.edges.get((head, tail))
+                backedge = gr.graphviz.edges.get((head, tail))
                 if backedge:
                     backedge.set(minlen=str(-minlen))
                 else:
-                    backedge = gr.dot.edges.add((head, tail))
+                    backedge = gr.graphviz.edges.add((head, tail))
                     backedge.set(**dict(edge.__iter__()))
                     backedge.set(**{'dir': 'back', 'minlen': str(-minlen)})
                     edge.delete()
@@ -485,11 +484,11 @@ def execute(pagename, request):
     request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
     tmp_fileno, tmp_name = tempfile.mkstemp()
-    gr.dot.layout(file=tmp_name, format='png')
+    gr.graphviz.layout(file=tmp_name, format='png')
     f = file(tmp_name)
     img = f.read()
 
-    gr.dot.layout(file=tmp_name, format='cmapx')
+    gr.graphviz.layout(file=tmp_name, format='cmapx')
     f = file(tmp_name)
     mappi = f.read()
 
@@ -512,7 +511,7 @@ def execute(pagename, request):
 
     # debug:
     # just to get the graph data out 
-    gr.dot.layout(file=tmp_name)
+    gr.graphviz.layout(file=tmp_name)
     f = file(tmp_name)
     gtext = f.read()
     request.write(formatter.preformatted(1))
