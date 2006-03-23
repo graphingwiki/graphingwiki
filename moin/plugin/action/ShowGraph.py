@@ -79,6 +79,7 @@ def execute(pagename, request):
 
     graphengine = 'neato'
 
+
     # Init search graph, output graph, start node and its path
     pagename = _e(pagename)
     pagefilename = wikiutil.quoteWikinameFS(pagename)

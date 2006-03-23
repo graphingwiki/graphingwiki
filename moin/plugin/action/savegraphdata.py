@@ -15,17 +15,9 @@ from graphingwiki import graph
 # shelve modifications go here
 def shelve_add_category(shelve, cat, page):
     shelve['categories'].setdefault(cat, set()).add(page)
-#    if not shelve['categories'].has_key(cat):
-#        shelve['categories'][cat] = set([page])
-#    elif page not in shelve['categories'][cat]:
-#        shelve['categories'][cat].add(page)
 
 def shelve_add_link(shelve, (frm, to)):
     shelve['inlinks'].setdefault(to, set()).add(frm)
-#    if not shelve['inlinks'].has_key(to):
-#        shelve['inlinks'][to] = set([frm])
-#    elif frm not in shelve['inlinks'][to]:
-#        shelve['inlinks'][to].add(frm)
 
 def execute(pagename, request, text, pagedir, page):
     if request.cfg.interwikiname:
@@ -128,8 +120,9 @@ def execute(pagename, request, text, pagedir, page):
               wikiname + ":" + "URL" + " " + \
               wikiname + ":" + pagename + " .\n"
 
-    # all in-links from this page, to eliminate removed ones
+    # all in-links, categories from this page, to eliminate removed ones
     inlinks = set()
+    categories = set()
     
     # Add nicer looking label if necessary
     unqname = _u(quotedname)
@@ -200,6 +193,7 @@ def execute(pagename, request, text, pagedir, page):
                     # Add to categories
                     if nodename.startswith('Category'):
                         shelve_add_category(globaldata, nodename, quotedname)
+                        categories.add(nodename)
 
                     # Add node w/ URL, label if not already added
                     if not pagegraph.nodes.get(nodename):
@@ -291,6 +285,12 @@ def execute(pagename, request, text, pagedir, page):
         if (quotedname in globaldata['inlinks'][page] and
             page not in inlinks):
             globaldata['inlinks'][page].remove(quotedname)
+
+    # Remove old categories
+    for cat in globaldata['categories'].keys():
+        if (quotedname in globaldata['categories'][cat] and
+            cat not in categories):
+            globaldata['categories'][cat].remove(quotedname)
 
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
