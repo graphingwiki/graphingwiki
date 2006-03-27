@@ -802,14 +802,13 @@ If you don't want that, hit '''%(cancel_button_text)s''' to cancel your changes.
                 f.write(revstr+'\n')
                 f.close()
 
-                #                try:
-                # save to graph file
+                # save to graph file, if plugin available
                 graphsaver = wikiutil.importPlugin(self.request.cfg,
                                                        'action',
                                                        'savegraphdata')
-                graphsaver(self.page_name, self.request, text, pagedir, self)
-                #                except:
-                #                    pass
+                if graphsaver:
+                    graphsaver(self.page_name, self.request,
+                               text, pagedir, self)
                 
                 # save to page file
                 pagefile = os.path.join(revdir, revstr)
