@@ -1,0 +1,51 @@
+#! /usr/bin/env python
+
+import os
+import sys
+from shutil import copy2
+
+try:
+    import graphingwiki
+except ImportError:
+    print "Cannot find graphingwiki, exiting...\n"
+    raise
+
+try:
+    wikipath = sys.argv[1]
+    if not os.path.isdir(sys.argv[1]):
+        raise
+except:
+    print "Usage: " + sys.argv[0] + " <path-to-wiki>\n"
+    raise
+
+def copytree(src, dst, symlinks=False):
+    """ Modified from shutil to allow existing directories
+    """
+    names = os.listdir(src)
+    if not os.path.isdir(dst):
+        os.mkdir(dst)
+    errors = []
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        try:
+            if symlinks and os.path.islink(srcname):
+                linkto = os.readlink(srcname)
+                os.symlink(linkto, dstname)
+            elif os.path.isdir(srcname):
+                copytree(srcname, dstname, symlinks)
+            else:
+                copy2(srcname, dstname)
+            # XXX What about devices, sockets etc.?
+        except (IOError, os.error), why:
+            errors.append((srcname, dstname, why))
+    if errors:
+        raise Error, errors
+
+# Get pkg path
+pkgdir = os.path.join(os.path.dirname(os.path.abspath(graphingwiki.__file__)),
+                      'plugin')
+destdir = os.path.join(sys.argv[1], 'data/plugin')
+
+copytree(pkgdir, destdir)
+
