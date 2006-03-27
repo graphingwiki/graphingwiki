@@ -1,0 +1,49 @@
+This is the Graphingwiki MoinMoin extension. 
+
+INSTALL
+=======
+
+Preconditions:
+ - MoinMoin 1.3.5 installed. Graphingwiki might work with other
+   versions as well, but requires changing MoinMoin/PageEditor.py
+   accordingly.
+
+ - A MoinMoin wiki installed in directory WIKIDIR (with config
+   directory in WIKIDIR/config and data in WIKIDIR/data)
+
+1. Install the python extension
+ % python setup.py install
+
+2. Install changes to MoinMoin
+ -> either with site-wide install
+ % patch moinmoin-1.3.5-PageEditor.patch
+ -> or a per-wiki install
+ % cp -R MoinMoin WIKIDIR/config
+
+3. Install plugins to wiki
+ % gwiki-install WIKIDIR
+
+4. Populate the graph data of existing pages
+ % gwiki-rehash WIKIDIR
+
+After this, you should be all set and ShowGraph should show in the
+wiki's action menu. If not, check permissions of
+site-packages/graphingwiki, site-packages/MoinMoin, plugins and
+config.
+
+SCRIPTS
+=======
+
+For housekeeping and debugging.
+
+gwiki-install
+ * Installs the plugins to a wiki.
+
+gwiki-rehash  
+ * Saves graph data from all the pages of a wiki.
+
+gwiki-debuggraph
+ * Debug: Shows a page's graph data in list and dot formats.
+
+gwiki-showgraph
+ * Debug: A CLI interface to the showgraph-action.

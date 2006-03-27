@@ -19,9 +19,9 @@ from MoinMoin.wikiutil import unquoteWikiname
 
 pages = []
 
-# List pages with graphdata
+# List existing pages
 for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
-    if 'graphdata.pickle' in os.listdir(dir):
+    if 'current' in os.listdir(dir):
         pages.append(str(unquoteWikiname(dir)))
 
 for pagename in pages:
