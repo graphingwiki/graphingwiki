@@ -17,19 +17,24 @@ Preconditions:
    directory in WIKIDIR/config and data in WIKIDIR/data)
 
 1. Install the python extension
- % python setup.py install
+   % python setup.py install
 
-2. Install changes to MoinMoin
- -> either with site-wide install
- % patch moinmoin-1.3.5-PageEditor.patch
- -> or a per-wiki install
- % cp -R MoinMoin WIKIDIR/config
+2. Install changes to MoinMoin, either 
+ - site-wide install
+   % patch < moinmoin-1.3.5-PageEditor.patch
+   Fedora installs may need to use
+   % patch -F 3 < moinmoin-1.3.5-PageEditor.patch
+   After patch, recompile PageEditor
+   % echo "from MoinMoin import PageEditor" | python
+
+ - per-wiki install
+   % cp -R MoinMoin WIKIDIR/config
 
 3. Install plugins to wiki
- % gwiki-install WIKIDIR
+   % gwiki-install WIKIDIR
 
 4. Populate the graph data of existing pages
- % gwiki-rehash WIKIDIR
+   % gwiki-rehash WIKIDIR
 
 After this, you should be all set and ShowGraph should show in the
 wiki's action menu. If not, check permissions of
