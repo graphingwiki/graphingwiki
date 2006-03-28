@@ -4,8 +4,10 @@ INSTALL
 =======
 
 Preconditions:
- - Python 2.4 and Graphviz 2.8+ installed along with its Python
-   bindings.
+ - Python 2.4 and Graphviz 2.8+ along with its python bindings,
+   available from graphviz.org as graphviz-<version>.rpm and
+   graphviz-python-<version>.rpm. Source installs need to be built
+   with --enable-python.
 
  - MoinMoin 1.3.5 installed. Graphingwiki might work with other
    versions as well, but requires changing MoinMoin/PageEditor.py
