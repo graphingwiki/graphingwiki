@@ -4,6 +4,9 @@ INSTALL
 =======
 
 Preconditions:
+ - Python 2.4 and Graphviz 2.8+ installed along with its Python
+   bindings.
+
  - MoinMoin 1.3.5 installed. Graphingwiki might work with other
    versions as well, but requires changing MoinMoin/PageEditor.py
    accordingly.
