@@ -4,5 +4,8 @@ setup(name='graphingwiki', version='0.1',
       author='Juhani Eronen, Joachim Viide',
       author_email='exec@ee.oulu.fi',
       description='Graph handling for the Graphingwiki MoinMoin extension',
-      py_modules=['graphingwiki/graph', 'graphingwiki/graphrepr',
-                  'graphingwiki/patterns', 'graphingwiki/sync'])
+      packages=['graphingwiki'],
+      package_dir={'graphingwiki': 'graphingwiki'},
+      package_data={'graphingwiki': ['plugin/*/*.py']},
+      scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
+               'scripts/gwiki-debuggraph', 'scripts/gwiki-install'])
