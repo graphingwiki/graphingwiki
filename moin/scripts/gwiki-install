@@ -11,8 +11,8 @@ except ImportError:
     raise
 
 try:
-    wikipath = sys.argv[1]
-    if not os.path.isdir(sys.argv[1]):
+    destdir = os.path.join(sys.argv[1], 'data/plugin')
+    if not os.path.isdir(destdir):
         raise
 except:
     print "Usage: " + sys.argv[0] + " <path-to-wiki>\n"
@@ -45,7 +45,6 @@ def copytree(src, dst, symlinks=False):
 # Get pkg path
 pkgdir = os.path.join(os.path.dirname(os.path.abspath(graphingwiki.__file__)),
                       'plugin')
-destdir = os.path.join(sys.argv[1], 'data/plugin')
 
 copytree(pkgdir, destdir)
 
