@@ -9,6 +9,10 @@ Preconditions:
    graphviz-python-<version>.rpm. Source installs need to be built
    with --enable-python.
 
+ - The lockfile executable from the procmail mail processing suite is
+   used to prevent concurrent index file writes. The system has been
+   tested with version v3.22 timestamped 2001/09/10.
+
  - MoinMoin 1.3.5 installed. Graphingwiki might work with other
    versions as well, but requires changing MoinMoin/PageEditor.py
    accordingly.

@@ -79,6 +79,13 @@ def execute(pagename, request):
 
     graphengine = 'neato'
 
+    # Bail out if underlay page etc.
+    # FIXME: a bit hack, make consistent with other no data cases?
+    if not pageobj.isStandardPage(includeDeleted=False):
+        request.write(formatter.text("No graph data available for system pages."))
+        request.write(formatter.endContent())
+        wikiutil.send_footer(request, pagename)
+        return
 
     # Init search graph, output graph, start node and its path
     pagename = _e(pagename)
