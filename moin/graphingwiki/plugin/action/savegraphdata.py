@@ -239,7 +239,7 @@ def execute(pagename, request, text, pagedir, page):
                                    wikiname + ":" + nodename]
 
                     # Augmented links, eg. [:PaGe:Ooh: PaGe]
-                    augdata = [strip(x) for x in _e(attrs[-1]).split(': ')]
+                    augdata = [x.strip() for x in _e(attrs[-1]).split(': ')]
                     
                     # in-links
                     if len(augdata) > 1 and augdata[0].endswith('From'):
