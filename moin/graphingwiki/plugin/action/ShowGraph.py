@@ -124,8 +124,7 @@ def execute(pagename, request):
             if newpage != pagename:
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
-                n.URL = './' + wikiutil.quoteWikinameFS(unicode(
-                    url_unquote(newpage), config.charset))
+                n.URL = './' + newpage
         globaldata.close()
 
     # Other form variables
@@ -313,6 +312,7 @@ def execute(pagename, request):
             # All nodes should have URL:s, change relative ones
             if not re.search(r'^\w+:', node.URL):
                 node.URL = '../' * (subrank-1) + '.' + node.URL
+        pagename = '../' * (subrank) + pagename
 
     # Add all data to graph
     gr = GraphRepr(outgraph, engine=graphengine, order='__order')
