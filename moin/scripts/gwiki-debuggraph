@@ -6,11 +6,13 @@ import os
 import cPickle
 
 from graphingwiki.graphrepr import GraphRepr
+from MoinMoin.wikiutil import quoteWikinameFS
 
 try:
     wikipath = sys.argv[2]
-    page = sys.argv[1]
+    page = quoteWikinameFS(unicode(sys.argv[1], sys.getfilesystemencoding()))
     filepath = os.path.join(wikipath, 'data/pages', page, "graphdata.pickle")
+    print filepath
 except:
     print "Usage: " + sys.argv[0] + " <pagename> <path-to-wiki>\n" 
     raise
@@ -27,7 +29,7 @@ for i in g.edges.getall():
     print dict(g.edges.get(*i))
 
 gr = GraphRepr(g, engine='neato')
-gr.graphviz.set(proto='edge', len='3')
+gr.graphviz.set(overlap='false')
 g.commit()
 
 from tempfile import mkstemp

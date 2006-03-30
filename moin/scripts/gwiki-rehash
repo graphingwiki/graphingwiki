@@ -2,36 +2,56 @@
 
 import os
 import sys
+from codecs import getencoder
 
-try:
-    wikipath = sys.argv[1]
-    os.chdir(os.path.join(wikipath, 'data/pages'))
-except:
-    print "Usage: " + sys.argv[0] + " <path-to-wiki>\n"
-    raise
-
-# Moin dirs
-sys.path.insert(0, os.path.join(wikipath, 'config'))
-from MoinMoin import wikiutil
+from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
 from MoinMoin import request
 from MoinMoin.Page import Page
-from MoinMoin.wikiutil import unquoteWikiname
+from MoinMoin import config
+
+# Encoder from unicode to charset selected in config
+encoder = getencoder(config.charset)
+def _e(str):
+    return encoder(str, 'replace')[0]
 
 pages = []
 
-# List existing pages
-for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
-    if 'current' in os.listdir(dir):
-        pages.append(str(unquoteWikiname(dir)))
+class UserInputException(Exception):
+    pass
+
+try:
+    wikipath = sys.argv[1]
+    wikidir = os.path.join(wikipath, 'data/pages')
+    os.chdir(wikidir)
+    if len(sys.argv) > 2:
+        pagename = unicode(sys.argv[2], sys.getfilesystemencoding())
+        pagefilename = quoteWikinameFS(pagename)
+        pagedir = os.path.join(wikidir, pagefilename)
+        if not os.path.isdir(pagedir):
+            raise UserInputException
+        pages = [pagename]
+except UserInputException:
+    print "Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n"
+    sys.exit(2)
+
+# Moin dirs
+sys.path.insert(0, os.path.join(wikipath, 'config'))
+
+if not pages:
+    # List existing pages
+    for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
+        if 'current' in os.listdir(dir):
+            pages.append(unquoteWikiname(dir))
 
 for pagename in pages:
-    print "Rehashing " + pagename
+    print "Rehashing " + _e(pagename)
+    page_enc = _e(pagename)
     # Make a new request for the page, get raw text
-    req = request.RequestCLI(pagename=pagename)
+    req = request.RequestCLI(pagename=page_enc)
     p = Page(req, pagename)
     pagedir = p.getPagePath()
     text = p.get_raw_body()
     
     # Apply the graphsaver-action to the page
-    graphsaver = wikiutil.importPlugin(req.cfg, 'action', 'savegraphdata')
+    graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pagename, req, text, pagedir, p)

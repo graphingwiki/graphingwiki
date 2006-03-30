@@ -10,7 +10,8 @@ import re, os, cPickle, tempfile
 from codecs import getencoder
 from random import choice, seed
 from base64 import b64encode
-from urllib import quote, unquote
+from urllib import quote as url_quote
+from urllib import unquote as url_unquote
 
 from MoinMoin import search
 from MoinMoin import config
@@ -82,15 +83,18 @@ def execute(pagename, request):
     # Bail out if underlay page etc.
     # FIXME: a bit hack, make consistent with other no data cases?
     if not pageobj.isStandardPage(includeDeleted=False):
-        request.write(formatter.text("No graph data available for system pages."))
+        request.write(formatter.text(
+            "No graph data available."))
         request.write(formatter.endContent())
         wikiutil.send_footer(request, pagename)
         return
 
+    # How many ../ must be inserted in the beginning of urls
+    subrank = pagename.count('/')
+
     # Init search graph, output graph, start node and its path
-    pagename = _e(pagename)
     pagefilename = wikiutil.quoteWikinameFS(pagename)
-    pagename = quote(pagename)
+    pagename = url_quote(_e(pagename))
     graphdata = Graph()
     outgraph = Graph()
     nodeitem = graphdata.nodes.add(pagename)
@@ -112,15 +116,16 @@ def execute(pagename, request):
     for cat in categories:
         graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
         globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata['categories'].has_key(cat):
+        if not globaldata.has_key(cat):
             # graphdata not in sync on disk -> malicious input 
             # or something has gone very, very wrong
             break
-        for newpage in globaldata['categories'][cat]:
+        for newpage in globaldata[cat]:
             if newpage != pagename:
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
-                n.URL = './' + wikiutil.quoteWikinameFS(unquote(newpage))
+                n.URL = './' + wikiutil.quoteWikinameFS(unicode(
+                    url_unquote(newpage), config.charset))
         globaldata.close()
 
     # Other form variables
@@ -153,8 +158,8 @@ def execute(pagename, request):
         filtercolor.update([_e(attr) for attr in request.form['filtercolor']])
 
     # This is the URL addition to the nodes that have graph data
-    urladd = "?" + '&'.join([str(quote(x) + "=" +
-                                 quote(''.join(request.form[x])))
+    urladd = "?" + '&'.join([str(url_quote(x) + "=" +
+                                 url_quote(''.join(request.form[x])))
                              for x in request.form])
 
     # link/node attributes that have been assigned colors
@@ -212,6 +217,8 @@ def execute(pagename, request):
                 # Filter notypes away if asked
                 if not hasattr(obj, doby) and '_notype' in filt:
                     return
+                elif not hasattr(obj, doby):
+                    continue
 
                 # Filtering by multiple metadata values
                 target = getattr(obj, doby)
@@ -251,17 +258,17 @@ def execute(pagename, request):
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
 
-    # The following code traverses 1 to children
-    pattern = Sequence(Fixed(HeadNode()),
-                       Fixed(HeadNode()))
-    for obj1, obj2 in match(pattern, (nodes, graphdata)):
-        addseqtograph(obj1, obj2)
-
     # This traverses 1 to parents
     pattern = Sequence(Fixed(TailNode()),
                        Fixed(TailNode()))
     for obj1, obj2 in match(pattern, (nodes, graphdata)):
         addseqtograph(obj2, obj1)
+
+    # The following code traverses 1 to children
+    pattern = Sequence(Fixed(HeadNode()),
+                       Fixed(HeadNode()))
+    for obj1, obj2 in match(pattern, (nodes, graphdata)):
+        addseqtograph(obj1, obj2)
 
     # If we should color nodes, gather nodes with attribute from
     # the form (ie. variable colorby) and change their colors, plus
@@ -294,10 +301,18 @@ def execute(pagename, request):
 
     # Make a different url for the page node
     node = outgraph.nodes.get(pagename)
-    if not node:
-        outgraph.label = "No data"
-    else:
+    if node:
         node.URL = './\N'
+    elif not outgraph.nodes.getall():
+        outgraph.label = "No data"
+
+    # Fix URLs for subpages
+    if subrank > 0:
+        for name, in outgraph.nodes.getall():
+            node = outgraph.nodes.get(name)
+            # All nodes should have URL:s, change relative ones
+            if not re.search(r'^\w+:', node.URL):
+                node.URL = '../' * (subrank-1) + '.' + node.URL
 
     # Add all data to graph
     gr = GraphRepr(outgraph, engine=graphengine, order='__order')
@@ -305,7 +320,15 @@ def execute(pagename, request):
     # Make legend
     if coloredges or colornodes:
         legendgraph = Graphviz('legend', rankdir='LR')
-        legend = legendgraph.subg.add("clusterLegend", label='Legend')
+        legend = legendgraph.subg.add("clusterLegend", label='Legend')        
+
+    # Have bold circles on startnodes
+    for node in [outgraph.nodes.get(name) for name in startpages]:
+        if node:
+            if hasattr(node, 'style'):
+                node.style = node.style + ', bold'
+            else:
+                node.style = 'bold'
 
     # After this, edit gr.graphviz, not outgraph!
     outgraph.commit()
@@ -321,9 +344,8 @@ def execute(pagename, request):
         for key in orderkeys:
             cur_ordernode = 'orderkey: ' + key
             sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
-            sg.nodes.add(cur_ordernode)
             # [1:-1] removes quotes from label
-            gr.graphviz.nodes.add(cur_ordernode, label=key[1:-1])
+            sg.nodes.add(cur_ordernode, label=key[1:-1])
             for node in ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -333,6 +355,16 @@ def execute(pagename, request):
                                  minlen='1', weight='10')
             prev_ordernode = cur_ordernode
 
+        # Unordered nodes to their own rank
+        sg = gr.graphviz.subg.add('unordered nodes', rank='same')
+        sg.nodes.add('unordered nodes', style='invis')
+        for node in unordernodes:
+            sg.nodes.add(node)
+        if prev_ordernode:
+            gr.graphviz.edges.add((prev_ordernode, 'unordered nodes'),
+                                  dir='none', style='invis',
+                                  minlen='1', weight='10')
+                                  
         # Edge minimum lengths
         for edge in outgraph.edges.getall():
             tail, head = edge
@@ -376,7 +408,7 @@ def execute(pagename, request):
         legend.nodes.add(ln1, style='invis', label='')
         legend.nodes.add(ln2, style='invis', label='')
         legend.edges.add((ln1, ln2), color=hashcolor(linktype),
-                         label=unquote(linktype))
+                         label=url_unquote(linktype))
 
     # Nodes
     prev = ''
@@ -394,10 +426,14 @@ def execute(pagename, request):
     def _quoteformstr(str):
         str = str.strip("\"'")
         str = str.replace('"', '&#x22;')
-        return _e('&#x22;' + str + '&#x22;')
+        return unicode('&#x22;' + str + '&#x22;', config.charset)
+
+    def _quotetoshow(str):
+        return unicode(url_unquote(str), config.charset)
 
     ## Begin form
-    request.write(u'<form method="GET" action="%s">\n' % pagename)
+    request.write(u'<form method="GET" action="%s">\n' %
+                  _quotetoshow(pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
@@ -417,7 +453,7 @@ def execute(pagename, request):
         request.write(u'<input type="radio" name="colorby" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type == colorby and " checked>" or ">",
-                       unquote(type)))
+                       _quotetoshow(type)))
     request.write(u'<input type="radio" name="colorby" ' +
                   u'value=""%s%s<br>\n' %
                   (colorby == '' and " checked>" or ">",
@@ -429,7 +465,7 @@ def execute(pagename, request):
         request.write(u'<input type="radio" name="orderby" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type == orderby and " checked>" or ">",
-                       unquote(type)))
+                       _quotetoshow(type)))
     request.write(u'<input type="radio" name="orderby" ' +
                   u'value=""%s%s<br>\n' %
                   (orderby == '' and " checked>" or ">",
@@ -443,7 +479,7 @@ def execute(pagename, request):
         request.write(u'<input type="checkbox" name="filteredges" ' +
                       u'value="%s"%s%s<br>\n' %
                       (type, type in filteredges and " checked>" or ">",
-                       unquote(type)))
+                       _quotetoshow(type)))
     request.write(u'<input type="checkbox" name="filteredges" ' +
                   u'value="%s"%s%s<br>\n' %
                   ("_notype", "_notype" in filteredges and " checked>"
@@ -464,7 +500,7 @@ def execute(pagename, request):
                           u'value="%s"%s%s<br>\n' %
                           (_quoteformstr(type),
                            type in filtercolor and " checked>" or ">",
-                           type[1:-1]))
+                           _quotetoshow(type[1:-1])))
         request.write(u'<input type="checkbox" name="filtercolor" ' +
                       u'value="%s"%s%s<br>\n' %
                       ("_notype", "_notype" in filtercolor and " checked>"
@@ -481,7 +517,7 @@ def execute(pagename, request):
                           u'value="%s"%s%s<br>\n' %
                           (_quoteformstr(type),
                            type in filterorder and " checked>" or ">",
-                           type[1:-1]))
+                           _quotetoshow(type[1:-1])))
         request.write(u'<input type="checkbox" name="filterorder" ' +
                       u'value="%s"%s%s<br>\n' %
                       ("_notype", "_notype" in filterorder and " checked>"

@@ -1,8 +1,11 @@
 import cPickle, os, shelve
-from urllib import unquote
+from urllib import quote as url_quote
+from urllib import unquote as url_unquote
+from codecs import getencoder
 
 from MoinMoin.wikiutil import quoteWikinameFS
 from MoinMoin.Page import Page
+from MoinMoin import config
 
 class LazyItem(object):
     def __init__(self):
@@ -202,11 +205,9 @@ class WikiNode(object):
             return None
 #        WikiNode.request.write("Ldata " + node + "\n")
         # and we're allowed to read it
+        node = unicode(url_unquote(node), config.charset)
         if not WikiNode.request.user.may.read(node):
             return None
-        unqname = unquote(node)
-        if unqname != node:
-            node = quoteWikinameFS(unqname)
         inc_page = Page(WikiNode.request, node)
         afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
         if os.path.exists(afn):
@@ -219,17 +220,18 @@ class WikiNode(object):
         return None
 
     def _addinlinks(self, graph, dst):
-        if dst not in WikiNode.startpages:
-            return
-        dstdir = unquote(dst)
+        encoder = getencoder(config.charset)
+        def _e(str):
+            return encoder(str, 'replace')[0]
+        dstdir = unicode(url_unquote(dst), config.charset)
         inc_page = Page(WikiNode.request, dstdir)
         graphshelve = os.path.join(inc_page.getPagePath(), '../',
                                    'graphdata.shelve')
         globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata['inlinks'].has_key(dst):
+        if not globaldata.has_key(dst):
             # should not happen if page has graphdata
             return
-        for src in globaldata['inlinks'][dst]:
+        for src in globaldata[dst]:
             dstnode = graph.nodes.get(dst)
             if not dstnode:
                 # should not happen if page has graphdata
@@ -237,7 +239,7 @@ class WikiNode(object):
             srcnode = graph.nodes.get(src)
             if not srcnode:
                 srcnode = graph.nodes.add(src)
-                srcnode.URL = './' + quoteWikinameFS(unquote(src))
+                srcnode.URL = './' + src
             if not graph.edges.get(src, dst):
                 graph.edges.add(src, dst)
 
@@ -256,8 +258,10 @@ class HeadNode(WikiNode):
         # Add new nodes, edges that are the children of da node
 #        WikiNode.request.write("Child " + node + "\n")
         for parent, child in adata.edges.getall(parent=node):
-            # filter out category pages
-            if (child.startswith("Category") or
+            # filter out category, template pages
+            if (parent.startswith("Category") or
+                parent.endswith("Template") or
+                child.startswith("Category") or
                 child.endswith("Template")):
                 continue
 
@@ -274,9 +278,9 @@ class HeadNode(WikiNode):
         nodes, graph = data
         for node in nodes:
             # Add detailed graphdata to the search graph
-            if node not in WikiNode.loaded:
+            if node + "head" not in WikiNode.loaded:
                 self.loadpage(graph, node)
-                WikiNode.loaded.append(node)
+                WikiNode.loaded.append(node + "head")
             children = set(child for parent, child
                            in graph.edges.getall(parent=node))
             node = graph.nodes.get(node)
@@ -298,9 +302,11 @@ class TailNode(WikiNode):
         # current node, or the start nodes
         for parent, child in adata.edges.getall():
             if child in [node] + WikiNode.startpages:
-                # filter out category pages
+                # filter out category, template pages
                 if (parent.startswith("Category") or
-                    parent.endswith("Template")):
+                    parent.endswith("Template") or
+                    child.startswith("Category") or
+                    child.endswith("Template")):
                     continue
 
                 newnode = graph.nodes.get(parent)
@@ -320,9 +326,9 @@ class TailNode(WikiNode):
             # get in-links from the global shelve
             self._addinlinks(graph, node)
             # Add detailed graphdata to the search graph
-            if node not in WikiNode.loaded:
+            if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)
-                WikiNode.loaded.append(node)
+                WikiNode.loaded.append(node + "tail")
             parents = set(parent for parent, child
                           in graph.edges.getall(child=node))
             node = graph.nodes.get(node)
