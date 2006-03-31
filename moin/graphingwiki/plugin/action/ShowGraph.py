@@ -348,7 +348,7 @@ class GraphShower(object):
                 # All nodes should have URL:s, change relative ones
                 if not re.search(r'^\w+:', node.URL):
                     node.URL = '../' * (subrank-1) + '.' + node.URL
-            pagename = '../' * (subrank) + pagename
+            self.pagename = '../' * (subrank) + self.pagename
 
         return outgraph
 

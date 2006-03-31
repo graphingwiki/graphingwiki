@@ -1,6 +1,6 @@
 import shelve
 import os
-from codecs import getencoder
+import codecs
 from urllib import quote
 
 from MoinMoin import config
@@ -17,7 +17,7 @@ def rdfdump(n3file, wikiname, wikiurl, pages=None):
 
     # Default namespace definitons
     # TODO: Add rdf namespaces to interwikinames and get rid of this?
-    outstr = """@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+    outstr = u"""@prefix log: <http://www.w3.org/2000/10/swap/log#> .
 @prefix math: <http://www.w3.org/2000/10/swap/math#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -39,7 +39,7 @@ def rdfdump(n3file, wikiname, wikiurl, pages=None):
     iwns.close()
 
     for page in pages:
-        outstr = outstr + n3db[page]
+        outstr = outstr + unicode(n3db[page], config.charset)
 
     n3db.close()
 
@@ -55,7 +55,7 @@ def execute(pagename, request):
     pagedir = pageobj.getPagePath()
 
     # Encoder from unicode to charset selected in config
-    encoder = getencoder(config.charset)
+    encoder = codecs.getencoder(config.charset)
     def _e(str):
         return encoder(str, 'replace')[0]
 
