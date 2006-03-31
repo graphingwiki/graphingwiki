@@ -106,11 +106,13 @@ def execute(pagename, request):
     allcategories = pageobj.getCategories(request)
 
     categories = []
+    startpages = []
     startpages = [pagename]
 
     # categories as received from the form
     if request.form.has_key('categories'):
         categories = [_e(x) for x in request.form['categories']]
+        startpages = []
 
     # If categories specified in form, add category pages to startpages
     for cat in categories:
@@ -121,7 +123,9 @@ def execute(pagename, request):
             # or something has gone very, very wrong
             break
         for newpage in globaldata[cat]:
-            if newpage != pagename:
+            if newpage != pagename and not (
+                newpage.endswith('Template') or
+                newpage.startswith('Category')):
                 startpages.append(newpage)
                 n = graphdata.nodes.add(newpage)
                 n.URL = './' + newpage

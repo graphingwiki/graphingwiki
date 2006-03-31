@@ -1,9 +1,6 @@
 import cPickle, os, shelve
-from urllib import quote as url_quote
 from urllib import unquote as url_unquote
-from codecs import getencoder
 
-from MoinMoin.wikiutil import quoteWikinameFS
 from MoinMoin.Page import Page
 from MoinMoin import config
 
@@ -201,7 +198,7 @@ class WikiNode(object):
         nodeitem = graph.nodes.get(node)
         k = getattr(nodeitem, 'URL', '')
         # If local link
-        if not (k.startswith('./') or k.startswith('/')):
+        if not k.startswith('./'):
             return None
 #        WikiNode.request.write("Ldata " + node + "\n")
         # and we're allowed to read it
@@ -220,9 +217,6 @@ class WikiNode(object):
         return None
 
     def _addinlinks(self, graph, dst):
-        encoder = getencoder(config.charset)
-        def _e(str):
-            return encoder(str, 'replace')[0]
         dstdir = unicode(url_unquote(dst), config.charset)
         inc_page = Page(WikiNode.request, dstdir)
         graphshelve = os.path.join(inc_page.getPagePath(), '../',
@@ -232,6 +226,9 @@ class WikiNode(object):
             # should not happen if page has graphdata
             return
         for src in globaldata[dst]:
+            # filter out category, template pages
+            if src.startswith('Category') or src.endswith('Template'):
+                continue
             dstnode = graph.nodes.get(dst)
             if not dstnode:
                 # should not happen if page has graphdata
@@ -259,9 +256,7 @@ class HeadNode(WikiNode):
 #        WikiNode.request.write("Child " + node + "\n")
         for parent, child in adata.edges.getall(parent=node):
             # filter out category, template pages
-            if (parent.startswith("Category") or
-                parent.endswith("Template") or
-                child.startswith("Category") or
+            if (child.startswith("Category") or
                 child.endswith("Template")):
                 continue
 
@@ -304,9 +299,7 @@ class TailNode(WikiNode):
             if child in [node] + WikiNode.startpages:
                 # filter out category, template pages
                 if (parent.startswith("Category") or
-                    parent.endswith("Template") or
-                    child.startswith("Category") or
-                    child.endswith("Template")):
+                    parent.endswith("Template")):
                     continue
 
                 newnode = graph.nodes.get(parent)
