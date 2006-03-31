@@ -419,6 +419,7 @@ class GraphShower(object):
                 backedge = gr.graphviz.edges.get((head, tail))
                 if backedge:
                     backedge.set(minlen=str(-minlen))
+                    edge.set(weight='0')
                 else:
                     backedge = gr.graphviz.edges.add((head, tail))
                     backedge.set(**dict(edge.__iter__()))
