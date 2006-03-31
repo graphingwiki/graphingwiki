@@ -385,7 +385,7 @@ def execute(pagename, request):
             elif not taily:
                 minlen = len(orderkeys) - orderkeys.index(heady)
             else:
-                minlen = orderkeys.index(heady) - orderkeys.index(taily)
+                minlen = orderkeys.index(taily) - orderkeys.index(heady)
 
             # Redraw edge if it goes reverse wrt hierarcy
             if minlen >= 0:
