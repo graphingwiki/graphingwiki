@@ -129,10 +129,8 @@ def execute(pagename, request, text, pagedir, page):
     quotedname = url_quote(_e(pagename))
     pagenode = pagegraph.nodes.add(quotedname)
 
-    page_n3 = wikiname + ":" + quotedname + " " + \
-              wikiname + ":" + "URL" + " " + \
-              wikiname + ":" + wikiutil.quoteWikinameFS(pagename) + " .\n"
-    
+    page_n3 = ''
+
     # Add nicer looking label if necessary
     unqname = _u(quotedname)
     if unqname != quotedname:

@@ -6,7 +6,8 @@
     @license: BSD-something
 """
     
-import re, os, cPickle, tempfile
+import os
+from tempfile import mkstemp
 from codecs import getencoder
 from random import choice, seed
 from base64 import b64encode
@@ -54,155 +55,160 @@ def hashcolor(string):
     used_colorlabels.append(string)
     return cl
 
-def execute(pagename, request):
-    _ = request.getText
-    request.http_headers()
+# Escape quotes to numeric char references, remove outer quotes.
+def quoteformstr(str):
+    str = str.strip("\"'")
+    str = str.replace('"', '&#x22;')
+    return unicode('&#x22;' + str + '&#x22;', config.charset)
 
-    # Encoder from unicode to charset selected in config
-    encoder = getencoder(config.charset)
-    def _e(str):
-        return encoder(str, 'replace')[0]
+def quotetoshow(str):
+    return unicode(url_unquote(str), config.charset)
 
-    # This action generate data using the user language
-    request.setContentLanguage(request.lang)
+encoder = getencoder(config.charset)
+def encode(str):
+    return encoder(str, 'replace')[0]
 
-    wikiutil.send_title(request, _('Wiki linkage as seen from "%s"') %
-                        pagename, pagename=pagename)
+class GraphShower(object):
+    def __init__(self, pagename, request, graphengine = "neato"):
+        self.pagename = pagename
+        self.request = request
+        self.graphengine = graphengine
 
-    pageobj = Page(request, pagename)
-    pagedir = pageobj.getPagePath()
+        self.pageobj = Page(request, pagename)
+        self.isstandard = False
+        
+        self.allcategories = []
+        self.categories = []
+        self.startpages = []
 
-    # Start content - IMPORTANT - without content div, there is no
-    # direction support!
-    formatter = Formatter(request)
-    request.write(formatter.startContent("content"))
-    formatter.setPage(pageobj)
+        self.orderby = ''
+        self.colorby = ''
+        
+        self.filteredges = set()
+        self.filterorder = set()
+        self.filtercolor = set()
 
-    graphengine = 'neato'
+        self.urladd = ''
 
-    # Bail out if underlay page etc.
-    # FIXME: a bit hack, make consistent with other no data cases?
-    if not pageobj.isStandardPage(includeDeleted=False):
-        request.write(formatter.text(
-            "No graph data available."))
-        request.write(formatter.endContent())
-        wikiutil.send_footer(request, pagename)
-        return
+        # link/node attributes that have been assigned colors
+        self.coloredges = set()
+        self.colornodes = set()
 
-    # How many ../ must be inserted in the beginning of urls
-    subrank = pagename.count('/')
+        # node attributes
+        self.nodeattrs = set()
+        # nodes that do and do not have the attribute designated with orderby
+        self.ordernodes = {}
+        self.unordernodes = set()
 
-    # Init search graph, output graph, start node and its path
-    pagefilename = wikiutil.quoteWikinameFS(pagename)
-    pagename = url_quote(_e(pagename))
-    graphdata = Graph()
-    outgraph = Graph()
-    nodeitem = graphdata.nodes.add(pagename)
-    nodeitem.URL = './' + pagefilename
+        # Node filter of an existing type
+        self.oftype_p = lambda x: x != '_notype'
 
-    # Handling form arguments
+        # For stripping lists of quoted strings
+        self.qstrip_p = lambda lst: ('"' +
+                                     ','.join([x.strip('"') for x in lst]) +
+                                     '"')
+        self.qpirts_p = lambda txt: ['"' + x + '"' for x in
+                                     txt.strip('"').split(',')]
 
-    # Get categories for current page, for the category form
-    allcategories = pageobj.getCategories(request)
+    def formargs(self):
+        request = self.request
 
-    categories = []
-    startpages = []
-    startpages = [pagename]
+        # Get categories for current page, for the category form
+        self.allcategories = self.pageobj.getCategories(self.request)
+        
+        # Bail out flag on if underlay page etc.
+        # FIXME: a bit hack, make consistent with other no data cases?
+        if not self.pageobj.isStandardPage(includeDeleted = False):
+            self.isstandard = True
 
-    # categories as received from the form
-    if request.form.has_key('categories'):
-        categories = [_e(x) for x in request.form['categories']]
-        startpages = []
+        # Categories
+        if request.form.has_key('categories'):
+            self.categories = [encode(x) for x in request.form['categories']]
 
-    # If categories specified in form, add category pages to startpages
-    for cat in categories:
-        graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
-        globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata.has_key(cat):
-            # graphdata not in sync on disk -> malicious input 
-            # or something has gone very, very wrong
-            break
-        for newpage in globaldata[cat]:
-            if newpage != pagename and not (
-                newpage.endswith('Template') or
-                newpage.startswith('Category')):
-                startpages.append(newpage)
-                n = graphdata.nodes.add(newpage)
-                n.URL = './' + newpage
-        globaldata.close()
+        # Orderings
+        if request.form.has_key('orderby'):
+            self.orderby = encode(''.join(request.form['orderby']))
+            self.graphengine = 'dot'            
+        if request.form.has_key('colorby'):
+            self.colorby = encode(''.join(request.form['colorby']))
 
-    # Other form variables
-    colorby = ''
-    if request.form.has_key('colorby'):
-        colorby = _e(''.join(request.form['colorby']))
+        # Filters
+        if request.form.has_key('filteredges'):
+            self.filteredges.update(
+                [encode(attr) for attr in request.form['filteredges']])
+        if request.form.has_key('filterorder'):
+            self.filterorder.update(
+                [encode(attr) for attr in request.form['filterorder']])
+        if request.form.has_key('filtercolor'):
+            self.filtercolor.update(
+                [encode(attr) for attr in request.form['filtercolor']])
 
-    orderby = ''
-    if request.form.has_key('orderby'):
-        orderby = _e(''.join(request.form['orderby']))
-        graphengine = 'dot'
-        outgraph.clusterrank = 'local'
-        outgraph.compound = 'true'
-        outgraph.rankdir = 'LR'
+        # This is the URL addition to the nodes that have graph data
+        self.urladd = '?'
+        for key in request.form:
+            for val in request.form[key]:
+                self.urladd = (self.urladd + url_quote(key) +
+                               '=' + url_quote(val) + '&')
+        self.urladd = encode(self.urladd[:-1])
 
-    # Add neato-specific layout stuff
-    if graphengine == 'neato':
-        outgraph.overlap = 'false'
+    def buildGraphData(self):
+        graphdata = Graph()
 
-    filteredges = set()
-    if request.form.has_key('filteredges'):
-        filteredges.update([_e(attr) for attr in request.form['filteredges']])
+        pagefilename = wikiutil.quoteWikinameFS(self.pagename)
+        pagename = url_quote(encode(self.pagename))
+        self.pagename = pagename
+        self.startpages = [pagename]
 
-    filterorder = set()
-    if request.form.has_key('filterorder'):
-        filterorder.update([_e(attr) for attr in request.form['filterorder']])
+        pagedir = self.pageobj.getPagePath()
+        root = graphdata.nodes.add(pagename)
+        root.URL = './' + pagefilename
+        
+        # If categories specified in form, add category pages to startpages
+        for cat in self.categories:
+            graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
+            globaldata = shelve.open(graphshelve, 'r')
+            if not globaldata.has_key(cat):
+                # graphdata not in sync on disk -> malicious input 
+                # or something has gone very, very wrong
+                # FIXME: Should raise an exception here and end the misery?
+                break
+            for newpage in globaldata[cat]:
+                if newpage != pagename and not (
+                    newpage.endswith('Template') or
+                    newpage.startswith('Category')):
+                    self.startpages.append(newpage)
+                    node = graphdata.nodes.add(newpage)
+                    node.URL = './' + newpage
+            globaldata.close()
 
-    filtercolor = set()
-    if request.form.has_key('filtercolor'):
-        filtercolor.update([_e(attr) for attr in request.form['filtercolor']])
+        return graphdata
 
-    # This is the URL addition to the nodes that have graph data
-    urladd = "?" + '&'.join([str(url_quote(x) + "=" +
-                                 url_quote(''.join(request.form[x])))
-                             for x in request.form])
+    def buildOutGraph(self):
+        outgraph = Graph()        
 
-    # link/node attributes that have been assigned colors
-    coloredges = set()
-    colornodes = set()
+        if self.orderby:
+            outgraph.clusterrank = 'local'
+            outgraph.compound = 'true'
+            outgraph.rankdir = 'LR'
 
-    # node attributes that are not guaranteed to be there (by sync/savegraph)
-    nonguaranteeds_p = lambda x: x not in ['belongs_to_patterns',
-                                           'label', 'URL']
+        # Add neato-specific layout stuff
+        if self.graphengine == 'neato':
+            outgraph.overlap = 'false'
 
-    # Node filter of an existing type
-    oftype_p = lambda x: x != '_notype'
+        return outgraph
 
-    # For stripping lists of quoted strings
-    qstrip_p = lambda lst: '"' + ','.join([x.strip('"') for x in lst]) + '"'
-    qpirts_p = lambda txt: ['"' + x + '"' for x in txt.strip('"').split(',')]
+    def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
+        # node attributes that are not guaranteed (by sync/savegraph)
+        nonguaranteeds_p = lambda x: x not in ['belongs_to_patterns',
+                                               'label', 'URL']
 
-    # node attributes
-    nodeattrs = set()
-    # nodes that do and do not have the attribute designated with orderby
-    ordernodes = {}
-    unordernodes = set()
-
-    # Start pattern searches from current page +
-    # nodes gathered as per form args
-    nodes = set(startpages)
-
-    # Init WikiNode-pattern
-    WikiNode(request=request, urladd=urladd, startpages=startpages)
-
-    # The working with patterns goes a bit like this:
-    # First, get a sequence, add it to outgraph
-    # Then, match from outgraph, add graphviz attrs
-    def addseqtograph(obj1, obj2):
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
-        if getattr(olde, 'linktype', '_notype') in filteredges:
-            if hasattr(olde, 'linktype'):
-                filteredges.add(olde.linktype)
-            return
+        if getattr(olde, 'linktype', '_notype') in self.filteredges:
+            # FIXME: What possible purpose could these lines have??
+#            if hasattr(olde, 'linktype'):
+#                self.filteredges.add(olde.linktype)
+            return outgraph
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
@@ -211,27 +217,27 @@ def execute(pagename, request):
                 continue
 
             # Node filters
-            for filt, doby in [(filterorder, orderby),
-                               (filtercolor, colorby)]:
+            for filt, doby in [(self.filterorder, self.orderby),
+                               (self.filtercolor, self.colorby)]:
                 # If no filters, continue
                 if not doby or not filt:
                     continue
-                
+
                 # Filter notypes away if asked
                 if not hasattr(obj, doby) and '_notype' in filt:
-                    return
+                    return outgraph
                 elif not hasattr(obj, doby):
                     continue
 
                 # Filtering by multiple metadata values
                 target = getattr(obj, doby)
-                for rule in [set(qpirts_p(x)) for x in filt if ',' in x]:
+                for rule in [set(self.qpirts_p(x)) for x in filt if ',' in x]:
                     if rule == rule.intersection(target):
                         left = target.difference(rule)
                         if left:
                             setattr(obj, doby, left)
                         else:
-                            return
+                            return outgraph
 
                 # Filtering by single values
                 target = getattr(obj, doby)
@@ -241,48 +247,67 @@ def execute(pagename, request):
                     if left:
                         setattr(obj, doby, left)
                     else:
-                        return
+                        return outgraph
 
             # update nodeattrlist with non-graph/sync ones
-            nodeattrs.update(filter(nonguaranteeds_p, dict(obj)))
+            self.nodeattrs.update(filter(nonguaranteeds_p, dict(obj)))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
-            if orderby:
-                value = getattr(obj, orderby, None)
+            if self.orderby:
+                value = getattr(obj, self.orderby, None)
                 if value:
-                    # Add to ordernodes by combined value of metadata
-                    value = qstrip_p(value)
-                    n.__order = value
-                    ordernodes.setdefault(value, set()).add(obj.node)
+                    # Add to self.ordernodes by combined value of metadata
+                    value = self.qstrip_p(value)
+                    n._order = value
+                    self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
-                    unordernodes.add(obj.node)
+                    self.unordernodes.add(obj.node)
 
         # Add edge
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
 
-    # This traverses 1 to parents
-    pattern = Sequence(Fixed(TailNode()),
-                       Fixed(TailNode()))
-    for obj1, obj2 in match(pattern, (nodes, graphdata)):
-        addseqtograph(obj2, obj1)
+        return outgraph
 
-    # The following code traverses 1 to children
-    pattern = Sequence(Fixed(HeadNode()),
-                       Fixed(HeadNode()))
-    for obj1, obj2 in match(pattern, (nodes, graphdata)):
-        addseqtograph(obj1, obj2)
+    def traverseParentChild(self, addFunc, graphdata, outgraph):
+        # addFunc is the function to be called for each graph addition
+        # graphdata is the 'in' graph extended and traversed
 
-    # If we should color nodes, gather nodes with attribute from
-    # the form (ie. variable colorby) and change their colors, plus
-    # gather legend data
-    if colorby:
+        # Start pattern searches from current page +
+        # nodes gathered as per form args
+        nodes = set(self.startpages)
+
+        # Init WikiNode-pattern
+        WikiNode(request=self.request,
+                 urladd=self.urladd,
+                 startpages=self.startpages)
+
+        # This traverses 1 to parents
+        pattern = Sequence(Fixed(TailNode()),
+                           Fixed(TailNode()))
+        for obj1, obj2 in match(pattern, (nodes, graphdata)):
+            outgraph = addFunc(graphdata, outgraph, obj2, obj1)
+
+        # This traverses 1 to children
+        pattern = Sequence(Fixed(HeadNode()),
+                           Fixed(HeadNode()))
+        for obj1, obj2 in match(pattern, (nodes, graphdata)):
+            outgraph = addFunc(graphdata, outgraph, obj1, obj2)
+
+        return outgraph
+
+    def colorNodes(self, outgraph):
+        colorby = self.colorby
+
+        # If we should color nodes, gather nodes with attribute from
+        # the form (ie. variable colorby) and change their colors, plus
+        # gather legend data
         def updatecolors(obj):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = qstrip_p(rule)
-                colornodes.add(rule)
+                rule = self.qstrip_p(rule)
+                self.colornodes.add(rule)
                 obj.fillcolor = hashcolor(rule)
                 obj.style = 'filled'
 
@@ -293,54 +318,55 @@ def execute(pagename, request):
         cond = Cond(node, lazyhas(node, colorby))
         for obj in match(cond, (nodes, outgraph)):
             updatecolors(obj)
+        return outgraph
 
-    # Add color to edges with linktype, gather legend data
-    edges = outgraph.edges.getall()
-    edge = Fixed(Edge())
-    pattern = Cond(edge, edge.linktype)
-    for obj in match(pattern, (edges, outgraph)):
-        coloredges.add(obj.linktype)
-        obj.color = hashcolor(obj.linktype)
+    def colorEdges(self, outgraph):
+        # Add color to edges with linktype, gather legend data
+        edges = outgraph.edges.getall()
+        edge = Fixed(Edge())
+        pattern = Cond(edge, edge.linktype)
+        for obj in match(pattern, (edges, outgraph)):
+            self.coloredges.add(obj.linktype)
+            obj.color = hashcolor(obj.linktype)
+        return outgraph
 
-    # Make a different url for the page node
-    node = outgraph.nodes.get(pagename)
-    if node:
-        node.URL = './\N'
-    elif not outgraph.nodes.getall():
-        outgraph.label = "No data"
-
-    # Fix URLs for subpages
-    if subrank > 0:
-        for name, in outgraph.nodes.getall():
-            node = outgraph.nodes.get(name)
-            # All nodes should have URL:s, change relative ones
-            if not re.search(r'^\w+:', node.URL):
-                node.URL = '../' * (subrank-1) + '.' + node.URL
-        pagename = '../' * (subrank) + pagename
-
-    # Add all data to graph
-    gr = GraphRepr(outgraph, engine=graphengine, order='__order')
-
-    # Make legend
-    if coloredges or colornodes:
-        legendgraph = Graphviz('legend', rankdir='LR')
-        legend = legendgraph.subg.add("clusterLegend", label='Legend')        
-
-    # Have bold circles on startnodes
-    for node in [outgraph.nodes.get(name) for name in startpages]:
+    def fixNodeUrls(self, outgraph):
+        import re
+        
+        # Make a different url for the page node
+        node = outgraph.nodes.get(self.pagename)
         if node:
-            if hasattr(node, 'style'):
-                node.style = node.style + ', bold'
-            else:
-                node.style = 'bold'
+            node.URL = './\N'
+        elif not outgraph.nodes.getall():
+            outgraph.label = "No data"
 
-    # After this, edit gr.graphviz, not outgraph!
-    outgraph.commit()
+        subrank = self.pagename.count('/')
+        # Fix URLs for subpages
+        if subrank > 0:
+            for name, in outgraph.nodes.getall():
+                node = outgraph.nodes.get(name)
+                # All nodes should have URL:s, change relative ones
+                if not re.search(r'^\w+:', node.URL):
+                    node.URL = '../' * (subrank-1) + '.' + node.URL
+            pagename = '../' * (subrank) + pagename
 
-    # Now it's time to order the nodes
-    # Kludges via outgraph as iterating gr.graphviz.edges bugs w/ gv_python
-    if orderby:
-        orderkeys = ordernodes.keys()
+        return outgraph
+
+    def circleStartNodes(self, outgraph):
+        # Have bold circles on startnodes
+        for node in [outgraph.nodes.get(name) for name in self.startpages]:
+            if node:
+                if hasattr(node, 'style'):
+                    node.style = node.style + ', bold'
+                else:
+                    node.style = 'bold'
+
+        return outgraph
+
+    def orderGraph(self, gr, outgraph):
+        # Now it's time to order the nodes
+        # Kludges via outgraph as iterating gr.graphviz.edges bugs w/ gv_python
+        orderkeys = self.ordernodes.keys()
         orderkeys.sort()
 
         prev_ordernode = ''
@@ -350,7 +376,7 @@ def execute(pagename, request):
             sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
             # [1:-1] removes quotes from label
             sg.nodes.add(cur_ordernode, label=key[1:-1])
-            for node in ordernodes[key]:
+            for node in self.ordernodes[key]:
                 sg.nodes.add(node)
 
             if prev_ordernode:
@@ -362,7 +388,7 @@ def execute(pagename, request):
         # Unordered nodes to their own rank
         sg = gr.graphviz.subg.add('unordered nodes', rank='same')
         sg.nodes.add('unordered nodes', style='invis')
-        for node in unordernodes:
+        for node in self.unordernodes:
             sg.nodes.add(node)
         if prev_ordernode:
             gr.graphviz.edges.add((prev_ordernode, 'unordered nodes'),
@@ -373,9 +399,8 @@ def execute(pagename, request):
         for edge in outgraph.edges.getall():
             tail, head = edge
             edge = gr.graphviz.edges.get(edge)
-            # set change
-            taily = getattr(gr.graphviz.nodes.get(head), '__order', '')
-            heady = getattr(gr.graphviz.nodes.get(tail), '__order', '')
+            taily = getattr(gr.graphviz.nodes.get(head), '_order', '')
+            heady = getattr(gr.graphviz.nodes.get(tail), '_order', '')
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
             if not heady and not taily:
@@ -400,176 +425,249 @@ def execute(pagename, request):
                     backedge.set(**{'dir': 'back', 'minlen': str(-minlen)})
                     edge.delete()
 
-    # Add nodes, edges to legend
-    # Edges
-    typenr = 0
-    legendedges = list(coloredges)
-    legendedges.sort()
-    for linktype in legendedges:
-        ln1 = "linktype: " + str(typenr)
-        typenr = typenr + 1
-        ln2 = "linktype: " + str(typenr)
-        legend.nodes.add(ln1, style='invis', label='')
-        legend.nodes.add(ln2, style='invis', label='')
-        legend.edges.add((ln1, ln2), color=hashcolor(linktype),
-                         label=url_unquote(linktype))
+        return gr
 
-    # Nodes
-    prev = ''
-    legendnodes = list(colornodes)
-    legendnodes.sort()
-    for nodetype in legendnodes:
-        cur = 'colornodes: ' + nodetype
-        legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
-                         fillcolor=hashcolor(nodetype))
-        if prev:
-            legend.edges.add((prev, cur), style="invis", dir='none')
-        prev = cur
+    def makeLegend(self):
+        # Make legend
+        legendgraph = Graphviz('legend', rankdir='LR')
+        legend = legendgraph.subg.add("clusterLegend", label='Legend')
 
-    # Escape quotes to numeric char references, remove outer quotes.
-    def _quoteformstr(str):
-        str = str.strip("\"'")
-        str = str.replace('"', '&#x22;')
-        return unicode('&#x22;' + str + '&#x22;', config.charset)
+        # Add nodes, edges to legend
+        # Edges
+        typenr = 0
+        legendedges = list(self.coloredges)
+        legendedges.sort()
+        for linktype in legendedges:
+            ln1 = "linktype: " + str(typenr)
+            typenr = typenr + 1
+            ln2 = "linktype: " + str(typenr)
+            legend.nodes.add(ln1, style='invis', label='')
+            legend.nodes.add(ln2, style='invis', label='')
+            legend.edges.add((ln1, ln2), color=hashcolor(linktype),
+                             label=url_unquote(linktype))
 
-    def _quotetoshow(str):
-        return unicode(url_unquote(str), config.charset)
+        # Nodes
+        prev = ''
+        legendnodes = list(self.colornodes)
+        legendnodes.sort()
+        for nodetype in legendnodes:
+            cur = 'self.colornodes: ' + nodetype
+            legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
+                             fillcolor=hashcolor(nodetype))
+            if prev:
+                legend.edges.add((prev, cur), style="invis", dir='none')
+            prev = cur
 
-    ## Begin form
-    request.write(u'<form method="GET" action="%s">\n' %
-                  _quotetoshow(pagename))
-    request.write(u'<input type=hidden name=action value="%s">' %
-                  ''.join(request.form['action']))
+        return legendgraph
 
-    request.write(u"<table>\n<tr>\n")
 
-    # categories
-    request.write(u"<td>\nInclude page categories:<br>\n")
-    for type in allcategories:
-        request.write(u'<input type="checkbox" name="categories" ' +
-                      u'value="%s"%s%s<br>\n' %
-                      (type, type in categories and " checked>" or ">",
-                       type))
+    def sendForm(self):
+        request = self.request
 
-    # colorby
-    request.write(u"<td>\nColor by:<br>\n")
-    for type in nodeattrs:
+        ## Begin form
+        request.write(u'<form method="GET" action="%s">\n' %
+                      quotetoshow(self.pagename))
+        request.write(u'<input type=hidden name=action value="%s">' %
+                      ''.join(request.form['action']))
+
+        request.write(u"<table>\n<tr>\n")
+
+        # categories
+        request.write(u"<td>\nInclude page categories:<br>\n")
+        for type in self.allcategories:
+            request.write(u'<input type="checkbox" name="categories" ' +
+                          u'value="%s"%s%s<br>\n' %
+                          (type,
+                           type in self.categories and " checked>" or ">",
+                           type))
+
+        # colorby
+        request.write(u"<td>\nColor by:<br>\n")
+        for type in self.nodeattrs:
+            request.write(u'<input type="radio" name="colorby" ' +
+                          u'value="%s"%s%s<br>\n' %
+                          (type,
+                           type == self.colorby and " checked>" or ">",
+                           quotetoshow(type)))
         request.write(u'<input type="radio" name="colorby" ' +
-                      u'value="%s"%s%s<br>\n' %
-                      (type, type == colorby and " checked>" or ">",
-                       _quotetoshow(type)))
-    request.write(u'<input type="radio" name="colorby" ' +
-                  u'value=""%s%s<br>\n' %
-                  (colorby == '' and " checked>" or ">",
-                   "no coloring"))
+                      u'value=""%s%s<br>\n' %
+                      (self.colorby == '' and " checked>" or ">",
+                       "no coloring"))
 
-    # orderby
-    request.write(u"<td>\nOrder by:<br>\n")
-    for type in nodeattrs:
+        # orderby
+        request.write(u"<td>\nOrder by:<br>\n")
+        for type in self.nodeattrs:
+            request.write(u'<input type="radio" name="orderby" ' +
+                          u'value="%s"%s%s<br>\n' %
+                          (type,
+                           type == self.orderby and " checked>" or ">",
+                           quotetoshow(type)))
         request.write(u'<input type="radio" name="orderby" ' +
-                      u'value="%s"%s%s<br>\n' %
-                      (type, type == orderby and " checked>" or ">",
-                       _quotetoshow(type)))
-    request.write(u'<input type="radio" name="orderby" ' +
-                  u'value=""%s%s<br>\n' %
-                  (orderby == '' and " checked>" or ">",
-                   "no ordering"))
+                      u'value=""%s%s<br>\n' %
+                      (self.orderby == '' and " checked>" or ">",
+                       "no ordering"))
 
-    # filter edges
-    request.write(u'<td>\nFilter edges:<br>\n')
-    alledges = list(coloredges) + filter(oftype_p, filteredges)
-    alledges.sort()
-    for type in alledges:
+        # filter edges
+        request.write(u'<td>\nFilter edges:<br>\n')
+        alledges = list(self.coloredges) + filter(self.oftype_p,
+                                                  self.filteredges)
+        alledges.sort()
+        for type in alledges:
+            request.write(u'<input type="checkbox" name="filteredges" ' +
+                          u'value="%s"%s%s<br>\n' %
+                          (type,
+                           type in self.filteredges and " checked>" or ">",
+                           quotetoshow(type)))
         request.write(u'<input type="checkbox" name="filteredges" ' +
                       u'value="%s"%s%s<br>\n' %
-                      (type, type in filteredges and " checked>" or ">",
-                       _quotetoshow(type)))
-    request.write(u'<input type="checkbox" name="filteredges" ' +
-                  u'value="%s"%s%s<br>\n' %
-                  ("_notype", "_notype" in filteredges and " checked>"
-                   or ">", "No type"))
+                      ("_notype",
+                       "_notype" in self. filteredges and " checked>" or ">",
+                       "No type"))
 
-    # filter nodes (related to colorby)
-    if colorby:
-        request.write(u'<td>\nFilter from colored:<br>\n')
-        # set change
-        allcolor = set(filter(oftype_p, filtercolor))
-        allcolor.update(colornodes)
-        for txt in [x for x in colornodes if ',' in x]:
-            allcolor.update(qpirts_p(txt))
-        allcolor = list(allcolor)
-        allcolor.sort()
-        for type in allcolor:
+        # filter nodes (related to colorby)
+        if self.colorby:
+            request.write(u'<td>\nFilter from colored:<br>\n')
+            allcolor = set(filter(self.oftype_p, self.filtercolor))
+            allcolor.update(self.colornodes)
+            for txt in [x for x in self.colornodes if ',' in x]:
+                allcolor.update(self.qpirts_p(txt))
+            allcolor = list(allcolor)
+            allcolor.sort()
+            for type in allcolor:
+                request.write(u'<input type="checkbox" name="filtercolor" ' +
+                              u'value="%s"%s%s<br>\n' %
+                              (quoteformstr(type),
+                               type in self.filtercolor and " checked>" or ">",
+                               quotetoshow(type[1:-1])))
             request.write(u'<input type="checkbox" name="filtercolor" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (_quoteformstr(type),
-                           type in filtercolor and " checked>" or ">",
-                           _quotetoshow(type[1:-1])))
-        request.write(u'<input type="checkbox" name="filtercolor" ' +
-                      u'value="%s"%s%s<br>\n' %
-                      ("_notype", "_notype" in filtercolor and " checked>"
-                       or ">", "No type"))
+                          ("_notype",
+                           "_notype" in self.filtercolor and " checked>" or ">",
+                           "No type"))
 
-    # filter nodes (related to orderby)
-    if orderby:
-        request.write(u'<td>\nFilter from ordered:<br>\n')
-        # set change
-        allorder = list(set(ordernodes.keys() + filter(oftype_p, filterorder)))
-        allorder.sort()
-        for type in allorder:
+        if self.orderby:
+            # filter nodes (related to orderby)
+            request.write(u'<td>\nFilter from ordered:<br>\n')
+            allorder = list(set(self.ordernodes.keys() +
+                                filter(self.oftype_p, self.filterorder)))
+            allorder.sort()
+            for type in allorder:
+                request.write(u'<input type="checkbox" name="filterorder" ' +
+                              u'value="%s"%s%s<br>\n' %
+                              (quoteformstr(type),
+                               type in self.filterorder and " checked>" or ">",
+                               quotetoshow(type[1:-1])))
             request.write(u'<input type="checkbox" name="filterorder" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (_quoteformstr(type),
-                           type in filterorder and " checked>" or ">",
-                           _quotetoshow(type[1:-1])))
-        request.write(u'<input type="checkbox" name="filterorder" ' +
-                      u'value="%s"%s%s<br>\n' %
-                      ("_notype", "_notype" in filterorder and " checked>"
-                       or ">", "No type"))
+                          ("_notype",
+                           "_notype" in self.filterorder and " checked>" or ">",
+                       "No type"))
+        # End form
+        request.write(u"</table>\n")
+        request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
-    # End form
-    request.write(u"</table>\n")
-    request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
-    tmp_fileno, tmp_name = tempfile.mkstemp()
-    gr.graphviz.layout(file=tmp_name, format='png')
-    f = file(tmp_name)
-    img = f.read()
+    def execute(self):
+        self.formargs()
+        request = self.request
+        pagename = self.pagename
 
-    gr.graphviz.layout(file=tmp_name, format='cmapx')
-    f = file(tmp_name)
-    mappi = f.read()
+        request.http_headers()
+        # This action generate data using the user language
+        request.setContentLanguage(request.lang)
 
-    imgbase = "data:image/png;base64," + b64encode(img)
+        title = request.getText('Wiki linkage as seen from "%s"') % pagename
+        wikiutil.send_title(request, title, pagename = pagename)
 
-    page = ('<img src="' + imgbase +
-            '" alt="visualisation" usemap="#' +
-            gr.graphattrs['name'] + '">\n' + mappi + "\n")
+        # Start content - IMPORTANT - without content div, there is no
+        # direction support!
+        formatter = Formatter(request)
+        request.write(formatter.startContent("content"))
+        formatter.setPage(self.pageobj)
 
-    request.write(page)
+        if self.isstandard:
+            request.write(formatter.text("No graph data available."))
+            request.write(formatter.endContent())
+            wikiutil.send_footer(request, pagename)
+            return
 
-    if coloredges or colornodes:
-        legendgraph.layout(file=tmp_name, format='png')
+        # The working with patterns goes a bit like this:
+        # First, get a sequence, add it to outgraph
+        # Then, match from outgraph, add graphviz attrs
+
+        # First, let's get do the desired traversal, get outgraph
+        graphdata = self.buildGraphData()
+        outgraph = self.buildOutGraph()
+        outgraph = self.traverseParentChild(self.addToGraphWithFilter,
+                                            graphdata, outgraph)
+
+        # Stylistic stuff: Color nodes, edges, bold startpages
+        if self.colorby:
+            outgraph = self.colorNodes(outgraph)
+        outgraph = self.colorEdges(outgraph)
+        outgraph = self.circleStartNodes(outgraph)
+
+        # Fix URL:s
+        outgraph = self.fixNodeUrls(outgraph)
+
+        # Add all data to graph
+        gr = GraphRepr(outgraph, engine=self.graphengine, order='_order')
+
+        # After this, edit gr.graphviz, not outgraph!
+        outgraph.commit()
+
+        if self.orderby:
+            gr = self.orderGraph(gr, outgraph)
+
+        legend = None
+        if self.coloredges or self.colornodes:
+            legend = self.makeLegend()
+
+        self.sendForm()
+
+        tmp_fileno, tmp_name = mkstemp()
+        gr.graphviz.layout(file=tmp_name, format='png')
         f = file(tmp_name)
         img = f.read()
+
+        gr.graphviz.layout(file=tmp_name, format='cmapx')
+        f = file(tmp_name)
+        mappi = f.read()
+
         imgbase = "data:image/png;base64," + b64encode(img)
-        request.write('<img src="' + imgbase + '">\n')
 
-    # edge pruning etc??
+        page = ('<img src="' + imgbase +
+                '" alt="visualisation" usemap="#' +
+                gr.graphattrs['name'] + '">\n' + mappi + "\n")
 
-    # debug:
-    # just to get the graph data out 
-    gr.graphviz.layout(file=tmp_name)
-    f = file(tmp_name)
-    gtext = f.read()
-    request.write(formatter.preformatted(1))
-    request.write(formatter.text(gtext))
-    request.write(formatter.preformatted(0))
+        request.write(page)
 
-    os.close(tmp_fileno)
-    os.remove(tmp_name)
+        if legend:
+            legend.layout(file=tmp_name, format='png')
+            f = file(tmp_name)
+            img = f.read()
+            imgbase = "data:image/png;base64," + b64encode(img)
+            request.write('<img src="' + imgbase + '">\n')
 
-    # End content
-    request.write(formatter.endContent()) # end content div
-    # Footer
-    wikiutil.send_footer(request, pagename)
+        # edge pruning etc??
+
+        # debug:
+        # just to get the graph data out 
+        gr.graphviz.layout(file=tmp_name)
+        f = file(tmp_name)
+        gtext = f.read()
+        request.write(formatter.preformatted(1))
+        request.write(formatter.text(gtext))
+        request.write(formatter.preformatted(0))
+
+        os.close(tmp_fileno)
+        os.remove(tmp_name)
+
+        # End content
+        request.write(formatter.endContent()) # end content div
+        # Footer
+        wikiutil.send_footer(request, pagename)
+
+def execute(pagename, request):
+    graphshower = GraphShower(pagename, request)
+    graphshower.execute()

@@ -60,7 +60,7 @@ def execute(pagename, request):
         return encoder(str, 'replace')[0]
 
     n3file = os.path.join(pagedir, '../', 'rdfdata.shelve')
-    pagename = _e(pagename)
+    pagename = quote(_e(pagename))
 
     request.http_headers(["Content-type: text/plain;charset=%s" %
                           config.charset])
