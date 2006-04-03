@@ -181,8 +181,6 @@ class GraphShower(object):
                     node.URL = './' + newpage
             globaldata.close()
 
-        print self.startpages
-
         return graphdata
 
     def buildOutGraph(self):
