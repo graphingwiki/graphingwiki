@@ -8,7 +8,7 @@ from tempfile import mktemp
 from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
-from MoinMoin import wikiutil
+from MoinMoin.wikiutil import importPlugin
 
 # cpe imports
 from graphingwiki import graph
@@ -84,8 +84,8 @@ def execute(pagename, request, text, pagedir, page):
 
     # import text_url -formatter
     try:
-        Formatter = wikiutil.importPlugin(request.cfg, 'formatter',
-                                          'text_url', "Formatter")
+        Formatter = importPlugin(request.cfg, 'formatter',
+                                 'text_url', "Formatter")
     except:
         # default to plain text
         import sys

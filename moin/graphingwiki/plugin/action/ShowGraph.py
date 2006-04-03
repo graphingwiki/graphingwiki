@@ -154,14 +154,15 @@ class GraphShower(object):
     def buildGraphData(self):
         graphdata = Graph()
 
-        pagefilename = wikiutil.quoteWikinameFS(self.pagename)
+        pagedir = self.pageobj.getPagePath()
         pagename = url_quote(encode(self.pagename))
         self.pagename = pagename
-        self.startpages = [pagename]
 
-        pagedir = self.pageobj.getPagePath()
-        root = graphdata.nodes.add(pagename)
-        root.URL = './' + pagefilename
+        if not self.categories:
+            self.startpages = [pagename]
+            root = graphdata.nodes.add(pagename)
+            root.URL = './' + pagename
+            return graphdata
         
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
