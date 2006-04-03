@@ -174,8 +174,7 @@ class GraphShower(object):
                 # FIXME: Should raise an exception here and end the misery?
                 break
             for newpage in globaldata[cat]:
-                if newpage != pagename and not (
-                    newpage.endswith('Template') or
+                if not (newpage.endswith('Template') or
                     newpage.startswith('Category')):
                     self.startpages.append(newpage)
                     node = graphdata.nodes.add(newpage)
