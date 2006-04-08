@@ -8,22 +8,25 @@
     
 import os
 from tempfile import mkstemp
-from codecs import getencoder
 from random import choice, seed
 from base64 import b64encode
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
-from MoinMoin import search
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.formatter.text_html import Formatter 
+from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
+from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.parser.wiki import Parser
+from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
+
+# imports from other actions
+from savegraphdata import encode, local_page
 
 graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
@@ -43,6 +46,34 @@ colors = graphvizcolors
 used_colors = []
 used_colorlabels = []
 
+def get_interwikilist(request):
+    # request.cfg._interwiki_list is gathered by wikiutil
+    # the first time resolve_wiki is called
+    wikiutil.resolve_wiki(request, 'Dummy:Testing')
+
+    iwlist = {}
+    selfname = get_selfname(request)
+
+    # Add interwikinames to namespaces
+    for iw in request.cfg._interwiki_list:
+        iw_url = request.cfg._interwiki_list[iw]
+        if iw_url.startswith('/'):
+            if iw != selfname:
+                continue
+            iw_url = get_wikiurl(request)
+        iwlist[iw] = iw_url
+
+    return iwlist
+
+def get_selfname(request):
+    if request.cfg.interwikiname:
+        return request.cfg.interwikiname
+    else:
+        return 'Self'
+
+def get_wikiurl(request):
+    return request.getBaseURL() + '/'
+
 def hashcolor(string):
     if string in used_colorlabels:
         return used_colors[used_colorlabels.index(string)]
@@ -56,31 +87,37 @@ def hashcolor(string):
     return cl
 
 # Escape quotes to numeric char references, remove outer quotes.
-def quoteformstr(str):
-    str = str.strip("\"'")
-    str = str.replace('"', '&#x22;')
-    return unicode('&#x22;' + str + '&#x22;', config.charset)
+def quoteformstr(text):
+    text = text.strip("\"'")
+    text = text.replace('"', '&#x22;')
+    return unicode('&#x22;' + text + '&#x22;', config.charset)
 
-def quotetoshow(str):
-    return unicode(url_unquote(str), config.charset)
+def quotetoshow(text):
+    return unicode(url_unquote(text), config.charset)
 
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
+# node attributes that are not guaranteed (by sync/savegraph)
+nonguaranteeds_p = lambda node: filter(lambda y: y not in
+                                       ['belongs_to_patterns',
+                                        'label', 'URL'], dict(node))
 
 class GraphShower(object):
     def __init__(self, pagename, request, graphengine = "neato"):
         self.pagename = pagename
         self.request = request
         self.graphengine = graphengine
+        self.available_formats = ['png', 'svg', 'dot']
+        self.format = 'png'
 
         self.pageobj = Page(request, pagename)
         self.isstandard = False
+        self.interwikilist = []
         
         self.allcategories = []
         self.categories = []
+        self.otherpages = []
         self.startpages = []
 
+        self.depth = 1
         self.orderby = ''
         self.colorby = ''
         
@@ -121,9 +158,31 @@ class GraphShower(object):
         if not self.pageobj.isStandardPage(includeDeleted = False):
             self.isstandard = True
 
+        # depth
+        if request.form.has_key('depth'):
+            depth = [encode(x) for x in request.form['depth']][0]
+            try:
+                depth = int(depth)
+                if depth >= 1:
+                    self.depth = depth
+            except ValueError:
+                self.depth = 1
+
+        # format
+        if request.form.has_key('format'):
+            format = [encode(x) for x in request.form['format']][0]
+            if format in self.available_formats:
+                self.format = format
+
         # Categories
         if request.form.has_key('categories'):
             self.categories = [encode(x) for x in request.form['categories']]
+
+        # Other pages
+        if request.form.has_key('otherpages'):
+            otherpages = ''.join([x for x in request.form['otherpages']])
+            self.otherpages = [url_quote(encode(x.strip()))
+                               for x in otherpages.split(',')]
 
         # Orderings
         if request.form.has_key('orderby'):
@@ -147,9 +206,16 @@ class GraphShower(object):
         self.urladd = '?'
         for key in request.form:
             for val in request.form[key]:
-                self.urladd = (self.urladd + url_quote(key) +
-                               '=' + url_quote(val) + '&')
-        self.urladd = encode(self.urladd[:-1])
+                self.urladd = (self.urladd + url_quote(encode(key)) +
+                               '=' + url_quote(encode(val)) + '&')
+        self.urladd = self.urladd[:-1]
+
+    def addToStartPages(self, graphdata, pagename):
+        self.startpages.append(pagename)
+        root = graphdata.nodes.add(pagename)
+        root.URL = './' + pagename
+
+        return graphdata
 
     def buildGraphData(self):
         graphdata = Graph()
@@ -158,27 +224,32 @@ class GraphShower(object):
         pagename = url_quote(encode(self.pagename))
         self.pagename = pagename
 
+        for nodename in self.otherpages:
+            graphdata = self.addToStartPages(graphdata, nodename)
+
         if not self.categories:
-            self.startpages = [pagename]
-            root = graphdata.nodes.add(pagename)
-            root.URL = './' + pagename
-            return graphdata
+            graphdata = self.addToStartPages(graphdata, pagename)
         
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
             graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
+
+            # Make sure nobody is writing to graphshelve, as concurrent
+            # reading and writing can result in erroneous data
+            graphlock = graphshelve + '.lock'
+            os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
+            os.unlink(graphlock)
+
             globaldata = shelve.open(graphshelve, 'r')
-            if not globaldata.has_key(cat):
+            if not globaldata['in'].has_key(cat):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
                 # FIXME: Should raise an exception here and end the misery?
                 break
-            for newpage in globaldata[cat]:
+            for newpage in globaldata['in'][cat]:
                 if not (newpage.endswith('Template') or
                     newpage.startswith('Category')):
-                    self.startpages.append(newpage)
-                    node = graphdata.nodes.add(newpage)
-                    node.URL = './' + newpage
+                    graphdata = self.addToStartPages(graphdata, newpage)
             globaldata.close()
 
         return graphdata
@@ -198,16 +269,10 @@ class GraphShower(object):
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
-        # node attributes that are not guaranteed (by sync/savegraph)
-        nonguaranteeds_p = lambda x: x not in ['belongs_to_patterns',
-                                               'label', 'URL']
 
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
         if getattr(olde, 'linktype', '_notype') in self.filteredges:
-            # FIXME: What possible purpose could these lines have??
-#            if hasattr(olde, 'linktype'):
-#                self.filteredges.add(olde.linktype)
             return outgraph
 
         # Add nodes, data for ordering
@@ -250,7 +315,7 @@ class GraphShower(object):
                         return outgraph
 
             # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(filter(nonguaranteeds_p, dict(obj)))
+            self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
             if self.orderby:
@@ -269,18 +334,9 @@ class GraphShower(object):
 
         return outgraph
 
-    def traverseParentChild(self, addFunc, graphdata, outgraph):
+    def traverseParentChild(self, addFunc, graphdata, outgraph, nodes):
         # addFunc is the function to be called for each graph addition
         # graphdata is the 'in' graph extended and traversed
-
-        # Start pattern searches from current page +
-        # nodes gathered as per form args
-        nodes = set(self.startpages)
-
-        # Init WikiNode-pattern
-        WikiNode(request=self.request,
-                 urladd=self.urladd,
-                 startpages=self.startpages)
 
         # This traverses 1 to parents
         pattern = Sequence(Fixed(TailNode()),
@@ -333,11 +389,14 @@ class GraphShower(object):
     def fixNodeUrls(self, outgraph):
         import re
         
-        # Make a different url for the page node
-        node = outgraph.nodes.get(self.pagename)
-        if node:
-            node.URL = './\N'
-        elif not outgraph.nodes.getall():
+        # Make a different url for start nodes
+        for nodename in self.startpages:
+            node = outgraph.nodes.get(nodename)
+            if node:
+                node.URL = './\N'
+
+        # You managed to filter out all your pages, dude!
+        if not outgraph.nodes.getall():
             outgraph.label = "No data"
 
         subrank = self.pagename.count('/')
@@ -346,7 +405,7 @@ class GraphShower(object):
             for name, in outgraph.nodes.getall():
                 node = outgraph.nodes.get(name)
                 # All nodes should have URL:s, change relative ones
-                if not re.search(r'^\w+:', node.URL):
+                if not local_page(node.URL):
                     node.URL = '../' * (subrank-1) + '.' + node.URL
             self.pagename = '../' * (subrank) + self.pagename
 
@@ -363,11 +422,26 @@ class GraphShower(object):
 
         return outgraph
 
+    def getURLns(self, link):
+        if not self.interwikilist:
+            self.interwikilist = get_interwikilist(self.request)
+        # Namespaced names
+        if ':' in link:
+            iwname = link.split(':')
+            if self.interwikilist.has_key(iwname[0]):
+                return self.interwikilist[iwname[0]] + iwname[1]
+            else:
+                subrank = self.pagename.count('/')
+                return '../' * subrank + './InterWiki'
+        subrank = self.pagename.count('/')
+        return '../' * subrank + './Property' + link
+
     def orderGraph(self, gr, outgraph):
         # Now it's time to order the nodes
         # Kludges via outgraph as iterating gr.graphviz.edges bugs w/ gv_python
         orderkeys = self.ordernodes.keys()
         orderkeys.sort()
+        orderURL = self.getURLns(self.orderby)
 
         prev_ordernode = ''
         # New subgraphs, nodes to help ranking
@@ -375,7 +449,7 @@ class GraphShower(object):
             cur_ordernode = 'orderkey: ' + key
             sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
             # [1:-1] removes quotes from label
-            sg.nodes.add(cur_ordernode, label=key[1:-1])
+            sg.nodes.add(cur_ordernode, label=key[1:-1], URL=orderURL)
             for node in self.ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -430,8 +504,10 @@ class GraphShower(object):
 
     def makeLegend(self):
         # Make legend
-        legendgraph = Graphviz('legend', rankdir='LR')
+        legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
         legend = legendgraph.subg.add("clusterLegend", label='Legend')
+        subrank = self.pagename.count('/')
+        colorURL = self.getURLns(self.colorby)
 
         # Add nodes, edges to legend
         # Edges
@@ -445,7 +521,8 @@ class GraphShower(object):
             legend.nodes.add(ln1, style='invis', label='')
             legend.nodes.add(ln2, style='invis', label='')
             legend.edges.add((ln1, ln2), color=hashcolor(linktype),
-                             label=url_unquote(linktype))
+                             label=url_unquote(linktype),
+                             URL=self.getURLns(linktype))
 
         # Nodes
         prev = ''
@@ -454,7 +531,7 @@ class GraphShower(object):
         for nodetype in legendnodes:
             cur = 'self.colornodes: ' + nodetype
             legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
-                             fillcolor=hashcolor(nodetype))
+                             fillcolor=hashcolor(nodetype), URL=colorURL)
             if prev:
                 legend.edges.add((prev, cur), style="invis", dir='none')
             prev = cur
@@ -473,14 +550,35 @@ class GraphShower(object):
 
         request.write(u"<table>\n<tr>\n")
 
+        # outputformat
+        request.write(u"<td>\nOutput format:<br>\n")
+        for type in self.available_formats:
+            request.write(u'<input type="radio" name="format" ' +
+                          u'value="%s"%s%s<br>\n' %
+                          (type,
+                           type == self.format and " checked>" or ">",
+                           type))
+
+
+        # Depth
+        request.write(u"Link depth:<br>\n")
+        request.write(u'<input type="text" name="depth" ' +
+                      u'size=2 value="%s"><br>\n' % str(self.depth))
+
         # categories
-        request.write(u"<td>\nInclude page categories:<br>\n")
+        request.write(u"<td>Include page categories:<br>\n")
         for type in self.allcategories:
             request.write(u'<input type="checkbox" name="categories" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type in self.categories and " checked>" or ">",
                            type))
+
+        # otherpages
+        otherpages = quotetoshow(', '.join(self.otherpages))
+        request.write(u"Include other pages:<br>\n")
+        request.write(u'<input type="text" name="otherpages" ' +
+                      u'size=20 value="%s"><br>\n' % otherpages)
 
         # colorby
         request.write(u"<td>\nColor by:<br>\n")
@@ -549,8 +647,11 @@ class GraphShower(object):
         if self.orderby:
             # filter nodes (related to orderby)
             request.write(u'<td>\nFilter from ordered:<br>\n')
-            allorder = list(set(self.ordernodes.keys() +
-                                filter(self.oftype_p, self.filterorder)))
+            allorder = set(self.ordernodes.keys() +
+                           filter(self.oftype_p, self.filterorder))
+            for txt in [x for x in self.ordernodes if ',' in x]:
+                allorder.update(self.qpirts_p(txt))
+            allorder = list(allorder)
             allorder.sort()
             for type in allorder:
                 request.write(u'<input type="checkbox" name="filterorder" ' +
@@ -567,29 +668,132 @@ class GraphShower(object):
         request.write(u"</table>\n")
         request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
+    def initTraverse(self):
+        # Init WikiNode-pattern
+        WikiNode(request=self.request,
+                 urladd=self.urladd,
+                 startpages=self.startpages)
 
-    def execute(self):
-        self.formargs()
+        # Start pattern searches from current page +
+        # nodes gathered as per form args
+        nodes = set(self.startpages)
+
+        return nodes
+
+    def generateLayout(self, outgraph):
+        # Add all data to graph
+        gr = GraphRepr(outgraph, engine=self.graphengine, order='_order')
+
+        # After this, edit gr.graphviz, not outgraph!
+        outgraph.commit()
+
+        if self.orderby:
+            gr = self.orderGraph(gr, outgraph)
+
+        return gr
+
+    def getLayoutInFormat(self, graphviz, format):
+        tmp_fileno, tmp_name = mkstemp()
+        graphviz.layout(file=tmp_name, format=format)
+        f = file(tmp_name)
+        data = f.read()
+        os.close(tmp_fileno)
+        os.remove(tmp_name)
+
+        return data
+    
+    def sendGraph(self, gr, map=False):
+        img = self.getLayoutInFormat(gr.graphviz, self.format)
+
+        if map:
+            imgbase = "data:image/" + self.format + ";base64," + b64encode(img)
+
+            page = ('<img src="' + imgbase +
+                    '" alt="visualisation" usemap="#' +
+                    gr.graphattrs['name'] + '">\n')
+            self.sendMap(gr.graphviz)
+        else:
+            imgbase = "data:image/svg+xml;base64," + b64encode(img)
+            
+            page = ('<embed height=800 width=1024 src="' +
+                    imgbase + '" alt="visualisation">\n')
+
+        self.request.write(page)
+
+    def sendMap(self, graphviz):
+        mappi = self.getLayoutInFormat(graphviz, 'cmapx')
+
+        self.request.write(mappi + '\n')
+
+    def sendGv(self, gr):
+        gvdata = self.getLayoutInFormat(gr.graphviz, 'dot')
+
+        self.request.write(gvdata)
+
+    def sendLegend(self):
+        legend = None
+        if self.coloredges or self.colornodes:
+            legend = self.makeLegend()
+
+        if legend:
+            img = self.getLayoutInFormat(legend, self.format)
+            
+            if self.format == 'svg':
+                imgbase = "data:image/svg+xml;base64," + b64encode(img)
+                self.request.write('<embed width=800 src="' + imgbase + '">\n')
+            else:
+                imgbase = "data:image/" + self.format + \
+                          ";base64," + b64encode(img)
+                self.request.write('<img src="' + imgbase +
+                                   '" alt="visualisation" usemap="#' +
+                                   legend.name + '">\n')
+                self.sendMap(legend)
+                                   
+    def sendFooter(self, formatter):
+        if self.format != 'dot':
+            # End content
+            self.request.write(formatter.endContent()) # end content div
+            # Footer
+            wikiutil.send_footer(self.request, self.pagename)
+        else:
+            raise MoinMoinNoFooter
+
+    def sendHeaders(self):
         request = self.request
         pagename = self.pagename
 
-        request.http_headers()
-        # This action generate data using the user language
-        request.setContentLanguage(request.lang)
+        if self.format != 'dot':
+            request.http_headers()
+            # This action generate data using the user language
+            request.setContentLanguage(request.lang)
+  
+            title = request.getText('Wiki linkage as seen from "%s"') % \
+                    pagename
 
-        title = request.getText('Wiki linkage as seen from "%s"') % pagename
-        wikiutil.send_title(request, title, pagename = pagename)
+            wikiutil.send_title(request, title, pagename=pagename)
 
-        # Start content - IMPORTANT - without content div, there is no
-        # direction support!
-        formatter = Formatter(request)
-        request.write(formatter.startContent("content"))
-        formatter.setPage(self.pageobj)
+            # Start content - IMPORTANT - without content div, there is no
+            # direction support!
+            formatter = HtmlFormatter(request)
+            request.write(formatter.startContent("content"))
+            formatter.setPage(self.pageobj)
+        else:
+            request.http_headers(["Content-type: text/plain;charset=%s" %
+                                  config.charset])
+            formatter = TextFormatter(request)
+            formatter.setPage(self.pageobj)
+
+        return formatter
+
+    def execute(self):
+        self.formargs()
+
+        formatter = self.sendHeaders()
 
         if self.isstandard:
-            request.write(formatter.text("No graph data available."))
-            request.write(formatter.endContent())
-            wikiutil.send_footer(request, pagename)
+            self.request.write(formatter.text("No graph data available."))
+            self.request.write(formatter.endContent())
+            wikiutil.send_footer(self.request, self.pagename)
             return
 
         # The working with patterns goes a bit like this:
@@ -599,8 +803,17 @@ class GraphShower(object):
         # First, let's get do the desired traversal, get outgraph
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
-        outgraph = self.traverseParentChild(self.addToGraphWithFilter,
-                                            graphdata, outgraph)
+
+        nodes = self.initTraverse()
+
+        for n in range(1, self.depth+1):
+            outgraph = self.traverseParentChild(self.addToGraphWithFilter,
+                                                graphdata, outgraph, nodes)
+            newnodes = set([x for x, in outgraph.nodes.getall()])
+            # continue only if new pages were found
+            if not newnodes.difference(nodes):
+                break
+            nodes.update(newnodes)
 
         # Stylistic stuff: Color nodes, edges, bold startpages
         if self.colorby:
@@ -611,63 +824,21 @@ class GraphShower(object):
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
 
-        # Add all data to graph
-        gr = GraphRepr(outgraph, engine=self.graphengine, order='_order')
+        # Do the layout
+        gr = self.generateLayout(outgraph)
 
-        # After this, edit gr.graphviz, not outgraph!
-        outgraph.commit()
+        if self.format == 'svg':
+            self.sendForm()
+            self.sendGraph(gr)
+            self.sendLegend()
+        elif self.format == 'dot':
+            self.sendGv(gr)
+        else:
+            self.sendForm()
+            self.sendGraph(gr, True)
+            self.sendLegend()
 
-        if self.orderby:
-            gr = self.orderGraph(gr, outgraph)
-
-        legend = None
-        if self.coloredges or self.colornodes:
-            legend = self.makeLegend()
-
-        self.sendForm()
-
-        tmp_fileno, tmp_name = mkstemp()
-        gr.graphviz.layout(file=tmp_name, format='png')
-        f = file(tmp_name)
-        img = f.read()
-
-        gr.graphviz.layout(file=tmp_name, format='cmapx')
-        f = file(tmp_name)
-        mappi = f.read()
-
-        imgbase = "data:image/png;base64," + b64encode(img)
-
-        page = ('<img src="' + imgbase +
-                '" alt="visualisation" usemap="#' +
-                gr.graphattrs['name'] + '">\n' + mappi + "\n")
-
-        request.write(page)
-
-        if legend:
-            legend.layout(file=tmp_name, format='png')
-            f = file(tmp_name)
-            img = f.read()
-            imgbase = "data:image/png;base64," + b64encode(img)
-            request.write('<img src="' + imgbase + '">\n')
-
-        # edge pruning etc??
-
-        # debug:
-        # just to get the graph data out 
-        gr.graphviz.layout(file=tmp_name)
-        f = file(tmp_name)
-        gtext = f.read()
-        request.write(formatter.preformatted(1))
-        request.write(formatter.text(gtext))
-        request.write(formatter.preformatted(0))
-
-        os.close(tmp_fileno)
-        os.remove(tmp_name)
-
-        # End content
-        request.write(formatter.endContent()) # end content div
-        # Footer
-        wikiutil.send_footer(request, pagename)
+        self.sendFooter(formatter)
 
 def execute(pagename, request):
     graphshower = GraphShower(pagename, request)

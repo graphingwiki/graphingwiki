@@ -217,15 +217,14 @@ class WikiNode(object):
         return None
 
     def _addinlinks(self, graph, dst):
-        dstdir = unicode(url_unquote(dst), config.charset)
-        inc_page = Page(WikiNode.request, dstdir)
-        graphshelve = os.path.join(inc_page.getPagePath(), '../',
-                                   'graphdata.shelve')
+        # Get datapath from root page, load shelve from there
+        datapath = Page(WikiNode.request, u'', is_rootpage=1).getPagePath()
+        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
         globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata.has_key(dst):
+        if not globaldata['in'].has_key(dst):
             # should not happen if page has graphdata
             return
-        for src in globaldata[dst]:
+        for src in globaldata['in'][dst]:
             # filter out category, template pages
             if src.startswith('Category') or src.endswith('Template'):
                 continue
@@ -237,6 +236,29 @@ class WikiNode(object):
             if not srcnode:
                 srcnode = graph.nodes.add(src)
                 srcnode.URL = './' + src
+            if not graph.edges.get(src, dst):
+                graph.edges.add(src, dst)
+
+    def _addoutlinks(self, graph, src):
+        # Get datapath from root page, load shelve from there
+        datapath = Page(WikiNode.request, u'', is_rootpage=1).getPagePath()
+        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+        globaldata = shelve.open(graphshelve, 'r')
+        if not globaldata['out'].has_key(src):
+            # should not happen if page has graphdata
+            return
+        for dst in globaldata['out'][src]:
+            # filter out category, template pages
+            if dst.startswith('Category') or dst.endswith('Template'):
+                continue
+            srcnode = graph.nodes.get(src)
+            if not srcnode:
+                # should not happen if page has graphdata
+                return
+            dstnode = graph.nodes.get(dst)
+            if not dstnode:
+                dstnode = graph.nodes.add(dst)
+                dstnode.URL = './' + dst
             if not graph.edges.get(src, dst):
                 graph.edges.add(src, dst)
 
@@ -252,9 +274,11 @@ class HeadNode(WikiNode):
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))
 
-        # Add new nodes, edges that are the children of da node
-#        WikiNode.request.write("Child " + node + "\n")
-        for parent, child in adata.edges.getall(parent=node):
+        # Add new nodes, edges that link to/from the current node
+        for parent, child in adata.edges.getall():
+            # Only add links from amongst nodes already traversed
+            if not graph.nodes.get(parent):
+                continue
             # filter out category, template pages
             if (child.startswith("Category") or
                 child.endswith("Template")):
@@ -276,6 +300,8 @@ class HeadNode(WikiNode):
             if node + "head" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "head")
+            # get out-links from the global shelve
+            self._addoutlinks(graph, node)
             children = set(child for parent, child
                            in graph.edges.getall(parent=node))
             node = graph.nodes.get(node)
@@ -296,32 +322,33 @@ class TailNode(WikiNode):
         # Add new nodes, edges that are the parents of either the
         # current node, or the start nodes
         for parent, child in adata.edges.getall():
-            if child in [node] + WikiNode.startpages:
-                # filter out category, template pages
-                if (parent.startswith("Category") or
-                    parent.endswith("Template")):
-                    continue
+            if child not in [node] + WikiNode.startpages:
+                continue
+            # filter out category, template pages
+            if (parent.startswith("Category") or
+                parent.endswith("Template")):
+                continue
 
-                newnode = graph.nodes.get(parent)
-                if not newnode:
-                    newnode = graph.nodes.add(parent)
-                newnode.update(adata.nodes.get(parent))
+            newnode = graph.nodes.get(parent)
+            if not newnode:
+                newnode = graph.nodes.add(parent)
+            newnode.update(adata.nodes.get(parent))
 
-                newedge = graph.edges.get(parent, child)
-                if not newedge:
-                    newedge = graph.edges.add(parent, child)
-                edgedata = adata.edges.get(parent, child)
-                newedge.update(edgedata)
+            newedge = graph.edges.get(parent, child)
+            if not newedge:
+                newedge = graph.edges.add(parent, child)
+            edgedata = adata.edges.get(parent, child)
+            newedge.update(edgedata)
     
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
-            # get in-links from the global shelve
-            self._addinlinks(graph, node)
             # Add detailed graphdata to the search graph
             if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "tail")
+            # get in-links from the global shelve
+            self._addinlinks(graph, node)
             parents = set(parent for parent, child
                           in graph.edges.getall(child=node))
             node = graph.nodes.get(node)

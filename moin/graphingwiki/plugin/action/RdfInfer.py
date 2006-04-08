@@ -10,13 +10,13 @@ from MoinMoin.Page import Page
 from euler import run_called as run_inference
 
 def execute(pagename, request):
-    _ = request.getText
     request.http_headers()
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, _('Inference'), pagename=pagename)
+    wikiutil.send_title(request, request.getText('Inference'),
+                        pagename=pagename)
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -36,26 +36,13 @@ def execute(pagename, request):
     request.write(u'<input type=submit value="Submit!">\n</form>\n')
 
     if infer:
-        if request.cfg.interwikiname:
-            wikiname = quote(request.cfg.interwikiname)
-        else:
-            wikiname = quote(request.cfg.sitename)
-
         pageobj = Page(request, pagename)
         pagedir = pageobj.getPagePath()
 
-        # Encoder from unicode to charset selected in config
-        encoder = getencoder(config.charset)
-        def _e(str):
-            return encoder(str, 'replace')[0]
-
-        n3file = os.path.join(pagedir, '../', 'rdfdata.shelve')
-        pagename = _e(pagename)
-
         rdfdump = wikiutil.importPlugin(request.cfg, 'action',
-                                        'N3Dump', 'rdfdump')
+                                        'N3Dump', 'n3dump')
 
-        n3data = rdfdump(n3file, wikiname, request.getBaseURL() + '/')
+        n3data = rdfdump(request, [pagename])
 
 #         request.write(formatter.preformatted(1))
 #         request.write(n3data + infer)

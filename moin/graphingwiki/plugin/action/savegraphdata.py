@@ -1,82 +1,107 @@
-import re, os, cPickle, shelve
+import re
+import os
+import cPickle
+import shelve
 from codecs import getencoder
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
-from tempfile import mktemp
 
 # MoinMoin imports
 from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
-from MoinMoin.Page import Page
 from MoinMoin.wikiutil import importPlugin
 
-# cpe imports
+# graphlib imports
 from graphingwiki import graph
 
-def shelve_add_link(shelve, (frm, to)):
-    shelve.setdefault(to, set()).add(frm)
+url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
-def shelve_remove_link(shelve, (frm, to)):
-    if not shelve.has_key(to):
-        return
-    if frm in shelve[to]:
-        if len(shelve[to]) == 1:
-            del shelve[to]
-        else:
-            shelve[to].discard(frm)
+# non-local pagenames have either an URL or a namespace
+def local_page(pagename):
+    if url_re.search(pagename) or ':' in pagename:
+        return False
+
+    return True
+
+# Add in-links from current node to local nodes
+def shelve_add_in(shelve, (frm, to)):
+    if local_page(to):                    
+        shelve['in'].setdefault(to, set()).add(frm)
+
+# Add out-links from local nodes to current node
+def shelve_add_out(shelve, (frm, to)):
+    if local_page(frm):
+        shelve['out'].setdefault(frm, set()).add(to)
+
+# Respectively, remove in-links
+def shelve_remove_in(shelve, (frm, to)):
+    if local_page(to) and shelve['in'].has_key(to):
+        if frm in shelve['in'][to]:
+            if len(shelve['in'][to]) == 1:
+                del shelve['in'][to]
+            else:
+                shelve['in'][to].discard(frm)
+
+# Respectively, remove out-links
+def shelve_remove_out(shelve, (frm, to)):
+    if local_page(frm) and shelve['out'].has_key(frm):
+        if to in shelve['out'][frm]:
+            if len(shelve['out'][frm]) == 1:
+                del shelve['out'][frm]
+            else:
+                shelve['out'][frm].discard(to)
+
+## Different encoding/quoting functions
+# Encoder from unicode to charset selected in config
+encoder = getencoder(config.charset)
+def encode(str):
+    return encoder(str, 'replace')[0]
+def wiki_unquote(str):
+    return url_unquote(str).replace('_', ' ')
+
+# Escape quotes in str, remove existing quotes, add outer quotes.
+def quotedstring(str):
+    escq = re.compile(r'(?<!\\)"')
+    str = str.strip("\"'")
+    str = escq.subn('\\"', str)[0]
+    return '"' + str + '"'
+
+# Quote names with namespace/interwiki (for rdf/n3 use)
+def quotens(str):
+    return ':'.join([url_quote(encode(x)) for x in str.split(':')])
 
 def execute(pagename, request, text, pagedir, page):
-
-    ## Different encoding/quoting functions
-    # Encoder from unicode to charset selected in config
-    encoder = getencoder(config.charset)
-    def _e(str):
-        return encoder(str, 'replace')[0]
-    def _u(str):
-        return url_unquote(str).replace('_', ' ')
-    # Escape quotes in str, remove existing quotes, add outer quotes.
-    def _quotestring(str):
-        escq = re.compile(r'(?<!\\)"')
-        str = str.strip("\"'")
-        str = escq.subn('\\"', str)[0]
-        return '"' + str + '"'
-
-    # Quote names with namespace/interwiki (for rdf/n3 use)
-    def _quotens(str):
-        return ':'.join([_e(url_quote(x)) for x in str.split(':')])
-
-    if request.cfg.interwikiname:
-        wikiname = url_quote(_e(request.cfg.interwikiname))
-    else:
-        wikiname = url_quote(_e(request.cfg.sitename))
-
     graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
-    rdfshelve = os.path.join(pagedir, '../', 'rdfdata.shelve')
 
     # lock on graphdata
     graphlock = graphshelve + '.lock'
     os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
 
-    # FIXME: to be removed, in due time
-    # lock on rdfdata
-    rdflock = rdfshelve + '.lock'
-    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', rdflock)
-
     # Open file db for global graph data, creating it if needed
     globaldata = shelve.open(graphshelve, writeback=True, flag='c')
 
-    # FIXME: to be removed, in due time
-    rdfdata = shelve.open(rdfshelve, flag='c')
+    # The global graph data contains all the links, even those that
+    # are not immediately available in the page's graphdata pickle
 
+    # The in-dict contains all the links to a node
+    if not globaldata.has_key('in'):
+        globaldata['in'] = {}
+    # The out-dict contains a node's out-links
+    # that are not shown in the node's pickle
+    if not globaldata.has_key('out'):
+        globaldata['out'] = {}
+
+    quotedname = url_quote(encode(pagename))
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
     # load graphdata if present and not trashed, remove it from index
     if os.path.isfile(gfn) and os.path.getsize(gfn):
         pagegraphfile = file(gfn)
         old_data = cPickle.load(pagegraphfile)
-        for edge in old_data.edges.getall():
-            if not edge[1].startswith('http://'):
-                shelve_remove_link(globaldata, edge)
+        for edge in old_data.edges.getall(parent=quotedname):
+            shelve_remove_in(globaldata, edge)
+        for edge in old_data.edges.getall(child=quotedname):
+            shelve_remove_out(globaldata, edge)
         pagegraphfile.close()
             
     # Overwrite pagegraphfile with the new data
@@ -88,7 +113,6 @@ def execute(pagename, request, text, pagedir, page):
                                  'text_url', "Formatter")
     except:
         # default to plain text
-        import sys
         from MoinMoin.formatter.text_plain import Formatter
 
     urlformatter = Formatter(request)
@@ -125,14 +149,11 @@ def execute(pagename, request, text, pagedir, page):
     pagegraph = graph.Graph()
     pagegraph.charset = config.charset
 
-    # add a node for current page to different data stores
-    quotedname = url_quote(_e(pagename))
+    # add a node for current page
     pagenode = pagegraph.nodes.add(quotedname)
 
-    page_n3 = ''
-
     # Add nicer looking label if necessary
-    unqname = _u(quotedname)
+    unqname = wiki_unquote(quotedname)
     if unqname != quotedname:
         pagenode.label = unqname
 
@@ -155,7 +176,7 @@ def execute(pagename, request, text, pagedir, page):
                     if not hit.startswith('[[MetaData'):
                         continue
                     # decode to target charset, grab comma-separated args
-                    hit = _e(hit[11:-3])
+                    hit = encode(hit[11:-3])
                     args = hit.split(',')
                     # Skip hidden argument
                     if args[-1] == 'hidden':
@@ -168,22 +189,13 @@ def execute(pagename, request, text, pagedir, page):
                         # Keys may be pages -> url-quoted
                         key = url_quote(key.strip())
                         # Values are just quoted strings
-                        val = _quotestring(val.strip())
+                        val = quotedstring(val.strip())
                         vars = getattr(pagenode, key, None)
                         if not vars:
                             setattr(pagenode, key, set([val]))
                         else:
                             vars.add(val)
                             setattr(pagenode, key, vars)
-
-                        # Make n3 entry for the metadata,
-                        # quoted text as literals
-                        # (metadata-macro does literal refs only)
-
-                        page_n3 = page_n3 + \
-                                  wikiname + ":" + quotedname + " " + \
-                                  wikiname + ":Property" + \
-                                  key + " " + val + " .\n"
 
                 # Handling of links
                 if hit is not None and type in types and not inpre:
@@ -193,22 +205,39 @@ def execute(pagename, request, text, pagedir, page):
                     attrs = replace(hit)
                     if len(attrs) == 3:
                         # Name of node for local nodes = pagename
-                        # Is this a hack, or what?
                         if '_' in attrs[1]:
-                            nodename = _e(url_quote(
+                            nodename = url_quote(encode(
                                 attrs[1].replace('_', ' ')))
-                            nodeurl = _e(url_quote(
+                            nodeurl = url_quote(encode(
                                 attrs[0].replace('_', ' ')))
                         else:
-                            nodename = _e(attrs[1])
-                            nodeurl = _e(attrs[0])
+                            nodename = encode(attrs[1])
+                            nodeurl = encode(attrs[0])
                         # To prevent subpagenames from sucking
                         if nodeurl.startswith('/'):
                             nodeurl = './' + nodename
                     elif len(attrs) == 2:
                         # Name of other nodes = url
-                        nodename = _e(attrs[0])
+                        nodename = encode(attrs[0])
                         nodeurl = nodename
+
+                        # Change name for different type of interwikilinks
+                        if type == 'interwiki':
+                            nodename = quotens(hit)
+                        elif type == 'url_bracket':
+                            # Interwikilink in brackets?
+                            iw = re.search(r'\[(?P<iw>.+?)[\] ]',
+                                           hit).group('iw')
+
+                            if iw.split(":")[0] == 'wiki':
+                                iw = iw.split(None, 1)[0]
+                                iw = iw[5:].replace('/', ':', 1)
+                                nodename = quotens(iw)
+                        # Interwikilink turned url?
+                        elif type == 'url':
+                            if hit.split(":")[0] == 'wiki':
+                                iw = hit[5:].replace('/', ':', 1)
+                                nodename = quotens(iw)
                     else:
                         # Image link, or what have you
                         continue
@@ -218,88 +247,35 @@ def execute(pagename, request, text, pagedir, page):
                         n = pagegraph.nodes.add(nodename)
                         n.URL = nodeurl
                         # Nicer looking labels for nodes
-                        unqname = _u(nodename)
+                        unqname = wiki_unquote(nodename)
                         if unqname != nodename:
                             n.label = unqname
 
                     edge = [quotedname, nodename]
 
-                    # Non-local/local links for n3 output
-                    # so that namespaces / interwikilinks would rock
-                    if len(attrs) == 2:
-                        linkname = ''
-                        
-                        if type == 'interwiki':
-                            linkname = _quotens(hit)
-                        elif type == 'url_bracket':
-                            # Interwikilink in brackets?
-                            iw = re.search(r'\[(?P<iw>.+?)[\] ]',
-                                           hit).group('iw')
-
-                            if iw.split(":")[0] == 'wiki':
-                                iw = iw.split(None, 1)[0]
-                                iw = iw[5:].replace('/', ':', 1)
-                                linkname = _quotens(iw)
-                        # Interwikilink turned url?
-                        elif type == 'url':
-                            if hit.split(":")[0] == 'wiki':
-                                iw = hit[5:].replace('/', ':', 1)
-                                linkname = _quotens(iw)
-
-                        # Normal url
-                        if not linkname:
-                            linkname = '<' + nodename + '>'
-
-                        n3_link = [wikiname + ":" + quotedname,
-                                   linkname]
-                    else:
-                        n3_link = [wikiname + ":" + quotedname,
-                                   wikiname + ":" + nodename]
-
-                    # Augmented links, eg. [:PaGe:Ooh: PaGe]
-                    augdata = [x.strip() for x in _e(attrs[-1]).split(': ')]
+                    # augmented links, eg. [:PaGe:Ooh: PaGe]
+                    augdata = [x.strip() for x in
+                               encode(attrs[-1]).split(': ')]
                     
                     # in-links
                     if len(augdata) > 1 and augdata[0].endswith('From'):
                         augdata[0] = augdata[0][:-4]
                         edge.reverse()
-                        n3_link.reverse()
-
-                    # No need to quote if of basic type
-                    n3_linktype = wikiname + ":Property" + _e(type)
+                        shelve_add_out(globaldata, edge)
 
                     # Add edge if not already added
                     e = pagegraph.edges.get(*edge)
                     if not e:
                         e = pagegraph.edges.add(*edge)
                     if len(augdata) > 1:
-                        # quote all link types
-                        e.linktype = url_quote(augdata[0])
                         if ':' in augdata[0]:
                             # links with namespace!
-                            n3_linktype = _quotens(augdata[0])
+                            e.linktype = quotens(augdata[0])
                         else:
-                            # links with link type from this wiki
-                            # quoted because may be a page
-                            n3_linktype = wikiname + ":Property" + \
-                                          url_quote(augdata[0])
-                    # Debug for urlformatter
-                    # e.type = _e(type)
+                            # quote all link types
+                            e.linktype = url_quote(augdata[0])
 
-                    # FIXME: sux, add namespaces everywhere
-                    if not edge[1].startswith('http://'):
-                        shelve_add_link(globaldata, edge)
-                    # print "inlinks to", edge[1], "from", edge[0]
-
-                    # n3 data for link
-                    # (links do property refs only)
-                    link = n3_link[0] + " " + \
-                           n3_linktype + " " + \
-                           n3_link[1] + " .\n"
-                    
-                    # Don't add duplicate links
-                    if not link in page_n3:
-                        page_n3 = page_n3 + link
+                    shelve_add_in(globaldata, edge)
 
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
@@ -307,7 +283,3 @@ def execute(pagename, request, text, pagedir, page):
     # Remove locks, close shelves
     globaldata.close()
     os.unlink(graphlock)
-
-    rdfdata[quotedname] = page_n3
-    rdfdata.close()
-    os.unlink(rdflock)

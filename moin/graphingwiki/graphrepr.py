@@ -211,6 +211,7 @@ class Graphviz:
             self._read(string=string)
         elif name:
             if strict in ["", "strict"] and type in ["graph", "digraph"]:
+                self.name = name
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
             else:
                 raise "Bad args: " + str(type) + str(value)
@@ -440,7 +441,7 @@ class GraphRepr:
         else:
             addednodes = dummy.nodes.added
 
-        for node,in addednodes:
+        for node, in addednodes:
             self.graphviz.nodes.add(str(node))
             # print "g.nodes.add('" + str(node[0]) + "')"
         for edge in dummy.edges.added:
@@ -554,12 +555,14 @@ class GraphRepr:
             self._communicate(msg)
 
         for node in dummy.nodes.unset:
-            label = self._graphvizattrs({}.fromkeys(dummy.nodes.unset[node], ""))
+            label = self._graphvizattrs(
+                {}.fromkeys(dummy.nodes.unset[node], ""))
             msg = "modify node " + name + \
                   str(node[0]) + " " + label + "\n"
             self._communicate(msg)
         for edge in dummy.edges.unset:
-            label = self._graphvizattrs({}.fromkeys(dummy.edges.unset[edge], ""))
+            label = self._graphvizattrs(
+                {}.fromkeys(dummy.edges.unset[edge], ""))
             msg = "modify edge " + name + \
                   str(id(self.graph.edges.get(*edge))) + " " +\
                   label + "\n"
@@ -743,12 +746,12 @@ if __name__ == '__main__':
 #    g.commit()
 
     print "megacommit:"
-    for i in range(10,50):
+    for i in range(10, 50):
         g.nodes.add(i)
 #    g.commit()
 
     prev = 50
-    for i in range(50,250):
+    for i in range(50, 250):
         g.nodes.add(i)
         g.edges.add(i, prev)
         prev = i
