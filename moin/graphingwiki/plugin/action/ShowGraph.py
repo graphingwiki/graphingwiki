@@ -346,6 +346,7 @@ class GraphShower(object):
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
+            self.addToAllCats(obj.node)
             if self.orderby:
                 value = getattr(obj, self.orderby, None)
                 if value:
