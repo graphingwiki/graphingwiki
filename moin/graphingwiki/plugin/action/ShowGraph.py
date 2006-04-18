@@ -268,7 +268,7 @@ class GraphShower(object):
                 if not (newpage.endswith('Template') or
                     newpage.startswith('Category')):
                     graphdata = self.addToStartPages(graphdata, newpage)
-                    self.addToAllCats(nodename)
+                    self.addToAllCats(newpage)
             globaldata.close()
 
         return graphdata
