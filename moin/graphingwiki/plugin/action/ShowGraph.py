@@ -121,6 +121,7 @@ class GraphShower(object):
         self.available_formats = ['png', 'svg', 'dot']
         self.format = 'png'
         self.traverse = self.traverseParentChild
+        self.limit = 0
 
         self.pageobj = Page(request, pagename)
         self.isstandard = False
@@ -197,6 +198,10 @@ class GraphShower(object):
             otherpages = ''.join([x for x in request.form['otherpages']])
             self.otherpages = [url_quote(encode(x.strip()))
                                for x in otherpages.split(',')]
+
+        # Limit
+        if request.form.has_key('limit'):
+            self.limit = 1
 
         # Orderings
         if request.form.has_key('orderby'):
@@ -295,6 +300,11 @@ class GraphShower(object):
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
+            # If traverse limited to startpages
+            if self.limit:
+                if not obj.node in self.startpages:
+                    continue
+
             # If node already added, nothing to do
             if outgraph.nodes.get(obj.node):
                 continue
@@ -347,6 +357,11 @@ class GraphShower(object):
                     self.unordernodes.add(obj.node)
 
         # Add edge
+        if self.limit:
+            if not (outgraph.nodes.get(obj1.node) and
+                    outgraph.nodes.get(obj2.node)):
+                return outgraph, True
+
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
 
@@ -597,6 +612,11 @@ class GraphShower(object):
         request.write(u"Include other pages:<br>\n")
         request.write(u'<input type="text" name="otherpages" ' +
                       u'size=20 value="%s"><br>\n' % otherpages)
+
+        # limit
+        request.write(u'<input type="checkbox" name="limit" ' +
+                      u'value="1"%sLimit to these pages<br>\n' %
+                      (self.limit and ' checked>' or '>'))
 
         # colorby
         request.write(u"<td>\nColor by:<br>\n")
