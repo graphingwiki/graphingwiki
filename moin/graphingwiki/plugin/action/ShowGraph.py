@@ -74,6 +74,19 @@ def get_selfname(request):
 def get_wikiurl(request):
     return request.getBaseURL() + '/'
 
+def get_shelve(request):
+    datapath = Page(request, u'', is_rootpage=1).getPagePath()
+    graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+
+    # Make sure nobody is writing to graphshelve, as concurrent
+    # reading and writing can result in erroneous data
+    graphlock = graphshelve + '.lock'
+    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
+    os.unlink(graphlock)
+
+    globaldata = shelve.open(graphshelve, 'r')
+    return globaldata
+
 def hashcolor(string):
     if string in used_colorlabels:
         return used_colors[used_colorlabels.index(string)]
@@ -107,12 +120,12 @@ class GraphShower(object):
         self.graphengine = graphengine
         self.available_formats = ['png', 'svg', 'dot']
         self.format = 'png'
+        self.traverse = self.traverseParentChild
 
         self.pageobj = Page(request, pagename)
         self.isstandard = False
         self.interwikilist = []
         
-        self.allcategories = []
         self.categories = []
         self.otherpages = []
         self.startpages = []
@@ -121,6 +134,7 @@ class GraphShower(object):
         self.orderby = ''
         self.colorby = ''
         
+        self.allcategories = set()
         self.filteredges = set()
         self.filterorder = set()
         self.filtercolor = set()
@@ -151,7 +165,7 @@ class GraphShower(object):
         request = self.request
 
         # Get categories for current page, for the category form
-        self.allcategories = self.pageobj.getCategories(self.request)
+        self.allcategories.update(self.pageobj.getCategories(self.request))
         
         # Bail out flag on if underlay page etc.
         # FIXME: a bit hack, make consistent with other no data cases?
@@ -217,6 +231,12 @@ class GraphShower(object):
 
         return graphdata
 
+    def addToAllCats(self, nodename):
+        opageobj = Page(self.request,
+                        unicode(url_unquote(nodename),
+                                config.charset))
+        self.allcategories.update(opageobj.getCategories(self.request))
+
     def buildGraphData(self):
         graphdata = Graph()
 
@@ -226,21 +246,19 @@ class GraphShower(object):
 
         for nodename in self.otherpages:
             graphdata = self.addToStartPages(graphdata, nodename)
+            self.addToAllCats(nodename)
 
+        # Do not add self to graph if self is category or
+        # template page and we're looking at categories
         if not self.categories:
             graphdata = self.addToStartPages(graphdata, pagename)
-        
+        elif not (pagename.startswith('Category') or
+                  pagename.endswith('Template')):
+            graphdata = self.addToStartPages(graphdata, pagename)
+
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-            graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
-
-            # Make sure nobody is writing to graphshelve, as concurrent
-            # reading and writing can result in erroneous data
-            graphlock = graphshelve + '.lock'
-            os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
-            os.unlink(graphlock)
-
-            globaldata = shelve.open(graphshelve, 'r')
+            globaldata = get_shelve(self.request)
             if not globaldata['in'].has_key(cat):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -250,6 +268,7 @@ class GraphShower(object):
                 if not (newpage.endswith('Template') or
                     newpage.startswith('Category')):
                     graphdata = self.addToStartPages(graphdata, newpage)
+                    self.addToAllCats(nodename)
             globaldata.close()
 
         return graphdata
@@ -269,11 +288,10 @@ class GraphShower(object):
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
-
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
         if getattr(olde, 'linktype', '_notype') in self.filteredges:
-            return outgraph
+            return outgraph, False
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
@@ -290,7 +308,7 @@ class GraphShower(object):
 
                 # Filter notypes away if asked
                 if not hasattr(obj, doby) and '_notype' in filt:
-                    return outgraph
+                    return outgraph, False
                 elif not hasattr(obj, doby):
                     continue
 
@@ -302,7 +320,7 @@ class GraphShower(object):
                         if left:
                             setattr(obj, doby, left)
                         else:
-                            return outgraph
+                            return outgraph, False
 
                 # Filtering by single values
                 target = getattr(obj, doby)
@@ -312,7 +330,7 @@ class GraphShower(object):
                     if left:
                         setattr(obj, doby, left)
                     else:
-                        return outgraph
+                        return outgraph, False
 
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(nonguaranteeds_p(obj))
@@ -332,7 +350,7 @@ class GraphShower(object):
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
 
-        return outgraph
+        return outgraph, True
 
     def traverseParentChild(self, addFunc, graphdata, outgraph, nodes):
         # addFunc is the function to be called for each graph addition
@@ -342,13 +360,13 @@ class GraphShower(object):
         pattern = Sequence(Fixed(TailNode()),
                            Fixed(TailNode()))
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
-            outgraph = addFunc(graphdata, outgraph, obj2, obj1)
+            outgraph, ret = addFunc(graphdata, outgraph, obj2, obj1)
 
         # This traverses 1 to children
         pattern = Sequence(Fixed(HeadNode()),
                            Fixed(HeadNode()))
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
-            outgraph = addFunc(graphdata, outgraph, obj1, obj2)
+            outgraph, ret = addFunc(graphdata, outgraph, obj1, obj2)
 
         return outgraph
 
@@ -785,6 +803,18 @@ class GraphShower(object):
 
         return formatter
 
+    def doTraverse(self, graphdata, outgraph, nodes):
+        for n in range(1, self.depth+1):
+            outgraph = self.traverse(self.addToGraphWithFilter,
+                                     graphdata, outgraph, nodes)
+            newnodes = set([x for x, in outgraph.nodes.getall()])
+            # continue only if new pages were found
+            if not newnodes.difference(nodes):
+                break
+            nodes.update(newnodes)
+
+        return outgraph
+
     def execute(self):
         self.formargs()
 
@@ -805,15 +835,7 @@ class GraphShower(object):
         outgraph = self.buildOutGraph()
 
         nodes = self.initTraverse()
-
-        for n in range(1, self.depth+1):
-            outgraph = self.traverseParentChild(self.addToGraphWithFilter,
-                                                graphdata, outgraph, nodes)
-            newnodes = set([x for x, in outgraph.nodes.getall()])
-            # continue only if new pages were found
-            if not newnodes.difference(nodes):
-                break
-            nodes.update(newnodes)
+        outgraph = self.doTraverse(graphdata, outgraph, nodes)
 
         # Stylistic stuff: Color nodes, edges, bold startpages
         if self.colorby:

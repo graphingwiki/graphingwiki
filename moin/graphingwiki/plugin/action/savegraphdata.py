@@ -205,14 +205,8 @@ def execute(pagename, request, text, pagedir, page):
                     attrs = replace(hit)
                     if len(attrs) == 3:
                         # Name of node for local nodes = pagename
-                        if '_' in attrs[1]:
-                            nodename = url_quote(encode(
-                                attrs[1].replace('_', ' ')))
-                            nodeurl = url_quote(encode(
-                                attrs[0].replace('_', ' ')))
-                        else:
-                            nodename = encode(attrs[1])
-                            nodeurl = encode(attrs[0])
+                        nodename = url_quote(encode(attrs[1]))
+                        nodeurl = encode(attrs[0])
                         # To prevent subpagenames from sucking
                         if nodeurl.startswith('/'):
                             nodeurl = './' + nodename

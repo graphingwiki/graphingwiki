@@ -1,73 +1,13 @@
-import os
-import cPickle
 import shelve
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
 from MoinMoin import config
-from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 
 from savegraphdata import encode
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
-
-def load_graph(request, pagename):
-    if not request.user.may.read(pagename):
-        return None
-
-    pageobj = Page(request, pagename)
-    pagedir = pageobj.getPagePath()
-    afn = os.path.join(pagedir, 'graphdata.pickle')
-    if os.path.exists(afn):
-        af = file(afn)
-        adata = cPickle.load(af)
-        return adata
-    return None
-
-def add_global_links(request, pagename, graph):
-    inlist, outlist = set([]), set([])
-
-    datapath = Page(request, u'', is_rootpage=1).getPagePath()
-    graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
-    # Make sure nobody is writing to graphshelve, as concurrent
-    # reading and writing can result in erroneous data
-    graphlock = graphshelve + '.lock'
-    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
-    os.unlink(graphlock)
-
-    globaldata = shelve.open(graphshelve, 'r')
-    if globaldata['in'].has_key(pagename):
-        inlist = globaldata['in'][pagename]
-    if globaldata['out'].has_key(pagename):
-        outlist = globaldata['out'][pagename]
-    globaldata.close()
-
-    for page in inlist:
-        newdata = load_graph(request,
-                             unicode(url_unquote(page), config.charset))
-        if not newdata:
-            continue
-        for parent, child in newdata.edges.getall(child=pagename):
-            newnode = graph.nodes.get(parent)
-            if not newnode:
-                newnode = graph.nodes.add(parent)
-            newnode.update(newdata.nodes.get(parent))
-            newedge = graph.edges.add(parent, child)
-            newedge.update(newdata.edges.get(parent, child))
-    for page in outlist:
-        newdata = load_graph(request,
-                             unicode(url_unquote(page), config.charset))
-        if not newdata:
-            continue
-        for parent, child in newdata.edges.getall(parent=pagename):
-            newnode = graph.nodes.get(child)
-            if not newnode:
-                newnode = graph.nodes.add(child)
-            newnode.update(newdata.nodes.get(child))
-            newedge = graph.edges.add(parent, child)
-            newedge.update(newdata.edges.get(parent, child))
-
-    return graph
+from ShowPaths import load_graph, add_global_links
 
 def graph_to_n3(pagegraph, pagename, selfname):
     out = ''

@@ -6,6 +6,8 @@
     @license: GNU GPL, see COPYING for details.
 """
 
+from urllib import unquote as url_unquote
+
 from MoinMoin.formatter.base import FormatterBase
 from MoinMoin import wikiutil, i18n, config
 from MoinMoin.Page import Page
@@ -76,6 +78,10 @@ class Formatter(FormatterBase):
                 kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
             esc_url = wikiutil.mapURL(self.request, url)
             if kw.has_key('local'):
+                # Anchor links are unicode
+                if not isinstance(esc_url, unicode):
+                    esc_url = unicode(url_unquote(esc_url),
+                                      config.charset).replace(u'_', ' ')
                 return [esc_url, kw['local']]
             else:
                 return [esc_url]
@@ -97,7 +103,7 @@ class Formatter(FormatterBase):
         if page is None:
             page = Page(self.request, pagename, formatter=self);
 
-        kw['local'] = wikiutil.quoteWikinameURL(pagename)
+        kw['local'] = pagename
 
         if self.request.user.show_nonexist_qm and not page.exists():
             return page.link_to(self.request, on=1, **kw) + "?"
@@ -117,7 +123,7 @@ class Formatter(FormatterBase):
                 # Anchors removed here
                 wikitail, kw['anchor-removed'] = wikitail.split('#', 1)
             wikitail = urllib.unquote(wikitail)
-            kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
+            kw['local'] = self.page.page_name
             return apply(self.pagelink, (on, wikiutil.AbsPageName(self.request,
 self.page.page_name, wikitail)), kw)
         else: # return InterWiki hyperlink
