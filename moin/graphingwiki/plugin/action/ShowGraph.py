@@ -122,6 +122,7 @@ class GraphShower(object):
         self.format = 'png'
         self.traverse = self.traverseParentChild
         self.limit = 0
+        self.hidedges = 0
 
         self.pageobj = Page(request, pagename)
         self.isstandard = False
@@ -202,6 +203,10 @@ class GraphShower(object):
         # Limit
         if request.form.has_key('limit'):
             self.limit = 1
+
+        # Hide edges
+        if request.form.has_key('hidedges'):
+            self.hidedges = 1
 
         # Orderings
         if request.form.has_key('orderby'):
@@ -346,7 +351,10 @@ class GraphShower(object):
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
+            
+            # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)
+
             if self.orderby:
                 value = getattr(obj, self.orderby, None)
                 if value:
@@ -365,6 +373,8 @@ class GraphShower(object):
 
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
+        if self.hidedges:
+            e.style = "invis"
 
         return outgraph, True
 
@@ -661,6 +671,12 @@ class GraphShower(object):
                       ("_notype",
                        "_notype" in self. filteredges and " checked>" or ">",
                        "No type"))
+
+        # hide edges
+        request.write(u'<br>Hide edges: ' +
+                      u'<input type="checkbox" name="hidedges" ' +
+                      u'value="1"%s\n' %
+                      (self.hidedges and ' checked>' or '>'))
 
         # filter nodes (related to colorby)
         if self.colorby:
