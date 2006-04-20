@@ -555,18 +555,19 @@ class GraphShower(object):
 
         # Add nodes, edges to legend
         # Edges
-        typenr = 0
-        legendedges = list(self.coloredges)
-        legendedges.sort()
-        for linktype in legendedges:
-            ln1 = "linktype: " + str(typenr)
-            typenr = typenr + 1
-            ln2 = "linktype: " + str(typenr)
-            legend.nodes.add(ln1, style='invis', label='')
-            legend.nodes.add(ln2, style='invis', label='')
-            legend.edges.add((ln1, ln2), color=hashcolor(linktype),
-                             label=url_unquote(linktype),
-                             URL=self.getURLns(linktype))
+        if not self.hidedges:
+            typenr = 0
+            legendedges = list(self.coloredges)
+            legendedges.sort()
+            for linktype in legendedges:
+                ln1 = "linktype: " + str(typenr)
+                typenr = typenr + 1
+                ln2 = "linktype: " + str(typenr)
+                legend.nodes.add(ln1, style='invis', label='')
+                legend.nodes.add(ln2, style='invis', label='')
+                legend.edges.add((ln1, ln2), color=hashcolor(linktype),
+                                 label=url_unquote(linktype),
+                                 URL=self.getURLns(linktype))
 
         # Nodes
         prev = ''
