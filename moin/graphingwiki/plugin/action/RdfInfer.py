@@ -1,5 +1,6 @@
-from codecs import getencoder
-from urllib import quote
+from urllib import quote as url_quote
+from savegraphdata import encode
+
 import os
 
 from MoinMoin import config
@@ -8,8 +9,27 @@ from MoinMoin.formatter.text_html import Formatter
 from MoinMoin.Page import Page
 
 from euler import run_called as run_inference
+from MoinMoin.util import MoinMoinNoFooter
+from unifier import Unifier
 
 def execute(pagename, request):
+    request.http_headers(["Content-type: text/plain;charset=%s" %
+                          config.charset])
+
+    infer = Unifier(request)
+    print infer.solve_term(infer.instantiate_terms(
+        ['FrontPage', 'Propertyyear', '?x']))
+
+    print "Trying out the rest"
+    
+    print infer.solve_term(infer.instantiate_terms(
+        ['?y', 'Propertyyear', '?z']))
+
+#['FrontPage', 'Propertyyear', '1234']
+
+    raise MoinMoinNoFooter
+
+def execute_old(pagename, request):
     request.http_headers()
 
     # This action generate data using the user language

@@ -9,22 +9,41 @@ from savegraphdata import encode
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 from ShowPaths import load_graph, add_global_links
 
-def graph_to_n3(pagegraph, pagename, selfname):
+def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''
     nodegraph = pagegraph.nodes.get(pagename)
 
     for prop in nonguaranteeds_p(nodegraph):
         for value in getattr(nodegraph, prop):
-            out = out + wikins_triplet(selfname,
-                                       (pagename, prop, value)) + '.\n'
+            out = out + formatfunc(selfname,
+                                   (pagename, prop, value))
 
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
-        out = out + wikins_triplet(selfname,
-                                   (edge[0], linktype, edge[1])) + '.\n'
+        out = out + formatfunc(selfname,
+                               (edge[0], linktype, edge[1]))
 
     return out
+
+def graph_to_yield(pagegraph, pagename, formatfunc):
+    if not pagegraph:
+        return
+
+    nodegraph = pagegraph.nodes.get(pagename)
+
+    for prop in nonguaranteeds_p(nodegraph):
+        for value in getattr(nodegraph, prop):
+            for data in formatfunc((pagename, prop, value)):
+                yield data
+            
+
+    for edge in pagegraph.edges.getall():
+        edgegraph = pagegraph.edges.get(*edge)
+        linktype = getattr(edgegraph, 'linktype', 'Link')
+        for data in formatfunc((edge[0], linktype, edge[1])):
+            yield data
+        
 
 def get_page_n3(request, pagename):
     pagegraph = load_graph(request, pagename)
@@ -32,13 +51,38 @@ def get_page_n3(request, pagename):
     pagegraph = add_global_links(request, pagename, pagegraph)
     selfname = get_selfname(request)
 
-    return graph_to_n3(pagegraph, pagename, selfname)
+    return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)
 
-def wikins_triplet(selfname, triplet):
+def get_page_fact(request, pagename):
+    pagename = unicode(url_unquote(pagename), config.charset)
+    
+    pagegraph = load_graph(request, pagename)
+    pagename = url_quote(encode(pagename))
+    pagegraph = add_global_links(request, pagename, pagegraph)
+
+    for data in graph_to_yield(pagegraph, pagename, wikins_fact):
+        yield data
+
+def get_all_facts(request):
+    for pagename in request.rootpage.getPageList():
+        pagegraph = load_graph(request, pagename)
+        pagename = url_quote(encode(pagename))
+        pagegraph = add_global_links(request, pagename, pagegraph)
+
+        for data in graph_to_yield(pagegraph, pagename, wikins_fact):
+            yield data
+
+def wikins_fact(triplet):
+    out = []
+    for prop, cond in zip(triplet, [True, False, True]):
+        out.append(wikins_property("", prop, cond).strip('"'))
+    yield out
+
+def wikins_n3triplet(selfname, triplet):
     out = ''
     for prop, cond in zip(triplet, [True, False, True]):
-        out = out + wikins_property(selfname, prop, cond) + ' '
-    return out
+        out = out + wikins_property(selfname + ":", prop, cond) + ' '
+    return out + '.\n'
 
 def wikins_property(selfname, property, page):
     # Literal
@@ -49,9 +93,9 @@ def wikins_property(selfname, property, page):
         return property
     # Self
     if page:
-        return selfname + ':' + property
+        return selfname + property
     else:
-        return selfname + ':Property' + property
+        return selfname + 'Property' + property
 
 def n3dump(request, pages):
     # Default namespace definitons, needed?

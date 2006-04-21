@@ -627,7 +627,7 @@ class GraphShower(object):
 
         # limit
         request.write(u'<input type="checkbox" name="limit" ' +
-                      u'value="1"%sLimit to these pages<br>\n' %
+                      u'value="1"%sShow links between these pages only<br>\n' %
                       (self.limit and ' checked>' or '>'))
 
         # colorby

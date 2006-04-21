@@ -37,8 +37,8 @@ def unify(term1, term2, env = None):
     if env is None:
         env = dict()
 
-    # print "unify " + str(term1) + " with val " + \
-    #       str(term2) + " in env " + str(env)
+    print "unify " + str(term1) + " with val " + \
+          str(term2) + " in env " + str(env)
 
     # If all has failed
     if env is False:
