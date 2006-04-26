@@ -17,13 +17,15 @@ def execute(pagename, request):
                           config.charset])
 
     infer = Unifier(request)
-    print infer.solve_term(infer.instantiate_terms(
-        ['FrontPage', 'Propertyyear', '?x']))
+    for x in infer.solve_term(infer.instantiate_terms(
+        ['FrontPage', 'Propertyyear', '?x'])):
+        print x
 
     print "Trying out the rest"
     
-    print infer.solve_term(infer.instantiate_terms(
-        ['?y', 'Propertyyear', '?z']))
+    for x in infer.solve_term(infer.instantiate_terms(
+        ['?y', 'Propertyyear', '?z'])):
+        print x
 
 #['FrontPage', 'Propertyyear', '1234']
 

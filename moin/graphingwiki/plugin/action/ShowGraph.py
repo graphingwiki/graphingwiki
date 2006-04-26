@@ -18,7 +18,6 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.parser.wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.graph import Graph
@@ -785,6 +784,14 @@ class GraphShower(object):
         gvdata = self.getLayoutInFormat(gr.graphviz, 'dot')
 
         self.request.write(gvdata)
+
+        legend = None
+        if self.coloredges or self.colornodes:
+            legend = self.makeLegend()
+
+        if legend:
+            img = self.getLayoutInFormat(legend, 'dot')
+            self.request.write(img)
 
     def sendLegend(self):
         legend = None

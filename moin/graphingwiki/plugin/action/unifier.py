@@ -1,4 +1,3 @@
-
 from copy import copy, deepcopy
 
 from N3Dump import get_page_fact, get_all_facts
@@ -23,6 +22,7 @@ class Unifier(object):
             db = get_all_facts(self.request)
         else:
             db = get_page_fact(self.request, goal[0])
+            
         for x in db:
             yield [x]
 
@@ -86,62 +86,47 @@ class Unifier(object):
         else:
             return exp
 
-    def prove_term_with_rule(self, goal, rule, env, sc, fa):
+    def prove_term_with_rule(self, goal, rule, env):
         # re-instantiate rule
         rule = deepcopy(rule)
         head = rule[0]
         subgoals = rule[1:]
+        
         # try to bind variable into new environment
         env = copy(env)
         newenv = self.unify(head, goal, env)
-        # Backtrack if needed
+
         if newenv is False:
-            return fa()
-        else:
-            # try to prove rest in a new environment
-            k = copy(env)
-            k.update(newenv)
-            return self.prove_terms(subgoals, k, sc, fa)
+            return
 
-    def prove_terms(self, goals, env, sc, fa):
+        # try to prove rest in a new environment
+        env = copy(env)
+        env.update(newenv)
+        for env in self.prove_terms(subgoals, env):
+            yield env
+
+    def prove_terms(self, goals, env):
         # If successful i.e. terms to be solved empty, call success
-        if goals == []:
-            return sc(env, fa)
-        else:
-            # prove one, if successful, carry on with rest
-            def new_success(env, fa):
-                return self.prove_terms(goals[1:], env, sc, fa)
-            return self.prove_term(goals[0], env, new_success, fa)
+        # and end the misery
+        if not goals:
+            yield env
+            return
+        
+        for env in self.prove_term(goals[0], env):
+            for newenv in self.prove_terms(goals[1:], env):
+                yield newenv
 
-    def prove_term(self, goal, env, sc, fa):
-        db = self.get_facts(goal)
-
+    def prove_term(self, goal, env):
         goal = self.substitute(goal, env)
-        def prove_part(db):
-            try:
-                data = db.next()
-            except StopIteration:
-                return fa()
 
-            # new failure - try to prove rest
-            def new_failure():
-                return prove_part(db)
-            return self.prove_term_with_rule(goal, data, env, sc, new_failure)
-        return prove_part(db)
+        for data in self.get_facts(goal):
+            for newenv in self.prove_term_with_rule(goal, data, env):
+                yield newenv
 
     def solve_term(self, goal):
-        def success(env, fa):
-            print "Success ", self.substitute(goal, env), env
-            # We've had results, no more
-            if fa is failure:
-                print "No more results"
-            # try to get more results with the failure function
-            else:
-                return fa()
-        # Default failure - no results
-        def failure():
-            return "Out of results"
-        return self.prove_term(goal, {}, success, failure)
+        for env in self.prove_term(goal, {}):
+            result = self.substitute(goal, env)
+            yield result, env
 
     # Map query strings to variables
     def instantiate_terms(self, inp):
@@ -166,8 +151,9 @@ class Unifier(object):
             database.append(inp[1:])
             print "Saved " + str(inp[1]) + "..."
         else:
-            print solve_term(inp)
-
+            for result, env in solve_term(inp):
+                print "Success ", result, env
+            print "Out of results"
         repl()
 
 if __name__ == '__main__':

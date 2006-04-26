@@ -67,6 +67,8 @@ def get_all_facts(request):
     for pagename in request.rootpage.getPageList():
         pagegraph = load_graph(request, pagename)
         pagename = url_quote(encode(pagename))
+        if not pagegraph:
+            continue
         pagegraph = add_global_links(request, pagename, pagegraph)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
