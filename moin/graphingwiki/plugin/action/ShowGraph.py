@@ -7,6 +7,7 @@
 """
     
 import os
+import shelve
 from tempfile import mkstemp
 from random import choice, seed
 from base64 import b64encode
@@ -19,6 +20,9 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.util import MoinMoinNoFooter
+
+from MoinMoin.request import Clock
+cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz
@@ -72,19 +76,6 @@ def get_selfname(request):
 
 def get_wikiurl(request):
     return request.getBaseURL() + '/'
-
-def get_shelve(request):
-    datapath = Page(request, u'', is_rootpage=1).getPagePath()
-    graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
-
-    # Make sure nobody is writing to graphshelve, as concurrent
-    # reading and writing can result in erroneous data
-    graphlock = graphshelve + '.lock'
-    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
-    os.unlink(graphlock)
-
-    globaldata = shelve.open(graphshelve, 'r')
-    return globaldata
 
 def hashcolor(string):
     if string in used_colorlabels:
@@ -278,7 +269,6 @@ class GraphShower(object):
                     newpage.startswith('Category')):
                     graphdata = self.addToStartPages(graphdata, newpage)
                     self.addToAllCats(newpage)
-            globaldata.close()
 
         return graphdata
 
@@ -381,17 +371,21 @@ class GraphShower(object):
         # addFunc is the function to be called for each graph addition
         # graphdata is the 'in' graph extended and traversed
 
+        cl.start('traverseparent')
         # This traverses 1 to parents
         pattern = Sequence(Fixed(TailNode()),
                            Fixed(TailNode()))
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
             outgraph, ret = addFunc(graphdata, outgraph, obj2, obj1)
+        cl.stop('traverseparent')
 
+        cl.start('traversechild')
         # This traverses 1 to children
         pattern = Sequence(Fixed(HeadNode()),
                            Fixed(HeadNode()))
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
             outgraph, ret = addFunc(graphdata, outgraph, obj1, obj2)
+        cl.stop('traversechild')
 
         return outgraph
 
@@ -860,7 +854,8 @@ class GraphShower(object):
 
         return outgraph
 
-    def execute(self):
+    def execute(self):        
+        cl.start('execute')
         self.formargs()
 
         formatter = self.sendHeaders()
@@ -875,13 +870,18 @@ class GraphShower(object):
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
 
+        cl.start('build')
         # First, let's get do the desired traversal, get outgraph
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
+        cl.stop('build')
 
+        cl.start('traverse')
         nodes = self.initTraverse()
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
+        cl.stop('traverse')
 
+        cl.start('layout')
         # Stylistic stuff: Color nodes, edges, bold startpages
         if self.colorby:
             outgraph = self.colorNodes(outgraph)
@@ -893,7 +893,9 @@ class GraphShower(object):
 
         # Do the layout
         gr = self.generateLayout(outgraph)
+        cl.stop('layout')
 
+        cl.start('format')
         if self.format == 'svg':
             self.sendForm()
             self.sendGraph(gr)
@@ -904,6 +906,10 @@ class GraphShower(object):
             self.sendForm()
             self.sendGraph(gr, True)
             self.sendLegend()
+        cl.stop('format')
+
+        cl.stop('execute')
+        print cl.dump()
 
         self.sendFooter(formatter)
 

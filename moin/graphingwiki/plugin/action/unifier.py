@@ -1,5 +1,7 @@
 from copy import copy, deepcopy
 
+from graphingwiki.patterns import get_shelve
+
 from N3Dump import get_page_fact, get_all_facts
 
 class Term(object):
@@ -16,12 +18,13 @@ class Unifier(object):
     def __init__(self, request):
         self.request = request
         self.loaded = set()
+        self.globaldata = get_shelve(request)
 
     def get_facts(self, goal):
         if isinstance(goal[0], Term):
-            db = get_all_facts(self.request)
+            db = get_all_facts(self.request, self.globaldata)
         else:
-            db = get_page_fact(self.request, goal[0])
+            db = get_page_fact(self.request, goal[0], self.globaldata)
             
         for x in db:
             yield [x]

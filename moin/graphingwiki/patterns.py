@@ -1,8 +1,28 @@
-import cPickle, os, shelve
+import cPickle
+import os
+import shelve
 from urllib import unquote as url_unquote
 
 from MoinMoin.Page import Page
 from MoinMoin import config
+
+def get_shelve(request):
+    datapath = Page(request, u'', is_rootpage=1).getPagePath()
+    graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+
+    # Make sure nobody is writing to graphshelve, as concurrent
+    # reading and writing can result in erroneous data
+    graphlock = graphshelve + '.lock'
+    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
+    os.unlink(graphlock)
+
+    temp_shelve = shelve.open(graphshelve, 'r')
+    globaldata =  {}
+    globaldata['in'] = temp_shelve['in']
+    globaldata['out'] = temp_shelve['out']
+    temp_shelve.close()
+
+    return globaldata
 
 class LazyItem(object):
     def __init__(self):
@@ -185,6 +205,8 @@ class WikiNode(object):
     request = None
     # url addition from action
     urladd = ""
+    # globaldata
+    globaldata = None
 
     def __init__(self, request=None, urladd=None, startpages=None):
         if request is not None: 
@@ -193,6 +215,8 @@ class WikiNode(object):
             WikiNode.urladd = urladd
         if startpages is not None:
             WikiNode.startpages = startpages
+        if WikiNode.request and not WikiNode.globaldata:
+            WikiNode.globaldata = get_shelve(WikiNode.request)
 
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
@@ -218,13 +242,10 @@ class WikiNode(object):
 
     def _addinlinks(self, graph, dst):
         # Get datapath from root page, load shelve from there
-        datapath = Page(WikiNode.request, u'', is_rootpage=1).getPagePath()
-        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
-        globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata['in'].has_key(dst):
+        if not WikiNode.globaldata['in'].has_key(dst):
             # should not happen if page has graphdata
             return
-        for src in globaldata['in'][dst]:
+        for src in WikiNode.globaldata['in'][dst]:
             # filter out category, template pages
             if src.startswith('Category') or src.endswith('Template'):
                 continue
@@ -240,14 +261,10 @@ class WikiNode(object):
                 graph.edges.add(src, dst)
 
     def _addoutlinks(self, graph, src):
-        # Get datapath from root page, load shelve from there
-        datapath = Page(WikiNode.request, u'', is_rootpage=1).getPagePath()
-        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
-        globaldata = shelve.open(graphshelve, 'r')
-        if not globaldata['out'].has_key(src):
+        if not WikiNode.globaldata['out'].has_key(src):
             # should not happen if page has graphdata
             return
-        for dst in globaldata['out'][src]:
+        for dst in WikiNode.globaldata['out'][src]:
             # filter out category, template pages
             if dst.startswith('Category') or dst.endswith('Template'):
                 continue

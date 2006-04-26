@@ -5,6 +5,8 @@ from urllib import unquote as url_unquote
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
+from graphingwiki.patterns import get_shelve
+
 from savegraphdata import encode
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 from ShowPaths import load_graph, add_global_links
@@ -48,28 +50,28 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
 def get_page_n3(request, pagename):
     pagegraph = load_graph(request, pagename)
     pagename = url_quote(encode(pagename))
-    pagegraph = add_global_links(request, pagename, pagegraph)
+    globaldata = get_shelve(request)
+    pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
     selfname = get_selfname(request)
 
     return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)
 
-def get_page_fact(request, pagename):
+def get_page_fact(request, pagename, globaldata):
     pagename = unicode(url_unquote(pagename), config.charset)
-    
     pagegraph = load_graph(request, pagename)
     pagename = url_quote(encode(pagename))
-    pagegraph = add_global_links(request, pagename, pagegraph)
+    pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data
 
-def get_all_facts(request):
+def get_all_facts(request, globaldata):
     for pagename in request.rootpage.getPageList():
         pagegraph = load_graph(request, pagename)
         pagename = url_quote(encode(pagename))
         if not pagegraph:
             continue
-        pagegraph = add_global_links(request, pagename, pagegraph)
+        pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
             yield data
