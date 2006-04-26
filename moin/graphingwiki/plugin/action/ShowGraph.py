@@ -909,7 +909,7 @@ class GraphShower(object):
         cl.stop('format')
 
         cl.stop('execute')
-        print cl.dump()
+        # print cl.dump()
 
         self.sendFooter(formatter)
 
