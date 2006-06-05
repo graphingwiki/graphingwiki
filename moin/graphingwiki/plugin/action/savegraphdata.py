@@ -125,7 +125,8 @@ def execute(pagename, request, text, pagedir, page):
 
     rules = wikiparse.formatting_rules.replace('\n', '|')
 
-    if request.cfg.allow_extended_names:
+    # For versions with the config variable allow_extended_names
+    if not '?P<wikiname_bracket>' in rules:
         rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
 
     all_re = re.compile(rules, re.UNICODE)

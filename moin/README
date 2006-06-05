@@ -13,9 +13,8 @@ Preconditions:
    used to prevent concurrent index file writes. The system has been
    tested with version v3.22 timestamped 2001/09/10.
 
- - MoinMoin 1.3.5 installed. Graphingwiki might work with other
-   versions as well, but requires changing MoinMoin/PageEditor.py
-   accordingly.
+ - MoinMoin 1.3.4+ installed. Graphingwiki has been tested with
+   MoinMoin versions 1.3.4, 1.3.5 and 1.5.3.
 
  - A MoinMoin wiki installed in directory WIKIDIR (with config
    directory in WIKIDIR/config and data in WIKIDIR/data)
@@ -25,14 +24,14 @@ Preconditions:
 
 2. Install changes to MoinMoin, either 
  - site-wide install
-   % patch < moinmoin-1.3.5-PageEditor.patch
-   Fedora installs may need to use
-   % patch -F 3 < moinmoin-1.3.5-PageEditor.patch
+   % patch < moinmoin-PageEditor.patch
+   Some may need to use
+   % patch -F 3 < moinmoin-PageEditor.patch
    After patch, recompile PageEditor
    % echo "from MoinMoin import PageEditor" | python
 
- - per-wiki install
-   % cp -R MoinMoin WIKIDIR/config
+ - for per-wiki install, patch your wikiconfig.py with
+   % patch < wikiconfig.py.patch   
 
 3. Install plugins to wiki
    % gwiki-install WIKIDIR

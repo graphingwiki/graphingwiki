@@ -20,6 +20,11 @@ pagename = sys.argv[1]
 
 # Make a new request for the page, get raw text
 req = request.RequestCLI(pagename=pagename)
+
+# Fix for 1.3.4
+if not hasattr(req, form):
+    req.form = {}
+
 req.form['action'] = ['ShowGraph']
 req.form['colorby'] = ['Status']
 req.form['orderby'] = ['Year']
