@@ -37,7 +37,6 @@ from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter 
 from MoinMoin.Page import Page
 
-from euler import run_called as run_inference
 from MoinMoin.util import MoinMoinNoFooter
 from unifier import Unifier
 
@@ -46,15 +45,32 @@ def execute(pagename, request):
                           config.charset])
 
     infer = Unifier(request)
-    for x in infer.solve_term(infer.instantiate_terms(
-        ['FrontPage', 'Propertyyear', '?x'])):
-        print x
+
+    infer.add_rule(['fact', ['?f', 'PropertyGrandparent', '?gc'], ['?f', 'PropertyParent', '?c'], ['?c', 'PropertyParent', '?gc']])
+
+    query = infer.solve(['?x', 'PropertyGrandparent', '?u'])
+    for success in query:
+        print success
+
+    print "Next"
+
+    query = infer.solve(['FrontPage', 'Propertykoo', '?x'])
+    for success in query:
+        print success
+
+    query = infer.solve(['?y', 'Propertyloves', 'FrontPage'])
+    for success in query:
+        print success
 
     print "Trying out the rest"
-    
-    for x in infer.solve_term(infer.instantiate_terms(
-        ['?y', 'Propertyyear', '?z'])):
-        print x
+
+    query = infer.solve(['?t', 'Propertysomething', '?d'])
+    for success in query:
+        print success
+
+    query = infer.solve(['?h', 'Propertykoo', '?z'])
+    for success in query:
+        print success
 
 #['FrontPage', 'Propertyyear', '1234']
 

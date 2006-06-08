@@ -32,28 +32,89 @@
 import cPickle
 import os
 import shelve
+from codecs import getencoder
+from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
 from MoinMoin.Page import Page
 from MoinMoin import config
 
-def get_shelve(request):
-    datapath = Page(request, u'', is_rootpage=1).getPagePath()
-    graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+from graphingwiki.graph import Graph
 
-    # Make sure nobody is writing to graphshelve, as concurrent
-    # reading and writing can result in erroneous data
-    graphlock = graphshelve + '.lock'
-    os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
-    os.unlink(graphlock)
+encoder = getencoder(config.charset)
+def encode(str):
+    return encoder(str, 'replace')[0]
 
-    temp_shelve = shelve.open(graphshelve, 'r')
-    globaldata =  {}
-    globaldata['in'] = temp_shelve['in']
-    globaldata['out'] = temp_shelve['out']
-    temp_shelve.close()
+class GraphData(object):
+    def __init__(self, request):
+        self.request = request
+        self.globaldata = self.get_shelve()
+        self.loaded = {}
+        
+    def get_shelve(self):
+        datapath = Page(self.request, u'', is_rootpage=1).getPagePath()
+        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
 
-    return globaldata
+        # Make sure nobody is writing to graphshelve, as concurrent
+        # reading and writing can result in erroneous data
+        graphlock = graphshelve + '.lock'
+        os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
+        os.unlink(graphlock)
+
+        temp_shelve = shelve.open(graphshelve, 'r')
+        globaldata =  {}
+        globaldata['in'] = temp_shelve['in']
+        globaldata['out'] = temp_shelve['out']
+        temp_shelve.close()
+
+        return globaldata
+
+    def load_graph(self, pagename):
+        if pagename in self.loaded:
+            return self.loaded[pagename]
+        self.loaded[pagename] = None
+        if not self.request.user.may.read(pagename):
+            return None
+        inc_page = Page(self.request, pagename)
+        afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
+        if os.path.exists(afn):
+            af = file(afn)
+            adata = cPickle.load(af)
+            self.loaded[pagename] = adata
+            return adata
+        return None
+
+    def add_global_links(self, pagename, pagegraph):
+        if not pagegraph:
+            pagegraph = Graph()
+        if not pagegraph.nodes.get(pagename):
+            pagegraph.nodes.add(pagename)
+
+        if self.globaldata['in'].has_key(pagename):
+            for src in self.globaldata['in'][pagename]:
+                if not pagegraph.edges.get(src, pagename):
+                    srcgraph = self.load_graph(src)
+                    pagegraph.nodes.add(src)
+                    newedge = pagegraph.edges.add(src, pagename)
+                    oldedge = srcgraph.edges.get(src, pagename)
+                    if oldedge:
+                        newedge.update(oldedge)
+        if self.globaldata['out'].has_key(pagename):
+            for dst in self.globaldata['out'][pagename]:
+                if not pagegraph.edges.get(pagename, dst):
+                    dstgraph = self.load_graph(dst)
+                    pagegraph.nodes.add(dst)
+                    newedge = pagegraph.edges.add(pagename, dst)
+                    oldedge = dstgraph.edges.get(pagename, dst)
+                    if oldedge:
+                        newedge.update(oldedge)
+        return pagegraph
+
+    def load_with_links(self, pagename):
+        pagegraph = self.load_graph(pagename)
+        if isinstance(pagename, unicode):
+            pagename = url_quote(encode(pagename))
+        return self.add_global_links(pagename, pagegraph)
 
 class LazyItem(object):
     def __init__(self):
@@ -237,6 +298,7 @@ class WikiNode(object):
     # url addition from action
     urladd = ""
     # globaldata
+    graphdata = None
     globaldata = None
 
     def __init__(self, request=None, urladd=None, startpages=None):
@@ -246,8 +308,10 @@ class WikiNode(object):
             WikiNode.urladd = urladd
         if startpages is not None:
             WikiNode.startpages = startpages
-        if WikiNode.request and not WikiNode.globaldata:
-            WikiNode.globaldata = get_shelve(WikiNode.request)
+
+        if request:
+            WikiNode.graphdata = GraphData(WikiNode.request)
+            WikiNode.globaldata = WikiNode.graphdata.globaldata
 
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
@@ -255,21 +319,15 @@ class WikiNode(object):
         # If local link
         if not k.startswith('./'):
             return None
-#        WikiNode.request.write("Ldata " + node + "\n")
+#        self.request.write("Ldata " + node + "\n")
         # and we're allowed to read it
         node = unicode(url_unquote(node), config.charset)
-        if not WikiNode.request.user.may.read(node):
-            return None
-        inc_page = Page(WikiNode.request, node)
-        afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
-        if os.path.exists(afn):
-            af = file(afn)
-            adata = cPickle.load(af)
-            # Add navigation aids to urls of nodes with graphdata
+        adata = WikiNode.graphdata.load_graph(node)
+        # Add navigation aids to urls of nodes with graphdata
+        if adata:
             if not '?' in nodeitem.URL:
                 nodeitem.URL += WikiNode.urladd
-            return adata
-        return None
+        return adata
 
     def _addinlinks(self, graph, dst):
         # Get datapath from root page, load shelve from there

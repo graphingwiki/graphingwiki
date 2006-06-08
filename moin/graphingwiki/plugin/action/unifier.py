@@ -30,7 +30,7 @@
 
 from copy import copy, deepcopy
 
-from graphingwiki.patterns import get_shelve
+from graphingwiki.patterns import GraphData
 
 from N3Dump import get_page_fact, get_all_facts
 
@@ -47,17 +47,74 @@ class Term(object):
 class Unifier(object):
     def __init__(self, request):
         self.request = request
-        self.loaded = set()
-        self.globaldata = get_shelve(request)
+        if request:
+            self.graphdata = GraphData(request)
+        self.loaded = []
+        self.all_loaded = 0
+        self.backlog = []
 
-    def get_facts(self, goal):
+        self.rules = []
+
+    def add_rule(self, inp):
+        inp = self.instantiate_terms(inp)
+        self.rules.append(inp[1:])
+
+    def solve(self, query):
+        solutions = set()
+        for x in self.solve_term(self.instantiate_terms(query)):
+            solutions.add(repr(x))
+
+        for x in solutions:
+            yield x
+
+    # Skeleton routine for optimisation
+    def get_facts_basic(self, goal):
+        db = None
+        
         if isinstance(goal[0], Term):
-            db = get_all_facts(self.request, self.globaldata)
+            db = get_all_facts(self.request, self.graphdata)
         else:
-            db = get_page_fact(self.request, goal[0], self.globaldata)
-            
-        for x in db:
+            db = get_page_fact(self.request, goal[0], self.graphdata)
+
+        for r in self.rules:
+            yield r
+
+        for x, y in db:
             yield [x]
+
+    # A quite crappy attempt. I say!
+    def get_facts(self, goal):
+        db = None
+        term_fact = isinstance(goal[0], Term)
+
+        if term_fact:
+            if not self.all_loaded:
+                db = get_all_facts(self.request, self.graphdata)
+        else:
+            if not self.all_loaded and goal[0] not in self.loaded:
+                db = get_page_fact(self.request, goal[0], self.graphdata)
+
+        for r in self.rules:
+            yield r
+
+        if db:
+            for x, y in db:
+                if x not in self.backlog:
+                    self.backlog.append(x)
+                yield [x]
+
+            if term_fact:
+                self.all_loaded = 1
+            else:
+                self.loaded.append(goal[0])
+                
+        elif term_fact:
+            for val in self.backlog:
+                yield [val]
+        else:
+            for val in self.backlog:
+                if val[0] == goal[0]:
+                    yield [val]
 
     def is_bound(self, var, env):
         return isinstance(var, Term) and env.has_key(var)
@@ -71,7 +128,11 @@ class Unifier(object):
         #       str(val) + " in env " + str(env)
 
         if self.is_bound(var, env):
-            return unify(env[var], val, env)
+            # occurs-check
+            if self.is_bound(val, env):
+                if env[var] == env[val]:
+                    return env
+            return self.unify(env[var], val, env)
         # If match to something that is bound, the value must match
         elif self.is_bound(val, env):
             return self.unify(var, env[val], env)
@@ -100,8 +161,8 @@ class Unifier(object):
         elif isinstance(term2, Term):
             return self.unify_var(term2, term1, env)
         # handle rule lists
-        elif (isinstance(term1, list) and isinstance(term2, list) and
-              term1 != [] and term2 != []):
+        elif (isinstance(term1, list) and term1 and
+              isinstance(term2, list) and term2):
             return self.unify(term1[1:], term2[1:],
                               self.unify(term1[0], term2[0], env))
         # non-matching terms
@@ -124,7 +185,7 @@ class Unifier(object):
         rule = deepcopy(rule)
         head = rule[0]
         subgoals = rule[1:]
-        
+
         # try to bind variable into new environment
         env = copy(env)
         newenv = self.unify(head, goal, env)
@@ -177,17 +238,23 @@ class Unifier(object):
         return instantiate(inp)
 
     # read evaluate print loop
-    def repl():
+    def repl(self):
+        self.get_facts = self.get_facts_repl
         inp = input('Fact/query? ')
         inp = self.instantiate_terms(inp)
         if inp[0] == 'fact':
-            database.append(inp[1:])
+            self.rules.append(inp[1:])
             print "Saved " + str(inp[1]) + "..."
         else:
-            for result, env in solve_term(inp):
+            for result, env in self.solve_term(inp):
                 print "Success ", result, env
             print "Out of results"
-        repl()
+        self.repl()
+
+    def get_facts_repl(self, goal):
+        for val in self.rules:
+            yield val
 
 if __name__ == '__main__':
-    Unifier().repl()
+    Unifier(None).repl()
+    

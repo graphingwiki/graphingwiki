@@ -1064,7 +1064,7 @@ class GraphShower(object):
             self.request.write(formatter.endContent()) # end content div
             # Footer
             wikiutil.send_footer(self.request, self.pagename)
-            self.request.write('</body></html>')
+            self.request.write('</body>\n</html>\n')
             self.sendPartsIE()
             self.request.write(msie_end)
 

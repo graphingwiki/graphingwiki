@@ -35,11 +35,10 @@ from urllib import unquote as url_unquote
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.patterns import get_shelve
+from graphingwiki.patterns import GraphData
 
 from savegraphdata import encode
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
-from ShowPaths import load_graph, add_global_links
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''
@@ -63,48 +62,52 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
         return
 
     nodegraph = pagegraph.nodes.get(pagename)
+    if not nodegraph:
+        return
 
     for prop in nonguaranteeds_p(nodegraph):
         for value in getattr(nodegraph, prop):
             for data in formatfunc((pagename, prop, value)):
                 yield data
-            
 
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
         for data in formatfunc((edge[0], linktype, edge[1])):
             yield data
-        
 
 def get_page_n3(request, pagename):
-    pagegraph = load_graph(request, pagename)
-    pagename = url_quote(encode(pagename))
-    globaldata = get_shelve(request)
-    pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
+    graphdata = GraphData(request)
+    globaldata = graphdata.globaldata
+    
+    pagegraph = graphdata.load_with_links(pagename)
     selfname = get_selfname(request)
 
     return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)
 
-def get_page_fact(request, pagename, globaldata):
-    pagename = unicode(url_unquote(pagename), config.charset)
-    pagegraph = load_graph(request, pagename)
-    pagename = url_quote(encode(pagename))
-    pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
+def get_page_fact(request, pagename, graphdata):
+    pagegraph = graphdata.load_with_links(pagename)
+    if isinstance(pagename, unicode):
+        pagename = url_quote(encode(pagename))
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
-        yield data
+        yield data, pagename
 
-def get_all_facts(request, globaldata):
+def get_all_facts(request, graphdata):
+    # We do not want underlay pages
+    if hasattr(request.cfg, 'data_underlay_dir'):
+        tmp = request.cfg.data_underlay_dir
+        request.cfg.data_underlay_dir = None
+
     for pagename in request.rootpage.getPageList():
-        pagegraph = load_graph(request, pagename)
-        pagename = url_quote(encode(pagename))
-        if not pagegraph:
-            continue
-        pagegraph = add_global_links(request, pagename, pagegraph, globaldata)
+        pagegraph = graphdata.load_with_links(pagename)
+        if isinstance(pagename, unicode):
+            pagename = url_quote(encode(pagename))
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
-            yield data
+            yield data, pagename
+
+    request.cfg.data_underlay_dir = tmp
 
 def wikins_fact(triplet):
     out = []
@@ -147,8 +150,7 @@ def n3dump(request, pages):
                   iw_url + '> .' + "\n")
 
     for pagename in pages:
-        outstr = outstr + unicode(get_page_n3(request, pagename),
-                                  config.charset)
+        outstr = outstr + get_page_n3(request, pagename)
 
     return outstr
     
