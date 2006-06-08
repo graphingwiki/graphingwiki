@@ -1,6 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 """
     ShowGraph action plugin to MoinMoin
+     - Shows semantic data and linkage of pages in graph form
 
     @copyright: 2006 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
