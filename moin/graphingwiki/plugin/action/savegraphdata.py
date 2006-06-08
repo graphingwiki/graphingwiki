@@ -125,7 +125,13 @@ def execute(pagename, request, text, pagedir, page):
 
     rules = wikiparse.formatting_rules.replace('\n', '|')
 
-    # For versions with the config variable allow_extended_names
+    if request.cfg.bang_meta:
+        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
+            'word_rule': wikiparse.word_rule,
+            'rules': rules,
+            }
+
+    # For versions with the deprecated config variable allow_extended_names
     if not '?P<wikiname_bracket>' in rules:
         rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
 
@@ -167,6 +173,7 @@ def execute(pagename, request, text, pagedir, page):
             continue
         for match in all_re.finditer(line):
             for type, hit in match.groupdict().items():
+
                 # We don't want to handle anything inside preformatted
                 if type in pretypes and hit is not None:
                     inpre = not inpre

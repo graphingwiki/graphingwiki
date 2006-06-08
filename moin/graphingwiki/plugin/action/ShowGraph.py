@@ -1,9 +1,30 @@
 # -*- coding: iso-8859-1 -*-
 """
-    MoinMoin - ShowGraph action
+    ShowGraph action plugin to MoinMoin
 
-    @copyright: 2005 by Juhani Eronen <exec@ee.oulu.fi>
-    @license: BSD-something
+    @copyright: 2006 by Juhani Eronen <exec@iki.fi>
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+    Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation
+    files (the "Software"), to deal in the Software without
+    restriction, including without limitation the rights to use, copy,
+    modify, merge, publish, distribute, sublicense, and/or sell copies
+    of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
 """
     
 import os
@@ -30,6 +51,38 @@ from graphingwiki.patterns import *
 
 # imports from other actions
 from savegraphdata import encode, local_page
+
+# Header stuff for IE
+msie_header = """Content-type: message/rfc822
+
+From: <Graphingwiki>
+Subject: A graph
+Date: Sat, 8 Apr 2006 23:57:55 +0300
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="partboundary"; type="text/html"
+
+--partboundary
+Content-Type: text/html
+
+"""
+
+def add_mime_part(name, type, data):
+    basdata = ''
+    for x in range(1, (len(data)/64)+1):
+        basdata = basdata + data[(x-1)*64:x*64] + '\n'
+    basdata = basdata + data[x*64:]
+
+    return """
+--partboundary
+Content-Location: %s
+Content-Type: %s
+Content-Transfer-Encoding: base64
+
+%s
+""" % (name, type, basdata)
+
+msie_end = "\n--partboundary--\n\n"
+
 
 graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
@@ -201,7 +254,9 @@ class GraphShower(object):
         # Orderings
         if request.form.has_key('orderby'):
             self.orderby = encode(''.join(request.form['orderby']))
-            self.graphengine = 'dot'            
+            # Checked due to weirdo problems with ShowGraphSimple
+            if self.orderby:
+                self.graphengine = 'dot'            
         if request.form.has_key('colorby'):
             self.colorby = encode(''.join(request.form['colorby']))
 
@@ -854,9 +909,19 @@ class GraphShower(object):
 
         return outgraph
 
+    def browserDetect(self):
+        if 'MSIE' in self.request.getUserAgent():
+            self.parts = []
+            self.sendGraph = self.sendGraphIE
+            self.sendLegend = self.sendLegendIE
+            self.sendHeaders = self.sendHeadersIE
+            self.sendFooter = self.sendFooterIE
+
     def execute(self):        
         cl.start('execute')
         self.formargs()
+
+        self.browserDetect()
 
         formatter = self.sendHeaders()
 
@@ -912,6 +977,97 @@ class GraphShower(object):
         # print cl.dump()
 
         self.sendFooter(formatter)
+
+    # IE versions of some relevant functions
+
+    def sendGraphIE(self, gr, map=False):
+        img = self.getLayoutInFormat(gr.graphviz, self.format)
+        filename = gr.graphattrs['name'] + "." + self.format
+
+        if map:
+            self.parts.append((filename,
+                               'image/' + self.format,
+                               b64encode(img)))
+            
+            page = ('<img src="' + filename +
+                    '" alt="visualisation" usemap="#' +
+                    gr.graphattrs['name'] + '">\n')
+            self.sendMap(gr.graphviz)
+        else:
+            self.parts.append((filename,
+                               'image/svg+xml',
+                               b64encode(img)))
+
+            page = ('<embed height=800 width=1024 src="' +
+                    filename + '" alt="visualisation">\n')
+
+        self.request.write(page)
+
+    def sendLegendIE(self):
+        legend = None
+        if self.coloredges or self.colornodes:
+            legend = self.makeLegend()
+
+        if legend:
+            img = self.getLayoutInFormat(legend, self.format)
+            filename = legend.name + "." + self.format
+
+            if self.format == 'svg':
+                self.parts.append((filename,
+                                   'image/svg+xml',
+                                   b64encode(img)))
+
+                self.request.write('<embed width=800 src="' +
+                                   filename + '">\n')
+            else:
+                self.parts.append((filename,
+                                   'image/' + self.format,
+                                   b64encode(img)))
+            
+                self.request.write('<img src="' + filename +
+                                   '" alt="visualisation" usemap="#' +
+                                   legend.name + '">\n')
+                self.sendMap(legend)
+
+    def sendPartsIE(self):
+        for part in self.parts:
+            self.request.write(add_mime_part(*part))        
+
+    def sendHeadersIE(self):
+        request = self.request
+        pagename = self.pagename
+
+        if self.format != 'dot':
+            request.write(msie_header)
+
+            title = request.getText('Wiki linkage as seen from "%s"') % \
+                    pagename
+            wikiutil.send_title(request, title, pagename=pagename)
+
+            # Start content - IMPORTANT - without content div, there is no
+            # direction support!
+            formatter = HtmlFormatter(request)
+            request.write(formatter.startContent("content"))
+            formatter.setPage(self.pageobj)
+        else:
+            request.http_headers(["Content-type: text/plain;charset=%s" %
+                                  config.charset])
+            formatter = TextFormatter(request)
+            formatter.setPage(self.pageobj)
+
+        return formatter
+
+    def sendFooterIE(self, formatter):
+        if self.format != 'dot':
+            # End content
+            self.request.write(formatter.endContent()) # end content div
+            # Footer
+            wikiutil.send_footer(self.request, self.pagename)
+            self.request.write('</body></html>')
+            self.sendPartsIE()
+            self.request.write(msie_end)
+
+        raise MoinMoinNoFooter
 
 def execute(pagename, request):
     graphshower = GraphShower(pagename, request)

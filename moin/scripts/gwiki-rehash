@@ -50,6 +50,11 @@ for pagename in pages:
     req = request.RequestCLI(pagename=page_enc)
     p = Page(req, pagename)
     pagedir = p.getPagePath()
+    if "underlay/pages" in pagedir:
+        import re
+        pagedir = re.sub(r'underlay/pages', 'data/pages', pagedir, 1)
+        if not os.path.exists(pagedir):
+            os.makedirs(pagedir)
     text = p.get_raw_body()
     
     # Apply the graphsaver-action to the page
