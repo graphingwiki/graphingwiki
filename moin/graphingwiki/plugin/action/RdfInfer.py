@@ -27,10 +27,11 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
-from savegraphdata import encode
 
 import os
+import re
+from urllib import quote as url_quote
+from savegraphdata import encode
 
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -40,43 +41,16 @@ from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 from unifier import Unifier
 
+# The necessary regexps
+fact = ur'\s*([a-zA-Z_0-9\:\%\?]+)\s+' + \
+       ur'([a-zA-Z_0-9\:\%\?]+)\s+([a-zA-Z_0-9\:\%\?]+)\s*\.'
+lfact = ur'\s*([a-zA-Z_0-9\:\%\?]+)\s+' + \
+        ur'([a-zA-Z_0-9\:\%\?]+)\s+([a-zA-Z_0-9\:\%\?]+)\s*\.?'
+
+query = ur'\s*{' + lfact + ur'}\s*->\s*\[\]\s*\.\s*'
+rule = ur'\s*{' + fact + "+" + lfact + ur'}\s*->\s*{' + lfact + ur'}\s*\.\s*'
+
 def execute(pagename, request):
-    request.http_headers(["Content-type: text/plain;charset=%s" %
-                          config.charset])
-
-    infer = Unifier(request)
-
-    infer.add_rule(['fact', ['?f', 'PropertyGrandparent', '?gc'], ['?f', 'PropertyParent', '?c'], ['?c', 'PropertyParent', '?gc']])
-
-    query = infer.solve(['?x', 'PropertyGrandparent', '?u'])
-    for success in query:
-        print success
-
-    print "Next"
-
-    query = infer.solve(['FrontPage', 'Propertykoo', '?x'])
-    for success in query:
-        print success
-
-    query = infer.solve(['?y', 'Propertyloves', 'FrontPage'])
-    for success in query:
-        print success
-
-    print "Trying out the rest"
-
-    query = infer.solve(['?t', 'Propertysomething', '?d'])
-    for success in query:
-        print success
-
-    query = infer.solve(['?h', 'Propertykoo', '?z'])
-    for success in query:
-        print success
-
-#['FrontPage', 'Propertyyear', '1234']
-
-    raise MoinMoinNoFooter
-
-def execute_old(pagename, request):
     request.http_headers()
 
     # This action generate data using the user language
@@ -98,37 +72,58 @@ def execute_old(pagename, request):
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
-    request.write(u'<textarea name="infer" rows=10 cols=80>%s</textarea>' %
+    request.write(u'<input type="text" name="infer" size=50 value="%s">' %
                   infer)
-    request.write(u'<input type=submit value="Submit!">\n</form>\n')
+    request.write(u'<input type=submit value="Infer from these pages">' + \
+                  u'\n</form>\n')
 
     if infer:
-        pageobj = Page(request, pagename)
-        pagedir = pageobj.getPagePath()
+        # Compile regexps
+        fact_re = re.compile(fact)
+        query_re = re.compile(query)
+        rule_re = re.compile(rule)
 
-        rdfdump = wikiutil.importPlugin(request.cfg, 'action',
-                                        'N3Dump', 'n3dump')
+        engine = Unifier(request)
 
-        n3data = rdfdump(request, [pagename])
+        # grab data
+        data = ""
+        for name in infer.split(','):
+            page = Page(request, name.strip())
+            data = data + encode(page.get_raw_body())
 
-#         request.write(formatter.preformatted(1))
-#         request.write(n3data + infer)
-#         request.write(formatter.preformatted(0))
-
-        data = run_inference(n3data + infer)
         request.write(formatter.preformatted(1))
-        request.write(data)
+
+        # Start to handle data rows
+        for line in data.split('\n'):
+            line.strip()
+            if not line.endswith('.'):
+                continue
+            elif '[]' in line:
+                q = query_re.match(line)
+                if q:
+                    answers = set()
+                    for heureka in engine.solve(list(q.groups())):
+                        answers.add(' '.join(heureka[0]) + ".")
+                    for once in answers:
+                        print once
+            elif '->' in line:
+                r = rule_re.match(line)
+                if r:
+                    rules = r.groups()
+                    last = ['fact', list(rules[-3:])]
+                    rules = rules[:-3]
+                    while rules:
+                        last.append(list(rules[:3]))
+                        rules = rules[3:]
+                    engine.add_rule(last)
+            else:
+                # normal fact
+                ma = fact_re.search(line)
+                if not ma:
+                    continue
+                engine.add_rule(['fact', list(ma.groups())])
+
         request.write(formatter.preformatted(0))
-        
-#     args = [x for x in request.form if x != 'action']
-#     if args:
-#         request.write(formatter.preformatted(1))
-#         for arg in args:
-#             request.write(arg)
-#             for val in request.form[arg]:
-#                 request.write(" " + val)
-#             request.write("\n")
-#         request.write(formatter.preformatted(0))
 
     # End content
     request.write(formatter.endContent()) # end content div

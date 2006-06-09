@@ -60,9 +60,9 @@ class Unifier(object):
         self.rules.append(inp[1:])
 
     def solve(self, query):
-        solutions = set()
+        solutions = []
         for x in self.solve_term(self.instantiate_terms(query)):
-            solutions.add(repr(x))
+            solutions.append(x)
 
         for x in solutions:
             yield x
