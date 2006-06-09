@@ -94,20 +94,22 @@ class GraphData(object):
             for src in self.globaldata['in'][pagename]:
                 if not pagegraph.edges.get(src, pagename):
                     srcgraph = self.load_graph(src)
-                    pagegraph.nodes.add(src)
-                    newedge = pagegraph.edges.add(src, pagename)
-                    oldedge = srcgraph.edges.get(src, pagename)
-                    if oldedge:
-                        newedge.update(oldedge)
+                    if srcgraph:
+                        pagegraph.nodes.add(src)
+                        newedge = pagegraph.edges.add(src, pagename)
+                        oldedge = srcgraph.edges.get(src, pagename)
+                        if oldedge:
+                            newedge.update(oldedge)
         if self.globaldata['out'].has_key(pagename):
             for dst in self.globaldata['out'][pagename]:
                 if not pagegraph.edges.get(pagename, dst):
                     dstgraph = self.load_graph(dst)
-                    pagegraph.nodes.add(dst)
-                    newedge = pagegraph.edges.add(pagename, dst)
-                    oldedge = dstgraph.edges.get(pagename, dst)
-                    if oldedge:
-                        newedge.update(oldedge)
+                    if dstgraph:
+                        pagegraph.nodes.add(dst)
+                        newedge = pagegraph.edges.add(pagename, dst)
+                        oldedge = dstgraph.edges.get(pagename, dst)
+                        if oldedge:
+                            newedge.update(oldedge)
         return pagegraph
 
     def load_with_links(self, pagename):
