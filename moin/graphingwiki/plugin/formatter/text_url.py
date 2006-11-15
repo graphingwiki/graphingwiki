@@ -133,11 +133,8 @@ class Formatter(FormatterBase):
 
         kw['local'] = pagename
 
-        if self.request.user.show_nonexist_qm and not page.exists():
-            return page.link_to(self.request, on=1, **kw) + "?"
-        else:
-            return page.link_to(self.request, on=on, **kw)
-        
+        return page.link_to(self.request, on=on, **kw)
+
     def interwikilink(self, on, interwiki='', pagename='', **kw):
         if not on:
             return []

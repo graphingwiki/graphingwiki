@@ -223,6 +223,12 @@ def execute(pagename, request, text, pagedir, page):
                         args = args[:-1]
                     # set attributes for this page
                     for key, val in zip(args[::2], args[1::2]):
+                        if key in ["shape"]:
+                            setattr(pagenode, key, val.strip())
+                            continue
+                        if key in ["label", "sides", "skew", "orientation"]:
+                            setattr(pagenode, key, val)
+                            continue
                         # Keys may be pages -> url-quoted
                         key = url_quote(key.strip())
                         # Values are just quoted strings

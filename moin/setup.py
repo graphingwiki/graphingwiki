@@ -8,4 +8,5 @@ setup(name='graphingwiki', version='0.1',
       package_dir={'graphingwiki': 'graphingwiki'},
       package_data={'graphingwiki': ['plugin/*/*.py']},
       scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
-               'scripts/gwiki-debuggraph', 'scripts/gwiki-install'])
+               'scripts/gwiki-debuggraph', 'scripts/gwiki-install',
+               'scripts/moin-showpage'])

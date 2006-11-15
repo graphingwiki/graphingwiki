@@ -1,0 +1,27 @@
+*0.41 (BETA STAGE)
+
+- ShowGraph now supports coloring and ordering by categories (BETA,
+  untested)
+
+- New macro, LinkedIn, shows pages that link to the current page
+  (BETA, untested)
+
+- Added moin-showpage-script, which enhances command line interaction
+  with MoinMoin. At the same time, gwiki-showgraph was modified so
+  that it is essentially a wrapper around moin-showpage.
+
+- Changed the handling of the MetaData values of shape, label, sides,
+  skew and orientation in savegraphdata so that they can ve used to
+  affect graph layout. Information about the use of these attributes
+  at: http://www.graphviz.org/doc/info/attrs.html
+
+- Added ShowProcessGraph action as an example of customising and
+  extending ShowGraph (i.e. I had to make some process graphs and
+  patch quickly this little toy for the task).
+
+- Removed euler.pyc, which got into the first distro packet by
+  accident in the first place. 
+
+*0.4
+
+- Original version with 5 of the 11 secret ingredients included.

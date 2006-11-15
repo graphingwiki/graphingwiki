@@ -338,7 +338,7 @@ class WikiNode(object):
             return
         for src in WikiNode.globaldata['in'][dst]:
             # filter out category, template pages
-            if src.startswith('Category') or src.endswith('Template'):
+            if src.endswith('Template'):
                 continue
             dstnode = graph.nodes.get(dst)
             if not dstnode:
@@ -357,7 +357,7 @@ class WikiNode(object):
             return
         for dst in WikiNode.globaldata['out'][src]:
             # filter out category, template pages
-            if dst.startswith('Category') or dst.endswith('Template'):
+            if dst.endswith('Template'):
                 continue
             srcnode = graph.nodes.get(src)
             if not srcnode:
@@ -379,6 +379,8 @@ class HeadNode(WikiNode):
         adata = self._loadpickle(graph, node)
         if not adata:
             return
+        if not adata.nodes.get(node):
+            return
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))
 
@@ -388,8 +390,7 @@ class HeadNode(WikiNode):
             if not graph.nodes.get(parent):
                 continue
             # filter out category, template pages
-            if (child.startswith("Category") or
-                child.endswith("Template")):
+            if child.endswith("Template"):
                 continue
 
             newnode = graph.nodes.get(child)
@@ -423,6 +424,8 @@ class TailNode(WikiNode):
         # Get new data for current node
         adata = self._loadpickle(graph, node)
         if not adata:
+            return
+        if not adata.nodes.get(node):
             return
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))

@@ -165,7 +165,7 @@ class GraphShower(object):
         self.available_formats = ['png', 'svg', 'dot']
         self.format = 'png'
         self.traverse = self.traverseParentChild
-        self.limit = 0
+        self.limit = ''
         self.hidedges = 0
 
         self.pageobj = Page(request, pagename)
@@ -246,7 +246,7 @@ class GraphShower(object):
 
         # Limit
         if request.form.has_key('limit'):
-            self.limit = 1
+            self.limit = ''.join([x for x in request.form['limit']])
 
         # Hide edges
         if request.form.has_key('hidedges'):
@@ -279,6 +279,10 @@ class GraphShower(object):
                 self.urladd = (self.urladd + url_quote(encode(key)) +
                                '=' + url_quote(encode(val)) + '&')
         self.urladd = self.urladd[:-1]
+
+        # Disable output if testing graph
+        if request.form.has_key('test'):
+            self.format = ''
 
     def addToStartPages(self, graphdata, pagename):
         self.startpages.append(pagename)
@@ -314,7 +318,7 @@ class GraphShower(object):
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-            globaldata = get_shelve(self.request)
+            globaldata = GraphData(self.request).get_shelve()
             if not globaldata['in'].has_key(cat):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -343,6 +347,26 @@ class GraphShower(object):
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
+        # If true, add the edge
+        add_edge = True
+        # Redo for category as metadata
+        redo_node = []
+
+        # Add categories as metadata
+        if obj2.node.startswith('Category'):
+            node = outgraph.nodes.get(obj1.node)
+            if node:
+                if hasattr(node, 'WikiCategory'):
+                    node.WikiCategory.append(obj2.node)
+                else:
+                    node.WikiCategory = [obj2.node]
+                obj1.WikiCategory = node.WikiCategory
+            else:
+                obj1.WikiCategory = [obj2.node]
+            self.nodeattrs.add('WikiCategory')
+            add_edge = False
+            redo_node.append(obj1.node)
+
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
         if getattr(olde, 'linktype', '_notype') in self.filteredges:
@@ -350,13 +374,21 @@ class GraphShower(object):
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
+            # Do not process categories here
+            if obj.node.startswith('Category'):
+                continue
+
             # If traverse limited to startpages
-            if self.limit:
+            if self.limit == 'start':
                 if not obj.node in self.startpages:
+                    continue
+            # or to pages within the wiki
+            elif self.limit == 'wiki':
+                if not obj.URL[0] in ['.', '/']:
                     continue
 
             # If node already added, nothing to do
-            if outgraph.nodes.get(obj.node):
+            if outgraph.nodes.get(obj.node) and obj.node not in redo_node:
                 continue
 
             # Node filters
@@ -392,17 +424,27 @@ class GraphShower(object):
                     else:
                         return outgraph, False
 
-            # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(nonguaranteeds_p(obj))
-            n = outgraph.nodes.add(obj.node)
-            n.update(obj)
-            
+            # Strip if the node has been added to other order-key
+            n = outgraph.nodes.get(obj.node)
+            if n:
+                if hasattr(n, '_order'):
+                    self.ordernodes[n._order].discard(obj.node)
+                    if self.ordernodes[n._order] == set():
+                        del self.ordernodes[n._order]
+            else:
+                # update nodeattrlist with non-graph/sync ones
+                self.nodeattrs.update(nonguaranteeds_p(obj))
+                n = outgraph.nodes.add(obj.node)
+                n.update(obj)
+
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)
 
             if self.orderby:
                 value = getattr(obj, self.orderby, None)
                 if value:
+                    # Strip if the node has been added to unordered
+                    self.unordernodes.discard(obj.node)
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
                     n._order = value
@@ -416,10 +458,11 @@ class GraphShower(object):
                     outgraph.nodes.get(obj2.node)):
                 return outgraph, True
 
-        e = outgraph.edges.add(obj1.node, obj2.node)
-        e.update(olde)
-        if self.hidedges:
-            e.style = "invis"
+        if add_edge:
+            e = outgraph.edges.add(obj1.node, obj2.node)
+            e.update(olde)
+            if self.hidedges:
+                e.style = "invis"
 
         return outgraph, True
 
@@ -491,6 +534,17 @@ class GraphShower(object):
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
             outgraph.label = "No data"
+
+        # Make the attachment node labels look nicer
+        for name, in outgraph.nodes.getall():
+            node = outgraph.nodes.get(name)
+            # If local link:
+            if node.URL[0] in ['.', '/']:
+                # If attachment
+                if 'action=AttachFile' in node.URL:
+                    node.label = "Attachment:\n" + \
+                                 re.search('target=(.+)&?',
+                                           node.URL).group(1)
 
         subrank = self.pagename.count('/')
         # Fix URLs for subpages
@@ -675,9 +729,12 @@ class GraphShower(object):
                       u'size=20 value="%s"><br>\n' % otherpages)
 
         # limit
-        request.write(u'<input type="checkbox" name="limit" ' +
-                      u'value="1"%sShow links between these pages only<br>\n' %
-                      (self.limit and ' checked>' or '>'))
+        request.write(u'<input type="radio" name="limit" ' +
+                      u'value="start"%sShow links between these pages only<br>\n' %
+                      (self.limit == 'start' and ' checked>' or '>'))
+        request.write(u'<input type="radio" name="limit" ' +
+                      u'value="wiki"%sOnly include pages in this wiki<br>\n' %
+                      (self.limit == 'wiki' and ' checked>' or '>'))
 
         # colorby
         request.write(u"<td>\nColor by:<br>\n")
@@ -746,7 +803,9 @@ class GraphShower(object):
             request.write(u'<input type="checkbox" name="filtercolor" ' +
                           u'value="%s"%s%s<br>\n' %
                           ("_notype",
-                           "_notype" in self.filtercolor and " checked>" or ">",
+                           "_notype" in self.filtercolor and
+                           " checked>"
+                           or ">",
                            "No type"))
 
         if self.orderby:
@@ -767,11 +826,17 @@ class GraphShower(object):
             request.write(u'<input type="checkbox" name="filterorder" ' +
                           u'value="%s"%s%s<br>\n' %
                           ("_notype",
-                           "_notype" in self.filterorder and " checked>" or ">",
+                           "_notype" in self.filterorder
+                           and " checked>"
+                           or ">",
                        "No type"))
+
         # End form
         request.write(u"</table>\n")
-        request.write(u'<input type=submit value="Submit!">\n</form>\n')
+        request.write(u'<input type=submit name=graph ' +
+                      'value="Create graph">\n')
+        request.write(u'<input type=submit name=test ' +
+                      'value="Test graph">\n</form>\n')
 
     def initTraverse(self):
         # Init WikiNode-pattern
@@ -968,10 +1033,26 @@ class GraphShower(object):
             self.sendLegend()
         elif self.format == 'dot':
             self.sendGv(gr)
-        else:
+        elif self.format == 'png':
             self.sendForm()
             self.sendGraph(gr, True)
             self.sendLegend()
+        else:
+            self.sendForm()
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text("Nodes in graph: " + str(len(
+                outgraph.nodes.getall()))))
+            self.request.write(formatter.paragraph(0))
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text("Edges in graph: " + str(len(
+                outgraph.edges.getall()))))
+            self.request.write(formatter.paragraph(0))
+            if self.orderby:
+                self.request.write(formatter.paragraph(1))
+                self.request.write(formatter.text("Order levels: " + str(len(
+                    self.ordernodes.keys()))))
+                self.request.write(formatter.paragraph(0))
+            
         cl.stop('format')
 
         cl.stop('execute')
