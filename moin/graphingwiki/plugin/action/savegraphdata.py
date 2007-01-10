@@ -245,7 +245,11 @@ def execute(pagename, request, text, pagedir, page):
                     # print hit
                     # urlformatter
                     replace = getattr(wikiparse, '_' + type + '_repl')
-                    attrs = replace(hit)
+                    try:
+                        attrs = replace(hit)
+                    except NotImplementedError:
+                        # attachments do this
+                        attrs = ()
                     if len(attrs) == 3:
                         # Name of node for local nodes = pagename
                         nodename = url_quote(encode(attrs[1]))

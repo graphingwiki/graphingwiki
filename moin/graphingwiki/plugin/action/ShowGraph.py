@@ -552,7 +552,7 @@ class GraphShower(object):
             for name, in outgraph.nodes.getall():
                 node = outgraph.nodes.get(name)
                 # All nodes should have URL:s, change relative ones
-                if not local_page(node.URL):
+                if local_page(node.URL):
                     node.URL = '../' * (subrank-1) + '.' + node.URL
             self.pagename = '../' * (subrank) + self.pagename
 
