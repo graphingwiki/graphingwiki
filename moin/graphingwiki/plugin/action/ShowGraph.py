@@ -357,12 +357,12 @@ class GraphShower(object):
             node = outgraph.nodes.get(obj1.node)
             if node:
                 if hasattr(node, 'WikiCategory'):
-                    node.WikiCategory.append(obj2.node)
+                    node.WikiCategory.add(obj2.node)
                 else:
-                    node.WikiCategory = [obj2.node]
+                    node.WikiCategory = set([obj2.node])
                 obj1.WikiCategory = node.WikiCategory
             else:
-                obj1.WikiCategory = [obj2.node]
+                obj1.WikiCategory = set([obj2.node])
             self.nodeattrs.add('WikiCategory')
             add_edge = False
             redo_node.append(obj1.node)
