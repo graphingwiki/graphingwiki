@@ -994,7 +994,7 @@ class GraphShower(object):
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
 
-        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
+#        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
 
         # Do the layout
         gr = self.generateLayout(outgraph)
