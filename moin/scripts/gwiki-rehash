@@ -63,6 +63,8 @@ except UserInputException:
     print "Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n"
     sys.exit(2)
 
+os.unlink(os.path.join(wikidir, 'graphdata.shelve'))
+
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 
@@ -73,6 +75,8 @@ if not pages:
             pages.append(unquoteWikiname(dir))
 
 for pagename in pages:
+    if pagename.endswith('/MoinEditorBackup'):
+        continue
     print "Rehashing " + _e(pagename)
     page_enc = _e(pagename)
     # Make a new request for the page, get raw text
