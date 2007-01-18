@@ -337,7 +337,7 @@ class GraphShower(object):
     def buildOutGraph(self):
         outgraph = Graph()        
 
-        if self.orderby:
+        if getattr(self, 'orderby', '_hier') != '_hier':
             outgraph.clusterrank = 'local'
             outgraph.compound = 'true'
             outgraph.rankdir = 'LR'
@@ -412,7 +412,7 @@ class GraphShower(object):
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)
 
-            if self.orderby:
+            if getattr(self, 'orderby', '_hier') != '_hier':
                 value = getattr(obj, self.orderby, None)
                 if value:
                     # Add to self.ordernodes by combined value of metadata
@@ -733,6 +733,11 @@ class GraphShower(object):
                       u'value=""%s%s<br>\n' %
                       (self.orderby == '' and " checked>" or ">",
                        "no ordering"))
+        request.write(u'<input type="radio" name="orderby" ' +
+                      u'value="%s"%s%s<br>\n' %
+                      ('_hier',
+                       self.orderby == '_hier' and " checked>" or ">",
+                       "hierarchical"))
 
         # filter edges
         request.write(u'<td>\nFilter edges:<br>\n')
@@ -780,7 +785,7 @@ class GraphShower(object):
                            or ">",
                            "No type"))
 
-        if self.orderby:
+        if getattr(self, 'orderby', '_hier') != '_hier':
             # filter nodes (related to orderby)
             request.write(u'<td>\nFilter from ordered:<br>\n')
             allorder = set(self.ordernodes.keys() +
@@ -829,7 +834,7 @@ class GraphShower(object):
         # After this, edit gr.graphviz, not outgraph!
         outgraph.commit()
 
-        if self.orderby:
+        if getattr(self, 'orderby', '_hier') != '_hier':
             gr = self.orderGraph(gr, outgraph)
 
         return gr
@@ -994,7 +999,7 @@ class GraphShower(object):
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
 
-#        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
+        # self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
 
         # Do the layout
         gr = self.generateLayout(outgraph)
@@ -1021,7 +1026,7 @@ class GraphShower(object):
             self.request.write(formatter.text("Edges in graph: " + str(len(
                 outgraph.edges.getall()))))
             self.request.write(formatter.paragraph(0))
-            if self.orderby:
+            if getattr(self, 'orderby', '_hier') != '_hier':
                 self.request.write(formatter.paragraph(1))
                 self.request.write(formatter.text("Order levels: " + str(len(
                     self.ordernodes.keys()))))
