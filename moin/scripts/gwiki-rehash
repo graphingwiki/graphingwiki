@@ -64,7 +64,9 @@ except UserInputException:
     sys.exit(2)
 
 if not pages:
-    os.unlink(os.path.join(wikidir, 'graphdata.shelve'))
+    gfile = os.path.join(wikidir, 'graphdata.shelve')
+    if os.path.exists(gfile):
+        os.unlink(gfile)
 
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
