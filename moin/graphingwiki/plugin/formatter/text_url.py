@@ -39,6 +39,7 @@ from urllib import unquote as url_unquote
 from MoinMoin.formatter.base import FormatterBase
 from MoinMoin import wikiutil, i18n, config
 from MoinMoin.Page import Page
+from MoinMoin.action import AttachFile
 
 class Formatter(FormatterBase):
     """
@@ -158,3 +159,17 @@ self.page.page_name, wikitail)), kw)
 
     def langAttr(self, lang=None):
         return {}
+
+    def attachment_link(self, url, text, **kw):
+        return self.url(True, './' + self.page.page_name + \
+                        '?action=AttachFile&do=get&target=' + url,
+                        kw='local') + [url]
+
+    def attachment_image(self, url, **kw):
+        return self.attachment_link(url, '', **kw)
+
+    def attachment_drawing(self, url, text, **kw):
+        return self.attachment_link(url, text, **kw)
+
+    def attachment_inlined(self, url, text, **kw):
+        return self.attachment_link(url, text, **kw)

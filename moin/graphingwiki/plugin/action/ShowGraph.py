@@ -100,8 +100,6 @@ graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "violetred", "yellow", "yellowgreen"]
 
 colors = graphvizcolors
-used_colors = []
-used_colorlabels = []
 
 def get_interwikilist(request):
     # request.cfg._interwiki_list is gathered by wikiutil
@@ -131,18 +129,6 @@ def get_selfname(request):
 def get_wikiurl(request):
     return request.getBaseURL() + '/'
 
-def hashcolor(string):
-    if string in used_colorlabels:
-        return used_colors[used_colorlabels.index(string)]
-
-    seed(string)
-    cl = choice(colors)
-    while cl in used_colors:
-        cl = choice(colors)
-    used_colors.append(cl)
-    used_colorlabels.append(string)
-    return cl
-
 # Escape quotes to numeric char references, remove outer quotes.
 def quoteformstr(text):
     text = text.strip("\"'")
@@ -159,6 +145,10 @@ nonguaranteeds_p = lambda node: filter(lambda y: y not in
 
 class GraphShower(object):
     def __init__(self, pagename, request, graphengine = "neato"):
+        # Fix for mod_python, globals are bad
+        self.used_colors = []
+        self.used_colorlabels = []
+
         self.pagename = pagename
         self.request = request
         self.graphengine = graphengine
@@ -206,6 +196,18 @@ class GraphShower(object):
                                      '"')
         self.qpirts_p = lambda txt: ['"' + x + '"' for x in
                                      txt.strip('"').split(',')]
+
+    def hashcolor(self, string):
+        if string in self.used_colorlabels:
+            return self.used_colors[self.used_colorlabels.index(string)]
+
+        seed(string)
+        cl = choice(colors)
+        while cl in self.used_colors:
+            cl = choice(colors)
+        self.used_colors.append(cl)
+        self.used_colorlabels.append(string)
+        return cl
 
     def formargs(self):
         request = self.request
@@ -347,25 +349,6 @@ class GraphShower(object):
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
-        # If true, add the edge
-        add_edge = True
-        # Redo for category as metadata
-        redo_node = []
-
-        # Add categories as metadata
-        if obj2.node.startswith('Category'):
-            node = outgraph.nodes.get(obj1.node)
-            if node:
-                if hasattr(node, 'WikiCategory'):
-                    node.WikiCategory.add(obj2.node)
-                else:
-                    node.WikiCategory = set([obj2.node])
-                obj1.WikiCategory = node.WikiCategory
-            else:
-                obj1.WikiCategory = set([obj2.node])
-            self.nodeattrs.add('WikiCategory')
-            add_edge = False
-            redo_node.append(obj1.node)
 
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
@@ -374,9 +357,6 @@ class GraphShower(object):
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
-            # Do not process categories here
-            if obj.node.startswith('Category'):
-                continue
 
             # If traverse limited to startpages
             if self.limit == 'start':
@@ -388,7 +368,7 @@ class GraphShower(object):
                     continue
 
             # If node already added, nothing to do
-            if outgraph.nodes.get(obj.node) and obj.node not in redo_node:
+            if outgraph.nodes.get(obj.node):
                 continue
 
             # Node filters
@@ -424,18 +404,10 @@ class GraphShower(object):
                     else:
                         return outgraph, False
 
-            # Strip if the node has been added to other order-key
-            n = outgraph.nodes.get(obj.node)
-            if n:
-                if hasattr(n, '_order'):
-                    self.ordernodes[n._order].discard(obj.node)
-                    if self.ordernodes[n._order] == set():
-                        del self.ordernodes[n._order]
-            else:
-                # update nodeattrlist with non-graph/sync ones
-                self.nodeattrs.update(nonguaranteeds_p(obj))
-                n = outgraph.nodes.add(obj.node)
-                n.update(obj)
+            # update nodeattrlist with non-graph/sync ones
+            self.nodeattrs.update(nonguaranteeds_p(obj))
+            n = outgraph.nodes.add(obj.node)
+            n.update(obj)
 
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)
@@ -443,8 +415,6 @@ class GraphShower(object):
             if self.orderby:
                 value = getattr(obj, self.orderby, None)
                 if value:
-                    # Strip if the node has been added to unordered
-                    self.unordernodes.discard(obj.node)
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
                     n._order = value
@@ -458,11 +428,10 @@ class GraphShower(object):
                     outgraph.nodes.get(obj2.node)):
                 return outgraph, True
 
-        if add_edge:
-            e = outgraph.edges.add(obj1.node, obj2.node)
-            e.update(olde)
-            if self.hidedges:
-                e.style = "invis"
+        e = outgraph.edges.add(obj1.node, obj2.node)
+        e.update(olde)
+        if self.hidedges:
+            e.style = "invis"
 
         return outgraph, True
 
@@ -500,7 +469,7 @@ class GraphShower(object):
             if rule and not color:
                 rule = self.qstrip_p(rule)
                 self.colornodes.add(rule)
-                obj.fillcolor = hashcolor(rule)
+                obj.fillcolor = self.hashcolor(rule)
                 obj.style = 'filled'
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
@@ -519,7 +488,7 @@ class GraphShower(object):
         pattern = Cond(edge, edge.linktype)
         for obj in match(pattern, (edges, outgraph)):
             self.coloredges.add(obj.linktype)
-            obj.color = hashcolor(obj.linktype)
+            obj.color = self.hashcolor(obj.linktype)
         return outgraph
 
     def fixNodeUrls(self, outgraph):
@@ -668,7 +637,7 @@ class GraphShower(object):
                 ln2 = "linktype: " + str(typenr)
                 legend.nodes.add(ln1, style='invis', label='')
                 legend.nodes.add(ln2, style='invis', label='')
-                legend.edges.add((ln1, ln2), color=hashcolor(linktype),
+                legend.edges.add((ln1, ln2), color=self.hashcolor(linktype),
                                  label=url_unquote(linktype),
                                  URL=self.getURLns(linktype))
 
@@ -679,7 +648,7 @@ class GraphShower(object):
         for nodetype in legendnodes:
             cur = 'self.colornodes: ' + nodetype
             legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
-                             fillcolor=hashcolor(nodetype), URL=colorURL)
+                             fillcolor=self.hashcolor(nodetype), URL=colorURL)
             if prev:
                 legend.edges.add((prev, cur), style="invis", dir='none')
             prev = cur
@@ -735,6 +704,9 @@ class GraphShower(object):
         request.write(u'<input type="radio" name="limit" ' +
                       u'value="wiki"%sOnly include pages in this wiki<br>\n' %
                       (self.limit == 'wiki' and ' checked>' or '>'))
+        request.write(u'<input type="radio" name="limit" ' +
+                      u'value=""%sInclude all links<br>\n' %
+                      (self.limit == '' and ' checked>' or '>'))
 
         # colorby
         request.write(u"<td>\nColor by:<br>\n")
@@ -1021,6 +993,8 @@ class GraphShower(object):
 
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
+
+        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
 
         # Do the layout
         gr = self.generateLayout(outgraph)

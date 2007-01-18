@@ -80,6 +80,18 @@ def shelve_remove_out(shelve, (frm, to)):
             else:
                 shelve['out'][frm].discard(to)
 
+def node_set_attribute(pagenode, key, val):
+    # Keys may be pages -> url-quoted
+    key = url_quote(key.strip())
+    # Values are just quoted strings
+    val = quotedstring(val.strip())
+    vars = getattr(pagenode, key, None)
+    if not vars:
+        setattr(pagenode, key, set([val]))
+    else:
+        vars.add(val)
+        setattr(pagenode, key, vars)
+
 ## Different encoding/quoting functions
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
@@ -100,6 +112,10 @@ def quotens(str):
     return ':'.join([url_quote(encode(x)) for x in str.split(':')])
 
 def execute(pagename, request, text, pagedir, page):
+    # Skip MoinEditorBackups
+    if pagename.endswith('/MoinEditorBackup'):
+        return
+
     graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
 
     # lock on graphdata
@@ -121,6 +137,7 @@ def execute(pagename, request, text, pagedir, page):
         globaldata['out'] = {}
 
     quotedname = url_quote(encode(pagename))
+
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
     # load graphdata if present and not trashed, remove it from index
@@ -229,27 +246,15 @@ def execute(pagename, request, text, pagedir, page):
                         if key in ["label", "sides", "skew", "orientation"]:
                             setattr(pagenode, key, val)
                             continue
-                        # Keys may be pages -> url-quoted
-                        key = url_quote(key.strip())
-                        # Values are just quoted strings
-                        val = quotedstring(val.strip())
-                        vars = getattr(pagenode, key, None)
-                        if not vars:
-                            setattr(pagenode, key, set([val]))
-                        else:
-                            vars.add(val)
-                            setattr(pagenode, key, vars)
+                        node_set_attribute(pagenode, key, val)
 
                 # Handling of links
                 if hit is not None and type in types and not inpre:
-                    # print hit
+                    #print hit
                     # urlformatter
                     replace = getattr(wikiparse, '_' + type + '_repl')
-                    try:
-                        attrs = replace(hit)
-                    except NotImplementedError:
-                        # attachments do this
-                        attrs = ()
+                    attrs = replace(hit)
+
                     if len(attrs) == 3:
                         # Name of node for local nodes = pagename
                         nodename = url_quote(encode(attrs[1]))
@@ -282,6 +287,9 @@ def execute(pagename, request, text, pagedir, page):
                     else:
                         # Image link, or what have you
                         continue
+
+                    if nodename.startswith('Category'):
+                        node_set_attribute(pagenode, 'WikiCategory', nodename)
 
                     # Add node w/ URL, label if not already added
                     if not pagegraph.nodes.get(nodename):

@@ -311,10 +311,17 @@ class WikiNode(object):
         if startpages is not None:
             WikiNode.startpages = startpages
 
-        if request:
-            WikiNode.graphdata = GraphData(WikiNode.request)
-            WikiNode.globaldata = WikiNode.graphdata.globaldata
+        #         if request:
+        #             if not WikiNode.globaldata:
+        #                 request.write("Initing graphdata...<br>")
+        #                 WikiNode.graphdata = GraphData(WikiNode.request)
+        #                 WikiNode.globaldata = WikiNode.graphdata.globaldata
+        #             else:
+        #                 request.write("yeah<br>")
 
+        WikiNode.graphdata = GraphData(WikiNode.request)
+        WikiNode.globaldata = WikiNode.graphdata.globaldata
+    
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
         k = getattr(nodeitem, 'URL', '')
@@ -338,7 +345,7 @@ class WikiNode(object):
             return
         for src in WikiNode.globaldata['in'][dst]:
             # filter out category, template pages
-            if src.endswith('Template'):
+            if src.startswith('Category') or src.endswith('Template'):
                 continue
             dstnode = graph.nodes.get(dst)
             if not dstnode:
@@ -357,7 +364,7 @@ class WikiNode(object):
             return
         for dst in WikiNode.globaldata['out'][src]:
             # filter out category, template pages
-            if dst.endswith('Template'):
+            if dst.startswith('Category') or dst.endswith('Template'):
                 continue
             srcnode = graph.nodes.get(src)
             if not srcnode:
@@ -390,7 +397,8 @@ class HeadNode(WikiNode):
             if not graph.nodes.get(parent):
                 continue
             # filter out category, template pages
-            if child.endswith("Template"):
+            if (child.startswith("Category") or
+                child.endswith("Template")):
                 continue
 
             newnode = graph.nodes.get(child)
