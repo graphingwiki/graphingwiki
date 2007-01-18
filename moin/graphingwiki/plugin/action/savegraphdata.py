@@ -243,7 +243,8 @@ def execute(pagename, request, text, pagedir, page):
                         if key in ["shape"]:
                             setattr(pagenode, key, val.strip())
                             continue
-                        if key in ["label", "sides", "skew", "orientation"]:
+                        if key in ["label", "sides", "tooltip",
+                                   "skew", "orientation"]:
                             setattr(pagenode, key, val)
                             continue
                         node_set_attribute(pagenode, key, val)
