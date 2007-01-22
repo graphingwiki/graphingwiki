@@ -84,12 +84,11 @@ class GraphShowerSimple(GraphShower):
 
         if self.format == 'zgr':
             print '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                  'archive="/zvtm.jar,/zgrviewer.jar"width="720" height="480">'+\
+                  'archive="/zvtm.jar,/zgrviewer.jar" '+\
+                  'width="100%" height="600">'+\
                   '<param name="type" ' +\
                   'value="application/x-java-applet;version=1.4" />' +\
                   '<param name="scriptable" value="false" />' +\
-                  '<param name="width" value="720" />' +\
-                  '<param name="height" value="480" />' +\
                   '<param name="svgURL" value="%s" />' % (img_url + "1") +\
                   '<param name="title" value="ZGRViewer - Applet" />'+\
                   '<param name="appletBackgroundColor" value="#DDD" />' +\
