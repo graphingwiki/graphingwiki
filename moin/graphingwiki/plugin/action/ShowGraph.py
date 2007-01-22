@@ -417,6 +417,12 @@ class GraphShower(object):
                 if value:
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
+                    # Opportunistic integer conversion
+                    # (num sorts earlies than alpha)
+                    try:
+                        value = int(value)
+                    except:
+                        pass
                     n._order = value
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
@@ -815,18 +821,6 @@ class GraphShower(object):
         request.write(u'<input type=submit name=test ' +
                       'value="Test graph">\n</form>\n')
 
-    def initTraverse(self):
-        # Init WikiNode-pattern
-        WikiNode(request=self.request,
-                 urladd=self.urladd,
-                 startpages=self.startpages)
-
-        # Start pattern searches from current page +
-        # nodes gathered as per form args
-        nodes = set(self.startpages)
-
-        return nodes
-
     def generateLayout(self, outgraph):
         # Add all data to graph
         gr = GraphRepr(outgraph, engine=self.graphengine, order='_order')
@@ -977,6 +971,12 @@ class GraphShower(object):
         # The working with patterns goes a bit like this:
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
+#        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
+
+        # Init WikiNode-pattern
+        WikiNode(request=self.request,
+                 urladd=self.urladd,
+                 startpages=self.startpages)
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph
@@ -985,7 +985,9 @@ class GraphShower(object):
         cl.stop('build')
 
         cl.start('traverse')
-        nodes = self.initTraverse()
+        # Start pattern searches from current page +
+        # nodes gathered as per form args
+        nodes = set(self.startpages)
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
         cl.stop('traverse')
 
@@ -999,7 +1001,7 @@ class GraphShower(object):
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
 
-        # self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
+#        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
 
         # Do the layout
         gr = self.generateLayout(outgraph)

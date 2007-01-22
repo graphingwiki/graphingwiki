@@ -36,6 +36,7 @@ class GraphShowerSimple(GraphShower):
         # URL addition
         self.image = 0
         self.urladd = ''
+        self.available_formats = ['png', 'svg', 'dot', 'zgr']
     
     def sendGraph(self, gr):
         img = self.getLayoutInFormat(gr.graphviz, self.format)
@@ -81,7 +82,28 @@ class GraphShowerSimple(GraphShower):
         if self.coloredges or self.colornodes:
             legend = self.makeLegend()
 
-        if self.format != 'svg':
+        if self.format == 'zgr':
+            print '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
+                  'archive="/zvtm.jar,/zgrviewer.jar"width="720" height="480">'+\
+                  '<param name="type" ' +\
+                  'value="application/x-java-applet;version=1.4" />' +\
+                  '<param name="scriptable" value="false" />' +\
+                  '<param name="width" value="720" />' +\
+                  '<param name="height" value="480" />' +\
+                  '<param name="svgURL" value="%s" />' % (img_url + "1") +\
+                  '<param name="title" value="ZGRViewer - Applet" />'+\
+                  '<param name="appletBackgroundColor" value="#DDD" />' +\
+                  '<param name="graphBackgroundColor" value="#DDD" />' +\
+                  '<param name="highlightColor" value="red" />' +\
+                  ' </applet>'
+
+        elif self.format == 'svg':
+            print '<img src="%s" alt="graph">' % (img_url + "1")
+            print
+            if legend:
+                print '<img src="%s" alt="legend">' % (img_url + "2")
+
+        else:
             print '<img src="%s" alt="graph" usemap="#%s">' % \
                   (img_url + "1", gr.graphattrs['name'])
             print
@@ -90,20 +112,21 @@ class GraphShowerSimple(GraphShower):
                 print '<img src="%s" alt="legend" usemap="#%s">' % \
                       (img_url + "2", legend.name)
                 self.sendMap(legend)
-        else:
-            print '<img src="%s" alt="graph">' % (img_url + "1")
-            print
-            if legend:
-                print '<img src="%s" alt="legend">' % (img_url + "2")
 
         self.sendFooter(formatter)
 
     def get_graph(self):
+        # Init WikiNode-pattern
+        WikiNode(request=self.request,
+                 urladd=self.urladd,
+                 startpages=self.startpages)
+
         # First, let's get do the desired traversal, get outgraph
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
 
-        nodes = self.initTraverse()
+#        nodes = self.initTraverse()
+        nodes = set(self.startpages)
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
 
         # Stylistic stuff: Color nodes, edges, bold startpages
@@ -121,8 +144,14 @@ class GraphShowerSimple(GraphShower):
         return gr
 
     def execute_image(self):
-        print "Content-type: image/%s\n" % \
-              (self.format == 'svg' and 'svg+xml' or self.format)
+        formatcontent = self.format
+        
+        if self.format in ['zgr', 'svg']:
+            self.format = 'svg'
+            format_content = 'svg+xml'
+
+        print "Content-type: image/%s\n" % formatcontent
+
         if self.image == 1:
             gr = self.get_graph()
             self.sendGraph(gr)

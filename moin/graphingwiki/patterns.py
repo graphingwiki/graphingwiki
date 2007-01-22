@@ -73,6 +73,7 @@ class GraphData(object):
         if pagename in self.loaded:
             return self.loaded[pagename]
         self.loaded[pagename] = None
+#        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')        
         if not self.request.user.may.read(pagename):
             return None
         inc_page = Page(self.request, pagename)
@@ -304,6 +305,10 @@ class WikiNode(object):
     globaldata = None
 
     def __init__(self, request=None, urladd=None, startpages=None):
+        # Zis iz not da global cache, just a tab on what's
+        # been loaded in the current session
+        WikiNode.loaded = []
+
         if request is not None: 
             WikiNode.request = request
         if urladd is not None:
@@ -311,16 +316,18 @@ class WikiNode(object):
         if startpages is not None:
             WikiNode.startpages = startpages
 
-        #         if request:
-        #             if not WikiNode.globaldata:
-        #                 request.write("Initing graphdata...<br>")
-        #                 WikiNode.graphdata = GraphData(WikiNode.request)
-        #                 WikiNode.globaldata = WikiNode.graphdata.globaldata
-        #             else:
-        #                 request.write("yeah<br>")
+        if request:
+            if not WikiNode.globaldata:
+                WikiNode.graphdata = GraphData(WikiNode.request)
+                WikiNode.globaldata = WikiNode.graphdata.globaldata
+# Dbg:
+#                request.write("Initing graphdata...<br>")
+#            else:
+#                request.write("yeah<br>")
 
-        WikiNode.graphdata = GraphData(WikiNode.request)
-        WikiNode.globaldata = WikiNode.graphdata.globaldata
+# Late version
+#         WikiNode.graphdata = GraphData(WikiNode.request)
+#         WikiNode.globaldata = WikiNode.graphdata.globaldata
     
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
