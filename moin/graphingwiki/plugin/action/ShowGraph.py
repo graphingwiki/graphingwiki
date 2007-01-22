@@ -51,7 +51,7 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
 
 # imports from other actions
-from savegraphdata import encode, local_page
+from savegraphdata import encode, local_page, special_attrs
 
 # Header stuff for IE
 msie_header = """Content-type: message/rfc822
@@ -140,8 +140,7 @@ def quotetoshow(text):
 
 # node attributes that are not guaranteed (by sync/savegraph)
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
-                                       ['belongs_to_patterns',
-                                        'label', 'URL'], dict(node))
+                                       special_attrs, dict(node))
 
 class GraphShower(object):
     def __init__(self, pagename, request, graphengine = "neato"):
@@ -320,13 +319,13 @@ class GraphShower(object):
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-            globaldata = GraphData(self.request).get_shelve()
-            if not globaldata['in'].has_key(cat):
+#            globaldata = GraphData(self.request).get_shelve()
+            if not self.globaldata['in'].has_key(cat):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
                 # FIXME: Should raise an exception here and end the misery?
                 break
-            for newpage in globaldata['in'][cat]:
+            for newpage in self.globaldata['in'][cat]:
                 if not (newpage.endswith('Template') or
                     newpage.startswith('Category')):
                     graphdata = self.addToStartPages(graphdata, newpage)
@@ -971,12 +970,12 @@ class GraphShower(object):
         # The working with patterns goes a bit like this:
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
-#        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
+#        self.request.write('execute' + repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
 
         # Init WikiNode-pattern
-        WikiNode(request=self.request,
-                 urladd=self.urladd,
-                 startpages=self.startpages)
+        self.globaldata = WikiNode(request=self.request,
+                                   urladd=self.urladd,
+                                   startpages=self.startpages).globaldata
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph

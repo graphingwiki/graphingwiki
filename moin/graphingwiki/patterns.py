@@ -73,6 +73,7 @@ class GraphData(object):
         if pagename in self.loaded:
             return self.loaded[pagename]
         self.loaded[pagename] = None
+#        self.request.write('load-graph:')
 #        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')        
         if not self.request.user.may.read(pagename):
             return None
@@ -317,12 +318,14 @@ class WikiNode(object):
             WikiNode.startpages = startpages
 
         if request:
+            # Start cache-like stuff
             if not WikiNode.globaldata:
                 WikiNode.graphdata = GraphData(WikiNode.request)
                 WikiNode.globaldata = WikiNode.graphdata.globaldata
-# Dbg:
 #                request.write("Initing graphdata...<br>")
-#            else:
+            # Update the current request (user, etc) to cache-like stuff
+            else:
+                WikiNode.graphdata.request = WikiNode.request
 #                request.write("yeah<br>")
 
 # Late version

@@ -26,7 +26,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 """
-    
+
+from MoinMoin.request import RequestModPy
 from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):
@@ -60,6 +61,12 @@ class GraphShowerSimple(GraphShower):
             wikiutil.send_footer(self.request, self.pagename)
             return
 
+        # Init WikiNode-pattern
+        self.globaldata = WikiNode(request=self.request,
+                                   urladd=self.urladd,
+                                   startpages=self.startpages).globaldata
+
+
         graphdata = self.buildGraphData()
 
         # The working with patterns goes a bit like this:
@@ -83,43 +90,39 @@ class GraphShowerSimple(GraphShower):
             legend = self.makeLegend()
 
         if self.format == 'zgr':
-            print '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                  'archive="/zvtm.jar,/zgrviewer.jar" '+\
-                  'width="100%" height="600">'+\
-                  '<param name="type" ' +\
-                  'value="application/x-java-applet;version=1.4" />' +\
-                  '<param name="scriptable" value="false" />' +\
-                  '<param name="svgURL" value="%s" />' % (img_url + "1") +\
-                  '<param name="title" value="ZGRViewer - Applet" />'+\
-                  '<param name="appletBackgroundColor" value="#DDD" />' +\
-                  '<param name="graphBackgroundColor" value="#DDD" />' +\
-                  '<param name="highlightColor" value="red" />' +\
-                  ' </applet>'
+            self.request.write(
+                '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
+                'archive="/zvtm.jar,/zgrviewer.jar" '+\
+                'width="100%" height="600">'+\
+                '<param name="type" ' +\
+                'value="application/x-java-applet;version=1.4" />' +\
+                '<param name="scriptable" value="false" />' +\
+                '<param name="svgURL" value="%s" />' % (img_url + "1") +\
+                '<param name="title" value="ZGRViewer - Applet" />'+\
+                '<param name="appletBackgroundColor" value="#DDD" />' +\
+                '<param name="graphBackgroundColor" value="#DDD" />' +\
+                '<param name="highlightColor" value="red" />' +\
+                ' </applet>')
 
         elif self.format == 'svg':
-            print '<img src="%s" alt="graph">' % (img_url + "1")
-            print
+            self.request.write('<img src="%s" alt="graph">\n' %
+                               (img_url + "1"))
             if legend:
-                print '<img src="%s" alt="legend">' % (img_url + "2")
+                self.request.write('<img src="%s" alt="legend">' %
+                                   (img_url + "2"))
 
         else:
-            print '<img src="%s" alt="graph" usemap="#%s">' % \
-                  (img_url + "1", gr.graphattrs['name'])
-            print
+            self.request.write('<img src="%s" alt="graph" usemap="#%s">\n' % \
+                               (img_url + "1", gr.graphattrs['name']))
             self.sendMap(gr.graphviz)
             if legend:
-                print '<img src="%s" alt="legend" usemap="#%s">' % \
-                      (img_url + "2", legend.name)
+                self.request.write('<img src="%s" alt="legend" usemap="#%s">'%
+                                   (img_url + "2", legend.name))
                 self.sendMap(legend)
 
         self.sendFooter(formatter)
 
     def get_graph(self):
-        # Init WikiNode-pattern
-        WikiNode(request=self.request,
-                 urladd=self.urladd,
-                 startpages=self.startpages)
-
         # First, let's get do the desired traversal, get outgraph
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
@@ -143,13 +146,22 @@ class GraphShowerSimple(GraphShower):
         return gr
 
     def execute_image(self):
+        # Init WikiNode-pattern
+        self.globaldata = WikiNode(request=self.request,
+                                   urladd=self.urladd,
+                                   startpages=self.startpages).globaldata
+
         formatcontent = self.format
         
         if self.format in ['zgr', 'svg']:
             self.format = 'svg'
-            format_content = 'svg+xml'
+            formatcontent = 'svg+xml'
 
-        print "Content-type: image/%s\n" % formatcontent
+        if isinstance(self.request, RequestModPy):
+            self.request.setHttpHeader('Content-type: image/%s' % formatcontent)
+            del self.request.mpyreq.headers_out['Vary']
+        else:
+            self.request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.image == 1:
             gr = self.get_graph()

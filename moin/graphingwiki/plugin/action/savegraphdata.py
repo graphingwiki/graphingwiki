@@ -45,6 +45,9 @@ from graphingwiki import graph
 
 url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
+special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
+                 "shape", 'belongs_to_patterns', 'URL']
+
 # non-local pagenames have either an URL or a namespace
 def local_page(pagename):
     if url_re.search(pagename) or ':' in pagename:
@@ -240,11 +243,7 @@ def execute(pagename, request, text, pagedir, page):
                         args = args[:-1]
                     # set attributes for this page
                     for key, val in zip(args[::2], args[1::2]):
-                        if key in ["shape"]:
-                            setattr(pagenode, key, val.strip())
-                            continue
-                        if key in ["label", "sides", "tooltip",
-                                   "skew", "orientation"]:
+                        if key in special_attrs:
                             setattr(pagenode, key, val)
                             continue
                         node_set_attribute(pagenode, key, val)
