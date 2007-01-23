@@ -65,6 +65,7 @@ class GraphData(object):
         globaldata =  {}
         globaldata['in'] = temp_shelve['in']
         globaldata['out'] = temp_shelve['out']
+        globaldata['meta'] = temp_shelve['meta']
         temp_shelve.close()
 
         return globaldata

@@ -244,7 +244,7 @@ class GraphShower(object):
             otherpages = ''.join([x for x in request.form['otherpages']])
             self.otherpages = [url_quote(encode(x.strip()))
                                for x in otherpages.split(',')]
-
+            
         # Limit
         if request.form.has_key('limit'):
             self.limit = ''.join([x for x in request.form['limit']])
@@ -407,6 +407,12 @@ class GraphShower(object):
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
+
+            # Add tooltip, if applicable
+            if (self.globaldata['meta'].has_key(obj.node) and
+                not hasattr(obj, 'tooltip')):
+                n.tooltip = 'MetaData: ' + \
+                            ', '.join(self.globaldata['meta'][obj.node])
 
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)

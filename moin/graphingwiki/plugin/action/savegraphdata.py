@@ -95,6 +95,9 @@ def node_set_attribute(pagenode, key, val):
         vars.add(val)
         setattr(pagenode, key, vars)
 
+def shelve_set_attribute(shelve_data, node, key):
+     shelve_data['meta'].setdefault(node, []).append(key)
+
 ## Different encoding/quoting functions
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
@@ -139,6 +142,10 @@ def execute(pagename, request, text, pagedir, page):
     if not globaldata.has_key('out'):
         globaldata['out'] = {}
 
+    # List of all the metadata keys of pages
+    if not globaldata.has_key('meta'):
+        globaldata['meta'] = {}
+
     quotedname = url_quote(encode(pagename))
 
     # Page graph file to save detailed data in
@@ -151,6 +158,8 @@ def execute(pagename, request, text, pagedir, page):
             shelve_remove_in(globaldata, edge)
         for edge in old_data.edges.getall(child=quotedname):
             shelve_remove_out(globaldata, edge)
+        if globaldata['meta'].has_key(quotedname):
+            globaldata['meta'][quotedname] = []
         pagegraphfile.close()
             
     # Overwrite pagegraphfile with the new data
@@ -243,10 +252,18 @@ def execute(pagename, request, text, pagedir, page):
                         args = args[:-1]
                     # set attributes for this page
                     for key, val in zip(args[::2], args[1::2]):
+                        # Do not handle empty metadata, except empty labels
+                        if key != 'label':
+                            val = val.strip()
+                        if not val:
+                            continue
+                        # Values to be handed to dot
                         if key in special_attrs:
                             setattr(pagenode, key, val)
                             continue
+                        # Save to pagegraph and shelve's metadata list
                         node_set_attribute(pagenode, key, val)
+                        shelve_set_attribute(globaldata, quotedname, key)
 
                 # Handling of links
                 if hit is not None and type in types and not inpre:
