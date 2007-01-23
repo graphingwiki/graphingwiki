@@ -60,13 +60,23 @@ try:
             raise UserInputException
         pages = [pagename]
 except UserInputException:
-    print "Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n"
+    sys.stderr.write("Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n")
     sys.exit(2)
+
+lockfile = os.path.join(wikidir, 'graphdata.shelve.lock')
 
 if not pages:
     gfile = os.path.join(wikidir, 'graphdata.shelve')
     if os.path.exists(gfile):
         os.unlink(gfile)
+    if os.path.exists(lockfile):
+        os.unlink(lockfile)
+elif os.path.exists(lockfile):
+    sys.stderr.write("Found lockfile (%s)," % lockfile + \
+                     "database may be corrupted. \n" + \
+                     "Rehash entire db or remove lock " + \
+                     "and rehash the crashed pages.\n")
+    sys.exit(1)
 
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
