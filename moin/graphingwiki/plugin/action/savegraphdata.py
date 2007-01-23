@@ -95,8 +95,8 @@ def node_set_attribute(pagenode, key, val):
         vars.add(val)
         setattr(pagenode, key, vars)
 
-def shelve_set_attribute(shelve_data, node, key):
-     shelve_data['meta'].setdefault(node, []).append(key)
+def shelve_set_attribute(shelve_data, node, key, val):
+     shelve_data['meta'].setdefault(node, {}).setdefault(key, []).append(val)
 
 ## Different encoding/quoting functions
 # Encoder from unicode to charset selected in config
@@ -263,7 +263,7 @@ def execute(pagename, request, text, pagedir, page):
                             continue
                         # Save to pagegraph and shelve's metadata list
                         node_set_attribute(pagenode, key, val)
-                        shelve_set_attribute(globaldata, quotedname, key)
+                        shelve_set_attribute(globaldata, quotedname, key, val)
 
                 # Handling of links
                 if hit is not None and type in types and not inpre:

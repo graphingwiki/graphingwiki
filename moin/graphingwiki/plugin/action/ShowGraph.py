@@ -411,8 +411,9 @@ class GraphShower(object):
             # Add tooltip, if applicable
             if (self.globaldata['meta'].has_key(obj.node) and
                 not hasattr(obj, 'tooltip')):
-                n.tooltip = 'MetaData: ' + \
-                            ', '.join(self.globaldata['meta'][obj.node])
+                n.tooltip = 'MetaData:\n\n' + \
+                            ' \n'.join(["-%s: %s" % (x, ','.join(self.globaldata['meta'][obj.node][x])) for x in self.globaldata['meta'][obj.node].keys()])
+#                self.request.write(n.tooltip)
 
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)
