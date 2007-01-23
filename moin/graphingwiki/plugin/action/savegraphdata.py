@@ -159,7 +159,7 @@ def execute(pagename, request, text, pagedir, page):
         for edge in old_data.edges.getall(child=quotedname):
             shelve_remove_out(globaldata, edge)
         if globaldata['meta'].has_key(quotedname):
-            globaldata['meta'][quotedname] = []
+            globaldata['meta'][quotedname] = {}
         pagegraphfile.close()
             
     # Overwrite pagegraphfile with the new data
