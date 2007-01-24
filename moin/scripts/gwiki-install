@@ -33,6 +33,14 @@ import os
 import sys
 from shutil import copy2
 
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+                  help="Report success")
+
+(options, args) = parser.parse_args()
+
 try:
     import graphingwiki
 except ImportError:
@@ -40,11 +48,12 @@ except ImportError:
     raise
 
 try:
-    destdir = os.path.join(sys.argv[1], 'data/plugin')
+    destdir = os.path.join(args[0], 'data/plugin')
     if not os.path.isdir(destdir):
         raise
 except:
-    print "Usage: " + sys.argv[0] + " <path-to-wiki>\n"
+    parser.print_help()
+    print
     raise
 
 def copytree(src, dst, symlinks=False):
@@ -57,6 +66,8 @@ def copytree(src, dst, symlinks=False):
     for name in names:
         srcname = os.path.join(src, name)
         dstname = os.path.join(dst, name)
+        if options.verbose:
+            print "Copying %s to %s" % (srcname, dstname)
         try:
             if symlinks and os.path.islink(srcname):
                 linkto = os.readlink(srcname)

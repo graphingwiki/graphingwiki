@@ -65,4 +65,4 @@ def execute(macro, args):
 
         arglist = arglist[2:]
 
-    return u''.join(result)
+    return u'\n'.join(result)
