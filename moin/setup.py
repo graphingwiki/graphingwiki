@@ -9,4 +9,4 @@ setup(name='graphingwiki', version='0.1',
       package_data={'graphingwiki': ['plugin/*/*.py']},
       scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
                'scripts/gwiki-debuggraph', 'scripts/gwiki-install',
-               'scripts/moin-showpage'])
+               'scripts/moin-showpage', 'scripts/gwiki-get-tgz'])

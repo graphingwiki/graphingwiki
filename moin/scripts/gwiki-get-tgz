@@ -1,0 +1,15 @@
+
+#!/bin/sh
+set -e
+
+repourl=http://svn.graphingwiki.python-hosting.com/trunk
+
+if [ $# != 1 ]; then
+    echo usage: get-gwiki-tgz '<revision>'
+    echo "(to see latest revision, use svn info $repourl using a recent enough snv)"
+    exit 0
+fi
+d=`mktemp -d`
+svn co -r $1 $repourl $d/graphingwiki-$1 || exit 1
+(cd $d && tar -cf - graphingwiki-$1) | gzip > graphingwiki-$1.tgz 
+rm -fr $d
