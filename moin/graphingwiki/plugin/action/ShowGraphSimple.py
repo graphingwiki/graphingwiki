@@ -29,6 +29,7 @@
 
 from MoinMoin.request import RequestModPy
 from ShowGraph import *
+from urllib import quote as url_quote
 
 class GraphShowerSimple(GraphShower):
     def __init__(self, pagename, request, graphengine = "neato"):
@@ -67,11 +68,10 @@ class GraphShowerSimple(GraphShower):
                                    startpages=self.startpages).globaldata
 
 
-        graphdata = self.buildGraphData()
-
         # The working with patterns goes a bit like this:
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
+
 
         gr = self.get_graph()
 
@@ -140,6 +140,25 @@ class GraphShowerSimple(GraphShower):
         # Fix URL:s
         outgraph = self.fixNodeUrls(outgraph)
 
+        if self.format == 'zgr':
+            self.origformat = True
+
+        # To fix links with zgrviewer
+        if hasattr(self, 'origformat'):
+            scr = self.request.getBaseURL()
+            for node, in outgraph.nodes.getall():
+                node = outgraph.nodes.get(node)
+                if 'action=AttachFile' in node.URL:
+                    # node URL:s will have the wrong quoting if
+                    # not explicitly quoted
+                    pagepart, args = node.URL[1:].split('?')
+                    node.URL = scr + url_quote(pagepart) + '?' + args
+                if node.URL[0] == '.':
+                    node.URL = scr + node.URL[1:]
+                elif node.URL[0] == '/':
+                    node.URL = scr + node.URL
+                node.URL = node.URL.replace('&image=1', '')
+
         # Do the layout
         gr = self.generateLayout(outgraph)
 
@@ -152,6 +171,9 @@ class GraphShowerSimple(GraphShower):
                                    startpages=self.startpages).globaldata
 
         formatcontent = self.format
+
+        if self.format == 'zgr':
+            self.origformat = True
         
         if self.format in ['zgr', 'svg']:
             self.format = 'svg'

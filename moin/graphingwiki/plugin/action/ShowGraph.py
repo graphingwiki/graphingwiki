@@ -382,7 +382,7 @@ class GraphShower(object):
                     return outgraph, False
                 elif not hasattr(obj, doby):
                     continue
-
+                
                 # Filtering by multiple metadata values
                 target = getattr(obj, doby)
                 for rule in [set(self.qpirts_p(x)) for x in filt if ',' in x]:
