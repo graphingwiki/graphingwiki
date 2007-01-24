@@ -1013,6 +1013,8 @@ class GraphShower(object):
         gr = self.generateLayout(outgraph)
         cl.stop('layout')
 
+        self.request.write('<!-- $Id$ -->\n')
+
         cl.start('format')
         if self.format == 'svg':
             self.sendForm()
