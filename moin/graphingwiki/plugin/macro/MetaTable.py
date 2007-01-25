@@ -42,16 +42,20 @@ encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
 
-def t_cell(macro, data, unq=0):
-    if unq:
-        data = url_unquote(data)
+def t_cell(macro, data, head=0):
+    out = macro.formatter.table_cell(1)
+    data = url_unquote(data)
     if not isinstance(data, unicode):
         data = unicode(data, config.charset)
 
-    data = encode(data)
+    if head:
+        out = out + macro.formatter.pagelink(1, data)
     
-    out = macro.formatter.table_cell(1)
     out = out + macro.formatter.text(data)
+
+    if head:
+        out = out + macro.formatter.pagelink(0)
+
     return out
     
 def execute(macro, args):
@@ -88,13 +92,13 @@ def execute(macro, args):
 
     for page in pagelist:
         out = out + macro.formatter.table_row(1)
-        out = out + t_cell(macro, page, unq=1)
+        out = out + t_cell(macro, page, head=1)
         for key in metakeys:
             data = ', '.join(globaldata['meta'].get(page, {}).get(key, ""))
             out = out + t_cell(macro, data)
             
         out = out + macro.formatter.table_row(0)
 
-    out = out + macro.formatter.table(1)
+    out = out + macro.formatter.table(0)
 
-    return "\nMetadata on pages:" + out
+    return out
