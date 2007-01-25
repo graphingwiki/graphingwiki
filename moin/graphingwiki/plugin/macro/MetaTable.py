@@ -90,6 +90,8 @@ def execute(macro, args):
         out = out + t_cell(macro, key)
     out = out + macro.formatter.table_row(0)
 
+    pagelist.sort()
+
     for page in pagelist:
         out = out + macro.formatter.table_row(1)
         out = out + t_cell(macro, page, head=1)
