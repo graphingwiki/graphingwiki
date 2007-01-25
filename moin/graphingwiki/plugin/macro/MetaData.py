@@ -43,26 +43,32 @@ def execute(macro, args):
     result = []
 
     if showtype == 'list':
-        if macro.formatter.in_p:
-            result.append(macro.formatter.paragraph(0))
-
+        result.append(macro.formatter.definition_list(1, **{'class':
+                                                            'meta_list'}))
+        
     # Failsafe for mismatched key, value pairs
     while len(arglist) > 1:
         key, val = arglist[:2]
 
         if showtype == 'list':
-            result.extend([macro.formatter.definition_term(1),
+            result.extend([macro.formatter.definition_term(1, **{'class':
+                                                                 'meta_key'}),
                            macro.formatter.text(key),
                            macro.formatter.definition_term(0),
-                           macro.formatter.definition_desc(1),
+                           macro.formatter.definition_desc(1, **{'class':
+                                                                 'meta_val'}),
                            macro.formatter.text(val),
                            macro.formatter.definition_desc(0)])
         else:
-            result.extend([macro.formatter.strong(1),
+            result.extend([macro.formatter.strong(1, **{'class':
+                                                        'meta_key'}),
                            macro.formatter.text(key),
                            macro.formatter.strong(0),
                            macro.formatter.text(val)])
 
         arglist = arglist[2:]
+
+    if showtype == 'list':
+        result.append(macro.formatter.definition_list(0))
 
     return u'\n'.join(result)

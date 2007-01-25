@@ -425,6 +425,7 @@ class GraphShower(object):
                     value = self.qstrip_p(value)
                     # Opportunistic integer conversion
                     # (num sorts earlies than alpha)
+                    # Same code as in metatable
                     try:
                         value = int(value)
                     except:

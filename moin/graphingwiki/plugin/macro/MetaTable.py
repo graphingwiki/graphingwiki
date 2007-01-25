@@ -43,7 +43,10 @@ def encode(str):
     return encoder(str, 'replace')[0]
 
 def t_cell(macro, data, head=0):
-    out = macro.formatter.table_cell(1)
+    if head:
+        out = macro.formatter.table_cell(1, {'class': 'meta_page'})
+    else:
+        out = macro.formatter.table_cell(1, {'class': 'meta_cell'})
     data = url_unquote(data)
     if not isinstance(data, unicode):
         data = unicode(data, config.charset)
@@ -80,7 +83,14 @@ def execute(macro, args):
 
     out = '\n' + macro.formatter.table(1)
     for page in pagelist:
-        metakeys.update([x for x in globaldata['meta'].get(page, {}).keys()])
+        for key in globaldata['meta'].get(page, {}).keys():
+            # opportunistic conversion of metadata keys
+            # same code as in metatable
+            try:
+                key = int(key)
+            except:
+                pass
+            metakeys.add(key)
 
     metakeys = sorted(metakeys)
     # Give a class to headers to make it customisable
