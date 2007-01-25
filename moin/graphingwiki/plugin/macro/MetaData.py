@@ -27,6 +27,8 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+from inspect import getargspec
+
 Dependencies = []
 
 def execute(macro, args):
@@ -42,26 +44,31 @@ def execute(macro, args):
 
     result = []
 
+    # Fix for moin 1.3.5
+    listmeta = {}
+    keymeta = {}
+    valmeta = {}
+    if getargspec(macro.formatter.definition_list)[2]:
+        listmeta = {'class': 'meta_list'}
+        keymeta = {'class': 'meta_key'}
+        valmeta = {'class': 'meta_val'}
+
     if showtype == 'list':
-        result.append(macro.formatter.definition_list(1, **{'class':
-                                                            'meta_list'}))
+        result.append(macro.formatter.definition_list(1, **listmeta))
         
     # Failsafe for mismatched key, value pairs
     while len(arglist) > 1:
         key, val = arglist[:2]
 
         if showtype == 'list':
-            result.extend([macro.formatter.definition_term(1, **{'class':
-                                                                 'meta_key'}),
+            result.extend([macro.formatter.definition_term(1, **keymeta),
                            macro.formatter.text(key),
                            macro.formatter.definition_term(0),
-                           macro.formatter.definition_desc(1, **{'class':
-                                                                 'meta_val'}),
+                           macro.formatter.definition_desc(1, **valmeta),
                            macro.formatter.text(val),
                            macro.formatter.definition_desc(0)])
         else:
-            result.extend([macro.formatter.strong(1, **{'class':
-                                                        'meta_key'}),
+            result.extend([macro.formatter.strong(1, **keymeta),
                            macro.formatter.text(key),
                            macro.formatter.strong(0),
                            macro.formatter.text(val)])
