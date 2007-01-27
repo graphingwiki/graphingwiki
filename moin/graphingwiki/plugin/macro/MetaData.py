@@ -84,6 +84,8 @@ def execute(macro, args):
             if request.page.page_name in keylist:
                 keylist.remove(request.page.page_name)
             if keylist:
+                if len(keylist) > 10:
+                    keylist = keylist[:9] + ['...']
                 keylist = 'Key also on pages:\n' + '\n'.join(keylist)
 
             vallist = [unicode(url_unquote(x), config.charset)
@@ -91,6 +93,8 @@ def execute(macro, args):
             if request.page.page_name in vallist:
                 vallist.remove(request.page.page_name)
             if vallist:
+                if len(vallist) > 10:
+                    vallist = vallist[:9] + ['...']
                 vallist = 'Value also on pages:\n' + '\n'.join(vallist)
 
             kwkey = {'querystr': 'action=MetaSearch&q=' + key,
