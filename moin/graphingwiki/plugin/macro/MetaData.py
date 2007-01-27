@@ -83,28 +83,28 @@ def execute(macro, args):
                        for x in sorted(keys_on_pages.get(key, ''))]
             if request.page.page_name in keylist:
                 keylist.remove(request.page.page_name)
+            kwkey = {'querystr': 'action=MetaSearch&q=' + key,
+                     'allowed_attrs': ['title', 'href', 'class'],
+                     'class': 'meta_search'}
             if keylist:
                 if len(keylist) > 10:
                     keylist = keylist[:9] + ['...']
                 keylist = 'Key also on pages:\n' + '\n'.join(keylist)
+                kwkey['title'] = keylist
 
             vallist = [unicode(url_unquote(x), config.charset)
                        for x in sorted(vals_on_pages.get(encode(val), ''))]
             if request.page.page_name in vallist:
                 vallist.remove(request.page.page_name)
+            kwval = {'querystr': 'action=MetaSearch&q=' + val,
+                     'allowed_attrs': ['title', 'href', 'class'],
+                     'class': 'meta_search'}
             if vallist:
                 if len(vallist) > 10:
                     vallist = vallist[:9] + ['...']
                 vallist = 'Value also on pages:\n' + '\n'.join(vallist)
+                kwval['title'] = vallist
 
-            kwkey = {'querystr': 'action=MetaSearch&q=' + key,
-                     'allowed_attrs': ['title', 'href', 'class'],
-                     'title': keylist,
-                     'class': 'meta_search'}
-            kwval = {'querystr': 'action=MetaSearch&q=' + val,
-                     'allowed_attrs': ['title', 'href', 'class'],
-                     'title': vallist,
-                     'class': 'meta_search'}
             result.extend([formatter.definition_term(1, **keymeta),
                            formatter.pagelink(1, request.page.page_name,
                                               request.page, **kwkey),
