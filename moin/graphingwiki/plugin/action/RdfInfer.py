@@ -35,10 +35,10 @@ from savegraphdata import encode
 
 from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.formatter.text_html import Formatter 
 from MoinMoin.Page import Page
-
 from MoinMoin.util import MoinMoinNoFooter
+from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
+
 from unifier import Unifier
 
 # The necessary regexps
@@ -59,9 +59,14 @@ def execute(pagename, request):
     wikiutil.send_title(request, request.getText('Inference'),
                         pagename=pagename)
 
+    # fix for moin 1.3.5
+    if not hasattr(request, 'formatter'):
+        formatter = HtmlFormatter(request)
+    else:
+        formatter = request.formatter
+
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
-    formatter = Formatter(request)
     request.write(formatter.startContent("content"))
 
     infer = ''

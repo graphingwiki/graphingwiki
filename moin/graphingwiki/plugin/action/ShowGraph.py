@@ -319,7 +319,6 @@ class GraphShower(object):
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-#            globaldata = GraphData(self.request).get_shelve()
             if not self.globaldata['in'].has_key(cat):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -423,13 +422,6 @@ class GraphShower(object):
                 if value:
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
-                    # Opportunistic integer conversion
-                    # (num sorts earlies than alpha)
-                    # Same code as in metatable
-                    try:
-                        value = int(value)
-                    except:
-                        pass
                     n._order = value
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
@@ -928,9 +920,14 @@ class GraphShower(object):
 
             wikiutil.send_title(request, title, pagename=pagename)
 
+            # fix for moin 1.3.5
+            if not hasattr(request, 'formatter'):
+                formatter = HtmlFormatter(request)
+            else:
+                formatter = request.formatter
+
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
-            formatter = HtmlFormatter(request)
             request.write(formatter.startContent("content"))
             formatter.setPage(self.pageobj)
         else:

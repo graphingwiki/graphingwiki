@@ -47,7 +47,7 @@ def execute(macro, args):
     pagename = url_quote(encode(pagename))
 
     out = []
-    globaldata = GraphData(macro.request).get_shelve()
+    globaldata = GraphData(macro.request).globaldata
     for page in globaldata['in'].get(pagename, []):
         page = unicode(url_unquote(page), config.charset)
         out.append(macro.formatter.pagelink(1, page) +

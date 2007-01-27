@@ -28,13 +28,29 @@
 
 """
 from inspect import getargspec
+from urllib import unquote as url_unquote
+
+from MoinMoin import config
+
+from graphingwiki.patterns import encode
+from graphingwiki.patterns import GraphData
 
 Dependencies = []
 
 def execute(macro, args):
     arglist = args.split(',')
     showtype = 'list'
-    
+
+    formatter = macro.formatter
+    macro.request.page.formatter = formatter
+    request = macro.request
+
+    graphdata = GraphData(request)
+    graphdata.reverse_meta()
+    globaldata = graphdata.globaldata
+    keys_on_pages = graphdata.keys_on_pages
+    vals_on_pages = graphdata.vals_on_pages
+
     if len(arglist) % 2:
         # Hidden values
         if arglist[-1].strip() == 'hidden':
@@ -48,30 +64,61 @@ def execute(macro, args):
     listmeta = {}
     keymeta = {}
     valmeta = {}
-    if getargspec(macro.formatter.definition_list)[2]:
+    if getargspec(formatter.definition_list)[2]:
         listmeta = {'class': 'meta_list'}
         keymeta = {'class': 'meta_key'}
         valmeta = {'class': 'meta_val'}
 
     if showtype == 'list':
-        result.append(macro.formatter.definition_list(1, **listmeta))
+        result.append(formatter.definition_list(1, **listmeta))
         
     # Failsafe for mismatched key, value pairs
     while len(arglist) > 1:
         key, val = arglist[:2]
 
         if showtype == 'list':
-            result.extend([macro.formatter.definition_term(1, **keymeta),
-                           macro.formatter.text(key),
-                           macro.formatter.definition_term(0),
-                           macro.formatter.definition_desc(1, **valmeta),
-                           macro.formatter.text(val),
-                           macro.formatter.definition_desc(0)])
+            key, val = key.strip(), val.strip()
+            
+            keylist = [unicode(url_unquote(x), config.charset)
+                       for x in sorted(keys_on_pages.get(key, ''))]
+            if request.page.page_name in keylist:
+                keylist.remove(request.page.page_name)
+            if keylist:
+                keylist = 'Key also on pages:\n' + '\n'.join(keylist)
+
+            vallist = [unicode(url_unquote(x), config.charset)
+                       for x in sorted(vals_on_pages.get(encode(val), ''))]
+            if request.page.page_name in vallist:
+                vallist.remove(request.page.page_name)
+            if vallist:
+                vallist = 'Value also on pages:\n' + '\n'.join(vallist)
+
+            kwkey = {'querystr': 'action=MetaSearch&q=' + key,
+                     'allowed_attrs': ['title', 'href', 'class'],
+                     'title': keylist,
+                     'class': 'meta_search'}
+            kwval = {'querystr': 'action=MetaSearch&q=' + val,
+                     'allowed_attrs': ['title', 'href', 'class'],
+                     'title': vallist,
+                     'class': 'meta_search'}
+            result.extend([formatter.definition_term(1, **keymeta),
+                           formatter.pagelink(1, request.page.page_name,
+                                              request.page, **kwkey),
+                           formatter.text(key.strip()),
+                           formatter.pagelink(0),
+                           formatter.definition_term(0),
+
+                           formatter.definition_desc(1, **valmeta),
+                           formatter.pagelink(1, request.page.page_name,
+                                              request.page, **kwval),
+                           formatter.text(val.strip()),
+                           formatter.pagelink(0),
+                           formatter.definition_desc(0)])
         else:
-            result.extend([macro.formatter.strong(1, **keymeta),
-                           macro.formatter.text(key),
-                           macro.formatter.strong(0),
-                           macro.formatter.text(val)])
+            result.extend([formatter.strong(1, **keymeta),
+                           formatter.text(key),
+                           formatter.strong(0),
+                           formatter.text(val)])
 
         arglist = arglist[2:]
 

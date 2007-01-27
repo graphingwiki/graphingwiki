@@ -462,7 +462,7 @@ class GraphRepr:
                     unordered.append(node)
             
             keys = ordered.keys()
-            keys.sort()
+            keys.sort(key=str.lower)
             addednodes = []
             for key in keys:
                 addednodes.extend(ordered[key])

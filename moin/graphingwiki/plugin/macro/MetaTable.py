@@ -64,7 +64,7 @@ def t_cell(macro, data, head=0):
 def execute(macro, args):
     arglist = [x.strip() for x in args.split(',')]
 
-    globaldata = GraphData(macro.request).get_shelve()
+    globaldata = GraphData(macro.request).globaldata
 
     pagelist = []
     metakeys = set([])
@@ -86,13 +86,9 @@ def execute(macro, args):
         for key in globaldata['meta'].get(page, {}).keys():
             # opportunistic conversion of metadata keys
             # same code as in metatable
-            try:
-                key = int(key)
-            except:
-                pass
             metakeys.add(key)
 
-    metakeys = sorted(metakeys)
+    metakeys = sorted(metakeys, key=str.lower)
     # Give a class to headers to make it customisable
     out = out + macro.formatter.table_row(1, {'rowclass': 'meta_header'})
     out = out + t_cell(macro, '')

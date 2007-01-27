@@ -70,6 +70,18 @@ class GraphData(object):
 
         return globaldata
 
+    def reverse_meta(self):
+        self.keys_on_pages = {}
+        self.vals_on_pages = {}
+        
+        for page in self.globaldata['meta']:
+            if page.endswith('Template'):
+                continue
+            for key in self.globaldata['meta'][page]:
+                self.keys_on_pages.setdefault(key, set()).add(page)
+                for val in self.globaldata['meta'][page][key]:
+                    self.vals_on_pages.setdefault(val, set()).add(page)
+        
     def load_graph(self, pagename):
         if pagename in self.loaded:
             return self.loaded[pagename]

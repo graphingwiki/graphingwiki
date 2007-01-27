@@ -199,7 +199,10 @@ class GraphShowerSimple(GraphShower):
 
         # Whether to do print the page frame or the image
         if self.request.form.has_key('image'):
-            self.image = int(''.join(self.request.form['image']))
+            try:
+                self.image = int(''.join(self.request.form['image']))
+            except:
+                self.image = 1
 
         if self.image:
             self.execute_image()
