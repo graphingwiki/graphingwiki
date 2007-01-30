@@ -30,18 +30,16 @@
 
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
-from graphingwiki.patterns import encode
 
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
+from graphingwiki.patterns import encode
 from graphingwiki.patterns import GraphData
 
 def execute(pagename, request):
     request.http_headers()
-
-    print 
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
@@ -62,6 +60,8 @@ def execute(pagename, request):
     q = ''
     if request.form.has_key('q'):
         q = ''.join(request.form['q'])
+
+    pagename = '../' * pagename.count('/') + pagename
 
     request.write(u'<form method="GET" action="%s">\n' % pagename)
     request.write(u'<input type=hidden name=action value="%s">' %

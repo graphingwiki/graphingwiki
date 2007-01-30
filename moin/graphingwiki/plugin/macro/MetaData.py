@@ -35,7 +35,7 @@ from MoinMoin import config
 from graphingwiki.patterns import encode
 from graphingwiki.patterns import GraphData
 
-Dependencies = []
+Dependencies = ['metadata']
 
 def execute(macro, args):
     arglist = args.split(',')
@@ -76,53 +76,59 @@ def execute(macro, args):
     while len(arglist) > 1:
         key, val = arglist[:2]
 
+        key, val = key.strip(), val.strip()
+
+        keylist = [unicode(url_unquote(x), config.charset)
+                   for x in sorted(keys_on_pages.get(key, ''))]
+        if request.page.page_name in keylist:
+            keylist.remove(request.page.page_name)
+        kwkey = {'querystr': 'action=MetaSearch&q=' + key,
+                 'allowed_attrs': ['title', 'href', 'class'],
+                 'class': 'meta_search'}
+        if keylist:
+            if len(keylist) > 10:
+                keylist = keylist[:9] + ['...']
+            keylist = 'Key also on pages:\n' + '\n'.join(keylist)
+            kwkey['title'] = keylist
+
+        vallist = [unicode(url_unquote(x), config.charset)
+                   for x in sorted(vals_on_pages.get(encode(val), ''))]
+        if request.page.page_name in vallist:
+            vallist.remove(request.page.page_name)
+        kwval = {'querystr': 'action=MetaSearch&q=' + val,
+                 'allowed_attrs': ['title', 'href', 'class'],
+                 'class': 'meta_search'}
+        if vallist:
+            if len(vallist) > 10:
+                vallist = vallist[:9] + ['...']
+            vallist = 'Value also on pages:\n' + '\n'.join(vallist)
+            kwval['title'] = vallist
+
         if showtype == 'list':
-            key, val = key.strip(), val.strip()
-            
-            keylist = [unicode(url_unquote(x), config.charset)
-                       for x in sorted(keys_on_pages.get(key, ''))]
-            if request.page.page_name in keylist:
-                keylist.remove(request.page.page_name)
-            kwkey = {'querystr': 'action=MetaSearch&q=' + key,
-                     'allowed_attrs': ['title', 'href', 'class'],
-                     'class': 'meta_search'}
-            if keylist:
-                if len(keylist) > 10:
-                    keylist = keylist[:9] + ['...']
-                keylist = 'Key also on pages:\n' + '\n'.join(keylist)
-                kwkey['title'] = keylist
-
-            vallist = [unicode(url_unquote(x), config.charset)
-                       for x in sorted(vals_on_pages.get(encode(val), ''))]
-            if request.page.page_name in vallist:
-                vallist.remove(request.page.page_name)
-            kwval = {'querystr': 'action=MetaSearch&q=' + val,
-                     'allowed_attrs': ['title', 'href', 'class'],
-                     'class': 'meta_search'}
-            if vallist:
-                if len(vallist) > 10:
-                    vallist = vallist[:9] + ['...']
-                vallist = 'Value also on pages:\n' + '\n'.join(vallist)
-                kwval['title'] = vallist
-
             result.extend([formatter.definition_term(1, **keymeta),
                            formatter.pagelink(1, request.page.page_name,
                                               request.page, **kwkey),
-                           formatter.text(key.strip()),
+                           formatter.text(key),
                            formatter.pagelink(0),
                            formatter.definition_term(0),
 
                            formatter.definition_desc(1, **valmeta),
                            formatter.pagelink(1, request.page.page_name,
                                               request.page, **kwval),
-                           formatter.text(val.strip()),
+                           formatter.text(val),
                            formatter.pagelink(0),
                            formatter.definition_desc(0)])
         else:
-            result.extend([formatter.strong(1, **keymeta),
+            result.extend([formatter.pagelink(1, request.page.page_name,
+                                              request.page, **kwkey),
+                           formatter.strong(1, **keymeta),
                            formatter.text(key),
                            formatter.strong(0),
-                           formatter.text(val)])
+                           formatter.pagelink(0),
+                           formatter.pagelink(1, request.page.page_name,
+                                              request.page, **kwval),
+                           formatter.text(val),
+                           formatter.pagelink(0)])
 
         arglist = arglist[2:]
 

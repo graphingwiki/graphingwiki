@@ -62,6 +62,15 @@ class GraphShowerSimple(GraphShower):
             wikiutil.send_footer(self.request, self.pagename)
             return
 
+        self.execute_graphs()
+
+        self.sendFooter(formatter)
+
+
+    def execute_graphs(self, do_form=True, urladd=None):
+        if urladd:
+            self.urladd = urladd
+
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
@@ -72,15 +81,15 @@ class GraphShowerSimple(GraphShower):
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
 
-
         gr = self.get_graph()
 
-        if self.format == 'dot':
-            self.sendGv(gr)
-            raise MoinMoinNoFooter
-            return
-        else:
-            self.sendForm()
+        if do_form:
+            if self.format == 'dot':
+                self.sendGv(gr)
+                raise MoinMoinNoFooter
+                return
+            else:
+                self.sendForm()
 
         img_url = self.request.getQualifiedURL() + \
                   self.request.request_uri + "&image="
@@ -120,7 +129,6 @@ class GraphShowerSimple(GraphShower):
                                    (img_url + "2", legend.name))
                 self.sendMap(legend)
 
-        self.sendFooter(formatter)
 
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
@@ -212,3 +220,8 @@ class GraphShowerSimple(GraphShower):
 def execute(pagename, request):
     graphshower = GraphShowerSimple(pagename, request)
     graphshower.execute()
+
+def execute_graphs(pagename, request, urladd=None):
+    graphshower = GraphShowerSimple(pagename, request)
+    graphshower.formargs()
+    graphshower.execute_graphs(do_form=False, urladd=urladd)

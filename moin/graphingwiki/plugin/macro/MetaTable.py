@@ -34,13 +34,9 @@ from codecs import getencoder
 from MoinMoin import config
 
 from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
-
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
 
 def t_cell(macro, data, head=0):
     if head:

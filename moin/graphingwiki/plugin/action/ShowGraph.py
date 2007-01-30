@@ -664,6 +664,8 @@ class GraphShower(object):
     def sendForm(self):
         request = self.request
 
+        self.request.write('<!-- $Id$ -->\n')
+
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
                       quotetoshow(self.pagename))
@@ -1010,8 +1012,6 @@ class GraphShower(object):
         # Do the layout
         gr = self.generateLayout(outgraph)
         cl.stop('layout')
-
-        self.request.write('<!-- $Id$ -->\n')
 
         cl.start('format')
         if self.format == 'svg':
