@@ -36,6 +36,7 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
+from graphingwiki.patterns import WikiNode
 
 Dependencies = ['metadata']
 
@@ -74,15 +75,18 @@ def join_params(uri, args):
     return uri + "?" + argstr[1:]
     
 def execute(macro, args):
+
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
 
-    # save to graph file, if plugin available
+    # Import the plugin action to print out the graph html form
     graphshower = wikiutil.importPlugin(request.cfg,
                                         'action', 'ShowGraphSimple',
                                         'execute_graphs')
 
+    import sys, os
+    sys.stderr = open(os.path.join(macro.request.cfg.data_dir, 'error.log'), 'at')
     # Ignore empty arg to make possible calling [[InlineGraph()]] 
     arglist = [x.strip() for x in args.split(',') if x]
 
@@ -97,7 +101,8 @@ def execute(macro, args):
         req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
         graph_request.request_uri = join_params(req_url, args)
         urladd = '?' + graph_request.request_uri.split('?')[1]
-        
+
+        WikiNode(graph_request)
         graphshower(graph_request.page.page_name, graph_request, urladd)
     else:
         uri, args = uri_params(request.request_uri)
@@ -112,6 +117,7 @@ def execute(macro, args):
         graph_request.request_uri = join_params(uri, args)
         urladd = '?' + graph_request.request_uri.split('?')[1]
 
+        WikiNode(graph_request)
         graphshower(graph_request.page.page_name, graph_request, urladd)
 
     return ''

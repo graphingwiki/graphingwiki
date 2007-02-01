@@ -32,13 +32,14 @@ from ShowGraph import *
 from urllib import quote as url_quote
 
 class GraphShowerSimple(GraphShower):
-    def __init__(self, pagename, request, graphengine = "neato"):
+    def __init__(self, pagename, request, graphengine = "neato", do_form=True):
         super(GraphShowerSimple, self).__init__(pagename, request,
                                                 graphengine)
         # URL addition
         self.image = 0
         self.urladd = ''
         self.available_formats = ['png', 'svg', 'dot', 'zgr']
+        self.do_form = do_form
     
     def sendGraph(self, gr):
         img = self.getLayoutInFormat(gr.graphviz, self.format)
@@ -67,7 +68,7 @@ class GraphShowerSimple(GraphShower):
         self.sendFooter(formatter)
 
 
-    def execute_graphs(self, do_form=True, urladd=None):
+    def execute_graphs(self, urladd=None):
         if urladd:
             self.urladd = urladd
 
@@ -83,7 +84,7 @@ class GraphShowerSimple(GraphShower):
 
         gr = self.get_graph()
 
-        if do_form:
+        if self.do_form:
             if self.format == 'dot':
                 self.sendGv(gr)
                 raise MoinMoinNoFooter
@@ -135,7 +136,6 @@ class GraphShowerSimple(GraphShower):
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
 
-#        nodes = self.initTraverse()
         nodes = set(self.startpages)
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
 
@@ -222,6 +222,6 @@ def execute(pagename, request):
     graphshower.execute()
 
 def execute_graphs(pagename, request, urladd=None):
-    graphshower = GraphShowerSimple(pagename, request)
+    graphshower = GraphShowerSimple(pagename, request, do_form=False)
     graphshower.formargs()
-    graphshower.execute_graphs(do_form=False, urladd=urladd)
+    graphshower.execute_graphs(urladd=urladd)

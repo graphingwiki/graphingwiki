@@ -27,7 +27,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-    
+
 import os
 import shelve
 from tempfile import mkstemp
@@ -176,6 +176,10 @@ class GraphShower(object):
 
         self.urladd = ''
 
+        # If we should send out just the graphic or forms as well
+        # Used by ShowGraphSimple.py
+        self.do_form = True
+
         # link/node attributes that have been assigned colors
         self.coloredges = set()
         self.colornodes = set()
@@ -196,6 +200,7 @@ class GraphShower(object):
         self.qpirts_p = lambda txt: ['"' + x + '"' for x in
                                      txt.strip('"').split(',')]
 
+
     def hashcolor(self, string):
         if string in self.used_colorlabels:
             return self.used_colors[self.used_colorlabels.index(string)]
@@ -210,9 +215,10 @@ class GraphShower(object):
 
     def formargs(self):
         request = self.request
-
-        # Get categories for current page, for the category form
-        self.allcategories.update(self.pageobj.getCategories(self.request))
+        
+        if self.do_form:
+            # Get categories for current page, for the category form
+            self.allcategories.update(self.pageobj.getCategories(self.request))
         
         # Bail out flag on if underlay page etc.
         # FIXME: a bit hack, make consistent with other no data cases?
@@ -293,6 +299,9 @@ class GraphShower(object):
         return graphdata
 
     def addToAllCats(self, nodename):
+        if not self.do_form:
+            return
+
         opageobj = Page(self.request,
                         unicode(url_unquote(nodename),
                                 config.charset))
@@ -412,7 +421,6 @@ class GraphShower(object):
                 not hasattr(obj, 'tooltip')):
                 n.tooltip = 'MetaData:\n' + \
                             ' \n'.join(["-%s: %s" % (x, ', '.join(self.globaldata['meta'][obj.node][x])) for x in self.globaldata['meta'][obj.node].keys()])
-#                self.request.write(n.tooltip)
 
             # Add page categories to selection choices in the form
             self.addToAllCats(obj.node)

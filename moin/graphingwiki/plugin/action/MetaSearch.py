@@ -67,10 +67,8 @@ def execute(pagename, request):
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
-    request.write(u'<input type="text" name="q" size=50 value="%s">' %
-                  q)
-    request.write(u'<input type=submit value="Search">' + \
-                  u'\n</form>\n')
+    request.write(u'<input type="text" name="q" size=50 value="%s">' % q)
+    request.write(u'<input type=submit value="Search">' + u'\n</form>\n')
 
     if q:
         graphdata = GraphData(request)

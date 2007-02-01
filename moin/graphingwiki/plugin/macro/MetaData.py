@@ -33,7 +33,7 @@ from urllib import unquote as url_unquote
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import WikiNode
 
 Dependencies = ['metadata']
 
@@ -45,8 +45,10 @@ def execute(macro, args):
     macro.request.page.formatter = formatter
     request = macro.request
 
-    graphdata = GraphData(request)
-    graphdata.reverse_meta()
+    graphdata = WikiNode(request).graphdata
+    if not hasattr(graphdata, 'keys_on_pages'):
+
+        graphdata.reverse_meta()
     globaldata = graphdata.globaldata
     keys_on_pages = graphdata.keys_on_pages
     vals_on_pages = graphdata.vals_on_pages
