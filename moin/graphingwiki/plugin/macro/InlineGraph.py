@@ -49,7 +49,8 @@ def uri_params(uri):
 
         for arg in argstr:
             key, val = arg.split('=')
-            args.setdefault(encode(key), []).append(encode(val))
+            args.setdefault(encode(url_unquote(key)),
+                            []).append(encode(url_unquote(val)))
 
     return uri, args
 
@@ -71,7 +72,7 @@ def join_params(uri, args):
     argstr = ""
     for key in args:
         for val in args[key]:
-            argstr = argstr + "&%s=%s" % (key, val)
+            argstr = argstr + "&%s=%s" % (url_quote(key), url_quote(val))
     return uri + "?" + argstr[1:]
     
 def execute(macro, args):
