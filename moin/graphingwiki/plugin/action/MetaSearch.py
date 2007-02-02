@@ -27,6 +27,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+import re
 
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
@@ -37,6 +38,27 @@ from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
 from graphingwiki.patterns import encode
 from graphingwiki.patterns import GraphData
+
+regexp_re = re.compile('^/.+/$')
+
+def elemlist(request, formatter, elems, text):
+    if not elems:
+        return
+    request.write(formatter.paragraph(1))
+    request.write(formatter.text("The following %s found:" % text))
+    request.write(formatter.paragraph(0))
+    request.write(formatter.bullet_list(1))
+    for elem in sorted(elems):
+        kwelem = {'querystr': 'action=MetaSearch&q=' + elem,
+                 'allowed_attrs': ['title', 'href', 'class'],
+                 'class': 'meta_search'}
+        request.write(formatter.listitem(1))
+        request.write(formatter.pagelink(1, request.page.page_name,
+                                         request.page, **kwelem))
+        request.write(formatter.text(elem))
+        request.write(formatter.pagelink(0))
+        request.write(formatter.listitem(0))
+    request.write(formatter.bullet_list(0))
 
 def execute(pagename, request):
     request.http_headers()
@@ -71,18 +93,60 @@ def execute(pagename, request):
     request.write(u'<input type=submit value="Search">' + u'\n</form>\n')
 
     if q:
+        if regexp_re.match(q):
+            try:
+                page_re = re.compile("%s" % q[1:-1])
+                q = ''
+            except:
+                request.write(formatter.paragraph(1))
+                request.write(formatter.text("Bad regexp!"))
+                request.write(formatter.paragraph(0))
+
+                # End content
+                request.write(formatter.endContent()) # end content div
+                # Footer
+                wikiutil.send_footer(request, pagename)
+                
         graphdata = GraphData(request)
         graphdata.reverse_meta()
         globaldata = graphdata.globaldata
         keys_on_pages = graphdata.keys_on_pages
         vals_on_pages = graphdata.vals_on_pages
 
+        keyhits = set([])
+        keys = set([])
+        for key in keys_on_pages:
+            if q:
+                if key == url_quote(encode(q)):
+                    keyhits.update(keys_on_pages[key])
+                    keys.add(unicode(url_unquote(key), config.charset))
+            else:
+                if page_re.match(unicode(url_unquote(key), config.charset)):
+                    keyhits.update(keys_on_pages[key])
+                    keys.add(unicode(url_unquote(key), config.charset))
+
+        valhits = set([])
+        vals = set([])
+        for val in vals_on_pages:
+            if q:
+                if val == encode(q):
+                    valhits.update(vals_on_pages[val])
+                    vals.add(unicode(val, config.charset))
+            else:
+                if page_re.match(unicode(val, config.charset)):
+                    valhits.update(vals_on_pages[val])
+                    vals.add(unicode(val, config.charset))
+
+        if not q:
+            elemlist(request, formatter, keys, 'keys')
+            elemlist(request, formatter, vals, 'values')
+
         request.write(formatter.paragraph(1))
         request.write(formatter.text("Found as key in following pages:"))
         request.write(formatter.paragraph(0))
 
         request.write(formatter.bullet_list(1))
-        for page in sorted(keys_on_pages.get(url_quote(encode(q)), [])):
+        for page in sorted(keyhits):
             page = unicode(url_unquote(page), config.charset)
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
@@ -95,9 +159,8 @@ def execute(pagename, request):
         request.write(formatter.paragraph(1))
         request.write(formatter.text("Found as value in following pages:"))
         request.write(formatter.paragraph(0))
-
         request.write(formatter.bullet_list(1))
-        for page in sorted(vals_on_pages.get(encode(q), [])):
+        for page in sorted(valhits):
             page = unicode(url_unquote(page), config.charset)
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))

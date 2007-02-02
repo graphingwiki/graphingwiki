@@ -27,16 +27,21 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+import re
+
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 from codecs import getencoder
 
 from MoinMoin import config
+from MoinMoin import Page
 
 from graphingwiki.patterns import GraphData
 from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
+
+regexp_re = re.compile('^/.+/$')
 
 def t_cell(macro, data, head=0):
     if head:
@@ -58,11 +63,34 @@ def t_cell(macro, data, head=0):
     return out
     
 def execute(macro, args):
-    arglist = [x.strip() for x in args.split(',')]
+    all_pages = []
+
+    arglist = []
+
+    # Regex preprocessing
+    for arg in (x.strip() for x in args.split(',')):
+        # Normal pages, just move on
+        if not regexp_re.match(arg):
+            arglist.append(arg)
+            continue
+
+        # load pagelist only if necessary
+        if not all_pages:
+            all_pages = macro.request.page.getPageList()
+
+        # if there's something wrong with the regexp, ignore it and move on
+        try:
+            page_re = re.compile("%s" % arg[1:-1])
+        except:
+            continue
+        # Check which pages match to the supplied regexp
+        for page in all_pages:
+            if page_re.match(page):
+                arglist.append(url_quote(encode(page)))
 
     globaldata = GraphData(macro.request).globaldata
 
-    pagelist = []
+    pagelist = set([])
     metakeys = set([])
 
     for arg in arglist:
@@ -73,15 +101,13 @@ def execute(macro, args):
             for newpage in globaldata['in'][arg]:
                 if not (newpage.endswith('Template') or
                         newpage.startswith('Category')):
-                    pagelist.append(newpage)
+                    pagelist.add(newpage)
         else:
-            pagelist.append(arg)
+            pagelist.add(arg)
 
     out = '\n' + macro.formatter.table(1)
     for page in pagelist:
         for key in globaldata['meta'].get(page, {}).keys():
-            # opportunistic conversion of metadata keys
-            # same code as in metatable
             metakeys.add(key)
 
     metakeys = sorted(metakeys, key=str.lower)
@@ -92,7 +118,7 @@ def execute(macro, args):
         out = out + t_cell(macro, key)
     out = out + macro.formatter.table_row(0)
 
-    pagelist.sort()
+    pagelist = sorted(pagelist)
 
     for page in pagelist:
         out = out + macro.formatter.table_row(1)
