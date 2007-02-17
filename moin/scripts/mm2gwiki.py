@@ -1,9 +1,15 @@
+#!/usr/bin/env python
+
 import os
 import sys
+
 from xml.parsers import expat
 from pprint import pprint
-from graphingwiki.graph import Graph
+
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname
+
+from graphingwiki.graph import Graph
+from graphingwiki.patterns import encode
 
 class Parser:
 
@@ -89,7 +95,7 @@ for node, in p.graph.nodes.getall():
     out = file(os.path.join(revdir, curver), 'w')    
 
     for par, chi in p.graph.edges.getall(parent = node):
-        out.write(unquoteWikiname('["%s"]\n' % chi))
+        out.write('["%s"]\n\n' % encode(chi))
 
     if cat:
         out.write('%s\n' % cat)

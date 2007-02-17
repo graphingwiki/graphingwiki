@@ -83,13 +83,19 @@ class GraphData(object):
                     self.vals_on_pages.setdefault(val, set()).add(page)
         
     def load_graph(self, pagename):
+        # Attachments do not carry graphdata
+        if '?action=AttachFile' in pagename:
+            return None
+        
         if pagename in self.loaded:
             return self.loaded[pagename]
         self.loaded[pagename] = None
 #        self.request.write('load-graph:')
 #        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')        
+
         if not self.request.user.may.read(pagename):
             return None
+
         inc_page = Page(self.request, pagename)
         afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
         if os.path.exists(afn):
@@ -97,6 +103,7 @@ class GraphData(object):
             adata = cPickle.load(af)
             self.loaded[pagename] = adata
             return adata
+
         return None
 
     def add_global_links(self, pagename, pagegraph):

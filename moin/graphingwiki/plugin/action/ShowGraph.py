@@ -85,7 +85,7 @@ Content-Transfer-Encoding: base64
 msie_end = "\n--partboundary--\n\n"
 
 
-graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
+graphvizcolors = ["aquamarine1", "blue", "brown4", "burlywood",
 "chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
 "darkolivegreen3", "darksalmon", "darkseagreen", "darkslateblue",
 "darkslategray", "darkviolet", "deeppink", "deepskyblue", "gray33",
@@ -95,8 +95,8 @@ graphvizcolors = ["aquamarine1", "bisque", "blue", "brown4", "burlywood",
 "magenta", "maroon", "mediumaquamarine", "mediumorchid1",
 "mediumpurple", "mediumseagreen", "olivedrab", "orange", "orangered",
 "palegoldenrod", "palegreen", "palevioletred", "peru", "plum",
-"powderblue", "red2", "rosybrown", "royalblue4", "salmon",
-"slategray", "springgreen", "steelblue", "tomato3", "turquoise",
+"red2", "rosybrown", "royalblue4", "salmon", "slategray",
+"springgreen", "steelblue", "tomato3", "turquoise",
 "violetred", "yellow", "yellowgreen"]
 
 colors = graphvizcolors
@@ -563,6 +563,9 @@ class GraphShower(object):
                 subrank = self.pagename.count('/')
                 return '../' * subrank + './InterWiki'
         subrank = self.pagename.count('/')
+        # handle categories as ordernodes different
+        if link == 'WikiCategory':
+            return ''
         return '../' * subrank + './Property' + link
 
     def orderGraph(self, gr, outgraph):
@@ -577,8 +580,13 @@ class GraphShower(object):
         for key in orderkeys:
             cur_ordernode = 'orderkey: ' + key
             sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
+            # handle categories as ordernodes different
+            # so that they would point to the corresponding categories
             # [1:-1] removes quotes from label
-            sg.nodes.add(cur_ordernode, label=key[1:-1], URL=orderURL)
+            if not orderURL:
+                sg.nodes.add(cur_ordernode, label=key[1:-1], URL=key[1:-1])
+            else:
+                sg.nodes.add(cur_ordernode, label=key[1:-1], URL=orderURL)
             for node in self.ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -637,10 +645,12 @@ class GraphShower(object):
         legend = legendgraph.subg.add("clusterLegend", label='Legend')
         subrank = self.pagename.count('/')
         colorURL = self.getURLns(self.colorby)
+        per_row = 0
 
         # Add nodes, edges to legend
         # Edges
         if not self.hidedges:
+
             typenr = 0
             legendedges = list(self.coloredges)
             legendedges.sort()
@@ -650,12 +660,19 @@ class GraphShower(object):
                 ln2 = "linktype: " + str(typenr)
                 legend.nodes.add(ln1, style='invis', label='')
                 legend.nodes.add(ln2, style='invis', label='')
+                if per_row == 3:
+                    per_row = 0
+                    continue
+
                 legend.edges.add((ln1, ln2), color=self.hashcolor(linktype),
                                  label=url_unquote(linktype),
                                  URL=self.getURLns(linktype))
+                per_row = per_row + 1
 
         # Nodes
         prev = ''
+        per_row = 0
+
         legendnodes = list(self.colornodes)
         legendnodes.sort()
         for nodetype in legendnodes:
@@ -663,7 +680,11 @@ class GraphShower(object):
             legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
                              fillcolor=self.hashcolor(nodetype), URL=colorURL)
             if prev:
-                legend.edges.add((prev, cur), style="invis", dir='none')
+                if per_row == 3:
+                    per_row = 0
+                else:
+                    legend.edges.add((prev, cur), style="invis", dir='none')
+                    per_row = per_row + 1
             prev = cur
 
         return legendgraph
