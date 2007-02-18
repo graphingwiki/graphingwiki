@@ -1,5 +1,9 @@
 This is the Graphingwiki MoinMoin extension. 
 
+Note: Most functionality is intended to work in MoinMoin versions from
+1.3.5 upwards, but RenamePage and perhaps some other functionality
+might work only in versions 1.5+.
+
 INSTALL
 =======
 
@@ -49,6 +53,9 @@ SCRIPTS
 
 For housekeeping and debugging.
 
+gwiki-get-tgz
+ * Gets a graphingwiki revision from repository
+
 gwiki-install
  * Installs the plugins to a wiki.
 
@@ -58,5 +65,11 @@ gwiki-rehash
 gwiki-debuggraph
  * Debug: Shows a page's graph data in list and dot formats.
 
+moin-showpage
+ * A general CLI interface to a MoinMoin wiki
+
 gwiki-showgraph
  * Debug: A CLI interface to the showgraph-action.
+
+mm2gwiki
+ * Import a freemind mind map to wiki pages
