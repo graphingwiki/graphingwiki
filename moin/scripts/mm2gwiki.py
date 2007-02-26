@@ -39,7 +39,8 @@ class Parser:
         elif tag != 'node':
             return
 
-        ndname = attrs.get('TEXT', '')
+        # strip enters, they screw up Moin
+        ndname = attrs.get('TEXT', '').replace('\n', ' ')
         if ndname:
             self.idnamemap[ndname] = attrs['ID']
             self.nameidmap[attrs['ID']] = ndname

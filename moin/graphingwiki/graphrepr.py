@@ -32,11 +32,18 @@
 
 from subprocess import *
 import sys
-import select, os
+import select
+import os
 import time
 
-sys.path.append('/usr/lib/graphviz/python')
-import gv
+# 32bit and 64bit versions
+try:
+    sys.path.append('/usr/lib/graphviz/python')
+    import gv
+except ImportError:
+    sys.path[-1] = '/usr/lib64/graphviz/python'
+    import gv
+
 # gv needs libag to be initialised before using any read methods,
 # making a graph here seems to ensure aginit() is called
 gv.graph(' ')

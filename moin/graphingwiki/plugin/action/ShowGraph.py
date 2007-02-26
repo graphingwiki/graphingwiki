@@ -90,7 +90,7 @@ graphvizcolors = ["aquamarine1", "blue", "brown4", "burlywood",
 "darkolivegreen3", "darksalmon", "darkseagreen", "darkslateblue",
 "darkslategray", "darkviolet", "deeppink", "deepskyblue", "gray33",
 "forestgreen", "gold2", "goldenrod", "gray", "green", "greenyellow",
-"hotpink", "indigo", "lavender", "lightpink", "lightsalmon",
+"hotpink", "lavender", "lightpink", "lightsalmon",
 "lightseagreen", "lightskyblue", "lightsteelblue", "limegreen",
 "magenta", "maroon", "mediumaquamarine", "mediumorchid1",
 "mediumpurple", "mediumseagreen", "olivedrab", "orange", "orangered",
@@ -655,14 +655,14 @@ class GraphShower(object):
             legendedges = list(self.coloredges)
             legendedges.sort()
             for linktype in legendedges:
+                if per_row == 4:
+                    per_row = 0
+                    typenr = typenr + 1
                 ln1 = "linktype: " + str(typenr)
                 typenr = typenr + 1
                 ln2 = "linktype: " + str(typenr)
                 legend.nodes.add(ln1, style='invis', label='')
                 legend.nodes.add(ln2, style='invis', label='')
-                if per_row == 3:
-                    per_row = 0
-                    continue
 
                 legend.edges.add((ln1, ln2), color=self.hashcolor(linktype),
                                  label=url_unquote(linktype),
