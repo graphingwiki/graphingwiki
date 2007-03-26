@@ -351,7 +351,8 @@ class GraphShower(object):
 
         # Add neato-specific layout stuff
         if self.graphengine == 'neato':
-            outgraph.overlap = 'false'
+            outgraph.overlap = 'compress'
+            outgraph.splines = 'true'
 
         return outgraph
 
