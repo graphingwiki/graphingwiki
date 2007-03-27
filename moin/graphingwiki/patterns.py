@@ -48,27 +48,37 @@ def encode(str):
 class GraphData(object):
     def __init__(self, request):
         self.request = request
-        self.globaldata = self.get_shelve()
-        self.loaded = {}
-        
-    def get_shelve(self):
+        self.updated = 0
         datapath = Page(self.request, u'', is_rootpage=1).getPagePath()
-        graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+        self.graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
+        self.update()
+        self.loaded = {}
+
+    def update(self):
+        # Update shelve if it has changed
+        # self.request.write("Updating...<br>")
+        if self.updated < os.stat(self.graphshelve).st_mtime:
+            # self.request.write("Needed.<br>")
+            self.globaldata, self.updated = self.get_shelve()
+
+    def get_shelve(self):
 
         # Make sure nobody is writing to graphshelve, as concurrent
         # reading and writing can result in erroneous data
-        graphlock = graphshelve + '.lock'
+        graphlock = self.graphshelve + '.lock'
         os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
         os.unlink(graphlock)
-
-        temp_shelve = shelve.open(graphshelve, 'r')
+        
+        temp_shelve = shelve.open(self.graphshelve, 'r')
+        cur_mtime = os.stat(self.graphshelve).st_mtime
         globaldata =  {}
         globaldata['in'] = temp_shelve['in']
         globaldata['out'] = temp_shelve['out']
         globaldata['meta'] = temp_shelve['meta']
         temp_shelve.close()
 
-        return globaldata
+        # Return data with current modification time
+        return globaldata, cur_mtime
 
     def reverse_meta(self):
         self.keys_on_pages = {}
@@ -341,16 +351,14 @@ class WikiNode(object):
             # Start cache-like stuff
             if not WikiNode.globaldata:
                 WikiNode.graphdata = GraphData(WikiNode.request)
-                WikiNode.globaldata = WikiNode.graphdata.globaldata
-#                request.write("Initing graphdata...<br>")
+                # request.write("Initing graphdata...<br>")
             # Update the current request (user, etc) to cache-like stuff
+            # Also update shelve
             else:
                 WikiNode.graphdata.request = WikiNode.request
-#                request.write("yeah<br>")
-
-# Late version
-#         WikiNode.graphdata = GraphData(WikiNode.request)
-#         WikiNode.globaldata = WikiNode.graphdata.globaldata
+                WikiNode.graphdata.update()
+                # request.write("yeah<br>")
+            WikiNode.globaldata = WikiNode.graphdata.globaldata
     
     def _loadpickle(self, graph, node):
         nodeitem = graph.nodes.get(node)
