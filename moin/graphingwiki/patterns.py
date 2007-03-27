@@ -58,11 +58,13 @@ class GraphData(object):
         # Update shelve if it has changed
         # self.request.write("Updating...<br>")
         if self.updated < os.stat(self.graphshelve).st_mtime:
+            self.globaldata = {}
             # self.request.write("Needed.<br>")
             self.globaldata, self.updated = self.get_shelve()
+            # Empty the loaded cache, because shelve has changed
+            self.loaded = {}
 
     def get_shelve(self):
-
         # Make sure nobody is writing to graphshelve, as concurrent
         # reading and writing can result in erroneous data
         graphlock = self.graphshelve + '.lock'
