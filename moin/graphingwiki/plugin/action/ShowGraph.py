@@ -173,6 +173,7 @@ class GraphShower(object):
         self.filteredges = set()
         self.filterorder = set()
         self.filtercolor = set()
+        self.rankdir = 'LR'
 
         self.urladd = ''
 
@@ -254,6 +255,10 @@ class GraphShower(object):
         # Limit
         if request.form.has_key('limit'):
             self.limit = ''.join([x for x in request.form['limit']])
+            
+        # Rankdir
+        if request.form.has_key('dir'):
+            self.rankdir = encode(''.join([x for x in request.form['dir']]))
 
         # Hide edges
         if request.form.has_key('hidedges'):
@@ -347,12 +352,13 @@ class GraphShower(object):
         if getattr(self, 'orderby', '_hier') != '_hier':
             outgraph.clusterrank = 'local'
             outgraph.compound = 'true'
-            outgraph.rankdir = 'LR'
 
         # Add neato-specific layout stuff
         if self.graphengine == 'neato':
             outgraph.overlap = 'compress'
             outgraph.splines = 'true'
+
+        outgraph.rankdir = self.rankdir
 
         return outgraph
 
@@ -775,6 +781,16 @@ class GraphShower(object):
                       ('_hier',
                        self.orderby == '_hier' and " checked>" or ">",
                        "hierarchical"))
+        if self.orderby:
+            request.write('<SELECT name="dir">')
+            for ord, name in zip(['TB', 'BT', 'LR', 'RL'],
+                              ['top to bottom', 'bottom to top',
+                               'left to right', 'right to left']):
+                request.write('<option %s label="%s" value="%s">%s</option>' %
+                              (self.rankdir == ord and 'selected' or '',
+                               ord, ord, name))
+                              
+
 
         # filter edges
         request.write(u'<td>\nFilter edges:<br>\n')
