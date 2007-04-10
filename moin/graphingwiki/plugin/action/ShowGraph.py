@@ -42,6 +42,7 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.util import MoinMoinNoFooter
+from MoinMoin.action import AttachFile
 
 from MoinMoin.request import Clock
 cl = Clock()
@@ -360,6 +361,9 @@ class GraphShower(object):
 
         outgraph.rankdir = self.rankdir
 
+        # Formatting features here!
+        outgraph.bgcolor = "transparent"
+
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
@@ -429,8 +433,38 @@ class GraphShower(object):
                 n.tooltip = 'MetaData:\n' + \
                             ' \n'.join(["-%s: %s" % (x, ', '.join(self.globaldata['meta'][obj.node][x])) for x in self.globaldata['meta'][obj.node].keys()])
 
+            # Shapefiles
+            if getattr(obj, 'shapefile', None):
+                # Stylistic stuff: label, borders
+                # "Note that user-defined shapes are treated as a form
+                # of box shape, so the default peripheries value is 1
+                # and the user-defined shape will be drawn in a
+                # bounding rectangle. Setting peripheries=0 will turn
+                # this off."
+                # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
+                n.label = ' '
+                n.peripheries = '0'
+
+                # Non-attachment shapefiles arbitrary (SVG, anyone?)
+                if not obj.shapefile.startswith('attachment:'):
+                    continue
+                
+                # Enter file path for attachment shapefiles
+                value = obj.shapefile[11:]
+                components = value.split('/')
+                if len(components) == 1:
+                    page = obj.node
+                else:
+                    page = '/'.join(components[:-1])
+                file = components[-1]
+                # get attach file path, empty label
+                n.shapefile = AttachFile.getFilename(self.request,
+                                                     page, file)
+
             # Add page categories to selection choices in the form
-            self.addToAllCats(obj.node)
+            # (for local pages only)
+            if obj.URL[0] in ['.', '/']:
+                self.addToAllCats(obj.node)
 
             if getattr(self, 'orderby', '_hier') != '_hier':
                 value = getattr(obj, self.orderby, None)
@@ -551,6 +585,9 @@ class GraphShower(object):
         # Have bold circles on startnodes
         for node in [outgraph.nodes.get(name) for name in self.startpages]:
             if node:
+                # Do not circle image nodes
+                if hasattr(node, 'shapefile'):
+                    continue
                 if hasattr(node, 'style'):
                     node.style = node.style + ', bold'
                 else:

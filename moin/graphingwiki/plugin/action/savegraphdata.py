@@ -46,7 +46,7 @@ from graphingwiki import graph
 url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
 special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
-                 "shape", 'belongs_to_patterns', 'URL']
+                 "shape", 'belongs_to_patterns', 'URL', 'shapefile']
 
 # non-local pagenames have either an URL or a namespace
 def local_page(pagename):

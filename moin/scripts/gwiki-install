@@ -35,7 +35,8 @@ from shutil import copy2
 
 from optparse import OptionParser
 
-parser = OptionParser()
+usage = "usage: %prog [options] dst"
+parser = OptionParser(usage=usage)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                   help="Report success")
 
