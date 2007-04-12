@@ -30,6 +30,7 @@
 
 import os
 import shelve
+import re
 from tempfile import mkstemp
 from random import choice, seed
 from base64 import b64encode
@@ -169,7 +170,10 @@ class GraphShower(object):
         self.depth = 1
         self.orderby = ''
         self.colorby = ''
-        
+
+        self.orderreg = ""
+        self.ordersub = ""
+
         self.allcategories = set()
         self.filteredges = set()
         self.filterorder = set()
@@ -217,6 +221,7 @@ class GraphShower(object):
 
     def formargs(self):
         request = self.request
+        retval = True
         
         if self.do_form:
             # Get categories for current page, for the category form
@@ -274,6 +279,17 @@ class GraphShower(object):
         if request.form.has_key('colorby'):
             self.colorby = encode(''.join(request.form['colorby']))
 
+        # Regexps
+        if request.form.has_key('orderreg'):
+            self.orderreg = encode(''.join(request.form['orderreg']))
+        if request.form.has_key('ordersub'):
+            self.ordersub = encode(''.join(request.form['ordersub']))
+        if self.ordersub and self.orderreg:
+            try:
+                self.re_order = re.compile(self.orderreg)
+            except:
+                retval = False
+
         # Filters
         if request.form.has_key('filteredges'):
             self.filteredges.update(
@@ -296,6 +312,8 @@ class GraphShower(object):
         # Disable output if testing graph
         if request.form.has_key('test'):
             self.format = ''
+
+        return retval
 
     def addToStartPages(self, graphdata, pagename):
         self.startpages.append(pagename)
@@ -471,6 +489,9 @@ class GraphShower(object):
                 if value:
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
+                    re_order = getattr(self, 're_order', None)
+                    if re_order:
+                        value = re_order.sub(self.ordersub, value)
                     n._order = value
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
@@ -819,15 +840,19 @@ class GraphShower(object):
                        self.orderby == '_hier' and " checked>" or ">",
                        "hierarchical"))
         if self.orderby:
-            request.write('<SELECT name="dir">')
+            request.write('<select name="dir">')
             for ord, name in zip(['TB', 'BT', 'LR', 'RL'],
                               ['top to bottom', 'bottom to top',
                                'left to right', 'right to left']):
-                request.write('<option %s label="%s" value="%s">%s</option>' %
+                request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.rankdir == ord and 'selected' or '',
                                ord, ord, name))
-                              
-
+            request.write(u'</select><br>\nOrder regexp<br>\n')
+            request.write(u'<input type=text name="orderreg" size=10 ' +
+                          u'value="%s"><br>\n' % str(self.orderreg))
+            request.write(u'substitution<br>\n')
+            request.write(u'<input type=text name="ordersub" size=10 ' +
+                          u'value="%s"><br>\n' % str(self.ordersub))
 
         # filter edges
         request.write(u'<td>\nFilter edges:<br>\n')
@@ -1043,20 +1068,29 @@ class GraphShower(object):
             self.sendHeaders = self.sendHeadersIE
             self.sendFooter = self.sendFooterIE
 
+    def fail_page(self, reason):
+        self.request.write(self.request.formatter.text(reason))
+        self.request.write(self.request.formatter.endContent())
+        wikiutil.send_footer(self.request, self.pagename)
+
     def execute(self):        
         cl.start('execute')
-        self.formargs()
 
         self.browserDetect()
 
         formatter = self.sendHeaders()
 
-        if self.isstandard:
-            self.request.write(formatter.text("No graph data available."))
-            self.request.write(formatter.endContent())
-            wikiutil.send_footer(self.request, self.pagename)
+        if not self.formargs():
+            self.pagename = url_quote(encode(self.pagename))
+            self.sendForm()
+            self.fail_page("Erroneus regexp: s/%s/%s/" % (self.orderreg,
+                                                        self.ordersub))
             return
 
+        if self.isstandard:
+            self.fail_page("No graph data available.")
+            return
+            
         # The working with patterns goes a bit like this:
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
