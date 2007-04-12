@@ -230,7 +230,7 @@ class GraphShower(object):
         seed(string)
         cl = choice(self.colors)
         while cl in self.used_colors:
-            cl = choice(colors)
+            cl = choice(self.colors)
         self.used_colors.append(cl)
         self.used_colorlabels.append(string)
         return cl
