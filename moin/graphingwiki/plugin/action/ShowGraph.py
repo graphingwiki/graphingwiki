@@ -491,7 +491,10 @@ class GraphShower(object):
                     value = self.qstrip_p(value)
                     re_order = getattr(self, 're_order', None)
                     if re_order:
-                        value = re_order.sub(self.ordersub, value)
+                        # Don't remember the reason for quotes right now,
+                        # so just keeping them
+                        value = value.strip('"')
+                        value = '"' + re_order.sub(self.ordersub, value) + '"'
                     n._order = value
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
