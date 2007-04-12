@@ -46,7 +46,8 @@ from graphingwiki import graph
 url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
 special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
-                 "shape", 'belongs_to_patterns', 'URL', 'shapefile']
+                 "shape", 'belongs_to_patterns', 'URL', 'shapefile',
+                 "fillcolor"]
 
 # non-local pagenames have either an URL or a namespace
 def local_page(pagename):
@@ -260,6 +261,9 @@ def execute(pagename, request, text, pagedir, page):
                         # Values to be handed to dot
                         if key in special_attrs:
                             setattr(pagenode, key, val)
+                            # If color defined¸ set page as filled
+                            if key == 'fillcolor':
+                                setattr(pagenode, 'style', 'filled')
                             continue
                         # Save to pagegraph and shelve's metadata list
                         node_set_attribute(pagenode, key, val)

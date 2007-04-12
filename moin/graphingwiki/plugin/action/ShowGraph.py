@@ -86,7 +86,6 @@ Content-Transfer-Encoding: base64
 
 msie_end = "\n--partboundary--\n\n"
 
-
 graphvizcolors = ["aquamarine1", "blue", "brown4", "burlywood",
 "chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
 "darkolivegreen3", "darksalmon", "darkseagreen", "darkslateblue",
@@ -101,7 +100,17 @@ graphvizcolors = ["aquamarine1", "blue", "brown4", "burlywood",
 "springgreen", "steelblue", "tomato3", "turquoise",
 "violetred", "yellow", "yellowgreen"]
 
-colors = graphvizcolors
+hotcoldgradient = ['#00008f', '#00009f', '#0000af', '#0000bf', '#0000cf',
+'#0000df', '#0000ef', '#0000ff', '#000fff', '#001fff', '#002fff',
+'#003fff', '#004fff', '#005fff', '#006fff', '#007fff', '#008fff',
+'#009fff', '#00afff', '#00bfff', '#00cfff', '#00dfff', '#00efff',
+'#00ffff', '#0fffef', '#1fffdf', '#2fffcf', '#3fffbf', '#4fffaf',
+'#5fff9f', '#6fff8f', '#7fff7f', '#8fff6f', '#9fff5f', '#afff4f',
+'#bfff3f', '#cfff2f', '#dfff1f', '#efff0f', '#ffff00', '#ffef00',
+'#ffdf00', '#ffcf00', '#ffbf00', '#ffaf00', '#ff9f00', '#ff8f00',
+'#ff7f00', '#ff6f00', '#ff5f00', '#ff4f00', '#ff3f00', '#ff2f00',
+'#ff1f00', '#ff0f00', '#ff0000', '#ef0000', '#df0000', '#cf0000',
+'#bf0000', '#af0000', '#9f0000', '#8f0000', '#7f0000']
 
 def get_interwikilist(request):
     # request.cfg._interwiki_list is gathered by wikiutil
@@ -173,6 +182,8 @@ class GraphShower(object):
 
         self.orderreg = ""
         self.ordersub = ""
+        self.colorreg = ""
+        self.colorsub = ""
 
         self.allcategories = set()
         self.filteredges = set()
@@ -181,6 +192,11 @@ class GraphShower(object):
         self.rankdir = 'LR'
 
         self.urladd = ''
+
+        # Selected colors, function used and postprocessing function
+        self.colors = graphvizcolors
+        self.colorfunc = self.hashcolor
+        self.colorscheme = 'random'
 
         # If we should send out just the graphic or forms as well
         # Used by ShowGraphSimple.py
@@ -212,13 +228,18 @@ class GraphShower(object):
             return self.used_colors[self.used_colorlabels.index(string)]
 
         seed(string)
-        cl = choice(colors)
+        cl = choice(self.colors)
         while cl in self.used_colors:
             cl = choice(colors)
         self.used_colors.append(cl)
         self.used_colorlabels.append(string)
         return cl
 
+    def gradientcolor(self, string):
+        clrnodes = sorted(self.colornodes)
+        step = (len(self.colors) / (len(clrnodes) - 1)) - 1
+        return self.colors[clrnodes.index(string)*step]
+            
     def formargs(self):
         request = self.request
         retval = True
@@ -279,6 +300,13 @@ class GraphShower(object):
         if request.form.has_key('colorby'):
             self.colorby = encode(''.join(request.form['colorby']))
 
+        # Color schema
+        if request.form.has_key('colorscheme'):
+            self.colorscheme = encode(''.join(request.form['colorscheme']))
+            if self.colorscheme == 'gradient':
+                self.colors = hotcoldgradient
+                self.colorfunc = self.gradientcolor
+
         # Regexps
         if request.form.has_key('orderreg'):
             self.orderreg = encode(''.join(request.form['orderreg']))
@@ -287,6 +315,15 @@ class GraphShower(object):
         if self.ordersub and self.orderreg:
             try:
                 self.re_order = re.compile(self.orderreg)
+            except:
+                retval = False
+        if request.form.has_key('colorreg'):
+            self.colorreg = encode(''.join(request.form['colorreg']))
+        if request.form.has_key('colorsub'):
+            self.colorsub = encode(''.join(request.form['colorsub']))
+        if self.colorsub and self.colorreg:
+            try:
+                self.re_color = re.compile(self.colorreg)
             except:
                 retval = False
 
@@ -541,13 +578,27 @@ class GraphShower(object):
         # If we should color nodes, gather nodes with attribute from
         # the form (ie. variable colorby) and change their colors, plus
         # gather legend data
+        def getcolors(obj):
+            rule = getattr(obj, colorby, None)
+            color = getattr(obj, 'fillcolor', None)
+            if rule and not color:
+                rule = self.qstrip_p(rule)
+                re_color = getattr(self, 're_color', None)
+                if re_color:
+                    rule = rule.strip('"')
+                    rule = '"' + re_color.sub(self.colorsub, rule) + '"'
+                self.colornodes.add(rule)
+
         def updatecolors(obj):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
                 rule = self.qstrip_p(rule)
-                self.colornodes.add(rule)
-                obj.fillcolor = self.hashcolor(rule)
+                re_color = getattr(self, 're_color', None)
+                if re_color:
+                    rule = rule.strip('"')
+                    rule = '"' + re_color.sub(self.colorsub, rule) + '"'
+                obj.fillcolor = self.colorfunc(rule)
                 obj.style = 'filled'
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
@@ -556,7 +607,14 @@ class GraphShower(object):
         node = Fixed(Node())
         cond = Cond(node, lazyhas(node, colorby))
         for obj in match(cond, (nodes, outgraph)):
+            getcolors(obj)
+
+        nodes = outgraph.nodes.getall()
+        node = Fixed(Node())
+        cond = Cond(node, lazyhas(node, colorby))
+        for obj in match(cond, (nodes, outgraph)):
             updatecolors(obj)
+
         return outgraph
 
     def colorEdges(self, outgraph):
@@ -746,7 +804,7 @@ class GraphShower(object):
         for nodetype in legendnodes:
             cur = 'self.colornodes: ' + nodetype
             legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
-                             fillcolor=self.hashcolor(nodetype), URL=colorURL)
+                             fillcolor=self.colorfunc(nodetype), URL=colorURL)
             if prev:
                 if per_row == 3:
                     per_row = 0
@@ -824,6 +882,19 @@ class GraphShower(object):
                       u'value=""%s%s<br>\n' %
                       (self.colorby == '' and " checked>" or ">",
                        "no coloring"))
+        if self.colorby:
+            request.write('<select name="colorscheme">')
+            for ord, name in zip(['random', 'gradient'],
+                              ['random', 'gradient']):
+                request.write('<option %s label="%s" value="%s">%s</option>\n'%
+                              (self.colorscheme == ord and 'selected' or '',
+                               ord, ord, name))
+            request.write(u'</select><br>\nColor regexp<br>\n')
+            request.write(u'<input type=text name="colorreg" size=10 ' +
+                          u'value="%s"><br>\n' % str(self.colorreg))
+            request.write(u'substitution<br>\n')
+            request.write(u'<input type=text name="colorsub" size=10 ' +
+                          u'value="%s"><br>\n' % str(self.colorsub))
 
         # orderby
         request.write(u"<td>\nOrder by:<br>\n")
@@ -850,13 +921,14 @@ class GraphShower(object):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.rankdir == ord and 'selected' or '',
                                ord, ord, name))
-            request.write(u'</select><br>\nOrder regexp<br>\n')
-            request.write(u'<input type=text name="orderreg" size=10 ' +
-                          u'value="%s"><br>\n' % str(self.orderreg))
-            request.write(u'substitution<br>\n')
-            request.write(u'<input type=text name="ordersub" size=10 ' +
-                          u'value="%s"><br>\n' % str(self.ordersub))
-
+            if self.orderby != '_hier':
+                request.write(u'</select><br>\nOrder regexp<br>\n')
+                request.write(u'<input type=text name="orderreg" size=10 ' +
+                              u'value="%s"><br>\n' % str(self.orderreg))
+                request.write(u'substitution<br>\n')
+                request.write(u'<input type=text name="ordersub" size=10 ' +
+                              u'value="%s"><br>\n' % str(self.ordersub))
+            
         # filter edges
         request.write(u'<td>\nFilter edges:<br>\n')
         alledges = list(self.coloredges) + filter(self.oftype_p,
