@@ -242,7 +242,7 @@ class GraphShower(object):
             
     def formargs(self):
         request = self.request
-        retval = True
+        error = False
         
         if self.do_form:
             # Get categories for current page, for the category form
@@ -316,7 +316,8 @@ class GraphShower(object):
             try:
                 self.re_order = re.compile(self.orderreg)
             except:
-                retval = False
+                error = "Erroneus regexp: s/%s/%s/" % (self.orderreg,
+                                                       self.ordersub)
         if request.form.has_key('colorreg'):
             self.colorreg = encode(''.join(request.form['colorreg']))
         if request.form.has_key('colorsub'):
@@ -325,7 +326,8 @@ class GraphShower(object):
             try:
                 self.re_color = re.compile(self.colorreg)
             except:
-                retval = False
+                error = "Erroneus regexp: s/%s/%s/" % (self.colorreg,
+                                                       self.colorsub)
 
         # Filters
         if request.form.has_key('filteredges'):
@@ -350,7 +352,7 @@ class GraphShower(object):
         if request.form.has_key('test'):
             self.format = ''
 
-        return retval
+        return error
 
     def addToStartPages(self, graphdata, pagename):
         self.startpages.append(pagename)
@@ -1155,11 +1157,10 @@ class GraphShower(object):
 
         formatter = self.sendHeaders()
 
-        if not self.formargs():
+        error = self.formargs()
+        if error:
             self.pagename = url_quote(encode(self.pagename))
-            self.sendForm()
-            self.fail_page("Erroneus regexp: s/%s/%s/" % (self.orderreg,
-                                                        self.ordersub))
+            self.fail_page(error)
             return
 
         if self.isstandard:
