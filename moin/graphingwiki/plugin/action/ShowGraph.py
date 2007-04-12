@@ -185,12 +185,18 @@ class GraphShower(object):
         self.colorreg = ""
         self.colorsub = ""
 
+        # Lists for the graph layout
         self.allcategories = set()
         self.filteredges = set()
         self.filterorder = set()
         self.filtercolor = set()
         self.rankdir = 'LR'
 
+        # Lists for the filter values for the form
+        self.orderfiltervalues = set()
+        self.colorfiltervalues = set()
+
+        # What to add to node URL:s in the graph
         self.urladd = ''
 
         # Selected colors, function used and postprocessing function
@@ -528,6 +534,8 @@ class GraphShower(object):
                 if value:
                     # Add to self.ordernodes by combined value of metadata
                     value = self.qstrip_p(value)
+                    # Add to filterordervalues in the nonmodified form
+                    self.orderfiltervalues.add(value)
                     re_order = getattr(self, 're_order', None)
                     if re_order:
                         # Don't remember the reason for quotes right now,
@@ -586,6 +594,8 @@ class GraphShower(object):
             if rule and not color:
                 rule = self.qstrip_p(rule)
                 re_color = getattr(self, 're_color', None)
+                # Add to filterordervalues in the nonmodified form
+                self.colorfiltervalues.add(rule)
                 if re_color:
                     rule = rule.strip('"')
                     rule = '"' + re_color.sub(self.colorsub, rule) + '"'
@@ -958,8 +968,8 @@ class GraphShower(object):
         if self.colorby:
             request.write(u'<td>\nFilter from colored:<br>\n')
             allcolor = set(filter(self.oftype_p, self.filtercolor))
-            allcolor.update(self.colornodes)
-            for txt in [x for x in self.colornodes if ',' in x]:
+            allcolor.update(self.colorfiltervalues)
+            for txt in [x for x in self.colorfiltervalues if ',' in x]:
                 allcolor.update(self.qpirts_p(txt))
             allcolor = list(allcolor)
             allcolor.sort()
@@ -980,9 +990,9 @@ class GraphShower(object):
         if getattr(self, 'orderby', '_hier') != '_hier':
             # filter nodes (related to orderby)
             request.write(u'<td>\nFilter from ordered:<br>\n')
-            allorder = set(self.ordernodes.keys() +
-                           filter(self.oftype_p, self.filterorder))
-            for txt in [x for x in self.ordernodes if ',' in x]:
+            allorder = set(filter(self.oftype_p, self.filterorder))
+            allorder.update(self.orderfiltervalues)
+            for txt in [x for x in self.orderfiltervalues if ',' in x]:
                 allorder.update(self.qpirts_p(txt))
             allorder = list(allorder)
             allorder.sort()
