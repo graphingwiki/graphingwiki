@@ -90,8 +90,9 @@ def execute(macro, args):
 
     globaldata = GraphData(macro.request).globaldata
 
-    pagelist = set([])
+    pages = set([])
     metakeys = set([])
+    limitregexps = {}
 
     for arg in arglist:
         if arg.startswith('Category'):
@@ -101,9 +102,44 @@ def execute(macro, args):
             for newpage in globaldata['in'][arg]:
                 if not (newpage.endswith('Template') or
                         newpage.startswith('Category')):
-                    pagelist.add(newpage)
+                    pages.add(newpage)
+        elif '=' in arg:
+            data = arg.split("=")
+            key = data[0]
+            val = '='.join(data[1:])
+            # If val starts and ends with /
+            if val[::len(val)-1] == '//':
+                val = val[1:-1]
+            limitregexps.setdefault(key, set()).add(re.compile(val))
         else:
-            pagelist.add(arg)
+            pages.add(arg)
+
+    pagelist = set([])
+
+    for page in pages:
+        clear = True
+        # Filter by regexps (if any)
+        if limitregexps:
+            for key in limitregexps:
+                if not clear:
+                    break
+
+                data = ', '.join(globaldata['meta'].get(page, {}).get(key, ""))
+
+                # If page does not have the required key, do not add page
+                if not data:
+                    clear = False
+                    break
+
+                # If the found key does not match, do not add page
+                for re_limit in limitregexps[key]:
+                    if not re_limit.search(data):
+                        clear = False
+                        break
+
+        # Add page if all the regexps have matched
+        if clear:
+            pagelist.add(page)
 
     out = '\n' + macro.formatter.table(1)
     for page in pagelist:
@@ -132,3 +168,27 @@ def execute(macro, args):
     out = out + macro.formatter.table(0)
 
     return out
+
+#         keyhits = set([])
+#         keys = set([])
+#         for key in keys_on_pages:
+#             if q:
+#                 if key == url_quote(encode(q)):
+#                     keyhits.update(keys_on_pages[key])
+#                     keys.add(unicode(url_unquote(key), config.charset))
+#             else:
+#                 if page_re.match(unicode(url_unquote(key), config.charset)):
+#                     keyhits.update(keys_on_pages[key])
+#                     keys.add(unicode(url_unquote(key), config.charset))
+
+#         valhits = set([])
+#         vals = set([])
+#         for val in vals_on_pages:
+#             if q:
+#                 if val == encode(q):
+#                     valhits.update(vals_on_pages[val])
+#                     vals.add(unicode(val, config.charset))
+#             else:
+#                 if page_re.match(unicode(val, config.charset)):
+#                     valhits.update(vals_on_pages[val])
+#                     vals.add(unicode(val, config.charset))
