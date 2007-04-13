@@ -496,7 +496,7 @@ class GraphShower(object):
             # Add tooltip, if applicable
             if (self.globaldata['meta'].has_key(obj.node) and
                 not hasattr(obj, 'tooltip')):
-                n.tooltip = 'MetaData:\n' + \
+                n.tooltip = '%s\n' % url_unquote(obj.node) + \
                             ' \n'.join(["-%s: %s" % (x, ', '.join(self.globaldata['meta'][obj.node][x])) for x in self.globaldata['meta'][obj.node].keys()])
 
             # Shapefiles
