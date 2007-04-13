@@ -243,7 +243,10 @@ class GraphShower(object):
 
     def gradientcolor(self, string):
         clrnodes = sorted(self.colornodes)
-        step = (len(self.colors) / (len(clrnodes) - 1)) - 1
+        if len(clrnodes) > 1:
+            step = (len(self.colors) / (len(clrnodes) - 1)) - 1
+        else:
+            step = 0
         return self.colors[clrnodes.index(string)*step]
             
     def formargs(self):
