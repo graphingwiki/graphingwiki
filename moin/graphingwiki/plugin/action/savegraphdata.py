@@ -158,6 +158,8 @@ def execute(pagename, request, text, pagedir, page):
         for edge in old_data.edges.getall(parent=quotedname):
             shelve_remove_in(globaldata, edge)
         for edge in old_data.edges.getall(child=quotedname):
+            # In-links might be in either dict
+            shelve_remove_in(globaldata, edge)
             shelve_remove_out(globaldata, edge)
         if globaldata['meta'].has_key(quotedname):
             globaldata['meta'][quotedname] = {}

@@ -526,6 +526,10 @@ class GraphShower(object):
                 # get attach file path, empty label
                 n.shapefile = AttachFile.getFilename(self.request,
                                                      page, file)
+#            elif 'AttachFile' in obj.node:
+#                # Have shapefiles of image attachments
+#                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
+#                    print obj.node
 
             # Add page categories to selection choices in the form
             # (for local pages only)
@@ -1168,9 +1172,10 @@ class GraphShower(object):
 
         self.browserDetect()
 
+        error = self.formargs()
+        
         formatter = self.sendHeaders()
 
-        error = self.formargs()
         if error:
             self.pagename = url_quote(encode(self.pagename))
             self.fail_page(error)
