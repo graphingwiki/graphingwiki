@@ -1,0 +1,6 @@
+    # Use graphingwiki if installed
+    try:
+        from graphingwiki.securitypolicy import SecurityPolicy
+        SecurityPolicy = SecurityPolicy
+    except ImportError:
+        pass
