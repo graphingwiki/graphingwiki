@@ -526,6 +526,7 @@ class GraphShower(object):
                 # get attach file path, empty label
                 n.shapefile = AttachFile.getFilename(self.request,
                                                      page, file)
+                n.tooltip = url_unquote(obj.node)
 #            elif 'AttachFile' in obj.node:
 #                # Have shapefiles of image attachments
 #                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
