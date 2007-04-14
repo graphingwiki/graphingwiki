@@ -27,9 +27,13 @@
     DEALINGS IN THE SOFTWARE.
 """
 
-from MoinMoin.request import RequestModPy
-from ShowGraph import *
 from urllib import quote as url_quote
+
+from MoinMoin.wikiutil import unquoteWikiname
+from MoinMoin.request import RequestModPy
+from MoinMoin.action import AttachFile
+
+from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):
     def __init__(self, pagename, request, graphengine = "neato", do_form=True):
@@ -102,7 +106,8 @@ class GraphShowerSimple(GraphShower):
         if self.format == 'zgr':
             self.request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
+                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
+                (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
                 'width="100%" height="600">'+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
@@ -136,6 +141,10 @@ class GraphShowerSimple(GraphShower):
         graphdata = self.buildGraphData()
         outgraph = self.buildOutGraph()
 
+        # Fixes some weird problems with transparency
+        if self.format == 'svg':
+            outgraph.bgcolor = 'white'
+
         nodes = set(self.startpages)
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
 
@@ -156,6 +165,24 @@ class GraphShowerSimple(GraphShower):
             scr = self.request.getBaseURL()
             for node, in outgraph.nodes.getall():
                 node = outgraph.nodes.get(node)
+
+                # To fix some weird problems with transparency
+                nstyle = getattr(node, 'style', None)
+                if not nstyle:
+                    node.style = 'filled'
+                elif not 'filled' in nstyle:
+                    node.style += ', filled'
+                if not hasattr(node, 'fillcolor'):
+                    node.fillcolor = 'white'
+
+                # Fix shapefile
+                if hasattr(node, 'shapefile'):
+                    page, file = node.shapefile.split('/attachments/')
+                    page = unquoteWikiname(page.split('/')[-1])
+                    shapefile = AttachFile.getAttachUrl(page, file,
+                                                        self.request)
+                    node.shapefile = self.request.getQualifiedURL(shapefile)
+
                 if 'action=AttachFile' in node.URL:
                     # node URL:s will have the wrong quoting if
                     # not explicitly quoted
