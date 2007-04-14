@@ -76,6 +76,7 @@ def join_params(uri, args):
     return uri + "?" + argstr[1:]
     
 def execute(macro, args):
+    retval = ""
 
     formatter = macro.formatter
     macro.request.page.formatter = formatter
@@ -105,20 +106,7 @@ def execute(macro, args):
 
         WikiNode(graph_request)
         graphshower(graph_request.page.page_name, graph_request, urladd)
-    else:
-        uri, args = uri_params(request.request_uri)
-        args = list_params(arglist)
+        retval = '<a href="%s" id="footer">Examine graph</a>\n' % \
+                 (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
-        args['action'] = ['ShowGraphSimple']
-        if not args.has_key('format'):
-            args['format'] = ['png']
-        graph_request = copy(request)
-        graph_request.form = args
-
-        graph_request.request_uri = join_params(uri, args)
-        urladd = '?' + graph_request.request_uri.split('?')[1]
-
-        WikiNode(graph_request)
-        graphshower(graph_request.page.page_name, graph_request, urladd)
-
-    return ''
+    return retval

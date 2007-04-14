@@ -244,32 +244,38 @@ def execute(pagename, request, text, pagedir, page):
 
                     if not hit.startswith('[[MetaData'):
                         continue
-                    # decode to target charset, grab comma-separated args
+                    # decode to target charset, grab comma-separated key,val
                     hit = encode(hit[11:-3])
                     args = hit.split(',')
+
                     # Skip hidden argument
-                    if args[-1] == 'hidden':
+                    if args[-1].strip() in ['hidden', 'embed']:
                         args = args[:-1]
-                    # Skip mismatched pairs
-                    if len(args) % 2:
-                        args = args[:-1]
-                    # set attributes for this page
-                    for key, val in zip(args[::2], args[1::2]):
-                        # Do not handle empty metadata, except empty labels
-                        if key != 'label':
-                            val = val.strip()
-                        if not val:
-                            continue
-                        # Values to be handed to dot
-                        if key in special_attrs:
-                            setattr(pagenode, key, val)
-                            # If color defined¸ set page as filled
-                            if key == 'fillcolor':
-                                setattr(pagenode, 'style', 'filled')
-                            continue
-                        # Save to pagegraph and shelve's metadata list
-                        node_set_attribute(pagenode, key, val)
-                        shelve_set_attribute(globaldata, quotedname, key, val)
+
+                    # If no data, continue
+                    if len(args) < 2:
+                        continue
+                    
+                    key = args[0]
+                    val = ','.join(args[1:])
+                    
+                    # Do not handle empty metadata, except empty labels
+                    if key != 'label':
+                        val = val.strip()
+                    if not val:
+                        continue
+
+                    # Values to be handed to dot
+                    if key in special_attrs:
+                        setattr(pagenode, key, val)
+                        # If color defined¸ set page as filled
+                        if key == 'fillcolor':
+                            setattr(pagenode, 'style', 'filled')
+                        continue
+
+                    # Save to pagegraph and shelve's metadata list
+                    node_set_attribute(pagenode, key, val)
+                    shelve_set_attribute(globaldata, quotedname, key, val)
 
                 # Handling of links
                 if hit is not None and type in types and not inpre:

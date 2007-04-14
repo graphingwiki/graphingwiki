@@ -38,28 +38,36 @@ from graphingwiki.patterns import WikiNode
 Dependencies = ['metadata']
 
 def execute(macro, args):
-    arglist = args.split(',')
+    arglist = [x.strip() for x in args.split(',') if x.strip()]
     showtype = 'list'
+
+    key = arglist[0]
+    if len(arglist) > 2:
+        if arglist[-1] == 'hidden':
+            return
+        if arglist[-1] in ['hidden', 'embed']:
+            val = ','.join(arglist[1:-1])
+        else:
+            val = ','.join(arglist[1:])
+        if arglist[-1] == 'embed':
+            showtype = 'raw'
+    elif len(arglist) == 2:
+        val = ','.join(arglist[1:])
+    # Hidden values
+    elif len(arglist) < 2:
+        return ''
 
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
 
     graphdata = WikiNode(request).graphdata
-    if not hasattr(graphdata, 'keys_on_pages'):
-
-        graphdata.reverse_meta()
     globaldata = graphdata.globaldata
+    if not hasattr(graphdata, 'keys_on_pages'):
+        graphdata.reverse_meta()
+
     keys_on_pages = graphdata.keys_on_pages
     vals_on_pages = graphdata.vals_on_pages
-
-    if len(arglist) % 2:
-        # Hidden values
-        if arglist[-1].strip() == 'hidden':
-            return ''
-        if arglist[-1].strip() == 'embed':
-            showtype = 'raw'
-
     result = []
 
     # Fix for moin 1.3.5
@@ -73,66 +81,60 @@ def execute(macro, args):
 
     if showtype == 'list':
         result.append(formatter.definition_list(1, **listmeta))
-        
-    # Failsafe for mismatched key, value pairs
-    while len(arglist) > 1:
-        key, val = arglist[:2]
 
-        key, val = key.strip(), val.strip()
+    keylist = [unicode(url_unquote(x), config.charset)
+               for x in sorted(keys_on_pages.get(key, ''))]
+    if request.page.page_name in keylist:
+        keylist.remove(request.page.page_name)
+    kwkey = {'querystr': 'action=MetaSearch&q=' + key,
+             'allowed_attrs': ['title', 'href', 'class'],
+             'class': 'meta_search'}
+    if keylist:
+        if len(keylist) > 10:
+            keylist = keylist[:9] + ['...']
+        keylist = 'Key also on pages:\n' + '\n'.join(keylist)
+        kwkey['title'] = keylist
 
-        keylist = [unicode(url_unquote(x), config.charset)
-                   for x in sorted(keys_on_pages.get(key, ''))]
-        if request.page.page_name in keylist:
-            keylist.remove(request.page.page_name)
-        kwkey = {'querystr': 'action=MetaSearch&q=' + key,
-                 'allowed_attrs': ['title', 'href', 'class'],
-                 'class': 'meta_search'}
-        if keylist:
-            if len(keylist) > 10:
-                keylist = keylist[:9] + ['...']
-            keylist = 'Key also on pages:\n' + '\n'.join(keylist)
-            kwkey['title'] = keylist
+    vallist = [unicode(url_unquote(x), config.charset)
+               for x in sorted(vals_on_pages.get(encode(val), ''))]
+    if request.page.page_name in vallist:
+        vallist.remove(request.page.page_name)
+    kwval = {'querystr': 'action=MetaSearch&q=' + val,
+             'allowed_attrs': ['title', 'href', 'class'],
+             'class': 'meta_search'}
+    if vallist:
+        if len(vallist) > 10:
+            vallist = vallist[:9] + ['...']
+        vallist = 'Value also on pages:\n' + '\n'.join(vallist)
+        kwval['title'] = vallist
 
-        vallist = [unicode(url_unquote(x), config.charset)
-                   for x in sorted(vals_on_pages.get(encode(val), ''))]
-        if request.page.page_name in vallist:
-            vallist.remove(request.page.page_name)
-        kwval = {'querystr': 'action=MetaSearch&q=' + val,
-                 'allowed_attrs': ['title', 'href', 'class'],
-                 'class': 'meta_search'}
-        if vallist:
-            if len(vallist) > 10:
-                vallist = vallist[:9] + ['...']
-            vallist = 'Value also on pages:\n' + '\n'.join(vallist)
-            kwval['title'] = vallist
+    if showtype == 'list':
+        result.extend([formatter.definition_term(1, **keymeta),
+                       formatter.pagelink(1, request.page.page_name,
+                                          request.page, **kwkey),
+                       formatter.text(key),
+                       formatter.pagelink(0),
+                       formatter.definition_term(0),
 
-        if showtype == 'list':
-            result.extend([formatter.definition_term(1, **keymeta),
-                           formatter.pagelink(1, request.page.page_name,
-                                              request.page, **kwkey),
-                           formatter.text(key),
-                           formatter.pagelink(0),
-                           formatter.definition_term(0),
+                       formatter.definition_desc(1, **valmeta),
+                       formatter.pagelink(1, request.page.page_name,
+                                          request.page, **kwval),
+                       formatter.text(val),
+                       formatter.pagelink(0),
+                       formatter.definition_desc(0)])
+    else:
+        result.extend([formatter.pagelink(1, request.page.page_name,
+                                          request.page, **kwkey),
+                       formatter.strong(1, **keymeta),
+                       formatter.text(key),
+                       formatter.strong(0),
+                       formatter.pagelink(0),
+                       formatter.pagelink(1, request.page.page_name,
+                                          request.page, **kwval),
+                       formatter.text(val),
+                       formatter.pagelink(0)])
 
-                           formatter.definition_desc(1, **valmeta),
-                           formatter.pagelink(1, request.page.page_name,
-                                              request.page, **kwval),
-                           formatter.text(val),
-                           formatter.pagelink(0),
-                           formatter.definition_desc(0)])
-        else:
-            result.extend([formatter.pagelink(1, request.page.page_name,
-                                              request.page, **kwkey),
-                           formatter.strong(1, **keymeta),
-                           formatter.text(key),
-                           formatter.strong(0),
-                           formatter.pagelink(0),
-                           formatter.pagelink(1, request.page.page_name,
-                                              request.page, **kwval),
-                           formatter.text(val),
-                           formatter.pagelink(0)])
-
-        arglist = arglist[2:]
+    arglist = arglist[2:]
 
     if showtype == 'list':
         result.append(macro.formatter.definition_list(0))
