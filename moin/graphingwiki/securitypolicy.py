@@ -5,12 +5,15 @@ class SecurityPolicy(Permissions):
 
         # No problem to save if my base class agree
         if Permissions.save(self, editor, newtext, rev, **kw):
-            from MoinMoin import wikiutil
+            from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-            # save to graph file, if plugin available
-            graphsaver = wikiutil.importPlugin(self.request.cfg,
-                                               'action',
-                                               'savegraphdata')
+            try:
+                # save to graph file, if plugin available
+                graphsaver = importPlugin(self.request.cfg,
+                                          'action',
+                                          'savegraphdata')
+            except PluginMissingError:
+                return True
 
             if not graphsaver:
                 return True
