@@ -190,6 +190,7 @@ class GraphShower(object):
         self.filteredges = set()
         self.filterorder = set()
         self.filtercolor = set()
+        self.filtercats = set()
         self.rankdir = 'LR'
 
         # Lists for the filter values for the form
@@ -348,6 +349,9 @@ class GraphShower(object):
         if request.form.has_key('filtercolor'):
             self.filtercolor.update(
                 [encode(attr) for attr in request.form['filtercolor']])
+        if request.form.has_key('filtercats'):
+            self.filtercats.update(
+                [encode(attr) for attr in request.form['filtercats']])
 
         # This is the URL addition to the nodes that have graph data
         self.urladd = '?'
@@ -488,6 +492,18 @@ class GraphShower(object):
                     else:
                         return outgraph, False
 
+            # Add page categories to selection choices in the form
+            # (for local pages only)
+            if obj.URL[0] in ['.', '/']:
+                self.addToAllCats(obj.node)
+
+            # Category filter
+            for filt in self.filtercats:
+                filt = '"%s"' % filt
+                cats = getattr(obj, 'WikiCategory', [])
+                if filt in cats:
+                    return outgraph, False
+
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
@@ -531,11 +547,6 @@ class GraphShower(object):
 #                # Have shapefiles of image attachments
 #                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
 #                    print obj.node
-
-            # Add page categories to selection choices in the form
-            # (for local pages only)
-            if obj.URL[0] in ['.', '/']:
-                self.addToAllCats(obj.node)
 
             if getattr(self, 'orderby', '_hier') != '_hier':
                 value = getattr(obj, self.orderby, None)
@@ -1017,6 +1028,16 @@ class GraphShower(object):
                            and " checked>"
                            or ">",
                        "No type"))
+
+        if self.allcategories:
+            # filter categories
+            request.write(u"<td>Filter page categories:<br>\n")
+            for type in self.allcategories:
+                request.write(u'<input type="checkbox" name="filtercats" ' +
+                              u'value="%s"%s%s<br>\n' %
+                              (type,
+                               type in self.filtercats and " checked>" or ">",
+                               type))
 
         # End form
         request.write(u"</table>\n")
