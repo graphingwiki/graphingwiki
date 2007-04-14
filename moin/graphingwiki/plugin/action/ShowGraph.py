@@ -168,7 +168,6 @@ class GraphShower(object):
         self.limit = ''
         self.hidedges = 0
 
-        self.pageobj = Page(request, pagename)
         self.isstandard = False
         self.interwikilist = []
         
@@ -256,11 +255,11 @@ class GraphShower(object):
         
         if self.do_form:
             # Get categories for current page, for the category form
-            self.allcategories.update(self.pageobj.getCategories(self.request))
+            self.allcategories.update(self.request.page.getCategories(self.request))
         
         # Bail out flag on if underlay page etc.
         # FIXME: a bit hack, make consistent with other no data cases?
-        if not self.pageobj.isStandardPage(includeDeleted = False):
+        if not self.request.page.isStandardPage(includeDeleted = False):
             self.isstandard = True
 
         # depth
@@ -386,7 +385,7 @@ class GraphShower(object):
     def buildGraphData(self):
         graphdata = Graph()
 
-        pagedir = self.pageobj.getPagePath()
+        pagedir = self.request.page.getPagePath()
         pagename = url_quote(encode(self.pagename))
         self.pagename = pagename
 
@@ -1155,12 +1154,12 @@ class GraphShower(object):
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
             request.write(formatter.startContent("content"))
-            formatter.setPage(self.pageobj)
+            formatter.setPage(self.request.page)
         else:
             request.http_headers(["Content-type: text/plain;charset=%s" %
                                   config.charset])
             formatter = TextFormatter(request)
-            formatter.setPage(self.pageobj)
+            formatter.setPage(self.request.page)
 
         return formatter
 
@@ -1350,12 +1349,12 @@ class GraphShower(object):
             # direction support!
             formatter = HtmlFormatter(request)
             request.write(formatter.startContent("content"))
-            formatter.setPage(self.pageobj)
+            formatter.setPage(self.request.page)
         else:
             request.http_headers(["Content-type: text/plain;charset=%s" %
                                   config.charset])
             formatter = TextFormatter(request)
-            formatter.setPage(self.pageobj)
+            formatter.setPage(self.request.page)
 
         return formatter
 

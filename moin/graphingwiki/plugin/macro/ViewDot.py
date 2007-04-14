@@ -1,7 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 """
-    InlineGraph macro plugin to MoinMoin
-     - Just like ShowGraph-action, inlined on a page without controls
+    ViewDot macro plugin to MoinMoin
+     - Just like ViewDot-action, inlined on a page without controls
 
     @copyright: 2006 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -27,53 +27,11 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import unquote as url_unquote
 from urllib import quote as url_quote
-from copy import copy
 
-from MoinMoin import wikiutil
-from MoinMoin.Page import Page
-from MoinMoin import config
+from InlineGraph import *
 
-from graphingwiki.patterns import encode
-from graphingwiki.patterns import WikiNode
-
-Dependencies = ['metadata']
-
-def uri_params(uri):
-    args = {}
-    allstr = uri.split('?')
-    if len(allstr) > 1:
-        uri, argstr = allstr
-        argstr = argstr.split('&')
-
-        for arg in argstr:
-            key, val = arg.split('=')
-            args.setdefault(encode(url_unquote(key)),
-                            []).append(encode(url_unquote(val)))
-
-    return uri, args
-
-def list_params(arglist):
-    form = {}
-
-    if len(arglist) % 2:
-        arglist = arglist[:-1]
-    while len(arglist) > 1:
-        key, val = arglist[:2]
-
-        form.setdefault(encode(key), []).append(encode(val))
-
-        arglist = arglist[2:]
-
-    return form
-
-def join_params(uri, args):
-    argstr = ""
-    for key in args:
-        for val in args[key]:
-            argstr = argstr + "&%s=%s" % (url_quote(key), url_quote(val))
-    return uri + "?" + argstr[1:]
+Dependencies = ['attachments']
     
 def execute(macro, args):
     retval = ""
@@ -83,27 +41,35 @@ def execute(macro, args):
     request = macro.request
 
     # Import the plugin action to print out the graph html form
-    graphshower = wikiutil.importPlugin(request.cfg,
-                                        'action', 'ShowGraphSimple',
-                                        'execute_graphs')
+    dotviewer = wikiutil.importPlugin(request.cfg,
+                                        'action', 'ViewDot',
+                                        'execute')
 
     arglist = [x.strip() for x in args.split(',') if x]
 
     if len(arglist) == 1:
+        view = ""
         uri, args = uri_params(arglist[0])
-        args['action'] = ['ShowGraphSimple']
+        args['action'] = ['ViewDot']
+        if args.has_key('view'):
+            view = args['view']
+
         pagename = url_unquote(uri.split('/')[-1])
         graph_request = copy(request)
 
         graph_request.page = Page(request, pagename)
         graph_request.form = args
+
+        if view:
+            args['view'] = view
+        
         req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
         graph_request.request_uri = join_params(req_url, args)
         urladd = '?' + graph_request.request_uri.split('?')[1]
 
-        WikiNode(graph_request)
-        graphshower(graph_request.page.page_name, graph_request, urladd)
-        retval = '<a href="%s" id="footer">[examine graph]</a>\n' % \
+        
+        dotviewer(graph_request.page.page_name, graph_request)
+        retval = '<a href="%s" id="footer">[view dot]</a>\n' % \
                  (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
     return retval
