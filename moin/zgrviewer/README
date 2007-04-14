@@ -1,0 +1,21 @@
+You can use the excellent ZGRViewer java plugin with
+MoinMoin. Currently the support is limited to ShowGraphSimple.
+
+The version included is 0.7.2 (March 14, 2007).
+ZGRViewer is licensed under LGPL.
+
+http://zvtm.sourceforge.net/zgrviewer.html
+
+Credits
+
+Work on ZGRViewer started at MIT CSAIL while developing W3C's
+IsaViz. It is now continuing at INRIA project In Situ.
+
+    * Emmanuel Pietriga (design, implementation) - INRIA project In Situ
+    * Eric Mounhem (implementation) - INRIA project In Situ
+
+ZGRViewer is based upon the Zoomable Visual Transformation Machine.
+
+It also includes software developed by The Apache Software Foundation
+(Xerces Java 2), Terence Parr (ANTLR), and makes use of the GraphViz
+library developed by AT&T Research.

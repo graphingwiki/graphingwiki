@@ -102,7 +102,7 @@ class GraphShowerSimple(GraphShower):
         if self.format == 'zgr':
             self.request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="/zvtm.jar,/zgrviewer.jar" '+\
+                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
                 'width="100%" height="600">'+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
