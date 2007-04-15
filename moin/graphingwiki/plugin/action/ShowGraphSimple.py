@@ -86,7 +86,10 @@ class GraphShowerSimple(GraphShower):
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
 
-        gr = self.get_graph()
+        outgraph = self.get_graph()
+
+        if self.format:
+            gr = self.generateLayout(outgraph)
 
         if self.do_form:
             if self.format == 'dot':
@@ -125,7 +128,21 @@ class GraphShowerSimple(GraphShower):
             if legend:
                 self.request.write('<img src="%s" alt="legend">' %
                                    (img_url + "2"))
-
+        elif not self.format:
+            formatter = self.request.formatter
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text("Nodes in graph: " + str(len(
+                outgraph.nodes.getall()))))
+            self.request.write(formatter.paragraph(0))
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text("Edges in graph: " + str(len(
+                outgraph.edges.getall()))))
+            self.request.write(formatter.paragraph(0))
+            if getattr(self, 'orderby', '_hier') != '_hier':
+                self.request.write(formatter.paragraph(1))
+                self.request.write(formatter.text("Order levels: " + str(len(
+                    self.ordernodes.keys()))))
+                self.request.write(formatter.paragraph(0))
         else:
             self.request.write('<img src="%s" alt="graph" usemap="#%s">\n' % \
                                (img_url + "1", gr.graphattrs['name']))
@@ -194,10 +211,7 @@ class GraphShowerSimple(GraphShower):
                     node.URL = scr + node.URL
                 node.URL = node.URL.replace('&image=1', '')
 
-        # Do the layout
-        gr = self.generateLayout(outgraph)
-
-        return gr
+        return outgraph
 
     def execute_image(self):
         # Init WikiNode-pattern
@@ -221,11 +235,13 @@ class GraphShowerSimple(GraphShower):
             self.request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.image == 1:
-            gr = self.get_graph()
+            outgraph = self.get_graph()
+            gr = self.generateLayout(outgraph)
             self.sendGraph(gr)
             raise MoinMoinNoFooter
         else:
-            gr = self.get_graph()
+            outgraph = self.get_graph()
+            gr = self.generateLayout(outgraph)
             self.sendLegend()
             raise MoinMoinNoFooter
 
