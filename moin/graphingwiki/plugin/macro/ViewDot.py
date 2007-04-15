@@ -46,30 +46,37 @@ def execute(macro, args):
                                         'execute')
 
     arglist = [x.strip() for x in args.split(',') if x]
+    kw = {}
+    
+    for arg in arglist:
+        data = arg.split('=')
+        key = data[0]
+        val = '='.join(data[1:])
 
-    if len(arglist) == 1:
-        view = ""
-        uri, args = uri_params(arglist[0])
-        args['action'] = ['ViewDot']
-        if args.has_key('view'):
-            view = args['view']
+        if key in ['height', 'width']:
+            kw[str(key)] = str(val)
 
-        pagename = url_unquote(uri.split('/')[-1])
-        graph_request = copy(request)
+    view = ""
+    uri, args = uri_params(arglist[0])
+    args['action'] = ['ViewDot']
+    if args.has_key('view'):
+        view = args['view']
 
-        graph_request.page = Page(request, pagename)
-        graph_request.form = args
+    pagename = url_unquote(uri.split('/')[-1])
+    graph_request = copy(request)
 
-        if view:
-            args['view'] = view
-        
-        req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
-        graph_request.request_uri = join_params(req_url, args)
-        urladd = '?' + graph_request.request_uri.split('?')[1]
+    graph_request.page = Page(request, pagename)
+    graph_request.form = args
 
-        
-        dotviewer(graph_request.page.page_name, graph_request)
-        retval = '<a href="%s" id="footer">[view dot]</a>\n' % \
-                 (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
+    if view:
+        args['view'] = view
+
+    req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
+    graph_request.request_uri = join_params(req_url, args)
+    urladd = '?' + graph_request.request_uri.split('?')[1]
+
+    dotviewer(graph_request.page.page_name, graph_request, **kw)
+    retval = '<a href="%s" id="footer">[view dot]</a>\n' % \
+             (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
     return retval

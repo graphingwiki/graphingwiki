@@ -63,7 +63,7 @@ class Parser(object):
 
         return data
 
-    def format(self, formatter):
+    def format(self, formatter, **kw):
         graphviz = Graphviz(engine=self.graphengine, string=self.raw)
         img = self.getLayoutInFormat(graphviz, self.layoutformat)
 

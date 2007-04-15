@@ -88,22 +88,31 @@ def execute(macro, args):
                                         'execute_graphs')
 
     arglist = [x.strip() for x in args.split(',') if x]
+    kw = {}
 
-    if len(arglist) == 1:
-        uri, args = uri_params(arglist[0])
-        args['action'] = ['ShowGraphSimple']
-        pagename = url_unquote(uri.split('/')[-1])
-        graph_request = copy(request)
+    for arg in arglist:
+        data = arg.split('=')
+        key = data[0]
+        val = '='.join(data[1:])
 
-        graph_request.page = Page(request, pagename)
-        graph_request.form = args
-        req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
-        graph_request.request_uri = join_params(req_url, args)
-        urladd = '?' + graph_request.request_uri.split('?')[1]
+        if key in ['height', 'width']:
+            kw[str(key)] = str(val)
 
-        WikiNode(graph_request)
-        graphshower(graph_request.page.page_name, graph_request, urladd)
-        retval = '<a href="%s" id="footer">[examine graph]</a>\n' % \
-                 (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
+    uri, args = uri_params(arglist[0])
+    args['action'] = ['ShowGraphSimple']
+    pagename = url_unquote(uri.split('/')[-1])
+    graph_request = copy(request)
+
+    graph_request.page = Page(request, pagename)
+    graph_request.form = args
+    req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
+    graph_request.request_uri = join_params(req_url, args)
+    urladd = '?' + graph_request.request_uri.split('?')[1]
+    kw['urladd'] = urladd
+
+    WikiNode(graph_request)
+    graphshower(graph_request.page.page_name, graph_request, **kw)
+    retval = '<a href="%s" id="footer">[examine graph]</a>\n' % \
+             (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
     return retval

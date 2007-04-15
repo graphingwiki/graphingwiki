@@ -28,6 +28,8 @@
 """
 import os
 from tempfile import mkstemp
+from base64 import b64encode
+from urllib import quote as url_quote
 
 from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
@@ -41,7 +43,7 @@ from ShowGraph import quotetoshow
 from savegraphdata import encode
 
 class ViewDot(object):
-    def __init__(self, pagename, request, graphengine = "neato"):
+    def __init__(self, pagename, request, **kw):
         self.request = request
         self.pagename = pagename
 
@@ -49,12 +51,21 @@ class ViewDot(object):
         self.format = 'png'
 
         self.available_graphengines = ['dot', 'neato']
-        self.graphengine = graphengine
+        self.graphengine = kw['graphengine']
 
         self.dotfile = ""
         self.attachment = ""
         
         self.inline = True
+        self.help = False
+
+        self.height = ""
+        self.width = ""
+        for key in kw:
+            if key == 'height':
+                self.height = kw['height']
+            elif key == 'width':
+                self.width = kw['width']
 
     def formargs(self):
         request = self.request
@@ -69,6 +80,11 @@ class ViewDot(object):
         if request.form.has_key('view'):
             if ''.join([x for x in request.form['view']]).strip():
                 self.inline = False
+
+        # format
+        if request.form.has_key('help'):
+            if ''.join([x for x in request.form['help']]).strip():
+                self.help = True
 
         # graphengine
         if request.form.has_key('graphengine'):
@@ -86,8 +102,7 @@ class ViewDot(object):
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
                       self.pagename)
-        request.write(u'<input type=hidden name=action value="%s">' %
-                      ''.join(request.form['action']))
+        request.write(u'<input type=hidden name=action value="ViewDot">')
 
         request.write(u"<table>\n<tr>\n")
 
@@ -123,6 +138,8 @@ class ViewDot(object):
         request.write('</select>\n')
         request.write(u'<input type=submit name=view ' +
                       'value="View dot!">\n')
+        request.write(u'<input type=submit name=help ' +
+                      'value="Inline string!">\n')
 
         request.write('</table>')
 
@@ -134,7 +151,7 @@ class ViewDot(object):
         self.formargs()
         request = self.request
 
-        if not self.attachment:
+        if self.help or not self.attachment:
             # fix for moin 1.3.5
             if not hasattr(request, 'formatter'):
                 formatter = HtmlFormatter(request)
@@ -156,6 +173,18 @@ class ViewDot(object):
 
             self.sendForm()
 
+            if self.help:
+                # This is the URL addition to the nodes that have graph data
+                self.urladd = '?'
+                for key in request.form:
+                    if key == 'help':
+                        continue
+                    for val in request.form[key]:
+                        self.urladd = (self.urladd + url_quote(encode(key)) +
+                                       '=' + url_quote(encode(val)) + '&')
+                self.urladd = self.urladd[:-1]
+                request.write(self.request.page.page_name + self.urladd)
+
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
@@ -175,7 +204,7 @@ class ViewDot(object):
         except IOError:
             self.fail()
 
-        graphviz = Graphviz(engine=self.graphengine, string=data )
+        graphviz = Graphviz(engine=self.graphengine, string=data)
         data = self.getLayoutInFormat(graphviz, self.format)
 
         if self.format in ['zgr', 'svg']:
@@ -195,13 +224,19 @@ class ViewDot(object):
                 request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.format == 'zgr':
-            img_url = self.request.getQualifiedURL() + \
-                      request.request_uri.replace('zgr', 'svg')
+            img_url = request.request_uri.replace('zgr', 'svg') + '&view=View'
+            img_url = self.request.getQualifiedURL(img_url)
+                      
+            if not self.height:
+                self.height = "600"
+            if not self.width:
+                self.width = "100%"
+
             request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
                 'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
                 (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
-                'width="100%" height="600">'+\
+                'width="%s" height="%s">' % (self.width, self.height)+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
                 '<param name="scriptable" value="false" />' +\
@@ -210,7 +245,19 @@ class ViewDot(object):
                 '<param name="appletBackgroundColor" value="#DDD" />' +\
                 '<param name="graphBackgroundColor" value="#DDD" />' +\
                 '<param name="highlightColor" value="red" />' +\
-                ' </applet>')
+                ' </applet><br>\n')
+        elif self.inline:
+            imgbase = "data:image/" + self.format + ";base64," + \
+                      b64encode(data)
+            params = ""
+            if self.height:
+                params += 'height="%s" ' % self.height
+            if self.width:
+                params += 'width="%s"' % self.width
+
+            page = ('<img src="' + imgbase +
+                    '" %s alt="visualisation"><br>\n' % params)
+            request.write(page)
         else:
             request.write(data)
 
@@ -231,6 +278,8 @@ class ViewDot(object):
 
         return data
 
-def execute(pagename, request):
-    viewdot = ViewDot(pagename, request)
+def execute(pagename, request, **kw):
+    if not kw.has_key('graphengine'):
+        kw['graphengine'] = 'neato'
+    viewdot = ViewDot(pagename, request, **kw)
     viewdot.execute()

@@ -669,6 +669,7 @@ class GraphShower(object):
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
             outgraph.label = "No data"
+            outgraph.bgcolor = 'white'
 
         # Make the attachment node labels look nicer
         for name, in outgraph.nodes.getall():

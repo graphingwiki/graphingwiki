@@ -36,14 +36,27 @@ from MoinMoin.action import AttachFile
 from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):
-    def __init__(self, pagename, request, graphengine = "neato", do_form=True):
+    def __init__(self, pagename, request, **kw):
+        if not kw.has_key('graphengine'):
+            self.graphengine = 'neato'
+        else:
+            self.graphengine = kw['graphengine']
+
         super(GraphShowerSimple, self).__init__(pagename, request,
-                                                graphengine)
+                                                self.graphengine)
         # URL addition
         self.image = 0
         self.urladd = ''
         self.available_formats = ['png', 'svg', 'dot', 'zgr']
-        self.do_form = do_form
+        self.do_form = kw['do_form']
+
+        self.height = ""
+        self.width = ""
+        for key in kw:
+            if key == 'height':
+                self.height = kw['height']
+            elif key == 'width':
+                self.width = kw['width']
     
     def sendGraph(self, gr):
         img = self.getLayoutInFormat(gr.graphviz, self.format)
@@ -107,11 +120,16 @@ class GraphShowerSimple(GraphShower):
             legend = self.makeLegend()
 
         if self.format == 'zgr':
+            if not self.height:
+                self.height = "600"
+            if not self.width:
+                self.width = "100%"
+
             self.request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
                 'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
                 (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
-                'width="100%" height="600">'+\
+                'width="%s" height="%s">' % (self.width, self.height)+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
                 '<param name="scriptable" value="false" />' +\
@@ -120,7 +138,7 @@ class GraphShowerSimple(GraphShower):
                 '<param name="appletBackgroundColor" value="#DDD" />' +\
                 '<param name="graphBackgroundColor" value="#DDD" />' +\
                 '<param name="highlightColor" value="red" />' +\
-                ' </applet>')
+                ' </applet><br>\n')
 
         elif self.format == 'svg':
             self.request.write('<img src="%s" alt="graph">\n' %
@@ -144,8 +162,14 @@ class GraphShowerSimple(GraphShower):
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
         else:
-            self.request.write('<img src="%s" alt="graph" usemap="#%s">\n' % \
-                               (img_url + "1", gr.graphattrs['name']))
+            params = ""
+            if self.height:
+                params += 'height="%s" ' % self.height
+            if self.width:
+                params += 'width="%s"' % self.width
+
+            self.request.write('<img src="%s" %s alt="graph" usemap="#%s">\n'%
+                               (img_url + "1", params, gr.graphattrs['name']))
             self.sendMap(gr.graphviz)
             if legend:
                 self.request.write('<img src="%s" alt="legend" usemap="#%s">'%
@@ -261,10 +285,17 @@ class GraphShowerSimple(GraphShower):
             self.execute_page()
 
 def execute(pagename, request):
-    graphshower = GraphShowerSimple(pagename, request)
+    # defaults
+    kw = {'do_form': False, 'graphengine': 'neato'}
+    graphshower = GraphShowerSimple(pagename, request, **kw)
     graphshower.execute()
 
-def execute_graphs(pagename, request, urladd=None):
-    graphshower = GraphShowerSimple(pagename, request, do_form=False)
+def execute_graphs(pagename, request, **kw):
+    # Default
+    kw['do_form'] = False
+    kw['graphengine'] = 'neato'
+    urladd = kw['urladd']
+
+    graphshower = GraphShowerSimple(pagename, request, **kw)
     graphshower.formargs()
     graphshower.execute_graphs(urladd=urladd)
