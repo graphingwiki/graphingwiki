@@ -187,7 +187,7 @@ class ViewDot(object):
                 self.urladd = self.urladd[:-1]
                 request.write('[[ViewDot(' + \
                               self.request.page.page_name + \
-                              self.urladd + ']]')
+                              self.urladd + ')]]')
 
             # End content
             self.request.write(formatter.endContent()) # end content div

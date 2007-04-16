@@ -73,5 +73,7 @@ def execute(macro, args):
 
     dotviewer(graph_request.page.page_name, graph_request, **kw)
 
-    return '<a href="%s&view=View" id="footer">[examine]</a>\n' % \
-           (graph_request.getQualifiedURL(graph_request.request_uri))
+    req_url = request.getScriptname() + '/' + uri
+    req_url = join_params(req_url, args)
+    return '<a href="%s&view=View" id="footer">[view]</a>\n' % \
+           (graph_request.getQualifiedURL(req_uri))

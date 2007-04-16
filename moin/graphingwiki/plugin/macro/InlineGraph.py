@@ -112,11 +112,14 @@ def execute(macro, args):
     graph_request.form = args
     req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
     graph_request.request_uri = join_params(req_url, args)
+
     urladd = '?' + graph_request.request_uri.split('?')[1]
     kw['urladd'] = urladd
 
     WikiNode(graph_request)
     graphshower(graph_request.page.page_name, graph_request, **kw)
 
+    req_url = request.getScriptname() + '/' + uri
+    req_url = join_params(req_url, args)
     return '<a href="%s" id="footer">[examine]</a>\n' % \
-           (graph_request.getQualifiedURL(graph_request.request_uri))
+           (graph_request.getQualifiedURL(req_url))
