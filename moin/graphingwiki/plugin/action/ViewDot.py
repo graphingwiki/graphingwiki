@@ -140,9 +140,10 @@ class ViewDot(object):
                                    "%s/%s" % (page, file)))
         request.write('</select>\n</table>\n')
         request.write(u'<input type=submit name=view ' +
-                      'value="View dot!">\n')
+                      'value="View">\n')
         request.write(u'<input type=submit name=help ' +
-                      'value="Inline string!"><br>\n')
+                      'value="Inline"><br>\n')
+        request.write(u'</form>\n')
 
     def fail(self):
         self.request.write('Content-type: text/plain\n\n')
@@ -184,7 +185,9 @@ class ViewDot(object):
                         self.urladd = (self.urladd + url_quote(encode(key)) +
                                        '=' + url_quote(encode(val)) + '&')
                 self.urladd = self.urladd[:-1]
-                request.write(self.request.page.page_name + self.urladd)
+                request.write('[[ViewDot(' + \
+                              self.request.page.page_name + \
+                              self.urladd + ']]')
 
             # End content
             self.request.write(formatter.endContent()) # end content div
