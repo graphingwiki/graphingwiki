@@ -35,6 +35,7 @@ from codecs import getencoder
 
 from MoinMoin import config
 from MoinMoin import Page
+from MoinMoin import wikiutil
 
 from graphingwiki.patterns import GraphData
 from graphingwiki.patterns import encode
@@ -111,8 +112,14 @@ def execute(macro, args):
             if val[::len(val)-1] == '//':
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
-        else:
+        elif arg:
             pages.add(arg)
+
+    # If no pages specified, get all non-system pages
+    if not pages:
+        def filter(name):
+            return not wikiutil.isSystemPage(macro.request, name)
+        pages = set(macro.request.page.getPageList(filter=filter))
 
     pagelist = set([])
 
@@ -168,27 +175,3 @@ def execute(macro, args):
     out = out + macro.formatter.table(0)
 
     return out
-
-#         keyhits = set([])
-#         keys = set([])
-#         for key in keys_on_pages:
-#             if q:
-#                 if key == url_quote(encode(q)):
-#                     keyhits.update(keys_on_pages[key])
-#                     keys.add(unicode(url_unquote(key), config.charset))
-#             else:
-#                 if page_re.match(unicode(url_unquote(key), config.charset)):
-#                     keyhits.update(keys_on_pages[key])
-#                     keys.add(unicode(url_unquote(key), config.charset))
-
-#         valhits = set([])
-#         vals = set([])
-#         for val in vals_on_pages:
-#             if q:
-#                 if val == encode(q):
-#                     valhits.update(vals_on_pages[val])
-#                     vals.add(unicode(val, config.charset))
-#             else:
-#                 if page_re.match(unicode(val, config.charset)):
-#                     valhits.update(vals_on_pages[val])
-#                     vals.add(unicode(val, config.charset))

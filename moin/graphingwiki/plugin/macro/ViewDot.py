@@ -34,8 +34,6 @@ from InlineGraph import *
 Dependencies = ['attachments']
     
 def execute(macro, args):
-    retval = ""
-
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
@@ -56,27 +54,24 @@ def execute(macro, args):
         if key in ['height', 'width']:
             kw[str(key)] = str(val)
 
-    view = ""
+    if not arglist:
+        return ""
+    
     uri, args = uri_params(arglist[0])
-    args['action'] = ['ViewDot']
-    if args.has_key('view'):
-        view = args['view']
+    
+    if not args:
+        return ""
 
-    pagename = url_unquote(uri.split('/')[-1])
+    pagename = url_unquote(uri)
     graph_request = copy(request)
 
     graph_request.page = Page(request, pagename)
     graph_request.form = args
 
-    if view:
-        args['view'] = view
-
     req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
     graph_request.request_uri = join_params(req_url, args)
-    urladd = '?' + graph_request.request_uri.split('?')[1]
 
     dotviewer(graph_request.page.page_name, graph_request, **kw)
-    retval = '<a href="%s" id="footer">[view dot]</a>\n' % \
-             (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
-    return retval
+    return '<a href="%s&view=View dot!" id="footer">[examine]</a>\n' % \
+           (graph_request.getQualifiedURL(graph_request.request_uri))

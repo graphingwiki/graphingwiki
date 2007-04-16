@@ -76,8 +76,6 @@ def join_params(uri, args):
     return uri + "?" + argstr[1:]
     
 def execute(macro, args):
-    retval = ""
-
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
@@ -98,9 +96,16 @@ def execute(macro, args):
         if key in ['height', 'width']:
             kw[str(key)] = str(val)
 
+    if not arglist:
+        return ""
+
     uri, args = uri_params(arglist[0])
+
+    if not args:
+        return ""
+
     args['action'] = ['ShowGraphSimple']
-    pagename = url_unquote(uri.split('/')[-1])
+    pagename = url_unquote(uri)
     graph_request = copy(request)
 
     graph_request.page = Page(request, pagename)
@@ -112,7 +117,6 @@ def execute(macro, args):
 
     WikiNode(graph_request)
     graphshower(graph_request.page.page_name, graph_request, **kw)
-    retval = '<a href="%s" id="footer">[examine graph]</a>\n' % \
-             (request.getScriptname() + '/' + uri.split('/')[-1] + urladd)
 
-    return retval
+    return '<a href="%s" id="footer">[examine]</a>\n' % \
+           (graph_request.getQualifiedURL(graph_request.request_uri))

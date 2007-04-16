@@ -140,6 +140,10 @@ class GraphShowerSimple(GraphShower):
                 '<param name="highlightColor" value="red" />' +\
                 ' </applet><br>\n')
 
+            img_url = img_url.replace('&format=zgr', '&format=png')
+            if legend:
+                self.request.write('<img src="%s" alt="legend"><br>\n' %
+                                   (img_url + "2"))
         elif self.format == 'svg':
             self.request.write('<img src="%s" alt="graph">\n' %
                                (img_url + "1"))
@@ -175,7 +179,6 @@ class GraphShowerSimple(GraphShower):
                 self.request.write('<img src="%s" alt="legend" usemap="#%s">'%
                                    (img_url + "2", legend.name))
                 self.sendMap(legend)
-
 
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
@@ -216,7 +219,7 @@ class GraphShowerSimple(GraphShower):
                 if not hasattr(node, 'fillcolor'):
                     node.fillcolor = 'white'
 
-                # Fix shapefile
+                # Fix shapefile from file path to URL
                 if hasattr(node, 'shapefile'):
                     page, file = node.shapefile.split('/attachments/')
                     page = unquoteWikiname(page.split('/')[-1])
@@ -224,12 +227,17 @@ class GraphShowerSimple(GraphShower):
                                                         self.request)
                     node.shapefile = self.request.getQualifiedURL(shapefile)
 
+                # Fix attachment links
                 if 'action=AttachFile' in node.URL:
                     # node URL:s will have the wrong quoting if
                     # not explicitly quoted
                     pagepart, args = node.URL[1:].split('?')
                     node.URL = scr + url_quote(pagepart) + '?' + args
-                if node.URL[0] == '.':
+
+                # Fix other node URL:s
+                if node.URL.startswith('..'):
+                    node.URL = scr + node.URL[2:]
+                elif node.URL[0] == '.':
                     node.URL = scr + node.URL[1:]
                 elif node.URL[0] == '/':
                     node.URL = scr + node.URL
@@ -286,7 +294,7 @@ class GraphShowerSimple(GraphShower):
 
 def execute(pagename, request):
     # defaults
-    kw = {'do_form': False, 'graphengine': 'neato'}
+    kw = {'do_form': True, 'graphengine': 'neato'}
     graphshower = GraphShowerSimple(pagename, request, **kw)
     graphshower.execute()
 

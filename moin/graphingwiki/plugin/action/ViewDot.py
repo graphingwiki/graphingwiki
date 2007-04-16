@@ -99,9 +99,12 @@ class ViewDot(object):
     def sendForm(self):
         request = self.request
 
+        # Form fix for subpages
+        pagename = '../' * self.pagename.count('/') + self.pagename
+
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
-                      self.pagename)
+                      pagename)
         request.write(u'<input type=hidden name=action value="ViewDot">')
 
         request.write(u"<table>\n<tr>\n")
@@ -135,13 +138,11 @@ class ViewDot(object):
                     request.write('<option label="%s" value="%s">%s</option>\n' % \
                                   (file, "attachment:%s/%s" % (page, file),
                                    "%s/%s" % (page, file)))
-        request.write('</select>\n')
+        request.write('</select>\n</table>\n')
         request.write(u'<input type=submit name=view ' +
                       'value="View dot!">\n')
         request.write(u'<input type=submit name=help ' +
-                      'value="Inline string!">\n')
-
-        request.write('</table>')
+                      'value="Inline string!"><br>\n')
 
     def fail(self):
         self.request.write('Content-type: text/plain\n\n')
