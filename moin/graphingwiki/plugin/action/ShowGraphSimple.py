@@ -196,6 +196,7 @@ class GraphShowerSimple(GraphShower):
         if self.colorby:
             outgraph = self.colorNodes(outgraph)
         outgraph = self.colorEdges(outgraph)
+        outgraph = self.edgeTooltips(outgraph)
         outgraph = self.circleStartNodes(outgraph)
 
         # Fix URL:s
@@ -206,7 +207,7 @@ class GraphShowerSimple(GraphShower):
 
         # To fix links with zgrviewer
         if hasattr(self, 'origformat'):
-            scr = self.request.getBaseURL()
+            src = self.request.getBaseURL()
             for node, in outgraph.nodes.getall():
                 node = outgraph.nodes.get(node)
 
@@ -227,21 +228,36 @@ class GraphShowerSimple(GraphShower):
                                                         self.request)
                     node.shapefile = self.request.getQualifiedURL(shapefile)
 
-                # Fix attachment links
+                # Quoting fix
                 if 'action=AttachFile' in node.URL:
-                    # node URL:s will have the wrong quoting if
-                    # not explicitly quoted
                     pagepart, args = node.URL[1:].split('?')
-                    node.URL = scr + url_quote(pagepart) + '?' + args
+                    node.URL = src + url_quote(pagepart) + '?' + args
 
                 # Fix other node URL:s
                 if node.URL.startswith('..'):
-                    node.URL = scr + node.URL[2:]
+                    node.URL = src + node.URL[2:]
                 elif node.URL[0] == '.':
-                    node.URL = scr + node.URL[1:]
+                    node.URL = src + node.URL[1:]
                 elif node.URL[0] == '/':
-                    node.URL = scr + node.URL
+                    node.URL = src + node.URL
                 node.URL = node.URL.replace('&image=1', '')
+
+            src = self.request.getQualifiedURL()
+            for edge in outgraph.edges.getall():
+                edge = outgraph.edges.get(*edge)
+
+                # Quoting fix
+                tooltip = edge.tooltip.split('>')
+                edge.tooltip = '>'.join(url_unquote(x) for x in tooltip)
+
+                # Fix edge URL:s
+                if edge.URL.startswith('..'):
+                    edge.URL = src + edge.URL[2:]
+                elif edge.URL[0] == '.':
+                    edge.URL = src + edge.URL[1:]
+                elif edge.URL[0] == '/':
+                    edge.URL = src + edge.URL
+                edge.URL = edge.URL.replace('&image=1', '')
 
         return outgraph
 

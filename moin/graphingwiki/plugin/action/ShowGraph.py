@@ -1189,6 +1189,21 @@ class GraphShower(object):
         self.request.write(self.request.formatter.endContent())
         wikiutil.send_footer(self.request, self.pagename)
 
+    def edgeTooltips(self, outgraph):
+        for edge in outgraph.edges.getall():
+            e = outgraph.edges.get(*edge)
+            lt = getattr(e, 'linktype', '_notype')
+
+            val = '%s>%s>%s' % (url_unquote(edge[0]),
+                                lt != '_notype' and url_unquote(lt) or '',
+                                url_unquote(edge[1]))
+            # Double URL quoting? I have created a monster!
+            e.URL = self.request.request_uri + '&filteredges=%s' % \
+                    url_quote(lt)
+            e.tooltip = val
+            
+        return outgraph
+
     def execute(self):        
         cl.start('execute')
 
@@ -1235,17 +1250,7 @@ class GraphShower(object):
         if self.colorby:
             outgraph = self.colorNodes(outgraph)
         outgraph = self.colorEdges(outgraph)
-
-        for edge in outgraph.edges.getall():
-            e = outgraph.edges.get(*edge)
-            lt = getattr(e, 'linktype', '_notype')
-                
-            val = '%s>%s>%s' % (url_unquote(edge[0]),
-                                lt != '_notype' and url_unquote(lt) or '',
-                                url_unquote(edge[1]))
-            e.URL = self.request.request_uri + '&filteredges=%s' % lt
-            e.tooltip = val
-        
+        outgraph = self.edgeTooltips(outgraph)
         outgraph = self.circleStartNodes(outgraph)
 
         # Fix URL:s
