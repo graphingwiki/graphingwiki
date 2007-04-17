@@ -31,7 +31,6 @@ import re
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
-from codecs import getencoder
 
 from MoinMoin import config
 from MoinMoin import Page
@@ -67,17 +66,25 @@ def execute(macro, args):
     all_pages = []
 
     arglist = []
+    keyspec = []
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',')):
-        # Normal pages, just move on
-        if not regexp_re.match(arg):
+        # Regexp, move on
+        if '=' in arg:
             arglist.append(arg)
             continue
 
-        # load pagelist only if necessary
-        if not all_pages:
-            all_pages = macro.request.page.getPageList()
+        # key spec, move on
+        if arg.startswith('||') and arg.endswith('||'):
+            # take order, strip empty ones
+            keyspec = [encode(x) for x in arg.split('||') if x]
+            continue
+
+        # Normal pages, encode and move on
+        if not regexp_re.match(arg):
+            arglist.append(url_quote(encode(arg)))
+            continue
 
         # if there's something wrong with the regexp, ignore it and move on
         try:
@@ -106,8 +113,8 @@ def execute(macro, args):
                     pages.add(newpage)
         elif '=' in arg:
             data = arg.split("=")
-            key = data[0]
-            val = '='.join(data[1:])
+            key = encode(data[0])
+            val = encode('='.join(data[1:]))
             # If val starts and ends with /
             if val[::len(val)-1] == '//':
                 val = val[1:-1]
@@ -149,11 +156,16 @@ def execute(macro, args):
             pagelist.add(page)
 
     out = '\n' + macro.formatter.table(1)
-    for page in pagelist:
-        for key in globaldata['meta'].get(page, {}).keys():
-            metakeys.add(key)
 
-    metakeys = sorted(metakeys, key=str.lower)
+    if not keyspec:
+        for page in pagelist:
+            for key in globaldata['meta'].get(page, {}).keys():
+                metakeys.add(key)
+
+        metakeys = sorted(metakeys, key=str.lower)
+    else:
+        metakeys = keyspec
+        
     # Give a class to headers to make it customisable
     out = out + macro.formatter.table_row(1, {'rowclass': 'meta_header'})
     out = out + t_cell(macro, '')

@@ -119,7 +119,13 @@ class GraphShowerSimple(GraphShower):
         if self.coloredges or self.colornodes:
             legend = self.makeLegend()
 
-        if self.format == 'zgr':
+        if self.help == 'inline':
+            urladd = self.request.page.page_name + \
+                     self.urladd.replace('&inline=Inline', '')
+            urladd = urladd.replace('action=ShowGraph',
+                                    'action=ShowGraphSimple')
+            self.request.write('[[InlineGraph(%s)]]' % urladd)
+        elif self.format == 'zgr':
             if not self.height:
                 self.height = "600"
             if not self.width:

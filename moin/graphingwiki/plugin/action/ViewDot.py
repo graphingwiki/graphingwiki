@@ -185,9 +185,7 @@ class ViewDot(object):
                         self.urladd = (self.urladd + url_quote(encode(key)) +
                                        '=' + url_quote(encode(val)) + '&')
                 self.urladd = self.urladd[:-1]
-                request.write('[[ViewDot(' + \
-                              self.request.page.page_name + \
-                              self.urladd + ')]]')
+                request.write('[[ViewDot(' + self.urladd + ')]]')
 
             # End content
             self.request.write(formatter.endContent()) # end content div

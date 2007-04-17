@@ -104,6 +104,7 @@ def execute(macro, args):
     if not args:
         return ""
 
+    # Legacy fix
     args['action'] = ['ShowGraphSimple']
     pagename = url_unquote(uri)
     graph_request = copy(request)

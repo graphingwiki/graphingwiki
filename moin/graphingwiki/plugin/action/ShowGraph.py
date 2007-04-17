@@ -218,6 +218,9 @@ class GraphShower(object):
         self.ordernodes = {}
         self.unordernodes = set()
 
+        # For test, inline
+        self.help = ""
+
         # Node filter of an existing type
         self.oftype_p = lambda x: x != '_notype'
 
@@ -363,6 +366,11 @@ class GraphShower(object):
         # Disable output if testing graph
         if request.form.has_key('test'):
             self.format = ''
+            self.help = 'test'
+
+        # Show inline graph
+        if request.form.has_key('inline'):
+            self.help = 'inline'
 
         return error
 
@@ -901,9 +909,17 @@ class GraphShower(object):
                       u'value=""%sInclude all links<br>\n' %
                       (self.limit == '' and ' checked>' or '>'))
 
+        def sortShuffle(types):
+            types = sorted(types)
+            if 'WikiCategory' in types:
+                types.remove('WikiCategory')
+                types.insert(0, 'WikiCategory')
+            return types
+
         # colorby
         request.write(u"<td>\nColor by:<br>\n")
-        for type in self.nodeattrs:
+        types = sortShuffle(self.nodeattrs)
+        for type in types:
             request.write(u'<input type="radio" name="colorby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
@@ -929,7 +945,8 @@ class GraphShower(object):
 
         # orderby
         request.write(u"<td>\nOrder by:<br>\n")
-        for type in self.nodeattrs:
+        types = sortShuffle(self.nodeattrs)
+        for type in types:
             request.write(u'<input type="radio" name="orderby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
@@ -1042,9 +1059,11 @@ class GraphShower(object):
         # End form
         request.write(u"</table>\n")
         request.write(u'<input type=submit name=graph ' +
-                      'value="Create graph">\n')
+                      'value="Create">\n')
         request.write(u'<input type=submit name=test ' +
-                      'value="Test graph">\n</form>\n')
+                      'value="Test">\n')
+        request.write(u'<input type=submit name=inline ' +
+                      'value="Inline">\n</form>\n')
 
     def generateLayout(self, outgraph):
         # Add all data to graph
@@ -1263,7 +1282,14 @@ class GraphShower(object):
         cl.stop('layout')
 
         cl.start('format')
-        if self.format == 'svg':
+        if self.help == 'inline':
+            self.sendForm()
+            urladd = self.request.page.page_name + \
+                     self.urladd.replace('&inline=Inline', '')
+            urladd = urladd.replace('action=ShowGraph',
+                                    'action=ShowGraphSimple')
+            self.request.write('[[InlineGraph(%s)]]' % urladd)
+        elif self.format == 'svg':
             self.sendForm()
             self.sendGraph(gr)
             self.sendLegend()
