@@ -44,7 +44,7 @@ def execute(macro, args):
     key = arglist[0]
     if len(arglist) > 2:
         if arglist[-1] == 'hidden':
-            return
+            return ''
         if arglist[-1] in ['hidden', 'embed']:
             val = ','.join(arglist[1:-1])
         else:
