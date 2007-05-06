@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+import sys
+import os
+from optparse import OptionParser
+
+from MoinMoin import caching
+from MoinMoin.PageEditor import PageEditor
+from MoinMoin.request import RequestCLI
+
+def getpage(name):
+    req = RequestCLI(pagename=name)
+    page = PageEditor(req, name)
+    return page, req
+
+def myedit(pagename, newtext):
+    page, req = getpage(pagename)
+    msg = page.saveText(newtext, 0)
+
+    # delete pagelinks
+    arena = page
+    key = 'pagelinks'
+    cache = caching.CacheEntry(req, arena, key)
+    cache.remove()
+
+    # forget in-memory page text
+    page.set_raw_body(None)
+    
+    # clean the in memory acl cache
+    page.clean_acl_cache()
+    
+    # clean the cache
+    for formatter_name in ['text_html']:
+        arena = page
+        key = formatter_name
+        cache = caching.CacheEntry(req, arena, key)
+        cache.remove()
+
+    print msg
+
+def edit(pagename, editfun):
+    p = getpage(pagename)
+    oldtext = p.get_raw_body()
+    newtext = editfun(pagename, oldtext)
+    msg = p.saveText(newtext, 0)
+    print msg
+
+if __name__ == '__main__':
+    usage = "usage: %prog <path to wiki> <pagename>"
+    parser = OptionParser(usage=usage)
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+                      help="Report success")
+
+    (options, args) = parser.parse_args()
+
+    if len(args) != 2:
+        print parser.get_usage()
+        sys.exit(2)
+
+    # Configdir to path, so wikiconfig can be imported by Request
+    try:
+        configdir = os.path.join(args[0], 'config')
+
+        os.chdir(configdir)
+        sys.path.append(configdir)
+    except:
+        configdir = args[0]
+        os.chdir(configdir)
+        sys.path.append(configdir)
+
+    pagename = args[2]
+
+    mytext = sys.stdin.read()
+    myedit(pagename, mytext)
