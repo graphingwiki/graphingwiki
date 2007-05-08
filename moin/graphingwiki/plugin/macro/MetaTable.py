@@ -129,7 +129,6 @@ def execute(macro, args):
         def filter(name):
             return not wikiutil.isSystemPage(macro.request, name)
         pages = set(macro.request.page.getPageList(filter=filter))
-    print 'ping pong', pages
 
     pagelist = set([])
 
