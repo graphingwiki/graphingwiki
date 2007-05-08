@@ -31,10 +31,12 @@ import re
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
+import string
 
 from MoinMoin import config
 from MoinMoin import Page
 from MoinMoin import wikiutil
+from MoinMoin import caching
 
 from graphingwiki.patterns import GraphData
 from graphingwiki.patterns import encode
@@ -127,6 +129,7 @@ def execute(macro, args):
         def filter(name):
             return not wikiutil.isSystemPage(macro.request, name)
         pages = set(macro.request.page.getPageList(filter=filter))
+    print 'ping pong', pages
 
     pagelist = set([])
 
@@ -138,7 +141,8 @@ def execute(macro, args):
                 if not clear:
                     break
 
-                data = ', '.join(globaldata['meta'].get(page, {}).get(key, ""))
+                
+                data = string.join(getvalues(globaldata, page, key), ', ')
 
                 # If page does not have the required key, do not add page
                 if not data:
@@ -175,15 +179,21 @@ def execute(macro, args):
 
     pagelist = sorted(pagelist)
 
+    tocache = []
     for page in pagelist:
         out = out + macro.formatter.table_row(1)
         out = out + t_cell(macro, page, head=1)
         for key in metakeys:
-            data = ', '.join(globaldata['meta'].get(page, {}).get(key, ""))
+            vals = getvalues(globaldata, page, key)
+            data = string.join(vals, ', ')
             out = out + t_cell(macro, data)
-            
+            tocache.append((page, key, vals))
         out = out + macro.formatter.table_row(0)
-
     out = out + macro.formatter.table(0)
+    ce = caching.CacheEntry(macro.request, macro.request.page, 'MetaTable')
+    ce.update(repr(tocache))
 
     return out
+
+def getvalues(globaldata, page, key):
+    return globaldata['meta'].get(page, {}).get(key, [])
