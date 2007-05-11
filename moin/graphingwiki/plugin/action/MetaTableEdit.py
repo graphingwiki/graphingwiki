@@ -50,7 +50,6 @@ def process_editform(request, pagename, mtcontents):
         assert isinstance(newval, unicode), newval
         if newval != oldval:
             request.write(u"<p> %s: " % keypage)
-            print 'edit_meta', keypage, key,oldval, newval
             request.write(edit_meta(request, keypage, key, oldval, newval))
 
 def execute(pagename, request):
