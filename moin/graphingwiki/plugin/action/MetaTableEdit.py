@@ -30,23 +30,27 @@ def show_editform(request, pagename, mtcontents):
     wr(u'<tr><th>Page name<th>Key<th>Value\n')
     for frompage, key, vals in mtcontents:
         if not vals:
-            continue
+            default=''
+        else:
+            default=vals[0]
         inputname = frompage + u'!' + key
         wr(u'<tr><td>%s<td>%s<td><input type="text" name="%s" value="%s"></tr>',
-           frompage, key, inputname, vals[0])
+           frompage, key, inputname, default)
+        print frompage, key, inputname, default
     wr(u'</table>\n')
     wr(u'<input type="submit" name="save" value="Save">\n')
     wr(u'</form>\n')
 
 def process_editform(request, pagename, mtcontents):
     for keypage, key, vals in mtcontents:
-        if not vals:
-            continue
         try:
             newval = request.form[keypage + '!' + key][0]
         except KeyError:
             request.write(u"<p>Value for %s (for page %s) not supplied" % (keypage, key))
-        oldval = vals[0]
+        if vals:
+            oldval = vals[0]
+        else:
+            oldval = ''
         assert isinstance(newval, unicode), newval
         if newval != oldval:
             request.write(u"<p> %s: " % keypage)
@@ -70,9 +74,12 @@ def execute(pagename, request):
     request.page.formatter = formatter
 
     request.write(formatter.startContent("content"))
+    
+    # TODO synthesize a request to show the page we want to edit, to ensure
+    # up to date data in the cache
+    # request.requestCLI(pagename)
 
     ce = caching.CacheEntry(request, request.page, 'MetaTable')
-    print ce.content()
     if request.form.has_key('save'):
         process_editform(request, pagename, eval(ce.content()))
     else:
@@ -115,6 +122,10 @@ metadata_rx = macro_rx("MetaData")
 
 def edit_meta(request, pagename, metakey, oldval, newmetaval):
     def editfun(pagename, oldtext):
+        if not oldval:
+            # add new tag
+            return oldtext.rstrip() + '\n[[MetaData(%s, %s)]]\n' % (metakey, newmetaval)
+        
         def subfun(mo):
             old_keyval_pairs = mo.group(2).split(',')
             newargs=[]

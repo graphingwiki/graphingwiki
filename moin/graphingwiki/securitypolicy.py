@@ -29,8 +29,7 @@ class SecurityPolicy(Permissions):
 
                 graphsaver(editor.page_name, self.request,
                            newtext, path, editor)
-
-
+                
                 return True
 
         else:
