@@ -27,7 +27,10 @@ def show_editform(request, pagename, mtcontents):
     wr(u'<form method="POST" action="%s">\n', urlquote(pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(u'<table>\n')
+    wr(u'<tr><th>Page name<th>Key<th>Value\n')
     for frompage, key, vals in mtcontents:
+        if not vals:
+            continue
         inputname = frompage + u'!' + key
         wr(u'<tr><td>%s<td>%s<td><input type="text" name="%s" value="%s"></tr>',
            frompage, key, inputname, vals[0])
@@ -37,6 +40,8 @@ def show_editform(request, pagename, mtcontents):
 
 def process_editform(request, pagename, mtcontents):
     for keypage, key, vals in mtcontents:
+        if not vals:
+            continue
         try:
             newval = request.form[keypage + '!' + key][0]
         except KeyError:
@@ -44,8 +49,9 @@ def process_editform(request, pagename, mtcontents):
         oldval = vals[0]
         assert isinstance(newval, unicode), newval
         if newval != oldval:
-            request.write(u"<p>")
-            request.write(edit_meta(keypage, key, newval))
+            request.write(u"<p> %s: " % keypage)
+            print 'edit_meta', keypage, key,oldval, newval
+            request.write(edit_meta(request, keypage, key, oldval, newval))
 
 def execute(pagename, request):
     request.http_headers()
@@ -53,7 +59,8 @@ def execute(pagename, request):
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, request.getText(action_name),
+    title = request.getText('Meta table edit')
+    wikiutil.send_title(request, title,
                         pagename=pagename)
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -88,11 +95,18 @@ def getpage(name):
     page = PageEditor(req, name)
     return page
 
-def edit(pagename, editfun):
+def edit(pagename, editfun, request):
     p = getpage(pagename)
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
-    msg = p.saveText(newtext, 0)
+    graphsaver = wikiutil.importPlugin(request.cfg,
+                              'action',
+                              'savegraphdata')
+    try:
+        msg = p.saveText(newtext, 0)
+        graphsaver(pagename, request, newtext, p.getPagePath(), p)
+    except p.Unchanged:
+        msg = u'Unchanged'
     return msg
 
 def macro_rx(macroname):
@@ -100,17 +114,16 @@ def macro_rx(macroname):
 
 metadata_rx = macro_rx("MetaData")
 
-def edit_meta(pagename, metakey, newmetaval):
+def edit_meta(request, pagename, metakey, oldval, newmetaval):
     def editfun(pagename, oldtext):
         def subfun(mo):
             old_keyval_pairs = mo.group(2).split(',')
             newargs=[]
             for key, val in zip(old_keyval_pairs[::2], old_keyval_pairs[1::2]):
                 key = key.strip()
-                if key == metakey:
+                if key.strip() == metakey.strip() and val.strip() == oldval.strip():
                     val = newmetaval
                 newargs.append('%s,%s' % (key, val))
             return '[[MetaData(%s)]]' % (string.join(newargs, ','))
         return metadata_rx.sub(subfun, oldtext)
-        
-    return edit(pagename, editfun)
+    return edit(pagename, editfun, request)
