@@ -123,7 +123,7 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    graphshelve = os.path.join(pagedir, '../', 'graphdata.shelve')
+    graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
 
     # lock on graphdata
     graphlock = graphshelve + '.lock'
