@@ -38,8 +38,7 @@ from MoinMoin import Page
 from MoinMoin import wikiutil
 from MoinMoin import caching
 
-from graphingwiki.patterns import GraphData
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import GraphData, encode, nonguaranteeds_p, qstrip_p
 
 Dependencies = ['metadata']
 
@@ -63,16 +62,34 @@ def t_cell(macro, data, head=0):
         out = out + macro.formatter.pagelink(0)
 
     return out
+
+def get_pages(macro):
+    def filter(name):
+        # aw crap, SystemPagesGroup is not a system page
+        if name == 'SystemPagesGroup':
+            return False
+        return not wikiutil.isSystemPage(macro.request, name)
+    pages = set(url_quote(encode(x)) for x in
+                macro.request.page.getPageList(filter=filter))
+    return pages
     
 def execute(macro, args):
+    # Category, Template matching regexps
+    cat_re = re.compile(macro.request.cfg.page_category_regex)
+    temp_re = re.compile(macro.request.cfg.page_template_regex)
+
+    # Placeholder for list of all pages
     all_pages = []
 
     arglist = []
     keyspec = []
 
+    # Flag: were there page arguments?
+    pageargs = False
+
     # Regex preprocessing
-    for arg in (x.strip() for x in args.split(',')):
-        # Regexp, move on
+    for arg in (x.strip() for x in args.split(',') if x.strip()):
+        # Metadata regexp, move on
         if '=' in arg:
             arglist.append(arg)
             continue
@@ -80,39 +97,53 @@ def execute(macro, args):
         # key spec, move on
         if arg.startswith('||') and arg.endswith('||'):
             # take order, strip empty ones
-            keyspec = [encode(x) for x in arg.split('||') if x]
+            keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
             continue
+
+        # Ok, we have a page arg, i.e. a page or page regexp in args
+        pageargs = True
 
         # Normal pages, encode and move on
         if not regexp_re.match(arg):
-            arglist.append(url_quote(encode(arg)))
+            arglist.append(encode(arg))
             continue
+
+        # Ok, it's a page regexp
 
         # if there's something wrong with the regexp, ignore it and move on
         try:
             page_re = re.compile("%s" % arg[1:-1])
         except:
             continue
-        # Check which pages match to the supplied regexp
+
+        # Get all pages, check which of them match to the supplied regexp
+        all_pages = get_pages(macro)
         for page in all_pages:
             if page_re.match(page):
                 arglist.append(url_quote(encode(page)))
 
-    globaldata = GraphData(macro.request).globaldata
+    globaldata = GraphData(macro.request)
 
     pages = set([])
     metakeys = set([])
     limitregexps = {}
 
     for arg in arglist:
-        if arg.startswith('Category'):
-            if not globaldata['in'].has_key(arg):
+        if cat_re.search(arg):
+            # Nonexisting categories
+            try:
+                page = globaldata.getpage(arg)
+            except KeyError:
+                continue
+
+            if not page.has_key('in'):
                 # no such category
                 continue
-            for newpage in globaldata['in'][arg]:
-                if not (newpage.endswith('Template') or
-                        newpage.startswith('Category')):
-                    pages.add(newpage)
+            for type in page['in']:
+                for newpage in page['in'][type]:
+                    if not (cat_re.search(newpage) or
+                            temp_re.search(newpage)):
+                        pages.add(encode(newpage))
         elif '=' in arg:
             data = arg.split("=")
             key = encode(data[0])
@@ -122,13 +153,17 @@ def execute(macro, args):
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
         elif arg:
+            # Nonexisting pages
+            try:
+                page = globaldata.getpage(arg)
+            except KeyError:
+                continue
+            
             pages.add(arg)
 
-    # If no pages specified, get all non-system pages
-    if not pages:
-        def filter(name):
-            return not wikiutil.isSystemPage(macro.request, name)
-        pages = set(macro.request.page.getPageList(filter=filter))
+    # If there were no page args, get all non-system pages
+    if not pageargs and not pages:
+        pages = get_pages(macro)
 
     pagelist = set([])
 
@@ -139,7 +174,6 @@ def execute(macro, args):
             for key in limitregexps:
                 if not clear:
                     break
-
                 
                 data = string.join(getvalues(globaldata, page, key), ', ')
 
@@ -161,20 +195,27 @@ def execute(macro, args):
     out = '\n' + macro.formatter.table(1)
 
     if not keyspec:
-        for page in pagelist:
-            for key in globaldata['meta'].get(page, {}).keys():
+        for name in pagelist:
+            page = globaldata.getpage(name)
+            for key in nonguaranteeds_p(page.get('meta', {})):
                 metakeys.add(key)
 
         metakeys = sorted(metakeys, key=str.lower)
     else:
         metakeys = keyspec
         
+    # No data -> bail out quickly, Scotty
+    if not pagelist:
+        out += t_cell(macro, "Empty MetaTable: " + args)
+        out += macro.formatter.table(0)
+        return out
+    
     # Give a class to headers to make it customisable
-    out = out + macro.formatter.table_row(1, {'rowclass': 'meta_header'})
-    out = out + t_cell(macro, '')
+    out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
+    out += t_cell(macro, '')
     for key in metakeys:
         out = out + t_cell(macro, key)
-    out = out + macro.formatter.table_row(0)
+    out += macro.formatter.table_row(0)
 
     pagelist = sorted(pagelist)
 
@@ -184,15 +225,16 @@ def execute(macro, args):
         out = out + t_cell(macro, page, head=1)
         for key in metakeys:
             vals = getvalues(globaldata, page, key)
-            data = string.join(vals, ', ')
+            data = qstrip_p(vals).strip('"')
             out = out + t_cell(macro, data)
             tocache.append((page, key, vals))
-        out = out + macro.formatter.table_row(0)
-    out = out + macro.formatter.table(0)
+        out += macro.formatter.table_row(0)
+    out += macro.formatter.table(0)
     ce = caching.CacheEntry(macro.request, macro.request.page, 'MetaTable')
     ce.update(repr(tocache))
 
     return out
 
-def getvalues(globaldata, page, key):
-    return globaldata['meta'].get(page, {}).get(key, [])
+def getvalues(globaldata, name, key):
+    page = globaldata.getpage(name)
+    return page.get('meta', {}).get(key, [])

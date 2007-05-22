@@ -29,128 +29,186 @@
 
 """
 
+import re
 import cPickle
 import os
 import shelve
 from codecs import getencoder
 from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin.Page import Page
 from MoinMoin import config
+from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.graph import Graph
 
+# Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
 
+# Default node attributes that should not be shown
+special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
+                 "shape", 'belongs_to_patterns', 'URL', 'shapefile',
+                 "fillcolor", 'WikiCategory']
+
+nonguaranteeds_p = lambda node: filter(lambda y: y not in
+                                       special_attrs, dict(node))
+
+# For stripping lists of quoted strings
+qstrip_p = lambda lst: ('"' +
+                        ', '.join([x.strip('"') for x in lst]) +
+                        '"')
+qpirts_p = lambda txt: ['"' + x + '"' for x in
+                        txt.strip('"').split(', ')]
+
 class GraphData(object):
     def __init__(self, request):
         self.request = request
-        self.updated = 0
-        datapath = Page(self.request, u'', is_rootpage=1).getPagePath()
-        self.graphshelve = os.path.join(datapath, 'pages/graphdata.shelve')
-        self.update()
-        self.loaded = {}
+        self.graphshelve = os.path.join(request.cfg.data_dir,
+                                        'pages/graphdata.shelve')
+        self.globaldata = {}
+        self.get_shelve()
 
-    def update(self):
-        # Update shelve if it has changed
-        # self.request.write("Updating...<br>")
-        if self.updated < os.stat(self.graphshelve).st_mtime:
-            self.globaldata = {}
-            # self.request.write("Needed.<br>")
-            self.globaldata, self.updated = self.get_shelve()
-            # Empty the loaded cache, because shelve has changed
-            self.loaded = {}
+        # Category, Template matching regexps
+        self.cat_re = re.compile(request.cfg.page_category_regex)
+        self.temp_re = re.compile(request.cfg.page_template_regex)
+
+    def getpage(self, pagename):
+        # Always read data here regardless of user rights -
+        # they're handled in load_graph. This way the cache avoids
+        # tough decisions on whether to cache content for a
+        # certain user or not
+        lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
+        lock.acquire()
+        
+        data = shelve.open(self.graphshelve)
+
+        # try to establish whether we have to read the damn thing again
+        new_mtime = data.get(pagename, {}).get('mtime', 0)
+        old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)
+
+        # load data if it was not loaded or if it was stale
+        # Note that pages that are not in the wiki but are
+        # referenced by other pages have no mtime, and are
+        # hence read every time
+        if not old_mtime or old_mtime < new_mtime:
+            self.globaldata[pagename] = data[pagename]
+
+        data.close()
+        lock.release()
+
+        return self.globaldata.get(pagename, {})
 
     def get_shelve(self):
-        # Make sure nobody is writing to graphshelve, as concurrent
-        # reading and writing can result in erroneous data
-        graphlock = self.graphshelve + '.lock'
-        os.spawnlp(os.P_WAIT, 'lockfile', 'lockfile', graphlock)
-        os.unlink(graphlock)
+        lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
+        lock.acquire()
         
-        temp_shelve = shelve.open(self.graphshelve, 'r')
-        cur_mtime = os.stat(self.graphshelve).st_mtime
-        globaldata =  {}
-        globaldata['in'] = temp_shelve['in']
-        globaldata['out'] = temp_shelve['out']
-        globaldata['meta'] = temp_shelve['meta']
-        temp_shelve.close()
+        data = shelve.open(self.graphshelve)
 
-        # Return data with current modification time
-        return globaldata, cur_mtime
+        for key in data:
+            self.globaldata[key] = data[key]
+
+        data.close()
+        lock.release()
 
     def reverse_meta(self):
+        self.get_shelve()
+    
         self.keys_on_pages = {}
         self.vals_on_pages = {}
-        
-        for page in self.globaldata['meta']:
+
+        for page in self.globaldata:
             if page.endswith('Template'):
                 continue
-            for key in self.globaldata['meta'][page]:
+            if not self.globaldata[page].has_key('meta'):
+                continue
+            for key in self.globaldata[page]['meta']:
+                if key in special_attrs:
+                    continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in self.globaldata['meta'][page][key]:
+                for val in self.globaldata[page]['meta'][key]:
+                    val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
-        
-    def load_graph(self, pagename):
-        # Attachments do not carry graphdata
-        if '?action=AttachFile' in pagename:
-            return None
-        
-        if pagename in self.loaded:
-            return self.loaded[pagename]
-        self.loaded[pagename] = None
-#        self.request.write('load-graph:')
-#        self.request.write(repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')        
 
+    def _add_node(self, pagename, graph, urladd=""):
+        # Don't bother if the node has already been added
+        if graph.nodes.get(pagename):
+            return graph
+
+        page = self.getpage(pagename)
+        
+        node = graph.nodes.add(pagename)
+        # Add metadata
+        for key, val in page.get('meta', {}).iteritems():
+            if key in special_attrs:
+                setattr(node, key, ''.join(x.strip('"') for x in val))
+            else:
+                setattr(node, key, val)
+
+        # Local nonexistent pages must get URL-attribute
+        if not hasattr(node, 'URL'):
+            node.URL = './' + pagename
+        # Nodes with pages (i.e. with last page modification time)
+        # can be traversed
+        if page.has_key('mtime'):
+            node.URL += urladd
+
+        return graph
+
+    def _add_link(self, adata, edge, type):
+        # Add edge if it does not already exist
+        e = adata.edges.get(*edge)
+        if not e:
+            e = adata.edges.add(*edge)
+            e.linktype = set([type])
+        else:
+            e.linktype.add(type)
+        return adata
+
+    def load_graph(self, pagename, urladd):
         if not self.request.user.may.read(pagename):
             return None
 
-        inc_page = Page(self.request, pagename)
-        afn = os.path.join(inc_page.getPagePath(), 'graphdata.pickle')
-        if os.path.exists(afn):
-            af = file(afn)
-            adata = cPickle.load(af)
-            self.loaded[pagename] = adata
-            return adata
+        page = self.getpage(pagename)
 
-        return None
+        if not page:
+            return None
 
-    def add_global_links(self, pagename, pagegraph):
-        if not pagegraph:
-            pagegraph = Graph()
-        if not pagegraph.nodes.get(pagename):
-            pagegraph.nodes.add(pagename)
+        # Make graph, initialise head node
+        adata = Graph()
+        adata = self._add_node(pagename, adata, urladd)
 
-        if self.globaldata['in'].has_key(pagename):
-            for src in self.globaldata['in'][pagename]:
-                if not pagegraph.edges.get(src, pagename):
-                    srcgraph = self.load_graph(src)
-                    if srcgraph:
-                        pagegraph.nodes.add(src)
-                        newedge = pagegraph.edges.add(src, pagename)
-                        oldedge = srcgraph.edges.get(src, pagename)
-                        if oldedge:
-                            newedge.update(oldedge)
-        if self.globaldata['out'].has_key(pagename):
-            for dst in self.globaldata['out'][pagename]:
-                if not pagegraph.edges.get(pagename, dst):
-                    dstgraph = self.load_graph(dst)
-                    if dstgraph:
-                        pagegraph.nodes.add(dst)
-                        newedge = pagegraph.edges.add(pagename, dst)
-                        oldedge = dstgraph.edges.get(pagename, dst)
-                        if oldedge:
-                            newedge.update(oldedge)
-        return pagegraph
+        # Add links to page
+        links = page.get('in', {})
+        for type in links:
+            for src in links[type]:
+                # Filter Category, Template pages
+                if self.cat_re.search(src) or \
+                       self.temp_re.search(src):
+                    continue
+                # Add page and its metadata
+                adata = self._add_node(src, adata, urladd)
+                adata = self._add_link(adata, (src, pagename), type)
+
+        # Add links from page
+        links = page.get('out', {})
+        for type in links:
+            for dst in links[type]:
+                # Filter Category, Template pages
+                if self.cat_re.search(dst) or \
+                       self.temp_re.search(dst):
+                    continue
+                # Add page and its metadata
+                adata = self._add_node(dst, adata, urladd)
+                adata = self._add_link(adata, (pagename, dst), type)
+
+        return adata
 
     def load_with_links(self, pagename):
-        pagegraph = self.load_graph(pagename)
         if isinstance(pagename, unicode):
             pagename = url_quote(encode(pagename))
-        return self.add_global_links(pagename, pagegraph)
+        return self.load_graph(pagename)
 
 class LazyItem(object):
     def __init__(self):
@@ -335,13 +393,8 @@ class WikiNode(object):
     urladd = ""
     # globaldata
     graphdata = None
-    globaldata = None
 
     def __init__(self, request=None, urladd=None, startpages=None):
-        # Zis iz not da global cache, just a tab on what's
-        # been loaded in the current session
-        WikiNode.loaded = []
-
         if request is not None: 
             WikiNode.request = request
         if urladd is not None:
@@ -351,71 +404,26 @@ class WikiNode(object):
 
         if request:
             # Start cache-like stuff
-            if not WikiNode.globaldata:
+            if not WikiNode.graphdata:
                 WikiNode.graphdata = GraphData(WikiNode.request)
                 # request.write("Initing graphdata...<br>")
             # Update the current request (user, etc) to cache-like stuff
-            # Also update shelve
             else:
                 WikiNode.graphdata.request = WikiNode.request
-                WikiNode.graphdata.update()
-                # request.write("yeah<br>")
-            WikiNode.globaldata = WikiNode.graphdata.globaldata
-    
-    def _loadpickle(self, graph, node):
+     
+    def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)
         k = getattr(nodeitem, 'URL', '')
-        # If local link
-        if not k.startswith('./'):
-            return None
-#        self.request.write("Ldata " + node + "\n")
-        # and we're allowed to read it
-        node = unicode(url_unquote(node), config.charset)
-        adata = WikiNode.graphdata.load_graph(node)
-        # Add navigation aids to urls of nodes with graphdata
-        if adata:
-            if not '?' in nodeitem.URL:
-                nodeitem.URL += WikiNode.urladd
+
+        if isinstance(k, set):
+            k = ''.join(k)
+            if k[0] in ['.', '/']:
+                k += WikiNode.urladd
+            nodeitem.URL = k
+
+        adata = WikiNode.graphdata.load_graph(node, WikiNode.urladd)
+
         return adata
-
-    def _addinlinks(self, graph, dst):
-        # Get datapath from root page, load shelve from there
-        if not WikiNode.globaldata['in'].has_key(dst):
-            # should not happen if page has graphdata
-            return
-        for src in WikiNode.globaldata['in'][dst]:
-            # filter out category, template pages
-            if src.startswith('Category') or src.endswith('Template'):
-                continue
-            dstnode = graph.nodes.get(dst)
-            if not dstnode:
-                # should not happen if page has graphdata
-                return
-            srcnode = graph.nodes.get(src)
-            if not srcnode:
-                srcnode = graph.nodes.add(src)
-                srcnode.URL = './' + src
-            if not graph.edges.get(src, dst):
-                graph.edges.add(src, dst)
-
-    def _addoutlinks(self, graph, src):
-        if not WikiNode.globaldata['out'].has_key(src):
-            # should not happen if page has graphdata
-            return
-        for dst in WikiNode.globaldata['out'][src]:
-            # filter out category, template pages
-            if dst.startswith('Category') or dst.endswith('Template'):
-                continue
-            srcnode = graph.nodes.get(src)
-            if not srcnode:
-                # should not happen if page has graphdata
-                return
-            dstnode = graph.nodes.get(dst)
-            if not dstnode:
-                dstnode = graph.nodes.add(dst)
-                dstnode.URL = './' + dst
-            if not graph.edges.get(src, dst):
-                graph.edges.add(src, dst)
 
 class HeadNode(WikiNode):
     def __init__(self, request=None, urladd=None, startpages=None):
@@ -423,10 +431,12 @@ class HeadNode(WikiNode):
 
     def loadpage(self, graph, node):
         # Get new data for current node
-        adata = self._loadpickle(graph, node)
+        adata = self._load(graph, node)
         if not adata:
+#            print "No adata head", node
             return
         if not adata.nodes.get(node):
+#            print "Wrong adata head", node
             return
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))
@@ -435,10 +445,6 @@ class HeadNode(WikiNode):
         for parent, child in adata.edges.getall():
             # Only add links from amongst nodes already traversed
             if not graph.nodes.get(parent):
-                continue
-            # filter out category, template pages
-            if (child.startswith("Category") or
-                child.endswith("Template")):
                 continue
 
             newnode = graph.nodes.get(child)
@@ -457,8 +463,6 @@ class HeadNode(WikiNode):
             if node + "head" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "head")
-            # get out-links from the global shelve
-            self._addoutlinks(graph, node)
             children = set(child for parent, child
                            in graph.edges.getall(parent=node))
             node = graph.nodes.get(node)
@@ -470,10 +474,12 @@ class TailNode(WikiNode):
 
     def loadpage(self, graph, node):
         # Get new data for current node
-        adata = self._loadpickle(graph, node)
+        adata = self._load(graph, node)
         if not adata:
+#            print "No adata tail", node
             return
         if not adata.nodes.get(node):
+#            print "Wrong adata tail", node
             return
         nodeitem = graph.nodes.get(node)
         nodeitem.update(adata.nodes.get(node))
@@ -482,10 +488,6 @@ class TailNode(WikiNode):
         # current node, or the start nodes
         for parent, child in adata.edges.getall():
             if child not in [node] + WikiNode.startpages:
-                continue
-            # filter out category, template pages
-            if (parent.startswith("Category") or
-                parent.endswith("Template")):
                 continue
 
             newnode = graph.nodes.get(parent)
@@ -506,8 +508,6 @@ class TailNode(WikiNode):
             if node + "tail" not in WikiNode.loaded:
                 self.loadpage(graph, node)
                 WikiNode.loaded.append(node + "tail")
-            # get in-links from the global shelve
-            self._addinlinks(graph, node)
             parents = set(parent for parent, child
                           in graph.edges.getall(child=node))
             node = graph.nodes.get(node)

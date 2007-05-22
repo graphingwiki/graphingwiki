@@ -53,7 +53,7 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
 
 # imports from other actions
-from savegraphdata import encode, local_page, special_attrs
+from savegraphdata import local_page
 
 # Header stuff for IE
 msie_header = """Content-type: message/rfc822
@@ -149,10 +149,6 @@ def quoteformstr(text):
 def quotetoshow(text):
     return unicode(url_unquote(text), config.charset)
 
-# node attributes that are not guaranteed (by sync/savegraph)
-nonguaranteeds_p = lambda node: filter(lambda y: y not in
-                                       special_attrs, dict(node))
-
 class GraphShower(object):
     def __init__(self, pagename, request, graphengine = "neato"):
         # Fix for mod_python, globals are bad
@@ -167,6 +163,7 @@ class GraphShower(object):
         self.traverse = self.traverseParentChild
         self.limit = ''
         self.hidedges = 0
+        self.edgelabels = 0
 
         self.isstandard = False
         self.interwikilist = []
@@ -223,16 +220,16 @@ class GraphShower(object):
 
         # Node filter of an existing type
         self.oftype_p = lambda x: x != '_notype'
-
-        # For stripping lists of quoted strings
-        self.qstrip_p = lambda lst: ('"' +
-                                     ','.join([x.strip('"') for x in lst]) +
-                                     '"')
-        self.qpirts_p = lambda txt: ['"' + x + '"' for x in
-                                     txt.strip('"').split(',')]
-
+ 
+        # Category, Template matching regexps
+        self.cat_re = re.compile(request.cfg.page_category_regex)
+        self.temp_re = re.compile(request.cfg.page_template_regex)
 
     def hashcolor(self, string):
+        # Black edges must be black
+        if string == '_notype':
+            return "black"
+        
         if string in self.used_colorlabels:
             return self.used_colors[self.used_colorlabels.index(string)]
 
@@ -288,8 +285,9 @@ class GraphShower(object):
         # Other pages
         if request.form.has_key('otherpages'):
             otherpages = ''.join([x for x in request.form['otherpages']])
-            self.otherpages = [url_quote(encode(x.strip()))
-                               for x in otherpages.split(',')]
+            if otherpages:
+                self.otherpages = [url_quote(encode(x.strip()))
+                                   for x in otherpages.split(',')]
             
         # Limit
         if request.form.has_key('limit'):
@@ -302,6 +300,10 @@ class GraphShower(object):
         # Hide edges
         if request.form.has_key('hidedges'):
             self.hidedges = 1
+
+        # Hide edges
+        if request.form.has_key('edgelabels'):
+            self.edgelabels = 1
 
         # Orderings
         if request.form.has_key('orderby'):
@@ -405,22 +407,24 @@ class GraphShower(object):
         # template page and we're looking at categories
         if not self.categories:
             graphdata = self.addToStartPages(graphdata, pagename)
-        elif not (pagename.startswith('Category') or
-                  pagename.endswith('Template')):
+        elif not (self.cat_re.search(pagename) or
+                  self.temp_re.search(pagename)):
             graphdata = self.addToStartPages(graphdata, pagename)
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-            if not self.globaldata['in'].has_key(cat):
+            catpage = self.globaldata.getpage(cat)
+            if not catpage.has_key('in'):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
                 # FIXME: Should raise an exception here and end the misery?
                 break
-            for newpage in self.globaldata['in'][cat]:
-                if not (newpage.endswith('Template') or
-                    newpage.startswith('Category')):
-                    graphdata = self.addToStartPages(graphdata, newpage)
-                    self.addToAllCats(newpage)
+            for type in catpage['in']:
+                for newpage in catpage['in'][type]:
+                    if not (self.cat_re.search(newpage) or
+                            self.temp_re.search(newpage)):
+                        graphdata = self.addToStartPages(graphdata, newpage)
+                        self.addToAllCats(newpage)
 
         return graphdata
 
@@ -444,15 +448,20 @@ class GraphShower(object):
         return outgraph
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
-
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
-        if getattr(olde, 'linktype', '_notype') in self.filteredges:
+        types = olde.linktype.copy()
+        for type in types:
+            if type in self.filteredges:
+                olde.linktype.remove(type)
+        if olde.linktype == set([]):
             return outgraph, False
+
+#         if getattr(olde, 'linktype', '_notype') in self.filteredges:
+#             return outgraph, False
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
-
             # If traverse limited to startpages
             if self.limit == 'start':
                 if not obj.node in self.startpages:
@@ -481,7 +490,7 @@ class GraphShower(object):
                 
                 # Filtering by multiple metadata values
                 target = getattr(obj, doby)
-                for rule in [set(self.qpirts_p(x)) for x in filt if ',' in x]:
+                for rule in [set(qpirts_p(x)) for x in filt if ',' in x]:
                     if rule == rule.intersection(target):
                         left = target.difference(rule)
                         if left:
@@ -501,6 +510,7 @@ class GraphShower(object):
 
             # Add page categories to selection choices in the form
             # (for local pages only)
+#            print obj.node
             if obj.URL[0] in ['.', '/']:
                 self.addToAllCats(obj.node)
 
@@ -515,12 +525,21 @@ class GraphShower(object):
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
-
+            
+            pagedata = self.globaldata.getpage(obj.node)
             # Add tooltip, if applicable
-            if (self.globaldata['meta'].has_key(obj.node) and
+            # Only add non-guaranteed attrs to tooltip
+            if (pagedata.has_key('meta') and
                 not hasattr(obj, 'tooltip')):
-                n.tooltip = '%s\n' % url_unquote(obj.node) + \
-                            ' \n'.join(["-%s: %s" % (x, ', '.join(self.globaldata['meta'][obj.node][x])) for x in self.globaldata['meta'][obj.node].keys()])
+                pagemeta = nonguaranteeds_p(pagedata['meta'])
+                tooldata = '\n'.join(["-%s: %s" %
+                                      (x,
+                                       qstrip_p(
+                    pagedata['meta'][x]).strip('"')
+                                       )
+                                      for x in pagemeta])
+                n.tooltip = '%s\n%s' % (url_unquote(obj.node), tooldata)
+
 
             # Shapefiles
             if getattr(obj, 'shapefile', None):
@@ -535,8 +554,10 @@ class GraphShower(object):
                 n.peripheries = '0'
 
                 # Non-attachment shapefiles arbitrary (SVG, anyone?)
-                if not obj.shapefile.startswith('attachment:'):
+                if not hasattr(obj, 'shapefile'):
                     continue
+                #if not obj.shapefile.startswith('attachment:'):
+                #    continue
                 
                 # Enter file path for attachment shapefiles
                 value = obj.shapefile[11:]
@@ -559,7 +580,7 @@ class GraphShower(object):
                 value = getattr(obj, self.orderby, None)
                 if value:
                     # Add to self.ordernodes by combined value of metadata
-                    value = self.qstrip_p(value)
+                    value = qstrip_p(value)
                     # Add to filterordervalues in the nonmodified form
                     self.orderfiltervalues.add(value)
                     re_order = getattr(self, 're_order', None)
@@ -618,7 +639,7 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = self.qstrip_p(rule)
+                rule = qstrip_p(rule)
                 re_color = getattr(self, 're_color', None)
                 # Add to filterordervalues in the nonmodified form
                 self.colorfiltervalues.add(rule)
@@ -631,7 +652,7 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = self.qstrip_p(rule)
+                rule = qstrip_p(rule)
                 re_color = getattr(self, 're_color', None)
                 if re_color:
                     rule = rule.strip('"')
@@ -661,8 +682,11 @@ class GraphShower(object):
         edge = Fixed(Edge())
         pattern = Cond(edge, edge.linktype)
         for obj in match(pattern, (edges, outgraph)):
-            self.coloredges.add(obj.linktype)
-            obj.color = self.hashcolor(obj.linktype)
+            self.coloredges.update(filter(self.oftype_p, obj.linktype))
+            obj.color = ':'.join(self.hashcolor(x) for x in obj.linktype)
+            if self.edgelabels:
+                obj.decorate = 'true'
+                obj.label = ','.join(obj.linktype)
         return outgraph
 
     def fixNodeUrls(self, outgraph):
@@ -673,6 +697,8 @@ class GraphShower(object):
             node = outgraph.nodes.get(nodename)
             if node:
                 node.URL = './\N'
+                if not node.label:
+                    node.label = url_unquote(nodename)
 
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
@@ -680,15 +706,24 @@ class GraphShower(object):
             outgraph.bgcolor = 'white'
 
         # Make the attachment node labels look nicer
+        # Also fix overlong labels
         for name, in outgraph.nodes.getall():
             node = outgraph.nodes.get(name)
             # If local link:
             if node.URL[0] in ['.', '/']:
+                node.URL = url_unquote(node.URL)
                 # If attachment
                 if 'action=AttachFile' in node.URL:
                     node.label = "Attachment:\n" + \
                                  re.search('target=(.+)&?',
                                            node.URL).group(1)
+
+            elif len(node.label) == 0 and len(node.URL) > 50:
+                node.label = node.URL[:47] + '...'
+            elif len(node.label) > 50:
+                node.label = node.label[:47] + '...'
+            elif not ':' in node.label:
+                node.label = node.URL
 
         subrank = self.pagename.count('/')
         # Fix URLs for subpages
@@ -717,6 +752,8 @@ class GraphShower(object):
         return outgraph
 
     def getURLns(self, link):
+        # Find out subpage level to adjust URL:s accordingly
+        subrank = self.request.page.page_name.count('/')
         if not self.interwikilist:
             self.interwikilist = get_interwikilist(self.request)
         # Namespaced names
@@ -725,10 +762,9 @@ class GraphShower(object):
             if self.interwikilist.has_key(iwname[0]):
                 return self.interwikilist[iwname[0]] + iwname[1]
             else:
-                subrank = self.pagename.count('/')
                 return '../' * subrank + './InterWiki'
-        subrank = self.pagename.count('/')
-        # handle categories as ordernodes different
+        # handle categories differently as ordernodes:
+        # they will just direct to the category page
         if link == 'WikiCategory':
             return ''
         return '../' * subrank + './Property' + link
@@ -817,9 +853,7 @@ class GraphShower(object):
         if not self.hidedges:
 
             typenr = 0
-            legendedges = list(self.coloredges)
-            legendedges.sort()
-            for linktype in legendedges:
+            for linktype in sorted(self.coloredges):
                 if per_row == 4:
                     per_row = 0
                     typenr = typenr + 1
@@ -838,9 +872,7 @@ class GraphShower(object):
         prev = ''
         per_row = 0
 
-        legendnodes = list(self.colornodes)
-        legendnodes.sort()
-        for nodetype in legendnodes:
+        for nodetype in sorted(self.colornodes):
             cur = 'self.colornodes: ' + nodetype
             legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
                              fillcolor=self.colorfunc(nodetype), URL=colorURL)
@@ -1000,13 +1032,19 @@ class GraphShower(object):
                       u'value="1"%s\n' %
                       (self.hidedges and ' checked>' or '>'))
 
+        # show edge labels
+        request.write(u'<br>Edge labels: ' +
+                      u'<input type="checkbox" name="edgelabels" ' +
+                      u'value="1"%s\n' %
+                      (self.edgelabels and ' checked>' or '>'))
+
         # filter nodes (related to colorby)
         if self.colorby:
             request.write(u'<td>\nFilter from colored:<br>\n')
             allcolor = set(filter(self.oftype_p, self.filtercolor))
             allcolor.update(self.colorfiltervalues)
             for txt in [x for x in self.colorfiltervalues if ',' in x]:
-                allcolor.update(self.qpirts_p(txt))
+                allcolor.update(qpirts_p(txt))
             allcolor = list(allcolor)
             allcolor.sort()
             for type in allcolor:
@@ -1029,7 +1067,7 @@ class GraphShower(object):
             allorder = set(filter(self.oftype_p, self.filterorder))
             allorder.update(self.orderfiltervalues)
             for txt in [x for x in self.orderfiltervalues if ',' in x]:
-                allorder.update(self.qpirts_p(txt))
+                allorder.update(qpirts_p(txt))
             allorder = list(allorder)
             allorder.sort()
             for type in allorder:
@@ -1211,7 +1249,10 @@ class GraphShower(object):
     def edgeTooltips(self, outgraph):
         for edge in outgraph.edges.getall():
             e = outgraph.edges.get(*edge)
-            lt = getattr(e, 'linktype', '_notype')
+            # Fix linktypes to strings
+            lt = ', '.join(filter(self.oftype_p,
+                                  getattr(e, 'linktype', ['_notype'])))
+            e.linktype = lt
 
             val = '%s>%s>%s' % (url_unquote(edge[0]),
                                 lt != '_notype' and url_unquote(lt) or '',
@@ -1249,7 +1290,7 @@ class GraphShower(object):
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
-                                   startpages=self.startpages).globaldata
+                                   startpages=self.startpages).graphdata
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph

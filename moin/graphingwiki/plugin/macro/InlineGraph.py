@@ -106,7 +106,11 @@ def execute(macro, args):
 
     # Legacy fix
     args['action'] = ['ShowGraphSimple']
-    pagename = url_unquote(uri)
+    # Extra encode because user input is by default unicode
+    # and it's really url quoted utf-8 which we need to decode
+    # So, the first encode really does type transfer from
+    # unicode string to normal string. Stupid hack.
+    pagename = unicode(url_unquote(encode(uri)), 'utf-8')
     graph_request = copy(request)
 
     graph_request.page = Page(request, pagename)

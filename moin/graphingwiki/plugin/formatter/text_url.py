@@ -161,6 +161,14 @@ self.page.page_name, wikitail)), kw)
         return {}
 
     def attachment_link(self, url, text, **kw):
+        # Attachment might be referred to as a typed link, eg.
+        # [inline:HooPoo/imsi.dot koo: joo]
+        if text.strip():
+            return self.url(True, './' + self.page.page_name + \
+                            '?action=AttachFile&do=get&target=' + url,
+                            kw='local') + [url, text]
+
+            
         return self.url(True, './' + self.page.page_name + \
                         '?action=AttachFile&do=get&target=' + url,
                         kw='local') + [url]

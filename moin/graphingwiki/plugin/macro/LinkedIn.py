@@ -33,27 +33,22 @@ from codecs import getencoder
 
 from MoinMoin import config
 
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import encode, GraphData
 
 Dependencies = ['pagelinks']
-
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
 
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
     pagename = url_quote(encode(pagename))
 
     out = []
-    globaldata = GraphData(macro.request).globaldata
-    for page in globaldata['in'].get(pagename, []):
-        page = unicode(url_unquote(page), config.charset)
-        out.append(macro.formatter.pagelink(1, page) +
-                   macro.formatter.text(page) +
-                   macro.formatter.pagelink(0, page))
+    globaldata = GraphData(macro.request)
+    page = globaldata.getpage(pagename)
+    for type in page.get('in', {}):
+        for page in page['in'][type]:
+            page = unicode(url_unquote(page), config.charset)
+            out.append(macro.formatter.pagelink(1, page) +
+                       macro.formatter.text(page) +
+                       macro.formatter.pagelink(0, page))
 
     return "Linked in pages: " + ', '.join(out)
-
-

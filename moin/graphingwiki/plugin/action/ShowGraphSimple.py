@@ -92,7 +92,7 @@ class GraphShowerSimple(GraphShower):
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
-                                   startpages=self.startpages).globaldata
+                                   startpages=self.startpages).graphdata
 
 
         # The working with patterns goes a bit like this:
@@ -271,7 +271,7 @@ class GraphShowerSimple(GraphShower):
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
-                                   startpages=self.startpages).globaldata
+                                   startpages=self.startpages).graphdata
 
         formatcontent = self.format
 

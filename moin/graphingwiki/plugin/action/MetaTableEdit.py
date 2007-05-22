@@ -8,13 +8,22 @@
 
 action_name = 'MetaTableEdit'
 
-from MoinMoin import wikiutil, caching
-import urllib, cgi, string
+import urllib, cgi
+
+from MoinMoin import wikiutil, caching, config
+
+from graphingwiki.editing import edit_meta
 
 def urlquote(s):
     if isinstance(s, unicode):
-        s = s.encode('utf-8')
+        s = s.encode(config.charset)
     return urllib.quote(s)
+
+def url_unquote(s):
+    s = urllib.unquote(s)
+    if not isinstance(s, unicode):
+        s = unicode(s, config.charset)
+    return s
 
 def htmlquote(s):
     return cgi.escape(s, 1)
@@ -28,38 +37,48 @@ def show_editform(request, pagename, mtcontents):
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(u'<table>\n')
     wr(u'<tr><th>Page name<th>Key<th>Value\n')
+
     for frompage, key, vals in mtcontents:
+        frompage, key = url_unquote(frompage), url_unquote(key)
+
         if not vals:
-            default=''
+            default = ''
         else:
-            default=vals[0]
+            default = url_unquote(vals.pop()).strip('"')
         inputname = frompage + u'!' + key
         wr(u'<tr><td>%s<td>%s<td><input type="text" name="%s" value="%s"></tr>',
            frompage, key, inputname, default)
-        print frompage, key, inputname, default
+        #print frompage, key, inputname, default, '<br>'
     wr(u'</table>\n')
     wr(u'<input type="submit" name="save" value="Save">\n')
     wr(u'</form>\n')
 
 def process_editform(request, pagename, mtcontents):
     for keypage, key, vals in mtcontents:
+        keypage, key = url_unquote(keypage), url_unquote(key)
+
         try:
             newval = request.form[keypage + '!' + key][0]
         except KeyError:
-            request.write(u"<p>Value for %s (for page %s) not supplied" % (keypage, key))
+            # Something must be wrong as these are abundant
+            #request.write(u"<p>Value for %s (for page %s) not supplied" % \
+            #              (key, keypage))
+            continue
+        
         if vals:
-            oldval = vals[0]
+            oldval = url_unquote(vals.pop()).strip('"')
         else:
             oldval = ''
         assert isinstance(newval, unicode), newval
         if newval != oldval:
             request.write(u"<p> %s: " % keypage)
-            request.write(edit_meta(request, keypage, key, oldval, newval))
+            request.write(edit_meta(request, keypage.encode(config.charset),
+                                    key, oldval, newval))
 
 def execute(pagename, request):
     request.http_headers()
 
-    # This action generate data using the user language
+    # This action generates data using the user language
     request.setContentLanguage(request.lang)
 
     title = request.getText('Meta table edit')
@@ -89,51 +108,3 @@ def execute(pagename, request):
     request.write(formatter.endContent()) # end content div
     # Footer
     wikiutil.send_footer(request, pagename)
-
-
-
-from MoinMoin.PageEditor import PageEditor
-from MoinMoin.request import RequestCLI
-import re
-
-def getpage(name):
-    req = RequestCLI(pagename=name)
-    page = PageEditor(req, name)
-    return page
-
-def edit(pagename, editfun, request):
-    p = getpage(pagename)
-    oldtext = p.get_raw_body()
-    newtext = editfun(pagename, oldtext)
-    graphsaver = wikiutil.importPlugin(request.cfg,
-                              'action',
-                              'savegraphdata')
-    try:
-        msg = p.saveText(newtext, 0)
-        graphsaver(pagename, request, newtext, p.getPagePath(), p)
-    except p.Unchanged:
-        msg = u'Unchanged'
-    return msg
-
-def macro_rx(macroname):
-    return re.compile(r'\[\[(%s)\((.*?)\)\]\]' % macroname)
-
-metadata_rx = macro_rx("MetaData")
-
-def edit_meta(request, pagename, metakey, oldval, newmetaval):
-    def editfun(pagename, oldtext):
-        if not oldval:
-            # add new tag
-            return oldtext.rstrip() + '\n[[MetaData(%s, %s)]]\n' % (metakey, newmetaval)
-        
-        def subfun(mo):
-            old_keyval_pairs = mo.group(2).split(',')
-            newargs=[]
-            for key, val in zip(old_keyval_pairs[::2], old_keyval_pairs[1::2]):
-                key = key.strip()
-                if key.strip() == metakey.strip() and val.strip() == oldval.strip():
-                    val = newmetaval
-                newargs.append('%s,%s' % (key, val))
-            return '[[MetaData(%s)]]' % (string.join(newargs, ','))
-        return metadata_rx.sub(subfun, oldtext)
-    return edit(pagename, editfun, request)

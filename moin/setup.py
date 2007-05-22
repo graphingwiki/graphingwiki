@@ -10,4 +10,5 @@ setup(name='graphingwiki', version='0.1',
       scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
                'scripts/gwiki-debuggraph', 'scripts/gwiki-install',
                'scripts/moin-showpage', 'scripts/gwiki-get-tgz',
-               'scripts/mm2gwiki.py'])
+               'scripts/mm2gwiki.py', 'scripts/moin-editpage'])
+

@@ -41,10 +41,13 @@ def execute(macro, args):
     arglist = [x.strip() for x in args.split(',') if x.strip()]
     showtype = 'list'
 
+    if not arglist:
+        return ""
+    
     key = arglist[0]
     if len(arglist) > 2:
         if arglist[-1] == 'hidden':
-            return ''
+            return
         if arglist[-1] in ['hidden', 'embed']:
             val = ','.join(arglist[1:-1])
         else:
@@ -63,11 +66,13 @@ def execute(macro, args):
 
     graphdata = WikiNode(request).graphdata
     globaldata = graphdata.globaldata
+    
     if not hasattr(graphdata, 'keys_on_pages'):
         graphdata.reverse_meta()
 
     keys_on_pages = graphdata.keys_on_pages
     vals_on_pages = graphdata.vals_on_pages
+    
     result = []
 
     # Fix for moin 1.3.5
