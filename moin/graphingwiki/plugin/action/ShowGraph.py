@@ -589,6 +589,14 @@ class GraphShower(object):
                         # so just keeping them
                         value = value.strip('"')
                         value = '"' + re_order.sub(self.ordersub, value) + '"'
+                    # Numeric values get special treatment
+                    try:
+                        value = int(value.strip('"'))
+                    except ValueError:
+                        try:
+                            value = float(value.strip('"'))
+                        except ValueError:
+                            pass
                     n._order = value
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
@@ -779,15 +787,20 @@ class GraphShower(object):
         prev_ordernode = ''
         # New subgraphs, nodes to help ranking
         for key in orderkeys:
-            cur_ordernode = 'orderkey: ' + key
+            # for numeric keys
+            if isinstance(key, basestring):
+                label = key
+            else:
+                label = '"%s"' % str(key)
+            cur_ordernode = 'orderkey: ' + label
             sg = gr.graphviz.subg.add(cur_ordernode, rank='same')
             # handle categories as ordernodes different
             # so that they would point to the corresponding categories
             # [1:-1] removes quotes from label
             if not orderURL:
-                sg.nodes.add(cur_ordernode, label=key[1:-1], URL=key[1:-1])
+                sg.nodes.add(cur_ordernode, label=label[1:-1], URL=label[1:-1])
             else:
-                sg.nodes.add(cur_ordernode, label=key[1:-1], URL=orderURL)
+                sg.nodes.add(cur_ordernode, label=label[1:-1], URL=orderURL)
             for node in self.ordernodes[key]:
                 sg.nodes.add(node)
 

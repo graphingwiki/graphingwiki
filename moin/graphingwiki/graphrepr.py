@@ -468,10 +468,8 @@ class GraphRepr:
                 else:
                     unordered.append(node)
             
-            keys = ordered.keys()
-            keys.sort(key=str.lower)
             addednodes = []
-            for key in keys:
+            for key in sorted(ordered.keys()):
                 addednodes.extend(ordered[key])
             addednodes.extend(unordered)
         else:
@@ -633,7 +631,8 @@ class GraphRepr:
     def _filterattrs(self, attrs):
         # return attrs with empty values filtered
         return dict((key, ''.join(attrs[key])) for key, value
-                    in attrs.items() if value != "")
+                    in attrs.items() if value != "" \
+                    and isinstance(value, basestring))
 
     # Dummy callback functions
     def _dummy_dynaerror(self, line):

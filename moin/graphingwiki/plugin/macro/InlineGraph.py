@@ -37,6 +37,7 @@ from MoinMoin import config
 
 from graphingwiki.patterns import encode
 from graphingwiki.patterns import WikiNode
+from graphingwiki.patterns import GraphData
 
 Dependencies = ['metadata']
 
@@ -106,11 +107,17 @@ def execute(macro, args):
 
     # Legacy fix
     args['action'] = ['ShowGraphSimple']
-    # Extra encode because user input is by default unicode
-    # and it's really url quoted utf-8 which we need to decode
-    # So, the first encode really does type transfer from
-    # unicode string to normal string. Stupid hack.
-    pagename = unicode(url_unquote(encode(uri)), 'utf-8')
+    pagename = uri
+
+    # Check out if the start page exists, if not, we'll just bail out
+    globaldata = GraphData(request)
+    try:
+        globaldata.getpage(url_quote(encode(uri)))
+    except:
+        return formatter.paragraph(1) + \
+               formatter.text("InlineGraph: No data on %s" % pagename) + \
+               formatter.paragraph(0)
+
     graph_request = copy(request)
 
     graph_request.page = Page(request, pagename)
