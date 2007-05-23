@@ -8,7 +8,7 @@
 
 action_name = 'MetaTableEdit'
 
-import urllib, cgi
+import urllib, cgi, errno
 
 from MoinMoin import wikiutil, caching, config
 
@@ -99,11 +99,20 @@ def execute(pagename, request):
     # request.requestCLI(pagename)
 
     ce = caching.CacheEntry(request, request.page, 'MetaTable')
-    if request.form.has_key('save'):
-        process_editform(request, pagename, eval(ce.content()))
+    try:
+        mtcontent = ce.content()
+    except IOError, e:
+        if e.errno == errno.ENOENT:
+            request.write("<p>No MetaTable data found for this page, cannot edit")
+        else:
+            raise
     else:
-        show_editform(request, pagename, eval(ce.content()))
-        
+
+        if request.form.has_key('save'):
+            process_editform(request, pagename, eval(mtcontent))
+        else:
+            show_editform(request, pagename, eval(mtcontent))
+
     # End content
     request.write(formatter.endContent()) # end content div
     # Footer
