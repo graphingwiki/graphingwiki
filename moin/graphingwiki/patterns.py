@@ -93,10 +93,15 @@ class GraphData(object):
         # referenced by other pages have no mtime, and are
         # hence read every time
         if not old_mtime or old_mtime < new_mtime:
-            self.globaldata[pagename] = data[pagename]
-
-        data.close()
-        lock.release()
+            # Currently does not do any exception handling
+            try:
+                self.globaldata[pagename] = data[pagename]
+            finally:
+                data.close()
+                lock.release()
+        else:
+            data.close()
+            lock.release()
 
         return self.globaldata.get(pagename, {})
 

@@ -537,10 +537,35 @@ def execute(pagename, request, text, pagedir, page):
                         if name:
                             add_link(globaldata, quotedname, pagegraph, cat_re,
                                      name, label, url, linktype)
+                            # The val is also parsed by Moin's link parser
+                            # -> need to tell our link parser that the
+                            #    link was already saved
                             dicturl = True
-                    else:
-                        add_meta(globaldata, pagenode, quotedname,
-                                 "[[MetaData(%s,%s)]]" % (key, val))
+
+                    ## Experimental section - to be cleaned up
+                    # Try to find if the key points to a link
+                    matches = all_re.search(key)
+                    if matches:
+                        # Take all matches if his non-empty
+                        # and hit type in linktypes
+                        type, hit = [(type, hit) for type, hit in
+                                     matches.groupdict().iteritems()
+                                     if hit is not None \
+                                     and type in linktypes][0]
+                        key = key.strip()
+                        name, label, url, linktype = parse_link(wikiparse,\
+                                                     hit, type)
+                        # Take linktype from the dict val
+                        linktype = getlinktype([encode(x) for x in val, key])
+
+                        if name:
+                            add_link(globaldata, quotedname, pagegraph, cat_re,
+                                     name, label, url, linktype)
+                            # no dicturl = True for key link as it is not
+                            # parsed as a link by Moin's wiki parser
+
+                    add_meta(globaldata, pagenode, quotedname,
+                             "[[MetaData(%s,%s)]]" % (key, val))
                     
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
