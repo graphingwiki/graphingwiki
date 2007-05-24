@@ -146,7 +146,7 @@ def execute(macro, args):
                         pages.add(encode(newpage))
         elif '=' in arg:
             data = arg.split("=")
-            key = encode(data[0])
+            key = url_quote(encode(data[0]))
             val = encode('='.join(data[1:]))
             # If val starts and ends with /
             if val[::len(val)-1] == '//':

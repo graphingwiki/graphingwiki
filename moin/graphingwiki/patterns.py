@@ -92,14 +92,11 @@ class GraphData(object):
         # Note that pages that are not in the wiki but are
         # referenced by other pages have no mtime, and are
         # hence read every time
-        if not old_mtime or old_mtime < new_mtime:
-            # Currently does not do any exception handling
-            try:
+        try:
+            if not old_mtime or old_mtime < new_mtime:
+                # Currently does not do any exception handling
                 self.globaldata[pagename] = data[pagename]
-            finally:
-                data.close()
-                lock.release()
-        else:
+        finally:
             data.close()
             lock.release()
 
