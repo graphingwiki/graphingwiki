@@ -532,11 +532,11 @@ class GraphShower(object):
             if (pagedata.has_key('meta') and
                 not hasattr(obj, 'tooltip')):
                 pagemeta = nonguaranteeds_p(pagedata['meta'])
-                tooldata = '\n'.join(["-%s: %s" %
+                tooldata = '\n'.join([url_unquote("-%s: %s" %
                                       (x,
                                        qstrip_p(
                     pagedata['meta'][x]).strip('"')
-                                       )
+                                       ))
                                       for x in pagemeta])
                 n.tooltip = '%s\n%s' % (url_unquote(obj.node), tooldata)
 

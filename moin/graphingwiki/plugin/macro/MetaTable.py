@@ -105,7 +105,7 @@ def execute(macro, args):
 
         # Normal pages, encode and move on
         if not regexp_re.match(arg):
-            arglist.append(encode(arg))
+            arglist.append(url_quote(encode(arg)))
             continue
 
         # Ok, it's a page regexp
@@ -120,7 +120,7 @@ def execute(macro, args):
         all_pages = get_pages(macro)
         for page in all_pages:
             if page_re.match(page):
-                arglist.append(url_quote(encode(page)))
+                arglist.append(encode(page))
 
     globaldata = GraphData(macro.request)
 
@@ -149,7 +149,7 @@ def execute(macro, args):
             key = url_quote(encode(data[0]))
             val = encode('='.join(data[1:]))
             # If val starts and ends with /
-            if val[::len(val)-1] == '//':
+            if len(val) > 1 and val[::len(val)-1] == '//':
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
         elif arg:
