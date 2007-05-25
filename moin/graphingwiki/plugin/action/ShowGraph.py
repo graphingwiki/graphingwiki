@@ -255,11 +255,11 @@ class GraphShower(object):
         
         if self.do_form:
             # Get categories for current page, for the category form
-            self.allcategories.update(self.request.page.getCategories(self.request))
+            self.allcategories.update(request.page.getCategories(request))
         
         # Bail out flag on if underlay page etc.
         # FIXME: a bit hack, make consistent with other no data cases?
-        if not self.request.page.isStandardPage(includeDeleted = False):
+        if not request.page.isStandardPage(includeDeleted = False):
             self.isstandard = True
 
         # depth
