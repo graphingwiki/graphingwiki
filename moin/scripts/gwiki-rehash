@@ -50,12 +50,15 @@ class UserInputException(Exception):
 
 try:
     wikipath = sys.argv[1]
-    wikidir = os.path.join(wikipath, 'data/pages')
-    os.chdir(wikidir)
+    configdir = os.path.join(wikipath, 'config')
+    sys.path.append(configdir)
+    from wikiconfig import Config
+    datadir = Config.data_dir
+    pagesdir = os.path.join(datadir, 'pages')
     if len(sys.argv) > 2:
         pagename = unicode(sys.argv[2], sys.getfilesystemencoding())
         pagefilename = quoteWikinameFS(pagename)
-        pagedir = os.path.join(wikidir, pagefilename)
+        pagedir = os.path.join(pagesdir, pagefilename)
         if not os.path.isdir(pagedir):
             raise UserInputException
         pages = [pagename]
@@ -63,23 +66,24 @@ except UserInputException:
     sys.stderr.write("Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n")
     sys.exit(2)
 
-lockfile = os.path.join(wikidir, 'graphdata.shelve.lock')
-
 if not pages:
-    gfile = os.path.join(wikidir, 'graphdata.shelve')
-    if os.path.exists(gfile):
-        os.unlink(gfile)
-    if os.path.exists(lockfile):
-        os.unlink(lockfile)
+    for file in os.listdir(datadir):
+        if file.startswith('graphdata.shelve'):
+            sys.stderr.write('Removed graphdata (%s)\n' % file)
+            os.unlink(os.path.join(datadir, file))
+        elif file.startswith('read_lock') or file.startswith('write_lock'):
+            sys.stderr.write('Removed lock (%s)\n')
+            os.unlink(os.path.join(datadir, file))
 elif os.path.exists(lockfile):
-    sys.stderr.write("Found lockfile (%s), \n" % lockfile + \
-                     "database may be corrupted. \n" + \
-                     "Rehash entire db or remove lock " + \
-                     "and rehash the crashed pages.\n")
-    sys.exit(1)
+    for file in os.listdir(datadir):
+        if file.startswith('read_lock') or file.startswith('write_lock'):
+            sys.stderr.write("Found lockfile (%s), \n" % lockfile + \
+                             "database may be corrupted. \n" + \
+                             "Rehash entire db or remove lock " + \
+                             "and rehash the crashed pages.\n")
+            sys.exit(1)
 
-# Moin dirs
-sys.path.insert(0, os.path.join(wikipath, 'config'))
+os.chdir(pagesdir)
 
 if not pages:
     # List existing pages

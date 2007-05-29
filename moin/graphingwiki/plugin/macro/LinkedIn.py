@@ -42,13 +42,16 @@ def execute(macro, args):
     pagename = url_quote(encode(pagename))
 
     out = []
+    nodes = set()
     globaldata = GraphData(macro.request)
     page = globaldata.getpage(pagename)
     for type in page.get('in', {}):
         for page in page['in'][type]:
             page = unicode(url_unquote(page), config.charset)
-            out.append(macro.formatter.pagelink(1, page) +
-                       macro.formatter.text(page) +
-                       macro.formatter.pagelink(0, page))
+            if not page in nodes:
+                out.append(macro.formatter.pagelink(1, page) +
+                           macro.formatter.text(page) +
+                           macro.formatter.pagelink(0, page))
+                nodes.add(page)
 
     return "Linked in pages: " + ', '.join(out)

@@ -50,7 +50,7 @@ def encode(str):
 # Default node attributes that should not be shown
 special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
                  "shape", 'belongs_to_patterns', 'URL', 'shapefile',
-                 "fillcolor", 'WikiCategory']
+                 "fillcolor"]
 
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        special_attrs, dict(node))
@@ -66,7 +66,7 @@ class GraphData(object):
     def __init__(self, request):
         self.request = request
         self.graphshelve = os.path.join(request.cfg.data_dir,
-                                        'pages/graphdata.shelve')
+                                        'graphdata.shelve')
         self.globaldata = {}
         self.get_shelve()
 
@@ -387,8 +387,6 @@ class Edge:
 class WikiNode(object):
     # List of startpages -> pages to which gather in-links from global
     startpages = []
-    # Pages that have been loaded
-    loaded = []
     # request associated with the page
     request = None
     # url addition from action
@@ -412,7 +410,7 @@ class WikiNode(object):
             # Update the current request (user, etc) to cache-like stuff
             else:
                 WikiNode.graphdata.request = WikiNode.request
-     
+
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)
         k = getattr(nodeitem, 'URL', '')
@@ -461,10 +459,7 @@ class HeadNode(WikiNode):
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
-            # Add detailed graphdata to the search graph
-            if node + "head" not in WikiNode.loaded:
-                self.loadpage(graph, node)
-                WikiNode.loaded.append(node + "head")
+            self.loadpage(graph, node)
             children = set(child for parent, child
                            in graph.edges.getall(parent=node))
             node = graph.nodes.get(node)
@@ -506,10 +501,7 @@ class TailNode(WikiNode):
     def match(self, data, bindings):
         nodes, graph = data
         for node in nodes:
-            # Add detailed graphdata to the search graph
-            if node + "tail" not in WikiNode.loaded:
-                self.loadpage(graph, node)
-                WikiNode.loaded.append(node + "tail")
+            self.loadpage(graph, node)
             parents = set(parent for parent, child
                           in graph.edges.getall(child=node))
             node = graph.nodes.get(node)

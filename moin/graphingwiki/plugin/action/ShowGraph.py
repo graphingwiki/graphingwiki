@@ -517,7 +517,7 @@ class GraphShower(object):
             # Category filter
             for filt in self.filtercats:
                 filt = '"%s"' % filt
-                cats = getattr(obj, 'WikiCategory', [])
+                cats = getattr(obj, 'WikiCategory', set([]))
                 if filt in cats:
                     return outgraph, False
 

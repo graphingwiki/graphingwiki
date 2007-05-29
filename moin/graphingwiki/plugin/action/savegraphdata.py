@@ -177,6 +177,9 @@ def shelve_set_attribute(shelve, node, key, val):
         temp['meta'] = {key: set([val])}
     elif not temp['meta'].has_key(key):
         temp['meta'][key] = set([val])
+    # a page can not have more than one label, shapefile etc
+    elif key in special_attrs:
+        temp['meta'][key] = set([val])
     else:
         temp['meta'][key].add(val)
 
@@ -369,7 +372,7 @@ def execute(pagename, request, text, pagedir, page):
     cat_re = re.compile(request.cfg.page_category_regex)
 
     graphshelve = os.path.join(request.cfg.data_dir,
-                               'pages/graphdata.shelve')
+                               'graphdata.shelve')
 
     lock = WriteLock(request.cfg.data_dir)
     lock.acquire()
@@ -471,6 +474,9 @@ def execute(pagename, request, text, pagedir, page):
 
     # add a node for current page
     pagenode = pagegraph.nodes.add(quotedname)
+    # add a nicer-looking label, also
+    pagelabel = encode(pagename)
+    shelve_set_attribute(globaldata, quotedname, 'label', pagelabel)
 
     for line in lines:
         # Comments not processed

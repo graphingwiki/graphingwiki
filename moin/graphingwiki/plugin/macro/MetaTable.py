@@ -34,7 +34,6 @@ from urllib import unquote as url_unquote
 import string
 
 from MoinMoin import config
-from MoinMoin import Page
 from MoinMoin import wikiutil
 from MoinMoin import caching
 
@@ -64,13 +63,16 @@ def t_cell(macro, data, head=0):
     return out
 
 def get_pages(macro):
+    
     def filter(name):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
             return False
         return not wikiutil.isSystemPage(macro.request, name)
+    # It seems to help avoiding problems that the query
+    # is made by request.rootpage instead of request.page
     pages = set(url_quote(encode(x)) for x in
-                macro.request.page.getPageList(filter=filter))
+                macro.request.rootpage.getPageList(filter=filter))
     return pages
     
 def execute(macro, args):
@@ -121,6 +123,7 @@ def execute(macro, args):
         for page in all_pages:
             if page_re.match(page):
                 arglist.append(encode(page))
+        macro.request.write("Got: " + repr(all_pages) + '<br>')
 
     globaldata = GraphData(macro.request)
 
@@ -163,7 +166,10 @@ def execute(macro, args):
 
     # If there were no page args, get all non-system pages
     if not pageargs and not pages:
-        pages = get_pages(macro)
+        if not all_pages:
+            pages = get_pages(macro)
+        else:
+            pages = all_pages
 
     pagelist = set([])
 
@@ -198,7 +204,10 @@ def execute(macro, args):
         for name in pagelist:
             page = globaldata.getpage(name)
             for key in nonguaranteeds_p(page.get('meta', {})):
-                metakeys.add(key)
+                # One further check, we probably do not want
+                # to see categories in our table by default
+                if key != 'WikiCategory':
+                    metakeys.add(key)
 
         metakeys = sorted(metakeys, key=str.lower)
     else:
