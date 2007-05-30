@@ -123,7 +123,6 @@ def execute(macro, args):
         for page in all_pages:
             if page_re.match(page):
                 arglist.append(encode(page))
-        macro.request.write("Got: " + repr(all_pages) + '<br>')
 
     globaldata = GraphData(macro.request)
 
