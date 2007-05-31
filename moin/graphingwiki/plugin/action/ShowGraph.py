@@ -446,6 +446,18 @@ class GraphShower(object):
         outgraph.bgcolor = "transparent"
 
         return outgraph
+    
+    def _handleordervalue(self, value):
+        # Numeric values get special treatment
+        try:
+            value = int(value.strip('"'))
+        except ValueError:
+            try:
+                value = float(value.strip('"'))
+            except ValueError:
+                pass
+
+        return value
 
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
         # Get edge from match, skip if filtered
@@ -589,15 +601,13 @@ class GraphShower(object):
                         # so just keeping them
                         value = value.strip('"')
                         value = '"' + re_order.sub(self.ordersub, value) + '"'
-                    # Numeric values get special treatment
-                    try:
-                        value = int(value.strip('"'))
-                    except ValueError:
-                        try:
-                            value = float(value.strip('"'))
-                        except ValueError:
-                            pass
+
+                    # Graphviz attributes must be strings
                     n._order = value
+
+                    # Internally, numeric values
+                    # are given a special treatment
+                    value = self._handleordervalue(value)
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
                     self.unordernodes.add(obj.node)
@@ -819,20 +829,25 @@ class GraphShower(object):
             gr.graphviz.edges.add((prev_ordernode, 'unordered nodes'),
                                   dir='none', style='invis',
                                   minlen='1', weight='10')
-                                  
+
         # Edge minimum lengths
         for edge in outgraph.edges.getall():
             tail, head = edge
             edge = gr.graphviz.edges.get(edge)
             taily = getattr(gr.graphviz.nodes.get(head), '_order', '')
             heady = getattr(gr.graphviz.nodes.get(tail), '_order', '')
+
+            # Special treatment to numeric order values
+            heady = self._handleordervalue(heady)
+            taily = self._handleordervalue(taily)
+
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
-            if not heady and not taily:
+            if heady == '' and taily == '':
                 minlen = 0
-            elif not heady:
+            elif heady == '':
                 minlen = orderkeys.index(taily) - len(orderkeys)
-            elif not taily:
+            elif taily == '':
                 minlen = len(orderkeys) - orderkeys.index(heady)
             else:
                 minlen = orderkeys.index(taily) - orderkeys.index(heady)
