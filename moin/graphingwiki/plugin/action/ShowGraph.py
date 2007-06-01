@@ -31,6 +31,7 @@
 import os
 import shelve
 import re
+import socket
 from tempfile import mkstemp
 from random import choice, seed
 from base64 import b64encode
@@ -448,13 +449,22 @@ class GraphShower(object):
         return outgraph
     
     def _handleordervalue(self, value):
-        # Numeric values get special treatment
+        # IP addresses and numeric values get special treatment
         try:
             value = int(value.strip('"'))
         except ValueError:
             try:
                 value = float(value.strip('"'))
             except ValueError:
+                if value.strip('"').replace('.', '').isdigit():
+                    try:
+                        # 00 is stylistic to avoid this:
+                        # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
+                        #     socket.inet_aton('1.2.3.4')])
+                        # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
+                        value = '00' + socket.inet_aton(value.strip('"'))
+                    except socket.error:
+                        pass
                 pass
 
         return value
@@ -605,8 +615,7 @@ class GraphShower(object):
                     # Graphviz attributes must be strings
                     n._order = value
 
-                    # Internally, numeric values
-                    # are given a special treatment
+                    # Internally, some values are given a special treatment
                     value = self._handleordervalue(value)
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
@@ -797,9 +806,22 @@ class GraphShower(object):
         prev_ordernode = ''
         # New subgraphs, nodes to help ranking
         for key in orderkeys:
-            # for numeric keys
+            # As we're trying to see what the name of the ordernode
+            # should be, weäll have to check out which of the different
+            # types it might be.
             if isinstance(key, basestring):
-                label = key
+                label = ""
+                # Stylistic fixing of IP address key labels
+                if key.startswith('00') and len(key) == 6:
+                    try:
+                        label = '"%s"' % socket.inet_ntoa(key[2:])
+                    except socket.error:
+                        pass
+
+                # For normal text labels, label == key
+                if not label:
+                    label = key
+            # For numeric keys, convert int to str
             else:
                 label = '"%s"' % str(key)
             cur_ordernode = 'orderkey: ' + label
@@ -837,7 +859,7 @@ class GraphShower(object):
             taily = getattr(gr.graphviz.nodes.get(head), '_order', '')
             heady = getattr(gr.graphviz.nodes.get(tail), '_order', '')
 
-            # Special treatment to numeric order values
+            # Some values get special treatment
             heady = self._handleordervalue(heady)
             taily = self._handleordervalue(taily)
 
