@@ -201,6 +201,7 @@ def execute(macro, args):
 
     if not keyspec:
         for name in pagelist:
+            # At this point, the names should be checked already
             page = globaldata.getpage(name)
             for key in nonguaranteeds_p(page.get('meta', {})):
                 # One further check, we probably do not want
@@ -216,6 +217,8 @@ def execute(macro, args):
     if not pagelist:
         out += t_cell(macro, "Empty MetaTable: " + args)
         out += macro.formatter.table(0)
+
+        globaldata.closedb()
         return out
     
     # Give a class to headers to make it customisable
@@ -240,6 +243,8 @@ def execute(macro, args):
     out += macro.formatter.table(0)
     ce = caching.CacheEntry(macro.request, macro.request.page, 'MetaTable')
     ce.update(repr(tocache))
+
+    globaldata.closedb()
 
     return out
 

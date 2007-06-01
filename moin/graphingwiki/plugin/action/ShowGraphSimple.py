@@ -107,8 +107,9 @@ class GraphShowerSimple(GraphShower):
         if self.do_form:
             if self.format == 'dot':
                 self.sendGv(gr)
+                # Cleanup
+                self.globaldata.closedb()
                 raise MoinMoinNoFooter
-                return
             else:
                 self.sendForm()
 
@@ -186,9 +187,20 @@ class GraphShowerSimple(GraphShower):
                                    (img_url + "2", legend.name))
                 self.sendMap(legend)
 
+        # Cleanup
+        self.globaldata.closedb()
+
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
         graphdata = self.buildGraphData()
+        # Stupid ugly hack:
+        # after saving page, the code execution seems to
+        # go pretty erratic, buildgraphdata is somehow
+        # executed two times over (??), leaving the
+        # db closed - hence opening the db again
+        # here seems to do the trick?
+        if not self.globaldata.opened:
+            self.globaldata.opendb()
         outgraph = self.buildOutGraph()
 
         # Fixes some weird problems with transparency
@@ -292,11 +304,15 @@ class GraphShowerSimple(GraphShower):
             outgraph = self.get_graph()
             gr = self.generateLayout(outgraph)
             self.sendGraph(gr)
+            # Cleanup
+            self.globaldata.closedb()
             raise MoinMoinNoFooter
         else:
             outgraph = self.get_graph()
             gr = self.generateLayout(outgraph)
             self.sendLegend()
+            # Cleanup
+            self.globaldata.closedb()
             raise MoinMoinNoFooter
 
     def execute(self):        

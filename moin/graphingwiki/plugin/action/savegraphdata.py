@@ -374,7 +374,11 @@ def execute(pagename, request, text, pagedir, page):
     graphshelve = os.path.join(request.cfg.data_dir,
                                'graphdata.shelve')
 
-    lock = WriteLock(request.cfg.data_dir)
+    # Expires old locks left by crashes etc.
+    # Page locking mechanisms should prevent this code being
+    # executed prematurely - thus expiring both read and
+    # write locks
+    lock = WriteLock(request.cfg.data_dir, timeout=10.0)
     lock.acquire()
 
     # Open file db for global graph data, creating it if needed

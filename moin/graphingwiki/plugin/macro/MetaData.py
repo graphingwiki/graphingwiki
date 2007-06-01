@@ -65,7 +65,6 @@ def execute(macro, args):
     request = macro.request
 
     graphdata = WikiNode(request).graphdata
-    globaldata = graphdata.globaldata
     
     if not hasattr(graphdata, 'keys_on_pages'):
         graphdata.reverse_meta()
@@ -143,5 +142,8 @@ def execute(macro, args):
 
     if showtype == 'list':
         result.append(macro.formatter.definition_list(0))
+
+    # Cleanup
+    graphdata.closedb()
 
     return u'\n'.join(result)

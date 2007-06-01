@@ -114,9 +114,12 @@ def execute(macro, args):
     try:
         globaldata.getpage(url_quote(encode(uri)))
     except:
+        globaldata.closedb()
         return formatter.paragraph(1) + \
                formatter.text("InlineGraph: No data on %s" % pagename) + \
                formatter.paragraph(0)
+
+    globaldata.closedb()
 
     graph_request = copy(request)
 
@@ -128,7 +131,6 @@ def execute(macro, args):
     urladd = '?' + graph_request.request_uri.split('?')[1]
     kw['urladd'] = urladd
 
-    WikiNode(graph_request)
     graphshower(graph_request.page.page_name, graph_request, **kw)
 
     req_url = request.getScriptname() + '/' + uri

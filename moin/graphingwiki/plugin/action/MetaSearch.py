@@ -170,7 +170,10 @@ def execute(pagename, request):
                          
         request.write(formatter.bullet_list(0))
 
+        graphdata.closedb()
+
     # End content
     request.write(formatter.endContent()) # end content div
+
     # Footer
     wikiutil.send_footer(request, pagename)

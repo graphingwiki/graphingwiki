@@ -68,51 +68,57 @@ class GraphData(object):
         self.graphshelve = os.path.join(request.cfg.data_dir,
                                         'graphdata.shelve')
         self.globaldata = {}
-        self.get_shelve()
+
+        self.opened = False
+        self.opendb()
+#        print "Inited"
 
         # Category, Template matching regexps
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
+
+    # Functions to open and close the the graph shelve for
+    # current thread, creating and removing locks at the same.
+    # NB: You must use close() before exiting to avoid littering
+    #     read locks around!
+    def opendb(self):
+        # The timeout parameter in ReadLock is most probably moot...
+        self.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
+        self.lock.acquire()
+        
+#        print "Opened"
+        self.opened = True
+        self.db = shelve.open(self.graphshelve)
+
+    def closedb(self):
+#        print "Closed"
+        self.opened = False
+        self.db.close()
+        self.lock.release()
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights -
         # they're handled in load_graph. This way the cache avoids
         # tough decisions on whether to cache content for a
         # certain user or not
-        lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        lock.acquire()
-        
-        data = shelve.open(self.graphshelve)
 
         # try to establish whether we have to read the damn thing again
-        new_mtime = data.get(pagename, {}).get('mtime', 0)
+        new_mtime = self.db.get(pagename, {}).get('mtime', 0)
         old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)
 
         # load data if it was not loaded or if it was stale
         # Note that pages that are not in the wiki but are
         # referenced by other pages have no mtime, and are
         # hence read every time
-        try:
-            if not old_mtime or old_mtime < new_mtime:
-                # Currently does not do any exception handling
-                self.globaldata[pagename] = data[pagename]
-        finally:
-            data.close()
-            lock.release()
+        if not old_mtime or old_mtime < new_mtime:
+            # Currently does not do any exception handling
+            self.globaldata[pagename] = self.db[pagename]
 
         return self.globaldata.get(pagename, {})
 
     def get_shelve(self):
-        lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        lock.acquire()
-        
-        data = shelve.open(self.graphshelve)
-
-        for key in data:
-            self.globaldata[key] = data[key]
-
-        data.close()
-        lock.release()
+        for key in self.db:
+            self.globaldata[key] = self.db[key]
 
     def reverse_meta(self):
         self.get_shelve()
@@ -395,6 +401,7 @@ class WikiNode(object):
     graphdata = None
 
     def __init__(self, request=None, urladd=None, startpages=None):
+#        print "Wiki"
         if request is not None: 
             WikiNode.request = request
         if urladd is not None:
@@ -406,10 +413,14 @@ class WikiNode(object):
             # Start cache-like stuff
             if not WikiNode.graphdata:
                 WikiNode.graphdata = GraphData(WikiNode.request)
+#                print "Initing graphdata...<br>"
                 # request.write("Initing graphdata...<br>")
             # Update the current request (user, etc) to cache-like stuff
             else:
+#                print "Existing graphdata...<br>"
                 WikiNode.graphdata.request = WikiNode.request
+                if not WikiNode.graphdata.opened:
+                    WikiNode.graphdata.opendb()
 
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)
@@ -427,6 +438,7 @@ class WikiNode(object):
 
 class HeadNode(WikiNode):
     def __init__(self, request=None, urladd=None, startpages=None):
+#        print "Head"
         super(HeadNode, self).__init__(request, urladd, startpages)
 
     def loadpage(self, graph, node):
@@ -467,6 +479,7 @@ class HeadNode(WikiNode):
 
 class TailNode(WikiNode):
     def __init__(self, request=None, urladd=None, startpages=None):
+#        print "Tail"
         super(TailNode, self).__init__(request, urladd, startpages)
 
     def loadpage(self, graph, node):

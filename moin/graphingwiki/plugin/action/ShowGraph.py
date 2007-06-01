@@ -412,9 +412,13 @@ class GraphShower(object):
                   self.temp_re.search(pagename)):
             graphdata = self.addToStartPages(graphdata, pagename)
 
+#        print repr(self.categories)
+
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
+#            print cat
             catpage = self.globaldata.getpage(cat)
+#            print repr(catpage)
             if not catpage.has_key('in'):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -426,6 +430,8 @@ class GraphShower(object):
                             self.temp_re.search(newpage)):
                         graphdata = self.addToStartPages(graphdata, newpage)
                         self.addToAllCats(newpage)
+
+#        print "Whew, out of there!"
 
         return graphdata
 
@@ -1338,21 +1344,35 @@ class GraphShower(object):
 #        self.request.write('execute' + repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
 
         # Init WikiNode-pattern
+#        print "Starting to init WikiNode"
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
                                    startpages=self.startpages).graphdata
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph
+#        print "Init-build <br> <br>"
         graphdata = self.buildGraphData()
+        #        print "Out-graph built <br> <br>"
+        # Stupid ugly hack:
+        # after saving page, the code execution seems to
+        # go pretty erratic, buildgraphdata is somehow
+        # executed two times over (??), leaving the
+        # db closed - hence opening the db again
+        # here seems to do the trick?
+        if not self.globaldata.opened:
+            self.globaldata.opendb()
         outgraph = self.buildOutGraph()
+#        print "Init-build over <br> <br>"
         cl.stop('build')
 
         cl.start('traverse')
         # Start pattern searches from current page +
         # nodes gathered as per form args
         nodes = set(self.startpages)
+#        print "Traverse"
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
+#        print "Traverse over"
         cl.stop('traverse')
 
         cl.start('layout')
@@ -1405,7 +1425,7 @@ class GraphShower(object):
                 self.request.write(formatter.text("Order levels: " + str(len(
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
-            
+
         cl.stop('format')
 
         cl.stop('execute')

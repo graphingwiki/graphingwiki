@@ -54,4 +54,6 @@ def execute(macro, args):
                            macro.formatter.pagelink(0, page))
                 nodes.add(page)
 
+    globaldata.closedb()
+
     return "Linked in pages: " + ', '.join(out)
