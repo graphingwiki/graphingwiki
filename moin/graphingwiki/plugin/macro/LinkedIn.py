@@ -44,9 +44,9 @@ def execute(macro, args):
     out = []
     nodes = set()
     globaldata = GraphData(macro.request)
-    page = globaldata.getpage(pagename)
-    for type in page.get('in', {}):
-        for page in page['in'][type]:
+    pdata = globaldata.getpage(pagename)
+    for type in pdata.get('in', {}):
+        for page in pdata['in'][type]:
             page = unicode(url_unquote(page), config.charset)
             if not page in nodes:
                 out.append(macro.formatter.pagelink(1, page) +
