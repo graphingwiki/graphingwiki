@@ -30,8 +30,10 @@ import os
 from tempfile import mkstemp
 from base64 import b64encode
 from urllib import quote as url_quote
+from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
+from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
 from MoinMoin.request import RequestModPy
@@ -146,7 +148,7 @@ class ViewDot(object):
         request.write(u'</form>\n')
 
     def fail(self):
-        self.request.write('Content-type: text/plain\n\n')
+        self.request.write('Content-type: text/plain\n\n\n')
         raise MoinMoinNoFooter
 
     def execute(self):
@@ -194,16 +196,26 @@ class ViewDot(object):
             return 
 
         if not self.attachment[:10].lower() == 'attachment':
+            if self.inline:
+                self.request.write('No attahcment defined\n')
+                return
             self.fail()
+
         self.attachment = self.attachment[11:]
+            
         pagename, filename = AttachFile.absoluteName(self.attachment,
                                                      self.pagename)
+
         fname = wikiutil.taintfilename(filename)
         fpath = AttachFile.getFilename(request, pagename, fname)
 
         try:
             data = file(fpath, 'r').read()
         except IOError:
+            if self.inline:
+                self.request.write('Attachment not found at %s\n' %
+                                   repr(fpath))
+                return
             self.fail()
 
         graphviz = Graphviz(engine=self.graphengine, string=data)
@@ -249,15 +261,16 @@ class ViewDot(object):
                 '<param name="highlightColor" value="red" />' +\
                 ' </applet><br>\n')
         elif self.inline:
-            imgbase = "data:image/" + self.format + ";base64," + \
-                      b64encode(data)
+            img_url = request.request_uri + '&view=View'
+            img_url = self.request.getQualifiedURL(img_url)
+
             params = ""
             if self.height:
                 params += 'height="%s" ' % self.height
             if self.width:
                 params += 'width="%s"' % self.width
 
-            page = ('<img src="' + imgbase +
+            page = ('<img src="' + img_url +
                     '" %s alt="visualisation"><br>\n' % params)
             request.write(page)
         else:

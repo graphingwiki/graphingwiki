@@ -28,11 +28,55 @@
 
 """
 from urllib import quote as url_quote
+from urllib import unquote as url_unquote
+from copy import copy
 
-from InlineGraph import *
+from MoinMoin.Page import Page
+from MoinMoin import wikiutil
+from MoinMoin import config
+
+from graphingwiki.patterns import encode
 
 Dependencies = ['attachments']
-    
+
+def uri_params(uri):
+    args = {}
+    allstr = uri.split('?')
+    if len(allstr) > 1:
+        uri, argstr = allstr
+        argstr = argstr.split('&')
+
+        for arg in argstr:
+            key, val = arg.split('=')
+            # Do not encode the already-encoded attachments
+            if key == 'attachment':
+                key = url_unquote(key)
+                val = url_unquote(val)
+                # Attachment strings are encoded,
+                # although Moin gives them as unicode ->
+                # decode to unicode
+                val = val.encode('raw_unicode_escape')
+                val = unicode(val, config.charset)
+
+                args.setdefault(key,
+                                []).append(val)
+            else:
+                args.setdefault(encode(url_unquote(key)),
+                                []).append(encode(url_unquote(val)))
+
+    return uri, args
+
+def join_params(uri, args):
+    argstr = ""
+    for key in args:
+        for val in args[key]:
+            if key == 'attachment':
+                argstr = argstr + "&%s=%s" % (key, val)
+            else:
+                argstr = argstr + "&%s=%s" % (url_quote(key), url_quote(val))
+
+    return uri + "?" + argstr[1:]
+
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
