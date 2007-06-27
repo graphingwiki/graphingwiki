@@ -54,7 +54,10 @@ def uri_params(uri):
                 val = url_unquote(val)
                 # Attachment strings are encoded,
                 # although Moin gives them as unicode ->
-                # decode to unicode
+                # decode to unicode. This should be actually
+                # done in the inline-bit in ViewDot-action,
+                # but is done here to assure functionality
+                # of existing wiki pages
                 val = val.encode('raw_unicode_escape')
                 val = unicode(val, config.charset)
 

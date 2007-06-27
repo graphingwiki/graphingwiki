@@ -45,7 +45,7 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
 try:
     import graphingwiki
 except ImportError:
-    print "Cannot find graphingwiki, exiting...\n"
+    sys.stderr.write("Cannot find graphingwiki, exiting...\n")
     raise
 
 try:
@@ -54,7 +54,6 @@ try:
         raise
 except:
     parser.print_help()
-    print
     raise
 
 def copytree(src, dst, symlinks=False):
