@@ -1,0 +1,53 @@
+#! /usr/bin/env python
+# -*- coding: iso-8859-1 -*-
+"""
+    gwikixml-attachfile
+     - Attaches a file to a wiki page with the help of XMLRPC
+
+    @copyright: 2007 by Juhani Eronen <exec@iki.fi> and Joachim Viide
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import sys
+import getpass
+
+from optparse import OptionParser
+
+from graphingwiki.editing import xmlrpc_attachfile
+
+usage = "usage: %prog [options] wikipath pagename filename"
+parser = OptionParser(usage=usage)
+parser.add_option("-n", "--name", default=None, dest="name",
+                  help="Name for the attached file to be used on wiki page")
+
+options, args = parser.parse_args()
+
+if not len(args) == 3:
+    parser.print_help()
+    sys.exit(1)
+
+wiki, page, fname = args
+
+try:
+    content = file(fname).read()
+    # Separate file name from its path
+    fname = fname.split('/')[-1]
+except:
+    sys.stderr.write("File %s not found" % fname)
+    parser.print_help()
+    sys.exit(1)
+
+if options.name:
+    fname = options.name
+
+#if scheme.lower() != "https":
+#    raise TypeError, "allowed only for HTTPS"
+
+username = raw_input("Username:")
+password = getpass.getpass("Password:")
+
+result = xmlrpc_attachfile(wiki, page, fname, content, username, password)
+
+if result:
+    sys.stderr.write(repr(result))
+    
