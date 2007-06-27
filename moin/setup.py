@@ -11,5 +11,5 @@ setup(name='graphingwiki', version='0.1',
                'scripts/gwiki-debuggraph', 'scripts/gwiki-install',
                'scripts/moin-showpage', 'scripts/gwiki-get-tgz',
                'scripts/mm2gwiki.py', 'scripts/moin-editpage',
-               'scripts/gwikixml-attachfile'])
+               'scripts/gwiki-xml-attachfile'])
 

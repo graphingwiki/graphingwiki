@@ -2,7 +2,7 @@
     Graphingwiki editing functions
      - Saving page contents or relevant metadata
 
-    @copyright: 2007 by Erno Kuusela and Juhani Eronen
+    @copyright: 2007 by Juhani Eronen, Erno Kuusela and Joachim Viide
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import os
@@ -10,11 +10,12 @@ import re
 import string
 import xmlrpclib
 import urlparse
+import socket
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
-from MoinMoin.action.AttachFile import getAttachDir
+from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request import RequestCLI
 from MoinMoin import wikiutil
@@ -284,14 +285,26 @@ def metatable_parseargs(request, args, globaldata=None):
 
     return globaldata, pagelist, metakeys
 
-def save_attachfile(request, pagename, srcname, aname):
+def check_attachfile(request, pagename, aname):
+    # Get the attachment directory for the page
+    attach_dir = getAttachDir(request, pagename, create=1)
+    aname = wikiutil.taintfilename(aname)
+    fpath = getFilename(request, pagename, aname)
+
+    # Trying to make sure the target is a regular file
+    if os.path.isfile(fpath) and not os.path.islink(fpath):
+        return fpath, True
+
+    return fpath, False
+
+def save_attachfile(request, pagename, srcname, aname, overwrite=False):
     try:
+        fpath, exists = check_attachfile(request, pagename, aname)
+        if not overwrite and exists:
+            return False
+
         # Read the contents of the file
         filecontent = file(srcname).read()
-
-        # Get the attachment directory for the page
-        attach_dir = getAttachDir(request, pagename, create=1)
-        fpath = os.path.join(attach_dir, aname)
 
         # Save the data to a file under the desired name
         stream = open(fpath, 'wb')
@@ -302,7 +315,45 @@ def save_attachfile(request, pagename, srcname, aname):
 
     return True
 
-def xmlrpc_attachfile(wiki, page, fname, content, username, password):
+def load_attachfile(request, pagename, aname):
+    try:
+        fpath, exists = check_attachfile(request, pagename, aname)
+        if not exists:
+            return None
+
+        # Save the data to a file under the desired name
+        stream = open(fpath)
+        adata = stream.read()
+        stream.close()
+    except:
+        return None
+
+    return adata
+
+def delete_attachfile(request, pagename, aname):
+    try:
+        fpath, exists = check_attachfile(request, pagename, aname)
+        if not exists:
+            return False
+
+        os.unlink(fpath)
+    except:
+        return False
+
+    return True
+
+def list_attachments(request, pagename):
+    # Code from MoinMoin/action/AttachFile._get_files
+    attach_dir = getAttachDir(request, pagename)
+    if os.path.isdir(attach_dir):
+        files = map(lambda a: a.decode(config.charset), os.listdir(attach_dir))
+        files.sort()
+        return files
+
+    return []
+
+def xmlrpc_conninit(wiki, username, password):
+    # Action-unrelated connection code
     scheme, netloc, path, _, _, _ = urlparse.urlparse(wiki)
 
     netloc = "%s:%s@%s" % (username, password, netloc)
@@ -310,6 +361,24 @@ def xmlrpc_attachfile(wiki, page, fname, content, username, password):
     action = "action=xmlrpc2"
     url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
     srcWiki = xmlrpclib.ServerProxy(url)
-    content = xmlrpclib.Binary(content)
 
-    return srcWiki.AttachFile(page, fname, content)
+    return srcWiki, url
+
+def xmlrpc_attach(wiki, page, fname, username, password, method,
+                  content='', overwrite=False):
+    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+    if content:
+        content = xmlrpclib.Binary(content)
+
+    try:
+        return srcWiki.AttachFile(page, fname, method, content, overwrite)
+    except xmlrpclib.ProtocolError, e:
+        return {'faultCode': 4,
+                'faultString': 'Cannot connect to server at %s (%d %s)' %
+                (wiki, e.errcode, e.errmsg)}
+    except (socket.error, socket.gaierror), e:
+        return {'faultCode': e[0],
+                'faultString': e[1]}
+
+def xmlrpc_error(error):
+    return error['faultCode'], error['faultString']
