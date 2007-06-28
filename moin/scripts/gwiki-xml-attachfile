@@ -40,7 +40,7 @@ if len(args) == 3:
 elif len(args) == 2 and options.list:
     wiki, page = args
 else:
-    sys.stderr.write("Bad Args")
+    sys.stderr.write("Bad Args\n")
     parser.print_help()
     sys.exit(1)
 
@@ -87,7 +87,7 @@ else:
         # Separate file name from its path
         fname = fname.split('/')[-1]
     except:
-        sys.stderr.write("File %s not found" % fname)
+        sys.stderr.write("File %s not found\n" % fname)
         parser.print_help()
         sys.exit(1)
 

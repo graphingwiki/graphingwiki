@@ -34,7 +34,7 @@ def load(request, pagename, filename):
         return xmlrpclib.Fault(1, "You are not allowed to access this page")
 
     # Grab the attachment
-    result = load_attachfile(request, pagename)
+    result = load_attachfile(request, pagename, filename)
 
     if not result:
         return xmlrpclib.Fault(2, "Nonexisting attachment: %s" % filename)
