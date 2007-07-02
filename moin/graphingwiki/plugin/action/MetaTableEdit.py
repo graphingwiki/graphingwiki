@@ -56,7 +56,7 @@ def show_editform(request, pagename, args):
 
     globaldata, pagelist, metakeys = metatable_parseargs(request, args)
 
-    for frompage in pagelist:
+    for frompage in sorted(pagelist):
         for key in metakeys:
             wr(u'<tr><td>%s<td>%s', url_unquote(frompage), url_unquote(key))
             inputname = url_unquote(frompage) + u'!' + url_unquote(key)
@@ -77,6 +77,15 @@ def show_editform(request, pagename, args):
 
     globaldata.closedb()
 
+## Test case: Ääää Päää new value, General Public changed value,
+## Customer change multiple values (2)
+
+#http://localhost/cgi-bin/moin.cgi/Lis%C3%A4%C3%A4%20l%C3%A4hde%20seurattavaksi?action=MetaTableEdit&args=||%C3%A4%C3%A4%C3%A4%C3%A4%20%C3%A4%C3%A4%C3%A4%C3%A4%7C|needs||
+
+#Changes: {'General%20public': {'needs': {'new': [u'Not to be bothered by IT'], 'old': [u'Not to be bothered by IP problems']}}, 'Customer': {'needs': {'new': [u'Make money \xe4\xf6\xf6', u'Protect reputation \xe4\xf6\xf6', u'Keep customers happy'], 'old': [u'Make money', u'Protect reputation', u'Keep customers happy']}}, '%C3%84%C3%A4%C3%A4P%C3%A4%C3%A4': {'%C3%A4%C3%A4%C3%A4%C3%A4%20%C3%A4%C3%A4%C3%A4%C3%A4': {'new': [u'Uusi'], 'old': [u'']}}}
+
+
+
 def process_editform(request, pagename):
     request.write(repr(request.form) + '<br>')
 
@@ -85,7 +94,7 @@ def process_editform(request, pagename):
     changes = {}
 
     for input in request.form:
-        # At least the key 'save' will be there
+        # At least the key 'save' will be there and should be ignored
         if not '!' in input:
             continue
         
@@ -112,10 +121,16 @@ def process_editform(request, pagename):
     # Done reading, will start writing now
     globaldata.closedb()
 
-#    for keypage in changes:
-#        for key in keypage:
-            
-
+    for keypage in changes:
+        for key in changes[keypage]:
+            for i in range(len(changes[keypage][key]['old'])):
+                request.write('<pre>')
+                request.write(edit_meta(request,
+                                        keypage.encode(config.charset),
+                                        url_unquote(key),
+                                        changes[keypage][key]['old'][i],
+                                        changes[keypage][key]['new'][i]))
+                request.write('</pre>')
 
 #         if vals:
 #             oldval = url_unquote(vals.pop()).strip('"')
