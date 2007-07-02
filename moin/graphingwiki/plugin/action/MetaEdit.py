@@ -6,7 +6,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
-action_name = 'MetaTableEdit'
+action_name = 'MetaEdit'
 
 import cgi
 import urllib
@@ -32,6 +32,8 @@ def htmlquote(s):
     return cgi.escape(s, 1)
 
 def show_queryform(request, pagename):
+    _ = request.getText
+
     def wr(fmt, *args):
         args = tuple(map(htmlquote, args))
         request.write(fmt % args)
@@ -41,10 +43,12 @@ def show_queryform(request, pagename):
     wr(u'<input type="text" name="args">\n')
 
     wr(u'</table>\n')
-    wr(u'<input type="submit" name="show" value="Edit table">\n')
+    wr(u'<input type="submit" name="show" value="%s">\n', _("Edit table"))
     wr(u'</form>\n')
 
 def show_editform(request, pagename, args):
+    _ = request.getText
+
     def wr(fmt, *args):
         args = tuple(map(htmlquote, args))
         request.write(fmt % args)
@@ -52,7 +56,7 @@ def show_editform(request, pagename, args):
     wr(u'<form method="POST" action="%s">\n', urlquote(pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(u'<table>\n')
-    wr(u'<tr><th>Page name<th>Key<th>Value\n')
+    wr(u'<tr><th>%s<th>%s<th>%s\n', _('Page name'), _('Key'), _('Value'))
 
     globaldata, pagelist, metakeys = metatable_parseargs(request, args)
 
@@ -72,7 +76,7 @@ def show_editform(request, pagename, args):
             #print frompage, key, inputname, default, '<br>'
 
     wr(u'</table>\n')
-    wr(u'<input type="submit" name="save" value="Save">\n')
+    wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
     wr(u'</form>\n')
 
     globaldata.closedb()
@@ -85,72 +89,55 @@ def show_editform(request, pagename, args):
 #Changes: {'General%20public': {'needs': {'new': [u'Not to be bothered by IT'], 'old': [u'Not to be bothered by IP problems']}}, 'Customer': {'needs': {'new': [u'Make money \xe4\xf6\xf6', u'Protect reputation \xe4\xf6\xf6', u'Keep customers happy'], 'old': [u'Make money', u'Protect reputation', u'Keep customers happy']}}, '%C3%84%C3%A4%C3%A4P%C3%A4%C3%A4': {'%C3%A4%C3%A4%C3%A4%C3%A4%20%C3%A4%C3%A4%C3%A4%C3%A4': {'new': [u'Uusi'], 'old': [u'']}}}
 
 
-
-def process_editform(request, pagename):
-    request.write(repr(request.form) + '<br>')
+def process_edit(request, input, pagename):
+    # request.write(repr(request.form) + '<br>')
 
     globaldata = GraphData(request)
 
     changes = {}
 
-    for input in request.form:
+    for val in input:
         # At least the key 'save' will be there and should be ignored
-        if not '!' in input:
+        if not '!' in val:
             continue
         
-        newvals = request.form[input]
+        newvals = input[val]
 
-        keypage, key = [urlquote(x) for x in input.split('!')]
+        keypage, key = [urlquote(x) for x in val.split('!')]
 
         oldvals = getmetavalues(globaldata, keypage, key)
 
-        request.write("%s %s %s %s<br>\n" % (keypage, key,
-                                          repr(newvals), repr(oldvals)))
+        # request.write("%s %s %s %s<br>\n" % (keypage, key,
+        #                                     repr(newvals), repr(oldvals)))
 
         if oldvals != newvals:
             changes.setdefault(keypage, {})
             if not oldvals:
-                changes[keypage].setdefault(key, {})['old'] = [u'']
+                changes[keypage].setdefault('old', {})[key] = []
             else:
-                changes[keypage].setdefault(key, {})['old'] = oldvals
+                changes[keypage].setdefault('old', {})[key] = oldvals
                 
-            changes[keypage].setdefault(key, {})['new'] = newvals
+            changes[keypage].setdefault('new', {})[key] = newvals
 
-    request.write('<br>Changes: ' + repr(changes))
+    # request.write('<br>Changes: ' + repr(changes))
 
     # Done reading, will start writing now
     globaldata.closedb()
 
+    msg = ''
     for keypage in changes:
-        for key in changes[keypage]:
-            for i in range(len(changes[keypage][key]['old'])):
-                request.write('<pre>')
-                request.write(edit_meta(request,
-                                        keypage.encode(config.charset),
-                                        url_unquote(key),
-                                        changes[keypage][key]['old'][i],
-                                        changes[keypage][key]['new'][i]))
-                request.write('</pre>')
+        msg += '%s: ' % url_unquote(keypage) + \
+               edit_meta(request, url_unquote(keypage),
+                         changes[keypage]['old'],
+                         changes[keypage]['new']) + \
+                         request.formatter.linebreak(0)
 
-#         if vals:
-#             oldval = url_unquote(vals.pop()).strip('"')
-#         else:
-#             oldval = ''
-#         assert isinstance(newval, unicode), newval
-#         if newval != oldval:
-#             request.write(u"<p> %s: " % keypage)
-#             request.write(edit_meta(request, keypage.encode(config.charset),
-#                                     key, oldval, newval))
+    return msg
 
-
-
-def execute(pagename, request):
-    request.http_headers()
-
-    # This action generates data using the user language
-    request.setContentLanguage(request.lang)
-
-    title = request.getText('Metatable editor')
+def _enter_page(request, pagename):
+    _ = request.getText
+    
+    title = _('Metatable editor')
     wikiutil.send_title(request, title,
                         pagename=pagename)
     # Start content - IMPORTANT - without content div, there is no
@@ -161,17 +148,49 @@ def execute(pagename, request):
         formatter = request.formatter
     request.page.formatter = formatter
 
-    request.write(formatter.startContent("content"))
+    request.write(request.page.formatter.startContent("content"))
 
-    if request.form.has_key('save'):
-        process_editform(request, pagename)
-    elif request.form.has_key('args'):
-        args = ', '.join(request.form['args'])
-        show_editform(request, pagename, args)
-    else:
-        show_queryform(request, pagename)
-
+def _exit_page(request, pagename):
     # End content
-    request.write(formatter.endContent()) # end content div
+    request.write(request.page.formatter.endContent()) # end content div
     # Footer
     wikiutil.send_footer(request, pagename)
+
+def execute(pagename, request):
+    request.http_headers()
+    _ = request.getText
+    
+    # This action generates data using the user language
+    request.setContentLanguage(request.lang)
+
+    if request.form.has_key('save'):
+        msg = process_edit(request, request.form, pagename)
+
+        request.reset()
+        request.page.send_page(request, msg=msg)
+    elif request.form.has_key('args'):
+        _enter_page(request, pagename)
+        formatter = request.page.formatter
+        
+        request.write(formatter.heading(1, 2))
+        request.write(formatter.text(_("Edit metatable")))
+        request.write(formatter.heading(0, 2))
+        args = ', '.join(request.form['args'])
+        show_editform(request, pagename, args)
+
+        _exit_page(request, pagename)
+    else:
+        _enter_page(request, pagename)
+        formatter = request.page.formatter
+
+        request.write(formatter.heading(1, 2))
+        request.write(formatter.text(_("Edit current page")))
+        request.write(formatter.heading(0, 2))
+        show_editform(request, pagename, pagename)
+
+        request.write(formatter.heading(1, 2))
+        request.write(formatter.text(_("Edit metatable")))
+        request.write(formatter.heading(0, 2))
+        show_queryform(request, pagename)
+
+        _exit_page(request, pagename)

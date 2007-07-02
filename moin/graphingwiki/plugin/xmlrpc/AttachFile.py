@@ -19,9 +19,10 @@ from graphingwiki.editing import delete_attachfile
 from graphingwiki.editing import list_attachments
 
 def list(request, pagename):
+    _ = request.getText
     # check ACLs
     if not request.user.may.read(pagename):
-        return xmlrpclib.Fault(1, "You are not allowed to access this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to access this page"))
 
     # Grab the attachment
     result = list_attachments(request, pagename)
@@ -29,47 +30,52 @@ def list(request, pagename):
     return result
 
 def load(request, pagename, filename):
+    _ = request.getText
     # check ACLs
     if not request.user.may.read(pagename):
-        return xmlrpclib.Fault(1, "You are not allowed to access this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to access this page"))
 
     # Grab the attachment
     result = load_attachfile(request, pagename, filename)
 
     if not result:
-        return xmlrpclib.Fault(2, "Nonexisting attachment: %s" % filename)
+        return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
+                                              filename))
 
     return xmlrpclib.Binary(result)
 
 def delete(request, pagename, filename):
+    _ = request.getText
     # Using the same access controls as in MoinMoin's xmlrpc_putPage
     # as defined in MoinMoin/wikirpc.py
     if (request.cfg.xmlrpc_putpage_trusted_only and
         not request.user.trusted):
-        return xmlrpclib.Fault(1, "You are not allowed to attach a file to this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # check ACLs
     if not request.user.may.delete(pagename):
-        return xmlrpclib.Fault(1, "You are not allowed to delete a file on this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to delete a file on this page"))
 
     # Delete the attachment
     result = delete_attachfile(request, pagename, filename)
 
     if not result:
-        return xmlrpclib.Fault(2, "Nonexisting attachment: %s" % filename)
+        return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
+                                              filename))
 
     return True
 
 def save(request, pagename, filename, content, overwrite):
+    _ = request.getText
     # Using the same access controls as in MoinMoin's xmlrpc_putPage
     # as defined in MoinMoin/wikirpc.py
     if (request.cfg.xmlrpc_putpage_trusted_only and
         not request.user.trusted):
-        return xmlrpclib.Fault(1, "You are not allowed to attach a file to this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # also check ACLs
     if not request.user.may.write(pagename):
-        return xmlrpclib.Fault(1, "You are not allowed to attach a file to this page")
+        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # Create a temp file where to decode the data
     path = mkdtemp()
@@ -79,7 +85,7 @@ def save(request, pagename, filename, content, overwrite):
         tmpf.write(content.data)
         tmpf.close()
     except:
-        return xmlrpclib.Fault(3, "Unknown error")
+        return xmlrpclib.Fault(3, _("Unknown error"))
 
     # Attach the decoded file
     success = save_attachfile(request, pagename, tmp, filename, overwrite)
@@ -89,13 +95,14 @@ def save(request, pagename, filename, content, overwrite):
     if success is True:
         return success
     elif overwrite == False:
-        return xmlrpclib.Fault(2, "Attachment not saved, file exists")
+        return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
 
-    return xmlrpclib.Fault(3, "Unknown error while attaching file")
+    return xmlrpclib.Fault(3, _("Unknown error while attaching file"))
 
 def execute(xmlrpcobj, pagename, filename, action='save',
             content=None, overwrite=False):
     request = xmlrpcobj.request
+    _ = request.getText
 
     pagename = xmlrpcobj._instr(pagename)
 
@@ -108,7 +115,7 @@ def execute(xmlrpcobj, pagename, filename, action='save',
     elif action == 'save' and content:
         success = save(request, pagename, filename, content, overwrite)
     else:
-        success = xmlrpclib.Fault(3, "No method specified or empty data")
+        success = xmlrpclib.Fault(3, _("No method specified or empty data"))
 
     # Save, delete return True on success
     if success is True:

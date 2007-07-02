@@ -84,7 +84,8 @@ def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
-
+    _ = request.getText
+    
     # Import the plugin action to print out the graph html form
     dotviewer = wikiutil.importPlugin(request.cfg,
                                         'action', 'ViewDot',
@@ -124,5 +125,5 @@ def execute(macro, args):
         uri = request.page.page_name
     req_url = request.getScriptname() + '/' + uri
     req_url = join_params(req_url, args)
-    return '<a href="%s&view=View" id="footer">[view]</a>\n' % \
-           (graph_request.getQualifiedURL(req_url))
+    return '<a href="%s&view=View" id="footer">[%s]</a>\n' % \
+           (graph_request.getQualifiedURL(req_url), _('view'))

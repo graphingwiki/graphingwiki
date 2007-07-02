@@ -20,6 +20,7 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request import RequestCLI
 from MoinMoin import wikiutil
 from MoinMoin import config
+from MoinMoin import caching
 
 from graphingwiki.patterns import GraphData, encode, nonguaranteeds_p
 
@@ -30,7 +31,13 @@ regexp_re = re.compile('^/.+/$')
 metadata_rx = macro_rx("MetaData")
 
 def getpage(name):
-    req = RequestCLI(pagename=name)
+    # RequestCLI does not like unicode input
+    if isinstance(name, unicode):
+        pagename = encode(name)
+    else:
+        pagename = name
+
+    req = RequestCLI(pagename=pagename)
     page = PageEditor(req, name)
     return page
 
@@ -90,6 +97,7 @@ def edit(pagename, request, editfun):
     p = getpage(pagename)
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
+
     graphsaver = wikiutil.importPlugin(request.cfg,
                               'action',
                               'savegraphdata')
@@ -119,23 +127,42 @@ def edit(pagename, request, editfun):
         msg = u'Unchanged'
     return msg
 
-def edit_meta(request, pagename, metakey, oldval, newmetaval):
+def _fix_key(key):
+    if not isinstance(key, unicode):
+        return unicode(url_unquote(key), config.charset)
+    return key
+
+def edit_meta(request, pagename, oldmeta, newmeta):
     def editfun(pagename, oldtext):
-        if not oldval:
-            # add new tag
-            return oldtext.rstrip() + '\n[[MetaData(%s, %s)]]\n' % (metakey, newmetaval)
-        
+        oldtext = oldtext.rstrip()
+
         def subfun(mo):
             old_keyval_pairs = mo.group(2).split(',')
             newargs=[]
             for key, val in zip(old_keyval_pairs[::2], old_keyval_pairs[1::2]):
                 key = key.strip()
-                if key.strip() == metakey.strip() and val.strip() == oldval.strip():
-                    val = newmetaval
+                if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+                    val = newval
                 newargs.append('%s,%s' % (key, val))
             return '[[MetaData(%s)]]' % (string.join(newargs, ','))
 
-        return metadata_rx.sub(subfun, oldtext)
+        for key in newmeta:
+            for i, newval in enumerate(newmeta[key]):
+                # If the old text does not have this key
+                if not oldmeta.has_key(key) or not oldmeta[key]:
+                    oldkey = _fix_key(key)
+                    oldtext += '\n[[MetaData(%s,%s)]]\n' % (oldkey, newval)
+                # If the new values has more values
+                elif len(oldmeta[key]) - 1 < i:
+                    oldkey = _fix_key(key)
+                    oldtext += '\n[[MetaData(%s,%s)]]\n' % (oldkey, newval)
+                # Else, replace old with new
+                else:
+                    oldval = oldmeta[key][i]
+                    oldkey = _fix_key(key)
+                    oldtext = metadata_rx.sub(subfun, oldtext)
+
+        return oldtext
 
     return edit(pagename, request, editfun)
 

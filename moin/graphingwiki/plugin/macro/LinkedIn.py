@@ -40,6 +40,7 @@ Dependencies = ['pagelinks']
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
     pagename = url_quote(encode(pagename))
+    _ = macro.request.getText
 
     out = []
     nodes = set()
@@ -56,4 +57,4 @@ def execute(macro, args):
 
     globaldata.closedb()
 
-    return "Linked in pages: " + ', '.join(out)
+    return "%s: " % _("Linked in pages") + ', '.join(out)

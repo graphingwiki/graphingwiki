@@ -112,7 +112,7 @@ class ViewDot(object):
         request.write(u"<table>\n<tr>\n")
 
         # format
-        request.write(u"<td>\nOutput format:<br>\n")
+        request.write(u"<td>\n" + _('Output format') + u"<br>\n")
         for type in self.available_formats:
             request.write(u'<input type="radio" name="format" ' +
                           u'value="%s"%s%s<br>\n' %
@@ -121,7 +121,7 @@ class ViewDot(object):
                            type))
 
         # graphengine
-        request.write(u"<td>\nOutput graphengine:<br>\n")
+        request.write(u"<td>\n" + _('Output graphengine') + u"<br>\n")
         for type in self.available_graphengines:
             request.write(u'<input type="radio" name="graphengine" ' +
                           u'value="%s"%s%s<br>\n' %
@@ -131,7 +131,7 @@ class ViewDot(object):
 
         # dotfile
         dotfile = self.dotfile
-        request.write(u"Dot file:<br>\n" +
+        request.write(_("Dot file") + "<br>\n" +
                       u'<select name="attachment">\n')
         for page in self.request.page.getPageList():
             files = AttachFile._get_files(self.request, page)
@@ -142,9 +142,9 @@ class ViewDot(object):
                                    "%s/%s" % (page, file)))
         request.write('</select>\n</table>\n')
         request.write(u'<input type=submit name=view ' +
-                      'value="View">\n')
+                      'value="%s">\n' % _('View'))
         request.write(u'<input type=submit name=help ' +
-                      'value="Inline"><br>\n')
+                      'value="%s"><br>\n' % _('Inline'))
         request.write(u'</form>\n')
 
     def fail(self):
@@ -154,6 +154,7 @@ class ViewDot(object):
     def execute(self):
         self.formargs()
         request = self.request
+        _ = request.getText
 
         if self.help or not self.attachment:
             # fix for moin 1.3.5
@@ -166,7 +167,7 @@ class ViewDot(object):
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
 
-            title = request.getText('View .dot attachment')
+            title = _('View .dot attachment')
 
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
@@ -197,7 +198,7 @@ class ViewDot(object):
 
         if not self.attachment[:10].lower() == 'attachment':
             if self.inline:
-                self.request.write('No attahcment defined\n')
+                self.request.write(_('No attachment defined') + '\n')
                 return
             self.fail()
 
@@ -213,7 +214,7 @@ class ViewDot(object):
             data = file(fpath, 'r').read()
         except IOError:
             if self.inline:
-                self.request.write('Attachment not found at %s\n' %
+                self.request.write(_('Attachment not found at') + ' %s\n' %
                                    repr(fpath))
                 return
             self.fail()
@@ -270,8 +271,8 @@ class ViewDot(object):
             if self.width:
                 params += 'width="%s"' % self.width
 
-            page = ('<img src="' + img_url +
-                    '" %s alt="visualisation"><br>\n' % params)
+            page = ('<img src="%s" %s alt="%s"><br>\n' %
+                    (img_url, _('visualisation'), params))
             request.write(page)
         else:
             request.write(data)

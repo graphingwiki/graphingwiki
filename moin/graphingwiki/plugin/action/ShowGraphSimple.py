@@ -73,9 +73,11 @@ class GraphShowerSimple(GraphShower):
 
     def execute_page(self):
         formatter = self.sendHeaders()
+        _ = self.request.getText
 
         if self.isstandard:
-            self.request.write(formatter.text("No graph data available."))
+            self.request.write(formatter.text(
+                _("No graph data available.")))
             self.request.write(formatter.endContent())
             wikiutil.send_footer(self.request, self.pagename)
             return
@@ -86,6 +88,7 @@ class GraphShowerSimple(GraphShower):
 
 
     def execute_graphs(self, urladd=None):
+        _ = self.request.getText
         if urladd:
             self.urladd = urladd
 
@@ -160,16 +163,19 @@ class GraphShowerSimple(GraphShower):
         elif not self.format:
             formatter = self.request.formatter
             self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text("Nodes in graph: " + str(len(
+            self.request.write(formatter.text(_("Nodes in graph") + ": " +
+                                                str(len(
                 outgraph.nodes.getall()))))
             self.request.write(formatter.paragraph(0))
             self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text("Edges in graph: " + str(len(
+            self.request.write(formatter.text(_("Edges in graph") + ": " +
+                                              str(len(
                 outgraph.edges.getall()))))
             self.request.write(formatter.paragraph(0))
             if getattr(self, 'orderby', '_hier') != '_hier':
                 self.request.write(formatter.paragraph(1))
-                self.request.write(formatter.text("Order levels: " + str(len(
+                self.request.write(formatter.text(_("Order levels") + ": " +
+                                                  str(len(
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
         else:
@@ -179,12 +185,13 @@ class GraphShowerSimple(GraphShower):
             if self.width:
                 params += 'width="%s"' % self.width
 
-            self.request.write('<img src="%s" %s alt="graph" usemap="#%s">\n'%
-                               (img_url + "1", params, gr.graphattrs['name']))
+            self.request.write('<img src="%s" %s alt="%s" usemap="#%s">\n'%
+                               (img_url + "1", params, _('graph'),
+                                gr.graphattrs['name']))
             self.sendMap(gr.graphviz)
             if legend:
-                self.request.write('<img src="%s" alt="legend" usemap="#%s">'%
-                                   (img_url + "2", legend.name))
+                self.request.write('<img src="%s" alt="%s" usemap="#%s">'%
+                                   (img_url + "2", _('legend'), legend.name))
                 self.sendMap(legend)
 
         # Cleanup

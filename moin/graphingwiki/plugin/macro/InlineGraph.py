@@ -80,6 +80,7 @@ def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
+    _ = request.getText
 
     # Import the plugin action to print out the graph html form
     graphshower = wikiutil.importPlugin(request.cfg,
@@ -116,8 +117,9 @@ def execute(macro, args):
     except:
         globaldata.closedb()
         return formatter.paragraph(1) + \
-               formatter.text("InlineGraph: No data on %s" % pagename) + \
-               formatter.paragraph(0)
+               formatter.text(_("InlineGraph: No data on") + 
+                              " %s" % pagename) + \
+                              formatter.paragraph(0)
 
     globaldata.closedb()
 
@@ -135,5 +137,5 @@ def execute(macro, args):
 
     req_url = request.getScriptname() + '/' + uri
     req_url = join_params(req_url, args)
-    return '<a href="%s" id="footer">[examine]</a>\n' % \
-           (graph_request.getQualifiedURL(req_url))
+    return '<a href="%s" id="footer">[%s]</a>\n' % \
+           (graph_request.getQualifiedURL(req_url), _('examine'))

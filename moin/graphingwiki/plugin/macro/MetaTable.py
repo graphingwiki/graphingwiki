@@ -81,13 +81,14 @@ def t_cell(macro, vals, head=0):
 
 def execute(macro, args):
     globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
+    _ = macro.request.getText
 
     # Start table
     out = macro.formatter.linebreak() + macro.formatter.table(1)
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        out += t_cell(macro, "Empty MetaTable: " + args)
+        out += t_cell(macro, "%s: %s" % (_("Empty Metatable"), args))
         out += macro.formatter.table(0)
 
         globaldata.closedb()
@@ -116,9 +117,9 @@ def execute(macro, args):
 
     req_url = macro.request.getScriptname() + \
               '/' + macro.request.page.page_name + \
-              '?action=MetaTableEdit&args=' + args
+              '?action=MetaEdit&args=' + args
 
-    out += '<a href="%s" id="footer">[edit]</a>\n' % \
-           (macro.request.getQualifiedURL(req_url))
+    out += '<a href="%s" id="footer">[%s]</a>\n' % \
+           (macro.request.getQualifiedURL(req_url), _('edit'))
 
     return out

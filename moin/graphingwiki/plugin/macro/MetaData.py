@@ -63,6 +63,7 @@ def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
+    _ = request.getText
 
     graphdata = WikiNode(request).graphdata
     
@@ -96,7 +97,7 @@ def execute(macro, args):
     if keylist:
         if len(keylist) > 10:
             keylist = keylist[:9] + ['...']
-        keylist = 'Key also on pages:\n' + '\n'.join(keylist)
+        keylist = _('Key also on pages') + ':\n' + '\n'.join(keylist)
         kwkey['title'] = keylist
 
     vallist = [unicode(url_unquote(x), config.charset)
@@ -109,7 +110,7 @@ def execute(macro, args):
     if vallist:
         if len(vallist) > 10:
             vallist = vallist[:9] + ['...']
-        vallist = 'Value also on pages:\n' + '\n'.join(vallist)
+        vallist = _('Value also on pages') + ':\n' + '\n'.join(vallist)
         kwval['title'] = vallist
 
     if showtype == 'list':

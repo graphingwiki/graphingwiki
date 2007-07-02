@@ -725,6 +725,7 @@ class GraphShower(object):
 
     def fixNodeUrls(self, outgraph):
         import re
+        _ = self.request.getText
         
         # Make a different url for start nodes
         for nodename in self.startpages:
@@ -736,7 +737,7 @@ class GraphShower(object):
 
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
-            outgraph.label = "No data"
+            outgraph.label = self.request.getText("No data")
             outgraph.bgcolor = 'white'
 
         # Make the attachment node labels look nicer
@@ -748,9 +749,8 @@ class GraphShower(object):
                 node.URL = url_unquote(node.URL)
                 # If attachment
                 if 'action=AttachFile' in node.URL:
-                    node.label = "Attachment:\n" + \
-                                 re.search('target=(.+)&?',
-                                           node.URL).group(1)
+                    node.label = encode(_("Attachment")) + ":\n" + \
+                                 re.search('target=(.+)&?', node.URL).group(1)
 
             elif len(node.label) == 0 and len(node.URL) > 50:
                 node.label = node.URL[:47] + '...'
@@ -898,9 +898,11 @@ class GraphShower(object):
         return gr
 
     def makeLegend(self):
+        _ = self.request.getText
         # Make legend
         legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
-        legend = legendgraph.subg.add("clusterLegend", label='Legend')
+        legend = legendgraph.subg.add("clusterLegend",
+                                      label=encode(_('Legend')))
         subrank = self.pagename.count('/')
         colorURL = self.getURLns(self.colorby)
         per_row = 0
@@ -946,6 +948,7 @@ class GraphShower(object):
 
     def sendForm(self):
         request = self.request
+        _ = request.getText
 
         self.request.write('<!-- $Id$ -->\n')
 
@@ -958,7 +961,7 @@ class GraphShower(object):
         request.write(u"<table>\n<tr>\n")
 
         # outputformat
-        request.write(u"<td>\nOutput format:<br>\n")
+        request.write(u"<td>\n" + _("Output format") + u"<br>\n")
         for type in self.available_formats:
             request.write(u'<input type="radio" name="format" ' +
                           u'value="%s"%s%s<br>\n' %
@@ -968,12 +971,12 @@ class GraphShower(object):
 
 
         # Depth
-        request.write(u"Link depth:<br>\n")
+        request.write(_("Link depth") + u"<br>\n")
         request.write(u'<input type="text" name="depth" ' +
                       u'size=2 value="%s"><br>\n' % str(self.depth))
 
         # categories
-        request.write(u"<td>Include page categories:<br>\n")
+        request.write(u"<td>" + _("Include page categories") + "<br>\n")
         for type in self.allcategories:
             request.write(u'<input type="checkbox" name="categories" ' +
                           u'value="%s"%s%s<br>\n' %
@@ -983,20 +986,23 @@ class GraphShower(object):
 
         # otherpages
         otherpages = quotetoshow(', '.join(self.otherpages))
-        request.write(u"Include other pages:<br>\n")
+        request.write(_("Include other pages") + u"<br>\n")
         request.write(u'<input type="text" name="otherpages" ' +
                       u'size=20 value="%s"><br>\n' % otherpages)
 
         # limit
         request.write(u'<input type="radio" name="limit" ' +
-                      u'value="start"%sShow links between these pages only<br>\n' %
-                      (self.limit == 'start' and ' checked>' or '>'))
+                      u'value="start"%s' %
+                      (self.limit == 'start' and ' checked>' or '>') + 
+                      _('Show links between these pages only') + u'<br>\n')
         request.write(u'<input type="radio" name="limit" ' +
-                      u'value="wiki"%sOnly include pages in this wiki<br>\n' %
-                      (self.limit == 'wiki' and ' checked>' or '>'))
+                      u'value="wiki"%s' %
+                      (self.limit == 'wiki' and ' checked>' or '>') + 
+                      _('Only include pages in this wiki') + u'<br>\n')
         request.write(u'<input type="radio" name="limit" ' +
-                      u'value=""%sInclude all links<br>\n' %
-                      (self.limit == '' and ' checked>' or '>'))
+                      u'value=""%s' %
+                      (self.limit == '' and ' checked>' or '>') +
+                      _('Include all links') + u'<br>\n')
 
         def sortShuffle(types):
             types = sorted(types)
@@ -1006,7 +1012,7 @@ class GraphShower(object):
             return types
 
         # colorby
-        request.write(u"<td>\nColor by:<br>\n")
+        request.write(u"<td>\n" + _('Color by') + u"<br>\n")
         types = sortShuffle(self.nodeattrs)
         for type in types:
             request.write(u'<input type="radio" name="colorby" ' +
@@ -1017,23 +1023,23 @@ class GraphShower(object):
         request.write(u'<input type="radio" name="colorby" ' +
                       u'value=""%s%s<br>\n' %
                       (self.colorby == '' and " checked>" or ">",
-                       "no coloring"))
+                       _("no coloring")))
         if self.colorby:
-            request.write('<select name="colorscheme">')
+            request.write(u'<select name="colorscheme">')
             for ord, name in zip(['random', 'gradient'],
-                              ['random', 'gradient']):
+                                 [_('random'), _('gradient')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.colorscheme == ord and 'selected' or '',
                                ord, ord, name))
-            request.write(u'</select><br>\nColor regexp<br>\n')
+            request.write(u'</select><br>\n' + _('Color regexp') + '<br>\n')
             request.write(u'<input type=text name="colorreg" size=10 ' +
                           u'value="%s"><br>\n' % str(self.colorreg))
-            request.write(u'substitution<br>\n')
+            request.write(_('substitution') + '<br>\n')
             request.write(u'<input type=text name="colorsub" size=10 ' +
                           u'value="%s"><br>\n' % str(self.colorsub))
 
         # orderby
-        request.write(u"<td>\nOrder by:<br>\n")
+        request.write(u"<td>\n" + _('Order by') + "<br>\n")
         types = sortShuffle(self.nodeattrs)
         for type in types:
             request.write(u'<input type="radio" name="orderby" ' +
@@ -1044,30 +1050,31 @@ class GraphShower(object):
         request.write(u'<input type="radio" name="orderby" ' +
                       u'value=""%s%s<br>\n' %
                       (self.orderby == '' and " checked>" or ">",
-                       "no ordering"))
+                       _("no ordering")))
         request.write(u'<input type="radio" name="orderby" ' +
                       u'value="%s"%s%s<br>\n' %
                       ('_hier',
                        self.orderby == '_hier' and " checked>" or ">",
-                       "hierarchical"))
+                       _("hierarchical")))
         if self.orderby:
             request.write('<select name="dir">')
             for ord, name in zip(['TB', 'BT', 'LR', 'RL'],
-                              ['top to bottom', 'bottom to top',
-                               'left to right', 'right to left']):
+                              [_('top to bottom'), _('bottom to top'),
+                               _('left to right'), _('right to left')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.rankdir == ord and 'selected' or '',
                                ord, ord, name))
             if self.orderby != '_hier':
-                request.write(u'</select><br>\nOrder regexp<br>\n')
+                request.write(u'</select><br>\n' + _('Order regexp') +
+                              u'<br>\n')
                 request.write(u'<input type=text name="orderreg" size=10 ' +
                               u'value="%s"><br>\n' % str(self.orderreg))
-                request.write(u'substitution<br>\n')
+                request.write(_('substitution') + u'<br>\n')
                 request.write(u'<input type=text name="ordersub" size=10 ' +
                               u'value="%s"><br>\n' % str(self.ordersub))
             
         # filter edges
-        request.write(u'<td>\nFilter edges:<br>\n')
+        request.write(u'<td>\n+' + _('Filter edges') + u'<br>\n')
         alledges = list(self.coloredges) + filter(self.oftype_p,
                                                   self.filteredges)
         alledges.sort()
@@ -1081,23 +1088,23 @@ class GraphShower(object):
                       u'value="%s"%s%s<br>\n' %
                       ("_notype",
                        "_notype" in self. filteredges and " checked>" or ">",
-                       "No type"))
+                       _("No type")))
 
         # hide edges
-        request.write(u'<br>Hide edges: ' +
+        request.write(u'<br>' + _('Hide edges') + 
                       u'<input type="checkbox" name="hidedges" ' +
                       u'value="1"%s\n' %
                       (self.hidedges and ' checked>' or '>'))
 
         # show edge labels
-        request.write(u'<br>Edge labels: ' +
+        request.write(u'<br>' + _('Edge labels') + 
                       u'<input type="checkbox" name="edgelabels" ' +
                       u'value="1"%s\n' %
                       (self.edgelabels and ' checked>' or '>'))
 
         # filter nodes (related to colorby)
         if self.colorby:
-            request.write(u'<td>\nFilter from colored:<br>\n')
+            request.write(u'<td>\n' + _('Filter from colored') + u'<br>\n')
             allcolor = set(filter(self.oftype_p, self.filtercolor))
             allcolor.update(self.colorfiltervalues)
             for txt in [x for x in self.colorfiltervalues if ',' in x]:
@@ -1116,11 +1123,11 @@ class GraphShower(object):
                            "_notype" in self.filtercolor and
                            " checked>"
                            or ">",
-                           "No type"))
+                           _("No type")))
 
         if getattr(self, 'orderby', '_hier') != '_hier':
             # filter nodes (related to orderby)
-            request.write(u'<td>\nFilter from ordered:<br>\n')
+            request.write(u'<td>\n' + _('Filter from ordered') + u'<br>\n')
             allorder = set(filter(self.oftype_p, self.filterorder))
             allorder.update(self.orderfiltervalues)
             for txt in [x for x in self.orderfiltervalues if ',' in x]:
@@ -1139,11 +1146,11 @@ class GraphShower(object):
                            "_notype" in self.filterorder
                            and " checked>"
                            or ">",
-                       "No type"))
+                           _("No type")))
 
         if self.allcategories:
             # filter categories
-            request.write(u"<td>Filter page categories:<br>\n")
+            request.write(u"<td>" + _('Filter page categories') + u"<br>\n")
             for type in self.allcategories:
                 request.write(u'<input type="checkbox" name="filtercats" ' +
                               u'value="%s"%s%s<br>\n' %
@@ -1154,11 +1161,11 @@ class GraphShower(object):
         # End form
         request.write(u"</table>\n")
         request.write(u'<input type=submit name=graph ' +
-                      'value="Create">\n')
+                      'value="%s">\n' % _('Create'))
         request.write(u'<input type=submit name=test ' +
-                      'value="Test">\n')
+                      'value="%s">\n' % _('Test'))
         request.write(u'<input type=submit name=inline ' +
-                      'value="Inline">\n</form>\n')
+                      'value="%s">\n</form>\n' % _('Inline'))
 
     def generateLayout(self, outgraph):
         # Add all data to graph
@@ -1184,19 +1191,20 @@ class GraphShower(object):
     
     def sendGraph(self, gr, map=False):
         img = self.getLayoutInFormat(gr.graphviz, self.format)
+        _ = self.request.getText
 
         if map:
             imgbase = "data:image/" + self.format + ";base64," + b64encode(img)
 
-            page = ('<img src="' + imgbase +
-                    '" alt="visualisation" usemap="#' +
-                    gr.graphattrs['name'] + '">\n')
+            page = ('<img src="%s" alt="%s" usemap="#%s">\n' % 
+                    (imgbase, _('visualisation'), gr.graphattrs['name']))
+
             self.sendMap(gr.graphviz)
         else:
             imgbase = "data:image/svg+xml;base64," + b64encode(img)
             
-            page = ('<embed height=800 width=1024 src="' +
-                    imgbase + '" alt="visualisation">\n')
+            page = ('<embed height=800 width=1024 src="%s" alt="%s">\n' %
+                    (imgbase, _('visualisation')))
 
         self.request.write(page)
 
@@ -1219,6 +1227,7 @@ class GraphShower(object):
             self.request.write(img)
 
     def sendLegend(self):
+        _ = self.request.getText
         legend = None
         if self.coloredges or self.colornodes:
             legend = self.makeLegend()
@@ -1228,13 +1237,12 @@ class GraphShower(object):
             
             if self.format == 'svg':
                 imgbase = "data:image/svg+xml;base64," + b64encode(img)
-                self.request.write('<embed width=800 src="' + imgbase + '">\n')
+                self.request.write('<embed width=800 src="%s">\n' % imgbase)
             else:
                 imgbase = "data:image/" + self.format + \
                           ";base64," + b64encode(img)
-                self.request.write('<img src="' + imgbase +
-                                   '" alt="visualisation" usemap="#' +
-                                   legend.name + '">\n')
+                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n' %
+                                   (imgbase, _('visualisation'), legend.name))
                 self.sendMap(legend)
                                    
     def sendFooter(self, formatter):
@@ -1249,14 +1257,15 @@ class GraphShower(object):
     def sendHeaders(self):
         request = self.request
         pagename = self.pagename
+        _ = request.getText
 
         if self.format != 'dot':
             request.http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
   
-            title = request.getText('Wiki linkage as seen from "%s"') % \
-                    pagename
+            title = _(u'Wiki linkage as seen from') + \
+                    '"%s"' % pagename
 
             wikiutil.send_title(request, title, pagename=pagename)
 
@@ -1323,6 +1332,7 @@ class GraphShower(object):
 
     def execute(self):        
         cl.start('execute')
+        _ = self.request.getText
 
         self.browserDetect()
 
@@ -1336,7 +1346,7 @@ class GraphShower(object):
             return
 
         if self.isstandard:
-            self.fail_page("No graph data available.")
+            self.fail_page(_("No graph data available."))
             return
             
         # The working with patterns goes a bit like this:
@@ -1414,16 +1424,21 @@ class GraphShower(object):
         else:
             self.sendForm()
             self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text("Nodes in graph: " + str(len(
+            self.request.write(formatter.text("%s: " % _("Nodes in graph") +
+                                              str(len(
                 outgraph.nodes.getall()))))
             self.request.write(formatter.paragraph(0))
+            
             self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text("Edges in graph: " + str(len(
+            self.request.write(formatter.text("%s: " % _("Edges in graph") +
+                                              str(len(
                 outgraph.edges.getall()))))
             self.request.write(formatter.paragraph(0))
+
             if getattr(self, 'orderby', '_hier') != '_hier':
                 self.request.write(formatter.paragraph(1))
-                self.request.write(formatter.text("Order levels: " + str(len(
+                self.request.write(formatter.text("%s: " % _("Order levels") +
+                                                    str(len(
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
 
@@ -1438,6 +1453,7 @@ class GraphShower(object):
     # IE versions of some relevant functions
 
     def sendGraphIE(self, gr, map=False):
+        _ = self.request.getText
         img = self.getLayoutInFormat(gr.graphviz, self.format)
         filename = gr.graphattrs['name'] + "." + self.format
 
@@ -1446,21 +1462,21 @@ class GraphShower(object):
                                'image/' + self.format,
                                b64encode(img)))
             
-            page = ('<img src="' + filename +
-                    '" alt="visualisation" usemap="#' +
-                    gr.graphattrs['name'] + '">\n')
+            page = ('<img src="%s" alt="%s" usemap="#%s">\n' %
+                    (filename, _('visualisation'), gr.graphattrs['name']))
             self.sendMap(gr.graphviz)
         else:
             self.parts.append((filename,
                                'image/svg+xml',
                                b64encode(img)))
 
-            page = ('<embed height=800 width=1024 src="' +
-                    filename + '" alt="visualisation">\n')
+            page = ('<embed height=800 width=1024 src="%s" alt=">\n' %
+                    (filename, _('visualisation')))
 
         self.request.write(page)
 
     def sendLegendIE(self):
+        _ = self.request.getText
         legend = None
         if self.coloredges or self.colornodes:
             legend = self.makeLegend()
@@ -1474,16 +1490,14 @@ class GraphShower(object):
                                    'image/svg+xml',
                                    b64encode(img)))
 
-                self.request.write('<embed width=800 src="' +
-                                   filename + '">\n')
+                self.request.write('<embed width=800 src="%s">\n' % filename)
             else:
                 self.parts.append((filename,
                                    'image/' + self.format,
                                    b64encode(img)))
             
-                self.request.write('<img src="' + filename +
-                                   '" alt="visualisation" usemap="#' +
-                                   legend.name + '">\n')
+                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'
+                                   (filename, _('visualisation'), legend.name))
                 self.sendMap(legend)
 
     def sendPartsIE(self):
@@ -1496,9 +1510,10 @@ class GraphShower(object):
 
         if self.format != 'dot':
             request.write(msie_header)
+            _ = request.getText
 
-            title = request.getText('Wiki linkage as seen from "%s"') % \
-                    pagename
+            title = _('Wiki linkage as seen from') + \
+                    '"%s"' % pagename
             wikiutil.send_title(request, title, pagename=pagename)
 
             # Start content - IMPORTANT - without content div, there is no

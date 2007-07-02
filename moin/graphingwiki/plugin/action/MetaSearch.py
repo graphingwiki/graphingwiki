@@ -42,10 +42,12 @@ from graphingwiki.patterns import GraphData
 regexp_re = re.compile('^/.+/$')
 
 def elemlist(request, formatter, elems, text):
+    _ = request.getText
     if not elems:
         return
     request.write(formatter.paragraph(1))
-    request.write(formatter.text("The following %s found:" % text))
+    request.write(formatter.text(_("The following") + " %s " % text
+                                 + _("found")))
     request.write(formatter.paragraph(0))
     request.write(formatter.bullet_list(1))
     for elem in sorted(elems):
@@ -62,6 +64,8 @@ def elemlist(request, formatter, elems, text):
 
 def execute(pagename, request):
     request.http_headers()
+    _ = request.getText
+
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
@@ -90,7 +94,8 @@ def execute(pagename, request):
                   ''.join(request.form['action']))
 
     request.write(u'<input type="text" name="q" size=50 value="%s">' % q)
-    request.write(u'<input type=submit value="Search">' + u'\n</form>\n')
+    request.write(u'<input type=submit value="' + _('Search') +
+                  '">' + u'\n</form>\n')
 
     if q:
         if regexp_re.match(q):
@@ -99,7 +104,7 @@ def execute(pagename, request):
                 q = ''
             except:
                 request.write(formatter.paragraph(1))
-                request.write(formatter.text("Bad regexp!"))
+                request.write(formatter.text(_("Bad regexp!")))
                 request.write(formatter.paragraph(0))
 
                 # End content
@@ -138,11 +143,11 @@ def execute(pagename, request):
                     vals.add(unicode(val, config.charset))
 
         if not q:
-            elemlist(request, formatter, keys, 'keys')
-            elemlist(request, formatter, vals, 'values')
+            elemlist(request, formatter, keys, _('keys'))
+            elemlist(request, formatter, vals, _('values'))
 
         request.write(formatter.paragraph(1))
-        request.write(formatter.text("Found as key in following pages:"))
+        request.write(formatter.text(_("Found as key in following pages")))
         request.write(formatter.paragraph(0))
 
         request.write(formatter.bullet_list(1))
@@ -157,7 +162,7 @@ def execute(pagename, request):
         request.write(formatter.bullet_list(0))
 
         request.write(formatter.paragraph(1))
-        request.write(formatter.text("Found as value in following pages:"))
+        request.write(formatter.text(_("Found as value in following pages")))
         request.write(formatter.paragraph(0))
         request.write(formatter.bullet_list(1))
         for page in sorted(valhits):

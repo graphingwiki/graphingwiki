@@ -1,5 +1,7 @@
 You can use the excellent ZGRViewer java plugin with
-MoinMoin. Currently the support is limited to ShowGraphSimple.
+MoinMoin. Currently the support is limited to ShowGraphSimple. The
+jars should be placed in the directory as specified by the url_prefix
+variable in the wikiconfig.
 
 The version included is 0.7.2 (March 14, 2007).
 ZGRViewer is licensed under LGPL.
