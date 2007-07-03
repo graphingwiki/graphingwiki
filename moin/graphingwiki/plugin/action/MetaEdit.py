@@ -81,14 +81,6 @@ def show_editform(request, pagename, args):
 
     globaldata.closedb()
 
-## Test case: Ääää Päää new value, General Public changed value,
-## Customer change multiple values (2)
-
-#http://localhost/cgi-bin/moin.cgi/Lis%C3%A4%C3%A4%20l%C3%A4hde%20seurattavaksi?action=MetaTableEdit&args=||%C3%A4%C3%A4%C3%A4%C3%A4%20%C3%A4%C3%A4%C3%A4%C3%A4%7C|needs||
-
-#Changes: {'General%20public': {'needs': {'new': [u'Not to be bothered by IT'], 'old': [u'Not to be bothered by IP problems']}}, 'Customer': {'needs': {'new': [u'Make money \xe4\xf6\xf6', u'Protect reputation \xe4\xf6\xf6', u'Keep customers happy'], 'old': [u'Make money', u'Protect reputation', u'Keep customers happy']}}, '%C3%84%C3%A4%C3%A4P%C3%A4%C3%A4': {'%C3%A4%C3%A4%C3%A4%C3%A4%20%C3%A4%C3%A4%C3%A4%C3%A4': {'new': [u'Uusi'], 'old': [u'']}}}
-
-
 def process_edit(request, input, pagename):
     # request.write(repr(request.form) + '<br>')
 
