@@ -63,7 +63,7 @@ def t_cell(macro, vals, head=0):
             out += macro.formatter.text(',') + \
                    macro.formatter.linebreak()
 
-        data = url_unquote(data.strip('"'))
+        data = url_unquote(data.strip('"')).replace('\\"', '"')
         if not isinstance(data, unicode):
             data = unicode(data, config.charset)
 
@@ -88,7 +88,7 @@ def execute(macro, args):
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        out += t_cell(macro, "%s: %s" % (_("Empty Metatable"), args))
+        out += t_cell(macro, "%s (%s)" % (_("Metatable has no contents"), args))
         out += macro.formatter.table(0)
 
         globaldata.closedb()

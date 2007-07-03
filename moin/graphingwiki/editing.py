@@ -24,11 +24,14 @@ from MoinMoin import caching
 
 from graphingwiki.patterns import GraphData, encode, nonguaranteeds_p
 
-def macro_rx(macroname):
+def macro_re(macroname):
     return re.compile(r'\[\[(%s)\((.*?)\)\]\]' % macroname)
 
+metadata_re = macro_re("MetaData")
+
 regexp_re = re.compile('^/.+/$')
-metadata_rx = macro_rx("MetaData")
+# Include \s except for newlines
+dl_re = re.compile('[ \t\f\v]+(.*?)::\s(.+)')
 
 def getpage(name):
     # RequestCLI does not like unicode input
@@ -73,8 +76,10 @@ def getmetavalues(globaldata, name, key):
     for val in vals:
         if val[1] == 'link':
             continue
-        default.append(unicode(url_unquote(val[0]),
-                               config.charset).strip('"'))
+        # Do all the unwrapping, including unquoting, encoding
+        # stripping outer quotes and inner quote escapes
+        tmp = unicode(url_unquote(val[0]), config.charset).strip('"')
+        default.append(tmp.replace('\\"', '"'))
 
     return default
 
@@ -136,31 +141,65 @@ def edit_meta(request, pagename, oldmeta, newmeta):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
 
-        def subfun(mo):
-            old_keyval_pairs = mo.group(2).split(',')
-            newargs=[]
-            for key, val in zip(old_keyval_pairs[::2], old_keyval_pairs[1::2]):
-                key = key.strip()
-                if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
-                    val = newval
-                newargs.append('%s,%s' % (key, val))
-            return '[[MetaData(%s)]]' % (string.join(newargs, ','))
+        def macro_subfun(mo):
+            old_keyval_pair = mo.group(2).split(',')
+
+            # Strip away empty metatables [[MetaTable()]]
+            # and placeholders [[MetaData(%s,)]]
+            # (MetaEdit should be obsolete with MetaTableEdit)
+            if len(old_keyval_pair) < 2:
+                return ''
+
+            # Take {hidden, embed} if available
+            addon = ''
+            if len(old_keyval_pair) == 3:
+                addon = old_keyval_pair[2]
+                
+            # Check if the value has changed
+            key, val = old_keyval_pair[:2]
+            key = key.strip()
+            if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+                val = newval
+
+            # Only return metadata if the page used its special features
+            if addon:
+                return "[[MetaData(%s,%s,%s)]]" % (key, val, addon)
+
+            # In all other cases, return dict variable
+            return ' %s:: %s' % (key, val)
+
+        def dl_subfun(mo):
+            key, val = mo.groups()
+
+            # Check if the value has changed
+            key = key.strip()
+            if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+                val = newval
+
+            # Do not return placeholders
+            if not val.strip():
+                return ''
+
+            return ' %s:: %s' % (key, val)
 
         for key in newmeta:
             for i, newval in enumerate(newmeta[key]):
-                # If the old text does not have this key
+                # If the old text does not have this key, add it (as dl)
                 if not oldmeta.has_key(key) or not oldmeta[key]:
                     oldkey = _fix_key(key)
-                    oldtext += '\n[[MetaData(%s,%s)]]\n' % (oldkey, newval)
-                # If the new values has more values
+                    oldtext += '\n %s:: %s\n' % (oldkey, newval)
+                # If the new values has more values, add them (as dl)
                 elif len(oldmeta[key]) - 1 < i:
                     oldkey = _fix_key(key)
-                    oldtext += '\n[[MetaData(%s,%s)]]\n' % (oldkey, newval)
-                # Else, replace old with new
+                    oldtext += '\n %s:: %s\n' % (oldkey, newval)
+                # Else, replace old value with new value
                 else:
                     oldval = oldmeta[key][i]
                     oldkey = _fix_key(key)
-                    oldtext = metadata_rx.sub(subfun, oldtext)
+                    # First try to replace the dict variable
+                    oldtext = dl_re.sub(dl_subfun, oldtext)
+                    # Then try to replace the MetaData macro on page
+                    oldtext = metadata_re.sub(macro_subfun, oldtext)
 
         return oldtext
 

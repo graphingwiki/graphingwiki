@@ -1074,7 +1074,7 @@ class GraphShower(object):
                               u'value="%s"><br>\n' % str(self.ordersub))
             
         # filter edges
-        request.write(u'<td>\n+' + _('Filter edges') + u'<br>\n')
+        request.write(u'<td>\n' + _('Filter edges') + u'<br>\n')
         alledges = list(self.coloredges) + filter(self.oftype_p,
                                                   self.filteredges)
         alledges.sort()
