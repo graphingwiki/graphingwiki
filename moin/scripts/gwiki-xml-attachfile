@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 """
-    gwikixml-attachfile
+    gwiki-xml-attachfile
      - Attaches a file to a wiki page with the help of XMLRPC
 
     @copyright: 2007 by Juhani Eronen <exec@iki.fi> and Joachim Viide

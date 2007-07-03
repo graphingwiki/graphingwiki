@@ -463,14 +463,9 @@ def xmlrpc_conninit(wiki, username, password):
 
     return srcWiki, url
 
-def xmlrpc_attach(wiki, page, fname, username, password, method,
-                  content='', overwrite=False):
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
-    if content:
-        content = xmlrpclib.Binary(content)
-
+def xmlrpc_connect(func, wiki, *args, **kwargs):
     try:
-        return srcWiki.AttachFile(page, fname, method, content, overwrite)
+        return func(*args, **kwargs)
     except xmlrpclib.ProtocolError, e:
         return {'faultCode': 4,
                 'faultString': 'Cannot connect to server at %s (%d %s)' %
@@ -478,6 +473,15 @@ def xmlrpc_attach(wiki, page, fname, username, password, method,
     except (socket.error, socket.gaierror), e:
         return {'faultCode': e[0],
                 'faultString': e[1]}
+
+def xmlrpc_attach(wiki, page, fname, username, password, method,
+                  content='', overwrite=False):
+    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+    if content:
+        content = xmlrpclib.Binary(content)
+
+    return xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
+                          method, content, overwrite)
 
 def xmlrpc_error(error):
     return error['faultCode'], error['faultString']
