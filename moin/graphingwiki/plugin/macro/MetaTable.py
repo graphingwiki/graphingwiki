@@ -128,6 +128,9 @@ def execute(macro, args):
     pagelist = sorted(pagelist)
 
     for page in pagelist:
+        if not macro.request.user.may.read(unicode(url_unquote(page),
+                                                   config.charset)):
+            continue
         out = out + macro.formatter.table_row(1)
         out = out + t_cell(macro, page, head=1)
         for key in metakeys:

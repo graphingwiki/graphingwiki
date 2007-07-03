@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-1 -*-
 """
     gwiki-xml-meta
-     - Edits or lists metadata from pages
+     - Edits or lists metadata on pages
 
     @copyright: 2007 by Juhani Eronen <exec@iki.fi> and Joachim Viide
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -11,9 +11,11 @@
 import sys
 import getpass
 import csv
+import urllib
 
 from optparse import OptionParser
-from urllib import unquote as url_unquote
+
+from MoinMoin import config
 
 from graphingwiki.patterns import qstrip_p, encode
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect
@@ -27,12 +29,14 @@ parser.add_option("-k", "--key", dest="key_args", action='append',
                   help="Get only specified keys")
 parser.add_option("-m", "--match", dest="match_args", action='append',
                   help="Get only pages that match arguments")
-parser.add_option("-K", "--keys", action="store_true", dest="keysonly",
+parser.add_option("-K", "--keys_only", action="store_true", dest="keysonly",
                   default=False, help="Get only metadata keys, not values")
 parser.add_option("-a", "--append", dest="app_args",
-                  help="Get metadata to page")
+                  help="Append metadata to page")
 parser.add_option("-r", "--replace", dest="repl_args",
-                  help="Get metadata to page")
+                  help="Replace metadata on page")
+parser.add_option("-s", "--set", dest="set_args", action='append',
+                  help="The metadata to be appended or replaced")
 
 options, args = parser.parse_args()
 
@@ -46,10 +50,44 @@ wiki = args[0]
 username = raw_input("Username:")
 password = getpass.getpass("Password:")
 
-if options.app_args:
-    pass
-elif options.repl_args:
-    pass
+class ArgError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)  
+
+if options.repl_args or options.app_args:
+    if options.app_args:
+        page = unicode(options.app_args, config.charset)
+        method = 'add'
+    else:
+        page = unicode(options.repl_args, config.charset)
+        method = 'repl'
+        
+    input = {}
+    try:
+        if not options.set_args:
+            raise ArgError("No metadata to set\n")
+        for arg in options.set_args:
+            data = arg.split('=')
+            if len(data) != 2:
+                raise ArgError("Bad set args: %s\n" % data)
+            key, val = [unicode(x, config.charset) for x in data]
+            input.setdefault(page + "!" + key, []).append(val)
+        if not input:
+            raise ArgError("No metadata to set\n")
+    except ArgError, e:
+        sys.stderr.write(e.value)
+        parser.print_help()
+        sys.exit(1)
+
+    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+
+    result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method)
+
+    if isinstance(result, basestring):
+        print result
+        sys.exit(0)
 else:
     srcWiki, _ = xmlrpc_conninit(wiki, username, password)
     val = ",".join(options.get_args)
@@ -62,11 +100,11 @@ else:
     wr = csv.writer(sys.stdout)
     if isinstance(result, list):
         if options.keysonly:
-            wr.writerow(['Keys'] + [url_unquote(x) for x in result[0]])
-            wr.writerow(['Pages'] + [url_unquote(x) for x in result[1]])
+            wr.writerow(['Keys'] + [urllib.unquote(x) for x in result[0]])
+            wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
         else:
             for row in result:
-                wr.writerow([url_unquote(encode(''.join(x))) for x in row])
+                wr.writerow([urllib.unquote(encode(''.join(x))) for x in row])
 
         sys.exit(0)
 

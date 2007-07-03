@@ -6,8 +6,17 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
+import urllib
+
+from MoinMoin import config
 
 from graphingwiki.editing import metatable_parseargs, getmetavalues
+
+def url_unquote(s):
+    s = urllib.unquote(s)
+    if not isinstance(s, unicode):
+        s = unicode(s, config.charset)
+    return s
 
 def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request

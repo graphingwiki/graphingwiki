@@ -11,6 +11,7 @@ import string
 import xmlrpclib
 import urlparse
 import socket
+import urllib
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
@@ -32,7 +33,7 @@ metadata_re = macro_re("MetaData")
 
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
-dl_re = re.compile('[ \t\f\v]+(.*?)::\s(.+)')
+dl_re = re.compile('\s+(.*?)::\s(.+)')
 
 # These are the match types that really should be noted
 linktypes = ["wikiname_bracket", "word",
@@ -191,7 +192,7 @@ def edit_meta(request, pagename, oldmeta, newmeta):
                 val = newval
 
             # Return dict variable
-            return ' %s:: %s' % (key, val)
+            return '\n %s:: %s' % (key, val)
 
         def dl_subfun(mo):
             key, val = mo.groups()
@@ -205,7 +206,7 @@ def edit_meta(request, pagename, oldmeta, newmeta):
             if not val.strip():
                 return ''
 
-            return ' %s:: %s' % (key, val)
+            return '\n %s:: %s' % (key, val)
 
         for key in newmeta:
             for i, newval in enumerate(newmeta[key]):
@@ -229,6 +230,60 @@ def edit_meta(request, pagename, oldmeta, newmeta):
         return oldtext
 
     return edit(pagename, request, editfun)
+
+def process_edit(request, input):
+    # request.write(repr(request.form) + '<br>')
+
+    def urlquote(s):
+        if isinstance(s, unicode):
+            s = s.encode(config.charset)
+        return urllib.quote(s)
+
+    def url_unquote(s):
+        s = urllib.unquote(s)
+        if not isinstance(s, unicode):
+            s = unicode(s, config.charset)
+        return s
+
+    globaldata = GraphData(request)
+
+    changes = {}
+
+    for val in input:
+        # At least the key 'save' may be there and should be ignored
+        if not '!' in val:
+            continue
+        
+        newvals = input[val]
+
+        keypage, key = [urlquote(x) for x in val.split('!')]
+
+        if not request.user.may.write(url_unquote(keypage)):
+            continue
+
+        oldvals = getmetavalues(globaldata, keypage, key)
+
+        if oldvals != newvals:
+            changes.setdefault(keypage, {})
+            if not oldvals:
+                changes[keypage].setdefault('old', {})[key] = []
+            else:
+                changes[keypage].setdefault('old', {})[key] = oldvals
+                
+            changes[keypage].setdefault('new', {})[key] = newvals
+
+    # Done reading, will start writing now
+    globaldata.closedb()
+
+    msg = ''
+    for keypage in changes:
+        msg += '%s: ' % url_unquote(keypage) + \
+               edit_meta(request, url_unquote(keypage),
+                         changes[keypage]['old'],
+                         changes[keypage]['new']) + \
+                         request.formatter.linebreak(0)
+
+    return msg
 
 def savetext(request, pagename, newtext):
     def editfun(pagename, oldtext):

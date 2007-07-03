@@ -14,8 +14,8 @@ import urllib
 from MoinMoin import wikiutil
 from MoinMoin import config
 
-from graphingwiki.patterns import GraphData
-from graphingwiki.editing import edit_meta, getmetavalues, metatable_parseargs
+from graphingwiki.editing import process_edit, getmetavalues
+from graphingwiki.editing import metatable_parseargs
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -65,6 +65,9 @@ def show_editform(request, pagename, args):
             wr(u'<tr><td>%s<td>%s', url_unquote(frompage), url_unquote(key))
             inputname = url_unquote(frompage) + u'!' + url_unquote(key)
 
+            if not request.user.may.read(url_unquote(frompage)):
+                continue
+
             default = getmetavalues(globaldata, frompage, key)
             default.append('')
 
@@ -80,51 +83,6 @@ def show_editform(request, pagename, args):
     wr(u'</form>\n')
 
     globaldata.closedb()
-
-def process_edit(request, input, pagename):
-    # request.write(repr(request.form) + '<br>')
-
-    globaldata = GraphData(request)
-
-    changes = {}
-
-    for val in input:
-        # At least the key 'save' will be there and should be ignored
-        if not '!' in val:
-            continue
-        
-        newvals = input[val]
-
-        keypage, key = [urlquote(x) for x in val.split('!')]
-
-        oldvals = getmetavalues(globaldata, keypage, key)
-
-        # request.write("%s %s %s %s<br>\n" % (keypage, key,
-        #                                     repr(newvals), repr(oldvals)))
-
-        if oldvals != newvals:
-            changes.setdefault(keypage, {})
-            if not oldvals:
-                changes[keypage].setdefault('old', {})[key] = []
-            else:
-                changes[keypage].setdefault('old', {})[key] = oldvals
-                
-            changes[keypage].setdefault('new', {})[key] = newvals
-
-    # request.write('<br>Changes: ' + repr(changes))
-
-    # Done reading, will start writing now
-    globaldata.closedb()
-
-    msg = ''
-    for keypage in changes:
-        msg += '%s: ' % url_unquote(keypage) + \
-               edit_meta(request, url_unquote(keypage),
-                         changes[keypage]['old'],
-                         changes[keypage]['new']) + \
-                         request.formatter.linebreak(0)
-
-    return msg
 
 def _enter_page(request, pagename):
     _ = request.getText
@@ -156,7 +114,7 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
 
     if request.form.has_key('save'):
-        msg = process_edit(request, request.form, pagename)
+        msg = process_edit(request, request.form)
 
         request.reset()
         request.page.send_page(request, msg=msg)

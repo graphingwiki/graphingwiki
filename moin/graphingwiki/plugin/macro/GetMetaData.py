@@ -23,6 +23,10 @@ def urlquote(s):
 
 def execute(macro, args):
     request = macro.request
+
+    if not request.user.may.read(args.split(',')[0]):
+        return ''
+
     globaldata = GraphData(request)
 
     try:
