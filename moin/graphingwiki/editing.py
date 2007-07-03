@@ -146,26 +146,19 @@ def edit_meta(request, pagename, oldmeta, newmeta):
 
             # Strip away empty metatables [[MetaTable()]]
             # and placeholders [[MetaData(%s,)]]
-            # (MetaEdit should be obsolete with MetaTableEdit)
+            # (Placeholders should become obsolete with MetaEdit)
             if len(old_keyval_pair) < 2:
                 return ''
-
-            # Take {hidden, embed} if available
-            addon = ''
-            if len(old_keyval_pair) == 3:
-                addon = old_keyval_pair[2]
                 
             # Check if the value has changed
-            key, val = old_keyval_pair[:2]
+            key = old_keyval_pair[0]
             key = key.strip()
+            val = ','.join(old_keyval_pair[1:])
+            
             if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
                 val = newval
 
-            # Only return metadata if the page used its special features
-            if addon:
-                return "[[MetaData(%s,%s,%s)]]" % (key, val, addon)
-
-            # In all other cases, return dict variable
+            # Return dict variable
             return ' %s:: %s' % (key, val)
 
         def dl_subfun(mo):

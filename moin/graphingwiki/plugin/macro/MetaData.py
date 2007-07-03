@@ -39,26 +39,16 @@ Dependencies = ['metadata']
 
 def execute(macro, args):
     arglist = [x.strip() for x in args.split(',') if x.strip()]
-    showtype = 'list'
 
+    # [[MetaData()]]
     if not arglist:
         return ""
-    
-    key = arglist[0]
-    if len(arglist) > 2:
-        if arglist[-1] == 'hidden':
-            return ''
-        if arglist[-1] in ['hidden', 'embed']:
-            val = ','.join(arglist[1:-1])
-        else:
-            val = ','.join(arglist[1:])
-        if arglist[-1] == 'embed':
-            showtype = 'raw'
-    elif len(arglist) == 2:
-        val = ','.join(arglist[1:])
-    # Hidden values
+    # Placeholders etc [[MetaData(a,)]]
     elif len(arglist) < 2:
         return ''
+
+    key = arglist[0]
+    val = ','.join(arglist[1:])
 
     formatter = macro.formatter
     macro.request.page.formatter = formatter
@@ -84,8 +74,7 @@ def execute(macro, args):
         keymeta = {'class': 'meta_key'}
         valmeta = {'class': 'meta_val'}
 
-    if showtype == 'list':
-        result.append(formatter.definition_list(1, **listmeta))
+    result.append(formatter.definition_list(1, **listmeta))
 
     keylist = [unicode(url_unquote(x), config.charset)
                for x in sorted(keys_on_pages.get(key, ''))]
@@ -113,36 +102,23 @@ def execute(macro, args):
         vallist = _('Value also on pages') + ':\n' + '\n'.join(vallist)
         kwval['title'] = vallist
 
-    if showtype == 'list':
-        result.extend([formatter.definition_term(1, **keymeta),
-                       formatter.pagelink(1, request.page.page_name,
-                                          request.page, **kwkey),
-                       formatter.text(key),
-                       formatter.pagelink(0),
-                       formatter.definition_term(0),
+    result.extend([formatter.definition_term(1, **keymeta),
+                   formatter.pagelink(1, request.page.page_name,
+                                      request.page, **kwkey),
+                   formatter.text(key),
+                   formatter.pagelink(0),
+                   formatter.definition_term(0),
 
-                       formatter.definition_desc(1, **valmeta),
-                       formatter.pagelink(1, request.page.page_name,
-                                          request.page, **kwval),
-                       formatter.text(val),
-                       formatter.pagelink(0),
-                       formatter.definition_desc(0)])
-    else:
-        result.extend([formatter.pagelink(1, request.page.page_name,
-                                          request.page, **kwkey),
-                       formatter.strong(1, **keymeta),
-                       formatter.text(key),
-                       formatter.strong(0),
-                       formatter.pagelink(0),
-                       formatter.pagelink(1, request.page.page_name,
-                                          request.page, **kwval),
-                       formatter.text(val),
-                       formatter.pagelink(0)])
+                   formatter.definition_desc(1, **valmeta),
+                   formatter.pagelink(1, request.page.page_name,
+                                      request.page, **kwval),
+                   formatter.text(val),
+                   formatter.pagelink(0),
+                   formatter.definition_desc(0)])
 
     arglist = arglist[2:]
 
-    if showtype == 'list':
-        result.append(macro.formatter.definition_list(0))
+    result.append(macro.formatter.definition_list(0))
 
     # Cleanup
     graphdata.closedb()

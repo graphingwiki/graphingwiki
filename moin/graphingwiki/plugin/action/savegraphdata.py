@@ -39,7 +39,7 @@ from time import time
 # MoinMoin imports
 from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
-from MoinMoin.wikiutil import importPlugin
+from MoinMoin.wikiutil import importPlugin, split_wiki
 from MoinMoin.util.lock import WriteLock
 
 # graphlib imports
@@ -48,9 +48,13 @@ from graphingwiki.patterns import special_attrs
 
 url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
-# non-local pagenames have either an URL or a namespace
+# non-local pagenames have either an URL
+# or resolve as interwiki links outside this wiki
 def local_page(pagename):
-    if url_re.search(pagename) or ':' in pagename:
+    if url_re.search(pagename):
+        return False
+    tag, _ = split_wiki(pagename)
+    if tag != 'Self':
         return False
 
     return True
@@ -70,11 +74,6 @@ def shelve_add_in(shelve, (frm, to), linktype):
              temp['in'][linktype].append(frm)
 
          shelve[to] = temp
-#         temp = shelve.get(to + '_in', set())
-#         temp.add(frm)
-#         shelve[to + '_in'] = temp
-# old
-#        shelve['in'].setdefault(to, set()).add(frm)
 
 # Add out-links from local nodes to current node
 def shelve_add_out(shelve, (frm, to), linktype):
@@ -91,11 +90,6 @@ def shelve_add_out(shelve, (frm, to), linktype):
              temp['out'][linktype].append(to)
 
          shelve[frm] = temp
-#         temp = shelve.get(frm + '_out', set())
-#         temp.add(to)
-#         shelve[frm + '_out'] = temp
-# old
-#        shelve['out'].setdefault(frm, set()).add(to)
 
 # Respectively, remove in-links
 def shelve_remove_in(shelve, (frm, to), linktype):
@@ -115,7 +109,6 @@ def shelve_remove_in(shelve, (frm, to), linktype):
                     del temp['in'][type]
 #                sys.stderr.write("Hey man, I think I did it!\n")
         shelve[to] = temp
-#                shelve['in'][to].discard(frm)
 
 # Respectively, remove out-links
 def shelve_remove_out(shelve, (frm, to), linktype):
@@ -135,7 +128,6 @@ def shelve_remove_out(shelve, (frm, to), linktype):
                     del temp['out'][type]
 #                sys.stderr.write("Hey man, I think I did it!\n")
         shelve[frm] = temp
-#                shelve['out'][frm].discard(to)
 
 def quotemeta(key, val):
     # Keys may be pages -> url-quoted
@@ -163,11 +155,6 @@ def shelve_unset_attributes(shelve, node):
         temp['meta'] = {}
         shelve[node] = temp
 
-#     if globaldata.get(quotedname, {}).has_key('meta'):
-#         temp = globaldata[quotedname]
-#         temp['meta'] = {}
-#         globaldata[quotedname] = temp
-
 def shelve_set_attribute(shelve, node, key, val):
     key, val = quotemeta(key, val)
 
@@ -184,19 +171,6 @@ def shelve_set_attribute(shelve, node, key, val):
         temp['meta'][key].add(val)
 
     shelve[node] = temp
-
-#     if not shelve.has_key(node + '_meta'):
-#         shelve[node + '_meta'] = {key: [val]}
-#     elif not shelve[node + '_meta'].has_key(key):
-#         temp = shelve[node + '_meta']
-#         temp[key] = [val]
-#         shelve[node + '_meta'] = temp
-#     else:
-#         temp = shelve[node + '_meta']
-#         temp[key].append(val)
-#         shelve[node + '_meta'] = temp
-# old
-#     shelve['meta'].setdefault(node, {}).setdefault(key, []).append(val)
 
 ## Different encoding/quoting functions
 # Encoder from unicode to charset selected in config
@@ -232,10 +206,6 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     # decode to target charset, grab comma-separated key,val
     hit = encode(hit[11:-3])
     args = hit.split(',')
-
-    # Skip hidden argument
-    if args[-1].strip() in ['hidden', 'embed']:
-        args = args[:-1]
 
     # If no data, continue
     if len(args) < 2:
