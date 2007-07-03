@@ -113,13 +113,13 @@ def execute(macro, args):
     # Check out if the start page exists, if not, we'll just bail out
     globaldata = GraphData(request)
     try:
+        if not request.user.may.read(pagename):
+            return _("InlineGraph: User may  not read page") + \
+                   " %s" % pagename
         globaldata.getpage(url_quote(encode(uri)))
     except:
         globaldata.closedb()
-        return formatter.paragraph(1) + \
-               formatter.text(_("InlineGraph: No data on") + 
-                              " %s" % pagename) + \
-                              formatter.paragraph(0)
+        return _("InlineGraph: No data on") + " %s" % pagename
 
     globaldata.closedb()
 

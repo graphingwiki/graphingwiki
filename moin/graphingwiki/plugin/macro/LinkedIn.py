@@ -45,6 +45,8 @@ def execute(macro, args):
     out = []
     nodes = set()
     globaldata = GraphData(macro.request)
+    # User rights are not checked here as the page will not be
+    # displayed at all if user does not have rights
     pdata = globaldata.getpage(pagename)
     for type in pdata.get('in', {}):
         for page in pdata['in'][type]:

@@ -412,13 +412,14 @@ class GraphShower(object):
                   self.temp_re.search(pagename)):
             graphdata = self.addToStartPages(graphdata, pagename)
 
-#        print repr(self.categories)
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
-#            print cat
+            # Permissions
+            if not self.request.user.may.read(unicode(url_unquote(cat),
+                                                      config.charset)):
+                continue
             catpage = self.globaldata.getpage(cat)
-#            print repr(catpage)
             if not catpage.has_key('in'):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -430,8 +431,6 @@ class GraphShower(object):
                             self.temp_re.search(newpage)):
                         graphdata = self.addToStartPages(graphdata, newpage)
                         self.addToAllCats(newpage)
-
-#        print "Whew, out of there!"
 
         return graphdata
 
@@ -553,7 +552,9 @@ class GraphShower(object):
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
-            
+
+            # User rights have been checked before, as traverse
+            # uses GraphData.load_graph, which handles them
             pagedata = self.globaldata.getpage(obj.node)
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip

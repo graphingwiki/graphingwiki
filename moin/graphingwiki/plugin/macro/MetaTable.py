@@ -35,8 +35,10 @@ from urllib import quote as url_quote
 
 from MoinMoin import config
 from MoinMoin import wikiutil
+from MoinMoin.parser.wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getvalues
+from graphingwiki.editing import check_link, formatting_rules
 
 Dependencies = ['metadata']
 
@@ -67,12 +69,23 @@ def t_cell(macro, vals, head=0):
         if not isinstance(data, unicode):
             data = unicode(data, config.charset)
 
-        if head or src == 'link':
+        if head:
             out = out + macro.formatter.pagelink(1, data)
 
-        out = out + macro.formatter.text(data)
+        if src == 'link':
+            link = check_link(macro.all_re, data)
+            if not link:
+                out = out + macro.formatter.pagelink(1, data)
+                out = out + macro.formatter.text(data)
+            else:
+                typ, hit = link
+                replace = getattr(macro.parser, '_' + typ + '_repl')
+                attrs = replace(hit)
+                out = out + attrs
+        else:
+            out = out + macro.formatter.text(data)
 
-        if head or src == 'link':
+        if head:
             out = out + macro.formatter.pagelink(0)
 
         first_val = False
@@ -98,8 +111,18 @@ def execute(macro, args):
     out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
     # Upper left cell is empty
     out += t_cell(macro, '')
+
+    # Start parser
+    macro.parser = Parser('', macro.request)
+    macro.parser.formatter = macro.request.formatter    
+    macro.all_re = formatting_rules(macro.request, macro.parser)
+
     for key in metakeys:
-        out = out + t_cell(macro, key)
+        key = unicode(url_unquote(key), config.charset)
+        if check_link(macro.all_re, key):
+            out = out + t_cell(macro, [(key, 'link')])
+        else:
+            out = out + t_cell(macro, key)
     out += macro.formatter.table_row(0)
 
     pagelist = sorted(pagelist)

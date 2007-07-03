@@ -79,7 +79,7 @@ class GraphData(object):
 
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
-    # NB: You must use close() before exiting to avoid littering
+    # NB: You must use closedb() before exiting to avoid littering
     #     read locks around!
     def opendb(self):
         # The timeout parameter in ReadLock is most probably moot...

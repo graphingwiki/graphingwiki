@@ -15,6 +15,7 @@ import socket
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
+from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request import RequestCLI
@@ -32,6 +33,37 @@ metadata_re = macro_re("MetaData")
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
 dl_re = re.compile('[ \t\f\v]+(.*?)::\s(.+)')
+
+# These are the match types that really should be noted
+linktypes = ["wikiname_bracket", "word",
+             "interwiki", "url", "url_bracket"]
+
+def formatting_rules(request, parser):
+    rules = parser.formatting_rules.replace('\n', '|')
+    
+    if request.cfg.bang_meta:
+        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
+            'word_rule': Parser.word_rule,
+            'rules': rules,
+            }
+
+    # For versions with the deprecated config variable allow_extended_names
+    if not '?P<wikiname_bracket>' in rules:
+        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
+
+    return re.compile(rules, re.UNICODE)
+
+def check_link(all_re, item):
+    # Go through the string with formatting operations,
+    # return true if it matches a known linktype
+    for match in all_re.finditer(item):
+        for type, hit in match.groupdict().items():
+            if hit is None:
+                continue
+            if type in linktypes:
+                return (type, hit)
+
+    return None
 
 def getpage(name):
     # RequestCLI does not like unicode input
@@ -264,6 +296,10 @@ def metatable_parseargs(request, args, globaldata=None):
         if cat_re.search(arg):
             # Nonexisting categories
             try:
+                if not request.user.may.read(unicode(url_unquote(arg),
+                                                     config.charset)):
+                    continue
+
                 page = globaldata.getpage(arg)
             except KeyError:
                 continue
@@ -285,8 +321,12 @@ def metatable_parseargs(request, args, globaldata=None):
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
         elif arg:
-            # Nonexisting pages
+            # Filter out nonexisting pages
             try:
+                if not request.user.may.read(unicode(url_unquote(arg),
+                                                     config.charset)):
+                    continue
+
                 page = globaldata.getpage(arg)
             except KeyError:
                 continue
