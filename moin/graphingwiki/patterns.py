@@ -35,6 +35,7 @@ import os
 import shelve
 from codecs import getencoder
 from urllib import quote as url_quote
+from urllib import unquote as url_unquote
 
 from MoinMoin.Page import Page
 from MoinMoin import config
@@ -101,7 +102,7 @@ class GraphData(object):
         # they're handled in load_graph. This way the cache avoids
         # tough decisions on whether to cache content for a
         # certain user or not
-
+        
         # try to establish whether we have to read the damn thing again
         new_mtime = self.db.get(pagename, {}).get('mtime', 0)
         old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)
@@ -175,7 +176,8 @@ class GraphData(object):
         return adata
 
     def load_graph(self, pagename, urladd):
-        if not self.request.user.may.read(pagename):
+        if not self.request.user.may.read(unicode(url_unquote(pagename),
+                                                  config.charset)):
             return None
 
         page = self.getpage(pagename)

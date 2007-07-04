@@ -39,7 +39,7 @@ from time import time
 # MoinMoin imports
 from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
-from MoinMoin.wikiutil import importPlugin, split_wiki
+from MoinMoin.wikiutil import importPlugin
 from MoinMoin.util.lock import WriteLock
 
 # graphlib imports
@@ -48,13 +48,11 @@ from graphingwiki.patterns import special_attrs
 
 url_re = re.compile(u'^(' + Parser.url_pattern + ')')
 
-# non-local pagenames have either an URL
-# or resolve as interwiki links outside this wiki
+# We only want to save linkage data releted to pages in this wiki
+# Interwiki links will have ':' in their names (this will not affect
+# pages as their names are url quotes at this stage)
 def local_page(pagename):
-    if url_re.search(pagename):
-        return False
-    tag, _ = split_wiki(pagename)
-    if tag != 'Self':
+    if url_re.search(pagename) or ':' in pagename:
         return False
 
     return True
