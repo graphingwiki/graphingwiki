@@ -104,7 +104,9 @@ else:
             wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
         else:
             for row in result:
-                wr.writerow([urllib.unquote(encode(''.join(x))) for x in row])
+                wr.writerow([urllib.unquote(encode(row[0]))] +
+                             [urllib.unquote(encode(','.join(x)))
+                              for x in row[1:]])
 
         sys.exit(0)
 
