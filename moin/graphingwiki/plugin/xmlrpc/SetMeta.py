@@ -52,15 +52,29 @@ def execute(xmlrpcobj, page, input, action='add'):
                 src = set(input[pair])
                 tmp = set(src).intersection(set(old))
                 dst = []
+                # Due to the structure of the edit function,
+                # the order of the added values is significant:
+                # We want to have the common keys
+                # in the same 'slot' of the 'form'
                 for val in old:
-                    # If the key we have is in the source, keep it.
-                    # Remove it from the common pool and the source.
+                    # If we have the common key, keep it
                     if val in tmp:
                         dst.append(val)
                         tmp.remove(val)
                         src.discard(val)
+                    # If we don't have the common key,
+                    # but still have keys, add a non-common one
                     elif src:
-                        dst.append(src.pop())
+                        added = False
+                        for newval in src:
+                            if not newval in tmp:
+                                dst.append(newval)
+                                src.remove(newval)
+                                added = True
+                                break
+                        # If we only had common keys left, add empty
+                        if not added:
+                            dst.append(u'')
                     else:
                         dst.append(u'')
                 if src:
