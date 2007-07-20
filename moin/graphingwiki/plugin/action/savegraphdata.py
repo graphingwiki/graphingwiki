@@ -494,7 +494,8 @@ def execute(pagename, request, text, pagedir, page):
 
                 # Links and metadata defined in a definition list
                 elif type == 'dl' and not inpre:
-                    key, val = line.split('::')
+                    data = line.split('::')
+                    key, val = data[0], '::'.join(data[1:])
                     key = key.lstrip()
 
                     # Try to find if the value points to a link
