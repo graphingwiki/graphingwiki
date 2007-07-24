@@ -73,7 +73,7 @@ if options.repl_args or options.app_args:
             if len(data) != 2:
                 raise ArgError("Bad set args: %s\n" % data)
             key, val = [unicode(x, config.charset) for x in data]
-            input.setdefault(page + "!" + key, []).append(val)
+            input.setdefault(key, []).append(val)
         if not input:
             raise ArgError("No metadata to set\n")
     except ArgError, e:
@@ -85,8 +85,8 @@ if options.repl_args or options.app_args:
 
     result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method)
 
-    if isinstance(result, basestring):
-        print result
+    if isinstance(result, list):
+        print '\n'.join(result)
         sys.exit(0)
 else:
     srcWiki, _ = xmlrpc_conninit(wiki, username, password)

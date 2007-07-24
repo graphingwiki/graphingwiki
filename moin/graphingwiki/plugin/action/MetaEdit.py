@@ -114,7 +114,11 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
 
     if request.form.has_key('save'):
-        msg = process_edit(request, request.form)
+        msgs = process_edit(request, request.form)
+        msg = ''
+
+        for line in msgs:
+            msg += line + request.formatter.linebreak(0)
 
         request.reset()
         request.page.send_page(request, msg=msg)

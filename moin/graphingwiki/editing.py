@@ -275,13 +275,12 @@ def process_edit(request, input):
     # Done reading, will start writing now
     globaldata.closedb()
 
-    msg = ''
+    msg = []
     for keypage in changes:
-        msg += '%s: ' % url_unquote(keypage) + \
-               edit_meta(request, url_unquote(keypage),
-                         changes[keypage]['old'],
-                         changes[keypage]['new']) + \
-                         request.formatter.linebreak(0)
+        msg.append('%s: ' % url_unquote(keypage) + \
+                   edit_meta(request, url_unquote(keypage),
+                             changes[keypage]['old'],
+                             changes[keypage]['new']))
 
     return msg
 

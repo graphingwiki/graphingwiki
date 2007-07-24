@@ -41,15 +41,17 @@ def execute(xmlrpcobj, page, input, action='add'):
     # Expects MetaTable arguments
     globaldata, pagelist, metakeys = metatable_parseargs(request, page)
 
+    output = {}
     # Add existing metadata so that values would be added
-    for pair in input:
-        keypage, key = [urlquote(x) for x in pair.split('!')]
+    for key in input:
+        pair = '%s!%s' % (urlquote(page), key)
+        output[pair] = input[key]
 
         if key in metakeys:
             if action == 'repl':
                 # Add similar, purge rest
                 old = getmetavalues(globaldata, urlquote(page), key)
-                src = set(input[pair])
+                src = set(output[pair])
                 tmp = set(src).intersection(set(old))
                 dst = []
                 # Due to the structure of the edit function,
@@ -79,16 +81,16 @@ def execute(xmlrpcobj, page, input, action='add'):
                         dst.append(u'')
                 if src:
                     dst.extend(src)
-                input[pair] = dst
+                output[pair] = dst
             else:
                 # Do not add a meta value twice
                 src = getmetavalues(globaldata, urlquote(page), key)
                 for val in src:
-                    if val in input[pair]:
-                        input[pair].remove(val)
-                input[pair].extend(src)
+                    if val in output[pair]:
+                        output[pair].remove(val)
+                output[pair].extend(src)
 
     # Close db
     globaldata.closedb()
 
-    return process_edit(request, input)
+    return process_edit(request, output)
