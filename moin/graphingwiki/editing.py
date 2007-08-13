@@ -69,18 +69,23 @@ def check_link(all_re, item):
 
     return out
 
-def getpage(name):
-    # RequestCLI does not like unicode input
-    if isinstance(name, unicode):
-        pagename = encode(name)
-    else:
-        pagename = name
+def getpage(name, request=None):
+    if not request:
+        # RequestCLI does not like unicode input
+        if isinstance(name, unicode):
+            pagename = encode(name)
+        else:
+            pagename = name
 
-    req = RequestCLI(pagename=pagename)
-    formatter = TextFormatter(req)
-    formatter.setPage(req.page)
-    page = PageEditor(req, name)
-    return page
+        request = RequestCLI(pagename=pagename)
+
+        formatter = TextFormatter(request)
+        formatter.setPage(request.page)
+        request.formatter = formatter
+
+    page = PageEditor(request, name)
+
+    return request, page
 
 def getkeys(globaldata, name):
     page = globaldata.getpage(name)
@@ -162,9 +167,8 @@ def get_pages(request):
     return pages
 
 def edit(pagename, editfun, request=None):
-    p = getpage(pagename)
-    if not request:
-        request = p.request
+    request, p = getpage(pagename, request)
+
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
 
