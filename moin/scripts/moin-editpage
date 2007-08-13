@@ -27,5 +27,5 @@ if __name__ == '__main__':
 
     pagename = args[2]
 
-    mytext = sys.stdin.read()
+    mytext = unicode(sys.stdin.read(), sys.getfilesystemencoding())
     savetext(pagename, mytext)

@@ -102,7 +102,7 @@ class GraphData(object):
         # they're handled in load_graph. This way the cache avoids
         # tough decisions on whether to cache content for a
         # certain user or not
-        
+
         # try to establish whether we have to read the damn thing again
         new_mtime = self.db.get(pagename, {}).get('mtime', 0)
         old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)

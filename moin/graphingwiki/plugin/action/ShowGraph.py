@@ -908,6 +908,10 @@ class GraphShower(object):
         colorURL = self.getURLns(self.colorby)
         per_row = 0
 
+        # Formatting features here!
+        legend.bgcolor = "transparent"
+        legend.pencolor = "black"
+
         # Add nodes, edges to legend
         # Edges
         if not self.hidedges:

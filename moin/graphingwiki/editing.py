@@ -161,8 +161,10 @@ def get_pages(request):
 
     return pages
 
-def edit(pagename, request, editfun):
+def edit(pagename, editfun, request=None):
     p = getpage(pagename)
+    if not request:
+        request = p.request
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
 
@@ -193,7 +195,8 @@ def edit(pagename, request, editfun):
 
     except p.Unchanged:
         msg = u'Unchanged'
-    return msg
+
+    return msg, p
 
 def _fix_key(key):
     if not isinstance(key, unicode):
@@ -259,7 +262,9 @@ def edit_meta(request, pagename, oldmeta, newmeta):
 
         return oldtext
 
-    return edit(pagename, request, editfun)
+    msg, p = edit(pagename, editfun, request)
+
+    return msg
 
 def process_edit(request, input):
     # request.write(repr(request.form) + '<br>')
@@ -314,10 +319,24 @@ def process_edit(request, input):
 
     return msg
 
-def savetext(request, pagename, newtext):
+def savetext(pagename, newtext):
+    """ Savetext - a function to be used by local CLI scripts that
+    modify page content directly.
+
+    """
     def editfun(pagename, oldtext):
         return newtext
-    return edit(pagename, request, newtext)
+
+    # For some reason when saving a page with RequestCLI,
+    # the pagelinks will present problems with patterns
+    # unless explicitly cached
+    msg, p = edit(pagename, editfun)
+    if msg != u'Unchanged':
+        req = p.request
+        req.page = p
+        p.getPageLinks(req)
+
+    return msg
 
 def metatable_parseargs(request, args, globaldata=None):
     # Category, Template matching regexps
