@@ -46,9 +46,13 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
     try:
         globaldata.getpage(urlquote(page))
     except KeyError:
+        # Don't litter readlocks, trigger save timeouts
+        globaldata.closedb()
         if createpage:
             pageobj = PageEditor(request, page)
             msg = pageobj.saveText(' ', 0)
+            # Continue reading
+            globaldata.opendb()
             pass
 
     output = {}

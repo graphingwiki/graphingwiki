@@ -20,6 +20,12 @@ from MoinMoin import config
 from graphingwiki.patterns import qstrip_p, encode
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect
 
+def handle_error(result):
+    # Us being here means that an error has occurred
+    errno, err = xmlrpc_error(result)
+    sys.stderr.write("Error %s: %s\n" % (errno, err))
+    sys.exit(1)
+
 usage = "usage: %prog [options] wikiurl"
 parser = OptionParser(usage=usage)
 
@@ -31,12 +37,16 @@ parser.add_option("-m", "--match", dest="match_args", action='append',
                   help="Get only pages that match arguments")
 parser.add_option("-K", "--keys_only", action="store_true", dest="keysonly",
                   default=False, help="Get only metadata keys, not values")
-parser.add_option("-a", "--append", dest="app_args",
+parser.add_option("-a", "--append", dest="app_page",
                   help="Append metadata to page")
-parser.add_option("-r", "--replace", dest="repl_args",
+parser.add_option("-r", "--replace", dest="repl_page",
                   help="Replace metadata on page")
+parser.add_option("-A", "--batch_append", dest="app_file",
+                  help="Append metadata based on a semicolon-delimited CSV file in a batch fashion. First row states the keys, first colums states the pages")
+parser.add_option("-R", "--batch_replace", dest="repl_file",
+                  help="Replace metadata based on a semicolon-delimited CSV file in a batch fashion. First row states the keys, first colums states the pages")
 parser.add_option("-s", "--set", dest="set_args", action='append',
-                  help="The metadata to be appended or replaced")
+                  help="The metadata to be appendd or replaced")
 
 options, args = parser.parse_args()
 
@@ -56,12 +66,48 @@ class ArgError(Exception):
     def __str__(self):
         return repr(self.value)  
 
-if options.repl_args or options.app_args:
-    if options.app_args:
-        page = unicode(options.app_args, config.charset)
+if options.app_file or options.repl_file:
+    if options.app_file:
+        method = 'add'
+        fname = options.app_file
+    else:
+        method = 'repl'
+        fname = options.repl_file
+
+    reader = csv.reader(open(fname, "rb"), delimiter=';',
+                        quoting=csv.QUOTE_NONE)
+
+    # Keys from first row, ignore the key for first column
+    keys = reader.next()[1:]
+
+    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+
+    # Data in next rows
+    for row in reader:
+        input = {}
+
+        # First column == page name
+        page = unicode(row[0], config.charset)
+
+        # enumerate values, ignore first column
+        for i, val in enumerate(row[1:]):
+            input.setdefault(keys[i], []).append(val)
+
+        result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method)
+
+        if isinstance(result, list):
+            print '\n'.join(result)
+        else:
+            handle_error(result)
+
+    sys.exit(0)
+
+if options.repl_page or options.app_page:
+    if options.app_page:
+        page = unicode(options.app_page, config.charset)
         method = 'add'
     else:
-        page = unicode(options.repl_args, config.charset)
+        page = unicode(options.repl_page, config.charset)
         method = 'repl'
         
     input = {}
@@ -111,7 +157,4 @@ else:
 
         sys.exit(0)
 
-# Us being here means that an error has occurred
-errno, err = xmlrpc_error(result)
-sys.stderr.write("Error %s: %s\n" % (errno, err))
-sys.exit(1)
+handle_error(result)
