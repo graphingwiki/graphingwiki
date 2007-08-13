@@ -73,8 +73,15 @@ def t_cell(macro, vals, head=0):
             out = out + macro.formatter.pagelink(1, data)
 
         if src == 'link':
+            # Check for link type
             link = check_link(macro.all_re, data)
-            if not link:
+            # If it does not match for any specific link type,
+            # just make a page link. Also, as
+            # u'SomePage/SomeOther Page' matches to
+            # ('word', 'SomePage/SomeOther', detect this and make
+            # a normal link
+            if (not link \
+                or link[1] != data):
                 out = out + macro.formatter.pagelink(1, data)
                 out = out + macro.formatter.text(data)
             else:

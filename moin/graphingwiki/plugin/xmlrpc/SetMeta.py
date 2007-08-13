@@ -11,6 +11,7 @@ import xmlrpclib
 
 from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
+from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.patterns import encode
 from graphingwiki.editing import metatable_parseargs, getmetavalues
@@ -24,7 +25,7 @@ def urlquote(s):
 # Gets data in the same format as process_edit
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
-def execute(xmlrpcobj, page, input, action='add'):
+def execute(xmlrpcobj, page, input, action='add', createpage=True):
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
@@ -40,6 +41,15 @@ def execute(xmlrpcobj, page, input, action='add'):
 
     # Expects MetaTable arguments
     globaldata, pagelist, metakeys = metatable_parseargs(request, page)
+
+    # Create page if it does not exists, and so desired
+    try:
+        globaldata.getpage(urlquote(page))
+    except KeyError:
+        if createpage:
+            pageobj = PageEditor(request, page)
+            msg = pageobj.saveText(' ', 0)
+            pass
 
     output = {}
     # Add existing metadata so that values would be added

@@ -20,6 +20,7 @@ from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request import RequestCLI
+from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
@@ -41,7 +42,7 @@ linktypes = ["wikiname_bracket", "word",
 
 def formatting_rules(request, parser):
     rules = parser.formatting_rules.replace('\n', '|')
-    
+
     if request.cfg.bang_meta:
         rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
             'word_rule': Parser.word_rule,
@@ -57,14 +58,16 @@ def formatting_rules(request, parser):
 def check_link(all_re, item):
     # Go through the string with formatting operations,
     # return true if it matches a known linktype
+    out = None
+
     for match in all_re.finditer(item):
         for type, hit in match.groupdict().items():
             if hit is None:
                 continue
             if type in linktypes:
-                return (type, hit)
+                out = (type, hit)
 
-    return None
+    return out
 
 def getpage(name):
     # RequestCLI does not like unicode input
@@ -74,6 +77,8 @@ def getpage(name):
         pagename = name
 
     req = RequestCLI(pagename=pagename)
+    formatter = TextFormatter(req)
+    formatter.setPage(req.page)
     page = PageEditor(req, name)
     return page
 
@@ -99,7 +104,32 @@ def getvalues(globaldata, name, key):
     # edge between two pages
     if key in page.get('out', {}):
         # Add values and their sources
-        vals.update(set((x, 'link') for x in page['out'][key]))
+        for target in page['out'][key]:
+            # Handling attachment URL:s
+            try:
+                # Try to get the URL attribute of the link target
+                dst = globaldata.getpage(target)
+                url = dst.get('meta', {}).get('URL', set([''])).pop()
+                
+                # If the URL attribute of the target looks like the
+                # target is a local attachment, add mention of it
+                if 'AttachFile' in url and url.startswith('".'):
+                    # Get target text from
+                    # ./General public?action=AttachFile&do=get&target=bgl.txt
+                    target = [x for x in url.split('&')
+                              if x.startswith('target=')][0]
+                    target = target.strip('"')[7:]
+
+                    # If page not mentioned in target, add it
+                    if not '/' in target:
+                        tpage = url.split('?')[0].split('/')[1]
+                        target = "%s/%s" % (tpage, target)
+
+                    # last, add attachment
+                    target = 'attachment:' + target.replace(' ', '_')
+            except:
+                pass
+            vals.add((target, 'link'))
     return vals
 
 def getmetavalues(globaldata, name, key):
@@ -322,6 +352,9 @@ def metatable_parseargs(request, args, globaldata=None):
 
         # Normal pages, encode and move on
         if not regexp_re.match(arg):
+            # If it's a subpage link eg. /Koo, we must add parent page
+            if arg.startswith('/'):
+                arg = request.page.page_name + arg
             arglist.append(url_quote(encode(arg)))
             continue
 
