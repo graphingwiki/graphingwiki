@@ -8,6 +8,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+import re
 import sys
 import getpass
 import csv
@@ -88,6 +89,8 @@ if options.app_file or options.repl_file:
 
         # First column == page name
         page = unicode(row[0], config.charset)
+        # replace spaces with underscores
+        page = re.sub('\s+', '_', page)
 
         # enumerate values, ignore first column
         for i, val in enumerate(row[1:]):
