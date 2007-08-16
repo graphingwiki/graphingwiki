@@ -58,7 +58,7 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
     output = {}
     # Add existing metadata so that values would be added
     for key in input:
-        pair = '%s!%s' % (urlquote(page), key)
+        pair = '%s!%s' % (page, key)
         output[pair] = input[key]
 
         if key in metakeys:

@@ -581,8 +581,13 @@ def xmlrpc_connect(func, wiki, *args, **kwargs):
                 'faultString': 'Cannot connect to server at %s (%d %s)' %
                 (wiki, e.errcode, e.errmsg)}
     except (socket.error, socket.gaierror), e:
-        return {'faultCode': e[0],
-                'faultString': e[1]}
+        # debug, something fishy going on here
+        if len(e) == 2:
+            return {'faultCode': e[0],
+                    'faultString': e[1]}
+        else:
+            return {'faultCode': '999',
+                    'faultString': repr(e)}
 
 def xmlrpc_attach(wiki, page, fname, username, password, method,
                   content='', overwrite=False):
