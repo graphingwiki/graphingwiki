@@ -720,7 +720,7 @@ class GraphShower(object):
             obj.color = ':'.join(self.hashcolor(x) for x in obj.linktype)
             if self.edgelabels:
                 obj.decorate = 'true'
-                obj.label = ','.join(url_unquote(x) for x in obj.linktype
+		obj.label = ','.join(url_unquote(x) for x in obj.linktype
                                      if x != '_notype')
         return outgraph
 
@@ -908,9 +908,9 @@ class GraphShower(object):
         colorURL = self.getURLns(self.colorby)
         per_row = 0
 
-        # Formatting features here!
-        legend.bgcolor = "transparent"
-        legend.pencolor = "black"
+	# Formatting features here! 
+	legend.bgcolor = "transparent" 
+        legend.pencolor = "black" 
 
         # Add nodes, edges to legend
         # Edges
@@ -963,51 +963,90 @@ class GraphShower(object):
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 
-        request.write(u"<table>\n<tr>\n")
+
+	# PANEL 1 
+        request.write(u'<a href="javascript:toggle(\'tab0\')">View & Include</a><br>\n')
+        request.write(u'<table border="1" id="tab0"><tr>\n')
 
         # outputformat
-        request.write(u"<td>\n" + _("Output format") + u"<br>\n")
+        request.write(u"<td valign=top>\n")
+        request.write(u"<u>" + _("Format:") + u"</u><br>\n")
+        request.write(u'<select name="format"><br>\n')
         for type in self.available_formats:
-            request.write(u'<input type="radio" name="format" ' +
-                          u'value="%s"%s%s<br>\n' %
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
                           (type,
-                           type == self.format and " checked>" or ">",
-                           type))
-
+                          type == self.format and " selected>" or ">",
+                          type))
+        request.write(u'</select><br>\n')
 
         # Depth
-        request.write(_("Link depth") + u"<br>\n")
+        request.write(u"<u>" + _("Link depth") + u"</u><br>\n")
         request.write(u'<input type="text" name="depth" ' +
                       u'size=2 value="%s"><br>\n' % str(self.depth))
 
+        # hide edges
+        request.write(u"<u>" + _("Edges:") + u"</u><br>\n")
+        request.write(u'<input type="checkbox" name="hidedges" ' +
+                      u'value="1"%s\n' %
+                      (self.hidedges and ' checked>' or '>') +
+                      _('Hide edges'))
+
+        # show edge labels
+        request.write(u'<br><input type="checkbox" name="edgelabels" ' +
+                      u'value="1"%s\n' %
+                      (self.edgelabels and ' checked>' or '>') +
+                      _('Edge labels'))
+
+        request.write(u'</div>')
+
+        # Include
+	request.write(u"<td valign=top>\n")
+
         # categories
-        request.write(u"<td>" + _("Include page categories") + "<br>\n")
+        request.write(u"<u>" + _("Categories:") + u"</u><br>\n")
+        if len(self.allcategories) > 5:
+	    request.write(u'<select name="categories" multiple size=6><br>\n')
+
         for type in self.allcategories:
-            request.write(u'<input type="checkbox" name="categories" ' +
+            if len(self.allcategories) > 5:
+                request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (type,
+                          type in self.categories and " selected>" or ">",
+                          type))
+            else:
+                request.write(u'<input type="checkbox" name="categories" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type in self.categories and " checked>" or ">",
                            type))
 
+        if len(self.allcategories) > 5: 
+	    request.write(u'</select><br>\n')
+
+
         # otherpages
         otherpages = quotetoshow(', '.join(self.otherpages))
-        request.write(_("Include other pages") + u"<br>\n")
+        request.write(u"<td valign=top>\n<u>" + _("Other pages:") + u"</u><br>\n")
         request.write(u'<input type="text" name="otherpages" ' +
                       u'size=20 value="%s"><br>\n' % otherpages)
 
         # limit
+        request.write(u"<u>" + _("Include rules:") + u"</u><br>\n")
         request.write(u'<input type="radio" name="limit" ' +
                       u'value="start"%s' %
-                      (self.limit == 'start' and ' checked>' or '>') + 
-                      _('Show links between these pages only') + u'<br>\n')
+                      (self.limit == 'start' and ' checked>' or '>') +
+                      _('These pages only') + u'<br>\n')
         request.write(u'<input type="radio" name="limit" ' +
                       u'value="wiki"%s' %
-                      (self.limit == 'wiki' and ' checked>' or '>') + 
-                      _('Only include pages in this wiki') + u'<br>\n')
+                      (self.limit == 'wiki' and ' checked>' or '>') +
+                      _('From this wiki only') + u'<br>\n')
         request.write(u'<input type="radio" name="limit" ' +
                       u'value=""%s' %
                       (self.limit == '' and ' checked>' or '>') +
-                      _('Include all links') + u'<br>\n')
+                      _('All links') + u'<br>\n')
+
+        request.write(u'</table>\n')
+
 
         def sortShuffle(types):
             types = sorted(types)
@@ -1016,52 +1055,101 @@ class GraphShower(object):
                 types.insert(0, 'WikiCategory')
             return types
 
+
+	# PANEL 2
+        request.write(u'<a href="javascript:toggle(\'tab1\')">Color & Order</a><br>\n')
+        request.write(u'<table border="1" id="tab1"><tr>\n')
+
         # colorby
-        request.write(u"<td>\n" + _('Color by') + u"<br>\n")
+        request.write(u"<td valign=top>\n")
+	request.write(u"<u>" + _("Color by:") + u"</u><br>\n")
         types = sortShuffle(self.nodeattrs)
+
+	if len(types) > 5: 
+	    request.write(u'<select name="colorby" size=6><br>\n')
+
         for type in types:
-            request.write(u'<input type="radio" name="colorby" ' +
+	    if len(types) > 5:
+                request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (type,
+                          type == self.colorby and " selected>" or ">",
+                          quotetoshow(type)))
+            else:
+                request.write(u'<input type="radio" name="colorby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type == self.colorby and " checked>" or ">",
                            quotetoshow(type)))
-        request.write(u'<input type="radio" name="colorby" ' +
+        if len(types) > 5:
+            request.write(u'<option value=""%s%s</option><br>\n' %
+                          (self.colorby == '' and " selected>" or ">",
+                          _("no coloring")))
+            request.write(u'</select><br>\n')
+        else:
+            request.write(u'<input type="radio" name="colorby" ' +
                       u'value=""%s%s<br>\n' %
                       (self.colorby == '' and " checked>" or ">",
                        _("no coloring")))
+
         if self.colorby:
+	    request.write(u"<td valign=top>\n")
+            request.write(u"<u>" + _("Color type:") + u"</u><br>\n")
             request.write(u'<select name="colorscheme">')
             for ord, name in zip(['random', 'gradient'],
                                  [_('random'), _('gradient')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.colorscheme == ord and 'selected' or '',
                                ord, ord, name))
-            request.write(u'</select><br>\n' + _('Color regexp') + '<br>\n')
+            request.write(u'</select><br>\n<u>' + _('Color regexp:') + '</u><br>\n')
             request.write(u'<input type=text name="colorreg" size=10 ' +
                           u'value="%s"><br>\n' % str(self.colorreg))
-            request.write(_('substitution') + '<br>\n')
+            request.write(u'<u>' + _('substitution:') + '</u><br>\n')
             request.write(u'<input type=text name="colorsub" size=10 ' +
                           u'value="%s"><br>\n' % str(self.colorsub))
-
+	
         # orderby
-        request.write(u"<td>\n" + _('Order by') + "<br>\n")
+        request.write(u"<td valign=top>\n")
+	request.write(u"<u>" + _("Order by:") + u"</u><br>\n")
         types = sortShuffle(self.nodeattrs)
+
+	if len(types) > 5: 
+	    request.write(u'<select name="orderby" size=6><br>\n')
+
         for type in types:
-            request.write(u'<input type="radio" name="orderby" ' +
+	    if len(types) > 5:
+                request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (type,
+                          type == self.orderby and " selected>" or ">",
+                          quotetoshow(type)))
+            else:
+                request.write(u'<input type="radio" name="orderby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type == self.orderby and " checked>" or ">",
                            quotetoshow(type)))
-        request.write(u'<input type="radio" name="orderby" ' +
+        if len(types) > 5:
+            request.write(u'<option value=""%s%s</option><br>\n' %
+                          (self.orderby == '' and " selected>" or ">",
+                          _("no ordering")))
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                      ('_hier',
+                       self.orderby == '_hier' and " selected>" or ">",
+                       _("hierarchical")))
+            request.write(u'</select><br>\n')
+        else:
+            request.write(u'<input type="radio" name="orderby" ' +
                       u'value=""%s%s<br>\n' %
                       (self.orderby == '' and " checked>" or ">",
                        _("no ordering")))
-        request.write(u'<input type="radio" name="orderby" ' +
+            request.write(u'<input type="radio" name="orderby" ' +
                       u'value="%s"%s%s<br>\n' %
                       ('_hier',
                        self.orderby == '_hier' and " checked>" or ">",
                        _("hierarchical")))
+	
         if self.orderby:
+	    request.write(u"<td valign=top>\n")
+            request.write(u"<u>" + _("Order direction:") + u"</u><br>\n")
             request.write('<select name="dir">')
             for ord, name in zip(['TB', 'BT', 'LR', 'RL'],
                               [_('top to bottom'), _('bottom to top'),
@@ -1070,107 +1158,182 @@ class GraphShower(object):
                               (self.rankdir == ord and 'selected' or '',
                                ord, ord, name))
             if self.orderby != '_hier':
-                request.write(u'</select><br>\n' + _('Order regexp') +
-                              u'<br>\n')
+                request.write(u'</select><br>\n<u>' + _('Order regexp:') +
+                              u'</u><br>\n')
                 request.write(u'<input type=text name="orderreg" size=10 ' +
                               u'value="%s"><br>\n' % str(self.orderreg))
-                request.write(_('substitution') + u'<br>\n')
+                request.write(u'<u>' + _('substitution:') + u'</u><br>\n')
                 request.write(u'<input type=text name="ordersub" size=10 ' +
                               u'value="%s"><br>\n' % str(self.ordersub))
-            
+
+	request.write(u'</table>\n')
+
+
+        # PANEL 3 
+        request.write(u'<a href="javascript:toggle(\'tab2\')">Filters</a><br>\n')
+        request.write(u'<td valign=top><table border="1" id="tab2"><tr>\n')
+
         # filter edges
-        request.write(u'<td>\n' + _('Filter edges') + u'<br>\n')
+        request.write(u'<td valign=top>\n<u>' + _('Edges:') + u'</u><br>\n')
         alledges = list(self.coloredges) + filter(self.oftype_p,
                                                   self.filteredges)
         alledges.sort()
+
+	if len(alledges) > 5: 
+	     request.write(u'<select name="filteredges" multiple size=6><br>\n')
+
         for type in alledges:
-            request.write(u'<input type="checkbox" name="filteredges" ' +
+            if len(alledges) > 5:
+                request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (type,
+                          type in self.filteredges and " selected>" or ">",
+                          quotetoshow(type)))
+            else:
+                request.write(u'<input type="checkbox" name="filteredges" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
-                           type in self.filteredges and " checked>" or ">",
-                           quotetoshow(type)))
-        request.write(u'<input type="checkbox" name="filteredges" ' +
+                          type in self.filteredges and " checked>" or ">",
+                          quotetoshow(type)))
+
+        if len(alledges) > 5:
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                      ("_notype",
+                      "_notype" in self.filteredges and " selected>" or ">",
+                      _("No type")))
+            request.write(u'</select><br>\n')
+        else:
+            request.write(u'<input type="checkbox" name="filteredges" ' +
                       u'value="%s"%s%s<br>\n' %
                       ("_notype",
-                       "_notype" in self. filteredges and " checked>" or ">",
-                       _("No type")))
+                      "_notype" in self.filteredges and
+                      " checked>"
+                      or ">",
+                      _("No type")))
+	
+	# filter categories
+        if self.allcategories:
+            request.write(u"<td valign=top>\n<u>" + _('Categories:') + u"</u><br>\n")
 
-        # hide edges
-        request.write(u'<br>' + _('Hide edges') + 
-                      u'<input type="checkbox" name="hidedges" ' +
-                      u'value="1"%s\n' %
-                      (self.hidedges and ' checked>' or '>'))
-
-        # show edge labels
-        request.write(u'<br>' + _('Edge labels') + 
-                      u'<input type="checkbox" name="edgelabels" ' +
-                      u'value="1"%s\n' %
-                      (self.edgelabels and ' checked>' or '>'))
+            if len(self.allcategories) > 5: 
+		request.write(u'<select name="filtercats" multiple size=6><br>\n')
+            for type in self.allcategories:
+                if len(self.allcategories) > 5:
+                    request.write(u'<option value="%s"%s%s</option><br>\n' %
+                              (type,
+                              type in self.filtercats and " selected>" or ">",
+                              type))
+                else:
+                    request.write(u'<input type="checkbox" name="filtercats" ' +
+                              u'value="%s"%s%s<br>\n' %
+                              (type,
+                               type in self.filtercats and " checked>" or ">",
+                               type))
+	    if len(self.allcategories) > 5: 
+		request.write(u'</select><br>\n')
 
         # filter nodes (related to colorby)
         if self.colorby:
-            request.write(u'<td>\n' + _('Filter from colored') + u'<br>\n')
+            request.write(u"<td valign=top>\n<u>" + _('Colored:') + u"</u><br>\n")
             allcolor = set(filter(self.oftype_p, self.filtercolor))
             allcolor.update(self.colorfiltervalues)
             for txt in [x for x in self.colorfiltervalues if ',' in x]:
                 allcolor.update(qpirts_p(txt))
             allcolor = list(allcolor)
             allcolor.sort()
+  
+            if len(allcolor) > 5: 
+		request.write(u'<select name="filtercolor" multiple size=6><br>\n')
+
             for type in allcolor:
-                request.write(u'<input type="checkbox" name="filtercolor" ' +
+		if len(allcolor) > 5:
+                    request.write(u'<option value="%s"%s%s</option><br>\n' % 
+		              (quoteformstr(type), 
+			      type in self.filtercolor and " selected>" or ">",
+			      quotetoshow(type[1:-1])))
+                else:
+                    request.write(u'<input type="checkbox" name="filtercolor" ' +
                               u'value="%s"%s%s<br>\n' %
                               (quoteformstr(type),
                                type in self.filtercolor and " checked>" or ">",
                                quotetoshow(type[1:-1])))
-            request.write(u'<input type="checkbox" name="filtercolor" ' +
-                          u'value="%s"%s%s<br>\n' %
-                          ("_notype",
-                           "_notype" in self.filtercolor and
-                           " checked>"
-                           or ">",
-                           _("No type")))
 
-        if getattr(self, 'orderby', '_hier') != '_hier':
-            # filter nodes (related to orderby)
-            request.write(u'<td>\n' + _('Filter from ordered') + u'<br>\n')
+            if len(allcolor) > 5:
+		request.write(u'<option value="%s"%s%s</option><br>\n' %
+		  	  ("_notype",
+		  	  "_notype" in self.filtercolor and " selected>" or ">",
+		          _("No type")))
+		request.write(u'</select><br>\n')
+    	    else:
+		request.write(u'<input type="checkbox" name="filtercolor" ' +
+		          u'value="%s"%s%s<br>\n' %
+		          ("_notype",
+		          "_notype" in self.filtercolor and
+		          " checked>"
+		          or ">",
+		          _("No type")))
+
+	# filter nodes (related to orderby)
+	if getattr(self, 'orderby', '_hier') != '_hier':
+    	    request.write(u'<td valign=top>\n<u>' + _('Ordered:') + u'</u><br>\n')
             allorder = set(filter(self.oftype_p, self.filterorder))
             allorder.update(self.orderfiltervalues)
             for txt in [x for x in self.orderfiltervalues if ',' in x]:
                 allorder.update(qpirts_p(txt))
             allorder = list(allorder)
             allorder.sort()
+
+            if len(allorder) > 5: 
+		request.write(u'<select name="filterorder" multiple size=6><br>\n')
+
             for type in allorder:
-                request.write(u'<input type="checkbox" name="filterorder" ' +
+                if len(allorder) > 5:
+                    request.write(u'<option value="%s"%s%s</option><br>\n' %
+                              (quoteformstr(type),
+                              type in self.filterorder and " selected>" or ">",
+                              quotetoshow(type[1:-1])))
+                else:
+                    request.write(u'<input type="checkbox" name="filterorder" ' +
                               u'value="%s"%s%s<br>\n' %
                               (quoteformstr(type),
                                type in self.filterorder and " checked>" or ">",
                                quotetoshow(type[1:-1])))
-            request.write(u'<input type="checkbox" name="filterorder" ' +
+
+            if len(allorder) > 5:
+                request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          ("_notype",
+                          "_notype" in self.filterorder and " selected>" or ">",
+                          _("No type")))
+                request.write(u'</select><br>\n')
+            else:
+                request.write(u'<input type="checkbox" name="filterorder" ' +
                           u'value="%s"%s%s<br>\n' %
                           ("_notype",
                            "_notype" in self.filterorder
                            and " checked>"
                            or ">",
                            _("No type")))
-
-        if self.allcategories:
-            # filter categories
-            request.write(u"<td>" + _('Filter page categories') + u"<br>\n")
-            for type in self.allcategories:
-                request.write(u'<input type="checkbox" name="filtercats" ' +
-                              u'value="%s"%s%s<br>\n' %
-                              (type,
-                               type in self.filtercats and " checked>" or ">",
-                               type))
+        request.write(u"</table>\n")
+        request.write(u'</div>\n')
 
         # End form
-        request.write(u"</table>\n")
         request.write(u'<input type=submit name=graph ' +
                       'value="%s">\n' % _('Create'))
         request.write(u'<input type=submit name=test ' +
                       'value="%s">\n' % _('Test'))
         request.write(u'<input type=submit name=inline ' +
                       'value="%s">\n</form>\n' % _('Inline'))
+
+        request.write(u'<script type="text/javascript">')
+        request.write(u'document.getElementById(\'tab0\').style.display="block";\n')
+        request.write(u'document.getElementById(\'tab1\').style.display="none";\n')
+        request.write(u'document.getElementById(\'tab2\').style.display="none";\n')
+
+        request.write(u'function toggle(table){\n')
+        request.write(u'var tableElementStyle=document.getElementById(table).style;\n')
+        request.write(u'if (tableElementStyle.display=="none"){\n')
+        request.write(u'tableElementStyle.display="block";\n')
+        request.write(u'}else{tableElementStyle.display="none";}\n')
+        request.write(u'}</script>\n')
 
     def generateLayout(self, outgraph):
         # Add all data to graph
