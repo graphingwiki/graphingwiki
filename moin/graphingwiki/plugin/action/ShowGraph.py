@@ -720,7 +720,7 @@ class GraphShower(object):
             obj.color = ':'.join(self.hashcolor(x) for x in obj.linktype)
             if self.edgelabels:
                 obj.decorate = 'true'
-		obj.label = ','.join(url_unquote(x) for x in obj.linktype
+                obj.label = ','.join(url_unquote(x) for x in obj.linktype
                                      if x != '_notype')
         return outgraph
 
