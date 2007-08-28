@@ -71,6 +71,9 @@ def shelve_add_in(shelve, (frm, to), linktype):
          else:
              temp['in'][linktype].append(frm)
 
+         # Notification that the destination has changed
+         temp['mtime'] = time()
+         
          shelve[to] = temp
 
 # Add out-links from local nodes to current node
@@ -105,6 +108,10 @@ def shelve_remove_in(shelve, (frm, to), linktype):
                 temp['in'][type].remove(frm)
                 if not temp['in'][type]:
                     del temp['in'][type]
+                    
+                # Notification that the destination has changed
+                temp['mtime'] = time()
+                
 #                sys.stderr.write("Hey man, I think I did it!\n")
         shelve[to] = temp
 

@@ -214,7 +214,7 @@ def edit_meta(request, pagename, oldmeta, newmeta):
         def macro_subfun(mo):
             old_keyval_pair = mo.group(2).split(',')
 
-            # Strip away empty metatables [[MetaTable()]]
+            # Strip away empty metadatas [[MetaData()]]
             # and placeholders [[MetaData(%s,)]]
             # (Placeholders should become obsolete with MetaEdit)
             if len(old_keyval_pair) < 2:
