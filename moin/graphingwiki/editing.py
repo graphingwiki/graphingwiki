@@ -58,16 +58,12 @@ def formatting_rules(request, parser):
 def check_link(all_re, item):
     # Go through the string with formatting operations,
     # return true if it matches a known linktype
-    out = None
-
     for match in all_re.finditer(item):
         for type, hit in match.groupdict().items():
             if hit is None:
                 continue
             if type in linktypes:
-                out = (type, hit)
-
-    return out
+                return (type, hit)
 
 def getpage(name, request=None):
     if not request:
@@ -114,23 +110,13 @@ def getvalues(globaldata, name, key):
             try:
                 # Try to get the URL attribute of the link target
                 dst = globaldata.getpage(target)
-                url = dst.get('meta', {}).get('URL', set([''])).pop()
+                url = dst.get('meta', {}).get('URL', set(['']))
+                url = list(url)[0]
                 
                 # If the URL attribute of the target looks like the
-                # target is a local attachment, add mention of it
+                # target is a local attachment, correct the link
                 if 'AttachFile' in url and url.startswith('".'):
-                    # Get target text from
-                    # ./General public?action=AttachFile&do=get&target=bgl.txt
-                    target = [x for x in url.split('&')
-                              if x.startswith('target=')][0]
-                    target = target.strip('"')[7:]
-
-                    # If page not mentioned in target, add it
-                    if not '/' in target:
-                        tpage = url.split('?')[0].split('/')[1]
-                        target = "%s/%s" % (tpage, target)
-
-                    # last, add attachment
+                    target = url_unquote(target)
                     target = 'attachment:' + target.replace(' ', '_')
             except:
                 pass

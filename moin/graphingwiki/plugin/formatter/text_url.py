@@ -163,15 +163,27 @@ self.page.page_name, wikitail)), kw)
     def attachment_link(self, url, text, **kw):
         # Attachment might be referred to as a typed link, eg.
         # [inline:HooPoo/imsi.dot koo: joo]
-        if text.strip():
-            return self.url(True, './' + self.page.page_name + \
-                            '?action=AttachFile&do=get&target=' + url,
-                            kw='local') + [url, text]
+        # This is what the text parameter is for
 
+        # attachment:koo.txt
+        if not '/' in url:
+            page = self.page.page_name
+            pageurl = "%s/%s" % (page, url)
+        # attachment:ExamplePage/koo.txt
+        else:
+            parts = url.split('/')
+            page = '/'.join(parts[:-1])
+            pageurl = url
+            url = parts[-1]
             
-        return self.url(True, './' + self.page.page_name + \
+        if text.strip():
+            return self.url(True, './' + page + \
+                            '?action=AttachFile&do=get&target=' + url,
+                            kw='local') + [pageurl, url, text]
+
+        return self.url(True, './' + page + \
                         '?action=AttachFile&do=get&target=' + url,
-                        kw='local') + [url]
+                        kw='local') + [pageurl, url, pageurl]
 
     def attachment_image(self, url, **kw):
         return self.attachment_link(url, '', **kw)

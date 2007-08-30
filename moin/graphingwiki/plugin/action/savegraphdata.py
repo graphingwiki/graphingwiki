@@ -244,8 +244,17 @@ def parse_link(wikiparse, hit, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
     attrs = replace(hit)
     nodelabel = ''
-    
-    if len(attrs) == 3:
+
+    if len(attrs) == 4:
+        # Attachments, eg:
+        # URL   = Page?action=AttachFile&do=get&target=k.txt
+        # name  = Page/k.txt
+        # label = k.txt
+        nodename = url_quote(encode(attrs[1]))
+        nodeurl = encode(attrs[0])
+        nodelabel = encode(attrs[2])
+    elif len(attrs) == 3:
+        # Local pages
         # Name of node for local nodes = pagename
         nodename = url_quote(encode(attrs[1]))
         nodeurl = encode(attrs[0])
@@ -282,7 +291,7 @@ def parse_link(wikiparse, hit, type):
                 nodename = quotens(iw)
                 nodelabel = nodename
     else:
-        # Image link, or what have you
+        # Catch-all
         return "", "", "", ""
 
     # augmented links, eg. [:PaGe:Ooh: PaGe]
@@ -290,7 +299,7 @@ def parse_link(wikiparse, hit, type):
                encode(attrs[-1]).split(': ')]
 
     linktype = getlinktype(augdata)
- 
+
     return nodename, nodelabel, nodeurl, linktype
 
 def add_link(globaldata, quotedname, pagegraph, cat_re,
@@ -389,10 +398,11 @@ def execute(pagename, request, text, pagedir, page):
 
     # Include timestamp to current page
     if not globaldata.has_key(quotedname):
-        globaldata[quotedname] = {'mtime': time()}
+        globaldata[quotedname] = {'mtime': time(), 'saved': True}
     else:
         temp = globaldata[quotedname]
         temp['mtime'] = time()
+        temp['saved'] = True
         globaldata[quotedname] = temp
 
     # Overwrite pagegraphfile with the new data

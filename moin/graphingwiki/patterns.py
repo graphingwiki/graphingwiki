@@ -104,15 +104,13 @@ class GraphData(object):
         # certain user or not
 
         # try to establish whether we have to read the damn thing again
-        new_mtime = self.db.get(pagename, {}).get('mtime', 0)
+        new_page = self.db.get(pagename, {})
+        new_mtime = new_page.get('mtime', 0)
         old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)
 #        self.request.write("%s %s %s " % (pagename, new_mtime, old_mtime))
 
-        # load data if it was not loaded or if it was stale
-        # Note that pages that are not in the wiki but are
-        # referenced by other pages have no mtime, and are
-        # hence read every time
-        if (new_mtime and not old_mtime) or (old_mtime < new_mtime):
+        # Load data if it exists but has not been loaded, or if it was stale
+        if (new_page and not old_mtime) or (old_mtime < new_mtime):
             # Currently does not do any exception handling
             self.globaldata[pagename] = self.db[pagename]
 #            self.request.write('*changed\n')
@@ -162,9 +160,9 @@ class GraphData(object):
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'URL'):
             node.URL = './' + pagename
-        # Nodes with pages (i.e. with last page modification time)
-        # can be traversed
-        if page.has_key('mtime'):
+
+        # Nodes representing existing local nodes may be traversed
+        if page.has_key('saved'):
             node.URL += urladd
 
         return graph

@@ -750,8 +750,8 @@ class GraphShower(object):
                 node.URL = url_unquote(node.URL)
                 # If attachment
                 if 'action=AttachFile' in node.URL:
-                    node.label = encode(_("Attachment")) + ":\n" + \
-                                 re.search('target=(.+)&?', node.URL).group(1)
+                    node.label = "%s:\n%s" % (encode(_("Attachment")),
+                                              node.label)
 
             elif len(node.label) == 0 and len(node.URL) > 50:
                 node.label = node.URL[:47] + '...'
@@ -1484,16 +1484,19 @@ class GraphShower(object):
         for edge in outgraph.edges.getall():
             e = outgraph.edges.get(*edge)
             # Fix linktypes to strings
-            lt = ', '.join(filter(self.oftype_p,
-                                  getattr(e, 'linktype', ['_notype'])))
+            linktypes = getattr(e, 'linktype', ['_notype'])
+            lt = ', '.join(linktypes)
+
             e.linktype = lt
 
             val = '%s>%s>%s' % (url_unquote(edge[0]),
                                 lt != '_notype' and url_unquote(lt) or '',
                                 url_unquote(edge[1]))
             # Double URL quoting? I have created a monster!
-            e.URL = self.request.request_uri + '&filteredges=%s' % \
-                    url_quote(lt)
+            filtstr = str()
+            for lt in linktypes:
+                filtstr += '&filteredges=%s' % url_quote(lt)
+            e.URL = self.request.request_uri + filtstr
             e.tooltip = val
             
         return outgraph
