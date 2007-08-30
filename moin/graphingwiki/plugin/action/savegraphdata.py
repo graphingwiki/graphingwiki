@@ -524,6 +524,7 @@ def execute(pagename, request, text, pagedir, page):
                                  matches.groupdict().iteritems()
                                  if hit is not None \
                                  and type in linktypes]
+                        # If link, save as link
                         if match:
                             type, hit = match[0]
 
@@ -542,9 +543,11 @@ def execute(pagename, request, text, pagedir, page):
                                 # -> need to tell our link parser that the
                                 #    link was already saved
                                 dicturl = True
-                                
-                    add_meta(globaldata, pagenode, quotedname,
-                             "[[MetaData(%s,%s)]]" % (key, val))
+
+                    # If it was not link, save as metadata
+                    if not dicturl:
+                        add_meta(globaldata, pagenode, quotedname,
+                                 "[[MetaData(%s,%s)]]" % (key, val))
                     
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
