@@ -103,7 +103,7 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
                     if val in output[pair]:
                         output[pair].remove(val)
                 output[pair].extend(src)
-
+                
     # Close db
     globaldata.closedb()
 

@@ -125,7 +125,7 @@ def getvalues(globaldata, name, key):
 
 def getmetavalues(globaldata, name, key):
     vals = getvalues(globaldata, name, key)
-    
+
     default = []
     for val in vals:
         if val[1] == 'link':
@@ -134,6 +134,15 @@ def getmetavalues(globaldata, name, key):
         # stripping outer quotes and inner quote escapes
         tmp = unicode(url_unquote(val[0]), config.charset).strip('"')
         default.append(tmp.replace('\\"', '"'))
+
+    return default
+
+def getmetalinkvalues(globaldata, name, key):
+    vals = getvalues(globaldata, name, key)
+
+    default = []
+    for val in vals:
+        default.append(val[0])
 
     return default
 
@@ -278,7 +287,7 @@ def process_edit(request, input):
         # At least the key 'save' may be there and should be ignored
         if not '!' in val:
             continue
-        
+
         newvals = input[val]
 
         keypage, key = [urlquote(x) for x in val.split('!')]
@@ -286,7 +295,8 @@ def process_edit(request, input):
         if not request.user.may.write(url_unquote(keypage)):
             continue
 
-        oldvals = getmetavalues(globaldata, keypage, key)
+        oldvals = getmetalinkvalues(globaldata, keypage, key)
+        print oldvals
 
         if oldvals != newvals:
             changes.setdefault(keypage, {})
@@ -294,8 +304,9 @@ def process_edit(request, input):
                 changes[keypage].setdefault('old', {})[key] = []
             else:
                 changes[keypage].setdefault('old', {})[key] = oldvals
-                
+
             changes[keypage].setdefault('new', {})[key] = newvals
+        print changes
 
     # Done reading, will start writing now
     globaldata.closedb()
@@ -566,14 +577,12 @@ def xmlrpc_connect(func, wiki, *args, **kwargs):
         return {'faultCode': 4,
                 'faultString': 'Cannot connect to server at %s (%d %s)' %
                 (wiki, e.errcode, e.errmsg)}
-    except (socket.error, socket.gaierror), e:
-        # debug, something fishy going on here
-        if len(e) == 2:
-            return {'faultCode': e[0],
-                    'faultString': e[1]}
-        else:
-            return {'faultCode': '999',
-                    'faultString': repr(e)}
+    except socket.error, e:
+        return {'faultCode': e.args[0],
+                'faultString': e.args[1]}
+    except socket.gaierror, e:
+        return {'faultCode': e[0],
+                'faultString': e[1]}
 
 def xmlrpc_attach(wiki, page, fname, username, password, method,
                   content='', overwrite=False):
