@@ -46,15 +46,16 @@ try:
     import graphingwiki
 except ImportError:
     sys.stderr.write("Cannot find graphingwiki, exiting...\n")
-    raise
+    sys.exit(1)
 
-try:
-    destdir = os.path.join(args[0], 'data/plugin')
-    if not os.path.isdir(destdir):
-        raise
-except:
+if len(args) != 1:
     parser.print_help()
-    raise
+    sys.exit(1)
+ 
+destdir = os.path.join(args[0], 'data/plugin')
+if not os.path.isdir(destdir):
+    sys.stderr.write("Path %s doesn't exists or it isn't directory.\n" % destdir)
+    sys.exit(1)
 
 def copytree(src, dst, symlinks=False):
     """ Modified from shutil to allow existing directories
@@ -78,9 +79,11 @@ def copytree(src, dst, symlinks=False):
                 copy2(srcname, dstname)
             # XXX What about devices, sockets etc.?
         except (IOError, os.error), why:
-            errors.append((srcname, dstname, why))
+            errors.append((srcname, dstname, str(why)))
     if errors:
-        raise Error, errors
+        for src, dst, why in errors:
+            print "copy from %s to %s failed: %s" % (src, dst, why)
+        sys.exit("gwiki-install failed.")
 
 # Get pkg path
 pkgdir = os.path.join(os.path.dirname(os.path.abspath(graphingwiki.__file__)),
