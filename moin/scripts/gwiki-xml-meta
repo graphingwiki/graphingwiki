@@ -155,7 +155,7 @@ else:
             wr.writerow([urllib.unquote(x) for x in result[0]])
             for row in result[1:]:
                 wr.writerow([urllib.unquote(encode(row[0]))] +
-                             [urllib.unquote(encode(','.join(x)))
+                             [urllib.unquote(encode(x))
                               for x in row[1:]])
 
         sys.exit(0)

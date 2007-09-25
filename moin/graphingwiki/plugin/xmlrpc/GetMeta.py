@@ -10,7 +10,7 @@ import urllib
 
 from MoinMoin import config
 
-from graphingwiki.editing import metatable_parseargs, getmetavalues
+from graphingwiki.editing import metatable_parseargs, getvalues
 
 def url_unquote(s):
     s = urllib.unquote(s)
@@ -36,9 +36,12 @@ def execute(xmlrpcobj, args, keysonly=True):
     # Go through the pages, give list that has
     # the name of the page followed by the values of the keys
     for page in pagelist:
+
         row = [page]
         for key in metakeys:
-            row.append(getmetavalues(globaldata, page, key))
+            for val, typ in getvalues(request, globaldata, page, key):
+                print val
+                row.append(val)
         out.append(row)
 
     # Close db, get out

@@ -14,7 +14,7 @@ import urllib
 from MoinMoin import config
 
 from graphingwiki.patterns import GraphData
-from graphingwiki.editing import getmetavalues
+from graphingwiki.editing import getvalues
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -31,7 +31,14 @@ def execute(macro, args):
 
     try:
         page, key = [urlquote(x.strip()) for x in args.split(',')]
-        vals = getmetavalues(globaldata, page, key)
+
+        # Break if user may not read target page
+        if not request.user.may.read(url_unquote(frompage)):
+            raise
+
+        vals = list()
+        for val, typ in getvalues(request, globaldata, page, key):
+            vals.append(val)
     except:
         globaldata.closedb()
         return ''

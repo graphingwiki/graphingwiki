@@ -14,7 +14,7 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.patterns import encode
-from graphingwiki.editing import metatable_parseargs, getmetavalues
+from graphingwiki.editing import metatable_parseargs, getvalues
 from graphingwiki.editing import process_edit
 
 def urlquote(s):
@@ -64,7 +64,12 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
         if key in metakeys:
             if action == 'repl':
                 # Add similar, purge rest
-                old = getmetavalues(globaldata, urlquote(page), key)
+                # Do not add a meta value twice
+                old = list()
+                for val, typ in getvalues(request, globaldata,
+                                          urlquote(page),
+                                          key, display=False):
+                    old.append(val)
                 src = set(output[pair])
                 tmp = set(src).intersection(set(old))
                 dst = []
@@ -98,7 +103,11 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
                 output[pair] = dst
             else:
                 # Do not add a meta value twice
-                src = getmetavalues(globaldata, urlquote(page), key)
+                src = list()
+                for val, typ in getvalues(request, globaldata,
+                                          urlquote(page),
+                                          key, display=False):
+                    src.append(val)
                 for val in src:
                     if val in output[pair]:
                         output[pair].remove(val)

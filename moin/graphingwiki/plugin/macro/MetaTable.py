@@ -60,12 +60,12 @@ def t_cell(macro, vals, head=0):
     first_val = True
 
     for data, src in sorted(vals):
+
         # cosmetic for having a "a, b, c" kind of lists
         if not first_val:
             out += macro.formatter.text(',') + \
                    macro.formatter.linebreak()
 
-        data = url_unquote(data.strip('"')).replace('\\"', '"')
         if not isinstance(data, unicode):
             data = unicode(data, config.charset)
 
@@ -89,6 +89,7 @@ def t_cell(macro, vals, head=0):
                 replace = getattr(macro.parser, '_' + typ + '_repl')
                 attrs = replace(hit)
                 out = out + attrs
+            out = out + macro.formatter.pagelink(0)
         else:
             out = out + macro.formatter.text(data)
 
@@ -100,29 +101,33 @@ def t_cell(macro, vals, head=0):
     return out
 
 def execute(macro, args):
+    # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
-    _ = macro.request.getText
+    request = macro.request
+    _ = request.getText
 
     # Start table
     out = macro.formatter.linebreak() + macro.formatter.table(1)
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        out += t_cell(macro, "%s (%s)" % (_("Metatable has no contents"), args))
+        out += t_cell(macro, "%s (%s)" %
+                      (_("Metatable has no contents"), args))
         out += macro.formatter.table(0)
 
         globaldata.closedb()
         return out
 
-    # Give a class to headers to make it customisable
-    out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
-    # Upper left cell is empty
-    out += t_cell(macro, '')
+    if metakeys:
+        # Give a class to headers to make it customisable
+        out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
+        # Upper left cell is empty
+        out += t_cell(macro, '')
 
     # Start parser
-    macro.parser = Parser('', macro.request)
-    macro.parser.formatter = macro.request.formatter    
-    macro.all_re = formatting_rules(macro.request, macro.parser)
+    macro.parser = Parser('', request)
+    macro.parser.formatter = request.formatter    
+    macro.all_re = formatting_rules(request, macro.parser)
 
     for key in metakeys:
         key = unicode(url_unquote(key), config.charset)
@@ -135,24 +140,21 @@ def execute(macro, args):
     pagelist = sorted(pagelist)
 
     for page in pagelist:
-        if not macro.request.user.may.read(unicode(url_unquote(page),
-                                                   config.charset)):
-            continue
         out = out + macro.formatter.table_row(1)
-        out = out + t_cell(macro, page, head=1)
+        out = out + t_cell(macro, url_unquote(page), head=1)
         for key in metakeys:
-            vals = getvalues(globaldata, page, key)
+            vals = getvalues(request, globaldata, page, key)
             out = out + t_cell(macro, vals)
         out += macro.formatter.table_row(0)
     out += macro.formatter.table(0)
 
     globaldata.closedb()
 
-    req_url = macro.request.getScriptname() + \
-              '/' + macro.request.page.page_name + \
+    req_url = request.getScriptname() + \
+              '/' + request.page.page_name + \
               '?action=MetaEdit&args=' + args
 
     out += '<a href="%s" id="footer">[%s]</a>\n' % \
-           (macro.request.getQualifiedURL(req_url), _('edit'))
+           (request.getQualifiedURL(req_url), _('edit'))
 
     return out

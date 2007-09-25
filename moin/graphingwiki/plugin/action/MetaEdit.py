@@ -14,7 +14,7 @@ import urllib
 from MoinMoin import wikiutil
 from MoinMoin import config
 
-from graphingwiki.editing import process_edit, getmetavalues
+from graphingwiki.editing import process_edit, getvalues
 from graphingwiki.editing import metatable_parseargs
 
 def urlquote(s):
@@ -58,17 +58,20 @@ def show_editform(request, pagename, args):
     wr(u'<table>\n')
     wr(u'<tr><th>%s<th>%s<th>%s\n', _('Page name'), _('Key'), _('Value'))
 
+    # Note that metatable_parseargs handles permission issues
     globaldata, pagelist, metakeys = metatable_parseargs(request, args)
 
     for frompage in sorted(pagelist):
+
         for key in metakeys:
             wr(u'<tr><td>%s<td>%s', url_unquote(frompage), url_unquote(key))
             inputname = url_unquote(frompage) + u'!' + url_unquote(key)
 
-            if not request.user.may.read(url_unquote(frompage)):
-                continue
+            default = list()
+            for val, typ in getvalues(request, globaldata, frompage,
+                                      key, display=False):
+                default.append(val)
 
-            default = getmetavalues(globaldata, frompage, key)
             default.append('')
 
             for val in default:

@@ -40,6 +40,33 @@ dl_re = re.compile('\s+(.*?)::\s(.+)')
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
+def categorycode_unfinished():
+    # from PageEditor
+
+    # strip trailing whitespace
+    savetext = savetext.rstrip()
+
+    # Add category separator if last non-empty line contains
+    # non-categories.
+    lines = filter(None, savetext.splitlines())
+    if lines:
+
+        #TODO: this code is broken, will not work for extended links
+        #categories, e.g ["category hebrew"]
+        categories = lines[-1].split()
+
+        if categories:
+            confirmed = wikiutil.filterCategoryPages(request, categories)
+            if len(confirmed) < len(categories):
+                # This was not a categories line, add separator
+                savetext += u'\n----\n'
+
+    # Add new category
+    if savetext and savetext[-1] != u'\n':
+        savetext += ' '
+    savetext += category + u'\n' # Should end with newline!
+
+
 def formatting_rules(request, parser):
     rules = parser.formatting_rules.replace('\n', '|')
 
@@ -95,56 +122,48 @@ def getkeys(globaldata, name):
 # Currently, the values of metadata and link keys are
 # considered additive in case of a possible overlap.
 # Let's see how it turns out.
-def getvalues(globaldata, name, key):
+def getvalues(request, globaldata, name, key, display=True):
+    if not request.user.may.read(unicode(url_unquote(name),
+                                         config.charset)):
+        return set([])
+
     page = globaldata.getpage(name)
     vals = set()
     # Add values and their sources
     if key in page.get('meta', {}):
-        vals = set((x, 'meta') for x in page['meta'][key])
+        for val in page['meta'][key]:
+            val = unicode(url_unquote(val), config.charset).strip('"')
+            val = val.replace('\\"', '"')
+            vals.add((val, 'meta'))
     # Link values are in a list as there can be more than one
     # edge between two pages
     if key in page.get('out', {}):
         # Add values and their sources
         for target in page['out'][key]:
-            # Handling attachment URL:s
-            try:
-                # Try to get the URL attribute of the link target
-                dst = globaldata.getpage(target)
-                url = dst.get('meta', {}).get('URL', set(['']))
-                url = list(url)[0]
-                
-                # If the URL attribute of the target looks like the
-                # target is a local attachment, correct the link
-                if 'AttachFile' in url and url.startswith('".'):
-                    target = url_unquote(target)
-                    target = 'attachment:' + target.replace(' ', '_')
-            except:
-                pass
+            if display:
+                # Making attachment URL:s nicer for display
+                try:
+                    # Try to get the URL attribute of the link target
+                    dst = globaldata.getpage(target)
+                    url = dst.get('meta', {}).get('URL', set(['']))
+                    url = list(url)[0]
+
+                    # If the URL attribute of the target looks like the
+                    # target is a local attachment, correct the link
+                    if 'AttachFile' in url and url.startswith('".'):
+                        target = 'attachment:' + target.replace(' ', '_')
+                except:
+                    pass
+
+            target = target.strip('"')
+            if not target.startswith('attachment:'):
+                target = unicode(url_unquote(target), config.charset)
+            else:
+                target = unicode(target, config.charset)
+            target = target.replace('\\"', '"')
             vals.add((target, 'link'))
+            
     return vals
-
-def getmetavalues(globaldata, name, key):
-    vals = getvalues(globaldata, name, key)
-
-    default = []
-    for val in vals:
-        if val[1] == 'link':
-            continue
-        # Do all the unwrapping, including unquoting, encoding
-        # stripping outer quotes and inner quote escapes
-        tmp = unicode(url_unquote(val[0]), config.charset).strip('"')
-        default.append(tmp.replace('\\"', '"'))
-
-    return default
-
-def getmetalinkvalues(globaldata, name, key):
-    vals = getvalues(globaldata, name, key)
-
-    default = []
-    for val in vals:
-        default.append(val[0])
-
-    return default
 
 def get_pages(request):
 
@@ -154,10 +173,13 @@ def get_pages(request):
             return False
         return not wikiutil.isSystemPage(request, name)
 
+    pages = set([])
     # It seems to help avoiding problems that the query
     # is made by request.rootpage instead of request.page
-    pages = set(url_quote(encode(x)) for x in
-                request.rootpage.getPageList(filter=filter))
+    for page in request.rootpage.getPageList(filter=filter):
+        if not request.user.may.read(page):
+            continue
+        pages.add(url_quote(encode(page)))
 
     return pages
 
@@ -241,7 +263,10 @@ def edit_meta(request, pagename, oldmeta, newmeta):
             return '\n %s:: %s' % (key, val)
 
         for key in newmeta:
+            #print repr(key)
             for i, newval in enumerate(newmeta[key]):
+                #print repr(newval)
+
                 # If the old text does not have this key, add it (as dl)
                 if not oldmeta.has_key(key) or not oldmeta[key]:
                     oldkey = _fix_key(key)
@@ -253,6 +278,7 @@ def edit_meta(request, pagename, oldmeta, newmeta):
                 # Else, replace old value with new value
                 else:
                     oldval = oldmeta[key][i]
+                    #print "# ", repr(oldval)
                     oldkey = _fix_key(key)
                     # First try to replace the dict variable
                     oldtext = dl_re.sub(dl_subfun, oldtext)
@@ -295,8 +321,10 @@ def process_edit(request, input):
         if not request.user.may.write(url_unquote(keypage)):
             continue
 
-        oldvals = getmetalinkvalues(globaldata, keypage, key)
-        print oldvals
+        oldvals = list()
+        for val, typ in getvalues(request, globaldata, keypage,
+                                  key, display=False):
+            oldvals.append(val)
 
         if oldvals != newvals:
             changes.setdefault(keypage, {})
@@ -306,7 +334,6 @@ def process_edit(request, input):
                 changes[keypage].setdefault('old', {})[key] = oldvals
 
             changes[keypage].setdefault('new', {})[key] = newvals
-        print changes
 
     # Done reading, will start writing now
     globaldata.closedb()
@@ -370,11 +397,16 @@ def metatable_parseargs(request, args, globaldata=None):
         # Ok, we have a page arg, i.e. a page or page regexp in args
         pageargs = True
 
-        # Normal pages, encode and move on
+        # Normal pages, check perms, encode and move on
         if not regexp_re.match(arg):
             # If it's a subpage link eg. /Koo, we must add parent page
             if arg.startswith('/'):
                 arg = request.page.page_name + arg
+
+            # Only if the user may read the page
+            if not request.user.may.read(arg):
+                continue
+
             arglist.append(url_quote(encode(arg)))
             continue
 
@@ -460,7 +492,7 @@ def metatable_parseargs(request, args, globaldata=None):
                 # Get values from keys, regardless of their
                 # location (meta, link)
                 data = string.join(x for x, y in
-                                   getvalues(globaldata, page, key))
+                                   getvalues(request, globaldata, page, key))
 
                 # If page does not have the required key, do not add page
                 if not data:
