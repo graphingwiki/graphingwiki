@@ -959,7 +959,7 @@ class GraphShower(object):
 
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
-                      quotetoshow(self.pagename))
+                      self.pagename)
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 

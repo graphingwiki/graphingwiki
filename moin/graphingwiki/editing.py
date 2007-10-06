@@ -35,37 +35,66 @@ metadata_re = macro_re("MetaData")
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
 dl_re = re.compile('\s+(.*?)::\s(.+)')
+default_meta_before = '----'
 
-# These are the match types that really should be noted
+# These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
-def categorycode_unfinished():
-    # from PageEditor
+def edit_categories(request, savetext, category_edit, catlist):
+    # Original code copied from PageEditor
+
+    # Filter out anything that is not a category
+    newcategories = wikiutil.filterCategoryPages(request, catlist)
 
     # strip trailing whitespace
     savetext = savetext.rstrip()
+
+    confirmed = []
 
     # Add category separator if last non-empty line contains
     # non-categories.
     lines = filter(None, savetext.splitlines())
     if lines:
-
         #TODO: this code is broken, will not work for extended links
         #categories, e.g ["category hebrew"]
         categories = lines[-1].split()
 
         if categories:
             confirmed = wikiutil.filterCategoryPages(request, categories)
-            if len(confirmed) < len(categories):
-                # This was not a categories line, add separator
-                savetext += u'\n----\n'
 
-    # Add new category
-    if savetext and savetext[-1] != u'\n':
-        savetext += ' '
-    savetext += category + u'\n' # Should end with newline!
+        if len(confirmed) < len(categories):
+            # This was not a categories line, if deleting, our job is done
+            if category_edit == 'del':
+                return savetext + u'\n'
+            
+            # otherwise add separator
+            savetext += u'\n----\n'
+        elif category_edit == 'set':
+            # Delete existing when setting categories
+            savetext = '\n'.join(savetext.split('\n')[:-1]) + u'\n'
+        elif category_edit == 'del':
+            # Delete existing and separator when deleting categories
+            savetext = '\n'.join(savetext.split('\n')[:-2])
 
+    # Add is default
+    if category_edit == 'set':
+        # Delete existing categories
+        confirmed = []
+    elif category_edit == 'del':
+        # Just in case, do not add anything
+        newcategories = []
+
+    # Add categories
+    for category in newcategories:
+        if category in confirmed:
+            continue
+        if savetext and savetext[-1] != u'\n':
+            savetext += ' '
+        savetext += category
+    savetext += u'\n' # Should end with newline!
+
+    return savetext
 
 def formatting_rules(request, parser):
     rules = parser.formatting_rules.replace('\n', '|')
@@ -137,11 +166,11 @@ def getvalues(request, globaldata, name, key, display=True):
             vals.add((val, 'meta'))
     # Link values are in a list as there can be more than one
     # edge between two pages
-    if key in page.get('out', {}):
-        # Add values and their sources
-        for target in page['out'][key]:
-            if display:
-                # Making attachment URL:s nicer for display
+    if display:
+        # Making things nice to look at
+        if key in page.get('out', {}):
+            # Add values and their sources
+            for target in page['out'][key]:
                 try:
                     # Try to get the URL attribute of the link target
                     dst = globaldata.getpage(target)
@@ -155,13 +184,19 @@ def getvalues(request, globaldata, name, key, display=True):
                 except:
                     pass
 
-            target = target.strip('"')
-            if not target.startswith('attachment:'):
-                target = unicode(url_unquote(target), config.charset)
-            else:
-                target = unicode(target, config.charset)
-            target = target.replace('\\"', '"')
-            vals.add((target, 'link'))
+                target = target.strip('"')
+                if not target.startswith('attachment:'):
+                    target = unicode(url_unquote(target), config.charset)
+                else:
+                    target = unicode(target, config.charset)
+                target = target.replace('\\"', '"')
+                vals.add((target, 'link'))
+    else:
+        # Showing things as they are
+        if key in page.get('lit', {}):
+            # Add values and their sources
+            for target in page['lit'][key]:
+                vals.add((target, 'link'))
             
     return vals
 
@@ -183,11 +218,16 @@ def get_pages(request):
 
     return pages
 
-def edit(pagename, editfun, request=None):
+def edit(pagename, editfun, request=None,
+         category_edit='', catlist=[]):
     request, p = getpage(pagename, request)
 
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
+
+    # Add categories, if needed
+    if category_edit:
+        newtext = edit_categories(request, newtext, category_edit, catlist)
 
     graphsaver = wikiutil.importPlugin(request.cfg,
                               'action',
@@ -224,7 +264,8 @@ def _fix_key(key):
         return unicode(url_unquote(key), config.charset)
     return key
 
-def edit_meta(request, pagename, oldmeta, newmeta):
+def edit_meta(request, pagename, oldmeta, newmeta,
+              category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
 
@@ -253,6 +294,8 @@ def edit_meta(request, pagename, oldmeta, newmeta):
 
             # Check if the value has changed
             key = key.strip()
+#            print repr(oldval), repr(val), repr(newval)
+#            print repr(oldkey), repr(key)
             if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
                 val = newval
 
@@ -263,35 +306,53 @@ def edit_meta(request, pagename, oldmeta, newmeta):
             return '\n %s:: %s' % (key, val)
 
         for key in newmeta:
-            #print repr(key)
+#            print repr(key)
             for i, newval in enumerate(newmeta[key]):
-                #print repr(newval)
+#                print repr(newval)
 
-                # If the old text does not have this key, add it (as dl)
-                if not oldmeta.has_key(key) or not oldmeta[key]:
+                # If the old text does not have this key, add it (as dl), or
+                # if the new values has more values, add them (as dl)
+                if ((not oldmeta.has_key(key) or not oldmeta[key]) or
+                    (len(oldmeta[key]) - 1 < i)):
                     oldkey = _fix_key(key)
-                    oldtext += '\n %s:: %s\n' % (oldkey, newval)
-                # If the new values has more values, add them (as dl)
-                elif len(oldmeta[key]) - 1 < i:
-                    oldkey = _fix_key(key)
-                    oldtext += '\n %s:: %s\n' % (oldkey, newval)
+                    inclusion = ' %s:: %s' % (oldkey, newval)
+
+                    # patterns after or before of which the metadata
+                    # should be included
+                    pattern = getattr(request.cfg, 'gwiki_meta_after', '')
+                    repl_str = "\\1\n%s" % (inclusion)
+                    if not pattern:
+                        pattern = getattr(request.cfg, 'gwiki_meta_before', '')
+                        repl_str = "%s\n\\1" % (inclusion)
+                    if not pattern:
+                        pattern = default_meta_before
+
+                    # if pattern is not found on page, just append meta
+                    newtext, repls = re.subn("(%s)" % (pattern),
+                                             repl_str, oldtext, 1)
+                    if not repls:
+                        oldtext += '\n%s\n' % (inclusion)
+                    else:
+                        oldtext = newtext
+
                 # Else, replace old value with new value
                 else:
                     oldval = oldmeta[key][i]
-                    #print "# ", repr(oldval)
+#                    print "# ", repr(oldval)
                     oldkey = _fix_key(key)
                     # First try to replace the dict variable
                     oldtext = dl_re.sub(dl_subfun, oldtext)
+#                    print repr(dl_re)
                     # Then try to replace the MetaData macro on page
                     oldtext = metadata_re.sub(macro_subfun, oldtext)
 
         return oldtext
 
-    msg, p = edit(pagename, editfun, request)
+    msg, p = edit(pagename, editfun, request, category_edit, catlist)
 
     return msg
 
-def process_edit(request, input):
+def process_edit(request, input, category_edit='', categories={}):
     # request.write(repr(request.form) + '<br>')
 
     def urlquote(s):
@@ -339,11 +400,22 @@ def process_edit(request, input):
     globaldata.closedb()
 
     msg = []
-    for keypage in changes:
-        msg.append('%s: ' % url_unquote(keypage) + \
-                   edit_meta(request, url_unquote(keypage),
-                             changes[keypage]['old'],
-                             changes[keypage]['new']))
+    
+    # For category-only changes
+    if not changes and category_edit:
+        for keypage in categories:
+            msg.append('%s: ' % url_unquote(keypage) + \
+                       edit_meta(request, url_unquote(keypage),
+                                 {}, {},
+                                 category_edit, categories[keypage]))
+    else:
+        for keypage in changes:
+            catlist = categories.get(keypage, [])
+            msg.append('%s: ' % url_unquote(keypage) + \
+                       edit_meta(request, url_unquote(keypage),
+                                 changes[keypage]['old'],
+                                 changes[keypage]['new'],
+                                 category_edit, catlist))
 
     return msg
 

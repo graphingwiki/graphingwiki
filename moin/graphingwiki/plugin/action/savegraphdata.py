@@ -77,18 +77,23 @@ def shelve_add_in(shelve, (frm, to), linktype):
          shelve[to] = temp
 
 # Add out-links from local nodes to current node
-def shelve_add_out(shelve, (frm, to), linktype):
+def shelve_add_out(shelve, (frm, to), linktype, hit):
     if not linktype:
         linktype = '_notype'
     if local_page(frm):
          temp = shelve.get(frm, {})
 
+         # Also add literal text (hit) for each link
+         # eg, if out it SomePage, lit can be ["SomePage"]
          if not temp.has_key('out'):
              temp['out'] = {linktype: [to]}
+             temp['lit'] = {linktype: [hit]}
          elif not temp['out'].has_key(linktype):
              temp['out'][linktype] = [to]
+             temp['lit'][linktype] = [hit]
          else:
              temp['out'][linktype].append(to)
+             temp['lit'][linktype].append(hit)
 
          shelve[frm] = temp
 
@@ -117,21 +122,31 @@ def shelve_remove_in(shelve, (frm, to), linktype):
 
 # Respectively, remove out-links
 def shelve_remove_out(shelve, (frm, to), linktype):
-    import sys
-#    sys.stderr.write('Starting to remove out\n')
+#    print 'Starting to remove out'
     temp = shelve.get(frm, {})
     if local_page(frm) and temp.has_key('out'):
         for type in linktype:
-#            sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
+#            print "Removing %s %s %s" % (frm, to, linktype)
             # eg. when the shelve is just started, it's empty
             if not temp['out'].has_key(type):
-#                sys.stderr.write("No such type: %s\n" % type)
+#                print "No such type: %s" % type
                 continue
-            if to in temp['out'][type]:
+            while to in temp['out'][type]:
+                # As the literal text values for the links
+                # are added at the same time, they have the
+                # same index value
+                i = temp['out'][type].index(to)
                 temp['out'][type].remove(to)
-                if not temp['out'][type]:
-                    del temp['out'][type]
-#                sys.stderr.write("Hey man, I think I did it!\n")
+                del temp['lit'][type][i]
+
+#                print "removed %s" % (repr(to))
+
+            if not temp['out'][type]:
+                del temp['out'][type]
+                del temp['lit'][type]
+#                print "%s empty" % (type)
+#            print "Hey man, I think I did it!"
+
         shelve[frm] = temp
 
 def quotemeta(key, val):
@@ -303,7 +318,7 @@ def parse_link(wikiparse, hit, type):
     return nodename, nodelabel, nodeurl, linktype
 
 def add_link(globaldata, quotedname, pagegraph, cat_re,
-             nodename, nodelabel, nodeurl, linktype):
+             nodename, nodelabel, nodeurl, linktype, hit):
     if cat_re.search(nodename):
         pagenode = pagegraph.nodes.get(quotedname)
         node_set_attribute(pagenode, 'WikiCategory', nodename)
@@ -331,7 +346,7 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
         edge.reverse()
 
     shelve_add_in(globaldata, edge, linktype)
-    shelve_add_out(globaldata, edge, linktype)
+    shelve_add_out(globaldata, edge, linktype, hit)
 
     # Add edge if not already added
     e = pagegraph.edges.get(*edge)
@@ -507,7 +522,7 @@ def execute(pagename, request, text, pagedir, page):
 
                     if name:
                         add_link(globaldata, quotedname, pagegraph, cat_re,
-                                 name, label, url, linktype)
+                                 name, label, url, linktype, hit)
 
                 # Links and metadata defined in a definition list
                 elif type == 'dl' and not inpre:
@@ -538,7 +553,7 @@ def execute(pagename, request, text, pagedir, page):
                             if name:
                                 add_link(globaldata, quotedname,
                                          pagegraph, cat_re,
-                                         name, label, url, linktype)
+                                         name, label, url, linktype, hit)
                                 # The val is also parsed by Moin's link parser
                                 # -> need to tell our link parser that the
                                 #    link was already saved

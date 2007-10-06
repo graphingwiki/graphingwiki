@@ -53,7 +53,9 @@ def show_editform(request, pagename, args):
         args = tuple(map(htmlquote, args))
         request.write(fmt % args)
 
-    wr(u'<form method="POST" action="%s">\n', urlquote(pagename))
+    formpage = '../' * pagename.count('/') + urlquote(pagename)
+
+    wr(u'<form method="POST" action="%s">\n', formpage)
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(u'<table>\n')
     wr(u'<tr><th>%s<th>%s<th>%s\n', _('Page name'), _('Key'), _('Value'))

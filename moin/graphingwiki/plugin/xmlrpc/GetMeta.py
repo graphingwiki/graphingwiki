@@ -39,9 +39,10 @@ def execute(xmlrpcobj, args, keysonly=True):
 
         row = [page]
         for key in metakeys:
+            vals = []
             for val, typ in getvalues(request, globaldata, page, key):
-                print val
-                row.append(val)
+                vals.append(val)
+            row.append(vals)
         out.append(row)
 
     # Close db, get out

@@ -25,7 +25,8 @@ def urlquote(s):
 # Gets data in the same format as process_edit
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
-def execute(xmlrpcobj, page, input, action='add', createpage=True):
+def execute(xmlrpcobj, page, input, action='add',
+            createpage=True, category_edit='', catlist=[]):
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
@@ -54,6 +55,9 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
             # Continue reading
             globaldata.opendb()
             pass
+
+
+    categories = {page: catlist}
 
     output = {}
     # Add existing metadata so that values would be added
@@ -116,4 +120,4 @@ def execute(xmlrpcobj, page, input, action='add', createpage=True):
     # Close db
     globaldata.closedb()
 
-    return process_edit(request, output)
+    return process_edit(request, output, category_edit, categories)
