@@ -17,20 +17,21 @@ def execute(pagename, request):
     class x: pass
     x.request = request
 
-    if 0:
-        keys, stuff = GetMeta(x, pagename, keysonly=False)
-        writer = csv.writer(request)
-	vals = map(lambda x: x[0], stuff[1:])
-        writer.writerows(zip(keys, vals))
-    else:
-        z = GetMeta(x, pagename, keysonly=False)
-	keys = ['page name'] + z.pop(0)
-        writer = csv.writer(request)
-	writer.writerow(keys)
-	for row in z:
-            # why are the values lists of length 1?
-            row[1:] = map(lambda x: x[0].encode('utf-8'), row[1:])
-            writer.writerow(row)
+    z = GetMeta(x, pagename, keysonly=False)
+    if 0: print '--', z, '--'
+    keys = ['page name'] + z.pop(0)
+    writer = csv.writer(request)
+    writer.writerow(keys)
+    for row in z:
+        # why are the values lists?
+        def val2text(val):
+            if not val:
+                return ''
+            else:
+                out = u' '.join(val)
+                return out.encode('utf-8')
+        row[1:] = map(val2text, row[1:])
+        writer.writerow(row)
 	
     raise MoinMoinNoFooter
     
