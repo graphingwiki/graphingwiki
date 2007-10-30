@@ -1,5 +1,9 @@
 from distutils.core import setup
 
+old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py',
+                          'ShowGraphIE.py', 'MetaTableEdit.py',
+                          'ShowLatexSource.py']}
+
 setup(name='graphingwiki', version='0.1',
       author='Juhani Eronen, Joachim Viide, Aki Helin',
       author_email='exec@iki.fi',

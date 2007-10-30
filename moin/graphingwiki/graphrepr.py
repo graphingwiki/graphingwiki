@@ -249,6 +249,7 @@ class Graphviz:
             if strict in ["", "strict"] and type in ["graph", "digraph"]:
                 self.name = name
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
+                # print "g = gv.%s%s('%s')" % (strict, type, name)
             else:
                 raise "Bad args: " + str(type) + str(value)
         else:
@@ -277,12 +278,14 @@ class Graphviz:
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
         if self.changed:
+            # print "gv.layout(g, '%s')" % (self.engine)
             gv.layout(self.handle, self.engine)
             self.changed = 0
 
         if file:
             if not format:
                 format = 'dot'
+            # print "gv.render(g, '%s', '%s')" % (format, file)
             gv.render(self.handle, format, file)
         elif format:
             # Render to stdout, FIXME when gv improves
@@ -336,6 +339,7 @@ class Graphviz:
             # print "item = gv.findnode(g, '" + node + "')"
         elif subg:
             item = gv.findsubg(handle, subg)
+            # print "item = gv.findsubg(g, '" + subg + "')"
         elif handle:
             item = handle
         else:
@@ -373,6 +377,7 @@ class Graphviz:
             # print "gv.node(g, '" + node + "')"
             graphvizitem = GraphvizNode(self, item)
         elif subg:
+            # print "item = gv.graph(g,  '%s')" % (subg)
             item = gv.graph(handle, subg)
             graphvizitem = GraphvizSubgraph(self, item)
         else:

@@ -51,7 +51,7 @@ class UserInputException(Exception):
 try:
     wikipath = sys.argv[1]
     configdir = os.path.join(wikipath, 'config')
-    sys.path.append(configdir)
+    sys.path.insert(0, configdir)
     from wikiconfig import Config
     datadir = Config.data_dir
     pagesdir = os.path.join(datadir, 'pages')

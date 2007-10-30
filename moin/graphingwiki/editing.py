@@ -46,7 +46,10 @@ def edit_categories(request, savetext, category_edit, catlist):
 
     # Filter out anything that is not a category
     newcategories = wikiutil.filterCategoryPages(request, catlist)
-
+    # If no categories to set or add, bail out now
+    if not newcategories and not category_edit == 'del':
+        return savetext
+        
     # strip trailing whitespace
     savetext = savetext.rstrip()
 
@@ -331,6 +334,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     newtext, repls = re.subn("(%s)" % (pattern),
                                              repl_str, oldtext, 1)
                     if not repls:
+                        oldtext = oldtext.rstrip('\n')
                         oldtext += '\n%s\n' % (inclusion)
                     else:
                         oldtext = newtext

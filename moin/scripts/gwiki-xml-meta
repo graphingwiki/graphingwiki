@@ -56,6 +56,9 @@ parser.add_option("-u", "--category_append", dest="cat_add", action='append',
 parser.add_option("-x", "--category_replace", dest="cat_repl", action='append',
                   help="Replace catlist on page (use empty category string to delete)")
 
+parser.add_option("-t", "--template", dest="template", 
+                  help="Use page template")
+
 options, args = parser.parse_args()
 
 if len(args) != 1:
@@ -89,6 +92,10 @@ elif options.cat_repl:
     else:
         category_edit = 'del'
 
+template = str()
+if options.template:
+    template = options.template
+
 if options.app_file or options.repl_file:
     if options.app_file:
         method = 'add'
@@ -97,8 +104,7 @@ if options.app_file or options.repl_file:
         method = 'repl'
         fname = options.repl_file
 
-    reader = csv.reader(open(fname, "rb"), delimiter=';',
-                        quoting=csv.QUOTE_NONE)
+    reader = csv.reader(open(fname, "rb"), delimiter=';')
 
     # Keys from first row, ignore the key for first column
     keys = reader.next()[1:]
@@ -120,7 +126,8 @@ if options.app_file or options.repl_file:
 
         result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
                                 input, method, True,
-                                category_edit, catlist)
+                                category_edit, catlist,
+                                template)
 
         if isinstance(result, list):
             print '\n'.join(result)
@@ -150,7 +157,8 @@ if options.repl_page or options.app_page:
 
     result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
                             input, method, True,
-                            category_edit, catlist)
+                            category_edit, catlist,
+                            template)
 
     if isinstance(result, list):
         print '\n'.join(result)
@@ -164,13 +172,13 @@ else:
         val += ',' + ','.join(options.match_args)
         
     result = xmlrpc_connect(srcWiki.GetMeta, wiki, val, options.keysonly)
-    wr = csv.writer(sys.stdout)
+    wr = csv.writer(sys.stdout, delimiter=';')
     if isinstance(result, list):
         if options.keysonly:
             wr.writerow(['Keys'] + [urllib.unquote(x) for x in result[0]])
             wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
         else:
-            wr.writerow([urllib.unquote(x) for x in result[0]])
+            wr.writerow(['Page name'] + [urllib.unquote(x) for x in result[0]])
             for row in result[1:]:
                 wr.writerow([urllib.unquote(encode(row[0]))] +
                              [urllib.unquote(encode(','.join(x)))

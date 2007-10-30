@@ -158,6 +158,6 @@ def execute(macro, args):
                (request.getQualifiedURL(req_url), _(linktext))
 
     out += action_link('MetaEdit', 'edit')
-    out += action_link('MetaCSV', 'csv')
+    out += action_link('metaCSV', 'csv')
 
     return out

@@ -10,8 +10,10 @@ import urllib
 import xmlrpclib
 
 from MoinMoin import config
+from MoinMoin import wikiutil
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.Page import Page
 
 from graphingwiki.patterns import encode
 from graphingwiki.editing import metatable_parseargs, getvalues
@@ -26,7 +28,8 @@ def urlquote(s):
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
 def execute(xmlrpcobj, page, input, action='add',
-            createpage=True, category_edit='', catlist=[]):
+            createpage=True, category_edit='', catlist=[],
+            template=''):
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
@@ -40,22 +43,24 @@ def execute(xmlrpcobj, page, input, action='add',
     if not request.user.may.write(page):
         return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
 
+    # Create page if not available, use templates if specified
+    raw_body = Page(request, page).get_raw_body()
+    if not raw_body and createpage:
+        raw_body = ' '
+        pageobj = PageEditor(request, page)
+        if template:
+            template_page = wikiutil.unquoteWikiname(template)
+            if request.user.may.read(template_page):
+                temp_body = Page(request, template_page).get_raw_body()
+                if temp_body:
+                    raw_body = temp_body
+
+        pageobj.saveText(raw_body, 0)
+
     # Expects MetaTable arguments
     globaldata, pagelist, metakeys = metatable_parseargs(request, page)
 
-    # Create page if it does not exists, and so desired
-    try:
-        globaldata.getpage(urlquote(page))
-    except KeyError:
-        # Don't litter readlocks, trigger save timeouts
-        globaldata.closedb()
-        if createpage:
-            pageobj = PageEditor(request, page)
-            msg = pageobj.saveText(' ', 0)
-            # Continue reading
-            globaldata.opendb()
-            pass
-
+    globaldata.getpage(urlquote(page))
 
     categories = {page: catlist}
 
