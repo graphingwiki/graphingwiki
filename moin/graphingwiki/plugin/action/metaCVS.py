@@ -26,7 +26,7 @@ def execute(pagename, request):
         print 'args', request.args
         print 'pagename', pagename
     keys = ['page name'] + z.pop(0)
-    writer = csv.writer(request)
+    writer = csv.writer(request, delimiter=';')
     writer.writerow(keys)
 
     for row in z:
