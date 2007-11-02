@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     ShowGraph action plugin to MoinMoin
      - Shows semantic data and linkage of pages in graph form

@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 """
     graphrepr class
      - visualises graphs with Graphviz, interfaces with the graph-class

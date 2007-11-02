@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     MetaData macro plugin to MoinMoin
      - Formats the semantic data visually

@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     InlineGraph macro plugin to MoinMoin
      - Just like ShowGraph-action, inlined on a page without controls

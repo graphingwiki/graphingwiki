@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     RdfInfer action to MoinMoin
      - Does inference based on the semantic data on pages

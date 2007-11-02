@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 """
     patterns class
      - a forwards chaining inference engine for finding graph patterns

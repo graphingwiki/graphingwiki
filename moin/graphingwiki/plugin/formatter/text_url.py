@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     text_url formatter plugin to MoinMoin
      - Special formatting for URL:s

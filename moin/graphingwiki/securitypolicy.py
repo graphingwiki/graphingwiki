@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from MoinMoin.security import Permissions
 
 class SecurityPolicy(Permissions):

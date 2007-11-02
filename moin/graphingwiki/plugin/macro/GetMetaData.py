@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     GetMetaData macro plugin to MoinMoin
      - Return the meta data of key x from page y

@@ -1,4 +1,5 @@
-action_name = 'MetaCSV'
+# -*- coding: utf-8 -*-"
+action_name = 'metaCSV'
 
 import cgi
 import urllib
@@ -11,8 +12,13 @@ from graphingwiki.editing import process_edit, getvalues
 from graphingwiki.editing import metatable_parseargs
 
 def execute(pagename, request):
-    request.http_headers(['Content-Type: text/csv',
-                          'Content-Disposition: attachment; filename="%s.csv"' % pagename])
+    # Strip non-ascii chars in header
+    pagename_header = '%s.csv' % (pagename)
+    pagename_header = pagename_header.encode('ascii', 'ignore')
+    
+    request.http_headers(['Content-Type: text/csv; charset=UTF-8',
+                          'Content-Disposition: attachment; ' +
+                          'filename="%s"' % pagename_header])
     GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta')
     class x: pass
     x.request = request
@@ -38,7 +44,7 @@ def execute(pagename, request):
                 out = u', '.join(val)
                 return out.encode('utf-8')
         row[1:] = map(val2text, row[1:])
+        row[0] = urllib.unquote(row[0])
         writer.writerow(row)
 	
     raise MoinMoinNoFooter
-    

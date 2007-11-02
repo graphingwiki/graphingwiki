@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     ViewDot action for Graphingwiki
      - Shows dot files as png images, as svg images or with the ZGR applet

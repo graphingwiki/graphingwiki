@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     ViewDot macro plugin to MoinMoin
      - Just like ViewDot-action, inlined on a page without controls

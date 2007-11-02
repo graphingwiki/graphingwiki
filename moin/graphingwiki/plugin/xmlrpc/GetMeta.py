@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     GetMeta xmlrpc plugin to MoinMoin/Graphingwiki
      - Sends the Metadata of desired pages

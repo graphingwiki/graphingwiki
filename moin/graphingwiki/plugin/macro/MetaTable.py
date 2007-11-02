@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     MetaTable macro plugin to MoinMoin/Graphingwiki
      - Shows in tabular form the Metadata of desired pages

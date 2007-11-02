@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     savegraphdata class for saving the semantic data of pages
 
@@ -559,10 +559,15 @@ def execute(pagename, request, text, pagedir, page):
                                 #    link was already saved
                                 dicturl = True
 
-                    # If it was not link, save as metadata
-                    if not dicturl:
-                        add_meta(globaldata, pagenode, quotedname,
-                                 "[[MetaData(%s,%s)]]" % (key, val))
+                    # Treat shapefiles as a special case, as they should
+                    # (probably) be evident both as meta and link
+                    if dicturl:
+                        if key != 'shapefile':
+                            continue
+
+                    # If it was not link, save as metadata. 
+                    add_meta(globaldata, pagenode, quotedname,
+                             "[[MetaData(%s,%s)]]" % (key, val))
                     
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)

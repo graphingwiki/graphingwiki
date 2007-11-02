@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     Fixes renaming of pages with graphdata
     Note: does not work on some older versions (at least 1.3.5 and earlier)

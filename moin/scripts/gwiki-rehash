@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 """
     gwiki-rehash
      - Saves graph data from all the pages of a wiki.

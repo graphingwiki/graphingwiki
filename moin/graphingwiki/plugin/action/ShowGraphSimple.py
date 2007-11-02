@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     ShowGraphSimple action plugin to MoinMoin
      - Simple and slow version of ShowGraph for enhanced compatibility

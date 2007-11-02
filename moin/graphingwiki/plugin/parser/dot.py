@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     .dot parser plugin to MoinMoin
      - Simple inline layouter of dot data

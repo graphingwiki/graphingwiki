@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-"
 """
-    MetaSearch action to MoinMoin
-     - Searching pages with certain metadata keys or values
+    MetaEdit action to MoinMoin
+     - Editing pages with certain metadata keys or values
 
     @copyright: 2007 by Erno Kuusela and Juhani Eronen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>

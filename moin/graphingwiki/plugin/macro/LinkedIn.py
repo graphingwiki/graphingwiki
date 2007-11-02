@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     LinkedIn macro plugin to MoinMoin/Graphingwiki
      - Shows pages in which the current page has been linked in

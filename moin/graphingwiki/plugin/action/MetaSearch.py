@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-"
 """
     MetaSearch action to MoinMoin
      - Searching pages with certain metadata keys or values

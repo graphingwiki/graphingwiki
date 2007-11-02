@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py',
+old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py', 'metaCVS.py',
                           'ShowGraphIE.py', 'MetaTableEdit.py',
                           'ShowLatexSource.py']}
 

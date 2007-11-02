@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
     Graphingwiki editing functions
      - Saving page contents or relevant metadata
