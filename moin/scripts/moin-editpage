@@ -26,7 +26,7 @@ if __name__ == '__main__':
         configdir = args[0]
         sys.path.append(configdir)
 
-    pagename = args[2]
+    pagename = args[1]
 
     mytext = unicode(sys.stdin.read(), sys.getfilesystemencoding())
     savetext(pagename, mytext)
