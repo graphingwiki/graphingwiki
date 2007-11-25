@@ -62,7 +62,9 @@ def show_editform(request, pagename, args):
     wr(u'<tr><th>%s<th>%s<th>%s\n', _('Page name'), _('Key'), _('Value'))
 
     # Note that metatable_parseargs handles permission issues
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args)
+    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
+                                                         globaldata=None,
+                                                         all_keys=True)
 
     for frompage in sorted(pagelist):
 

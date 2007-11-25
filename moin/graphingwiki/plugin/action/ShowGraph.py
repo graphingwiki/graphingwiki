@@ -575,7 +575,9 @@ class GraphShower(object):
                     page = obj.node
                 else:
                     page = '/'.join(components[:-1])
-                file = components[-1]
+                file = unicode(url_unquote(components[-1]), config.charset)
+                page = unicode(url_unquote(page), config.charset)
+                print repr(page)
                 # get attach file path, empty label
                 n.shapefile = AttachFile.getFilename(self.request,
                                                      page, file)

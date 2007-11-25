@@ -36,6 +36,11 @@ metadata_re = macro_re("MetaData")
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
 dl_re = re.compile('\s+(.*?)::\s(.+)')
+# From Parser, slight modification due to multiline usage
+dl_proto = "(\s+%s::)\s"
+# For adding new
+dl_add = '(\\s+%s::\\s.+?\n)'
+
 default_meta_before = '----'
 
 # These are the match types for links that really should be noted
@@ -295,6 +300,7 @@ def _fix_key(key):
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
+        origtext = oldtext
         oldtext = oldtext.rstrip()
 
         def macro_subfun(mo):
@@ -322,8 +328,8 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
             # Check if the value has changed
             key = key.strip()
-#            print repr(oldval), repr(val), repr(newval)
-#            print repr(oldkey), repr(key)
+            # print repr(oldval), repr(val), repr(newval)
+            # print repr(oldkey), repr(key)
             if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
                 val = newval
 
@@ -334,9 +340,9 @@ def edit_meta(request, pagename, oldmeta, newmeta,
             return '\n %s:: %s' % (key, val)
 
         for key in newmeta:
-#            print repr(key)
+            # print repr(key)
             for i, newval in enumerate(newmeta[key]):
-#                print repr(newval)
+                # print repr(newval)
 
                 # If the old text does not have this key, add it (as dl), or
                 # if the new values has more values, add them (as dl)
@@ -344,6 +350,29 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     (len(oldmeta[key]) - 1 < i)):
                     oldkey = _fix_key(key)
                     inclusion = ' %s:: %s' % (oldkey, newval)
+
+                    # If prototypes ( key:: ) are present, replace them
+                    if (oldmeta.has_key(key) and not oldmeta[key]
+                        and re.search(dl_proto % (oldkey), origtext)):
+                        
+                        oldkey = _fix_key(key)
+                        oldtext = re.sub(dl_proto % (oldkey),
+                                         '\\1 %s\n' % (newval),
+                                         origtext, 1)
+                        continue
+                    elif (oldmeta.has_key(key) and oldmeta[key]
+                        and len(oldmeta[key]) - 1 < i):
+                        
+                        # DL meta supported only, otherwise
+                        # fall back to just adding
+                        newtext, count = re.subn(dl_add % (key),
+                                                 '\\1%s\n' % (inclusion),
+                                                 oldtext, 1)
+
+                        if count:
+                            oldtext = newtext
+                            continue
+
 
                     # patterns after or before of which the metadata
                     # should be included
@@ -367,11 +396,11 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                 # Else, replace old value with new value
                 else:
                     oldval = oldmeta[key][i]
-#                    print "# ", repr(oldval)
+                    # print "# ", repr(oldval)
                     oldkey = _fix_key(key)
                     # First try to replace the dict variable
                     oldtext = dl_re.sub(dl_subfun, oldtext)
-#                    print repr(dl_re)
+                    # print repr(dl_re)
                     # Then try to replace the MetaData macro on page
                     oldtext = metadata_re.sub(macro_subfun, oldtext)
 
@@ -467,7 +496,7 @@ def savetext(pagename, newtext):
 
     return msg
 
-def metatable_parseargs(request, args, globaldata=None):
+def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     # Category, Template matching regexps
     cat_re = re.compile(request.cfg.page_category_regex)
     temp_re = re.compile(request.cfg.page_template_regex)
@@ -563,8 +592,12 @@ def metatable_parseargs(request, args, globaldata=None):
             data = arg.split("=")
             key = url_quote(encode(data[0]))
             val = encode('='.join(data[1:]))
-            # If val starts and ends with /
-            if len(val) > 1 and val[::len(val)-1] == '//':
+            # Assume that value limits are regexps, if
+            # not, escape them into exact regexp matches
+            if not regexp_re.match(val):
+                val = "^%s$" % (re.escape(val))
+            # else strip the //:s
+            elif len(val) > 1:
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
         elif arg:
@@ -619,11 +652,20 @@ def metatable_parseargs(request, args, globaldata=None):
 
     if not keyspec:
         for name in pagelist:
-            for key in nonguaranteeds_p(getkeys(globaldata, name)):
-                # One further check, we probably do not want
-                # to see categories in our table by default
-                if key != 'WikiCategory':
-                    metakeys.add(key)
+            # MetaEdit wants all keys by default
+            if all_keys:
+                for key in getkeys(globaldata, name):
+                    # One further check, we probably do not want
+                    # to see categories in our table by default
+                    if key != 'WikiCategory':
+                        metakeys.add(key)
+            else:
+                # For MetaTable etc
+                for key in nonguaranteeds_p(getkeys(globaldata, name)):
+                    # One further check, we probably do not want
+                    # to see categories in our table by default
+                    if key != 'WikiCategory':
+                        metakeys.add(key)
 
         metakeys = sorted(metakeys, key=str.lower)
     else:
