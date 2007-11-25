@@ -137,8 +137,6 @@ def execute(macro, args):
             out = out + t_cell(macro, key)
     out += macro.formatter.table_row(0)
 
-    pagelist = sorted(pagelist)
-
     for page in pagelist:
         out = out + macro.formatter.table_row(1)
         out = out + t_cell(macro, url_unquote(page), head=1)

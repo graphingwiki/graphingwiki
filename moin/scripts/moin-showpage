@@ -122,7 +122,8 @@ req.form = args.copy()
 # Auth
 if basic_args[-1]:
     import posix, pwd
-    req.auth_username = pwd.getpwuid(posix.getuid())[0]
+    from MoinMoin.user import User
+    req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
 
 # Go, Spot, get html
 req.run()

@@ -52,6 +52,7 @@ cl = Clock()
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
+from graphingwiki.editing import ordervalue
 
 # imports from other actions
 from savegraphdata import local_page
@@ -453,27 +454,6 @@ class GraphShower(object):
 
         return outgraph
     
-    def _handleordervalue(self, value):
-        # IP addresses and numeric values get special treatment
-        try:
-            value = int(value.strip('"'))
-        except ValueError:
-            try:
-                value = float(value.strip('"'))
-            except ValueError:
-                if value.strip('"').replace('.', '').isdigit():
-                    try:
-                        # 00 is stylistic to avoid this:
-                        # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
-                        #     socket.inet_aton('1.2.3.4')])
-                        # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
-                        value = '00' + socket.inet_aton(value.strip('"'))
-                    except socket.error:
-                        pass
-                pass
-
-        return value
-
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
@@ -623,7 +603,7 @@ class GraphShower(object):
                     n._order = value
 
                     # Internally, some values are given a special treatment
-                    value = self._handleordervalue(value)
+                    value = ordervalue(value)
                     self.ordernodes.setdefault(value, set()).add(obj.node)
                 else:
                     self.unordernodes.add(obj.node)
@@ -747,7 +727,8 @@ class GraphShower(object):
             node = outgraph.nodes.get(name)
             # If local link:
             if node.URL[0] in ['.', '/']:
-                node.URL = url_unquote(node.URL)
+                node.URL = self.request.getScriptname() + \
+                           node.URL.lstrip('.')
                 # If attachment
                 if 'action=AttachFile' in node.URL:
                     node.label = "%s:\n%s" % (encode(_("Attachment")),
@@ -759,16 +740,6 @@ class GraphShower(object):
                 node.label = node.label[:47] + '...'
             elif not ':' in node.label:
                 node.label = node.URL
-
-        subrank = self.pagename.count('/')
-        # Fix URLs for subpages
-        if subrank > 0:
-            for name, in outgraph.nodes.getall():
-                node = outgraph.nodes.get(name)
-                # All nodes should have URL:s, change relative ones
-                if local_page(node.URL):
-                    node.URL = '../' * (subrank-1) + '.' + node.URL
-            self.pagename = '../' * (subrank) + self.pagename
 
         return outgraph
 
@@ -868,8 +839,8 @@ class GraphShower(object):
             heady = getattr(gr.graphviz.nodes.get(tail), '_order', '')
 
             # Some values get special treatment
-            heady = self._handleordervalue(heady)
-            taily = self._handleordervalue(taily)
+            heady = ordervalue(heady)
+            taily = ordervalue(taily)
 
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
@@ -959,7 +930,7 @@ class GraphShower(object):
 
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
-                      self.pagename)
+                      "%s/%s" % (self.request.getScriptname(), self.pagename))
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 

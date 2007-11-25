@@ -42,6 +42,30 @@ default_meta_before = '----'
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
+def ordervalue(value):
+    # IP addresses and numeric values get special treatment
+    try:
+        value = int(value.strip('"'))
+    except ValueError:
+        try:
+            value = float(value.strip('"'))
+        except ValueError:
+            if value.strip('"').replace('.', '').isdigit():
+                try:
+                    # 00 is stylistic to avoid this:
+                    # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
+                    #     socket.inet_aton('1.2.3.4')])
+                    # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
+                    value = '00' + socket.inet_aton(value.strip('"'))
+                except socket.error:
+                    pass
+            pass
+    except AttributeError:
+        # If given an int to start with
+        pass
+
+    return value
+
 def edit_categories(request, savetext, category_edit, catlist):
     # Original code copied from PageEditor
 
@@ -454,6 +478,7 @@ def metatable_parseargs(request, args, globaldata=None):
     # Arg placeholders
     arglist = []
     keyspec = []
+    orderspec = []
 
     # Flag: were there page arguments?
     pageargs = False
@@ -469,6 +494,12 @@ def metatable_parseargs(request, args, globaldata=None):
         if arg.startswith('||') and arg.endswith('||'):
             # take order, strip empty ones
             keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
+            continue
+
+        # order spec
+        if arg.startswith('>>') or arg.startswith('<<'):
+            # eg. [('<<', 'koo'), ('>>', 'kk')]
+            orderspec = re.findall('(?:(<<|>>)([^<>]+))', arg)
             continue
 
         # Ok, we have a page arg, i.e. a page or page regexp in args
@@ -597,6 +628,97 @@ def metatable_parseargs(request, args, globaldata=None):
         metakeys = sorted(metakeys, key=str.lower)
     else:
         metakeys = keyspec
+
+    # sorting pagelist
+    if not orderspec:
+        pagelist = sorted(pagelist)
+    else:
+        s_list = dict()
+        for dir, key in orderspec:
+            s_list[key] = dict()
+            for page in pagelist:
+                # get all vals of a key in order
+                s_list[key][page] = [x for x, y in
+                                     sorted(getvalues(request,
+                                                      globaldata,
+                                                      page, key))]
+        ordvals = dict()
+        byval = dict()
+        ord = [x for _, x in orderspec]
+        pages = set()
+
+        for dir, key in orderspec:
+            byval[key] = dict()
+
+            if not key in s_list:
+                continue
+            ordvals[key] = set()
+            reverse = dir == '>>' and True or False
+
+            for page in s_list[key]:
+                pages.add(page)
+
+                vals = s_list[key][page]
+                vals = [ordervalue(x) for x in vals]
+                s_list[key][page] = vals
+
+                # Make equivalence classes of key-value pairs
+                for val in vals:
+                    byval[key].setdefault(val, list()).append(page)
+
+                ordvals[key].update(vals)
+
+            ordvals[key] = sorted(ordvals[key], reverse=reverse)
+
+        # Subfunction to add pages to ordered list and remove
+        # them from the pages yet to be sorted
+        def olist_add(orderlist, pages, page, key, val):
+            if page in pages:
+                #print "Adding %s (%s=%s)" % (page, key, val)
+                orderlist.append(page)
+                pages.remove(page)
+            return orderlist, pages
+
+        def order(pages, s_list, byval, ord, orderlist):
+            for key in ord:
+                for val in ordvals[key]:
+                    if not pages:
+                        return orderlist, pages
+
+                    if not byval[key].has_key(val):
+                        #print "Not existing: %s %s" % (key, val)
+                        continue
+
+                    # If equivalence class only has one
+                    # member, it's the next one in order
+                    if len(byval[key][val]) == 1:
+                        page = byval[key][val][0]
+                        # Skip if already added
+                        orderlist, pages = olist_add(orderlist, pages,
+                                                     page, key, val)
+                    elif len(byval[key][val]) > 1:
+                        if len(ord) < 2:
+                            for page in sorted(byval[key][val]):
+                                orderlist, pages = olist_add(orderlist, pages,
+                                                             page, key, val)
+                        else:
+                            for page in byval[key][val]:
+                                pages.remove(page)
+
+                            orderlist, _ = order(byval[key][val], s_list,
+                                                 byval, ord[1:], orderlist)
+
+                        #print "and out"
+
+            return orderlist, pages
+
+        pagelist, pages = order(pages, s_list, byval, ord, [])
+
+        # Add the rest of the pages in alphabetical order
+        # Should not be needed
+        if pages:
+            #print "extending with %s" % (pages)
+            pagelist.extend(sorted(pages))
 
     return globaldata, pagelist, metakeys
 
