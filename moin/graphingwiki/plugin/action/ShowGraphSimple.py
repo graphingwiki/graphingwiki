@@ -49,14 +49,6 @@ class GraphShowerSimple(GraphShower):
         self.urladd = ''
         self.available_formats = ['png', 'svg', 'dot', 'zgr']
         self.do_form = kw['do_form']
-
-        self.height = ""
-        self.width = ""
-        for key in kw:
-            if key == 'height':
-                self.height = kw['height']
-            elif key == 'width':
-                self.width = kw['width']
     
     def sendGraph(self, gr):
         img = self.getLayoutInFormat(gr.graphviz, self.format)
@@ -179,14 +171,8 @@ class GraphShowerSimple(GraphShower):
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
         else:
-            params = ""
-            if self.height:
-                params += 'height="%s" ' % self.height
-            if self.width:
-                params += 'width="%s"' % self.width
-
-            self.request.write('<img src="%s" %s alt="%s" usemap="#%s">\n'%
-                               (img_url + "1", params, _('graph'),
+            self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'%
+                               (img_url + "1", _('graph'),
                                 gr.graphattrs['name']))
             self.sendMap(gr.graphviz)
             if legend:

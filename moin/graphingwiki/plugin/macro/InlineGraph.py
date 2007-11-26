@@ -95,9 +95,6 @@ def execute(macro, args):
         key = data[0]
         val = '='.join(data[1:])
 
-        if key in ['height', 'width']:
-            kw[str(key)] = str(val)
-
     if not arglist:
         return ""
 

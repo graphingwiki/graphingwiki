@@ -35,7 +35,7 @@ metadata_re = macro_re("MetaData")
 
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
-dl_re = re.compile('(?<!#)\s+(.*?)::\s(.+)')
+dl_re = re.compile('(?<!#)(\s+(.*?)::\s(.+))')
 # From Parser, slight modification due to multiline usage
 dl_proto = "(?<!#)(\s+?%s::)\s"
 # For adding new
@@ -323,7 +323,11 @@ def edit_meta(request, pagename, oldmeta, newmeta,
             return '\n %s:: %s' % (key, val)
 
         def dl_subfun(mo):
-            key, val = mo.groups()
+            all, key, val = mo.groups()
+
+            # Corner case: comments can could cause breakage sometimes
+            if key.startswith('#'):
+                return all
 
             # Check if the value has changed
             key = key.strip()

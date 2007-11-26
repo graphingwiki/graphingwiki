@@ -220,6 +220,10 @@ class GraphShower(object):
         # For test, inline
         self.help = ""
 
+        self.height = 0
+        self.width = 0
+        self.size = '14.2,14.2'
+
         # Node filter of an existing type
         self.oftype_p = lambda x: x != '_notype'
  
@@ -376,6 +380,25 @@ class GraphShower(object):
         if request.form.has_key('inline'):
             self.help = 'inline'
 
+        # Height and Width
+        for attr in ['height', 'width']:
+            if request.form.has_key(attr):
+                val = ''.join([x for x in request.form[attr]])
+                try:
+                    setattr(self, attr, float(val))
+                except ValueError:
+                    pass
+
+        if not self.height and self.width:
+            self.height = self.width
+        elif self.height and not self.width:
+            self.width = self.height
+        elif not self.height and not self.width:
+            self.width = self.height = 1024
+
+        self.size = "%.2f,%.2f" % ((self.height / 72),
+                                   (self.width / 72))
+            
         return error
 
     def addToStartPages(self, graphdata, pagename):
@@ -451,6 +474,9 @@ class GraphShower(object):
 
         # Formatting features here!
         outgraph.bgcolor = "transparent"
+
+        if self.size:
+            outgraph.size = encode(self.size)
 
         return outgraph
     
@@ -873,7 +899,12 @@ class GraphShower(object):
     def makeLegend(self):
         _ = self.request.getText
         # Make legend
-        legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
+        if self.size:
+            legendgraph = Graphviz('legend', rankdir='LR', constraint='false',
+                                   **{'size': encode(self.size)})
+
+        else:
+            legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
         legend = legendgraph.subg.add("clusterLegend",
                                       label=encode(_('Legend')))
         subrank = self.pagename.count('/')
@@ -951,10 +982,15 @@ class GraphShower(object):
                           type))
         request.write(u'</select><br>\n')
 
-        # Depth
-        request.write(u"<u>" + _("Link depth") + u"</u><br>\n")
-        request.write(u'<input type="text" name="depth" ' +
-                      u'size=2 value="%s"><br>\n' % str(self.depth))
+        # Height
+        request.write(u"<u>" + _("Max height") + u"</u><br>\n")
+        request.write(u'<input type="text" name="height" ' +
+                      u'size=2 value="%s"><br>\n' % str(self.height))
+
+        # Width
+        request.write(u"<u>" + _("Max width") + u"</u><br>\n")
+        request.write(u'<input type="text" name="width" ' +
+                      u'size=2 value="%s"><br>\n' % str(self.width))
 
         # hide edges
         request.write(u"<u>" + _("Edges:") + u"</u><br>\n")
@@ -994,6 +1030,12 @@ class GraphShower(object):
 
         if len(self.allcategories) > 5: 
 	    request.write(u'</select><br>\n')
+
+
+        # Depth
+        request.write(u"<u>" + _("Link depth") + u"</u><br>\n")
+        request.write(u'<input type="text" name="depth" ' +
+                      u'size=2 value="%s"><br>\n' % str(self.depth))
 
 
         # otherpages
@@ -1285,7 +1327,6 @@ class GraphShower(object):
                            or ">",
                            _("No type")))
         request.write(u"</table>\n")
-        request.write(u'</div>\n')
 
         # End form
         request.write(u'<input type=submit name=graph ' +
@@ -1294,6 +1335,7 @@ class GraphShower(object):
                       'value="%s">\n' % _('Test'))
         request.write(u'<input type=submit name=inline ' +
                       'value="%s">\n</form>\n' % _('Inline'))
+        request.write(u'</div>\n')
 
         request.write(u'<script type="text/javascript">')
         request.write(u'document.getElementById(\'tab0\').style.display="block";\n')
