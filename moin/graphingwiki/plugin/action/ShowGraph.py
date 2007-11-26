@@ -164,6 +164,7 @@ class GraphShower(object):
         self.format = 'png'
         self.traverse = self.traverseParentChild
         self.limit = ''
+        self.unscale = 0
         self.hidedges = 0
         self.edgelabels = 0
 
@@ -222,7 +223,7 @@ class GraphShower(object):
 
         self.height = 0
         self.width = 0
-        self.size = '14.2,14.2'
+        self.size = ''
 
         # Node filter of an existing type
         self.oftype_p = lambda x: x != '_notype'
@@ -302,6 +303,10 @@ class GraphShower(object):
         # Rankdir
         if request.form.has_key('dir'):
             self.rankdir = encode(''.join([x for x in request.form['dir']]))
+
+        # Unscale
+        if request.form.has_key('unscale'):
+            self.unscale = 1
 
         # Hide edges
         if request.form.has_key('hidedges'):
@@ -396,8 +401,9 @@ class GraphShower(object):
         elif not self.height and not self.width:
             self.width = self.height = 1024
 
-        self.size = "%.2f,%.2f" % ((self.height / 72),
-                                   (self.width / 72))
+        if not self.unscale:
+            self.size = "%.2f,%.2f" % ((self.height / 72),
+                                       (self.width / 72))
             
         return error
 
@@ -992,8 +998,14 @@ class GraphShower(object):
         request.write(u'<input type="text" name="width" ' +
                       u'size=2 value="%s"><br>\n' % str(self.width))
 
+        # Unscale
+        request.write(u'<input type="checkbox" name="unscale" ' +
+                      u'value="0"%s\n' %
+                      (self.unscale and ' checked>' or '>') +
+                      _('Unscale'))
+
         # hide edges
-        request.write(u"<u>" + _("Edges:") + u"</u><br>\n")
+        request.write(u"<br><u>" + _("Edges:") + u"</u><br>\n")
         request.write(u'<input type="checkbox" name="hidedges" ' +
                       u'value="1"%s\n' %
                       (self.hidedges and ' checked>' or '>') +
