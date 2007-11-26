@@ -29,17 +29,17 @@ from MoinMoin import caching
 from graphingwiki.patterns import GraphData, encode, nonguaranteeds_p
 
 def macro_re(macroname):
-    return re.compile(r'\[\[(%s)\((.*?)\)\]\]' % macroname)
+    return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
 
 metadata_re = macro_re("MetaData")
 
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
-dl_re = re.compile('\s+(.*?)::\s(.+)')
+dl_re = re.compile('(?<!#)\s+(.*?)::\s(.+)')
 # From Parser, slight modification due to multiline usage
-dl_proto = "(\s+%s::)\s"
+dl_proto = "(?<!#)(\s+?%s::)\s"
 # For adding new
-dl_add = '(\\s+%s::\\s.+?\n)'
+dl_add = '(?<!#)(\\s+?%s::\\s.+?\n)'
 
 default_meta_before = '----'
 
@@ -300,7 +300,6 @@ def _fix_key(key):
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
-        origtext = oldtext
         oldtext = oldtext.rstrip()
 
         def macro_subfun(mo):
@@ -353,26 +352,26 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
                     # If prototypes ( key:: ) are present, replace them
                     if (oldmeta.has_key(key) and not oldmeta[key]
-                        and re.search(dl_proto % (oldkey), origtext)):
-                        
+                        and re.search(dl_proto % (oldkey), oldtext + '\n')):
+
                         oldkey = _fix_key(key)
                         oldtext = re.sub(dl_proto % (oldkey),
-                                         '\\1 %s\n' % (newval),
-                                         origtext, 1)
+                                         '\\1 %s' % (newval),
+                                         oldtext + '\n', 1)
+
                         continue
                     elif (oldmeta.has_key(key) and oldmeta[key]
                         and len(oldmeta[key]) - 1 < i):
-                        
+
                         # DL meta supported only, otherwise
                         # fall back to just adding
-                        newtext, count = re.subn(dl_add % (key),
-                                                 '\\1%s\n' % (inclusion),
-                                                 oldtext, 1)
+                        text, count = re.subn(dl_add % (key),
+                                              '\\1%s\n' % (inclusion),
+                                              oldtext, 1)
 
                         if count:
-                            oldtext = newtext
+                            oldtext = text
                             continue
-
 
                     # patterns after or before of which the metadata
                     # should be included

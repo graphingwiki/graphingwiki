@@ -129,11 +129,7 @@ def execute(macro, args):
     graph_request.form = args
     req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
 
-    print request.getScriptname()
-
     graph_request.request_uri = join_params(req_url, args)
-
-    print req_url
 
     urladd = '?' + graph_request.request_uri.split('?')[1]
     kw['urladd'] = urladd
