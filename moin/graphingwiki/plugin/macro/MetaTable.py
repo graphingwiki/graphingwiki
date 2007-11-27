@@ -148,14 +148,15 @@ def execute(macro, args):
 
     globaldata.closedb()
 
-    def action_link(action, linktext):
+    def action_link(action, linktext, args):
         req_url = request.getScriptname() + \
                   '/' + request.page.page_name + \
                   '?action=' + action + '&args=' + args 
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 
-    out += action_link('MetaEdit', 'edit')
-    out += action_link('metaCSV', 'csv')
+    args = url_quote(args)
+    out += action_link('MetaEdit', 'edit', args)
+    out += action_link('metaCSV', 'csv', args)
 
     return out

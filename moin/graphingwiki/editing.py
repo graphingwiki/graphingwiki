@@ -37,7 +37,7 @@ regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
 dl_re = re.compile('(?<!#)(\s+(.*?)::\s(.+))')
 # From Parser, slight modification due to multiline usage
-dl_proto = "(?<!#)(\s+?%s::)\s"
+dl_proto = "(?<!#)(\s+?%s::) \n"
 # For adding new
 dl_add = '(?<!#)(\\s+?%s::\\s.+?\n)'
 
@@ -301,6 +301,9 @@ def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
+        # Annoying corner case with dl:s
+        if oldtext.endswith('::'):
+            oldtext = oldtext + ' '
 
         def macro_subfun(mo):
             old_keyval_pair = mo.group(2).split(',')
@@ -359,8 +362,9 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                         and re.search(dl_proto % (oldkey), oldtext + '\n')):
 
                         oldkey = _fix_key(key)
+
                         oldtext = re.sub(dl_proto % (oldkey),
-                                         '\\1 %s' % (newval),
+                                         '\\1 %s\n' % (newval),
                                          oldtext + '\n', 1)
 
                         continue
@@ -703,7 +707,14 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
             for page in s_list[key]:
                 pages.add(page)
 
-                vals = s_list[key][page]
+                if not s_list[key][page]:
+                   vals = [None]
+                else:
+                    vals = s_list[key][page]
+
+                # Patch: no value not included in sorting
+                #        break glass if necessary
+                # vals = s_list[key][page]
                 vals = [ordervalue(x) for x in vals]
                 s_list[key][page] = vals
 
@@ -719,12 +730,13 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
         # them from the pages yet to be sorted
         def olist_add(orderlist, pages, page, key, val):
             if page in pages:
-                #print "Adding %s (%s=%s)" % (page, key, val)
+                # print "Adding %s (%s=%s)" % (page, key, val)
                 orderlist.append(page)
                 pages.remove(page)
             return orderlist, pages
 
         def order(pages, s_list, byval, ord, orderlist):
+            # print "entering order", pages, ord
             for key in ord:
                 for val in ordvals[key]:
                     if not pages:
@@ -742,16 +754,32 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                         orderlist, pages = olist_add(orderlist, pages,
                                                      page, key, val)
                     elif len(byval[key][val]) > 1:
+                        #print byval[key][val], len(ord)
                         if len(ord) < 2:
                             for page in sorted(byval[key][val]):
+                                #print "Adding unsorted", page
                                 orderlist, pages = olist_add(orderlist, pages,
                                                              page, key, val)
                         else:
+                            newround = list()
                             for page in byval[key][val]:
+                                if page in pages:
+                                    newround.append(page)
+                            if not newround:
+                                continue
+                        
+                            for page in newround:
+                                #print 'removing', page
                                 pages.remove(page)
 
-                            orderlist, _ = order(byval[key][val], s_list,
-                                                 byval, ord[1:], orderlist)
+                            #print "Next round"
+                            orderlist, unord = order(newround, s_list,
+                                                     byval, ord[1:], orderlist)
+
+                            for page in sorted(unord):
+                                #print "Adding unsorted", page
+                                orderlist, _ = olist_add(orderlist, unord,
+                                                         page, key, val)
 
                         #print "and out"
 

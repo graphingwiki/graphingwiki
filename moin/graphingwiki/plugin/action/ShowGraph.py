@@ -404,7 +404,7 @@ class GraphShower(object):
         if not self.unscale:
             self.size = "%.2f,%.2f" % ((self.height / 72),
                                        (self.width / 72))
-            
+
         return error
 
     def addToStartPages(self, graphdata, pagename):
@@ -989,14 +989,14 @@ class GraphShower(object):
         request.write(u'</select><br>\n')
 
         # Height
-        request.write(u"<u>" + _("Max height") + u"</u><br>\n")
+        request.write(_("Max height") + u"<br>\n")
         request.write(u'<input type="text" name="height" ' +
-                      u'size=2 value="%s"><br>\n' % str(self.height))
+                      u'size=5 value="%s"><br>\n' % str(self.height))
 
         # Width
-        request.write(u"<u>" + _("Max width") + u"</u><br>\n")
+        request.write(_("Max width") + u"<br>\n")
         request.write(u'<input type="text" name="width" ' +
-                      u'size=2 value="%s"><br>\n' % str(self.width))
+                      u'size=5 value="%s"><br>\n' % str(self.width))
 
         # Unscale
         request.write(u'<input type="checkbox" name="unscale" ' +
