@@ -450,7 +450,11 @@ def process_edit(request, input, category_edit='', categories={}):
         oldvals = list()
         for val, typ in getvalues(request, globaldata, keypage,
                                   key, display=False):
-            oldvals.append(val)
+            # Skip default labels
+            if key == 'label' and val == url_unquote(keypage):
+                pass
+            else:
+                oldvals.append(val)
 
         if oldvals != newvals:
             changes.setdefault(keypage, {})
@@ -473,7 +477,7 @@ def process_edit(request, input, category_edit='', categories={}):
                        edit_meta(request, url_unquote(keypage),
                                  {}, {},
                                  category_edit, categories[keypage]))
-    else:
+    elif changes:
         for keypage in changes:
             catlist = categories.get(keypage, [])
             msg.append('%s: ' % url_unquote(keypage) + \
@@ -481,6 +485,8 @@ def process_edit(request, input, category_edit='', categories={}):
                                  changes[keypage]['old'],
                                  changes[keypage]['new'],
                                  category_edit, catlist))
+    else:
+        msg.append('%s: Unchanged' % url_unquote(keypage))
 
     return msg
 
@@ -882,11 +888,24 @@ def xmlrpc_connect(func, wiki, *args, **kwargs):
                 'faultString': 'Cannot connect to server at %s (%d %s)' %
                 (wiki, e.errcode, e.errmsg)}
     except socket.error, e:
-        return {'faultCode': e.args[0],
-                'faultString': e.args[1]}
+        # Socket.error does not return two values consistently
+        # it might return also ('timed out',), so I'm preparing
+        # for the flying elephants here
+        args = getattr(e, 'args', [])
+        if len(args) != 2:
+            return {'faultCode': '666',
+                    'faultString': ''.join(args)}
+        else:
+            return {'faultCode': args[0],
+                    'faultString': args[1]}
     except socket.gaierror, e:
-        return {'faultCode': e[0],
-                'faultString': e[1]}
+        args = getattr(e, 'args', [])
+        if len(args) != 2:
+            return {'faultCode': '666',
+                    'faultString': ''.join(args)}
+        else:
+            return {'faultCode': args[0],
+                    'faultString': args[1]}
 
 def xmlrpc_attach(wiki, page, fname, username, password, method,
                   content='', overwrite=False):

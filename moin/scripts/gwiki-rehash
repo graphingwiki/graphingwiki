@@ -71,7 +71,7 @@ if not pages:
         if file.startswith('graphdata.shelve'):
             sys.stderr.write('Removed graphdata (%s)\n' % file)
             os.unlink(os.path.join(datadir, file))
-elif os.path.exists(lockfile):
+else:
     for file in os.listdir(datadir):
         if file.startswith('read_lock') or file.startswith('write_lock'):
             sys.stderr.write("Found lockfile (%s), \n" % lockfile + \

@@ -967,12 +967,13 @@ class GraphShower(object):
         self.request.write('<!-- $Id$ -->\n')
 
         ## Begin form
+        request.write(u'<div class="showgraph-form">\n')
         request.write(u'<form method="GET" action="%s">\n' %
                       "%s/%s" % (self.request.getScriptname(), self.pagename))
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 
-
+        request.write(u'<div class="showgraph-panel1">\n')
 	# PANEL 1 
         request.write(u'<a href="javascript:toggle(\'tab0\')">View & Include</a><br>\n')
         request.write(u'<table border="1" id="tab0"><tr>\n')
@@ -1016,8 +1017,6 @@ class GraphShower(object):
                       u'value="1"%s\n' %
                       (self.edgelabels and ' checked>' or '>') +
                       _('Edge labels'))
-
-        request.write(u'</div>')
 
         # Include
 	request.write(u"<td valign=top>\n")
@@ -1072,7 +1071,7 @@ class GraphShower(object):
                       _('All links') + u'<br>\n')
 
         request.write(u'</table>\n')
-
+        request.write(u'</div>\n')
 
         def sortShuffle(types):
             types = sorted(types)
@@ -1081,7 +1080,7 @@ class GraphShower(object):
                 types.insert(0, 'WikiCategory')
             return types
 
-
+        request.write(u'<div class="showgraph-panel2">\n')
 	# PANEL 2
         request.write(u'<a href="javascript:toggle(\'tab1\')">Color & Order</a><br>\n')
         request.write(u'<table border="1" id="tab1"><tr>\n')
@@ -1193,8 +1192,10 @@ class GraphShower(object):
                               u'value="%s"><br>\n' % str(self.ordersub))
 
 	request.write(u'</table>\n')
+        request.write(u'</div>\n')
 
 
+        request.write(u'<div class="showgraph-panel3">\n')
         # PANEL 3 
         request.write(u'<a href="javascript:toggle(\'tab2\')">Filters</a><br>\n')
         request.write(u'<td valign=top><table border="1" id="tab2"><tr>\n')
@@ -1339,8 +1340,11 @@ class GraphShower(object):
                            or ">",
                            _("No type")))
         request.write(u"</table>\n")
+        request.write(u'</div>\n')
+        request.write(u'</div>\n')
 
         # End form
+        request.write(u'<div class="showgraph-buttons">\n')
         request.write(u'<input type=submit name=graph ' +
                       'value="%s">\n' % _('Create'))
         request.write(u'<input type=submit name=test ' +
@@ -1515,14 +1519,19 @@ class GraphShower(object):
 
             e.linktype = lt
 
-            val = '%s>%s>%s' % (url_unquote(edge[0]),
-                                lt != '_notype' and url_unquote(lt) or '',
-                                url_unquote(edge[1]))
             # Double URL quoting? I have created a monster!
             filtstr = str()
             for lt in linktypes:
                 filtstr += '&filteredges=%s' % url_quote(lt)
             e.URL = self.request.request_uri + filtstr
+
+            # For display cosmetics, don't show _notype
+            # as it's a bit ugly
+            ltdisp = ', '.join(x for x in linktypes if x != '_notype')
+            val = '%s>%s>%s' % (url_unquote(edge[0]),
+                                url_unquote(ltdisp),
+                                url_unquote(edge[1]))
+
             e.tooltip = val
             
         return outgraph
