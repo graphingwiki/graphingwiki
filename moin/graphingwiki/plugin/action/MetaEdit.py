@@ -49,6 +49,7 @@ def show_queryform(request, pagename):
 
 def show_editform(request, pagename, args):
     _ = request.getText
+    formatter = request.formatter
 
     def wr(fmt, *args):
         args = tuple(map(htmlquote, args))
@@ -58,35 +59,87 @@ def show_editform(request, pagename, args):
 
     wr(u'<form method="POST" action="%s">\n', formpage)
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
-    wr(u'<table>\n')
-    wr(u'<tr><th>%s<th>%s<th>%s\n', _('Page name'), _('Key'), _('Value'))
+    wr(formatter.table(1))
+    wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
+    wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
     # Note that metatable_parseargs handles permission issues
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          globaldata=None,
                                                          all_keys=True)
 
-    for frompage in sorted(pagelist):
+    for key in metakeys + ['']:
+        wr(formatter.table_cell(1, {'class': 'meta_header'}))
+        wr(u'<input type="text" name="%s" value="%s">',
+            url_unquote(':: %s' % key), url_unquote(key))
+    wr(formatter.table_row(0))
 
-        for key in metakeys:
-            wr(u'<tr><td>%s<td>%s', url_unquote(frompage), url_unquote(key))
-            inputname = url_unquote(frompage) + u'!' + url_unquote(key)
+    values = dict()
+    valnos = dict()
+    
+    for frompage in pagelist:
+        values[frompage] = dict()
 
-            default = list()
-            for val, typ in getvalues(request, globaldata, frompage,
-                                      key, display=False):
-                default.append(val)
+        for key in metakeys + ['']:
+            values[frompage][key] = list()
+            # If the page has no values for this key, it'll
+            # have one in the table to add a value
+            if not valnos.has_key(frompage):
+                valnos[frompage] = 1
 
-            default.append('')
+            for i, (val, typ) in enumerate(getvalues(request, globaldata,
+                                                     frompage, key,
+                                                     display=False)):
+                values[frompage][key].append(val)
+                # Enumerate starts from 0: #values++ 
+                # One to add a value: #values++ 
+                if valnos[frompage] < i + 2:
+                    valnos[frompage] = i + 2
 
-            for val in default:
-                wr(u'<td><input type="text" name="%s" value="%s">',
+            values[frompage][key].append('')
+
+    for frompage in pagelist:
+        wr(formatter.table_row(1))
+        wr(formatter.table_cell(1, {'class': 'meta_page',
+                                    'rowspan': str(valnos[frompage])}))
+        wr(u'%s', url_unquote(frompage))
+
+        for i in range(valnos[frompage]):
+            for key in metakeys + ['']:
+                
+                inputname = url_unquote(frompage) + u'!' + url_unquote(key)
+
+                if len(values[frompage][key]) >= (i + 1):
+                    val = values[frompage][key][i]
+                else:
+                    val = ''
+
+                # Skip default labels
+                if key == 'label' and val == url_unquote(frompage):
+                    val = ''
+                
+                wr(formatter.table_cell(1, {'class': 'meta_cell'}))
+                wr(u'<input type="text" name="%s" value="%s">',
                    url_unquote(inputname), val)
 
-            wr(u'</tr>\n')
-            #print frompage, key, inputname, default, '<br>'
+                #print frompage, key, inputname, values, '<br>'
+            wr(formatter.table_row(0))
 
-    wr(u'</table>\n')
+# Proto JS code to warn on leaving an empty key name
+# <script language="JavaScript" type="text/javascript">
+#    function myvalid(me) {
+#      if (me.form.subject.value == "") {
+#        if (confirm("Empty subject, send anyway?"))
+#          return true;
+#        else
+#          return false;
+#      }
+#      return true;
+#    }
+# </script>
+# <input type="submit" name="send" value="Send" class="button1"tabindex="7" onClick="return myvalid(this);" />
+
+    wr(formatter.table(0))
     wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
     wr(u'</form>\n')
 

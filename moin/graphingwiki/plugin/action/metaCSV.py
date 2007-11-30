@@ -10,6 +10,7 @@ from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 from graphingwiki.editing import process_edit, getvalues
 from graphingwiki.editing import metatable_parseargs
+from graphingwiki.patterns import encode
 
 def execute(pagename, request):
     # Strip non-ascii chars in header
@@ -31,20 +32,20 @@ def execute(pagename, request):
         print '--', z, '--'
         print 'args', request.args
         print 'pagename', pagename
-    keys = ['page name'] + z.pop(0)
+
+    out = []
+    for keys in z.pop(0):
+        out.extend(urllib.unquote(encode(x)) for x in keys)
+    
+    keys = ['page name'] + out
     writer = csv.writer(request, delimiter=';')
     writer.writerow(keys)
 
     for row in z:
-        # multiple values will get concatenated on one row, joined with ','
-        def val2text(val):
-            if not val:
-                return ''
-            else:
-                out = u', '.join(val)
-                return out.encode('utf-8')
-        row[1:] = map(val2text, row[1:])
-        row[0] = urllib.unquote(row[0])
-        writer.writerow(row)
+        out = []
+        for x in row[1:]:
+            out.extend(x)
+        writer.writerow([urllib.unquote(encode(row[0]))] +
+                        [urllib.unquote(encode(x)) for x in out])
 	
     raise MoinMoinNoFooter

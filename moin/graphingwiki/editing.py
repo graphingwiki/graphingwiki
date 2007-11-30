@@ -55,7 +55,8 @@ def ordervalue(value):
         try:
             value = float(value.strip('"'))
         except ValueError:
-            if value.strip('"').replace('.', '').isdigit():
+            tmpval = value.lstrip('[').rstrip(']').strip('"')
+            if value.replace('.', '').isdigit():
                 try:
                     # 00 is stylistic to avoid this:
                     # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
@@ -349,38 +350,17 @@ def edit_meta(request, pagename, oldmeta, newmeta,
             # print repr(key)
             for i, newval in enumerate(newmeta[key]):
                 # print repr(newval)
+                oldkey = _fix_key(key)
+                inclusion = ' %s:: %s' % (oldkey, newval)
 
-                # If the old text does not have this key, add it (as dl), or
-                # if the new values has more values, add them (as dl)
-                if ((not oldmeta.has_key(key) or not oldmeta[key]) or
-                    (len(oldmeta[key]) - 1 < i)):
-                    oldkey = _fix_key(key)
-                    inclusion = ' %s:: %s' % (oldkey, newval)
+                # print repr(inclusion)
 
-                    # If prototypes ( key:: ) are present, replace them
-                    if (oldmeta.has_key(key) and not oldmeta[key]
-                        and re.search(dl_proto % (oldkey), oldtext + '\n')):
+                def default_add(request, inclusion, newval, oldtext):
+                    if not newval:
+                        return oldtext
 
-                        oldkey = _fix_key(key)
-
-                        oldtext = re.sub(dl_proto % (oldkey),
-                                         '\\1 %s\n' % (newval),
-                                         oldtext + '\n', 1)
-
-                        continue
-                    elif (oldmeta.has_key(key) and oldmeta[key]
-                        and len(oldmeta[key]) - 1 < i):
-
-                        # DL meta supported only, otherwise
-                        # fall back to just adding
-                        text, count = re.subn(dl_add % (key),
-                                              '\\1%s\n' % (inclusion),
-                                              oldtext, 1)
-
-                        if count:
-                            oldtext = text
-                            continue
-
+                    # print "Add", repr(newval), repr(oldmeta.get(key, ''))
+                    
                     # patterns after or before of which the metadata
                     # should be included
                     pattern = getattr(request.cfg, 'gwiki_meta_after', '')
@@ -400,9 +380,65 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     else:
                         oldtext = newtext
 
+                    return oldtext
+
+                # print repr(oldmeta)
+                # print repr(newmeta)
+                # print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
+
+                # If nothing to do, do nothing
+                if (not oldmeta.has_key(key)
+                    and not newval.strip()):
+
+                    continue
+
+                # If prototypes ( key:: ) are present, replace them
+                elif (oldmeta.has_key(key)
+                    and not oldmeta[key]
+                    and re.search(dl_proto % (oldkey), oldtext + '\n')):
+
+                    # Do not replace with empties, i.e. status quo
+                    if not newval.strip():
+                        continue
+
+                    # print "Proto", repr(newval)
+
+                    oldkey = _fix_key(key)
+
+                    oldtext = re.sub(dl_proto % (oldkey),
+                                     '\\1 %s\n' % (newval),
+                                     oldtext + '\n', 1)
+
+                    continue
+
+                # If the old text does not have this key, add it (as dl), or
+                elif not oldmeta.has_key(key):
+                    oldtext = default_add(request, inclusion, newval, oldtext)
+                # if the new values has more values, add them (as dl).
+                # Try to cluster arguments near
+                elif (newval.strip()
+                      and oldmeta.has_key(key)
+                      and oldmeta[key]
+                      and len(oldmeta[key]) - 1 < i):
+
+                    # print "Cluster", repr(newval), repr(oldmeta[key])
+
+                    # DL meta supported only, otherwise
+                    # fall back to just adding
+                    text, count = re.subn(dl_add % (key),
+                                          '\\1%s\n' % (inclusion),
+                                          oldtext, 1)
+
+                    if count:
+                        oldtext = text
+                        continue
+
+                    oldtext = default_add(request, inclusion, newval, oldtext)
+
                 # Else, replace old value with new value
                 else:
                     oldval = oldmeta[key][i]
+                    # print "Replace", repr(oldval), repr(newval)
                     # print "# ", repr(oldval)
                     oldkey = _fix_key(key)
                     # First try to replace the dict variable
@@ -419,6 +455,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
 def process_edit(request, input, category_edit='', categories={}):
     # request.write(repr(request.form) + '<br>')
+    # print repr(input) + '<br>'
 
     def urlquote(s):
         if isinstance(s, unicode):
@@ -433,7 +470,25 @@ def process_edit(request, input, category_edit='', categories={}):
 
     globaldata = GraphData(request)
 
-    changes = {}
+    changes = dict()
+    keychanges = dict()
+
+    # Key changes
+    for key in input:
+        if not key.startswith(':: '):
+            continue
+
+        newkey = encode(input[key][0])
+        key = key[3:]
+        if key == newkey:
+            continue
+
+        # Form presents you with ' ' if the key box is empty
+        if not newkey.strip():
+            newkey = ''
+
+        keychanges[urlquote(key)] = urlquote(newkey)
+        # print repr(keychanges)
 
     for val in input:
         # At least the key 'save' may be there and should be ignored
@@ -456,14 +511,28 @@ def process_edit(request, input, category_edit='', categories={}):
             else:
                 oldvals.append(val)
 
-        if oldvals != newvals:
+        if oldvals != newvals or keychanges:
             changes.setdefault(keypage, {})
-            if not oldvals:
-                changes[keypage].setdefault('old', {})[key] = []
+            if key in keychanges:
+                # In case of new keys there is no old one
+                if key.strip():
+                    # print 'deleting key', repr(key)
+                    # Otherwise, delete contents of old key
+                    changes[keypage].setdefault('old', {})[key] = oldvals
+                    changes[keypage].setdefault('new',
+                                                {})[key] = [''] * len(oldvals)
+                # If new key is empty, don't add anything
+                if keychanges[key].strip():
+                    # print 'adding key', repr(keychanges[key])
+                    if not newvals:
+                        newvals = ['']
+                    # Otherwise, add old values under new key
+                    changes[keypage].setdefault('new',
+                                                {})[keychanges[key]] = newvals
             else:
-                changes[keypage].setdefault('old', {})[key] = oldvals
-
-            changes[keypage].setdefault('new', {})[key] = newvals
+                if oldvals:
+                    changes[keypage].setdefault('old', {})[key] = oldvals
+                changes[keypage].setdefault('new', {})[key] = newvals
 
     # Done reading, will start writing now
     globaldata.closedb()
@@ -482,7 +551,7 @@ def process_edit(request, input, category_edit='', categories={}):
             catlist = categories.get(keypage, [])
             msg.append('%s: ' % url_unquote(keypage) + \
                        edit_meta(request, url_unquote(keypage),
-                                 changes[keypage]['old'],
+                                 changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
                                  category_edit, catlist))
     else:
@@ -686,7 +755,11 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
 
     # sorting pagelist
     if not orderspec:
-        pagelist = sorted(pagelist)
+        orderpages = dict()
+        for page in pagelist:
+            orderpages[ordervalue(page)] = page
+        sortlist = sorted(orderpages.keys())
+        pagelist = [orderpages[x] for x in sortlist]
     else:
         s_list = dict()
         for dir, key in orderspec:

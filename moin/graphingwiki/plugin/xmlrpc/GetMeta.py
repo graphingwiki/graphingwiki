@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-"
+#! -*- coding: utf-8 -*-"
 """
     GetMeta xmlrpc plugin to MoinMoin/Graphingwiki
      - Sends the Metadata of desired pages
@@ -7,16 +7,8 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import urllib
-
-from MoinMoin import config
-
+ 
 from graphingwiki.editing import metatable_parseargs, getvalues
-
-def url_unquote(s):
-    s = urllib.unquote(s)
-    if not isinstance(s, unicode):
-        s = unicode(s, config.charset)
-    return s
 
 def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request
@@ -31,20 +23,41 @@ def execute(xmlrpcobj, args, keysonly=True):
         globaldata.closedb()
         return list(metakeys), list(pagelist)
 
-    # Keys to the first row
-    out = [list(metakeys)]
+    data = dict()
+    keyoccur = dict()
+
     # Go through the pages, give list that has
     # the name of the page followed by the values of the keys
     for page in pagelist:
+        data[page] = dict()
+        for key in metakeys:
+            keyoccur.setdefault(key, 0)
 
+            data[page][key] = list()
+            for val, typ in getvalues(request, globaldata, page, key):
+                data[page][key].append(val)
+
+            keyonpage = len(data[page][key])
+            if keyonpage > keyoccur[key]:
+                keyoccur[key] = keyonpage
+
+    # Keys to the first row
+    out = []
+    keys = []
+    for key in metakeys:
+        keys.append([key] * keyoccur[key])
+    out.append(keys)
+        
+    for page in pagelist:
         row = [page]
         for key in metakeys:
             vals = []
-            for val, typ in getvalues(request, globaldata, page, key):
+            for val in data[page][key]:
                 vals.append(val)
+            vals.extend([''] * (keyoccur[key] - len(vals)))
             row.append(vals)
         out.append(row)
-
+    
     # Close db, get out
     globaldata.closedb()
 

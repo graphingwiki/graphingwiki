@@ -39,6 +39,7 @@ from MoinMoin.parser.wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getvalues
 from graphingwiki.editing import check_link, formatting_rules
+from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
 
@@ -155,7 +156,7 @@ def execute(macro, args):
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 
-    args = url_quote(args)
+    args = url_quote(encode(args))
     out += action_link('MetaEdit', 'edit', args)
     out += action_link('metaCSV', 'csv', args)
 

@@ -18,7 +18,7 @@ from optparse import OptionParser
 
 from MoinMoin import config
 
-from graphingwiki.patterns import qstrip_p, encode
+from graphingwiki.patterns import encode
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect
 
 def handle_error(result):
@@ -122,7 +122,13 @@ if options.app_file or options.repl_file:
 
         # enumerate values, ignore first column
         for i, val in enumerate(row[1:]):
-            input.setdefault(keys[i], []).append(val)
+            input.setdefault(keys[i], set([])).add(val)
+
+        for i in input:
+            # Discard extra empties
+            if len(input) > 1:
+                input[i].discard('')
+            input[i] = list(input[i])
 
         result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
                                 input, method, True,
@@ -143,7 +149,7 @@ if options.repl_page or options.app_page:
     else:
         page = unicode(options.repl_page, config.charset)
         method = 'repl'
-        
+
     input = {}
     if options.set_args:
         for arg in options.set_args:
@@ -178,11 +184,16 @@ else:
             wr.writerow(['Keys'] + [urllib.unquote(x) for x in result[0]])
             wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
         else:
-            wr.writerow(['Page name'] + [urllib.unquote(x) for x in result[0]])
+            out = []
+            for x in result[0]:
+                out.extend(x)
+            wr.writerow(['Page name'] + [urllib.unquote(x) for x in out])
             for row in result[1:]:
+                out = []
+                for x in row[1:]:
+                    out.extend(x)
                 wr.writerow([urllib.unquote(encode(row[0]))] +
-                             [urllib.unquote(encode(','.join(x)))
-                              for x in row[1:]])
+                             [urllib.unquote(encode(x)) for x in out])
 
         sys.exit(0)
 

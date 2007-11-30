@@ -85,6 +85,7 @@ def execute(xmlrpcobj, page, input, action='add',
                     old.append(val)
                 src = set(output[pair])
                 tmp = set(src).intersection(set(old))
+
                 dst = []
                 # Due to the structure of the edit function,
                 # the order of the added values is significant:

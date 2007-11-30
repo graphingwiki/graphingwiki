@@ -531,7 +531,7 @@ def execute(pagename, request, text, pagedir, page):
                     key = key.lstrip()
 
                     # Try to find if the value points to a link
-                    matches = all_re.search(val.lstrip())
+                    matches = all_re.match(val.lstrip())
                     if matches:
                         # Take all matches if his non-empty
                         # and hit type in linktypes
