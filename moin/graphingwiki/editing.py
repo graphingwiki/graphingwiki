@@ -47,6 +47,37 @@ default_meta_before = '----'
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
+def getmeta_to_table(input):
+    keyoccur = dict()
+
+    keys = list()
+    for key in input[0]:
+        keyoccur[key] = 1
+        keys.append(key)
+
+    for row in input[1:]:
+        for i, key in enumerate(row[1:]):
+            keylen = len(key)
+            if keylen > keyoccur[keys[i]]:
+                keyoccur[keys[i]] = keylen
+
+    table_keys = ['Page name']
+
+    for key in input[0]:
+        table_keys.extend([url_unquote(encode(key))] * keyoccur[key])
+
+    table = [table_keys]
+
+    for vals in input[1:]:
+        row = [url_unquote(encode(vals[0]))]
+        for i, val in enumerate(vals[1:]):
+            val = [url_unquote(encode(x)) for x in val]
+            val.extend([''] * (keyoccur[keys[i]] - len(val)))
+            row.extend(val)
+        table.append(row)
+
+    return table    
+
 def ordervalue(value):
     # IP addresses and numeric values get special treatment
     try:

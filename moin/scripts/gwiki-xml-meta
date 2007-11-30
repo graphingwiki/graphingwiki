@@ -19,7 +19,7 @@ from optparse import OptionParser
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
-from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect
+from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect, getmeta_to_table
 
 def handle_error(result):
     # Us being here means that an error has occurred
@@ -178,22 +178,16 @@ else:
         val += ',' + ','.join(options.match_args)
         
     result = xmlrpc_connect(srcWiki.GetMeta, wiki, val, options.keysonly)
+
     wr = csv.writer(sys.stdout, delimiter=';')
     if isinstance(result, list):
         if options.keysonly:
             wr.writerow(['Keys'] + [urllib.unquote(x) for x in result[0]])
             wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
         else:
-            out = []
-            for x in result[0]:
-                out.extend(x)
-            wr.writerow(['Page name'] + [urllib.unquote(x) for x in out])
-            for row in result[1:]:
-                out = []
-                for x in row[1:]:
-                    out.extend(x)
-                wr.writerow([urllib.unquote(encode(row[0]))] +
-                             [urllib.unquote(encode(x)) for x in out])
+            result = getmeta_to_table(result)
+            for row in result:
+                wr.writerow(row)
 
         sys.exit(0)
 
