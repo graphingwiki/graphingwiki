@@ -1,8 +1,8 @@
 # -*- coding: iso-8859-1 -*-
 """
-   MoinMoin - TagCloud
+   MoinMoin - MetaTagCloud
 
-   Create tagcloud
+   Based on TagCloud.py "Create tagcloud"
    @copyright: 2007 by Christian Groh
 
    Adapted for use in Graphingwiki to visualise metakeys
