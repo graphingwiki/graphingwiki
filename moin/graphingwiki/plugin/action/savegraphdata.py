@@ -362,66 +362,9 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
         e.linktype = set([linktype])
 
 
-def execute(pagename, request, text, pagedir, page):
-    # Skip MoinEditorBackups
-    if pagename.endswith('/MoinEditorBackup'):
-        return
-
-    # Category matching regexp
-    cat_re = re.compile(request.cfg.page_category_regex)
-
-    graphshelve = os.path.join(request.cfg.data_dir,
-                               'graphdata.shelve')
-
-    # Expires old locks left by crashes etc.
-    # Page locking mechanisms should prevent this code being
-    # executed prematurely - thus expiring both read and
-    # write locks
-    lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    lock.acquire()
-
-    # Open file db for global graph data, creating it if needed
-    globaldata = shelve.open(graphshelve, flag='c')
-    
-    # The global graph data contains all the links, even those that
-    # are not immediately available in the page's graphdata pickle
-
+def parse_text(request, globaldata, page, text):
+    pagename = page.page_name
     quotedname = url_quote(encode(pagename))
-
-    # Page graph file to save detailed data in
-    gfn = os.path.join(pagedir,'graphdata.pickle')
-    # load graphdata if present and not trashed, remove it from index
-    if os.path.isfile(gfn) and os.path.getsize(gfn):
-        pagegraphfile = file(gfn)
-        old_data = cPickle.load(pagegraphfile)
-        
-        for edge in old_data.edges.getall(parent=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
-
-        for edge in old_data.edges.getall(child=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
-
-        shelve_unset_attributes(globaldata, quotedname)
-
-        pagegraphfile.close()
-
-    # Include timestamp to current page
-    if not globaldata.has_key(quotedname):
-        globaldata[quotedname] = {'mtime': time(), 'saved': True}
-    else:
-        temp = globaldata[quotedname]
-        temp['mtime'] = time()
-        temp['saved'] = True
-        globaldata[quotedname] = temp
-
-    # Overwrite pagegraphfile with the new data
-    pagegraphfile = file(gfn, 'wb')
 
     # import text_url -formatter
     try:
@@ -438,6 +381,9 @@ def execute(pagename, request, text, pagedir, page):
     wikiparse = Parser(text, request)
     wikiparse.formatter = urlformatter
     urlformatter.setPage(page)
+
+    # Category matching regexp
+    cat_re = re.compile(request.cfg.page_category_regex)
 
     rules = wikiparse.formatting_rules.replace('\n', '|')
 
@@ -530,6 +476,9 @@ def execute(pagename, request, text, pagedir, page):
                     key, val = data[0], '::'.join(data[1:])
                     key = key.lstrip()
 
+                    if not key:
+                        continue
+
                     # Try to find if the value points to a link
                     matches = all_re.match(val.lstrip())
                     if matches:
@@ -562,13 +511,76 @@ def execute(pagename, request, text, pagedir, page):
                     # Treat shapefiles as a special case, as they should
                     # (probably) be evident both as meta and link
                     if dicturl:
-                        if key != 'shapefile':
-                            continue
+                        # if key != 'shapefile':
+                        continue
 
                     # If it was not link, save as metadata. 
                     add_meta(globaldata, pagenode, quotedname,
                              "[[MetaData(%s,%s)]]" % (key, val))
-                    
+
+    return globaldata, pagegraph
+
+
+def execute(pagename, request, text, pagedir, page):
+    # Skip MoinEditorBackups
+    if pagename.endswith('/MoinEditorBackup'):
+        return
+
+    graphshelve = os.path.join(request.cfg.data_dir,
+                               'graphdata.shelve')
+
+    # Expires old locks left by crashes etc.
+    # Page locking mechanisms should prevent this code being
+    # executed prematurely - thus expiring both read and
+    # write locks
+    lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+    lock.acquire()
+
+    # Open file db for global graph data, creating it if needed
+    globaldata = shelve.open(graphshelve, flag='c')
+    
+    # The global graph data contains all the links, even those that
+    # are not immediately available in the page's graphdata pickle
+
+    quotedname = url_quote(encode(pagename))
+
+    # Page graph file to save detailed data in
+    gfn = os.path.join(pagedir,'graphdata.pickle')
+    # load graphdata if present and not trashed, remove it from index
+    if os.path.isfile(gfn) and os.path.getsize(gfn):
+        pagegraphfile = file(gfn)
+        old_data = cPickle.load(pagegraphfile)
+        
+        for edge in old_data.edges.getall(parent=quotedname):
+            e = old_data.edges.get(*edge)
+            linktype = getattr(e, 'linktype', ['_notype'])
+            shelve_remove_in(globaldata, edge, linktype)
+            shelve_remove_out(globaldata, edge, linktype)
+
+        for edge in old_data.edges.getall(child=quotedname):
+            e = old_data.edges.get(*edge)
+            linktype = getattr(e, 'linktype', ['_notype'])
+            shelve_remove_in(globaldata, edge, linktype)
+            shelve_remove_out(globaldata, edge, linktype)
+
+        shelve_unset_attributes(globaldata, quotedname)
+
+        pagegraphfile.close()
+
+    # Include timestamp to current page
+    if not globaldata.has_key(quotedname):
+        globaldata[quotedname] = {'mtime': time(), 'saved': True}
+    else:
+        temp = globaldata[quotedname]
+        temp['mtime'] = time()
+        temp['saved'] = True
+        globaldata[quotedname] = temp
+
+    # Overwrite pagegraphfile with the new data
+    pagegraphfile = file(gfn, 'wb')
+
+    globaldata, pagegraph = parse_text(request, globaldata, page, text)
+
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()

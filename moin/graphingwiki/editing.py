@@ -266,7 +266,6 @@ def getvalues(request, globaldata, name, key, display=True):
     return vals
 
 def get_pages(request):
-
     def filter(name):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
@@ -297,6 +296,9 @@ def edit(pagename, editfun, request=None,
     graphsaver = wikiutil.importPlugin(request.cfg,
                               'action',
                               'savegraphdata')
+    if not newtext:
+        return u'No data', p
+
     try:
         msg = p.saveText(newtext, 0)
         graphsaver(pagename, request, newtext, p.getPagePath(), p)
@@ -625,6 +627,9 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     # Flag: were there page arguments?
     pageargs = False
 
+    if not globaldata:
+        globaldata = GraphData(request)
+
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
         # Metadata regexp, move on
@@ -664,18 +669,15 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
 
         # if there's something wrong with the regexp, ignore it and move on
         try:
-            page_re = re.compile("%s" % arg[1:-1])
+            page_re = re.compile("%s" % encode(arg[1:-1]))
         except:
             continue
 
         # Get all pages, check which of them match to the supplied regexp
-        all_pages = get_pages(request)
+        all_pages = [url_unquote(x) for x in globaldata]
         for page in all_pages:
             if page_re.match(page):
-                arglist.append(encode(page))
-
-    if not globaldata:
-        globaldata = GraphData(request)
+                arglist.append(url_quote(page))
 
     pages = set([])
     metakeys = set([])
@@ -729,7 +731,7 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     # If there were no page args, get all non-system pages
     if not pageargs and not pages:
         if not all_pages:
-            pages = get_pages(request)
+            pages = [x for x in globaldata]
         else:
             pages = all_pages
 
@@ -800,7 +802,8 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                 s_list[key][page] = [x for x, y in
                                      sorted(getvalues(request,
                                                       globaldata,
-                                                      page, key))]
+                                                      page,
+                                                      url_quote(encode(key))))]
         ordvals = dict()
         byval = dict()
         ord = [x for _, x in orderspec]
@@ -853,7 +856,7 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                         return orderlist, pages
 
                     if not byval[key].has_key(val):
-                        #print "Not existing: %s %s" % (key, val)
+                        # print "Not existing: %s %s" % (key, val)
                         continue
 
                     # If equivalence class only has one
@@ -864,10 +867,10 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                         orderlist, pages = olist_add(orderlist, pages,
                                                      page, key, val)
                     elif len(byval[key][val]) > 1:
-                        #print byval[key][val], len(ord)
+                        # print byval[key][val], len(ord)
                         if len(ord) < 2:
                             for page in sorted(byval[key][val]):
-                                #print "Adding unsorted", page
+                                # print "Adding unsorted", page
                                 orderlist, pages = olist_add(orderlist, pages,
                                                              page, key, val)
                         else:
@@ -879,19 +882,19 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                                 continue
                         
                             for page in newround:
-                                #print 'removing', page
+                                # print 'removing', page
                                 pages.remove(page)
 
-                            #print "Next round"
+                            # print "Next round"
                             orderlist, unord = order(newround, s_list,
                                                      byval, ord[1:], orderlist)
 
                             for page in sorted(unord):
-                                #print "Adding unsorted", page
+                                # print "Adding unsorted", page
                                 orderlist, _ = olist_add(orderlist, unord,
                                                          page, key, val)
 
-                        #print "and out"
+                        # print "and out"
 
             return orderlist, pages
 

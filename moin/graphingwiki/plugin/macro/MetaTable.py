@@ -71,7 +71,11 @@ def t_cell(macro, vals, head=0):
             data = unicode(data, config.charset)
 
         if head:
-            out = out + macro.formatter.pagelink(1, data)
+            kw = {}
+            if '?' in data:
+                data, query = data.split('?')
+                kw['querystr'] = query
+            out = out + macro.formatter.pagelink(1, data, **kw)
 
         if src == 'link':
             # Check for link type
@@ -101,29 +105,18 @@ def t_cell(macro, vals, head=0):
 
     return out
 
-def execute(macro, args):
-    # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
+def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
     request = macro.request
     _ = request.getText
 
     # Start table
     out = macro.formatter.linebreak() + macro.formatter.table(1)
 
-    # No data -> bail out quickly, Scotty
-    if not pagelist:
-        out += t_cell(macro, "%s (%s)" %
-                      (_("Metatable has no contents"), args))
-        out += macro.formatter.table(0)
-
-        globaldata.closedb()
-        return out
-
     if metakeys:
         # Give a class to headers to make it customisable
         out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
         # Upper left cell is empty
-        out += t_cell(macro, '')
+        out += t_cell(macro, legend)
 
     # Start parser
     macro.parser = Parser('', request)
@@ -146,6 +139,26 @@ def execute(macro, args):
             out = out + t_cell(macro, vals)
         out += macro.formatter.table_row(0)
     out += macro.formatter.table(0)
+
+    return out
+
+def execute(macro, args):
+    # Note, metatable_parseargs deals with permissions
+    globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
+    request = macro.request
+    _ = request.getText
+
+    # No data -> bail out quickly, Scotty
+    if not pagelist:
+        out = macro.formatter.linebreak() + macro.formatter.table(1)
+        out += t_cell(macro, "%s (%s)" %
+                      (_("Metatable has no contents"), args))
+        out += macro.formatter.table(0)
+
+        globaldata.closedb()
+        return out
+
+    out = construct_table(macro, globaldata, pagelist, metakeys)
 
     globaldata.closedb()
 

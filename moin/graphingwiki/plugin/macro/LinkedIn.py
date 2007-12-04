@@ -42,6 +42,10 @@ def execute(macro, args):
     pagename = url_quote(encode(pagename))
     _ = macro.request.getText
 
+    meta = False
+    if args and 'meta' in args:
+        meta = True
+
     out = []
     nodes = set()
     globaldata = GraphData(macro.request)
@@ -50,13 +54,18 @@ def execute(macro, args):
     pdata = globaldata.getpage(pagename)
     for type in pdata.get('in', {}):
         for page in pdata['in'][type]:
+            typeinfo = ''
+            if meta and type != '_notype':
+                typeinfo = " (%s)" % (type)
             page = unicode(url_unquote(page), config.charset)
             if not page in nodes:
                 out.append(macro.formatter.pagelink(1, page) +
-                           macro.formatter.text(page) +
+                           macro.formatter.text(page + typeinfo) +
                            macro.formatter.pagelink(0, page))
                 nodes.add(page)
 
     globaldata.closedb()
 
-    return "%s: " % _("Linked in pages") + ', '.join(out)
+    # linebreak's knowledge of being in a preformatted area sucks
+    return "%s: " % _("Linked in pages") + ', '.join(out) + \
+           macro.formatter.linebreak(preformatted=0)

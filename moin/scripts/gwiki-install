@@ -31,7 +31,7 @@
 
 import os
 import sys
-from shutil import copy2
+from shutil import copyfile
 
 from optparse import OptionParser
 
@@ -76,7 +76,7 @@ def copytree(src, dst, symlinks=False):
             elif os.path.isdir(srcname):
                 copytree(srcname, dstname, symlinks)
             else:
-                copy2(srcname, dstname)
+                copyfile(srcname, dstname)
             # XXX What about devices, sockets etc.?
         except (IOError, os.error), why:
             errors.append((srcname, dstname, str(why)))

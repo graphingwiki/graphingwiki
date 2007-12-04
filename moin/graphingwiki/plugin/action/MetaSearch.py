@@ -38,6 +38,7 @@ from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
 from graphingwiki.patterns import encode
 from graphingwiki.patterns import GraphData
+from ShowGraph import quoteformstr
 
 regexp_re = re.compile('^/.+/$')
 
@@ -93,7 +94,8 @@ def execute(pagename, request):
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
-    request.write(u'<input type="text" name="q" size=50 value="%s">' % q)
+    request.write(u'<input type="text" name="q" size=50 value="%s">' %
+                  q.replace('"', '&#x22;'))
     request.write(u'<input type=submit value="' + _('Search') +
                   '">' + u'\n</form>\n')
 

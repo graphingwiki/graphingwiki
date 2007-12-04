@@ -50,7 +50,8 @@ class UserInputException(Exception):
 
 try:
     wikipath = sys.argv[1]
-    configdir = os.path.join(wikipath, 'config')
+    configdir = os.path.abspath(os.path.join(wikipath, 'config'))
+
     sys.path.insert(0, configdir)
     from wikiconfig import Config
     datadir = Config.data_dir
@@ -68,7 +69,7 @@ except UserInputException:
 
 if not pages:
     for file in os.listdir(datadir):
-        if file.startswith('graphdata.shelve'):
+        if file == 'graphdata.shelve':
             sys.stderr.write('Removed graphdata (%s)\n' % file)
             os.unlink(os.path.join(datadir, file))
 else:

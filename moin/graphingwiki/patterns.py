@@ -78,6 +78,11 @@ class GraphData(object):
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
+    def __iter__(self):
+        self.get_shelve()
+        for key in self.globaldata:
+            yield key
+
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
     # NB: You must use closedb() before exiting to avoid littering
@@ -132,13 +137,19 @@ class GraphData(object):
         for page in self.globaldata:
             if page.endswith('Template'):
                 continue
-            if not self.globaldata[page].has_key('meta'):
-                continue
-            for key in self.globaldata[page]['meta']:
+            for key in self.globaldata[page].get('meta', {}):
                 if key in special_attrs:
                     continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in self.globaldata[page]['meta'][key]:
+                    val = val.strip('"')
+                    self.vals_on_pages.setdefault(val, set()).add(page)
+
+            for key in self.globaldata[page].get('out', {}):
+                if key in special_attrs:
+                    continue
+                self.keys_on_pages.setdefault(key, set()).add(page)
+                for val in self.globaldata[page]['out'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
 
@@ -148,7 +159,7 @@ class GraphData(object):
             return graph
 
         page = self.getpage(pagename)
-        
+
         node = graph.nodes.add(pagename)
         # Add metadata
         for key, val in page.get('meta', {}).iteritems():
@@ -156,6 +167,10 @@ class GraphData(object):
                 setattr(node, key, ''.join(x.strip('"') for x in val))
             else:
                 setattr(node, key, val)
+
+        # Shapefile is an extra special case
+        for shape in page.get('lit', {}).get('shapefile', []):
+            setattr(node, 'shapefile', encode(shape))
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'URL'):
