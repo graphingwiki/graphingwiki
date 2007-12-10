@@ -105,6 +105,10 @@ def show_editform(request, pagename, args):
         wr(u'%s', url_unquote(frompage))
 
         for i in range(valnos[frompage]):
+            # Add <tr>:s for additional values also
+            if i > 0:
+                wr(formatter.table_row(1))
+
             for key in metakeys + ['']:
                 
                 inputname = url_unquote(frompage) + u'!' + url_unquote(key)
