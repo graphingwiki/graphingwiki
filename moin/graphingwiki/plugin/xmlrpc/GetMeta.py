@@ -14,10 +14,11 @@ def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request
     _ = request.getText
 
-    
     # Expects MetaTable arguments
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args)
-    
+    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
+                                                         all_keys=True)
+
+
     # If we only want the keys as specified by the args
     if keysonly:
         globaldata.closedb()

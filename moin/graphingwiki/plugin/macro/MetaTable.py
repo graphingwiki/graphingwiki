@@ -144,7 +144,8 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
 
 def execute(macro, args):
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
+    globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
+                                                         all_keys=True)
     request = macro.request
     _ = request.getText
 
