@@ -64,11 +64,12 @@ qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
 class GraphData(object):
+    globaldata = {}
+
     def __init__(self, request):
         self.request = request
         self.graphshelve = os.path.join(request.cfg.data_dir,
                                         'graphdata.shelve')
-        self.globaldata = {}
 
         self.opened = False
         self.opendb()
@@ -429,17 +430,7 @@ class WikiNode(object):
             WikiNode.startpages = startpages
 
         if request:
-            # Start cache-like stuff
-            if not WikiNode.graphdata:
-                WikiNode.graphdata = GraphData(WikiNode.request)
-#                print "Initing graphdata...<br>"
-                # request.write("Initing graphdata...<br>")
-            # Update the current request (user, etc) to cache-like stuff
-            else:
-#                print "Existing graphdata...<br>"
-                WikiNode.graphdata.request = WikiNode.request
-                if not WikiNode.graphdata.opened:
-                    WikiNode.graphdata.opendb()
+            WikiNode.graphdata = GraphData(WikiNode.request)
 
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)

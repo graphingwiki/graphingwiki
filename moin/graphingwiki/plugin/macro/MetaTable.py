@@ -38,7 +38,7 @@ from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getvalues
-from graphingwiki.editing import check_link, formatting_rules
+from graphingwiki.editing import check_link, formatting_rules, rendervalue
 from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
@@ -96,7 +96,9 @@ def t_cell(macro, vals, head=0):
                 out = out + attrs
             out = out + macro.formatter.pagelink(0)
         else:
-            out = out + macro.formatter.text(data)
+            out = out + macro.formatter.text(rendervalue(macro.request,
+                                                         macro.parser,
+                                                         data))
 
         if head:
             out = out + macro.formatter.pagelink(0)
@@ -143,6 +145,9 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
     return out
 
 def execute(macro, args):
+    if args is None:
+        args = ''
+
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
                                                          all_keys=True)

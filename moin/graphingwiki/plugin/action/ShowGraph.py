@@ -600,6 +600,8 @@ class GraphShower(object):
                 #if not obj.shapefile.startswith('attachment:'):
                 #    continue
 
+#                self.request.write(repr(obj.shapefile) + '<br>')
+
                 # Enter file path for attachment shapefiles
                 value = obj.shapefile[11:]
                 components = value.split('/')
@@ -609,9 +611,16 @@ class GraphShower(object):
                     page = '/'.join(components[:-1])
                 file = unicode(url_unquote(components[-1]), config.charset)
                 page = unicode(url_unquote(page), config.charset)
+
+#                self.request.write(repr(file) + '<br>')
+#                self.request.write(repr(page) + '<br>')
+
                 # get attach file path, empty label
                 n.shapefile = AttachFile.getFilename(self.request,
                                                      page, file)
+                n.style = 'filled'
+                n.fillcolor = 'transparent'
+#                self.request.write(repr(n.shapefile) + '<br>')
 #            elif 'AttachFile' in obj.node:
 #                # Have shapefiles of image attachments
 #                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
@@ -1560,35 +1569,27 @@ class GraphShower(object):
 #        self.request.write('execute' + repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
 
         # Init WikiNode-pattern
-#        print "Starting to init WikiNode"
+        #print "Starting to init WikiNode"
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
                                    startpages=self.startpages).graphdata
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph
-#        print "Init-build <br> <br>"
+        #print "Init-build <br> <br>"
         graphdata = self.buildGraphData()
-        #        print "Out-graph built <br> <br>"
-        # Stupid ugly hack:
-        # after saving page, the code execution seems to
-        # go pretty erratic, buildgraphdata is somehow
-        # executed two times over (??), leaving the
-        # db closed - hence opening the db again
-        # here seems to do the trick?
-        if not self.globaldata.opened:
-            self.globaldata.opendb()
+        #print "Out-graph built <br> <br>"
         outgraph = self.buildOutGraph()
-#        print "Init-build over <br> <br>"
+        #print "Init-build over <br> <br>"
         cl.stop('build')
 
         cl.start('traverse')
         # Start pattern searches from current page +
         # nodes gathered as per form args
         nodes = set(self.startpages)
-#        print "Traverse"
+        #print "Traverse"
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
-#        print "Traverse over"
+        #print "Traverse over"
         cl.stop('traverse')
 
         cl.start('layout')

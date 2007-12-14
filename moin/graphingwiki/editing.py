@@ -32,6 +32,7 @@ def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
 
 metadata_re = macro_re("MetaData")
+datetime_re = macro_re("DateTime")
 
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
@@ -100,6 +101,13 @@ def ordervalue(value):
     except AttributeError:
         # If given an int to start with
         pass
+
+    return value
+
+def rendervalue(request, parser, value):
+    # Render values in a nice manner
+    if datetime_re.match(value):
+        value = Parser._macro_repl(parser, value)
 
     return value
 
@@ -612,6 +620,9 @@ def savetext(pagename, newtext):
     return msg
 
 def metatable_parseargs(request, args, globaldata=None, all_keys=False):
+    if args is None:
+        args = ""
+
     # Category, Template matching regexps
     cat_re = re.compile(request.cfg.page_category_regex)
     temp_re = re.compile(request.cfg.page_template_regex)
@@ -728,12 +739,9 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
             
             pages.add(arg)
 
-    # If there were no page args, get all non-system pages
+    # If there were no page args, default to current page
     if not pageargs and not pages:
-        if not all_pages:
-            pages = [x for x in globaldata]
-        else:
-            pages = all_pages
+        pages = [url_quote(encode(request.page.page_name))]
 
     pagelist = set([])
 
