@@ -54,6 +54,8 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
 from graphingwiki.editing import ordervalue
 
+import colorsys
+
 # imports from other actions
 from savegraphdata import local_page
 
@@ -87,32 +89,6 @@ Content-Transfer-Encoding: base64
 """ % (name, type, basdata)
 
 msie_end = "\n--partboundary--\n\n"
-
-graphvizcolors = ["aquamarine1", "blue", "brown4", "burlywood",
-"chocolate3", "cornflowerblue", "crimson", "cyan", "darkkhaki",
-"darkolivegreen3", "darksalmon", "darkseagreen", "darkslateblue",
-"darkslategray", "darkviolet", "deeppink", "deepskyblue", "gray33",
-"forestgreen", "gold2", "goldenrod", "gray", "green", "greenyellow",
-"hotpink", "lavender", "lightpink", "lightsalmon",
-"lightseagreen", "lightskyblue", "lightsteelblue", "limegreen",
-"magenta", "maroon", "mediumaquamarine", "mediumorchid1",
-"mediumpurple", "mediumseagreen", "olivedrab", "orange", "orangered",
-"palegoldenrod", "palegreen", "palevioletred", "peru", "plum",
-"red2", "rosybrown", "royalblue4", "salmon", "slategray",
-"springgreen", "steelblue", "tomato3", "turquoise",
-"violetred", "yellow", "yellowgreen"]
-
-hotcoldgradient = ['#00008f', '#00009f', '#0000af', '#0000bf', '#0000cf',
-'#0000df', '#0000ef', '#0000ff', '#000fff', '#001fff', '#002fff',
-'#003fff', '#004fff', '#005fff', '#006fff', '#007fff', '#008fff',
-'#009fff', '#00afff', '#00bfff', '#00cfff', '#00dfff', '#00efff',
-'#00ffff', '#0fffef', '#1fffdf', '#2fffcf', '#3fffbf', '#4fffaf',
-'#5fff9f', '#6fff8f', '#7fff7f', '#8fff6f', '#9fff5f', '#afff4f',
-'#bfff3f', '#cfff2f', '#dfff1f', '#efff0f', '#ffff00', '#ffef00',
-'#ffdf00', '#ffcf00', '#ffbf00', '#ffaf00', '#ff9f00', '#ff8f00',
-'#ff7f00', '#ff6f00', '#ff5f00', '#ff4f00', '#ff3f00', '#ff2f00',
-'#ff1f00', '#ff0f00', '#ff0000', '#ef0000', '#df0000', '#cf0000',
-'#bf0000', '#af0000', '#9f0000', '#8f0000', '#7f0000']
 
 def get_interwikilist(request):
     # request.cfg._interwiki_list is gathered by wikiutil
@@ -152,10 +128,15 @@ def quotetoshow(text):
     return unicode(url_unquote(text), config.charset)
 
 class GraphShower(object):
+    EDGE_DARKNESS = 0.85
+    FRINGE_DARKNESS = 0.5
+  
     def __init__(self, pagename, request, graphengine = "neato"):
+        self.hashcolor = self.wrapColorFunc(self.hashcolor)
+        self.gradientcolor = self.wrapColorFunc(self.gradientcolor)
+    
         # Fix for mod_python, globals are bad
-        self.used_colors = []
-        self.used_colorlabels = []
+        self.used_colors = dict()
 
         self.pagename = pagename
         self.request = request
@@ -199,8 +180,7 @@ class GraphShower(object):
         # What to add to node URL:s in the graph
         self.urladd = ''
 
-        # Selected colors, function used and postprocessing function
-        self.colors = graphvizcolors
+        # Selected colorfunction used and postprocessing function
         self.colorfunc = self.hashcolor
         self.colorscheme = 'random'
 
@@ -232,29 +212,45 @@ class GraphShower(object):
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
-    def hashcolor(self, string):
-        # Black edges must be black
-        if string == '_notype':
-            return "black"
+    def wrapColorFunc(self, func):
+        def colorFunc(string, darknessFactor=1.0):
+            # Black edges must be black                  
+            if string == '_notype':
+                return "black"        
         
-        if string in self.used_colorlabels:
-            return self.used_colors[self.used_colorlabels.index(string)]
+            color = self.used_colors.get(string, None)
+            if color is None:
+                color = func(string)
+                self.used_colors[string] = color
+  
+            h, s, v = color
+            v *= darknessFactor
+    
+            rgb = colorsys.hsv_to_rgb(h, s, v)
+            rgb = tuple(map(lambda x: int(x * 255), rgb))
+            cl = "#%02x%02x%02x" % rgb 
+        
+            return cl  
+        return colorFunc
 
-        seed(string)
-        cl = choice(self.colors)
-        while cl in self.used_colors:
-            cl = choice(self.colors)
-        self.used_colors.append(cl)
-        self.used_colorlabels.append(string)
-        return cl
+    def hashcolor(self, string):
+        h = (0.681 * len(self.used_colors)) % 1.0
+        s = 0.35
+        v = 0.90
+        return h, s, v                  
 
     def gradientcolor(self, string):
         clrnodes = sorted(self.colornodes)
-        if len(clrnodes) > 1:
-            step = (len(self.colors) / (len(clrnodes) - 1)) - 1
-        else:
-            step = 0
-        return self.colors[clrnodes.index(string)*step]
+
+        blueHSV = 0.67, 0.25, 1.0
+        redHSV = 1.0, 0.50, 0.95
+
+        if len(clrnodes) <= 1:
+            return blueHSV
+
+        factor = float(clrnodes.index(string)) / (len(clrnodes) - 1)
+        h, s, v = map(lambda blue, red: blue + (red-blue)*factor, blueHSV, redHSV)
+        return h, s, v
             
     def formargs(self):
         request = self.request
@@ -329,7 +325,6 @@ class GraphShower(object):
         if request.form.has_key('colorscheme'):
             self.colorscheme = encode(''.join(request.form['colorscheme']))
             if self.colorscheme == 'gradient':
-                self.colors = hotcoldgradient
                 self.colorfunc = self.gradientcolor
 
         # Regexps
@@ -713,6 +708,7 @@ class GraphShower(object):
                     rule = rule.strip('"')
                     rule = '"' + re_color.sub(self.colorsub, rule) + '"'
                 obj.fillcolor = self.colorfunc(rule)
+                obj.color = self.colorfunc(rule, self.FRINGE_DARKNESS)
                 obj.style = 'filled'
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
@@ -738,7 +734,7 @@ class GraphShower(object):
         pattern = Cond(edge, edge.linktype)
         for obj in match(pattern, (edges, outgraph)):
             self.coloredges.update(filter(self.oftype_p, obj.linktype))
-            obj.color = ':'.join(self.hashcolor(x) for x in obj.linktype)
+            obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) for x in obj.linktype)
             if self.edgelabels:
                 obj.decorate = 'true'
                 obj.label = ','.join(url_unquote(x) for x in obj.linktype
@@ -944,7 +940,7 @@ class GraphShower(object):
                 legend.nodes.add(ln1, style='invis', label='')
                 legend.nodes.add(ln2, style='invis', label='')
 
-                legend.edges.add((ln1, ln2), color=self.hashcolor(linktype),
+                legend.edges.add((ln1, ln2), color=self.hashcolor(linktype, self.EDGE_DARKNESS),
                                  label=url_unquote(linktype),
                                  URL=self.getURLns(linktype))
                 per_row = per_row + 1
@@ -955,8 +951,12 @@ class GraphShower(object):
 
         for nodetype in sorted(self.colornodes):
             cur = 'self.colornodes: ' + nodetype
-            legend.nodes.add(cur, label=nodetype[1:-1], style='filled',
-                             fillcolor=self.colorfunc(nodetype), URL=colorURL)
+
+            fillcolor = self.colorfunc(nodetype)
+            color = self.colorfunc(nodetype, self.FRINGE_DARKNESS)
+            
+            legend.nodes.add(cur, label=nodetype[1:-1], style='filled', 
+                             color=color, fillcolor=fillcolor, URL=colorURL)
             if prev:
                 if per_row == 3:
                     per_row = 0
