@@ -1417,7 +1417,7 @@ class GraphShower(object):
     def sendMap(self, graphviz):
         mappi = self.getLayoutInFormat(graphviz, 'cmapx')
 
-        self.request.write(mappi + '\n')
+        self.request.write(unicode(mappi, config.charset) + '\n')
 
     def sendGv(self, gr):
         gvdata = self.getLayoutInFormat(gr.graphviz, 'dot')

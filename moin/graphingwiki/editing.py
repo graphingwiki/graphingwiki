@@ -619,7 +619,10 @@ def savetext(pagename, newtext):
 
     return msg
 
-def metatable_parseargs(request, args, globaldata=None, all_keys=False):
+def metatable_parseargs(request, args,
+                        globaldata=None,
+                        get_all_keys=False,
+                        get_all_pages=False):
     if args is None:
         args = ""
 
@@ -631,7 +634,7 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     all_pages = []
 
     # Arg placeholders
-    arglist = []
+    argset = set([])
     keyspec = []
     orderspec = []
 
@@ -645,7 +648,7 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     for arg in (x.strip() for x in args.split(',') if x.strip()):
         # Metadata regexp, move on
         if '=' in arg:
-            arglist.append(arg)
+            argset.add(arg)
             continue
 
         # metadata key spec, move on
@@ -669,39 +672,42 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
             if arg.startswith('/'):
                 arg = request.page.page_name + arg
 
-            # Only if the user may read the page
-            if not request.user.may.read(arg):
-                continue
-
-            arglist.append(url_quote(encode(arg)))
+            argset.add(arg)
             continue
 
         # Ok, it's a page regexp
 
         # if there's something wrong with the regexp, ignore it and move on
         try:
-            page_re = re.compile("%s" % encode(arg[1:-1]))
+            page_re = re.compile("%s" % arg[1:-1])
         except:
             continue
 
         # Get all pages, check which of them match to the supplied regexp
-        all_pages = [url_unquote(x) for x in globaldata]
+        all_pages = [unicode(url_unquote(x), config.charset)
+                     for x in globaldata]
         for page in all_pages:
             if page_re.match(page):
-                arglist.append(url_quote(page))
+                argset.add(page)
+
+    # hmm..
+    def addpage(p):
+        if not isinstance(p, unicode):
+            raise ValueError("only unicode wanted, got %s" % repr(p))
+        argset.add(p)
+
+    # Filter pages the user may not read
+    argset = set(url_quote(encode(x)) for x in
+                  filter(request.user.may.read, argset))
 
     pages = set([])
     metakeys = set([])
     limitregexps = {}
 
-    for arg in arglist:
+    for arg in argset:
         if cat_re.search(arg):
             # Nonexisting categories
             try:
-                if not request.user.may.read(unicode(url_unquote(arg),
-                                                     config.charset)):
-                    continue
-
                 page = globaldata.getpage(arg)
             except KeyError:
                 continue
@@ -711,9 +717,16 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
                 continue
             for type in page['in']:
                 for newpage in page['in'][type]:
+                    # If page already added
+                    if newpage in argset:
+                        continue
+                    
                     if not (cat_re.search(newpage) or
                             temp_re.search(newpage)):
-                        pages.add(encode(newpage))
+                        # Check that user may view any added pages
+                        if request.user.may.read(unicode(url_unquote(newpage),
+                                                         config.charset)):
+                            pages.add(newpage)
         elif '=' in arg:
             data = arg.split("=")
             key = url_quote(encode(data[0]))
@@ -739,10 +752,20 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
             
             pages.add(arg)
 
-    # If there were no page args, default to current page
+    # If there were no page args, default to:
     if not pageargs and not pages:
-        pages = [url_quote(encode(request.page.page_name))]
-
+        # All pages, eg. with MetaTagCloud
+        if get_all_pages:
+            pages = [x for x in globaldata]
+        # Current page
+        elif request.page.page_name is not None:
+            pages = [url_quote(encode(request.page.page_name))]
+        # If there is not current page, eg. with GetMeta
+        elif all_pages:
+            pages = [url_quote(x) for x in all_pages]
+        else:
+            pages = [x for x in globaldata]
+            
     pagelist = set([])
 
     for page in pages:
@@ -776,7 +799,7 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     if not keyspec:
         for name in pagelist:
             # MetaEdit wants all keys by default
-            if all_keys:
+            if get_all_keys:
                 for key in getkeys(globaldata, name):
                     # One further check, we probably do not want
                     # to see categories in our table by default
@@ -917,8 +940,8 @@ def metatable_parseargs(request, args, globaldata=None, all_keys=False):
     return globaldata, pagelist, metakeys
 
 def check_attachfile(request, pagename, aname):
-    # Get the attachment directory for the page
-    attach_dir = getAttachDir(request, pagename, create=1)
+    # Check that the attach dir exists
+    getAttachDir(request, pagename, create=1)
     aname = wikiutil.taintfilename(aname)
     fpath = getFilename(request, pagename, aname)
 

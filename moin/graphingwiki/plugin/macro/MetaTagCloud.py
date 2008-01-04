@@ -22,12 +22,13 @@ from graphingwiki.patterns import GraphData, encode
 Dependencies = ["namespace"]
 
 def execute(macro, args):
+   mode = 'keys'
 
    request = macro.request
 
    # get params
    if args:
-      args = args.split(',')
+      args = [x.strip() for x in args.split(',')]
    else:
       args = []
 
@@ -35,12 +36,18 @@ def execute(macro, args):
    for arg in args:
       if '=' in arg:
          key, value = arg.split('=', 1)
-         if key in ["maxTags"]:
-            kw[str(key.strip())] = value.strip()
-            args.remove(arg)
+         if key == "metaMaxTags":
+            kw[str(key.strip())] = value
+         if key == "metaShowMode":
+            if value in ['keys', 'values']:
+               mode = value
+
+   args = filter(lambda x:
+                 x.split('=')[0] not in ["metaMaxTags", "metaShowMode"],
+                 args)
 
    try:
-      maxTags = int(kw["maxTags"])
+      maxTags = int(kw["metaMaxTags"])
    except (KeyError, ValueError):
       maxTags = 50
 
@@ -54,12 +61,28 @@ def execute(macro, args):
    else:
       args = ','.join(args)
 
-   globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args)
+   globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
+                                                        get_all_pages = True)
+    
+   if not hasattr(globaldata, 'keys_on_pages'):
+      globaldata.reverse_meta()
 
    for name in pagelist:
       page = globaldata.getpage(name)
-      tags.extend(x for x in page.get('meta', {}).keys())
-      tags.extend(x for x in page.get('out', {}).keys() if x != '_notype')
+      if mode == 'keys':
+         tags.extend(x for x in page.get('meta', {}).keys())
+         tags.extend(x for x in page.get('out', {}).keys() if x != '_notype')
+      else:
+         for key in page.get('meta', {}).keys():
+            if key in ['label', 'URL']:
+               continue
+#            print key, repr(page['meta'][key])
+            tags.extend(x.strip('"') for x in page['meta'][key])
+         for key in page.get('out', {}).keys():
+            if key == '_notype':
+               continue
+#            print repr(page['out'][key])
+            tags.extend(page['out'][key])
 
    taglist = frozenset(tags)
 
@@ -68,10 +91,11 @@ def execute(macro, args):
 
    show = []
    for tag in taglist:
-      tag = unicode(url_unquote(tag), config.charset)
+      enc_tag = unicode(url_unquote(tag), config.charset)
       # Replace quotes from link keys
-      tag = tag.replace('"', '&#x22;')
-      show.append((tag, tags.count(tag)))
+      enc_tag = enc_tag.replace('"', '&#x22;')
+      cnt = tags.count(enc_tag)
+      show.append((enc_tag, cnt, tag))
    show.sort(key=sort, reverse=True)
    show = show[0:maxTags]
    show.sort()
@@ -82,40 +106,51 @@ def execute(macro, args):
          '?action=MetaSearch&q='
 
    for tag in show:
+      title = ""
+      if mode == 'keys':
+         data = globaldata.keys_on_pages.get(tag[2])
+         if data:
+            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
+                             sorted(globaldata.keys_on_pages.get(tag[2])))
+      else:
+         data = globaldata.vals_on_pages.get(tag[2])
+         if data:
+            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
+                             sorted(globaldata.vals_on_pages.get(tag[2])))
 
       pagename = tag[0]
       hits = tag[1]
 
       #level0
       if hits < level[0]:
-         html.append(u'<span style="font-size:0.65em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:0.65em;"><a title="%s" href="%s"> %s</a></span>' % (title, url + pagename, tag[0]))
       #level1
       elif hits < level[1]:
-         html.append(u'<span style="font-size:0.75em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:0.75em;"><a title="%s" href="%s"> %s</a></span>' % (title, url + pagename, tag[0]))
       #level2
       elif hits < level[2]:
-         html.append(u'<span style="font-size:0.9em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:0.9em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level3
       elif hits < level[3]:
-         html.append(u'<span style="font-size:1.0em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.0em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level4
       elif hits < level[4]:
-         html.append(u'<span style="font-size:1.05em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.05em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level5
       elif hits < level[5]:
-         html.append(u'<span style="font-size:1.1em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.1em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level6
       elif hits < level[6]:
-         html.append(u'<span style="font-size:1.15em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.15em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level7
       elif hits < level[7]:
-         html.append(u'<span style="font-size:1.2em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.2em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level8
       elif hits < level[8]:
-         html.append(u'<span style="font-size:1.25em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.25em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
       #level9
       else:
-         html.append(u'<span style="font-size:1.3em;"><a href="%s"> %s</a></span>'%(url + pagename, tag[0]))
+         html.append(u'<span style="font-size:1.3em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
 
 
    globaldata.closedb()

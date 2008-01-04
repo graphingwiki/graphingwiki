@@ -36,7 +36,6 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
-from graphingwiki.patterns import WikiNode
 from graphingwiki.patterns import GraphData
 
 Dependencies = ['metadata']

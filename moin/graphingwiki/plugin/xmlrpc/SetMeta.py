@@ -71,8 +71,9 @@ def execute(xmlrpcobj, page, input, action='add',
     output = {}
     # Add existing metadata so that values would be added
     for key in input:
-        pair = '%s!%s' % (page, key)
-        output[pair] = input[key]
+        # Strip spaces
+        pair = '%s!%s' % (page, key.strip())
+        output[pair] = [x.strip() for x in input[key]]
 
         if key in metakeys:
             if action == 'repl':

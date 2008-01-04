@@ -218,7 +218,7 @@ class GraphShowerSimple(GraphShower):
 
         # To fix links with zgrviewer
         if hasattr(self, 'origformat'):
-            src = self.request.getBaseURL()
+            src = self.request.getQualifiedURL() + '/'
             for node, in outgraph.nodes.getall():
                 node = outgraph.nodes.get(node)
 

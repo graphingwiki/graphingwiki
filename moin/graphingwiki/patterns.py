@@ -127,7 +127,7 @@ class GraphData(object):
 
     def get_shelve(self):
         for key in self.db:
-            self.globaldata[key] = self.db[key]
+            self.getpage(key)
 
     def reverse_meta(self):
         self.get_shelve()
@@ -171,7 +171,7 @@ class GraphData(object):
 
         # Shapefile is an extra special case
         for shape in page.get('lit', {}).get('shapefile', []):
-            setattr(node, 'shapefile', encode(shape))
+            node.shapefile = encode(shape)
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'URL'):
@@ -236,7 +236,8 @@ class GraphData(object):
     def load_with_links(self, pagename):
         if isinstance(pagename, unicode):
             pagename = url_quote(encode(pagename))
-        return self.load_graph(pagename)
+        # No urladd
+        return self.load_graph(pagename, '')
 
 class LazyItem(object):
     def __init__(self):

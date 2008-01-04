@@ -16,7 +16,7 @@ def execute(xmlrpcobj, args, keysonly=True):
 
     # Expects MetaTable arguments
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
-                                                         all_keys=True)
+                                                         get_all_keys=True)
 
 
     # If we only want the keys as specified by the args

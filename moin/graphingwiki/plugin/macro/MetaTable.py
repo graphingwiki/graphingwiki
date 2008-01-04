@@ -150,7 +150,7 @@ def execute(macro, args):
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
-                                                         all_keys=True)
+                                                         get_all_keys=True)
     request = macro.request
     _ = request.getText
 
