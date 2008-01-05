@@ -48,16 +48,12 @@ def execute(macro, args):
     req_url = request.getScriptname() + '/' + request.page.page_name
     req_url += '?action=metaRadarChart'
 
-    print args
-
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          get_all_keys=True)
 
     out = StringIO.StringIO()
     out.write(macro.formatter.linebreak() + macro.formatter.table(1))
-
-    print pagelist
 
     for page in pagelist:
         pagerepr = unicode(url_unquote(page), config.charset)
