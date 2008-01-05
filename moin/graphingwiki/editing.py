@@ -221,6 +221,64 @@ def getkeys(globaldata, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
+# A generator for fetching requested metakey value for the given
+# pages.
+def getmetas(request, globaldata, names, metakeys, display=True):
+    metakeys = set(metakeys)
+
+    for name in names:
+        quoted = unicode(url_unquote(name), config.charset)
+        if not request.user.may.read(quoted):
+            continue
+
+        loadedPage = globaldata.getpage(name)
+        loadedMeta = loadedPage.get("meta", dict())
+
+        pageMeta = dict([(key, list()) for key in metakeys])
+
+        # Add values and their sources
+        for key in metakeys & set(loadedMeta):
+            for value in loadedMeta[key]:
+                value = unicode(url_unquote(value), config.charset).strip('"')
+                value = value.replace('\\"', '"')
+                pageMeta[key].append((value, "meta"))
+
+        # Link values are in a list as there can be more than one edge
+        # between two pages.
+        if display:
+            # Making things nice to look at.
+            loadedOuts = loadedPage.get("out", dict())
+            for key in metakeys & set(loadedOuts):
+                for target in loadedOuts[key]:
+                    try:
+                        targetPage = globaldata.getpage(target)
+                    except KeyValue:
+                        pass
+                    else:
+                        targetMeta = targetPage.get("meta", dict())
+                        url = list(targetMeta.get("URL", set([""])))
+
+                        # If the URL attribute of the target looks like the
+                        # target is a local attachment, correct the link
+                        if 'AttachFile' in url and url.startswith('".'):
+                            target = 'attachment:' + target.replace(' ', '_')
+
+                    target = target.strip('"')
+                    if not target.startswith('attachment:'):
+                        target = unicode(url_unquote(target), config.charset)
+                    else:
+                        target = unicode(target, config.charset)
+                    target = target.replace('\\"', '"')
+
+                    pageMeta[key].append((target, "link"))
+        else:
+            # Showing things as they are
+            loadetLits = loadedPage.get("lit", dict())
+            for key in metakeys & set(loadedLits):
+                pageMeta[key].append((target, "link"))
+
+        yield name, pageMeta
+
 # Currently, the values of metadata and link keys are
 # considered additive in case of a possible overlap.
 # Let's see how it turns out.

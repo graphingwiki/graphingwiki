@@ -36,7 +36,7 @@ from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 
-from graphingwiki.editing import metatable_parseargs, getvalues
+from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.editing import check_link, formatting_rules, rendervalue
 from graphingwiki.patterns import encode
 
@@ -134,12 +134,14 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
             t_cell(macro, key)
     request.write(macro.formatter.table_row(0))
 
-    for page in pagelist:
+    for page, metas in getmetas(request, globaldata, pagelist, metakeys):
         request.write(macro.formatter.table_row(1))
         t_cell(macro, url_unquote(page), head=1)
+
         for key in metakeys:
-            vals = getvalues(request, globaldata, page, key)
-            t_cell(macro, vals)
+            values = metas[key]
+            t_cell(macro, values)
+
         request.write(macro.formatter.table_row(0))
     request.write(macro.formatter.table(0))
 
