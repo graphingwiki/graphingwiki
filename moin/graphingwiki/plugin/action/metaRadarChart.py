@@ -146,10 +146,15 @@ def execute(pagename, request):
 
     # Find coords for each value
     for i in range(sectors):
-        val = data[data_per_axis[i]].pop()
-        # Opportunistic parsing of values
-        val = ordervalue(val)
-        radius = values.index(val)
+        val = data[data_per_axis[i]]
+        if val != set([]):
+            val = val.pop()
+            # Opportunistic parsing of values
+            val = ordervalue(val)
+            radius = values.index(val)
+        else:
+            # If no values exist, it's in the bottom
+            radius = 0
         x, y = spider_coords(radius * per_value, i*angle)
 
         endpoints.append(add_to_center((x, y)))
