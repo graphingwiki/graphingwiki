@@ -43,11 +43,18 @@ def execute(macro, args):
     _ = request.getText
 
     req_url = request.getScriptname() + '/' + request.page.page_name
-    req_url += '?action=metaRadarDiagram'
+    req_url += '?action=metaRadarChart'
 
     if args:
         arglist = [x.strip() for x in args.split(',') if x]
         for arg in arglist:
-            req_url += '&arg=%s' % (url_quote(encode(arg)))
+            if arg.startswith('chartheight='):
+                req_url += '&height=%s' % \
+                           (url_quote(encode(arg.split('=')[1])))
+            elif arg.startswith('chartwidth='):
+                req_url += '&width=%s' % \
+                           (url_quote(encode(arg.split('=')[1])))
+            else:
+                req_url += '&arg=%s' % (url_quote(encode(arg)))
 
     return u'<img src="%s">' % (request.getQualifiedURL(req_url))

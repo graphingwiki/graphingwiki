@@ -43,12 +43,8 @@ from MoinMoin.request import RequestModPy
 from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
 from graphingwiki.patterns import encode
 
-WIDTH, HEIGHT = 1000, 1000
-CENTER = (500, 500)
-RADIUS = 450
-
-def add_to_center(coords):
-    return CENTER[0] + coords[0], CENTER[1] + coords[1]
+def add_to_center(center, coords):
+    return center[0] + coords[0], center[1] + coords[1]
 
 def spider_coords(radius, angle):
     x = radius * round(math.sin(angle), 2)
@@ -65,17 +61,17 @@ def draw_path(ctx, endpoints):
     return ctx
 
 # Draw a radar diagram at a certain radious
-def spider_radius(ctx, radius, sectors):
+def spider_radius(ctx, center, radius, sectors):
     angle = 2*math.pi/sectors
     endpoints = list()
     ctx.set_line_width(1)
 
     for i in range(sectors):
-        ctx.move_to(*CENTER)
+        ctx.move_to(*center)
 
         x, y = spider_coords(radius, i*angle)
 
-        endpoints.append(add_to_center((x, y)))
+        endpoints.append(add_to_center(center, (x, y)))
 
         ctx.rel_line_to(x, y)
 
@@ -90,14 +86,44 @@ def spider_radius(ctx, radius, sectors):
 def execute(pagename, request):
     _ = request.getText
 
+    print repr(request.form)
+
+    # Grab arguments
+    args = ', '.join(x for x in request.form.get('arg', []))
+
+    params = {'height': 0, 'width': 0}
+    
+    # Height and Width
+    for attr in ['height', 'width']:
+        if request.form.has_key(attr):
+            val = ''.join([x for x in request.form[attr]])
+            try:
+                params[attr] = int(val)
+            except ValueError:
+                pass
+
+    if not params['height'] and params['width']:
+        params['height'] = params['width']
+    elif params['height'] and not params['width']:
+        params['width'] = params['height']
+    elif not params['height'] and not params['width']:
+        params['width'] = params['height'] = 1000
+
+    # calculate center and radius, leave some room for text and stuff
+    center = (params['height'] / 2, params['width'] / 2)
+    radius = min(center)
+    if radius > 50:
+        radius -= 50
+
+    print repr(params)
+
     # Setup Cairo
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+                                 params['height'], params["width"])
     ctx = cairo.Context(surface)
     ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(12)
-
-    args = ', '.join(x for x in request.form.get('arg', []))
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
@@ -126,14 +152,14 @@ def execute(pagename, request):
         values.update(ordervalue(x) for x in val)
     values = sorted(values)
 
-    per_value = RADIUS / len(values)
+    per_value = radius / len(values)
 
     sectors = len(data)
     angle = 2*math.pi/sectors
 
     # Make the base grid
-    for x in range(per_value, RADIUS, per_value):
-        ctx, gridpoints = spider_radius(ctx, x, sectors)
+    for x in range(per_value, radius, per_value):
+        ctx, gridpoints = spider_radius(ctx, center, x, sectors)
 
     # Apply ink from strokes so far
     ctx.stroke()
@@ -157,7 +183,7 @@ def execute(pagename, request):
             radius = 0
         x, y = spider_coords(radius * per_value, i*angle)
 
-        endpoints.append(add_to_center((x, y)))
+        endpoints.append(add_to_center(center, (x, y)))
 
     draw_path(ctx, endpoints)
 
