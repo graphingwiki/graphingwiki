@@ -28,7 +28,6 @@
 
 """
 import re
-import StringIO
 
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
@@ -44,7 +43,8 @@ from graphingwiki.patterns import encode
 Dependencies = ['metadata']
 
 def t_cell(macro, vals, head=0):
-    out = StringIO.StringIO()
+    out = macro.request
+
     if head:
         out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
     else:
@@ -106,22 +106,20 @@ def t_cell(macro, vals, head=0):
 
         first_val = False
 
-    return out.getvalue()
-
 def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
-    out = StringIO.StringIO()
+    out = macro.request
     
     request = macro.request
     _ = request.getText
 
     # Start table
-    out.write(macro.formatter.linebreak() + macro.formatter.table(1))
+    request.write(macro.formatter.linebreak() + macro.formatter.table(1))
 
     if metakeys:
         # Give a class to headers to make it customisable
-        out.write(macro.formatter.table_row(1, {'rowclass': 'meta_header'}))
+        request.write(macro.formatter.table_row(1, {'rowclass': 'meta_header'}))
         # Upper left cell is empty
-        out.write(t_cell(macro, legend))
+        t_cell(macro, legend)
 
     # Start parser
     macro.parser = Parser('', request)
@@ -131,21 +129,19 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
     for key in metakeys:
         key = unicode(url_unquote(key), config.charset)
         if check_link(macro.all_re, key):
-            out.write(t_cell(macro, [(key, 'link')]))
+            t_cell(macro, [(key, 'link')])
         else:
-            out.write(t_cell(macro, key))
-    out.write(macro.formatter.table_row(0))
+            t_cell(macro, key)
+    request.write(macro.formatter.table_row(0))
 
     for page in pagelist:
-        out.write(macro.formatter.table_row(1))
-        out.write(t_cell(macro, url_unquote(page), head=1))
+        request.write(macro.formatter.table_row(1))
+        t_cell(macro, url_unquote(page), head=1)
         for key in metakeys:
             vals = getvalues(request, globaldata, page, key)
-            out.write(t_cell(macro, vals))
-        out.write(macro.formatter.table_row(0))
-    out.write(macro.formatter.table(0))
-
-    return out.getvalue()
+            t_cell(macro, vals)
+        request.write(macro.formatter.table_row(0))
+    request.write(macro.formatter.table(0))
 
 def execute(macro, args):
     if args is None:
@@ -153,21 +149,20 @@ def execute(macro, args):
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
-                                                         get_all_keys=True)
+                                                         all_keys=True)
     request = macro.request
     _ = request.getText
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        out = macro.formatter.linebreak() + macro.formatter.table(1)
-        out += t_cell(macro, "%s (%s)" %
-                      (_("Metatable has no contents"), args))
-        out += macro.formatter.table(0)
+        request.write(macro.formatter.linebreak() + macro.formatter.table(1))
+        t_cell(macro, "%s (%s)" % (_("Metatable has no contents"), args))
+        request.write(macro.formatter.table(0))
 
         globaldata.closedb()
-        return out
+        return ""
 
-    out = construct_table(macro, globaldata, pagelist, metakeys)
+    construct_table(macro, globaldata, pagelist, metakeys)
 
     globaldata.closedb()
 
@@ -179,7 +174,7 @@ def execute(macro, args):
                (request.getQualifiedURL(req_url), _(linktext))
 
     args = url_quote(encode(args))
-    out += action_link('MetaEdit', 'edit', args)
-    out += action_link('metaCSV', 'csv', args)
+    request.write(action_link('MetaEdit', 'edit', args))
+    request.write(action_link('metaCSV', 'csv', args))
 
-    return out
+    return ""
