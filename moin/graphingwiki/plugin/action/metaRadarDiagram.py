@@ -56,6 +56,7 @@ def spider_coords(radius, angle):
 
     return x, y
 
+# Draw a path between a set of points
 def draw_path(ctx, endpoints):
     ctx.move_to(*endpoints[-1])
     for coord in endpoints:
@@ -63,10 +64,11 @@ def draw_path(ctx, endpoints):
 
     return ctx
 
-# Draw the spider diagram at a certain radious
+# Draw a radar diagram at a certain radious
 def spider_radius(ctx, radius, sectors):
     angle = 2*math.pi/sectors
     endpoints = list()
+    ctx.set_line_width(1)
 
     for i in range(sectors):
         ctx.move_to(*CENTER)
@@ -77,7 +79,11 @@ def spider_radius(ctx, radius, sectors):
 
         ctx.rel_line_to(x, y)
 
+    ctx.stroke()
+
+    ctx.set_line_width(0.5)
     draw_path(ctx, endpoints)
+    ctx.stroke()
 
     return ctx, endpoints
 
@@ -111,11 +117,13 @@ def execute(pagename, request):
 
     globaldata.closedb()
 
+    # Get values for the chart axes
     values = set([])
     data_per_axis = dict()
-    for i, (x, y) in enumerate(data.iteritems()):
-        data_per_axis[i] = x
-        values.update(y)
+    for axis, (key, val) in enumerate(data.iteritems()):
+        data_per_axis[axis] = key
+        # Opportunistic parsing of values
+        values.update(ordervalue(x) for x in val)
     values = sorted(values)
 
     per_value = RADIUS / len(values)
@@ -123,7 +131,7 @@ def execute(pagename, request):
     sectors = len(data)
     angle = 2*math.pi/sectors
 
-    # Make the grid
+    # Make the base grid
     for x in range(per_value, RADIUS, per_value):
         ctx, gridpoints = spider_radius(ctx, x, sectors)
 
@@ -136,8 +144,11 @@ def execute(pagename, request):
 
     endpoints = list()
 
+    # Find coords for each value
     for i in range(sectors):
         val = data[data_per_axis[i]].pop()
+        # Opportunistic parsing of values
+        val = ordervalue(val)
         radius = values.index(val)
         x, y = spider_coords(radius * per_value, i*angle)
 
@@ -154,7 +165,7 @@ def execute(pagename, request):
     for point, axis in zip(gridpoints, data_per_axis.keys()):
         text = url_unquote(data_per_axis[axis])
 
-        ctx.set_source_rgb(1, 1, 1)
+        ctx.set_source_rgba(1, 1, 1, 0.9)
         width, height = ctx.text_extents(text)[2:4]
 
         x, y = point[0] - 0.1 * width, point[1] + 0.1 * height
