@@ -148,6 +148,9 @@ def execute(pagename, request):
         values.update(ordervalue(x) for x in val)
     values = sorted(values)
 
+    if not values:
+        return u''
+
     per_value = radius / len(values)
 
     sectors = len(data)
