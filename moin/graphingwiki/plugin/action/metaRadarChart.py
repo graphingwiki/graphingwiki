@@ -86,8 +86,6 @@ def spider_radius(ctx, center, radius, sectors):
 def execute(pagename, request):
     _ = request.getText
 
-    print repr(request.form)
-
     # Grab arguments
     args = ', '.join(x for x in request.form.get('arg', []))
 
@@ -114,8 +112,6 @@ def execute(pagename, request):
     radius = min(center)
     if radius > 50:
         radius -= 50
-
-    print repr(params)
 
     # Setup Cairo
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
