@@ -28,7 +28,7 @@
 
 """
 import re
-import string
+import StringIO
 
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
@@ -44,10 +44,11 @@ from graphingwiki.patterns import encode
 Dependencies = ['metadata']
 
 def t_cell(macro, vals, head=0):
+    out = StringIO.StringIO()
     if head:
-        out = macro.formatter.table_cell(1, {'class': 'meta_page'})
+        out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
     else:
-        out = macro.formatter.table_cell(1, {'class': 'meta_cell'})
+        out.write(macro.formatter.table_cell(1, {'class': 'meta_cell'}))
 
     # It is assumed that this function is called
     # either with a string, in which case it is the
@@ -64,8 +65,8 @@ def t_cell(macro, vals, head=0):
 
         # cosmetic for having a "a, b, c" kind of lists
         if not first_val:
-            out += macro.formatter.text(',') + \
-                   macro.formatter.linebreak()
+            out.write(macro.formatter.text(',') + \
+                      macro.formatter.linebreak())
 
         if not isinstance(data, unicode):
             data = unicode(data, config.charset)
@@ -75,7 +76,7 @@ def t_cell(macro, vals, head=0):
             if '?' in data:
                 data, query = data.split('?')
                 kw['querystr'] = query
-            out = out + macro.formatter.pagelink(1, data, **kw)
+            out.write(macro.formatter.pagelink(1, data, **kw))
 
         if src == 'link':
             # Check for link type
@@ -87,38 +88,40 @@ def t_cell(macro, vals, head=0):
             # a normal link
             if (not link \
                 or link[1] != data):
-                out = out + macro.formatter.pagelink(1, data)
-                out = out + macro.formatter.text(data)
+                out.write(macro.formatter.pagelink(1, data))
+                out.write(macro.formatter.text(data))
             else:
                 typ, hit = link
                 replace = getattr(macro.parser, '_' + typ + '_repl')
                 attrs = replace(hit)
-                out = out + attrs
-            out = out + macro.formatter.pagelink(0)
+                out.write(attrs)
+            out.write(macro.formatter.pagelink(0))
         else:
-            out = out + macro.formatter.text(rendervalue(macro.request,
-                                                         macro.parser,
-                                                         data))
+            out.write(macro.formatter.text(rendervalue(macro.request,
+                                                       macro.parser,
+                                                       data)))
 
         if head:
-            out = out + macro.formatter.pagelink(0)
+            out.write(macro.formatter.pagelink(0))
 
         first_val = False
 
-    return out
+    return out.getvalue()
 
 def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
+    out = StringIO.StringIO()
+    
     request = macro.request
     _ = request.getText
 
     # Start table
-    out = macro.formatter.linebreak() + macro.formatter.table(1)
+    out.write(macro.formatter.linebreak() + macro.formatter.table(1))
 
     if metakeys:
         # Give a class to headers to make it customisable
-        out += macro.formatter.table_row(1, {'rowclass': 'meta_header'})
+        out.write(macro.formatter.table_row(1, {'rowclass': 'meta_header'}))
         # Upper left cell is empty
-        out += t_cell(macro, legend)
+        out.write(t_cell(macro, legend))
 
     # Start parser
     macro.parser = Parser('', request)
@@ -128,21 +131,21 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
     for key in metakeys:
         key = unicode(url_unquote(key), config.charset)
         if check_link(macro.all_re, key):
-            out = out + t_cell(macro, [(key, 'link')])
+            out.write(t_cell(macro, [(key, 'link')]))
         else:
-            out = out + t_cell(macro, key)
-    out += macro.formatter.table_row(0)
+            out.write(t_cell(macro, key))
+    out.write(macro.formatter.table_row(0))
 
     for page in pagelist:
-        out = out + macro.formatter.table_row(1)
-        out = out + t_cell(macro, url_unquote(page), head=1)
+        out.write(macro.formatter.table_row(1))
+        out.write(t_cell(macro, url_unquote(page), head=1))
         for key in metakeys:
             vals = getvalues(request, globaldata, page, key)
-            out = out + t_cell(macro, vals)
-        out += macro.formatter.table_row(0)
-    out += macro.formatter.table(0)
+            out.write(t_cell(macro, vals))
+        out.write(macro.formatter.table_row(0))
+    out.write(macro.formatter.table(0))
 
-    return out
+    return out.getvalue()
 
 def execute(macro, args):
     if args is None:
