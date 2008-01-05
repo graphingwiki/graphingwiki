@@ -54,6 +54,7 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz
 from graphingwiki.patterns import *
 from graphingwiki.editing import ordervalue
 
+import math
 import colorsys
 
 # imports from other actions
@@ -129,7 +130,7 @@ def quotetoshow(text):
 
 class GraphShower(object):
     EDGE_DARKNESS = 0.85
-    FRINGE_DARKNESS = 0.5
+    FRINGE_DARKNESS = 0.50
   
     def __init__(self, pagename, request, graphengine = "neato"):
         self.hashcolor = self.wrapColorFunc(self.hashcolor)
@@ -234,9 +235,10 @@ class GraphShower(object):
         return colorFunc
 
     def hashcolor(self, string):
-        h = (0.681 * len(self.used_colors)) % 1.0
-        s = 0.35
-        v = 0.90
+        magicNumber = 17.31337 / 113.0
+        h = (magicNumber * len(self.used_colors)) % 1.0
+        s = 0.40 + math.sin(h * 37.0) * 0.04
+        v = 0.90 + math.cos(h * 39.0) * 0.05
         return h, s, v                  
 
     def gradientcolor(self, string):
@@ -1494,12 +1496,15 @@ class GraphShower(object):
         return formatter
 
     def doTraverse(self, graphdata, outgraph, nodes):
+        newnodes = nodes
+    
         for n in range(1, self.depth+1):
             outgraph = self.traverse(self.addToGraphWithFilter,
-                                     graphdata, outgraph, nodes)
+                                     graphdata, outgraph, newnodes)
             newnodes = set([x for x, in outgraph.nodes.getall()])
             # continue only if new pages were found
-            if not newnodes.difference(nodes):
+            newnodes = newnodes.difference(nodes)
+            if not newnodes:
                 break
             nodes.update(newnodes)
 
