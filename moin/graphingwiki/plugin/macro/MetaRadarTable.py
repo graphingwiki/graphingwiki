@@ -48,11 +48,28 @@ def execute(macro, args):
     req_url = request.getScriptname() + '/' + request.page.page_name
     req_url += '?action=metaRadarChart'
 
+    if args:
+        arglist = list()
+        for arg in [x.strip() for x in args.split(',') if x]:
+            if arg.startswith('chartheight='):
+                req_url += '&height=%s' % \
+                       (url_quote(encode(arg.split('=')[1])))
+                continue
+            if arg.startswith('chartwidth='):
+                req_url += '&width=%s' % \
+                       (url_quote(encode(arg.split('=')[1])))
+                continue
+
+            if arg.startswith('||') and arg.endswith('||'):
+                req_url += '&arg=%s' % (url_quote(encode(arg)))
+
+            arglist.append(arg)
+            
+        args = ', '.join(arglist)
+
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          get_all_keys=True)
-
-    globaldata.closedb()
 
     out = StringIO.StringIO()
     out.write(macro.formatter.linebreak() + macro.formatter.table(1))
@@ -69,20 +86,10 @@ def execute(macro, args):
         
         out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
 
-        if args:
-            arglist = [x.strip() for x in args.split(',') if x]
-            for arg in arglist:
-                if arg.startswith('chartheight='):
-                    url += '&height=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-                elif arg.startswith('chartwidth='):
-                    url += '&width=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-                elif arg.startswith('||') and arg.endswith('||'):
-                    url += '&arg=%s' % (url_quote(encode(arg)))
-                    
         out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
 
     out.write(macro.formatter.table(0))
+
+    globaldata.closedb()
 
     return out.getvalue()
