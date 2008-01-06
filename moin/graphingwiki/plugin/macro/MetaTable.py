@@ -134,7 +134,8 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
             t_cell(macro, key)
     request.write(macro.formatter.table_row(0))
 
-    for page, metas in getmetas(request, globaldata, pagelist, metakeys):
+    for page in pagelist:
+        metas = getmetas(request, globaldata, page, metakeys)
         request.write(macro.formatter.table_row(1))
         t_cell(macro, url_unquote(page), head=1)
 

@@ -30,7 +30,8 @@ def execute(xmlrpcobj, args, keysonly=True):
 
     # Go through the pages, give list that has
     # the name of the page followed by the values of the keys
-    for page, metas in getmetas(request, globaldata, pagelist, metakeys):
+    for page in pagelist:
+        metas = getmetas(request, globaldata, page, metakeys)
         row = [page]
         for key in metakeys:
             row.append([value for (value, type) in metas[key]])

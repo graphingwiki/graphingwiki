@@ -57,10 +57,6 @@ def execute(macro, args):
 
     for page in pagelist:
         pagerepr = unicode(url_unquote(page), config.charset)
-        # A bit suspect, but
-        if pagerepr.startswith('chartheight=') or \
-               pagerepr.startswith('chartheight='):
-            continue
 
         url = req_url + '&arg=' + page
         out.write(macro.formatter.table_row(1))

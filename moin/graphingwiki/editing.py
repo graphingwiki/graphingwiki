@@ -221,63 +221,60 @@ def getkeys(globaldata, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
-# A generator for fetching requested metakey value for the given
-# pages.
-def getmetas(request, globaldata, names, metakeys, display=True):
+# Fetch requested metakey value for the given page.
+def getmetas(request, globaldata, name, metakeys, display=True):
     metakeys = set(metakeys)
+    pageMeta = dict([(key, list()) for key in metakeys])
 
-    for name in names:
-        quoted = unicode(url_unquote(name), config.charset)
-        if not request.user.may.read(quoted):
-            continue
+    quoted = unicode(url_unquote(name), config.charset)
+    if not request.user.may.read(quoted):
+        return pageMeta
 
-        loadedPage = globaldata.getpage(name)
-        loadedMeta = loadedPage.get("meta", dict())
+    loadedPage = globaldata.getpage(name)
+    loadedMeta = loadedPage.get("meta", dict())
 
-        pageMeta = dict([(key, list()) for key in metakeys])
+    # Add values and their sources
+    for key in metakeys & set(loadedMeta):
+        for value in loadedMeta[key]:
+            value = unicode(url_unquote(value), config.charset).strip('"')
+            value = value.replace('\\"', '"')
+            pageMeta[key].append((value, "meta"))
 
-        # Add values and their sources
-        for key in metakeys & set(loadedMeta):
-            for value in loadedMeta[key]:
-                value = unicode(url_unquote(value), config.charset).strip('"')
-                value = value.replace('\\"', '"')
-                pageMeta[key].append((value, "meta"))
+    # Link values are in a list as there can be more than one edge
+    # between two pages.
+    if display:
+        # Making things nice to look at.
+        loadedOuts = loadedPage.get("out", dict())
+        for key in metakeys & set(loadedOuts):
+            for target in loadedOuts[key]:
+                try:
+                    targetPage = globaldata.getpage(target)
+                except KeyValue:
+                    pass
+                else:
+                    targetMeta = targetPage.get("meta", dict())
+                    url = list(targetMeta.get("URL", set([""])))
 
-        # Link values are in a list as there can be more than one edge
-        # between two pages.
-        if display:
-            # Making things nice to look at.
-            loadedOuts = loadedPage.get("out", dict())
-            for key in metakeys & set(loadedOuts):
-                for target in loadedOuts[key]:
-                    try:
-                        targetPage = globaldata.getpage(target)
-                    except KeyValue:
-                        pass
-                    else:
-                        targetMeta = targetPage.get("meta", dict())
-                        url = list(targetMeta.get("URL", set([""])))
+                    # If the URL attribute of the target looks like the
+                    # target is a local attachment, correct the link
+                    if 'AttachFile' in url and url.startswith('".'):
+                        target = 'attachment:' + target.replace(' ', '_')
 
-                        # If the URL attribute of the target looks like the
-                        # target is a local attachment, correct the link
-                        if 'AttachFile' in url and url.startswith('".'):
-                            target = 'attachment:' + target.replace(' ', '_')
+                target = target.strip('"')
+                if not target.startswith('attachment:'):
+                    target = unicode(url_unquote(target), config.charset)
+                else:
+                    target = unicode(target, config.charset)
+                target = target.replace('\\"', '"')
 
-                    target = target.strip('"')
-                    if not target.startswith('attachment:'):
-                        target = unicode(url_unquote(target), config.charset)
-                    else:
-                        target = unicode(target, config.charset)
-                    target = target.replace('\\"', '"')
-
-                    pageMeta[key].append((target, "link"))
-        else:
-            # Showing things as they are
-            loadetLits = loadedPage.get("lit", dict())
-            for key in metakeys & set(loadedLits):
                 pageMeta[key].append((target, "link"))
-
-        yield name, pageMeta
+    else:
+        # Showing things as they are
+        loadetLits = loadedPage.get("lit", dict())
+        for key in metakeys & set(loadedLits):
+            pageMeta[key].append((target, "link"))
+            
+    return pageMeta
 
 # Currently, the values of metadata and link keys are
 # considered additive in case of a possible overlap.
@@ -695,6 +692,7 @@ def metatable_parseargs(request, args,
     argset = set([])
     keyspec = []
     orderspec = []
+    limitregexps = {}
 
     # Flag: were there page arguments?
     pageargs = False
@@ -706,7 +704,18 @@ def metatable_parseargs(request, args,
     for arg in (x.strip() for x in args.split(',') if x.strip()):
         # Metadata regexp, move on
         if '=' in arg:
-            argset.add(arg)
+            data = arg.split("=")
+            key = url_quote(encode(data[0]))
+            val = encode('='.join(data[1:]))
+
+            # Assume that value limits are regexps, if
+            # not, escape them into exact regexp matches
+            if not regexp_re.match(val):
+                val = "^%s$" % (re.escape(val))
+            # else strip the //:s
+            elif len(val) > 1:
+                val = val[1:-1]
+            limitregexps.setdefault(key, set()).add(re.compile(val))
             continue
 
         # metadata key spec, move on
@@ -760,7 +769,6 @@ def metatable_parseargs(request, args,
 
     pages = set([])
     metakeys = set([])
-    limitregexps = {}
 
     for arg in argset:
         if cat_re.search(arg):
@@ -785,18 +793,6 @@ def metatable_parseargs(request, args,
                         if request.user.may.read(unicode(url_unquote(newpage),
                                                          config.charset)):
                             pages.add(newpage)
-        elif '=' in arg:
-            data = arg.split("=")
-            key = url_quote(encode(data[0]))
-            val = encode('='.join(data[1:]))
-            # Assume that value limits are regexps, if
-            # not, escape them into exact regexp matches
-            if not regexp_re.match(val):
-                val = "^%s$" % (re.escape(val))
-            # else strip the //:s
-            elif len(val) > 1:
-                val = val[1:-1]
-            limitregexps.setdefault(key, set()).add(re.compile(val))
         elif arg:
             # Filter out nonexisting pages
             try:
@@ -830,14 +826,15 @@ def metatable_parseargs(request, args,
         clear = True
         # Filter by regexps (if any)
         if limitregexps:
+            metas = getmetas(request, globaldata, page, limitregexps)
+
             for key in limitregexps:
                 if not clear:
                     break
 
                 # Get values from keys, regardless of their
                 # location (meta, link)
-                data = string.join(x for x, y in
-                                   getvalues(request, globaldata, page, key))
+                data = string.join(x for x, y in metas[key])
 
                 # If page does not have the required key, do not add page
                 if not data:
