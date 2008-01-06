@@ -678,8 +678,13 @@ def metatable_parseargs(request, args,
                         globaldata=None,
                         get_all_keys=False,
                         get_all_pages=False):
-    if args is None:
-        args = ""
+    if not args:
+        # If called from a macro such as MetaTable,
+        # default to getting the current page
+        if not get_all_pages and request.page.page_name is not None:
+            args = request.page.page_name
+        else:
+            args = ""
 
     # Category, Template matching regexps
     cat_re = re.compile(request.cfg.page_category_regex)
@@ -763,62 +768,51 @@ def metatable_parseargs(request, args,
             raise ValueError("only unicode wanted, got %s" % repr(p))
         argset.add(p)
 
-    # Filter pages the user may not read
-    argset = set(url_quote(encode(x)) for x in
-                  filter(request.user.may.read, argset))
+    # If there were no page args, default to all pages
+    if not pageargs and not argset:
+        # Filter pages the user may not read
+        pages = set(filter(request.user.may.read, globaldata))
 
-    pages = set([])
-    metakeys = set([])
+    # Otherwise check out the wanted pages
+    else:
+        # Filter pages the user may not read
+        argset = set(url_quote(encode(x)) for x in
+                     filter(request.user.may.read, argset))
 
-    for arg in argset:
-        if cat_re.search(arg):
-            # Nonexisting categories
-            try:
-                page = globaldata.getpage(arg)
-            except KeyError:
-                continue
+        pages = set([])
 
-            if not page.has_key('in'):
-                # no such category
-                continue
-            for type in page['in']:
-                for newpage in page['in'][type]:
-                    # If page already added
-                    if newpage in argset:
-                        continue
-                    
-                    if not (cat_re.search(newpage) or
-                            temp_re.search(newpage)):
-                        # Check that user may view any added pages
-                        if request.user.may.read(unicode(url_unquote(newpage),
-                                                         config.charset)):
-                            pages.add(newpage)
-        elif arg:
-            # Filter out nonexisting pages
-            try:
-                if not request.user.may.read(unicode(url_unquote(arg),
-                                                     config.charset)):
+        for arg in argset:
+            if cat_re.search(arg):
+                # Nonexisting categories
+                try:
+                    page = globaldata.getpage(arg)
+                except KeyError:
                     continue
 
-                page = globaldata.getpage(arg)
-            except KeyError:
-                continue
-            
-            pages.add(arg)
+                if not page.has_key('in'):
+                    # no such category
+                    continue
+                for type in page['in']:
+                    for newpage in page['in'][type]:
+                        # If page already added
+                        if newpage in argset:
+                            continue
 
-    # If there were no page args, default to:
-    if not pageargs and not pages:
-        # All pages, eg. with MetaTagCloud
-        if get_all_pages:
-            pages = [x for x in globaldata]
-        # Current page
-        elif request.page.page_name is not None:
-            pages = [url_quote(encode(request.page.page_name))]
-        # If there is not current page, eg. with GetMeta
-        elif all_pages:
-            pages = [url_quote(x) for x in all_pages]
-        else:
-            pages = [x for x in globaldata]
+                        if not (cat_re.search(newpage) or
+                                temp_re.search(newpage)):
+                            unqname = unicode(url_unquote(newpage),
+                                              config.charset)
+                            # Check that user may view any added pages
+                            if request.user.may.read(unqname):
+                                pages.add(newpage)
+            elif arg:
+                # Filter out nonexisting pages
+                try:
+                    page = globaldata.getpage(arg)
+                except KeyError:
+                    continue
+
+                pages.add(arg)
             
     pagelist = set([])
 
@@ -850,6 +844,8 @@ def metatable_parseargs(request, args,
         # Add page if all the regexps have matched
         if clear:
             pagelist.add(page)
+
+    metakeys = set([])
 
     if not keyspec:
         for name in pagelist:

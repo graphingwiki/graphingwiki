@@ -52,6 +52,8 @@ def execute(macro, args):
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          get_all_keys=True)
 
+    globaldata.closedb()
+
     out = StringIO.StringIO()
     out.write(macro.formatter.linebreak() + macro.formatter.table(1))
 
