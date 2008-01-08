@@ -64,8 +64,6 @@ qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
 class GraphData(object):
-    globaldata = {}
-
     def __init__(self, request):
         self.request = request
 
@@ -92,11 +90,7 @@ class GraphData(object):
         self.lock.acquire()
         
         self.opened = True
-        
-        if self.graphshelve not in self.globaldata:
-            self.globaldata[self.graphshelve] = shelve.open(self.graphshelve)
-
-        self.db = self.globaldata[self.graphshelve]
+        self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
         self.opened = False
@@ -108,28 +102,30 @@ class GraphData(object):
         # tough decisions on whether to cache content for a
         # certain user or not
 
-        return self.db.get(pagename, {})
+        return self.db.get(pagename, dict())
 
     def reverse_meta(self):
         self.keys_on_pages = {}
         self.vals_on_pages = {}
 
-        for page in self.db:
+        globaldata = dict(self.db)
+
+        for page in globaldata:
             if page.endswith('Template'):
                 continue
-            for key in self.db[page].get('meta', {}):
+            for key in globaldata[page].get('meta', {}):
                 if key in special_attrs:
                     continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in self.db[page]['meta'][key]:
+                for val in globaldata[page]['meta'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
 
-            for key in self.db[page].get('out', {}):
+            for key in globaldata[page].get('out', {}):
                 if key in special_attrs:
                     continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in self.db[page]['out'][key]:
+                for val in globaldata[page]['out'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
 
