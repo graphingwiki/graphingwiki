@@ -106,7 +106,8 @@ def t_cell(macro, vals, head=0):
 
         first_val = False
 
-def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
+def construct_table(macro, globaldata, pagelist, metakeys, 
+                    legend='', checkAccess=True):
     out = macro.request
     
     request = macro.request
@@ -135,7 +136,9 @@ def construct_table(macro, globaldata, pagelist, metakeys, legend=''):
     request.write(macro.formatter.table_row(0))
 
     for page in pagelist:
-        metas = getmetas(request, globaldata, page, metakeys)
+        # We should be 
+        metas = getmetas(request, globaldata, page, metakeys, 
+                         checkAccess=checkAccess)
         request.write(macro.formatter.table_row(1))
         t_cell(macro, url_unquote(page), head=1)
 
@@ -165,7 +168,8 @@ def execute(macro, args):
         globaldata.closedb()
         return ""
 
-    construct_table(macro, globaldata, pagelist, metakeys)
+    # We're sure the user has the access to the page, so don't check
+    construct_table(macro, globaldata, pagelist, metakeys, checkAccess=False)
 
     globaldata.closedb()
 

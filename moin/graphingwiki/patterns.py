@@ -68,21 +68,19 @@ class GraphData(object):
 
     def __init__(self, request):
         self.request = request
-        self.graphshelve = os.path.join(request.cfg.data_dir,
-                                        'graphdata.shelve')
-
-        self.opened = False
-        self.opendb()
-#        print "Inited"
 
         # Category, Template matching regexps
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
+        self.graphshelve = os.path.join(request.cfg.data_dir,
+                                        'graphdata.shelve')
+
+        self.opened = False
+        self.opendb()
+
     def __iter__(self):
-        self.get_shelve()
-        for key in self.globaldata:
-            yield key
+        return iter(self.db)
 
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
@@ -93,14 +91,15 @@ class GraphData(object):
         self.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
         self.lock.acquire()
         
-#        print "Opened"
         self.opened = True
-        self.db = shelve.open(self.graphshelve)
+        
+        if self.graphshelve not in self.globaldata:
+            self.globaldata[self.graphshelve] = shelve.open(self.graphshelve)
+
+        self.db = self.globaldata[self.graphshelve]
 
     def closedb(self):
-#        print "Closed"
         self.opened = False
-        self.db.close()
         self.lock.release()
 
     def getpage(self, pagename):
@@ -109,48 +108,28 @@ class GraphData(object):
         # tough decisions on whether to cache content for a
         # certain user or not
 
-        # try to establish whether we have to read the damn thing again
-        new_page = self.db.get(pagename, {})
-        new_mtime = new_page.get('mtime', 0)
-        old_mtime = self.globaldata.get(pagename, {}).get('mtime', 0)
-#        self.request.write("%s %s %s " % (pagename, new_mtime, old_mtime))
-
-        # Load data if it exists but has not been loaded, or if it was stale
-        if (new_page and not old_mtime) or (old_mtime < new_mtime):
-            # Currently does not do any exception handling
-            self.globaldata[pagename] = self.db[pagename]
-#            self.request.write('*changed\n')
-
-#        self.request.write('<br>\n')
-
-        return self.globaldata.get(pagename, {})
-
-    def get_shelve(self):
-        for key in self.db:
-            self.getpage(key)
+        return self.db.get(pagename, {})
 
     def reverse_meta(self):
-        self.get_shelve()
-    
         self.keys_on_pages = {}
         self.vals_on_pages = {}
 
-        for page in self.globaldata:
+        for page in self.db:
             if page.endswith('Template'):
                 continue
-            for key in self.globaldata[page].get('meta', {}):
+            for key in self.db[page].get('meta', {}):
                 if key in special_attrs:
                     continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in self.globaldata[page]['meta'][key]:
+                for val in self.db[page]['meta'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
 
-            for key in self.globaldata[page].get('out', {}):
+            for key in self.db[page].get('out', {}):
                 if key in special_attrs:
                     continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in self.globaldata[page]['out'][key]:
+                for val in self.db[page]['out'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
 

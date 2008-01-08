@@ -222,13 +222,15 @@ def getkeys(globaldata, name):
     return keys
 
 # Fetch requested metakey value for the given page.
-def getmetas(request, globaldata, name, metakeys, display=True):
+def getmetas(request, globaldata, name, metakeys, 
+             display=True, checkAccess=True):
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
-    quoted = unicode(url_unquote(name), config.charset)
-    if not request.user.may.read(quoted):
-        return pageMeta
+    if checkAccess:
+        quoted = unicode(url_unquote(name), config.charset)
+        if not request.user.may.read(quoted):
+            return pageMeta
 
     loadedPage = globaldata.getpage(name)
     loadedMeta = loadedPage.get("meta", dict())
@@ -270,7 +272,7 @@ def getmetas(request, globaldata, name, metakeys, display=True):
                 pageMeta[key].append((target, "link"))
     else:
         # Showing things as they are
-        loadetLits = loadedPage.get("lit", dict())
+        loadedLits = loadedPage.get("lit", dict())
         for key in metakeys & set(loadedLits):
             pageMeta[key].append((target, "link"))
             
@@ -820,25 +822,25 @@ def metatable_parseargs(request, args,
         clear = True
         # Filter by regexps (if any)
         if limitregexps:
-            metas = getmetas(request, globaldata, page, limitregexps)
+            # We're sure we have access to read the page, do don't check again
+            metas = getmetas(request, globaldata, page, limitregexps,
+                             checkAccess=False)
 
-            for key in limitregexps:
+            for key, re_limits in limitregexps.iteritems():
                 if not clear:
                     break
 
-                # Get values from keys, regardless of their
-                # location (meta, link)
-                data = string.join(x for x, y in metas[key])
-
-                # If page does not have the required key, do not add page
-                if not data:
+                values = metas[key]
+                if not values:
                     clear = False
                     break
 
-                # If the found key does not match, do not add page
-                for re_limit in limitregexps[key]:
-                    if not re_limit.search(data):
-                        clear = False
+                for re_limit in re_limits:
+                    for value, _ in values:
+                        if not re_limit.search(value):
+                            clear = False
+                            break
+                    if not clear:
                         break
 
         # Add page if all the regexps have matched

@@ -31,7 +31,9 @@ def execute(xmlrpcobj, args, keysonly=True):
     # Go through the pages, give list that has
     # the name of the page followed by the values of the keys
     for page in pagelist:
-        metas = getmetas(request, globaldata, page, metakeys)
+        # We're pretty sure the user has the read access to the pages,
+        # so don't check again
+        metas = getmetas(request, globaldata, page, metakeys, checkAccess=False)
         row = [page]
         for key in metakeys:
             row.append([value for (value, type) in metas[key]])
