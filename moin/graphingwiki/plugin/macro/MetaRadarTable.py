@@ -34,7 +34,7 @@ from urllib import unquote as url_unquote
 from MoinMoin import wikiutil
 from MoinMoin import config
 
-from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
 from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
@@ -71,8 +71,18 @@ def execute(macro, args):
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          get_all_keys=True)
 
+    values = set()
+    for page in pagelist:
+        metas = getmetas(request, globaldata, page, metakeys)
+        for key in metas:
+            values.update(x[0] for x in metas[key])
+    for val in values:
+        req_url += '&value=%s' % (val)
+
     out = StringIO.StringIO()
-    out.write(macro.formatter.linebreak() + macro.formatter.table(1))
+    out.write(macro.formatter.linebreak() +
+              u'<div class="metaradartable">' +
+              macro.formatter.table(1))
 
     for page in pagelist:
         pagerepr = unicode(url_unquote(page), config.charset)
@@ -88,7 +98,7 @@ def execute(macro, args):
 
         out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
 
-    out.write(macro.formatter.table(0))
+    out.write(macro.formatter.table(0) + u'</div>')
 
     globaldata.closedb()
 

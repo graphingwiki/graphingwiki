@@ -255,7 +255,9 @@ def getmetas(request, globaldata, name, metakeys,
                     pass
                 else:
                     targetMeta = targetPage.get("meta", dict())
-                    url = list(targetMeta.get("URL", set([""])))
+                    # You should not have more than one URL
+                    # so this should work
+                    url = targetMeta.get("URL", set([""])).pop()
 
                     # If the URL attribute of the target looks like the
                     # target is a local attachment, correct the link
@@ -274,7 +276,8 @@ def getmetas(request, globaldata, name, metakeys,
         # Showing things as they are
         loadedLits = loadedPage.get("lit", dict())
         for key in metakeys & set(loadedLits):
-            pageMeta[key].append((target, "link"))
+            for target in loadedLits[key]:
+                pageMeta[key].append((target, "link"))
             
     return pageMeta
 

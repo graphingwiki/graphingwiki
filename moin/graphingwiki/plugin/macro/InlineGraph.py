@@ -130,9 +130,11 @@ def execute(macro, args):
     urladd = '?' + graph_request.request_uri.split('?')[1]
     kw['urladd'] = urladd
 
+    request.write(u'<div class="inlinegraph">')
     graphshower(graph_request.page.page_name, graph_request, **kw)
 
     req_url = request.getScriptname() + '/' + uri
     req_url = join_params(req_url, args)
-    return '<a href="%s" id="footer">[%s]</a>\n' % \
-           (graph_request.getQualifiedURL(req_url), _('examine'))
+    return u'<a href="%s" id="footer">[%s]</a>\n' % \
+           (graph_request.getQualifiedURL(req_url), _('examine')) + \
+           u'</div>'

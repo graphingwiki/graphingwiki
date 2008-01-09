@@ -114,7 +114,9 @@ def construct_table(macro, globaldata, pagelist, metakeys,
     _ = request.getText
 
     # Start table
-    request.write(macro.formatter.linebreak() + macro.formatter.table(1))
+    request.write(macro.formatter.linebreak() +
+                  u'<div class="metatable">' +
+                  macro.formatter.table(1))
 
     if metakeys:
         # Give a class to headers to make it customisable
@@ -161,9 +163,12 @@ def execute(macro, args):
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        request.write(macro.formatter.linebreak() + macro.formatter.table(1))
+        request.write(macro.formatter.linebreak() +
+                      u'<div class="metatable">' +
+                      macro.formatter.table(1))
         t_cell(macro, "%s (%s)" % (_("Metatable has no contents"), args))
-        request.write(macro.formatter.table(0))
+        request.write(macro.formatter.table(0) + 
+                      u'</div>')
 
         globaldata.closedb()
         return ""

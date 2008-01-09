@@ -57,4 +57,6 @@ def execute(macro, args):
             else:
                 req_url += '&arg=%s' % (url_quote(encode(arg)))
 
-    return u'<img src="%s">' % (request.getQualifiedURL(req_url))
+    return u'<div class="metaradarchart">' + \
+           u'<img src="%s">' % (request.getQualifiedURL(req_url)) + \
+           u'</div>'

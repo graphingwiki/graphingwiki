@@ -100,6 +100,10 @@ def execute(pagename, request):
             except ValueError:
                 pass
 
+    values = list()
+    if request.form.has_key('value'):
+        values = request.form['value']
+
     if not params['height'] and params['width']:
         params['height'] = params['width']
     elif params['height'] and not params['width']:
@@ -130,22 +134,29 @@ def execute(pagename, request):
         return u''
 
     # Populate data to the radar chart
-    data = dict().fromkeys(metakeys, set())
-
+    data = dict()
     for page in pagelist:
         for key in metakeys:
-            data[key].update(x for x, y in
-                             getvalues(request, globaldata, page, key))
+            data[key] = set(x for x, y in
+                            getvalues(request, globaldata, page, key))
+
 
     globaldata.closedb()
 
     # Get values for the chart axes
-    values = set([])
     data_per_axis = dict()
-    for axis, (key, val) in enumerate(data.iteritems()):
+    for axis, key in enumerate(metakeys):
         data_per_axis[axis] = key
-        # Opportunistic parsing of values
-        values.update(ordervalue(x) for x in val)
+
+    if not values:
+        values = set()
+        for key in metakeys:
+            for val in data[key]:
+                # Opportunistic parsing of values
+                values.update(ordervalue(x) for x in val)
+    else:
+        values = [ordervalue(x) for x in values]
+
     values = sorted(values)
 
     if not values:
@@ -156,9 +167,11 @@ def execute(pagename, request):
     sectors = len(data)
     angle = 2*math.pi/sectors
 
+    cur_radius = per_value
     # Make the base grid
-    for x in range(per_value, radius, per_value):
-        ctx, gridpoints = spider_radius(ctx, center, x, sectors)
+    for x in range(1, len(values)):
+        ctx, gridpoints = spider_radius(ctx, center, cur_radius, sectors)
+        cur_radius += per_value
 
     # Apply ink from strokes so far
     ctx.stroke()
