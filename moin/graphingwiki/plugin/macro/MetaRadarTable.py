@@ -77,7 +77,13 @@ def execute(macro, args):
         for key in metas:
             values.update(x[0] for x in metas[key])
     for val in values:
-        req_url += '&value=%s' % (val)
+        if val.startswith('attachment'):
+            # A bit ugly fix for a weird corner case
+            val = val[11:]
+            req_url += '&value=attachment:%s' % \
+                       (url_quote(url_quote(encode(val))))
+        else:
+            req_url += '&value=%s' % (url_quote(encode(val)))
 
     out = StringIO.StringIO()
     out.write(macro.formatter.linebreak() +
@@ -97,6 +103,7 @@ def execute(macro, args):
         out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
 
         out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
+        out.write(macro.formatter.linebreak())
 
     out.write(macro.formatter.table(0) + u'</div>')
 

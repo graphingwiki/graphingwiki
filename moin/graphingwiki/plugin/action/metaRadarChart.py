@@ -102,7 +102,7 @@ def execute(pagename, request):
 
     values = list()
     if request.form.has_key('value'):
-        values = request.form['value']
+        values = [url_unquote(x) for x in request.form['value']]
 
     if not params['height'] and params['width']:
         params['height'] = params['width']
@@ -147,13 +147,13 @@ def execute(pagename, request):
     data_per_axis = dict()
     for axis, key in enumerate(metakeys):
         data_per_axis[axis] = key
-
+    
     if not values:
         values = set()
         for key in metakeys:
             for val in data[key]:
                 # Opportunistic parsing of values
-                values.update(ordervalue(x) for x in val)
+                values.add(ordervalue(val))
     else:
         values = [ordervalue(x) for x in values]
 
