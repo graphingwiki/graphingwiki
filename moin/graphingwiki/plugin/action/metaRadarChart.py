@@ -159,7 +159,8 @@ def execute(pagename, request):
 
     values = sorted(values)
 
-    if not values:
+    # No use in having tables with 
+    if len(values) < 2:
         return u''
 
     per_value = radius / len(values)

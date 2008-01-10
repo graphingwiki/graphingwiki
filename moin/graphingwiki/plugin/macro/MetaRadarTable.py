@@ -48,16 +48,20 @@ def execute(macro, args):
     req_url = request.getScriptname() + '/' + request.page.page_name
     req_url += '?action=metaRadarChart'
 
+    height, width = (1000, 1000)
+
     if args:
         arglist = list()
         for arg in [x.strip() for x in args.split(',') if x]:
             if arg.startswith('chartheight='):
+                height = arg.split('=')[1]
                 req_url += '&height=%s' % \
-                       (url_quote(encode(arg.split('=')[1])))
+                       (url_quote(height))
                 continue
             if arg.startswith('chartwidth='):
+                width = arg.split('=')[1]
                 req_url += '&width=%s' % \
-                       (url_quote(encode(arg.split('=')[1])))
+                       (url_quote(width))
                 continue
 
             if arg.startswith('||') and arg.endswith('||'):
@@ -66,6 +70,18 @@ def execute(macro, args):
             arglist.append(arg)
             
         args = ', '.join(arglist)
+
+    # For multiple radar charts per table row
+    try:
+        height = int(height)
+        width = int(width)
+    except ValueError:
+        pass
+
+    # 1000 is the assumed max_width here
+    amount = 1000 / min(height, width)
+    if amount < 1:
+        amount = 1
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
@@ -90,20 +106,30 @@ def execute(macro, args):
               u'<div class="metaradartable">' +
               macro.formatter.table(1))
 
-    for page in pagelist:
-        pagerepr = unicode(url_unquote(page), config.charset)
+    # Iterate over the number of rows
+    for i in range((len(pagelist)/amount)+1):
 
-        url = req_url + '&arg=' + page
         out.write(macro.formatter.table_row(1))
-        out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
-        out.write(macro.formatter.pagelink(1, page))
-        out.write(macro.formatter.text(pagerepr))
-        out.write(macro.formatter.pagelink(0))
-        
-        out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
 
-        out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
-        out.write(macro.formatter.linebreak())
+        # First enter page names to first row
+        for page in pagelist[i*amount:(i+1)*amount]:
+            pagerepr = unicode(url_unquote(page), config.charset)
+            url = req_url + '&arg=' + page
+            out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
+            out.write(macro.formatter.pagelink(1, page))
+            out.write(macro.formatter.text(pagerepr))
+            out.write(macro.formatter.pagelink(0))
+            out.write(macro.formatter.linebreak())
+
+        out.write(macro.formatter.table_row(1))
+
+        # Chart images to the other row
+        for page in pagelist[i*amount:(i+1)*amount]:
+            pagerepr = unicode(url_unquote(page), config.charset)
+            url = req_url + '&arg=' + page
+            out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
+            out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
+            out.write(macro.formatter.linebreak())
 
     out.write(macro.formatter.table(0) + u'</div>')
 
