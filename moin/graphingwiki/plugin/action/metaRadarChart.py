@@ -125,6 +125,12 @@ def execute(pagename, request):
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(12)
 
+    ctx.set_source_rgb(1.0, 1.0, 1.0)
+    ctx.rectangle(0, 0, params['height'], params['width'])
+    ctx.fill()
+
+    ctx.set_source_rgb(0.0, 0.0, 0.0)
+
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys = metatable_parseargs(request, args,
                                                          get_all_keys=True)
