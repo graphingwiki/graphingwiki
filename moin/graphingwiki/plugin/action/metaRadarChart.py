@@ -212,8 +212,13 @@ def execute(pagename, request):
         ctx.set_source_rgba(1, 1, 1, 0.9)
         width, height = ctx.text_extents(text)[2:4]
 
+        # Move texts on the left side a bit left
+        if point[0] < center[0]:
+            point = (point[0] - width, point[1])
+
+        width, height = width * 1.2, -height * 1.2
         x, y = point[0] - 0.1 * width, point[1] + 0.1 * height
-        ctx.rectangle(x, y, width * 1.2, -height * 1.2)
+        ctx.rectangle(x, y, width, height)
         ctx.fill()
 
         ctx.set_source_rgb(0, 0, 0)

@@ -114,9 +114,8 @@ def execute(macro, args):
         # First enter page names to first row
         for page in pagelist[i*amount:(i+1)*amount]:
             pagerepr = unicode(url_unquote(page), config.charset)
-            url = req_url + '&arg=' + page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
-            out.write(macro.formatter.pagelink(1, page))
+            out.write(macro.formatter.pagelink(1, pagerepr))
             out.write(macro.formatter.text(pagerepr))
             out.write(macro.formatter.pagelink(0))
             out.write(macro.formatter.linebreak())

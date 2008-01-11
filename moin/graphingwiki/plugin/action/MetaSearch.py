@@ -116,7 +116,6 @@ def execute(pagename, request):
                 
         graphdata = GraphData(request)
         graphdata.reverse_meta()
-        globaldata = graphdata.globaldata
         keys_on_pages = graphdata.keys_on_pages
         vals_on_pages = graphdata.vals_on_pages
 

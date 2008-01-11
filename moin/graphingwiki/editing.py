@@ -255,14 +255,13 @@ def getmetas(request, globaldata, name, metakeys,
                     pass
                 else:
                     targetMeta = targetPage.get("meta", dict())
-                    # You should not have more than one URL
-                    # so this should work
-                    url = targetMeta.get("URL", set([""])).pop()
-
-                    # If the URL attribute of the target looks like the
-                    # target is a local attachment, correct the link
-                    if 'AttachFile' in url and url.startswith('".'):
-                        target = 'attachment:' + target.replace(' ', '_')
+                    url = targetMeta.get("URL", set([""]))
+                    if url:
+                        url = url.pop()
+                        # If the URL attribute of the target looks like the
+                        # target is a local attachment, correct the link
+                        if 'AttachFile' in url and url.startswith('".'):
+                            target = 'attachment:' + target.replace(' ', '_')
 
                 target = target.strip('"')
                 if not target.startswith('attachment:'):
