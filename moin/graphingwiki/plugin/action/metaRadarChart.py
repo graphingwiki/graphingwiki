@@ -126,7 +126,7 @@ def execute(pagename, request):
     ctx.set_font_size(12)
 
     ctx.set_source_rgb(1.0, 1.0, 1.0)
-    ctx.rectangle(0, 0, params['height'], params['width'])
+    ctx.rectangle(0, 0, params['width'], params['height'])
     ctx.fill()
 
     ctx.set_source_rgb(0.0, 0.0, 0.0)
@@ -234,6 +234,8 @@ def execute(pagename, request):
     # Output a PNG file
     tmp_fileno, tmp_name = mkstemp()
     surface.write_to_png(tmp_name)
+    surface.finish()
+    
     f = file(tmp_name)
     data = f.read()
     os.close(tmp_fileno)
