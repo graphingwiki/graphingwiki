@@ -37,7 +37,7 @@ from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.editing import check_link, formatting_rules, rendervalue
+from graphingwiki.editing import formatting_rules
 from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
@@ -50,18 +50,9 @@ def t_cell(macro, vals, head=0):
     else:
         out.write(macro.formatter.table_cell(1, {'class': 'meta_cell'}))
 
-    # It is assumed that this function is called
-    # either with a string, in which case it is the
-    # sole non-link value used in the table cell
-    # or with a set of tuples, in which case the
-    # values will be individually handled by its
-    # source to be either textual or link
-    if isinstance(vals, basestring):
-        vals = [(vals, 'meta')]
-
     first_val = True
-
-    for data, src in sorted(vals):
+    
+    for data in sorted(vals):
 
         # cosmetic for having a "a, b, c" kind of lists
         if not first_val:
@@ -78,28 +69,11 @@ def t_cell(macro, vals, head=0):
                 kw['querystr'] = query
             out.write(macro.formatter.pagelink(1, data, **kw))
 
-        if src == 'link':
-            # Check for link type
-            link = check_link(macro.all_re, data)
-            # If it does not match for any specific link type,
-            # just make a page link. Also, as
-            # u'SomePage/SomeOther Page' matches to
-            # ('word', 'SomePage/SomeOther', detect this and make
-            # a normal link
-            if (not link \
-                or link[1] != data):
-                out.write(macro.formatter.pagelink(1, data))
-                out.write(macro.formatter.text(data))
-            else:
-                typ, hit = link
-                replace = getattr(macro.parser, '_' + typ + '_repl')
-                attrs = replace(hit)
-                out.write(attrs)
-            out.write(macro.formatter.pagelink(0))
-        else:
-            out.write(macro.formatter.text(rendervalue(macro.request,
-                                                       macro.parser,
-                                                       data)))
+        out.page.formatter = out.formatter
+        out.page.send_page_content(out, Parser,
+                                   data,
+                                   do_cache=0,
+                                   line_anchors=False)
 
         if head:
             out.write(macro.formatter.pagelink(0))
@@ -108,9 +82,8 @@ def t_cell(macro, vals, head=0):
 
 def construct_table(macro, globaldata, pagelist, metakeys, 
                     legend='', checkAccess=True):
-    out = macro.request
-    
     request = macro.request
+    request.page.formatter = request.formatter
     _ = request.getText
 
     # Start table
@@ -122,30 +95,22 @@ def construct_table(macro, globaldata, pagelist, metakeys,
         # Give a class to headers to make it customisable
         request.write(macro.formatter.table_row(1, {'rowclass': 'meta_header'}))
         # Upper left cell is empty
-        t_cell(macro, legend)
-
-    # Start parser
-    macro.parser = Parser('', request)
-    macro.parser.formatter = request.formatter    
-    macro.all_re = formatting_rules(request, macro.parser)
+        t_cell(macro, [legend])
 
     for key in metakeys:
         key = unicode(url_unquote(key), config.charset)
-        if check_link(macro.all_re, key):
-            t_cell(macro, [(key, 'link')])
-        else:
-            t_cell(macro, key)
+        t_cell(macro, [key])
     request.write(macro.formatter.table_row(0))
 
     for page in pagelist:
-        # We should be 
-        metas = getmetas(request, globaldata, page, metakeys, 
+        metas = getmetas(request, globaldata, page,
+                         metakeys, display=False,
                          checkAccess=checkAccess)
         request.write(macro.formatter.table_row(1))
-        t_cell(macro, url_unquote(page), head=1)
+        t_cell(macro, [url_unquote(page)], head=1)
 
         for key in metakeys:
-            values = metas[key]
+            values = [x for x,y in metas[key]]
             t_cell(macro, values)
 
         request.write(macro.formatter.table_row(0))
@@ -166,7 +131,7 @@ def execute(macro, args):
         request.write(macro.formatter.linebreak() +
                       u'<div class="metatable">' +
                       macro.formatter.table(1))
-        t_cell(macro, "%s (%s)" % (_("Metatable has no contents"), args))
+        t_cell(macro, ["%s (%s)" % (_("Metatable has no contents"), args)])
         request.write(macro.formatter.table(0) + 
                       u'</div>')
 

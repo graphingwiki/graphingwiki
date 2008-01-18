@@ -36,17 +36,24 @@ import select
 import os
 import time
 
+gv_found = True
+
 # 32bit and 64bit versions
 try:
     sys.path.append('/usr/lib/graphviz/python')
     import gv
 except ImportError:
     sys.path[-1] = '/usr/lib64/graphviz/python'
-    import gv
+    try:
+        import gv
+    except ImportError:
+        gv_found = False
+        pass
 
-# gv needs libag to be initialised before using any read methods,
-# making a graph here seems to ensure aginit() is called
-gv.graph(' ')
+if gv_found:
+    # gv needs libag to be initialised before using any read methods,
+    # making a graph here seems to ensure aginit() is called
+    gv.graph(' ')
 
 import graph
 

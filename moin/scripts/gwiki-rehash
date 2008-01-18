@@ -32,11 +32,17 @@
 import os
 import sys
 from codecs import getencoder
+from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
 from MoinMoin import request
 from MoinMoin.Page import Page
 from MoinMoin import config
+
+usage = "usage: %prog <path-to-wiki> [pagename]\n"
+parser = OptionParser(usage=usage)
+
+(options, args) = parser.parse_args()
 
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
@@ -49,22 +55,22 @@ class UserInputException(Exception):
     pass
 
 try:
-    wikipath = sys.argv[1]
+    wikipath = args[0]
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
     from wikiconfig import Config
     datadir = Config.data_dir
     pagesdir = os.path.join(datadir, 'pages')
-    if len(sys.argv) > 2:
-        pagename = unicode(sys.argv[2], sys.getfilesystemencoding())
+    if len(args) > 1:
+        pagename = unicode(args[1], sys.getfilesystemencoding())
         pagefilename = quoteWikinameFS(pagename)
         pagedir = os.path.join(pagesdir, pagefilename)
         if not os.path.isdir(pagedir):
             raise UserInputException
         pages = [pagename]
 except UserInputException:
-    sys.stderr.write("Usage: " + sys.argv[0] + " <path-to-wiki> [pagename]\n")
+    parser.print_help()
     sys.exit(2)
 
 if not pages:

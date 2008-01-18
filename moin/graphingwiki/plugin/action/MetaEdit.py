@@ -89,7 +89,8 @@ def show_editform(request, pagename, args):
 
             for i, (val, typ) in enumerate(getvalues(request, globaldata,
                                                      frompage, key,
-                                                     display=False)):
+                                                     display=False,
+                                                     abs_attach=False)):
                 values[frompage][key].append(val)
                 # Enumerate starts from 0: #values++ 
                 # One to add a value: #values++ 

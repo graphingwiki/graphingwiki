@@ -28,8 +28,14 @@
 
 """
 import os
-import cairo
 import math
+
+cairo_found = True
+try:
+    import cairo
+except ImportError:
+    cairo_found = False
+    pass
 
 from urllib import unquote as url_unquote
 from tempfile import mkstemp
@@ -85,6 +91,12 @@ def spider_radius(ctx, center, radius, sectors):
 
 def execute(pagename, request):
     _ = request.getText
+
+    if not cairo_found:
+        request.setHttpHeader('Content-type: text/plain')
+        request.write(_("ERROR: Cairo Python extensions not installed. " +\
+                        "Not performing layout."))
+        raise MoinMoinNoFooter
 
     # Grab arguments
     args = ', '.join(x for x in request.form.get('arg', []))

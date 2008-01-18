@@ -32,7 +32,6 @@ def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
 
 metadata_re = macro_re("MetaData")
-datetime_re = macro_re("DateTime")
 
 regexp_re = re.compile('^/.+/$')
 # Include \s except for newlines
@@ -104,13 +103,6 @@ def ordervalue(value):
 
     return value
 
-def rendervalue(request, parser, value):
-    # Render values in a nice manner
-    if datetime_re.match(value):
-        value = Parser._macro_repl(parser, value)
-
-    return value
-
 def edit_categories(request, savetext, category_edit, catlist):
     # Original code copied from PageEditor
 
@@ -158,6 +150,10 @@ def edit_categories(request, savetext, category_edit, catlist):
         # Just in case, do not add anything
         newcategories = []
 
+    if not lines:
+        # add separator
+        savetext += u'\n----\n'
+
     # Add categories
     for category in newcategories:
         if category in confirmed:
@@ -183,16 +179,6 @@ def formatting_rules(request, parser):
         rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
 
     return re.compile(rules, re.UNICODE)
-
-def check_link(all_re, item):
-    # Go through the string with formatting operations,
-    # return true if it matches a known linktype
-    for match in all_re.finditer(item):
-        for type, hit in match.groupdict().items():
-            if hit is None:
-                continue
-            if type in linktypes:
-                return (type, hit)
 
 def getpage(name, request=None):
     if not request:
@@ -221,14 +207,48 @@ def getkeys(globaldata, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
+def link_to_attachment(globaldata, target):
+    if isinstance(target, unicode):
+        target = url_quote(encode(target))
+    
+    try:
+        targetPage = globaldata.getpage(target)
+    except KeyError:
+        pass
+    else:
+        targetMeta = targetPage.get("meta", dict())
+        url = targetMeta.get("URL", set([""]))
+        if url:
+            url = url.pop()
+            # If the URL attribute of the target looks like the
+            # target is a local attachment, correct the link
+            if 'AttachFile' in url and url.startswith('".'):
+                target = 'attachment:' + target.replace(' ', '_')
+
+    target = target.strip('"')
+    if not target.startswith('attachment:'):
+        target = unicode(url_unquote(target), config.charset)
+    else:
+        target = unicode(target, config.charset)
+    target = target.replace('\\"', '"')
+
+    return target
+
+def absolute_attach_name(quoted, target):
+    if target.startswith('attachment:') and not '/' in target:
+        target = target.replace('attachment:', 'attachment:%s/' %
+                                (quoted.replace(' ', '_')))
+
+    return target
+
 # Fetch requested metakey value for the given page.
 def getmetas(request, globaldata, name, metakeys, 
-             display=True, checkAccess=True):
+             display=True, abs_attach=True, checkAccess=True):
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
+    quoted = unicode(url_unquote(name), config.charset)
     if checkAccess:
-        quoted = unicode(url_unquote(name), config.charset)
         if not request.user.may.read(quoted):
             return pageMeta
 
@@ -249,26 +269,8 @@ def getmetas(request, globaldata, name, metakeys,
         loadedOuts = loadedPage.get("out", dict())
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
-                try:
-                    targetPage = globaldata.getpage(target)
-                except KeyValue:
-                    pass
-                else:
-                    targetMeta = targetPage.get("meta", dict())
-                    url = targetMeta.get("URL", set([""]))
-                    if url:
-                        url = url.pop()
-                        # If the URL attribute of the target looks like the
-                        # target is a local attachment, correct the link
-                        if 'AttachFile' in url and url.startswith('".'):
-                            target = 'attachment:' + target.replace(' ', '_')
-
-                target = target.strip('"')
-                if not target.startswith('attachment:'):
-                    target = unicode(url_unquote(target), config.charset)
-                else:
-                    target = unicode(target, config.charset)
-                target = target.replace('\\"', '"')
+                if abs_attach:
+                    target = link_to_attachment(globaldata, target)
 
                 pageMeta[key].append((target, "link"))
     else:
@@ -276,6 +278,9 @@ def getmetas(request, globaldata, name, metakeys,
         loadedLits = loadedPage.get("lit", dict())
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
+                if abs_attach:
+                    target = absolute_attach_name(quoted, target)
+
                 pageMeta[key].append((target, "link"))
             
     return pageMeta
@@ -283,7 +288,9 @@ def getmetas(request, globaldata, name, metakeys,
 # Currently, the values of metadata and link keys are
 # considered additive in case of a possible overlap.
 # Let's see how it turns out.
-def getvalues(request, globaldata, name, key, display=True):
+def getvalues(request, globaldata, name, key,
+              display=True, abs_attach=True):
+
     if not request.user.may.read(unicode(url_unquote(name),
                                          config.charset)):
         return set([])
@@ -303,31 +310,18 @@ def getvalues(request, globaldata, name, key, display=True):
         if key in page.get('out', {}):
             # Add values and their sources
             for target in page['out'][key]:
-                try:
-                    # Try to get the URL attribute of the link target
-                    dst = globaldata.getpage(target)
-                    url = dst.get('meta', {}).get('URL', set(['']))
-                    url = list(url)[0]
+                if abs_attach:
+                    target = link_to_attachment(globaldata, target)
 
-                    # If the URL attribute of the target looks like the
-                    # target is a local attachment, correct the link
-                    if 'AttachFile' in url and url.startswith('".'):
-                        target = 'attachment:' + target.replace(' ', '_')
-                except:
-                    pass
-
-                target = target.strip('"')
-                if not target.startswith('attachment:'):
-                    target = unicode(url_unquote(target), config.charset)
-                else:
-                    target = unicode(target, config.charset)
-                target = target.replace('\\"', '"')
                 vals.add((target, 'link'))
     else:
         # Showing things as they are
         if key in page.get('lit', {}):
             # Add values and their sources
             for target in page['lit'][key]:
+                if abs_attach:
+                    target = absolute_attach_name(quoted, target)
+
                 vals.add((target, 'link'))
             
     return vals
@@ -715,7 +709,7 @@ def metatable_parseargs(request, args,
         if '=' in arg:
             data = arg.split("=")
             key = url_quote(encode(data[0]))
-            val = encode('='.join(data[1:]))
+            val = '='.join(data[1:])
 
             # Assume that value limits are regexps, if
             # not, escape them into exact regexp matches
@@ -824,26 +818,33 @@ def metatable_parseargs(request, args,
         clear = True
         # Filter by regexps (if any)
         if limitregexps:
-            # We're sure we have access to read the page, do don't check again
+            # We're sure we have access to read the page, don't check again
             metas = getmetas(request, globaldata, page, limitregexps,
                              checkAccess=False)
 
             for key, re_limits in limitregexps.iteritems():
-                if not clear:
-                    break
 
                 values = metas[key]
                 if not values:
-                    clear = False
                     break
 
                 for re_limit in re_limits:
+                    clear = False
+
+                    # Iterate all the keys for the value for a match
                     for value, _ in values:
-                        if not re_limit.search(value):
-                            clear = False
+                        if re_limit.search(value):
+                            clear = True
+                            # Single match is enough
                             break
+
+                    # If one of the key's regexps did not match
                     if not clear:
                         break
+
+                # If all of the regexps for a single page did not match
+                if not clear:
+                    break
 
         # Add page if all the regexps have matched
         if clear:

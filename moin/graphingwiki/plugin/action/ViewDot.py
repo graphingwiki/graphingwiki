@@ -39,7 +39,7 @@ from MoinMoin.action import AttachFile
 from MoinMoin.request import RequestModPy
 from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.graphrepr import Graphviz
+from graphingwiki.graphrepr import Graphviz, gv_found
 
 from ShowGraph import quotetoshow
 from savegraphdata import encode
@@ -134,7 +134,9 @@ class ViewDot(object):
         dotfile = self.dotfile
         request.write(_("Dot file") + "<br>\n" +
                       u'<select name="attachment">\n')
-        for page in self.request.page.getPageList():
+
+        # Use request.rootpage, request.page has weird failure modes
+        for page in self.request.rootpage.getPageList():
             files = AttachFile._get_files(self.request, page)
             for file in files:
                 if file.endswith('.dot'):
@@ -148,8 +150,9 @@ class ViewDot(object):
                       'value="%s"><br>\n' % _('Inline'))
         request.write(u'</form>\n')
 
-    def fail(self):
-        self.request.write('Content-type: text/plain\n\n\n')
+    def fail(self, fault = ''):
+        self.request.setHttpHeader('Content-type: text/plain')
+        self.request.write(fault)
         raise MoinMoinNoFooter
 
     def execute(self):
@@ -198,10 +201,11 @@ class ViewDot(object):
             return 
 
         if not self.attachment[:10].lower() == 'attachment':
+            fault = _('No attachment defined') + '\n'
             if self.inline:
-                self.request.write(_('No attachment defined') + '\n')
+                self.request.write(self.request.formatter.text(fault))
                 return
-            self.fail()
+            self.fail(fault)
 
         self.attachment = self.attachment[11:]
             
@@ -214,11 +218,19 @@ class ViewDot(object):
         try:
             data = file(fpath, 'r').read()
         except IOError:
+            fault = _('Attachment not found at') + ' %s\n' % repr(fpath)
             if self.inline:
-                self.request.write(_('Attachment not found at') + ' %s\n' %
-                                   repr(fpath))
+                self.request.write(self.request.formatter.text(fault))
                 return
-            self.fail()
+            self.fail(fault)
+
+        if not gv_found:
+            fault = _("ERROR: Graphviz Python extensions not installed. " +\
+                      "Not performing layout.")
+            if self.inline:
+                self.request.write(self.request.formatter.text(fault))
+                return
+            self.fail(fault)
 
         graphviz = Graphviz(engine=self.graphengine, string=data)
         data = self.getLayoutInFormat(graphviz, self.format)

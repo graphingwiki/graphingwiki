@@ -33,6 +33,7 @@ from MoinMoin.wikiutil import unquoteWikiname
 from MoinMoin.request import RequestModPy
 from MoinMoin.action import AttachFile
 
+from graphingwiki.graphrepr import gv_found
 from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):
@@ -96,7 +97,7 @@ class GraphShowerSimple(GraphShower):
 
         outgraph = self.get_graph()
 
-        if self.format:
+        if self.format and gv_found:
             gr = self.generateLayout(outgraph)
 
         if self.do_form:
@@ -112,7 +113,7 @@ class GraphShowerSimple(GraphShower):
                   self.request.request_uri + "&image="
 
         legend = None
-        if self.coloredges or self.colornodes:
+        if (self.coloredges or self.colornodes) and gv_found:
             legend = self.makeLegend()
 
         if self.help == 'inline':
@@ -121,6 +122,28 @@ class GraphShowerSimple(GraphShower):
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
             self.request.write('[[InlineGraph(%s)]]' % urladd)
+        elif not self.format:
+            formatter = self.request.formatter
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text(_("Nodes in graph") + ": " +
+                                                str(len(
+                outgraph.nodes.getall()))))
+            self.request.write(formatter.paragraph(0))
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text(_("Edges in graph") + ": " +
+                                              str(len(
+                outgraph.edges.getall()))))
+            self.request.write(formatter.paragraph(0))
+            if getattr(self, 'orderby', '_hier') != '_hier':
+                self.request.write(formatter.paragraph(1))
+                self.request.write(formatter.text(_("Order levels") + ": " +
+                                                  str(len(
+                    self.ordernodes.keys()))))
+                self.request.write(formatter.paragraph(0))
+        elif not gv_found:
+            self.request.write(self.request.formatter.text(_(\
+                    "ERROR: Graphviz Python extensions not installed. " +\
+                    "Not performing layout.")))
         elif self.format == 'zgr':
             if not self.height:
                 self.height = "600"
@@ -152,24 +175,6 @@ class GraphShowerSimple(GraphShower):
             if legend:
                 self.request.write('<img src="%s" alt="legend">' %
                                    (img_url + "2"))
-        elif not self.format:
-            formatter = self.request.formatter
-            self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text(_("Nodes in graph") + ": " +
-                                                str(len(
-                outgraph.nodes.getall()))))
-            self.request.write(formatter.paragraph(0))
-            self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text(_("Edges in graph") + ": " +
-                                              str(len(
-                outgraph.edges.getall()))))
-            self.request.write(formatter.paragraph(0))
-            if getattr(self, 'orderby', '_hier') != '_hier':
-                self.request.write(formatter.paragraph(1))
-                self.request.write(formatter.text(_("Order levels") + ": " +
-                                                  str(len(
-                    self.ordernodes.keys()))))
-                self.request.write(formatter.paragraph(0))
         else:
             self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'%
                                (img_url + "1", _('graph'),
@@ -273,6 +278,13 @@ class GraphShowerSimple(GraphShower):
         return outgraph
 
     def execute_image(self):
+        if not gv_found:
+            self.request.setHttpHeader('Content-type: text/plain')
+            self.request.write(formatter.text(_(\
+                        "ERROR: Graphviz Python extensions not installed. " +\
+                        "Not performing layout.")))
+            raise MoinMoinNoFooter
+        
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
                                    urladd=self.urladd,
@@ -308,7 +320,7 @@ class GraphShowerSimple(GraphShower):
             self.globaldata.closedb()
             raise MoinMoinNoFooter
 
-    def execute(self):        
+    def execute(self):
         self.formargs()
 
         # Whether to do print the page frame or the image

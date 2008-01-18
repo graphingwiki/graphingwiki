@@ -36,12 +36,24 @@ from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
 
+cairo_found = True
+try:
+    import cairo
+except ImportError:
+    cairo_found = False
+    pass
+
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
     _ = request.getText
 
+    if not cairo_found:
+        return formatter.text(_(\
+            "ERROR: Cairo Python extensions not installed. " +\
+            "Not performing layout.")) + formatter.linebreak()
+    
     req_url = request.getScriptname() + '/' + request.page.page_name
     req_url += '?action=metaRadarChart'
 

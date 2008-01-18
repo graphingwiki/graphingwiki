@@ -37,6 +37,13 @@ from MoinMoin import config
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
 from graphingwiki.patterns import encode
 
+cairo_found = True
+try:
+    import cairo
+except ImportError:
+    cairo_found = False
+    pass
+
 Dependencies = ['metadata']
 
 def execute(macro, args):
@@ -44,6 +51,11 @@ def execute(macro, args):
     macro.request.page.formatter = formatter
     request = macro.request
     _ = request.getText
+
+    if not cairo_found:
+        return formatter.text(_(\
+                        "ERROR: Cairo Python extensions not installed. " +\
+                        "Not performing layout.")) + formatter.linebreak()
 
     req_url = request.getScriptname() + '/' + request.page.page_name
     req_url += '?action=metaRadarChart'

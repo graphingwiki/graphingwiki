@@ -50,7 +50,7 @@ from MoinMoin.request import Clock
 cl = Clock()
 
 from graphingwiki.graph import Graph
-from graphingwiki.graphrepr import GraphRepr, Graphviz
+from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
 from graphingwiki.patterns import *
 from graphingwiki.editing import ordervalue
 
@@ -581,23 +581,6 @@ class GraphShower(object):
 
             # Shapefiles
             if getattr(obj, 'shapefile', None):
-                # Stylistic stuff: label, borders
-                # "Note that user-defined shapes are treated as a form
-                # of box shape, so the default peripheries value is 1
-                # and the user-defined shape will be drawn in a
-                # bounding rectangle. Setting peripheries=0 will turn
-                # this off."
-                # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
-                n.label = ' '
-                n.peripheries = '0'
-
-                # Non-attachment shapefiles arbitrary (SVG, anyone?)
-                if not hasattr(obj, 'shapefile'):
-                    continue
-                #if not obj.shapefile.startswith('attachment:'):
-                #    continue
-
-#                self.request.write(repr(obj.shapefile) + '<br>')
 
                 # Enter file path for attachment shapefiles
                 value = obj.shapefile[11:]
@@ -607,17 +590,26 @@ class GraphShower(object):
                 else:
                     page = '/'.join(components[:-1])
                 file = unicode(url_unquote(components[-1]), config.charset)
-                page = unicode(url_unquote(page), config.charset)
-
-#                self.request.write(repr(file) + '<br>')
-#                self.request.write(repr(page) + '<br>')
 
                 # get attach file path, empty label
-                n.shapefile = AttachFile.getFilename(self.request,
-                                                     page, file)
-                n.style = 'filled'
-                n.fillcolor = 'transparent'
-#                self.request.write(repr(n.shapefile) + '<br>')
+                if os.path.isfile(file):
+                    page = unicode(url_unquote(page), config.charset)
+                    n.shapefile = AttachFile.getFilename(self.request,
+                                                         page, file)
+                    
+                    # Stylistic stuff: label, borders
+                    # "Note that user-defined shapes are treated as a form
+                    # of box shape, so the default peripheries value is 1
+                    # and the user-defined shape will be drawn in a
+                    # bounding rectangle. Setting peripheries=0 will turn
+                    # this off."
+                    # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
+                    n.label = ' '
+                    n.peripheries = '0'
+                    n.style = 'filled'
+                    n.fillcolor = 'transparent'
+                else:
+                    del n.shapefile
 #            elif 'AttachFile' in obj.node:
 #                # Have shapefiles of image attachments
 #                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
@@ -1454,7 +1446,7 @@ class GraphShower(object):
                 self.sendMap(legend)
                                    
     def sendFooter(self, formatter):
-        if self.format != 'dot':
+        if self.format != 'dot' or not gv_found:
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
@@ -1467,7 +1459,7 @@ class GraphShower(object):
         pagename = self.pagename
         _ = request.getText
 
-        if self.format != 'dot':
+        if self.format != 'dot' or not gv_found:
             request.http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
@@ -1597,22 +1589,24 @@ class GraphShower(object):
         #print "Traverse over"
         cl.stop('traverse')
 
-        cl.start('layout')
-        # Stylistic stuff: Color nodes, edges, bold startpages
-        if self.colorby:
-            outgraph = self.colorNodes(outgraph)
-        outgraph = self.colorEdges(outgraph)
-        outgraph = self.edgeTooltips(outgraph)
-        outgraph = self.circleStartNodes(outgraph)
+        
+        if gv_found:
+            cl.start('layout')
+            # Stylistic stuff: Color nodes, edges, bold startpages
+            if self.colorby:
+                outgraph = self.colorNodes(outgraph)
+            outgraph = self.colorEdges(outgraph)
+            outgraph = self.edgeTooltips(outgraph)
+            outgraph = self.circleStartNodes(outgraph)
 
-        # Fix URL:s
-        outgraph = self.fixNodeUrls(outgraph)
+            # Fix URL:s
+            outgraph = self.fixNodeUrls(outgraph)
 
-#        self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
+            # self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
 
-        # Do the layout
-        gr = self.generateLayout(outgraph)
-        cl.stop('layout')
+            # Do the layout
+            gr = self.generateLayout(outgraph)
+            cl.stop('layout')
 
         cl.start('format')
         if self.help == 'inline':
@@ -1622,17 +1616,24 @@ class GraphShower(object):
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
             self.request.write('[[InlineGraph(%s)]]' % urladd)
-        elif self.format == 'svg':
-            self.sendForm()
-            self.sendGraph(gr)
-            self.sendLegend()
-        elif self.format == 'dot':
-            self.sendGv(gr)
-        elif self.format == 'png':
-            self.sendForm()
-            self.sendGraph(gr, True)
-            self.sendLegend()
+        elif self.format in ['svg', 'dot', 'png']:
+            if not gv_found:
+                self.sendForm()
+                self.request.write(formatter.text(_(\
+                    "ERROR: Graphviz Python extensions not installed. " +\
+                    "Not performing layout.")))
+            elif self.format == 'svg':
+                self.sendForm()
+                self.sendGraph(gr)
+                self.sendLegend()
+            elif self.format == 'dot':
+                self.sendGv(gr)
+            elif self.format == 'png':
+                self.sendForm()
+                self.sendGraph(gr, True)
+                self.sendLegend()
         else:
+            # Test graph
             self.sendForm()
             self.request.write(formatter.paragraph(1))
             self.request.write(formatter.text("%s: " % _("Nodes in graph") +
@@ -1719,7 +1720,7 @@ class GraphShower(object):
         request = self.request
         pagename = self.pagename
 
-        if self.format != 'dot':
+        if self.format != 'dot' or not gv_found:
             request.write(msie_header)
             _ = request.getText
 
@@ -1741,7 +1742,7 @@ class GraphShower(object):
         return formatter
 
     def sendFooterIE(self, formatter):
-        if self.format != 'dot':
+        if self.format != 'dot' or not gv_found:
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
