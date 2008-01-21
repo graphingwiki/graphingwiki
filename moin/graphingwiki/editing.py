@@ -291,8 +291,8 @@ def getmetas(request, globaldata, name, metakeys,
 def getvalues(request, globaldata, name, key,
               display=True, abs_attach=True):
 
-    if not request.user.may.read(unicode(url_unquote(name),
-                                         config.charset)):
+    quoted = unicode(url_unquote(name), config.charset)
+    if not request.user.may.read(quoted):
         return set([])
 
     page = globaldata.getpage(name)
@@ -598,7 +598,7 @@ def process_edit(request, input, category_edit='', categories={}):
 
         oldvals = list()
         for val, typ in getvalues(request, globaldata, keypage,
-                                  key, display=False):
+                                  key, display=False, abs_attach=False):
             # Skip default labels
             if key == 'label' and val == url_unquote(keypage):
                 pass
