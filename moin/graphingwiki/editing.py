@@ -826,6 +826,7 @@ def metatable_parseargs(request, args,
 
                 values = metas[key]
                 if not values:
+                    clear = False
                     break
 
                 for re_limit in re_limits:
