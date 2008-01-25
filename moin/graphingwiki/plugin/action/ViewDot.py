@@ -36,8 +36,8 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
-from MoinMoin.request import RequestModPy
-from MoinMoin.util import MoinMoinNoFooter
+from MoinMoin.request.request_modpython import Request as RequestModPy
+from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
 
@@ -150,10 +150,8 @@ class ViewDot(object):
                       'value="%s"><br>\n' % _('Inline'))
         request.write(u'</form>\n')
 
-    def fail(self, fault = ''):
-        self.request.setHttpHeader('Content-type: text/plain')
-        self.request.write(fault)
-        raise MoinMoinNoFooter
+    def fail(self, fault = u""):
+        raise InternalError(fault)
 
     def execute(self):
         self.formargs()
@@ -178,7 +176,7 @@ class ViewDot(object):
             request.write(formatter.startContent("content"))
             formatter.setPage(request.page)
 
-            wikiutil.send_title(request, title, pagename=self.pagename)
+            request.theme.send_title(title, pagename=self.pagename)
 
             self.sendForm()
 
@@ -197,11 +195,12 @@ class ViewDot(object):
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
+            self.request.theme.send_closing_html()
             return 
 
         if not self.attachment[:10].lower() == 'attachment':
-            fault = _('No attachment defined') + '\n'
+            fault = _(u'No attachment defined') + u'\n'
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
@@ -218,15 +217,15 @@ class ViewDot(object):
         try:
             data = file(fpath, 'r').read()
         except IOError:
-            fault = _('Attachment not found at') + ' %s\n' % repr(fpath)
+            fault = _(u'Attachment not found at') + u' %s\n' % repr(fpath)
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
             self.fail(fault)
 
         if not gv_found:
-            fault = _("ERROR: Graphviz Python extensions not installed. " +\
-                      "Not performing layout.")
+            fault = _(u"ERROR: Graphviz Python extensions not installed. " +\
+                      u"Not performing layout.")
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
@@ -292,11 +291,9 @@ class ViewDot(object):
 
         if not self.inline and self.format == 'zgr':
             request.write('</html></body>')
-        elif self.inline:
-            return
         else:
-            raise MoinMoinNoFooter
-
+            pass # No footer
+            
     def getLayoutInFormat(self, graphviz, format):
         tmp_fileno, tmp_name = mkstemp()
         graphviz.layout(file=tmp_name, format=format)
