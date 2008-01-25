@@ -43,7 +43,6 @@ from tempfile import mkstemp
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
-from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
@@ -96,8 +95,7 @@ def execute(pagename, request):
         request.setHttpHeader('Content-type: text/plain')
         request.write(_("ERROR: Cairo Python extensions not installed. " +\
                         "Not performing layout."))
-        raise MoinMoinNoFooter
-
+        return
     # Grab arguments
     args = ', '.join(x for x in request.form.get('arg', []))
 
@@ -260,4 +258,3 @@ def execute(pagename, request):
         request.write("Content-type: image/png\n\n")
         
     request.write(data)
-    raise MoinMoinNoFooter
