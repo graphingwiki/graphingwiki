@@ -44,7 +44,7 @@ from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
-from MoinMoin.request import RequestModPy
+from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
 from graphingwiki.patterns import encode

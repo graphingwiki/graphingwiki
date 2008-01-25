@@ -30,7 +30,7 @@
 from urllib import quote as url_quote
 
 from MoinMoin.wikiutil import unquoteWikiname
-from MoinMoin.request import RequestModPy
+from MoinMoin.request.request_modpython import Request as RequestModPy
 from MoinMoin.action import AttachFile
 
 from graphingwiki.graphrepr import gv_found
