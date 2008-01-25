@@ -42,16 +42,16 @@ except:
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
-from MoinMoin import request
+from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 
 pagename = sys.argv[1]
 
 # Make a new request for the page, get raw text
-req = request.RequestCLI(pagename=pagename)
+req = RequestCLI(pagename=pagename)
 
 # Fix for 1.3.4
-if not hasattr(req, form):
+if not hasattr(req, 'form'):
     req.form = {}
 
 req.form['action'] = ['ShowGraph']

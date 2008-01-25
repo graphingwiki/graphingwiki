@@ -93,13 +93,13 @@ try:
     # Next, try to include dirs and import
     os.chdir(basic_args[1])
     sys.path.insert(0, os.path.join(basic_args[1], 'config'))
-    from MoinMoin import request
+    from MoinMoin.request.request_cli import Request as RequestCLI
 except:
     usage()
     raise
 
 # Make a new request for the page
-req = request.RequestCLI(pagename=basic_args[0])
+req = RequestCLI(pagename=basic_args[0])
 
 # Fix redirect for searches with single hit
 def cli_redirect(match):

@@ -20,7 +20,7 @@ from urllib import unquote as url_unquote
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
-from MoinMoin.request import RequestCLI
+from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
