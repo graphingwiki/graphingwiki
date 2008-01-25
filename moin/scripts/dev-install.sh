@@ -4,18 +4,16 @@
 # Prerequisites:
 # 1. unpacked moinmoin tarball (pointed by by $moinsrc)
 # 2. graphingwiki svn checkout like so:
-#    svn co http://svn.graphingwiki.python-hosting.com/trunk/moin gw-svn
+#    svn co http://svn.graphingwiki.python-hosting.com/branches/moin-1.6-branch/moin gw-svn
 # 3. up to date graphviz
 
 # (darwinports moin and graphviz aren't good enough)
 
 
-moinsrc=$PWD/moin-1.5.7
+moinsrc=$PWD/moin-1.6.0
 gwsrc=$PWD/gw-svn
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
-
-
 
 function installmoin {
     (cd $moinsrc &&
@@ -31,8 +29,8 @@ function installgw {
 function makewiki {
     template=$gwinstall/share/moin
     cp -r $template/{data,underlay} $gwdata/
-    sed < $template/server/moin.py > $gwdata/moin.py \
-     "s!docs = '/usr/share/moin/htdocs'!docs = '$gwinstall/share/moin/htdocs'!"
+    sed < $moinsrc/moin.py > $gwdata/moin.py \
+        "s!docs = os.path.join.*!docs = '$gwinstall/share/moin/htdocs'!"
     cp $template/config/wikiconfig.py $gwdata/wikiconfig.py 
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
     python $gwinstall/bin/gwiki-install -v $gwdata
