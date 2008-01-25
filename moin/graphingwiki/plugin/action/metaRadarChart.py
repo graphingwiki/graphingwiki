@@ -42,7 +42,7 @@ from tempfile import mkstemp
 
 from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
 

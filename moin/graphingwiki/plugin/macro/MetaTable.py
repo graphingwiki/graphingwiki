@@ -34,7 +34,7 @@ from urllib import quote as url_quote
 
 from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.editing import formatting_rules

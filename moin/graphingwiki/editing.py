@@ -17,7 +17,7 @@ import urllib
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request import RequestCLI
