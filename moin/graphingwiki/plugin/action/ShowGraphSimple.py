@@ -72,7 +72,7 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(
                 _("No graph data available.")))
             self.request.write(formatter.endContent())
-            wikiutil.send_footer(self.request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
             return
 
         self.execute_graphs()

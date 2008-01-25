@@ -1725,7 +1725,7 @@ class GraphShower(object):
 
             title = _('Wiki linkage as seen from') + \
                     '"%s"' % pagename
-            request.theme.send_title(request, title, pagename=pagename)
+            request.theme.send_title(title, pagename=pagename)
 
             # Start content - IMPORTANT - without content div, there is no
             # direction support!

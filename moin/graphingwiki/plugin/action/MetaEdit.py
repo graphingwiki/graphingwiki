@@ -154,7 +154,7 @@ def _enter_page(request, pagename):
     _ = request.getText
     
     title = _('Metatable editor')
-    wikiutil.send_title(request, title,
+    request.theme.send_title(title,
                         pagename=pagename)
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -170,7 +170,7 @@ def _exit_page(request, pagename):
     # End content
     request.write(request.page.formatter.endContent()) # end content div
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)
 
 def execute(pagename, request):
     request.http_headers()

@@ -56,7 +56,7 @@ def execute(pagename, request):
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, request.getText('Inference'),
+    request.theme.send_title(request.getText('Inference'),
                         pagename=pagename)
 
     # fix for moin 1.3.5
@@ -133,4 +133,4 @@ def execute(pagename, request):
     # End content
     request.write(formatter.endContent()) # end content div
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)

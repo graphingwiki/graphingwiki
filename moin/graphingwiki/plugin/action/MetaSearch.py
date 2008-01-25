@@ -71,7 +71,7 @@ def execute(pagename, request):
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, request.getText('Search by metadata'),
+    request.theme.send_title(request.getText('Search by metadata'),
                         pagename=pagename)
 
     # Start content - IMPORTANT - without content div, there is no
@@ -112,7 +112,7 @@ def execute(pagename, request):
                 # End content
                 request.write(formatter.endContent()) # end content div
                 # Footer
-                wikiutil.send_footer(request, pagename)
+                request.theme.send_footer(pagename)
                 
         graphdata = GraphData(request)
         graphdata.reverse_meta()
@@ -182,4 +182,4 @@ def execute(pagename, request):
     request.write(formatter.endContent()) # end content div
 
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)
