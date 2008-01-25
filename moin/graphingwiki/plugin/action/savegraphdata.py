@@ -46,7 +46,7 @@ from MoinMoin.util.lock import WriteLock
 from graphingwiki import graph
 from graphingwiki.patterns import special_attrs
 
-url_re = re.compile(u'^(' + Parser.url_pattern + ')')
+url_re = re.compile(u'^(' + Parser.url_rule + ')')
 
 # We only want to save linkage data releted to pages in this wiki
 # Interwiki links will have ':' in their names (this will not affect
@@ -244,7 +244,7 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     if key in special_attrs:
         setattr(pagenode, key, val)
         shelve_set_attribute(globaldata, quotedname, key, val)
-        # If color defined¸ set page as filled
+        # If color defined, set page as filled
         if key == 'fillcolor':
             setattr(pagenode, 'style', 'filled')
             shelve_set_attribute(globaldata, quotedname,
@@ -255,9 +255,9 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     node_set_attribute(pagenode, key, val)
     shelve_set_attribute(globaldata, quotedname, key, val)
 
-def parse_link(wikiparse, hit, type):
+def parse_link(wikiparse, hit, groupdict, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
-    attrs = replace(hit)
+    attrs = replace(hit, groupdict)
     nodelabel = ''
 
     if len(attrs) == 4:
@@ -385,19 +385,8 @@ def parse_text(request, globaldata, page, text):
     # Category matching regexp
     cat_re = re.compile(request.cfg.page_category_regex)
 
-    rules = wikiparse.formatting_rules.replace('\n', '|')
 
-    if request.cfg.bang_meta:
-        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
-            'word_rule': wikiparse.word_rule,
-            'rules': rules,
-            }
-
-    # For versions with the deprecated config variable allow_extended_names
-    if not '?P<wikiname_bracket>' in rules:
-        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
-
-    all_re = re.compile(rules, re.UNICODE)
+    all_re = wikiparse.scan_re
     eol_re = re.compile(r'\r?\n', re.UNICODE)
     # end space removed from heading_re, it means '\n' in parser/wiki
     heading_re = re.compile(r'\s*(?P<hmarker>=+)\s.*\s(?P=hmarker)',
@@ -436,7 +425,8 @@ def parse_text(request, globaldata, page, text):
         if heading_re.match(line):
             continue
         for match in all_re.finditer(line):
-            for type, hit in match.groupdict().items():
+            groupdict = match.groupdict()
+            for type, hit in groupdict.items():
                 #if hit:
                 #    print hit, type
 
@@ -463,7 +453,7 @@ def parse_text(request, globaldata, page, text):
                         continue
 
                     name, label, url, linktype = parse_link(wikiparse,
-                                                            hit,
+                                                            hit, groupdict,
                                                             type)
 
                     if name:
@@ -494,7 +484,7 @@ def parse_text(request, globaldata, page, text):
 
                             val = val.strip()
                             name, label, url, linktype = parse_link(wikiparse,\
-                                                         hit, type)
+                                                         hit, groupdict, ype)
                             # Take linktype from the dict key
                             linktype = getlinktype([encode(x)
                                                     for x in key, val])
