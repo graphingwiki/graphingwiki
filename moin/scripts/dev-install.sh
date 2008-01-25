@@ -6,7 +6,6 @@
 # 2. graphingwiki svn checkout like so:
 #    svn co http://svn.graphingwiki.python-hosting.com/branches/moin-1.6-branch/moin gw-svn
 # 3. up to date graphviz
-
 # (darwinports moin and graphviz aren't good enough)
 
 
@@ -34,11 +33,19 @@ function makewiki {
     cp $template/config/wikiconfig.py $gwdata/wikiconfig.py 
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
     python $gwinstall/bin/gwiki-install -v $gwdata
+
+    # replace plugins with symlinks pointing at code
+    # in the svn working copy, so your edits will show up in running code
+    for pluginsubdir in action macro formatter parser xmlrpc; do
+        ln -sf $gwsrc/graphingwiki/plugin/$pluginsubdir/*.py $gwdata/data/plugin/$pluginsubdir/
+    done
+
 }
 
 installmoin
 spdir=`echo $gwinstall/lib/python?.*/site-packages`
-export PYTHONPATH=$spdir:$gwdata
+
+export PYTHONPATH=$gwsrc:$spdir:$gwdata:$PYTHONPATH
 echo set PYTHONPATH to $PYTHONPATH
 installgw
 makewiki
