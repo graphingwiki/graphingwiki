@@ -43,7 +43,6 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.action import AttachFile
 
 from MoinMoin.request import Clock
@@ -817,7 +816,7 @@ class GraphShower(object):
         # New subgraphs, nodes to help ranking
         for key in orderkeys:
             # As we're trying to see what the name of the ordernode
-            # should be, weäll have to check out which of the different
+            # should be, we'll have to check out which of the different
             # types it might be.
             if isinstance(key, basestring):
                 label = ""
@@ -1450,9 +1449,8 @@ class GraphShower(object):
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(self.request, self.pagename)
-        else:
-            raise MoinMoinNoFooter
+            self.request.theme.send_footer(self.pagename)
+            self.request.theme.send_closing_html()
 
     def sendHeaders(self):
         request = self.request
@@ -1467,7 +1465,7 @@ class GraphShower(object):
             title = _(u'Wiki linkage as seen from') + \
                     '"%s"' % pagename
 
-            wikiutil.send_title(request, title, pagename=pagename)
+            request.theme.send_title(title, pagename=pagename)
 
             # fix for moin 1.3.5
             if not hasattr(request, 'formatter'):
@@ -1513,7 +1511,8 @@ class GraphShower(object):
     def fail_page(self, reason):
         self.request.write(self.request.formatter.text(reason))
         self.request.write(self.request.formatter.endContent())
-        wikiutil.send_footer(self.request, self.pagename)
+        self.request.theme.send_footer(self.pagename)
+        self.request.theme.send_closing_html()
 
     def edgeTooltips(self, outgraph):
         for edge in outgraph.edges.getall():
@@ -1726,7 +1725,7 @@ class GraphShower(object):
 
             title = _('Wiki linkage as seen from') + \
                     '"%s"' % pagename
-            wikiutil.send_title(request, title, pagename=pagename)
+            request.theme.send_title(request, title, pagename=pagename)
 
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
@@ -1746,12 +1745,11 @@ class GraphShower(object):
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(self.request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
             self.request.write('</body>\n</html>\n')
             self.sendPartsIE()
             self.request.write(msie_end)
 
-        raise MoinMoinNoFooter
 
 def execute(pagename, request):
     graphshower = GraphShower(pagename, request)
