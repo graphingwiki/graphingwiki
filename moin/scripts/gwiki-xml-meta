@@ -8,8 +8,10 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+import sys, os
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
+
 import re
-import sys
 import getpass
 import csv
 import urllib
