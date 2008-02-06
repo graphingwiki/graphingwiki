@@ -591,11 +591,13 @@ class GraphShower(object):
                     page = '/'.join(components[:-1])
                 file = unicode(url_unquote(components[-1]), config.charset)
 
-                # get attach file path, empty label
-                if os.path.isfile(file):
-                    page = unicode(url_unquote(page), config.charset)
-                    n.shapefile = AttachFile.getFilename(self.request,
+                page = unicode(url_unquote(page), config.charset)
+                shapefile = AttachFile.getFilename(self.request,
                                                          page, file)
+
+                # get attach file path, empty label
+                if os.path.isfile(shapefile):
+                    n.shapefile = shapefile
                     
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
