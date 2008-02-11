@@ -116,6 +116,7 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 
         request.write(macro.formatter.table_row(0))
     request.write(macro.formatter.table(0))
+    request.write(u'</div>')
 
 def execute(macro, args):
     if args is None:
