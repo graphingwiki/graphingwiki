@@ -69,15 +69,13 @@ def t_cell(macro, vals, head=0):
                 kw['querystr'] = query
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
+            out.write(macro.formatter.pagelink(0))
         else:
             out.page.formatter = out.formatter
             out.page.send_page_content(out, Parser,
                                        data,
                                        do_cache=0,
                                        line_anchors=False)
-
-        if head:
-            out.write(macro.formatter.pagelink(0))
 
         first_val = False
 
