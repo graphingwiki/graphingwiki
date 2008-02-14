@@ -12,9 +12,9 @@ Dependencies = ['metadata']
 import urllib
 
 from MoinMoin import config
+from MoinMoin.parser.wiki import Parser
 
-from graphingwiki.patterns import GraphData
-from graphingwiki.editing import getvalues
+from graphingwiki.editing import getvalues, metatable_parseargs
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -27,22 +27,27 @@ def execute(macro, args):
     if not request.user.may.read(args.split(',')[0]):
         return ''
 
-    globaldata = GraphData(request)
-
     try:
         page, key = [urlquote(x.strip()) for x in args.split(',')]
 
-        # Break if user may not read target page
-        if not request.user.may.read(url_unquote(frompage)):
-            raise
+        # Note, metatable_parseargs deals with permissions
+        globaldata, pagelist, metakeys = metatable_parseargs(request,
+                                                             page,
+                                                             get_all_keys=True)
 
         vals = list()
-        for val, typ in getvalues(request, globaldata, page, key):
+        for val, typ in getvalues(request, globaldata, page, key,
+                                  display=False):
             vals.append(val)
+
     except:
         globaldata.closedb()
         return ''
 
     globaldata.closedb()
 
-    return request.formatter.text(', '.join(vals))
+    request.page.formatter = request.formatter
+    request.page.send_page_content(request, Parser,
+                                   ', '.join(vals),
+                                   do_cache=0,
+                                   line_anchors=False)
