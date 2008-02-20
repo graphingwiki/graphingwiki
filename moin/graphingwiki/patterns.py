@@ -115,8 +115,6 @@ class GraphData(object):
             if page.endswith('Template'):
                 continue
             for key in globaldata[page].get('meta', {}):
-                if key in special_attrs:
-                    continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in globaldata[page]['meta'][key]:
                     val = unicode(url_unquote(val),
@@ -126,8 +124,6 @@ class GraphData(object):
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
             for key in globaldata[page].get('lit', {}):
-                if key in special_attrs:
-                    continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in globaldata[page]['lit'][key]:
                     val = val.strip('"')

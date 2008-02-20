@@ -11,12 +11,12 @@ import urllib
 import re
 import StringIO
 
-from urllib import unquote as url_unquote
+from urllib import quote as url_quote
 
 from MoinMoin import config
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import GraphData, encode
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.+?)\s*">')
@@ -86,18 +86,23 @@ def execute(pagename, request):
         pagekey, val = mo.groups()
 
         msg = ''
-        key = pagekey.split('!')[1]
+        key = url_quote(encode(pagekey.split('!')[1]))
         # Placeholder key key
         if key in vals_on_keys:
             msg = '<select name="%s">' % (pagekey)
             msg += '<option value=" ">None</option>'
 
             for keyval in vals_on_keys[key]:
+                #print repr(val), repr(keyval)
                 quotedval = htmlquote(keyval)
+                if len(quotedval) > 30:
+                    showval = quotedval[:27] + '...'
+                else:
+                    showval = quotedval
                 msg += '<option value="%s"%s>%s</option>' % \
                        (quotedval,
                         val == keyval and ' selected' or '',
-                        quotedval)
+                        showval)
 
             msg += '</select>'
 
