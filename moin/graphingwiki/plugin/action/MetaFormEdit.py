@@ -11,11 +11,12 @@ import urllib
 import re
 import StringIO
 
+from urllib import unquote as url_unquote
+
 from MoinMoin import config
-from MoinMoin.wikiutil import importPlugin
 from MoinMoin.Page import Page
 
-action_name = 'MetaEdit'
+from graphingwiki.patterns import GraphData
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.+?)\s*">')
@@ -55,12 +56,12 @@ def execute(pagename, request):
     temp_header = request.cfg.page_header2
 
     frm = wr(u'<form method="POST" action="%s">\n', formpage)+\
-          wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
+          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
     
-    btn = '<div class="savemessage"><p>' + \
+    btn = '<div class="saveform"><p class="savemessage">' + \
           request.formatter.text(_("Edit page as form")) + \
           wr('<input type=submit name=saveform value="%s">', _('Save')) + \
-          '</div>'
+          '</p></div>'
 
     request.cfg.page_header2 += frm + btn
     request.cfg.page_footer1 += btn + '</form>'
@@ -77,10 +78,32 @@ def execute(pagename, request):
     request.page.send_page(request, do_cache=0)
     request.redirect()
 
+    graphdata = GraphData(request)
+    graphdata.reverse_meta()
+    vals_on_keys = graphdata.vals_on_keys
+
     def repl_subfun(mo):
-        key, val = mo.groups()
-        return '<input class="metavalue" type="text" ' + \
-               'name="%s" value="%s">' % (key, htmlquote(val))
+        pagekey, val = mo.groups()
+
+        msg = ''
+        key = pagekey.split('!')[1]
+        # Placeholder key key
+        if key in vals_on_keys:
+            msg = '<select name="%s">' % (pagekey)
+            msg += '<option value=" ">None</option>'
+
+            for keyval in vals_on_keys[key]:
+                quotedval = htmlquote(keyval)
+                msg += '<option value="%s"%s>%s</option>' % \
+                       (quotedval,
+                        val == keyval and ' selected' or '',
+                        quotedval)
+
+            msg += '</select>'
+
+        msg += '<input class="metavalue" type="text" ' + \
+               'name="%s" value="">' % (pagekey)
+        return msg
 
     data = out.getvalue()
     data = value_re.sub(repl_subfun, data)

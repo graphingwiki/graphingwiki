@@ -34,7 +34,14 @@ class Parser(wikiParser):
             # paragraph html code might litter forms
             self.inhibit_p = 1
 
-        return apply(wikiParser.replace, (self, match))
+        result = apply(wikiParser.replace, (self, match))
+
+        if self.in_dd:
+            # Some matches disable inhibit_p, and if there are multiple
+            # matches in one row, pre-matches might emit <p class=862
+            self.inhibit_p = 1
+            
+        return result
 
     def _close_item(self, result):
         if self.in_dd:

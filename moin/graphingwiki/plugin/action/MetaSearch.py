@@ -135,13 +135,13 @@ def execute(pagename, request):
         vals = set([])
         for val in vals_on_pages:
             if q:
-                if val == encode(q):
+                if val == q:
                     valhits.update(vals_on_pages[val])
-                    vals.add(unicode(val, config.charset))
+                    vals.add(val)
             else:
-                if page_re.match(unicode(val, config.charset)):
+                if page_re.match(val):
                     valhits.update(vals_on_pages[val])
-                    vals.add(unicode(val, config.charset))
+                    vals.add(val)
 
         if not q:
             elemlist(request, formatter, keys, _('keys'))
