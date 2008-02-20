@@ -70,12 +70,14 @@ def t_cell(macro, vals, head=0):
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
             out.write(macro.formatter.pagelink(0))
-        else:
+        elif data.strip():
             out.page.formatter = out.formatter
-            out.page.send_page_content(out, Parser,
-                                       data,
-                                       do_cache=0,
-                                       line_anchors=False)
+            parser = Parser(data, out)
+            # No line anchors of any type to table cells
+            out.page.formatter.in_p = 1
+            parser._line_anchordef = lambda: ''
+            # Produces output on a single table cell
+            out.page.format(parser)
 
         first_val = False
 

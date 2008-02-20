@@ -16,7 +16,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 
 from graphingwiki.editing import process_edit, getvalues
-from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import metatable_parseargs, order_meta_input
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -70,7 +70,7 @@ def show_editform(request, pagename, args):
 
     for key in metakeys + ['']:
         wr(formatter.table_cell(1, {'class': 'meta_header'}))
-        wr(u'<input type="text" name="%s" value="%s">',
+        wr(u'<input class="metakey" type="text" name="%s" value="%s">',
             url_unquote(':: %s' % key), url_unquote(key))
     wr(formatter.table_row(0))
 
@@ -124,8 +124,8 @@ def show_editform(request, pagename, args):
                     val = ''
                 
                 wr(formatter.table_cell(1, {'class': 'meta_cell'}))
-                wr(u'<input type="text" name="%s" value="%s">',
-                   url_unquote(inputname), val)
+                wr(u'<input class="metavalue" type="text" name="%s" value="%s">',
+                   inputname, val)
 
                 #print frompage, key, inputname, values, '<br>'
             wr(formatter.table_row(0))
@@ -179,8 +179,25 @@ def execute(pagename, request):
     # This action generates data using the user language
     request.setContentLanguage(request.lang)
 
-    if request.form.has_key('save'):
-        msgs = process_edit(request, request.form)
+    if request.form.has_key('save') or request.form.has_key('saveform'):
+        # process_edit requires a certain order to meta input
+        if request.form.has_key('saveform'):
+            # For some reason, keys in request.form are utf-8
+            # which is why they have to be re-unicoded
+            output = dict()
+            for key in request.form:
+                # Ignore form clutter
+                if not '!' in key:
+                    continue
+                newkey = unicode(key.split('!')[1], config.charset)
+                output[newkey] = request.form[key]
+
+            output = order_meta_input(request, pagename,
+                                      output, 'repl')
+            msgs = process_edit(request, output)
+        else:
+            msgs = process_edit(request, request.form)
+            
         msg = ''
 
         for line in msgs:

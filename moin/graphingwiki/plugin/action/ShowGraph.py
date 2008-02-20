@@ -399,8 +399,8 @@ class GraphShower(object):
             self.width = self.height = 1024
 
         if not self.unscale:
-            self.size = "%.2f,%.2f" % ((self.height / 72),
-                                       (self.width / 72))
+            self.size = "%.2f,%.2f" % ((self.width / 72),
+                                       (self.height / 72))
 
         return error
 
