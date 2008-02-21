@@ -189,7 +189,7 @@ class Parser(wikiParser):
         if self.in_dd:
             return word
 
-        return apply(wikiParser.processor_repl, (self, word))
+        return apply(wikiParser._processor_repl, (self, word))
 
     def _ent_repl(self, word):
         if self.in_dd:
