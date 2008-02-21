@@ -258,7 +258,7 @@ def getmetas(request, globaldata, name, metakeys,
     # Add values and their sources
     for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
-            value = unicode(url_unquote(value), config.charset).strip('"')
+            value = unicode(value, config.charset).strip('"')
             value = value.replace('\\"', '"')
             pageMeta[key].append((value, "meta"))
 

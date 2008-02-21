@@ -93,7 +93,6 @@ def execute(pagename, request):
             msg += '<option value=" ">None</option>'
 
             for keyval in vals_on_keys[key]:
-                #print repr(val), repr(keyval)
                 quotedval = htmlquote(keyval)
                 if len(quotedval) > 30:
                     showval = quotedval[:27] + '...'

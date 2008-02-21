@@ -117,8 +117,7 @@ class GraphData(object):
             for key in globaldata[page].get('meta', {}):
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in globaldata[page]['meta'][key]:
-                    val = unicode(url_unquote(val),
-                                  config.charset).strip('"')
+                    val = unicode(val, config.charset).strip('"')
                     val = val.replace('\\"', '"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)

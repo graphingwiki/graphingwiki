@@ -28,6 +28,7 @@
 
 """
 import re
+import StringIO
 
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
@@ -76,8 +77,15 @@ def t_cell(macro, vals, head=0):
             # No line anchors of any type to table cells
             out.page.formatter.in_p = 1
             parser._line_anchordef = lambda: ''
+
+            # Using StringIO in order to strip the output
+            data = StringIO.StringIO()
+            out.redirect(data)
             # Produces output on a single table cell
             out.page.format(parser)
+            out.redirect()
+
+            out.write(data.getvalue().strip())
 
         first_val = False
 
