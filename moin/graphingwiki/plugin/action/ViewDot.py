@@ -40,6 +40,7 @@ from MoinMoin.request import RequestModPy
 from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.graphrepr import Graphviz, gv_found
+from graphingwiki.patterns import actionname
 
 from ShowGraph import quotetoshow
 from savegraphdata import encode
@@ -107,7 +108,7 @@ class ViewDot(object):
 
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
-                      pagename)
+                      actionname(request, pagename))
         request.write(u'<input type=hidden name=action value="ViewDot">')
 
         request.write(u"<table>\n<tr>\n")

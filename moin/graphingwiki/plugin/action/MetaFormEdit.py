@@ -16,7 +16,7 @@ from urllib import quote as url_quote
 from MoinMoin import config
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import GraphData, encode, actionname
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.+?)\s*">')
@@ -55,7 +55,8 @@ def execute(pagename, request):
     temp_footer = request.cfg.page_footer1
     temp_header = request.cfg.page_header2
 
-    frm = wr(u'<form method="POST" action="%s">\n', formpage)+\
+    frm = wr(u'<form method="POST" action="%s">\n',
+             actionname(request, pagename))+\
           wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
     
     btn = '<div class="saveform"><p class="savemessage">' + \

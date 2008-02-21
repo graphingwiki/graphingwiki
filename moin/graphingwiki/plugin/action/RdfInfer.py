@@ -39,6 +39,8 @@ from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
+from graphingwiki.patterns import actionname
+
 from unifier import Unifier
 
 # The necessary regexps
@@ -73,7 +75,8 @@ def execute(pagename, request):
     if request.form.has_key('infer'):
         infer = ''.join(request.form['infer'])
 
-    request.write(u'<form method="GET" action="%s">\n' % pagename)
+    request.write(u'<form method="GET" action="%s">\n' %
+                  actionname(request, pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 

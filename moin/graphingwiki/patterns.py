@@ -43,6 +43,10 @@ from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.graph import Graph
 
+# Get action name
+def actionname(request, pagename):
+    return '%s/%s' % (request.getScriptname(), pagename)
+
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
 def encode(str):

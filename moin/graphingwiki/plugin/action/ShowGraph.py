@@ -973,7 +973,7 @@ class GraphShower(object):
         ## Begin form
         request.write(u'<div class="showgraph-form">\n')
         request.write(u'<form method="GET" action="%s">\n' %
-                      "%s/%s" % (self.request.getScriptname(), self.pagename))
+                      actionname(request, self.pagename))
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 

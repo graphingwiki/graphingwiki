@@ -37,7 +37,6 @@ from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.patterns import GraphData
 
-from savegraphdata import encode
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
@@ -46,14 +45,24 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
 
     for prop in nonguaranteeds_p(nodegraph):
         for value in getattr(nodegraph, prop):
+            if not isinstance(prop, unicode):
+                prop = unicode(prop, config.charset)
+            if not isinstance(value, unicode):
+                value = unicode(value, config.charset)
             out = out + formatfunc(selfname,
                                    (pagename, prop, value))
 
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
+        if not isinstance(prop, unicode):
+            linktype = unicode(prop, config.charset)
+        if not isinstance(edge[1], unicode):
+            dst = unicode(edge[1], config.charset)
+        else:
+            dst = edge[1]
         out = out + formatfunc(selfname,
-                               (edge[0], linktype, edge[1]))
+                               (edge[0], linktype, dst))
 
     return out
 
@@ -78,7 +87,6 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
 
 def get_page_n3(request, pagename):
     graphdata = GraphData(request)
-    globaldata = graphdata.globaldata
     
     pagegraph = graphdata.load_with_links(pagename)
     selfname = get_selfname(request)
@@ -88,7 +96,7 @@ def get_page_n3(request, pagename):
 def get_page_fact(request, pagename, graphdata):
     pagegraph = graphdata.load_with_links(pagename)
     if isinstance(pagename, unicode):
-        pagename = url_quote(encode(pagename))
+        pagename = unicode(url_quote(pagename), config.charset)
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data, pagename
@@ -102,7 +110,7 @@ def get_all_facts(request, graphdata):
     for pagename in request.rootpage.getPageList():
         pagegraph = graphdata.load_with_links(pagename)
         if isinstance(pagename, unicode):
-            pagename = url_quote(encode(pagename))
+            pagename = unicode(url_quote(pagename), config.charset)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
             yield data, pagename
@@ -118,7 +126,13 @@ def wikins_fact(triplet):
 def wikins_n3triplet(selfname, triplet):
     out = ''
     for prop, cond in zip(triplet, [True, False, True]):
-        out = out + wikins_property(selfname + ":", prop, cond) + ' '
+        if isinstance(prop, basestring):
+            # meta
+            out = out + wikins_property(selfname + ":", prop, cond) + ' '
+        else:
+            # You can have multiple link types
+            for val in prop:
+                out = out + wikins_property(selfname + ":", val, cond) + ' '
     return out + '.\n'
 
 def wikins_property(selfname, property, page):

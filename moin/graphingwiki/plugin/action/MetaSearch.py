@@ -36,8 +36,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import encode
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import encode, GraphData, actionname
 from ShowGraph import quoteformstr
 
 regexp_re = re.compile('^/.+/$')
@@ -90,7 +89,8 @@ def execute(pagename, request):
 
     pagename = '../' * pagename.count('/') + pagename
 
-    request.write(u'<form method="GET" action="%s">\n' % pagename)
+    request.write(u'<form method="GET" action="%s">\n' %
+                  actionname(request, pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 

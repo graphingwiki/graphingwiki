@@ -17,6 +17,7 @@ from MoinMoin import config
 
 from graphingwiki.editing import process_edit, getvalues
 from graphingwiki.editing import metatable_parseargs, order_meta_input
+from graphingwiki.patterns import actionname
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -39,7 +40,8 @@ def show_queryform(request, pagename):
         args = tuple(map(htmlquote, args))
         request.write(fmt % args)
 
-    wr(u'<form method="GET" action="%s">\n', urlquote(pagename))
+    wr(u'<form method="GET" action="%s">\n',
+       actionname(request, pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(u'<input type="text" name="args">\n')
 
@@ -57,7 +59,8 @@ def show_editform(request, pagename, args):
 
     formpage = '../' * pagename.count('/') + urlquote(pagename)
 
-    wr(u'<form method="POST" action="%s">\n', formpage)
+    wr(u'<form method="POST" action="%s">\n',
+       actionname(request, pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(formatter.table(1))
     wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
