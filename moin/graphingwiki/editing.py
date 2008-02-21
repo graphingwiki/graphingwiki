@@ -71,7 +71,7 @@ def getmeta_to_table(input):
     for vals in input[1:]:
         row = [url_unquote(encode(vals[0]))]
         for i, val in enumerate(vals[1:]):
-            val = [url_unquote(encode(x)) for x in val]
+            val = [encode(x) for x in val]
             val.extend([''] * (keyoccur[keys[i]] - len(val)))
             row.extend(val)
         table.append(row)
@@ -300,7 +300,7 @@ def getvalues(request, globaldata, name, key,
     # Add values and their sources
     if key in page.get('meta', {}):
         for val in page['meta'][key]:
-            val = unicode(url_unquote(val), config.charset).strip('"')
+            val = unicode(val, config.charset).strip('"')
             val = val.replace('\\"', '"')
             vals.add((val, 'meta'))
     # Link values are in a list as there can be more than one
