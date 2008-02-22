@@ -9,7 +9,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 from graphingwiki.editing import process_edit, getvalues
-from graphingwiki.editing import metatable_parseargs, getmeta_to_table
+from graphingwiki.editing import getmeta_to_table
 from graphingwiki.patterns import encode
 
 def execute(pagename, request):

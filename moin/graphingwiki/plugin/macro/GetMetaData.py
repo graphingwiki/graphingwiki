@@ -31,9 +31,8 @@ def execute(macro, args):
         page, key = [urlquote(x.strip()) for x in args.split(',')]
 
         # Note, metatable_parseargs deals with permissions
-        globaldata, pagelist, metakeys = metatable_parseargs(request,
-                                                             page,
-                                                             get_all_keys=True)
+        globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page,
+                                                                get_all_keys=True)
 
         vals = list()
         for val, typ in getvalues(request, globaldata, page, key,

@@ -61,8 +61,8 @@ def execute(macro, args):
    else:
       args = ','.join(args)
 
-   globaldata, pagelist, metakeys = metatable_parseargs(macro.request, args,
-                                                        get_all_pages = True)
+   globaldata, pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
+                                                           get_all_pages = True)
     
    if not hasattr(globaldata, 'keys_on_pages'):
       globaldata.reverse_meta()

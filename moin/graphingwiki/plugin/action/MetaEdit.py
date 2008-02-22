@@ -67,9 +67,9 @@ def show_editform(request, pagename, args):
     wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
     # Note that metatable_parseargs handles permission issues
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
-                                                         globaldata=None,
-                                                         get_all_keys=True)
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                            globaldata=None,
+                                                            get_all_keys=True)
 
     for key in metakeys + ['']:
         wr(formatter.table_cell(1, {'class': 'meta_header'}))

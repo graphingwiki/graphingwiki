@@ -661,7 +661,7 @@ def order_meta_input(request, page, input, action):
         return urllib.quote(s)
 
     # Expects MetaTable arguments
-    globaldata, pagelist, metakeys = metatable_parseargs(request, page)
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page)
 
     globaldata.getpage(urlquote(page))
 
@@ -774,6 +774,9 @@ def metatable_parseargs(request, args,
     orderspec = []
     limitregexps = {}
 
+    # list styles
+    styles = {}
+
     # Flag: were there page arguments?
     pageargs = False
 
@@ -782,6 +785,27 @@ def metatable_parseargs(request, args,
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
+        # metadata key spec, move on
+        if arg.startswith('||') and arg.endswith('||'):
+            # take order, strip empty ones, look at styles
+            #keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
+            keyspec = []
+            for key in arg.split('||'):
+                if not key:
+                    continue
+                # Grab styles
+                if key.startswith('<') and '>' in key:
+                    style = wikiutil.parseAttributes(request,
+                                                     encode(key[1:]), '>')
+                    key = key[key.index('>') + 1:].strip()
+
+                    if style:
+                        styles[key] = style[0]
+
+                keyspec.append(url_quote(encode(key)))
+
+            continue
+
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
@@ -796,12 +820,6 @@ def metatable_parseargs(request, args,
             elif len(val) > 1:
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
-            continue
-
-        # metadata key spec, move on
-        if arg.startswith('||') and arg.endswith('||'):
-            # take order, strip empty ones
-            keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
             continue
 
         # order spec
@@ -1071,7 +1089,7 @@ def metatable_parseargs(request, args,
             #print "extending with %s" % (pages)
             pagelist.extend(sorted(pages))
 
-    return globaldata, pagelist, metakeys
+    return globaldata, pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
     # Check that the attach dir exists
