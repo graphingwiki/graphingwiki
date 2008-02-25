@@ -145,7 +145,6 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 
     request.write(macro.formatter.table_row(0))
 
-
     for page in pagelist:
         row = row + 1
         metas = getmetas(request, globaldata, page,
@@ -172,6 +171,12 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 def execute(macro, args):
     if args is None:
         args = ''
+
+    editlink = True
+
+    if args.strip().endswith('noeditlink'):
+        editlink = False
+        args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys, styles = \
@@ -208,7 +213,7 @@ def execute(macro, args):
 
     args = url_quote(encode(args))
     # If the user has no write access to this page, omit editlink
-    if request.user.may.write(request.page.page_name):
+    if editlink:
         request.write(action_link('MetaEdit', 'edit', args))
 
     request.write(action_link('metaCSV', 'csv', args))

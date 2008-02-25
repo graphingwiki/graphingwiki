@@ -12,6 +12,7 @@ import re
 import StringIO
 
 from urllib import quote as url_quote
+from copy import copy
 
 from MoinMoin import config
 from MoinMoin.Page import Page
@@ -39,22 +40,6 @@ def execute(pagename, request):
 
     formpage = '../' * pagename.count('/') + urlquote(pagename)
 
-    request.page = Page(request, pagename)
-
-    # Didn't find a good way to change the parser.
-    # One is this, the other is to add a processing
-    # instructions line to the start of the
-    # request.page._raw_body
-    temp_markup = request.page.cfg.default_markup
-    # The bad thing about this is that it assumes wiki
-    # format to the pages received. Not so bad, then.
-    request.page.cfg.default_markup = 'wiki_form'
-
-    # The post-header and pre-footer texts seem to be implemented in themes.
-    # Using post-header instead of page msg to avoid breaking header forms.
-    temp_footer = request.cfg.page_footer1
-    temp_header = request.cfg.page_header2
-
     frm = wr(u'<form method="POST" action="%s">\n',
              actionname(request, pagename))+\
           wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
@@ -64,8 +49,32 @@ def execute(pagename, request):
           wr('<input type=submit name=saveform value="%s">', _('Save')) + \
           '</p></div>'
 
-    request.cfg.page_header2 += frm + btn
-    request.cfg.page_footer1 += btn + '</form>'
+    # Copying the request used to print the form. I do this to avoid
+    # leaving modified requests running eg. when using
+    # mod_python. Race conditions or interruptions/followups could
+    # result in single or multiple aave buttons to appear at this
+    # point.
+    newreq = copy(request)
+    newreq.cfg = copy(request.cfg)
+
+    # Didn't find a good way to change the parser. One is this, the
+    # other is to add a processing instructions line to the start of
+    # the request.page._raw_body. The bad thing about this is that it
+    # assumes wiki format to the pages received. Not so bad, then.
+    newreq.cfg.default_markup = 'wiki_form'
+
+    # The post-header and pre-footer texts seem to be implemented in themes.
+    # Using post-header instead of page msg to avoid breaking header forms.
+    newreq.cfg.page_header2 += frm + btn
+    newreq.cfg.page_footer1 += btn + '</form>'
+
+    newreq.page = Page(newreq, pagename)
+    newreq.theme = copy(request.theme)
+    newreq.theme.request = newreq
+    newreq.theme.cfg = newreq.cfg
+
+    # FIXME: what to do when the parser is overridden on the page with
+    # processing instructions?
 
     # Here goes code to create page if it does not exist, if so desired?
     # send_page seems to contain the code to check this
@@ -73,13 +82,13 @@ def execute(pagename, request):
     # Extra spaces from formatter need to be removed, that's why the
     # page is not sent as it is
     out = StringIO.StringIO()
-    request.redirect(out)
+    newreq.redirect(out)
     # It's important not to cache this, as the wiki
     # thinks this is done with its default parser
-    request.page.send_page(request, do_cache=0)
-    request.redirect()
+    newreq.page.send_page(newreq, do_cache=0)
+    newreq.redirect()
 
-    graphdata = GraphData(request)
+    graphdata = GraphData(newreq)
     graphdata.reverse_meta()
     vals_on_keys = graphdata.vals_on_keys
 
@@ -112,8 +121,10 @@ def execute(pagename, request):
 
     data = out.getvalue()
     data = value_re.sub(repl_subfun, data)
-    request.write(data)
+    newreq.write(data)
 
-    request.page.cfg.default_markup = temp_markup 
-    request.cfg.page_footer1 = temp_footer
-    request.cfg.page_header2 = temp_header
+    # Cleanup, avoid littering requests
+    del newreq.page
+    del newreq.theme
+    del newreq.cfg
+    del newreq
