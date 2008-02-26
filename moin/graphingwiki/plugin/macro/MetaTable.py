@@ -134,9 +134,9 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 
         # We don't want stuff like bullet lists in out header
         headerstyle = dict()
-        for key in style:
-            if not key.startswith('gwiki'):
-                headerstyle[key] = style[key]
+        for st in style:
+            if not st.startswith('gwiki'):
+                headerstyle[st] = style[st]
 
         if name:
             t_cell(macro, [name], style=headerstyle)
