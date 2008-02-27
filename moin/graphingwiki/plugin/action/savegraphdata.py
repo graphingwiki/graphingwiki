@@ -257,7 +257,11 @@ def add_meta(globaldata, pagenode, quotedname, hit):
 
 def parse_link(wikiparse, hit, groupdict, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
-    attrs = replace(hit, groupdict)
+    try:
+        attrs = replace(hit, groupdict)
+    except:
+        print wikiparse, replace, hit, groupdict, type
+        1/0
     nodelabel = ''
 
     if len(attrs) == 4:
@@ -427,6 +431,9 @@ def parse_text(request, globaldata, page, text):
         for match in all_re.finditer(line):
             groupdict = match.groupdict()
             for type, hit in groupdict.items():
+                if type == 'url':
+                    assert groupdict['url_target']
+
                 #if hit:
                 #    print hit, type
 
@@ -441,7 +448,7 @@ def parse_text(request, globaldata, page, text):
 
                 # Handling of MetaData-macro
                 elif type == 'macro' and not inpre:
-                    if hit.startswith('[[MetaData'):
+                    if hit.startswith('<<MetaData'):
                         add_meta(globaldata, pagenode, quotedname, hit)
 
                 # Handling of links
@@ -484,7 +491,7 @@ def parse_text(request, globaldata, page, text):
 
                             val = val.strip()
                             name, label, url, linktype = parse_link(wikiparse,\
-                                                         hit, groupdict, ype)
+                                                         hit, groupdict, type)
                             # Take linktype from the dict key
                             linktype = getlinktype([encode(x)
                                                     for x in key, val])
@@ -506,7 +513,7 @@ def parse_text(request, globaldata, page, text):
 
                     # If it was not link, save as metadata. 
                     add_meta(globaldata, pagenode, quotedname,
-                             "[[MetaData(%s,%s)]]" % (key, val))
+                             "<<MetaData(%s,%s)>>" % (key, val))
 
     return globaldata, pagegraph
 
