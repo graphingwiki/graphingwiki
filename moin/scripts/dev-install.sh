@@ -31,7 +31,9 @@ function makewiki {
     sed < $moinsrc/moin.py > $gwdata/moin.py \
         "s!docs = os.path.join.*!docs = '$gwinstall/share/moin/htdocs'!"
     cp $template/config/wikiconfig.py $gwdata/wikiconfig.py 
+
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
+    echo "    actions_excluded = []" >> $gwdata/wikiconfig.py
     python $gwinstall/bin/gwiki-install -v $gwdata
 
     # replace plugins with symlinks pointing at code
