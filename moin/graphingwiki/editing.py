@@ -36,12 +36,13 @@ def macro_re(macroname):
 metadata_re = macro_re("MetaData")
 
 regexp_re = re.compile('^/.+/$')
-# Include \s except for newlines
-dl_re = re.compile('(?<!#)(\s+(.*?)::\s(.+))')
+# Dl_re includes newlines, if available, and will replace them
+# in the sub-function
+dl_re = re.compile('(\n?^\s+(.+?):: (.+))$', re.M)
 # From Parser, slight modification due to multiline usage
-dl_proto = "(?<!#)(\s+?%s::) \n"
-# For adding new
-dl_add = '(?<!#)(\\s+?%s::\\s.+?\n)'
+dl_proto = "^(\s+?%s::)\s*$"
+# Regex for adding new
+dl_add = '^(\\s+?%s::\\s.+?)$'
 
 default_meta_before = '^----'
 
@@ -352,6 +353,10 @@ def edit(pagename, editfun, request=None,
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
 
+    # print
+    # print newtext
+    # return '', p
+
     # Add categories, if needed
     if category_edit:
         newtext = edit_categories(request, newtext, category_edit, catlist)
@@ -402,6 +407,9 @@ def edit_meta(request, pagename, oldmeta, newmeta,
         if oldtext.endswith('::'):
             oldtext = oldtext + ' '
 
+        # Keeps track on the keys added during this edit
+        added_keys = set()
+
         def macro_subfun(mo):
             old_keyval_pair = mo.group(2).split(',')
 
@@ -425,28 +433,40 @@ def edit_meta(request, pagename, oldmeta, newmeta,
         def dl_subfun(mo):
             all, key, val = mo.groups()
 
-            # Corner case: comments can could cause breakage sometimes
-            if key.startswith('#'):
+            # print repr(all), repr(key), repr(val)
+
+            # Don't even start working on it if the key does not match
+            if key.strip() != oldkey.strip():
                 return all
+
+            # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
 
             # Check if the value has changed
             key = key.strip()
             # print repr(oldval), repr(val), repr(newval)
             # print repr(oldkey), repr(key)
-            if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+            if key == oldkey.strip() and val.strip() == oldval.strip():
                 val = newval
 
             # Do not return placeholders
             if not val.strip():
                 return ''
 
-            return '\n %s:: %s' % (key, val)
+            out = ' %s:: %s' % (key, val)
+
+            if all.startswith('\n'):
+                out = '\n' + out
+
+            return out
 
         for key in newmeta:
             # print repr(key)
+            oldkey = _fix_key(key)
+            dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
+            dl_add_re = re.compile(dl_add % (oldkey), re.M)
+
             for i, newval in enumerate(newmeta[key]):
                 # print repr(newval)
-                oldkey = _fix_key(key)
                 # Remove newlines from input, as they could really wreck havoc.
                 newval = newval.replace('\n', ' ')
                 inclusion = ' %s:: %s' % (oldkey, newval)
@@ -480,58 +500,68 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
                     return oldtext
 
-                # print repr(oldmeta)
-                # print repr(newmeta)
+                # print "Meta change", repr(key), repr(newval)
+
                 # print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
 
                 # If nothing to do, do nothing
                 if (not oldmeta.has_key(key)
                     and not newval.strip()):
 
+                    # print "Nothing to do\n"
+
                     continue
 
                 # If prototypes ( key:: ) are present, replace them
-                elif (oldmeta.has_key(key)
-                    and not oldmeta[key]
-                    and re.search(dl_proto % (oldkey), oldtext + '\n')):
+                elif (dl_proto_re.search(oldtext + '\n')):
+                #elif (re.search(dl_proto % (oldkey), oldtext + '\n')):
 
                     # Do not replace with empties, i.e. status quo
                     if not newval.strip():
                         continue
 
-                    # print "Proto", repr(newval)
-
                     oldkey = _fix_key(key)
 
-                    oldtext = re.sub(dl_proto % (oldkey),
-                                     '\\1 %s\n' % (newval),
-                                     oldtext + '\n', 1)
+                    oldtext = dl_proto_re.sub('\\1 %s' % (newval),
+                                              oldtext + '\n', 1)
+
+                    added_keys.add(key)
+
+                    # print "Proto", repr(newval), '\n'
 
                     continue
 
-                # If the old text does not have this key, add it (as dl), or
-                elif not oldmeta.has_key(key):
-                    oldtext = default_add(request, inclusion, newval, oldtext)
-                # if the new values has more values, add them (as dl).
-                # Try to cluster arguments near
-                elif (newval.strip()
-                      and oldmeta.has_key(key)
-                      and oldmeta[key]
-                      and len(oldmeta[key]) - 1 < i):
+                # If the old text has this key (either in old revision
+                # or added by this edit), add them (as dl).
+                # Cluster values of same keys near
+                elif (key in added_keys or
+                      (oldmeta.has_key(key) and 
+                       len(oldmeta[key]) - 1 < i)):
 
-                    # print "Cluster", repr(newval), repr(oldmeta[key])
+                    # print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
+
+                    # Easiest to strip excess line breaks in a function
+                    def cluster_metas(mo):
+                        all = mo.group(0)
+                        all = all.lstrip('\n')
+                        return '%s\n%s' % (inclusion, all)
 
                     # DL meta supported only, otherwise
                     # fall back to just adding
-                    text, count = re.subn(dl_add % (key),
-                                          '\\1%s\n' % (inclusion),
-                                          oldtext, 1)
+                    text, count = dl_add_re.subn(cluster_metas,
+                                                 oldtext, 1)
 
                     if count:
                         oldtext = text
                         continue
 
                     oldtext = default_add(request, inclusion, newval, oldtext)
+
+                # If the old text does not have this key, add it (as dl)
+                elif not oldmeta.has_key(key):
+                    # print "Newval"
+                    oldtext = default_add(request, inclusion, newval, oldtext)
+                    added_keys.add(key)
 
                 # Else, replace old value with new value
                 else:
@@ -541,9 +571,10 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     oldkey = _fix_key(key)
                     # First try to replace the dict variable
                     oldtext = dl_re.sub(dl_subfun, oldtext)
-                    # print repr(dl_re)
                     # Then try to replace the MetaData macro on page
                     oldtext = metadata_re.sub(macro_subfun, oldtext)
+
+                # print
 
         return oldtext
 
@@ -658,7 +689,6 @@ def process_edit(request, input, category_edit='', categories={}):
     return msg
 
 def order_meta_input(request, page, input, action):
-
     def urlquote(s):
         if isinstance(s, unicode):
             s = s.encode(config.charset)
@@ -678,6 +708,7 @@ def order_meta_input(request, page, input, action):
 
         if key in metakeys:
             if action == 'repl':
+
                 # Add similar, purge rest
                 # Do not add a meta value twice
                 old = list()
@@ -728,7 +759,7 @@ def order_meta_input(request, page, input, action):
                     if val in output[pair]:
                         output[pair].remove(val)
                 output[pair].extend(src)
-                
+
     # Close db
     globaldata.closedb()
 

@@ -128,7 +128,7 @@ def construct_table(macro, globaldata, pagelist, metakeys,
     for key in metakeys:
         key = unicode(url_unquote(key), config.charset)
         style = styles.get(key, {})
-
+        
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
 
@@ -161,6 +161,7 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 
         for key in metakeys:
             values = [x for x,y in metas[key]]
+            key = unicode(url_unquote(key), config.charset)
             style = styles.get(key, {})
             t_cell(macro, values, style=style)
 
