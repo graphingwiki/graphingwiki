@@ -479,36 +479,38 @@ def parse_text(request, globaldata, page, text):
                     # Try to find if the value points to a link
                     matches = all_re.match(val.lstrip())
                     if matches:
-                        # Take all matches if his non-empty
+                        # Take all matches if hit non-empty
                         # and hit type in linktypes
                         match = [(type, hit) for type, hit in
                                  matches.groupdict().iteritems()
                                  if hit is not None \
                                  and type in linktypes]
-                        # If link, save as link
+                        # If link, 
                         if match:
                             type, hit = match[0]
 
-                            val = val.strip()
-                            name, label, url, linktype = parse_link(wikiparse,\
-                                                         hit, groupdict, type)
-                            # Take linktype from the dict key
-                            linktype = getlinktype([encode(x)
-                                                    for x in key, val])
+                            # and nothing but link, save as link
+                            if hit == val.strip():
+                                val = val.strip()
+                                name, label, url, \
+                                      linktype = parse_link(wikiparse,\
+                                                            hit, groupdict, type)
+                                # Take linktype from the dict key
+                                linktype = getlinktype([encode(x)
+                                                        for x in key, val])
 
-                            if name:
-                                add_link(globaldata, quotedname,
-                                         pagegraph, cat_re,
-                                         name, label, url, linktype, hit)
-                                # The val is also parsed by Moin's link parser
-                                # -> need to tell our link parser that the
-                                #    link was already saved
-                                dicturl = True
+                                if name:
+                                    add_link(globaldata, quotedname,
+                                             pagegraph, cat_re,
+                                             name, label, url, linktype, hit)
 
-                    # Treat shapefiles as a special case, as they should
-                    # (probably) be evident both as meta and link
+                                    # The val will also be parsed by
+                                    # Moin's link parser -> need to
+                                    # have state in the loop that this
+                                    # link has already been saved
+                                    dicturl = True
+
                     if dicturl:
-                        # if key != 'shapefile':
                         continue
 
                     # If it was not link, save as metadata. 

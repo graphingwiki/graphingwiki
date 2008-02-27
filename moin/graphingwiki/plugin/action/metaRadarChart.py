@@ -142,8 +142,8 @@ def execute(pagename, request):
     ctx.set_source_rgb(0.0, 0.0, 0.0)
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
-                                                         get_all_keys=True)
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                            get_all_keys=True)
 
     # If no keys, print nothing
     if not pagelist:

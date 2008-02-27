@@ -15,8 +15,8 @@ def execute(xmlrpcobj, args, keysonly=True):
     _ = request.getText
 
     # Expects MetaTable arguments
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
-                                                         get_all_keys=True)
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                            get_all_keys=True)
 
 
     # If we only want the keys as specified by the args
@@ -33,7 +33,8 @@ def execute(xmlrpcobj, args, keysonly=True):
     for page in pagelist:
         # We're pretty sure the user has the read access to the pages,
         # so don't check again
-        metas = getmetas(request, globaldata, page, metakeys, checkAccess=False)
+        metas = getmetas(request, globaldata, page,
+                         metakeys, display=False, checkAccess=False)
         row = [page]
         for key in metakeys:
             row.append([value for (value, type) in metas[key]])

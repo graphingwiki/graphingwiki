@@ -43,6 +43,10 @@ from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.graph import Graph
 
+# Get action name
+def actionname(request, pagename):
+    return '%s/%s' % (request.getScriptname(), pagename)
+
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
 def encode(str):
@@ -107,6 +111,7 @@ class GraphData(object):
     def reverse_meta(self):
         self.keys_on_pages = {}
         self.vals_on_pages = {}
+        self.vals_on_keys = {}
 
         globaldata = dict(self.db)
 
@@ -114,20 +119,19 @@ class GraphData(object):
             if page.endswith('Template'):
                 continue
             for key in globaldata[page].get('meta', {}):
-                if key in special_attrs:
-                    continue
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in globaldata[page]['meta'][key]:
-                    val = val.strip('"')
+                    val = unicode(val, config.charset).strip('"')
+                    val = val.replace('\\"', '"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
+                    self.vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in globaldata[page].get('out', {}):
-                if key in special_attrs:
-                    continue
+            for key in globaldata[page].get('lit', {}):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in globaldata[page]['out'][key]:
+                for val in globaldata[page]['lit'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
+                    self.vals_on_keys.setdefault(key, set()).add(val)
 
     def _add_node(self, pagename, graph, urladd=""):
         # Don't bother if the node has already been added

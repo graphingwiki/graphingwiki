@@ -398,8 +398,8 @@ class GraphShower(object):
             self.width = self.height = 1024
 
         if not self.unscale:
-            self.size = "%.2f,%.2f" % ((self.height / 72),
-                                       (self.width / 72))
+            self.size = "%.2f,%.2f" % ((self.width / 72),
+                                       (self.height / 72))
 
         return error
 
@@ -590,11 +590,13 @@ class GraphShower(object):
                     page = '/'.join(components[:-1])
                 file = unicode(url_unquote(components[-1]), config.charset)
 
-                # get attach file path, empty label
-                if os.path.isfile(file):
-                    page = unicode(url_unquote(page), config.charset)
-                    n.shapefile = AttachFile.getFilename(self.request,
+                page = unicode(url_unquote(page), config.charset)
+                shapefile = AttachFile.getFilename(self.request,
                                                          page, file)
+
+                # get attach file path, empty label
+                if os.path.isfile(shapefile):
+                    n.shapefile = shapefile
                     
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
@@ -970,7 +972,7 @@ class GraphShower(object):
         ## Begin form
         request.write(u'<div class="showgraph-form">\n')
         request.write(u'<form method="GET" action="%s">\n' %
-                      "%s/%s" % (self.request.getScriptname(), self.pagename))
+                      actionname(request, self.pagename))
         request.write(u'<input type=hidden name=action value="%s">' %
                       ''.join(request.form['action']))
 

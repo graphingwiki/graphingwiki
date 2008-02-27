@@ -93,5 +93,7 @@ def execute(macro, args):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=str.lower)
 
-    return construct_table(macro, globaldata, pagelist,
-                           metakeys, 'Meta by Revision')
+    construct_table(macro, globaldata, pagelist,
+                    metakeys, 'Meta by Revision')
+
+    return ''

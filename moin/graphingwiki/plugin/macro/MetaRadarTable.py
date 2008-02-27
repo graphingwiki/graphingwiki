@@ -96,8 +96,8 @@ def execute(macro, args):
         amount = 1
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys = metatable_parseargs(request, args,
-                                                         get_all_keys=True)
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                            get_all_keys=True)
 
     values = set()
     for page in pagelist:

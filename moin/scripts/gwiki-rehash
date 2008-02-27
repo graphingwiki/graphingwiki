@@ -82,7 +82,7 @@ if not pages:
 else:
     for file in os.listdir(datadir):
         if file.startswith('read_lock') or file.startswith('write_lock'):
-            sys.stderr.write("Found lockfile (%s), \n" % lockfile + \
+            sys.stderr.write("Found lockfile (%s), \n" % file + \
                              "database may be corrupted. \n" + \
                              "Rehash entire db or remove lock " + \
                              "and rehash the crashed pages.\n")

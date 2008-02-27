@@ -8,11 +8,13 @@
 """
 import os
 import re
+import sys
 import string
 import xmlrpclib
 import urlparse
 import socket
 import urllib
+import getpass
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
@@ -41,7 +43,7 @@ dl_proto = "(?<!#)(\s+?%s::) \n"
 # For adding new
 dl_add = '(?<!#)(\\s+?%s::\\s.+?\n)'
 
-default_meta_before = '----'
+default_meta_before = '^----'
 
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
@@ -71,7 +73,7 @@ def getmeta_to_table(input):
     for vals in input[1:]:
         row = [url_unquote(encode(vals[0]))]
         for i, val in enumerate(vals[1:]):
-            val = [url_unquote(encode(x)) for x in val]
+            val = [encode(x) for x in val]
             val.extend([''] * (keyoccur[keys[i]] - len(val)))
             row.extend(val)
         table.append(row)
@@ -258,7 +260,7 @@ def getmetas(request, globaldata, name, metakeys,
     # Add values and their sources
     for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
-            value = unicode(url_unquote(value), config.charset).strip('"')
+            value = unicode(value, config.charset).strip('"')
             value = value.replace('\\"', '"')
             pageMeta[key].append((value, "meta"))
 
@@ -300,7 +302,7 @@ def getvalues(request, globaldata, name, key,
     # Add values and their sources
     if key in page.get('meta', {}):
         for val in page['meta'][key]:
-            val = unicode(url_unquote(val), config.charset).strip('"')
+            val = unicode(val, config.charset).strip('"')
             val = val.replace('\\"', '"')
             vals.add((val, 'meta'))
     # Link values are in a list as there can be more than one
@@ -445,6 +447,8 @@ def edit_meta(request, pagename, oldmeta, newmeta,
             for i, newval in enumerate(newmeta[key]):
                 # print repr(newval)
                 oldkey = _fix_key(key)
+                # Remove newlines from input, as they could really wreck havoc.
+                newval = newval.replace('\n', ' ')
                 inclusion = ' %s:: %s' % (oldkey, newval)
 
                 # print repr(inclusion)
@@ -466,8 +470,8 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                         pattern = default_meta_before
 
                     # if pattern is not found on page, just append meta
-                    newtext, repls = re.subn("(%s)" % (pattern),
-                                             repl_str, oldtext, 1)
+                    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
+                    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
                     if not repls:
                         oldtext = oldtext.rstrip('\n')
                         oldtext += '\n%s\n' % (inclusion)
@@ -653,6 +657,83 @@ def process_edit(request, input, category_edit='', categories={}):
 
     return msg
 
+def order_meta_input(request, page, input, action):
+
+    def urlquote(s):
+        if isinstance(s, unicode):
+            s = s.encode(config.charset)
+        return urllib.quote(s)
+
+    # Expects MetaTable arguments
+    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page)
+
+    globaldata.getpage(urlquote(page))
+
+    output = {}
+    # Add existing metadata so that values would be added
+    for key in input:
+        # Strip spaces
+        pair = '%s!%s' % (page, key.strip())
+        output[pair] = [x.strip() for x in input[key]]
+
+        if key in metakeys:
+            if action == 'repl':
+                # Add similar, purge rest
+                # Do not add a meta value twice
+                old = list()
+                for val, typ in getvalues(request, globaldata,
+                                          urlquote(page),
+                                          key, display=False):
+                    old.append(val)
+                src = set(output[pair])
+                tmp = set(src).intersection(set(old))
+
+                dst = []
+                # Due to the structure of the edit function,
+                # the order of the added values is significant:
+                # We want to have the common keys
+                # in the same 'slot' of the 'form'
+                for val in old:
+                    # If we have the common key, keep it
+                    if val in tmp:
+                        dst.append(val)
+                        tmp.remove(val)
+                        src.discard(val)
+                    # If we don't have the common key,
+                    # but still have keys, add a non-common one
+                    elif src:
+                        added = False
+                        for newval in src:
+                            if not newval in tmp:
+                                dst.append(newval)
+                                src.remove(newval)
+                                added = True
+                                break
+                        # If we only had common keys left, add empty
+                        if not added:
+                            dst.append(u'')
+                    else:
+                        dst.append(u'')
+                if src:
+                    dst.extend(src)
+                output[pair] = dst
+            else:
+                # Do not add a meta value twice
+                src = list()
+                for val, typ in getvalues(request, globaldata,
+                                          urlquote(page),
+                                          key, display=False):
+                    src.append(val)
+                for val in src:
+                    if val in output[pair]:
+                        output[pair].remove(val)
+                output[pair].extend(src)
+                
+    # Close db
+    globaldata.closedb()
+
+    return output
+
 def savetext(pagename, newtext):
     """ Savetext - a function to be used by local CLI scripts that
     modify page content directly.
@@ -697,6 +778,9 @@ def metatable_parseargs(request, args,
     orderspec = []
     limitregexps = {}
 
+    # list styles
+    styles = {}
+
     # Flag: were there page arguments?
     pageargs = False
 
@@ -705,6 +789,27 @@ def metatable_parseargs(request, args,
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
+        # metadata key spec, move on
+        if arg.startswith('||') and arg.endswith('||'):
+            # take order, strip empty ones, look at styles
+            #keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
+            keyspec = []
+            for key in arg.split('||'):
+                if not key:
+                    continue
+                # Grab styles
+                if key.startswith('<') and '>' in key:
+                    style = wikiutil.parseAttributes(request,
+                                                     encode(key[1:]), '>')
+                    key = key[key.index('>') + 1:].strip()
+
+                    if style:
+                        styles[key] = style[0]
+
+                keyspec.append(url_quote(encode(key)))
+
+            continue
+
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
@@ -719,12 +824,6 @@ def metatable_parseargs(request, args,
             elif len(val) > 1:
                 val = val[1:-1]
             limitregexps.setdefault(key, set()).add(re.compile(val))
-            continue
-
-        # metadata key spec, move on
-        if arg.startswith('||') and arg.endswith('||'):
-            # take order, strip empty ones
-            keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
             continue
 
         # order spec
@@ -994,7 +1093,7 @@ def metatable_parseargs(request, args,
             #print "extending with %s" % (pages)
             pagelist.extend(sorted(pages))
 
-    return globaldata, pagelist, metakeys
+    return globaldata, pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
     # Check that the attach dir exists
@@ -1113,3 +1212,15 @@ def xmlrpc_attach(wiki, page, fname, username, password, method,
 
 def xmlrpc_error(error):
     return error['faultCode'], error['faultString']
+
+def getuserpass(username=''):
+    # Redirecting stdout to stderr for these queries
+    old_stdout = sys.stdout
+    sys.stdout = sys.stderr
+
+    if not username:
+        username = raw_input("Username:")
+    password = getpass.getpass("Password:")
+
+    sys.stdout = old_stdout
+    return username, password
