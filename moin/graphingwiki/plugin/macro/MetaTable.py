@@ -34,7 +34,6 @@ from urllib import quote as url_quote
 
 from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.editing import formatting_rules
@@ -70,8 +69,7 @@ def t_cell(macro, vals, head=0):
             out.write(macro.formatter.pagelink(1, data, **kw))
 
         out.page.formatter = out.formatter
-        out.page.send_page_content(out, Parser,
-                                   data,
+        out.page.send_page_content(out, data,
                                    do_cache=0,
                                    line_anchors=False)
 
