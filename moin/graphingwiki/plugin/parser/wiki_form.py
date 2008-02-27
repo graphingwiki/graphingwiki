@@ -20,6 +20,7 @@ class Parser(wikiParser):
     def __init__(self, raw, request, **kw):
         self.pagename = request.page.page_name
 
+        # Cannot use super as the Moin classes are old-style
         apply(wikiParser.__init__, (self, raw, request), kw)
     
     def _line_anchordef(self):

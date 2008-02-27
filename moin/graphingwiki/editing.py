@@ -8,11 +8,13 @@
 """
 import os
 import re
+import sys
 import string
 import xmlrpclib
 import urlparse
 import socket
 import urllib
+import getpass
 
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
@@ -41,7 +43,7 @@ dl_proto = "(?<!#)(\s+?%s::) \n"
 # For adding new
 dl_add = '(?<!#)(\\s+?%s::\\s.+?\n)'
 
-default_meta_before = '----'
+default_meta_before = '^----'
 
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
@@ -445,6 +447,8 @@ def edit_meta(request, pagename, oldmeta, newmeta,
             for i, newval in enumerate(newmeta[key]):
                 # print repr(newval)
                 oldkey = _fix_key(key)
+                # Remove newlines from input, as they could really wreck havoc.
+                newval = newval.replace('\n', ' ')
                 inclusion = ' %s:: %s' % (oldkey, newval)
 
                 # print repr(inclusion)
@@ -466,8 +470,8 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                         pattern = default_meta_before
 
                     # if pattern is not found on page, just append meta
-                    newtext, repls = re.subn("(%s)" % (pattern),
-                                             repl_str, oldtext, 1)
+                    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
+                    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
                     if not repls:
                         oldtext = oldtext.rstrip('\n')
                         oldtext += '\n%s\n' % (inclusion)
@@ -1208,3 +1212,15 @@ def xmlrpc_attach(wiki, page, fname, username, password, method,
 
 def xmlrpc_error(error):
     return error['faultCode'], error['faultString']
+
+def getuserpass(username=''):
+    # Redirecting stdout to stderr for these queries
+    old_stdout = sys.stdout
+    sys.stdout = sys.stderr
+
+    if not username:
+        username = raw_input("Username:")
+    password = getpass.getpass("Password:")
+
+    sys.stdout = old_stdout
+    return username, password

@@ -15,7 +15,7 @@ import xmlrpclib
 
 from optparse import OptionParser
 
-from graphingwiki.editing import xmlrpc_attach, xmlrpc_error
+from graphingwiki.editing import xmlrpc_attach, xmlrpc_error, getuserpass
 
 usage = "usage: %prog [options] wikiurl pagename filename"
 parser = OptionParser(usage=usage)
@@ -32,9 +32,10 @@ parser.add_option("-q", "--list", action="store_true", dest="list",
                   help="List attachments on page")
 parser.add_option("-d", "--del", action="store_true", dest="rm",
                   help="Delete attachment")
+parser.add_option("-u", "--username", dest="username", 
+                  help="Username for logging onto the wiki")
 
 options, args = parser.parse_args()
-
 
 if len(args) == 3:
     wiki, page, fname = args
@@ -45,12 +46,11 @@ else:
     parser.print_help()
     sys.exit(1)
 
+username = ''
+if options.username:
+    username = options.username
 
-#if scheme.lower() != "https":
-#    raise TypeError, "allowed only for HTTPS"
-
-username = raw_input("Username:")
-password = getpass.getpass("Password:")
+username, password = getuserpass(username)
 
 if options.load:
     result = xmlrpc_attach(wiki, page, fname, username, password, 'load')

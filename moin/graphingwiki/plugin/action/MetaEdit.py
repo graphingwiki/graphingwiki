@@ -50,7 +50,6 @@ def show_queryform(request, pagename):
     wr(u'</form>\n')
 
 def show_editform(request, pagename, args):
-    _ = request.getText
     formatter = request.formatter
 
     def wr(fmt, *args):
@@ -70,6 +69,7 @@ def show_editform(request, pagename, args):
     globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                             globaldata=None,
                                                             get_all_keys=True)
+    _ = request.getText
 
     for key in metakeys + ['']:
         wr(formatter.table_cell(1, {'class': 'meta_header'}))

@@ -15,12 +15,33 @@ from urllib import quote as url_quote
 from copy import copy
 
 from MoinMoin import config
+from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.patterns import GraphData, encode, actionname
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.+?)\s*">')
+
+# Override Page.py to change the parser. This method has the advantage
+# that it works regardless of any processing instructions written on
+# page, including the use of other parsers
+class FormPage(Page):
+
+    def __init__(self, request, page_name, **keywords):
+        # Cannot use super as the Moin classes are old-style
+        apply(Page.__init__, (self, request, page_name), keywords)
+
+    # It's important not to cache this, as the wiki thinks we are
+    # using the default parser
+    def send_page_content(self, request, Parser, body, format_args='',
+                          do_cache=0, **kw):
+        parser = wikiutil.importPlugin(request.cfg, "parser",
+                                       'wiki_form', "Parser")
+
+        kw['format_args'] = format_args
+        kw['do_cache'] = 0
+        apply(Page.send_page_content, (self, request, parser, body), kw)
 
 def htmlquote(s):
     return cgi.escape(s, 1)
@@ -57,24 +78,15 @@ def execute(pagename, request):
     newreq = copy(request)
     newreq.cfg = copy(request.cfg)
 
-    # Didn't find a good way to change the parser. One is this, the
-    # other is to add a processing instructions line to the start of
-    # the request.page._raw_body. The bad thing about this is that it
-    # assumes wiki format to the pages received. Not so bad, then.
-    newreq.cfg.default_markup = 'wiki_form'
-
     # The post-header and pre-footer texts seem to be implemented in themes.
     # Using post-header instead of page msg to avoid breaking header forms.
     newreq.cfg.page_header2 += frm + btn
     newreq.cfg.page_footer1 += btn + '</form>'
 
-    newreq.page = Page(newreq, pagename)
+    newreq.page = FormPage(newreq, pagename)
     newreq.theme = copy(request.theme)
     newreq.theme.request = newreq
     newreq.theme.cfg = newreq.cfg
-
-    # FIXME: what to do when the parser is overridden on the page with
-    # processing instructions?
 
     # Here goes code to create page if it does not exist, if so desired?
     # send_page seems to contain the code to check this
@@ -83,9 +95,7 @@ def execute(pagename, request):
     # page is not sent as it is
     out = StringIO.StringIO()
     newreq.redirect(out)
-    # It's important not to cache this, as the wiki
-    # thinks this is done with its default parser
-    newreq.page.send_page(newreq, do_cache=0)
+    newreq.page.send_page(newreq)
     newreq.redirect()
 
     graphdata = GraphData(newreq)
@@ -100,9 +110,10 @@ def execute(pagename, request):
         # Placeholder key key
         if key in vals_on_keys:
             msg = '<select name="%s">' % (pagekey)
-            msg += '<option value=" ">None</option>'
+            msg += '<option value=" ">%s</option>' % (_("None"))
 
-            for keyval in vals_on_keys[key]:
+            for keyval in sorted(vals_on_keys[key]):
+                keyval = keyval.strip()
                 quotedval = htmlquote(keyval)
                 if len(quotedval) > 30:
                     showval = quotedval[:27] + '...'

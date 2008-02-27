@@ -12,7 +12,6 @@ import sys, os
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
 
 import re
-import getpass
 import csv
 import urllib
 
@@ -21,7 +20,8 @@ from optparse import OptionParser
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
-from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, xmlrpc_connect, getmeta_to_table
+from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, \
+     xmlrpc_connect, getmeta_to_table, getuserpass
 
 def handle_error(result):
     # Us being here means that an error has occurred
@@ -33,11 +33,7 @@ usage = "usage: %prog [options] wikiurl"
 parser = OptionParser(usage=usage)
 
 parser.add_option("-g", "--get", dest="get_args", action='append', default=[],
-                  help="Get metadata from page or page regexp")
-parser.add_option("-k", "--key", dest="key_args", action='append',
-                  help="Get only specified keys")
-parser.add_option("-m", "--match", dest="match_args", action='append',
-                  help="Get only pages that match arguments")
+                  help="Get from Wiki with a string of MetaTable arguments")
 parser.add_option("-K", "--keys_only", action="store_true", dest="keysonly",
                   default=False, help="Get only metadata keys, not values")
 
@@ -53,13 +49,15 @@ parser.add_option("-A", "--batch_append", dest="app_file",
 parser.add_option("-R", "--batch_replace", dest="repl_file",
                   help="Replace metadata based on a semicolon-delimited CSV file in a batch fashion. First row states the keys, first colums states the pages")
 
-parser.add_option("-u", "--category_append", dest="cat_add", action='append',
+parser.add_option("-c", "--category_append", dest="cat_add", action='append',
                   help="Append catlist to page")
 parser.add_option("-x", "--category_replace", dest="cat_repl", action='append',
                   help="Replace catlist on page (use empty category string to delete)")
 
 parser.add_option("-t", "--template", dest="template", 
                   help="Use page template")
+parser.add_option("-u", "--username", dest="username", 
+                  help="Username for logging onto the wiki")
 
 options, args = parser.parse_args()
 
@@ -70,8 +68,11 @@ if len(args) != 1:
 
 wiki = args[0]
 
-username = raw_input("Username:")
-password = getpass.getpass("Password:")
+username = ''
+if options.username:
+    username = options.username
+
+username, password = getuserpass(username)
 
 class ArgError(Exception):
     def __init__(self, value):
@@ -174,10 +175,6 @@ if options.repl_page or options.app_page:
 else:
     srcWiki, _ = xmlrpc_conninit(wiki, username, password)
     val = ",".join(options.get_args)
-    if options.key_args:
-        val += ',||' + '||'.join(options.key_args) + '||'
-    if options.match_args:
-        val += ',' + ','.join(options.match_args)
         
     result = xmlrpc_connect(srcWiki.GetMeta, wiki, val, options.keysonly)
 
