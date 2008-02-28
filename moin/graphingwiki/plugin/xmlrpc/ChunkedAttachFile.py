@@ -129,9 +129,10 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
                                                       filename))
             tmp.write(data)
     except:
-        return xmlrpclib.Fault(3, _("Unknown error"))
-    finally:
         tmp.close()
+        return xmlrpclib.Fault(3, _("Unknown error"))
+
+    tmp.close()
 
     # Attach the decoded file.
     success = save_attachfile(request, pagename, tmpPath, filename, overwrite)
