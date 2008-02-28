@@ -16,7 +16,7 @@ server = ServerProxy("http://localhost:8080/?action=xmlrpc2")
 
 class GwikiTests(unittest.TestCase):
     '''Generic class with setUp() and tearDown() methods to create and
-    delete page, and run test in between.'''
+    delete page.'''
 
     def setUp(self):
         '''Create a page into wiki so we have a place to run test. Test page
@@ -61,6 +61,16 @@ class TestSetMeta(GwikiTests):
         server.SetMeta(self.pageName, {}, 'add', True, 'add', ['CategoryUnitTest'])
 
 
+class TestGetMeta(GwikiTests):
+    '''Tests for GetMeta(...) call.'''
+
+    def testGet1(self):
+        server.GetMeta(self.pageName, False)
+
+    def testGet2(self):
+        server.GetMeta(self.pageName, True)
+
+
 class TestPageCreation(unittest.TestCase):
     '''Tests where page will be created in some way or another. The page
     will be deleted after the test.'''
@@ -94,8 +104,6 @@ class TestDeletePage(unittest.TestCase):
 
     def testDelete2(self):
         server.DeletePage(self.pageName, u'DELETE PAGE')
-
-
 
 
 # class TestRandomPages(unittest.TestCase):
