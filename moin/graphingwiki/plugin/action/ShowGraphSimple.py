@@ -106,7 +106,6 @@ class GraphShowerSimple(GraphShower):
                 self.sendGv(gr)
                 # Cleanup
                 self.globaldata.closedb()
-                raise MoinMoinNoFooter
             else:
                 self.sendForm()
 
@@ -284,7 +283,6 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(_(\
                         "ERROR: Graphviz Python extensions not installed. " +\
                         "Not performing layout.")))
-            raise MoinMoinNoFooter
         
         # Init WikiNode-pattern
         self.globaldata = WikiNode(request=self.request,
@@ -313,14 +311,12 @@ class GraphShowerSimple(GraphShower):
             self.sendGraph(gr)
             # Cleanup
             self.globaldata.closedb()
-            raise MoinMoinNoFooter
         else:
             outgraph = self.get_graph()
             gr = self.generateLayout(outgraph)
             self.sendLegend()
             # Cleanup
             self.globaldata.closedb()
-            raise MoinMoinNoFooter
 
     def execute(self):
         self.formargs()

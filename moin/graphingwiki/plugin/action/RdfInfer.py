@@ -36,7 +36,6 @@ from savegraphdata import encode
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
 from graphingwiki.patterns import actionname

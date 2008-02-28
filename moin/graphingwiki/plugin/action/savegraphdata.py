@@ -432,9 +432,6 @@ def parse_text(request, globaldata, page, text):
         for match in all_re.finditer(line):
             groupdict = match.groupdict()
             for type, hit in groupdict.items():
-                if type == 'url':
-                    assert groupdict['url_target']
-
                 #if hit:
                 #    print hit, type
 

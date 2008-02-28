@@ -33,7 +33,6 @@ from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
 from MoinMoin import config
-from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.patterns import GraphData
 
@@ -175,4 +174,3 @@ def execute(pagename, request):
     n3 = n3dump(request, [pagename])
 
     request.write(n3)
-    raise MoinMoinNoFooter
