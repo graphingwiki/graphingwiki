@@ -9,7 +9,9 @@
 
 import os
 import xmlrpclib
+
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin import config
 
 def delete(request, pagename, comment = None):
     _ = request.getText
@@ -23,8 +25,12 @@ def delete(request, pagename, comment = None):
     if not request.user.may.delete(pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to delete this page"))
     
-    #Deletespages
+    #Deletes pages
+
     page = PageEditor(request, pagename, do_editor_backup=0)
+    if not page.exists():
+        return xmlrpclib.Fault(1, _('No such page %s' % pagename))
+
     page.deletePage(comment)
 
     return True
@@ -35,8 +41,12 @@ def execute(xmlrpcobj, pagename, comment = None):
 
     pagename = xmlrpcobj._instr(pagename)
 
-    success = delete(request, pagename, comment)
+    if comment:
+        comment = xmlrpcobj._instr(comment)
+    else:
+        comment = u''
 
+    success = delete(request, pagename, comment)
 
     # Save, delete return True on success
     if success is True:
