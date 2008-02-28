@@ -28,7 +28,7 @@ def delete(request, pagename, comment = None):
     #Deletespages
     page = PageEditor(request, pagename, do_editor_backup=0)
 
-    page.deletePage(unicode(comment), config.charset)
+    page.deletePage(unicode(comment, config.charset))
 
     return True
 
