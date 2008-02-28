@@ -103,6 +103,7 @@ def shelve_add_out(shelve, (frm, to), linktype, hit):
 def shelve_remove_in(shelve, (frm, to), linktype):
     import sys
 #    sys.stderr.write('Starting to remove in\n')
+    to = encode(to)
     temp = shelve.get(to, {})
     if local_page(to) and temp.has_key('in'):
         for type in linktype:
@@ -257,101 +258,17 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     node_set_attribute(pagenode, key, val)
     shelve_set_attribute(globaldata, quotedname, key, val)
 
-def parse_link(wikiparse, hit, groupdict, type):
-    replace = getattr(wikiparse, '_' + type + '_repl')
-    attrs = replace(hit, groupdict)
-    print 'parse_link: type', type, 'attrs:'
-    print repr(attrs)
-
-    nodelabel = ''
-
-#     if len(attrs) == 4:
-#         # Attachments, eg:
-#         # URL   = Page?action=AttachFile&do=get&target=k.txt
-#         # name  = Page/k.txt
-#         # label = k.txt
-#         nodename = url_quote(encode(attrs[1]))
-#         nodeurl = encode(attrs[0])
-#         nodelabel = encode(attrs[2])
-    if 'word_name' in groupdict:
-        # Local pages
-        # Name of node for local nodes = pagename
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
-        # To prevent subpagenames from sucking
-        if nodeurl.startswith('/'):
-            nodeurl = './' + nodename
-        # Nicer looking labels for nodes
-        unqname = wiki_unquote(nodename)
-        if unqname != nodename:
-            nodelabel = unqname
-    elif 'url_target' in groupdict:
-        # Name of other nodes = url
-        nodeurl = encode(attrs[0])
-        nodename = url_quote(nodeurl)
-
-        # Change name for different type of interwikilinks
-        if type == 'interwiki':
-            nodename = quotens(hit)
-            nodelabel = nodename
-        elif type == 'url_bracket':
-            # Interwikilink in brackets?
-            iw = re.search(r'\[(?P<iw>.+?)[\] ]',
-                           hit).group('iw')
-
-            if iw.split(":")[0] == 'wiki':
-                iw = iw.split(None, 1)[0]
-                iw = iw[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
-                nodelabel = nodename
-        # Interwikilink turned url?
-        elif type == 'url':
-            if hit.split(":")[0] == 'wiki':
-                iw = hit[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
-                nodelabel = nodename
-    else:
-        # Catch-all
-        return "", "", "", ""
-
-    # augmented links, eg. [:PaGe:Ooh: PaGe]
-    augdata = [x.strip() for x in
-               encode(attrs[-1]).split(': ')]
-
-    linktype = getlinktype(augdata)
-
-    return nodename, nodelabel, nodeurl, linktype
-
-def add_link(globaldata, quotedname, pagegraph, cat_re,
-             nodename, nodelabel, nodeurl, linktype, hit):
-    if cat_re.search(nodename):
-        pagenode = pagegraph.nodes.get(quotedname)
-        node_set_attribute(pagenode, 'WikiCategory', nodename)
-        shelve_set_attribute(globaldata, quotedname,
-                             'WikiCategory', nodename)
-
+def add_link(globaldata, pagegraph, snode, dnode, linktype):
     # Add node w/ URL, label if not already added
-    shelve_set_attribute(globaldata, nodename, 'URL', nodeurl)
-    if not pagegraph.nodes.get(nodename):
-        n = pagegraph.nodes.add(nodename)
-        n.URL = nodeurl
-        # Add label, if not already added
-        if nodelabel and not getattr(n, 'label', ''):
-            n.label = nodelabel
-            meta = globaldata.get(nodename, {}).get('meta', {})
-            if not meta.get('label', ''):
-                shelve_set_attribute(globaldata, nodename,
-                                     'label', nodelabel)
+    if not pagegraph.nodes.get(snode):
+        pagegraph.nodes.add(snode)
+    if not pagegraph.nodes.get(dnode):
+        pagegraph.nodes.add(dnode)
 
-    edge = [quotedname, nodename]
-
-    # in-links
-    if linktype.endswith('From'):
-        linktype = linktype[:-4]
-        edge.reverse()
+    edge = [snode, dnode]
 
     shelve_add_in(globaldata, edge, linktype)
-    shelve_add_out(globaldata, edge, linktype, hit)
+    shelve_add_out(globaldata, edge, linktype, dnode)
 
     # Add edge if not already added
     e = pagegraph.edges.get(*edge)
@@ -366,12 +283,10 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
     else:
         e.linktype = set([linktype])
 
-
-
 def parse_text(request, globaldata, page, text):
     pagename = page.page_name
     quotedname = url_quote(encode(pagename))
-
+    
     from copy import copy
     newreq = copy(request)
     newreq.cfg = copy(request.cfg)
@@ -382,14 +297,17 @@ def parse_text(request, globaldata, page, text):
     parserclass = importPlugin(request.cfg, "parser",
                                    'link_collect', "Parser")
     p = parserclass(lcpage.get_raw_body(), newreq)
-    lcpage.formatter = newreq.formatter
+    import MoinMoin.wikiutil as wikiutil
+    myformatter = wikiutil.importPlugin(request.cfg, "formatter",
+                                      'pagelinks', "Formatter")
+
+    lcpage.formatter = myformatter(newreq)
     lcpage.formatter.page = lcpage
-    #lcpage.format(p)
+    lcpage.format(p)
 
     # These are the match types that really should be noted
-    linktypes = ["wikiname_bracket", "word",
-                  "interwiki", "url", "url_bracket"]
-
+    linktypes = ["wikiname_bracket", "word",                  "interwiki", "url", "url_bracket"]
+    
     pagegraph = graph.Graph()
     pagegraph.charset = config.charset
 
@@ -399,6 +317,28 @@ def parse_text(request, globaldata, page, text):
     pagelabel = encode(pagename)
     shelve_set_attribute(globaldata, quotedname, 'label', pagelabel)
 
+#def add_link(globaldata, quotedname, pagegraph, cat_re,
+#             nodename, nodelabel, nodeurl, linktype, hit):
+
+    for ltype, value in p.interesting:
+        print type
+        snode = encode(quotedname)
+        if ltype == 'wikilink':
+            dnode=encode(value[0])
+        elif ltype == 'url':
+            dnode=encode(value[1])
+            print value
+        elif ltype == 'interwiki':
+            dnode=encode("%s:%s" % (value[0],value[1]))
+            print value
+        elif ltype == 'category':
+            print value
+            # add_category(...)
+        elif ltype == 'dl':
+            continue
+        print "XXX"
+        print snode, dnode, type
+        add_link(globaldata, pagegraph, snode, dnode, ltype)
     
     return globaldata, pagegraph
 
@@ -423,7 +363,6 @@ def execute(pagename, request, text, pagedir, page):
     
     # The global graph data contains all the links, even those that
     # are not immediately available in the page's graphdata pickle
-
     quotedname = url_quote(encode(pagename))
 
     # Page graph file to save detailed data in
