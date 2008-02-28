@@ -9,7 +9,9 @@
 
 import os
 import xmlrpclib
+
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin import config
 
 def delete(request, pagename, comment = None):
     _ = request.getText
@@ -25,7 +27,8 @@ def delete(request, pagename, comment = None):
     
     #Deletespages
     page = PageEditor(request, pagename, do_editor_backup=0)
-    page.deletePage(comment)
+
+    page.deletePage(unicode(comment), config.charset)
 
     return True
 
