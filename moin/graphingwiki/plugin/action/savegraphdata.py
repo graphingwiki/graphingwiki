@@ -261,6 +261,17 @@ def add_category(globaldata, pagegraph, node, category):
     node_set_attribute(pagenode, 'WikiCategory', category)
     shelve_set_attribute(globaldata, node, 'WikiCategory', category)
 
+def set_node_params(globaldata, pagegraph, node, url, label):
+    shelve_set_attribute(globaldata, node, 'URL', url)
+    if not pagegraph.nodes.get(node):
+        n = pagegraph.nodes.add(node)
+        n.URL = url
+        if label and not getattr(n, 'label', ''):
+            n.label = label
+            meta = globaldata.get(nodename, {}).get('meta', {})
+            if not meta.get('label', ''):
+                shelve_set_attribute(globaldata, node, 'label', nodelabel)
+
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
     # Add node w/ URL, label if not already added
     if not pagegraph.nodes.get(snode):
@@ -325,14 +336,19 @@ def parse_text(request, globaldata, page, text):
     snode = encode(quotedname)
     for type, value in p.interesting:
         dnode = None
+        url = None
+        label = None
         if type == 'wikilink':
             dnode=encode(value[0])
         elif type == 'url':
             dnode=encode(value[1])
+            url=encode(value[1])
         elif type == 'interwiki':
             dnode=encode("%s:%s" % (value[0],value[1]))
         elif type == 'category':
             add_category(globaldata, pagegraph, encode(snode), encode(value))
+        if url or label:
+            set_node_params(globaldata, pagegraph, dnode, url, label)
         if dnode:
             add_link(globaldata, pagegraph, snode, dnode, type)
 
