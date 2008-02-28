@@ -14,8 +14,9 @@ import urllib
 
 from MoinMoin import wikiutil
 from MoinMoin import config
+from MoinMoin.Page import Page
 
-from graphingwiki.editing import process_edit, getvalues
+from graphingwiki.editing import process_edit, getvalues, get_body_or_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
 from graphingwiki.patterns import actionname
 
@@ -183,6 +184,12 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
 
     if request.form.has_key('save') or request.form.has_key('saveform'):
+        # Pre-create page if it does not exist, using the template specified
+        template = request.form.get('template', [None])[0]
+        oldtext = None
+        if template:
+            oldtext = get_body_or_template(request, pagename, template)
+
         # process_edit requires a certain order to meta input
         if request.form.has_key('saveform'):
             # For some reason, keys in request.form are utf-8
@@ -197,9 +204,9 @@ def execute(pagename, request):
 
             output = order_meta_input(request, pagename,
                                       output, 'repl')
-            msgs = process_edit(request, output)
+            msgs = process_edit(request, output, oldtext=oldtext)
         else:
-            msgs = process_edit(request, request.form)
+            msgs = process_edit(request, request.form, oldtext=oldtext)
             
         msg = ''
 
@@ -207,6 +214,10 @@ def execute(pagename, request):
             msg += line + request.formatter.linebreak(0)
 
         request.reset()
+        backto = request.form.get('backto', [None])[0]
+        if backto:
+            request.page = Page(request, backto)
+        
         request.page.send_page(request, msg=msg)
     elif request.form.has_key('args'):
         _enter_page(request, pagename)

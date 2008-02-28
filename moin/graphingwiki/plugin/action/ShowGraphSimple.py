@@ -31,6 +31,7 @@ from urllib import quote as url_quote
 
 from MoinMoin.wikiutil import unquoteWikiname
 from MoinMoin.request.request_modpython import Request as RequestModPy
+from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.action import AttachFile
 
 from graphingwiki.graphrepr import gv_found
@@ -302,7 +303,8 @@ class GraphShowerSimple(GraphShower):
         if isinstance(self.request, RequestModPy):
             self.request.setHttpHeader('Content-type: image/%s' % formatcontent)
             del self.request.mpyreq.headers_out['Vary']
-        else:
+        elif not isinstance(self.request, RequestStandAlone):
+            # Do not send content type in StandAlone
             self.request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.image == 1:

@@ -37,6 +37,7 @@ from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
 from MoinMoin.request.request_modpython import Request as RequestModPy
+from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
@@ -248,7 +249,8 @@ class ViewDot(object):
                 request.setHttpHeader('Content-type: image/%s' %
                                            formatcontent)
                 del request.mpyreq.headers_out['Vary']
-            else:
+            elif not isinstance(self.request, RequestStandAlone):
+                # Do not send content type in StandAlone
                 request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.format == 'zgr':

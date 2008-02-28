@@ -33,7 +33,7 @@ usage = "usage: %prog [options] wikiurl"
 parser = OptionParser(usage=usage)
 
 parser.add_option("-g", "--get", dest="get_args", action='append', default=[],
-                  help="Get from Wiki with a string of MetaTable arguments")
+                  help="Get metadata from Wiki with a  MetaTable argument string")
 parser.add_option("-K", "--keys_only", action="store_true", dest="keysonly",
                   default=False, help="Get only metadata keys, not values")
 
@@ -49,14 +49,14 @@ parser.add_option("-A", "--batch_append", dest="app_file",
 parser.add_option("-R", "--batch_replace", dest="repl_file",
                   help="Replace metadata based on a semicolon-delimited CSV file in a batch fashion. First row states the keys, first colums states the pages")
 
-parser.add_option("-c", "--category_append", dest="cat_add", action='append',
+parser.add_option("-u", "--category_append", dest="cat_add", action='append',
                   help="Append catlist to page")
 parser.add_option("-x", "--category_replace", dest="cat_repl", action='append',
                   help="Replace catlist on page (use empty category string to delete)")
 
 parser.add_option("-t", "--template", dest="template", 
                   help="Use page template")
-parser.add_option("-u", "--username", dest="username", 
+parser.add_option("-U", "--username", dest="username", 
                   help="Username for logging onto the wiki")
 
 options, args = parser.parse_args()
@@ -110,7 +110,7 @@ if options.app_file or options.repl_file:
     reader = csv.reader(open(fname, "rb"), delimiter=';')
 
     # Keys from first row, ignore the key for first column
-    keys = reader.next()[1:]
+    keys = [x.strip() for x in reader.next()[1:]]
 
     srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 

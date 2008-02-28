@@ -10,13 +10,11 @@ import urllib
 import xmlrpclib
 
 from MoinMoin import config
-from MoinMoin import wikiutil
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.PageEditor import PageEditor
-from MoinMoin.Page import Page
 
 from graphingwiki.patterns import encode
-from graphingwiki.editing import process_edit, order_meta_input
+from graphingwiki.editing import process_edit, order_meta_input, \
+     get_body_or_template
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -46,23 +44,14 @@ def execute(xmlrpcobj, page, input, action='add',
     if not page.strip():
         return xmlrpclib.Fault(2, _("No page name entered"))
 
-    # Create page if not available, use templates if specified
-    raw_body = Page(request, page).get_raw_body()
-    if not raw_body and createpage:
-        raw_body = ' '
-        pageobj = PageEditor(request, page)
-        if template:
-            template_page = wikiutil.unquoteWikiname(template)
-            if request.user.may.read(template_page):
-                temp_body = Page(request, template_page).get_raw_body()
-                if temp_body:
-                    raw_body = temp_body
-
-        pageobj.saveText(raw_body, 0)
+    oldtext = None
+    # Pre-create page if it does not exist, using the template specified
+    if createpage and template:
+        oldtext = get_body_or_template(request, page, template)
 
     # process_edit requires a certain order to meta input
     output = order_meta_input(request, page, input, action)
 
     categories = {page: catlist}
 
-    return process_edit(request, output, category_edit, categories)
+    return process_edit(request, output, category_edit, categories, oldtext)
