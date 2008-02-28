@@ -274,8 +274,6 @@ def set_node_params(globaldata, pagegraph, node, url, label):
 
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
     # Add node w/ URL, label if not already added
-    if not pagegraph.nodes.get(snode):
-        pagegraph.nodes.add(snode)
     if not pagegraph.nodes.get(dnode):
         pagegraph.nodes.add(dnode)
 
@@ -355,6 +353,7 @@ def parse_text(request, globaldata, page, text):
     for definition, type, link in lcpage.formatter.definitions:
         if type == 'link':
             add_link(globaldata, pagegraph, snode, encode(link), encode(definition))
+    
 
     return globaldata, pagegraph
 

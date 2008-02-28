@@ -217,8 +217,7 @@ def execute(pagename, request):
         backto = request.form.get('backto', [None])[0]
         if backto:
             request.page = Page(request, backto)
-        
-        request.page.send_page(request, msg=msg)
+        request.page.send_page(msg=msg, emit_headers=False)
     elif request.form.has_key('args'):
         _enter_page(request, pagename)
         formatter = request.page.formatter

@@ -2,7 +2,7 @@
 """
      Link harvesting "parser"
 """
-import cgi
+import cgi, re
  
 from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
@@ -18,7 +18,8 @@ class Parser(WikiParser):
         apply(WikiParser.__init__, (self, raw, request), kw)
         
         self.interesting = []
-
+        self.in_dd = 0
+        self.cat_re=re.compile(request.cfg.page_category_regex)
     
     def _interwiki_repl(self, word, groups):
         """Handle InterWiki links."""
@@ -37,7 +38,6 @@ class Parser(WikiParser):
         if bang_present:
             if self.cfg.bang_meta:
                 return u''
-
         name = groups.get('word_name')
         current_page = self.formatter.page.page_name
         abs_name = wikiutil.AbsPageName(current_page, name)
@@ -49,7 +49,10 @@ class Parser(WikiParser):
                 abs_name, anchor = rsplit(abs_name, "#", 1)
             except ValueError:
                 anchor = ""
-            self.interesting.append(('wikilink', (abs_name, anchor)))
+            if self.cat_re.match(abs_name):
+                self.interesting.append(('category', abs_name))
+            else:
+                self.interesting.append(('wikilink', (abs_name, anchor)))
             return u''
 
     _word_bang_repl = _word_repl
@@ -86,5 +89,11 @@ class Parser(WikiParser):
         result = []
         self._close_item(result)
         self.in_dd = 1
-        self.interesting.append(('dl', (match[1:-3].lstrip(' '),)))
+        self.formatter.textstorage=None
+        self.formatter.linkstorage=None
+        
+        definition = match[1:-3].strip(' ')
+        if definition != "":
+            self.formatter.curdef=definition
+
         return u''
