@@ -41,6 +41,7 @@ from MoinMoin import config
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
 from MoinMoin.util.lock import WriteLock
+from MoinMoin.Page import Page
 
 # graphlib imports
 from graphingwiki import graph
@@ -258,11 +259,10 @@ def add_meta(globaldata, pagenode, quotedname, hit):
 
 def parse_link(wikiparse, hit, groupdict, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
-    try:
-        attrs = replace(hit, groupdict)
-    except:
-        print wikiparse, replace, hit, groupdict, type
-        1/0
+    attrs = replace(hit, groupdict)
+    print 'parse_link: type', type, 'attrs:'
+    print repr(attrs)
+
     nodelabel = ''
 
 #     if len(attrs) == 4:
@@ -367,52 +367,29 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
         e.linktype = set([linktype])
 
 
+
 def parse_text(request, globaldata, page, text):
     pagename = page.page_name
     quotedname = url_quote(encode(pagename))
 
-    # import text_url -formatter
-    try:
-        Formatter = importPlugin(request.cfg, 'formatter',
-                                 'text_url', "Formatter")
-    except:
-        # default to plain text
-        from MoinMoin.formatter.text_plain import Formatter
-
-    urlformatter = Formatter(request)
-
-    # Get formatting rules from Parser/wiki
-    # Regexps used below are also from there
-    wikiparse = Parser(text, request)
-    wikiparse.formatter = urlformatter
-    urlformatter.setPage(page)
-
-    # Category matching regexp
-    cat_re = re.compile(request.cfg.page_category_regex)
-
-
-    all_re = wikiparse.scan_re
-    eol_re = re.compile(r'\r?\n', re.UNICODE)
-    # end space removed from heading_re, it means '\n' in parser/wiki
-    heading_re = re.compile(r'\s*(?P<hmarker>=+)\s.*\s(?P=hmarker)',
-                            re.UNICODE)
+    from copy import copy
+    newreq = copy(request)
+    newreq.cfg = copy(request.cfg)
+    newreq.page = lcpage = LinkCollectingPage(newreq, pagename)
+    newreq.theme = copy(request.theme)
+    newreq.theme.request = newreq
+    newreq.theme.cfg = newreq.cfg
+    parserclass = importPlugin(request.cfg, "parser",
+                                   'link_collect', "Parser")
+    p = parserclass(lcpage.get_raw_body(), newreq)
+    lcpage.formatter = newreq.formatter
+    lcpage.formatter.page = lcpage
+    #lcpage.format(p)
 
     # These are the match types that really should be noted
     linktypes = ["wikiname_bracket", "word",
                   "interwiki", "url", "url_bracket"]
 
-    # Get lines of raw wiki markup
-    lines = eol_re.split(text)
-
-    # status: are we in preprocessed areas?
-    inpre = False
-    pretypes = ["pre", "processor"]
-
-    # status: have we just entered a link with dict,
-    # we should not enter it again
-    dicturl = False
-
-    # Init pagegraph
     pagegraph = graph.Graph()
     pagegraph.charset = config.charset
 
@@ -422,104 +399,7 @@ def parse_text(request, globaldata, page, text):
     pagelabel = encode(pagename)
     shelve_set_attribute(globaldata, quotedname, 'label', pagelabel)
 
-    for line in lines:
-        # Comments not processed
-        if line[0:2] == "##":
-            continue
-        # Headings not processed
-        if heading_re.match(line):
-            continue
-        for match in all_re.finditer(line):
-            groupdict = match.groupdict()
-            for type, hit in groupdict.items():
-                if type == 'url':
-                    pass # assert groupdict['url_target']
-                #if hit:
-                #    print hit, type
-
-                # Skip empty hits
-                if hit is None:
-                    continue
-
-                # We don't want to handle anything inside preformatted
-                if type in pretypes:
-                    inpre = not inpre
-                    #print inpre
-
-                # Handling of MetaData-macro
-                elif type == 'macro' and not inpre:
-                    if hit.startswith('<<MetaData'):
-                        add_meta(globaldata, pagenode, quotedname, hit)
-
-                # Handling of links
-                elif type in linktypes and not inpre:
-                    # If we just came from a dict, which saved a typed
-                    # link, do not save it again
-                    if dicturl:
-                        dicturl = False
-                        continue
-
-                    name, label, url, linktype = parse_link(wikiparse,
-                                                            hit, groupdict,
-                                                            type)
-
-                    if name:
-                        add_link(globaldata, quotedname, pagegraph, cat_re,
-                                 name, label, url, linktype, hit)
-
-                # Links and metadata defined in a definition list
-                elif type == 'dl' and not inpre:
-                    data = line.split('::')
-                    key, val = data[0], '::'.join(data[1:])
-                    key = key.lstrip()
-
-                    if not key:
-                        continue
-
-                    # Try to find if the value points to a link
-                    matches = all_re.match(val.lstrip())
-                    if matches:
-                        # Take all matches if hit non-empty
-                        # and hit type in linktypes
-                        match = [(type, hit) for type, hit in
-                                 matches.groupdict().iteritems()
-                                 if hit is not None \
-                                 and type in linktypes]
-
-                        # If link, 
-                        if match:
-                            type, hit = match[0]
-
-                            # and nothing but link, save as link
-                            if hit == val.strip():
-
-                                val = val.strip()
-                                name, label, url, \
-                                      linktype = parse_link(wikiparse,\
-                                                            hit, groupdict, type)
-
-                                # Take linktype from the dict key
-                                linktype = getlinktype([encode(x)
-                                                        for x in key, val])
-
-                                if name:
-                                    add_link(globaldata, quotedname,
-                                             pagegraph, cat_re,
-                                             name, label, url, linktype, hit)
-
-                                    # The val will also be parsed by
-                                    # Moin's link parser -> need to
-                                    # have state in the loop that this
-                                    # link has already been saved
-                                    dicturl = True
-
-                    if dicturl:
-                        continue
-
-                    # If it was not link, save as metadata. 
-                    add_meta(globaldata, pagenode, quotedname,
-                             "<<MetaData(%s,%s)>>" % (key, val))
-
+    
     return globaldata, pagegraph
 
 
@@ -589,3 +469,27 @@ def execute(pagename, request, text, pagedir, page):
     # Remove locks, close shelves
     globaldata.close()
     lock.release()
+
+
+# - code below lifted from MetaFormEdit -
+
+# Override Page.py to change the parser. This method has the advantage
+# that it works regardless of any processing instructions written on
+# page, including the use of other parsers
+class LinkCollectingPage(Page):
+
+    def __init__(self, request, page_name, **keywords):
+        # Cannot use super as the Moin classes are old-style
+        apply(Page.__init__, (self, request, page_name), keywords)
+
+    # It's important not to cache this, as the wiki thinks we are
+    # using the default parser
+    def send_page_content(self, request, notparser, body, format_args='',
+                          do_cache=0, **kw):
+        parser = wikiutil.importPlugin(request.cfg, "parser",
+                                       'link_collect', "Parser")
+
+        kw['format_args'] = format_args
+        kw['do_cache'] = 0
+        apply(Page.send_page_content, (self, request, parser, body), kw)
+
