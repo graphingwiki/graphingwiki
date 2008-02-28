@@ -268,9 +268,9 @@ def set_node_params(globaldata, pagegraph, node, url, label):
         n.URL = url
         if label and not getattr(n, 'label', ''):
             n.label = label
-            meta = globaldata.get(nodename, {}).get('meta', {})
+            meta = globaldata.get(node, {}).get('meta', {})
             if not meta.get('label', ''):
-                shelve_set_attribute(globaldata, node, 'label', nodelabel)
+                shelve_set_attribute(globaldata, node, 'label', label)
 
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
     # Add node w/ URL, label if not already added
@@ -342,7 +342,11 @@ def parse_text(request, globaldata, page, text):
             dnode=encode(value[1])
             url=encode(value[1])
         elif type == 'interwiki':
+            ret=wikiutil.resolve_interwiki(request,value[0], value[1])
             dnode=encode("%s:%s" % (value[0],value[1]))
+            label=dnode
+            if ret[3] == False:
+                url=encode(ret[1]+value[1])
         elif type == 'category':
             add_category(globaldata, pagegraph, encode(snode), encode(value))
         if url or label:

@@ -25,6 +25,7 @@ class Parser(WikiParser):
         """Handle InterWiki links."""
         wiki = groups.get('interwiki_wiki')
         page = groups.get('interwiki_page')
+        
         self.interesting.append(('interwiki', (wiki, page)))
         return u''
 

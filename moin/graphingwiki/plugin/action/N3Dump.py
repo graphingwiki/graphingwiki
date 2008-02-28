@@ -54,8 +54,8 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
-        if not isinstance(prop, unicode):
-            linktype = unicode(prop, config.charset)
+        if not isinstance(linktype, unicode):
+            linktype = unicode(linktype, config.charset)
         if not isinstance(edge[1], unicode):
             dst = unicode(edge[1], config.charset)
         else:
@@ -158,7 +158,7 @@ def n3dump(request, pages):
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
 """
 
-    for iw, iw_url in get_interwikilist(request).items():
+    for iw, iw_url in get_interwikilist(request):
         outstr = (outstr + '@prefix '+ iw + ': <' + 
                   iw_url + '> .' + "\n")
 
