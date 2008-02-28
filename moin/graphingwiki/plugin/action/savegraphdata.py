@@ -195,11 +195,9 @@ def shelve_set_attribute(shelve, node, key, val):
 
     shelve[node] = temp
 
-## Different encoding/quoting functions
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
+def encode(s):
+    return s.encode(config.charset, 'replace')
+
 def wiki_unquote(str):
     return url_unquote(str).replace('_', ' ')
 
@@ -333,8 +331,11 @@ def parse_text(request, globaldata, page, text):
             print value
         elif ltype == 'category':
             print value
+            continue
             # add_category(...)
         elif ltype == 'dl':
+            continue
+        else:
             continue
         print "XXX"
         print snode, dnode, type
