@@ -265,15 +265,15 @@ def parse_link(wikiparse, hit, groupdict, type):
         1/0
     nodelabel = ''
 
-    if len(attrs) == 4:
-        # Attachments, eg:
-        # URL   = Page?action=AttachFile&do=get&target=k.txt
-        # name  = Page/k.txt
-        # label = k.txt
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
-        nodelabel = encode(attrs[2])
-    elif len(attrs) == 3:
+#     if len(attrs) == 4:
+#         # Attachments, eg:
+#         # URL   = Page?action=AttachFile&do=get&target=k.txt
+#         # name  = Page/k.txt
+#         # label = k.txt
+#         nodename = url_quote(encode(attrs[1]))
+#         nodeurl = encode(attrs[0])
+#         nodelabel = encode(attrs[2])
+    if 'word_name' in groupdict:
         # Local pages
         # Name of node for local nodes = pagename
         nodename = url_quote(encode(attrs[1]))
@@ -285,7 +285,7 @@ def parse_link(wikiparse, hit, groupdict, type):
         unqname = wiki_unquote(nodename)
         if unqname != nodename:
             nodelabel = unqname
-    elif len(attrs) == 2:
+    elif 'url_target' in groupdict:
         # Name of other nodes = url
         nodeurl = encode(attrs[0])
         nodename = url_quote(nodeurl)
@@ -432,6 +432,8 @@ def parse_text(request, globaldata, page, text):
         for match in all_re.finditer(line):
             groupdict = match.groupdict()
             for type, hit in groupdict.items():
+                if type == 'url':
+                    pass # assert groupdict['url_target']
                 #if hit:
                 #    print hit, type
 
