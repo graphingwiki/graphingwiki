@@ -256,6 +256,11 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     node_set_attribute(pagenode, key, val)
     shelve_set_attribute(globaldata, quotedname, key, val)
 
+def add_category(globaldata, pagegraph, node, category):
+    pagenode = pagegraph.nodes.get(node)
+    node_set_attribute(pagenode, 'WikiCategory', category)
+    shelve_set_attribute(globaldata, node, 'WikiCategory', category)
+
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
     # Add node w/ URL, label if not already added
     if not pagegraph.nodes.get(snode):
@@ -297,8 +302,7 @@ def parse_text(request, globaldata, page, text):
     p = parserclass(lcpage.get_raw_body(), newreq)
     import MoinMoin.wikiutil as wikiutil
     myformatter = wikiutil.importPlugin(request.cfg, "formatter",
-                                      'pagelinks', "Formatter")
-
+                                      'nullformatter', "Formatter")
     lcpage.formatter = myformatter(newreq)
     lcpage.formatter.page = lcpage
     lcpage.format(p)
@@ -318,29 +322,24 @@ def parse_text(request, globaldata, page, text):
 #def add_link(globaldata, quotedname, pagegraph, cat_re,
 #             nodename, nodelabel, nodeurl, linktype, hit):
 
-    for ltype, value in p.interesting:
-        print type
-        snode = encode(quotedname)
-        if ltype == 'wikilink':
+    snode = encode(quotedname)
+    for type, value in p.interesting:
+        dnode = None
+        if type == 'wikilink':
             dnode=encode(value[0])
-        elif ltype == 'url':
+        elif type == 'url':
             dnode=encode(value[1])
-            print value
-        elif ltype == 'interwiki':
+        elif type == 'interwiki':
             dnode=encode("%s:%s" % (value[0],value[1]))
-            print value
-        elif ltype == 'category':
-            print value
-            continue
-            # add_category(...)
-        elif ltype == 'dl':
-            continue
-        else:
-            continue
-        print "XXX"
-        print snode, dnode, type
-        add_link(globaldata, pagegraph, snode, dnode, ltype)
-    
+        elif type == 'category':
+            add_category(globaldata, pagegraph, encode(snode), encode(value))
+        if dnode:
+            add_link(globaldata, pagegraph, snode, dnode, type)
+
+    for definition, type, link in lcpage.formatter.definitions:
+        if type == 'link':
+            add_link(globaldata, pagegraph, snode, encode(link), encode(definition))
+
     return globaldata, pagegraph
 
 
