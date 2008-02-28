@@ -70,6 +70,15 @@ def execute(pagename, request):
           wr('<input type=submit name=saveform value="%s">', _('Save')) + \
           '</p></div>'
 
+    # Template to use for any new pages
+    template = request.form.get('template', [''])[0]
+    if template:
+        frm += '<input type="hidden" name="template" value="%s">' % template
+    # Where to after saving page
+    backto = request.form.get('backto', [''])[0]
+    if backto:
+        frm += '<input type="hidden" name="backto" value="%s">' % backto
+
     # Copying the request used to print the form. I do this to avoid
     # leaving modified requests running eg. when using
     # mod_python. Race conditions or interruptions/followups could
@@ -88,8 +97,22 @@ def execute(pagename, request):
     newreq.theme.request = newreq
     newreq.theme.cfg = newreq.cfg
 
-    # Here goes code to create page if it does not exist, if so desired?
-    # send_page seems to contain the code to check this
+    # If the page does not exist but we'd know how to construct it, 
+    # replace the Page content with template and pretend it exists
+    if template and not newreq.page.exists():
+        template_page = wikiutil.unquoteWikiname(template)
+        if newreq.user.may.read(template_page):
+            # Faking that the page exists and has template content
+            newreq.page._raw_body = Page(newreq, template_page).get_raw_body()
+            newreq.page.exists = lambda **kw: True
+            newreq.page.lastEditInfo = lambda: {}
+
+    elif not template and not newreq.page.exists():
+        error = '<div class="saveform"><p class="savemessage">' + \
+                _("No template specified, cannot edit") + '</p></div>'
+                
+        newreq.cfg.page_header2 = request.cfg.page_header2 + error
+        newreq.cfg.page_footer1 = request.cfg.page_footer1
 
     # Extra spaces from formatter need to be removed, that's why the
     # page is not sent as it is

@@ -22,6 +22,7 @@ from urllib import unquote as url_unquote
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.Page import Page
 from MoinMoin.request import RequestCLI
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
@@ -347,10 +348,11 @@ def get_pages(request):
     return pages
 
 def edit(pagename, editfun, request=None,
-         category_edit='', catlist=[]):
+         category_edit='', catlist=[], oldtext=None):
     request, p = getpage(pagename, request)
 
-    oldtext = p.get_raw_body()
+    if not oldtext:
+        oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
 
     # print
@@ -400,7 +402,7 @@ def _fix_key(key):
     return key
 
 def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[]):
+              category_edit='', catlist=[], oldtext=None):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -578,11 +580,13 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
         return oldtext
 
-    msg, p = edit(pagename, editfun, request, category_edit, catlist)
+    msg, p = edit(pagename, editfun, request, category_edit, catlist, oldtext)
 
     return msg
 
-def process_edit(request, input, category_edit='', categories={}):
+def process_edit(request, input,
+                 category_edit='', categories={}, oldtext=None):
+    _ = request.getText
     # request.write(repr(request.form) + '<br>')
     # print repr(input) + '<br>'
 
@@ -601,6 +605,7 @@ def process_edit(request, input, category_edit='', categories={}):
 
     changes = dict()
     keychanges = dict()
+    keypage = ''
 
     # Key changes
     for key in input:
@@ -674,7 +679,8 @@ def process_edit(request, input, category_edit='', categories={}):
             msg.append('%s: ' % url_unquote(keypage) + \
                        edit_meta(request, url_unquote(keypage),
                                  {}, {},
-                                 category_edit, categories[keypage]))
+                                 category_edit, categories[keypage],
+                                 oldtext))
     elif changes:
         for keypage in changes:
             catlist = categories.get(keypage, [])
@@ -682,11 +688,26 @@ def process_edit(request, input, category_edit='', categories={}):
                        edit_meta(request, url_unquote(keypage),
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
-                                 category_edit, catlist))
+                                 category_edit, catlist, oldtext))
+    elif keypage:
+        msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
     else:
-        msg.append('%s: Unchanged' % url_unquote(keypage))
+        msg.append(_('No pages changed'))
 
     return msg
+
+def get_body_or_template(request, page, template):
+    # Get body, or template if body is not available, or ' '
+    raw_body = Page(request, page).get_raw_body()
+    if not raw_body:
+        raw_body = ' '
+        template_page = wikiutil.unquoteWikiname(template)
+        if request.user.may.read(template_page):
+            temp_body = Page(request, template_page).get_raw_body()
+            if temp_body:
+                raw_body = temp_body
+
+    return raw_body
 
 def order_meta_input(request, page, input, action):
     def urlquote(s):

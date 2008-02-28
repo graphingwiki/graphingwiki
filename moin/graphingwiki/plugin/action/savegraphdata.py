@@ -46,11 +46,12 @@ from MoinMoin.util.lock import WriteLock
 from graphingwiki import graph
 from graphingwiki.patterns import special_attrs
 
-url_re = re.compile(u'^(' + Parser.url_pattern + ')')
+# Page names cannot contain '//'
+url_re = re.compile(u'^(%s)%%3A//' % (Parser.url_pattern))
 
 # We only want to save linkage data releted to pages in this wiki
 # Interwiki links will have ':' in their names (this will not affect
-# pages as their names are url quotes at this stage)
+# pages as their names are url quoted at this stage)
 def local_page(pagename):
     if url_re.search(pagename) or ':' in pagename:
         return False
@@ -488,16 +489,19 @@ def parse_text(request, globaldata, page, text):
                                  matches.groupdict().iteritems()
                                  if hit is not None \
                                  and type in linktypes]
+
                         # If link, 
                         if match:
                             type, hit = match[0]
 
                             # and nothing but link, save as link
                             if hit == val.strip():
+
                                 val = val.strip()
                                 name, label, url, \
                                       linktype = parse_link(wikiparse,\
                                                             hit, type)
+
                                 # Take linktype from the dict key
                                 linktype = getlinktype([encode(x)
                                                         for x in key, val])
