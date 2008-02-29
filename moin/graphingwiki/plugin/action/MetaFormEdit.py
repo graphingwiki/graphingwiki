@@ -11,14 +11,18 @@ import urllib
 import re
 import StringIO
 
+from graphingwiki.editing import save_template
 from urllib import quote as url_quote
 from copy import copy
 
 from MoinMoin import config
 from MoinMoin import wikiutil
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
 from graphingwiki.patterns import GraphData, encode, actionname
+
+from savegraphdata import parse_text
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.+?)\s*">')
@@ -66,9 +70,8 @@ def execute(pagename, request):
           wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
     
     btn = '<div class="saveform"><p class="savemessage">' + \
-          request.formatter.text(_("Edit page as form")) + \
-          wr('<input type=submit name=saveform value="%s">', _('Save')) + \
-          '</p></div>'
+          wr('<input type=submit name=saveform value="%s">',
+             _('Save Changes')) + '</p></div>'
 
     # Template to use for any new pages
     template = request.form.get('template', [''])[0]
@@ -97,20 +100,30 @@ def execute(pagename, request):
     newreq.theme.request = newreq
     newreq.theme.cfg = newreq.cfg
 
+    error = ''
+    newpage = False
     # If the page does not exist but we'd know how to construct it, 
     # replace the Page content with template and pretend it exists
     if template and not newreq.page.exists():
         template_page = wikiutil.unquoteWikiname(template)
         if newreq.user.may.read(template_page):
-            # Faking that the page exists and has template content
-            newreq.page._raw_body = Page(newreq, template_page).get_raw_body()
+            editor = PageEditor(newreq, template_page)
+            editor.user = newreq.user
+            text = editor.get_raw_body()
+            newreq.page._raw_body = editor._expand_variables(text)
             newreq.page.exists = lambda **kw: True
             newreq.page.lastEditInfo = lambda: {}
+            newpage = True
+        else:
+            error = '<div class="saveform"><p class="savemessage">' + \
+                    _("Cannot read template") + '</p></div>'
 
     elif not template and not newreq.page.exists():
         error = '<div class="saveform"><p class="savemessage">' + \
                 _("No template specified, cannot edit") + '</p></div>'
-                
+
+
+    if error:
         newreq.cfg.page_header2 = request.cfg.page_header2 + error
         newreq.cfg.page_footer1 = request.cfg.page_footer1
 
@@ -124,6 +137,22 @@ def execute(pagename, request):
     graphdata = GraphData(newreq)
     graphdata.reverse_meta()
     vals_on_keys = graphdata.vals_on_keys
+
+    # If we're making a new page based on a template, make sure that
+    # the values from the evaluated template are included in the form editor
+    if newpage:
+        data, g = parse_text(newreq, {}, newreq.page, newreq.page._raw_body)
+        for page in data:
+            for key in data[page].get('meta', {}):
+                for val in data[page]['meta'][key]:
+                    val = unicode(val, config.charset).strip('"')
+                    val = val.replace('\\"', '"')
+                    vals_on_keys.setdefault(key, set()).add(val)
+
+            for key in data[page].get('lit', {}):
+                for val in data[page]['lit'][key]:
+                    val = val.strip('"')
+                    vals_on_keys.setdefault(key, set()).add(val)
 
     def repl_subfun(mo):
         pagekey, val = mo.groups()
