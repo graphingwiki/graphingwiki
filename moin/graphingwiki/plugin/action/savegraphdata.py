@@ -212,17 +212,6 @@ def quotedstring(str):
 def quotens(str):
     return ':'.join([url_quote(encode(x)) for x in str.split(':')])
 
-def getlinktype(augdata):
-    linktype = ''
-    if len(augdata) > 1:
-        if ':' in augdata[0]:
-            # links with namespace!
-            linktype = quotens(augdata[0])
-        else:
-            # quote all link types
-            linktype = url_quote(augdata[0])
-    return linktype
-
 def add_meta(globaldata, pagenode, quotedname, hit):
     # decode to target charset, grab comma-separated key,val
     hit = encode(hit[11:-3])
@@ -273,7 +262,7 @@ def set_node_params(globaldata, pagegraph, node, url, label):
                 shelve_set_attribute(globaldata, node, 'label', label)
 
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
-    # Add node w/ URL, label if not already added
+    # Add node if not already added 
     if not pagegraph.nodes.get(dnode):
         pagegraph.nodes.add(dnode)
 
