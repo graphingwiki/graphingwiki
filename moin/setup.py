@@ -2,7 +2,8 @@ from distutils.core import setup
 
 old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py', 'metaCVS.py',
                           'ShowGraphIE.py', 'MetaTableEdit.py',
-                          'ShowLatexSource.py', 'metaRadarDiagram.py'],
+                          'ShowLatexSource.py', 'metaRadarDiagram.py',
+                          'metaeditform.py'],
                'macro': ['metaRadarDiagram.py']}
 
 setup(name='graphingwiki', version='0.1',

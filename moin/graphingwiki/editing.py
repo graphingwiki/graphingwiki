@@ -348,11 +348,10 @@ def get_pages(request):
     return pages
 
 def edit(pagename, editfun, request=None,
-         category_edit='', catlist=[], oldtext=None):
+         category_edit='', catlist=[]):
     request, p = getpage(pagename, request)
 
-    if not oldtext:
-        oldtext = p.get_raw_body()
+    oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
 
     # print
@@ -402,7 +401,7 @@ def _fix_key(key):
     return key
 
 def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[], oldtext=None):
+              category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -580,12 +579,12 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
         return oldtext
 
-    msg, p = edit(pagename, editfun, request, category_edit, catlist, oldtext)
+    msg, p = edit(pagename, editfun, request, category_edit, catlist)
 
     return msg
 
 def process_edit(request, input,
-                 category_edit='', categories={}, oldtext=None):
+                 category_edit='', categories={}):
     _ = request.getText
     # request.write(repr(request.form) + '<br>')
     # print repr(input) + '<br>'
@@ -679,8 +678,8 @@ def process_edit(request, input,
             msg.append('%s: ' % url_unquote(keypage) + \
                        edit_meta(request, url_unquote(keypage),
                                  {}, {},
-                                 category_edit, categories[keypage],
-                                 oldtext))
+                                 category_edit, categories[keypage]))
+                                 
     elif changes:
         for keypage in changes:
             catlist = categories.get(keypage, [])
@@ -688,7 +687,7 @@ def process_edit(request, input,
                        edit_meta(request, url_unquote(keypage),
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
-                                 category_edit, catlist, oldtext))
+                                 category_edit, catlist))
     elif keypage:
         msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
     else:
@@ -696,18 +695,22 @@ def process_edit(request, input,
 
     return msg
 
-def get_body_or_template(request, page, template):
+def save_template(request, page, template):
     # Get body, or template if body is not available, or ' '
     raw_body = Page(request, page).get_raw_body()
+    msg = ''
     if not raw_body:
         raw_body = ' '
+        p = PageEditor(request, page)
         template_page = wikiutil.unquoteWikiname(template)
         if request.user.may.read(template_page):
             temp_body = Page(request, template_page).get_raw_body()
             if temp_body:
                 raw_body = temp_body
 
-    return raw_body
+        msg = p.saveText(raw_body, 0)
+
+    return msg
 
 def order_meta_input(request, page, input, action):
     def urlquote(s):
