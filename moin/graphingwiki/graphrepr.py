@@ -352,7 +352,12 @@ class Graphviz:
         else:
             raise "No graph element or element type specified"
         for key, elem in attrs.iteritems():
-            gv.setv(item, key, elem)
+            if isinstance(elem, set):
+              for e in elem:
+                gv.setv(item, key, e)
+            else:
+              gv.setv(item, key, elem)
+              
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
     def _iterattrs(self, handle=""):

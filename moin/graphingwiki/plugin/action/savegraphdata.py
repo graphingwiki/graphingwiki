@@ -33,7 +33,6 @@ import cPickle
 import shelve
 from codecs import getencoder
 from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 from time import time
 
 # MoinMoin imports
@@ -198,9 +197,6 @@ def shelve_set_attribute(shelve, node, key, val):
 def encode(s):
     return s.encode(config.charset, 'replace')
 
-def wiki_unquote(str):
-    return url_unquote(str).replace('_', ' ')
-
 # Escape quotes in str, remove existing quotes, add outer quotes.
 def quotedstring(str):
     escq = re.compile(r'(?<!\\)"')
@@ -246,11 +242,13 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     shelve_set_attribute(globaldata, quotedname, key, val)
 
 def add_category(globaldata, pagegraph, node, category):
+    category=encode(category)
     pagenode = pagegraph.nodes.get(node)
     node_set_attribute(pagenode, 'WikiCategory', category)
     shelve_set_attribute(globaldata, node, 'WikiCategory', category)
 
 def set_node_params(globaldata, pagegraph, node, url, label):
+    url = encode(url)
     shelve_set_attribute(globaldata, node, 'URL', url)
     if not pagegraph.nodes.get(node):
         n = pagegraph.nodes.add(node)
@@ -262,6 +260,10 @@ def set_node_params(globaldata, pagegraph, node, url, label):
                 shelve_set_attribute(globaldata, node, 'label', label)
 
 def add_link(globaldata, pagegraph, snode, dnode, linktype):
+    snode=encode(snode)
+    dnode=encode(url_quote(dnode))
+    linktype=encode(linktype)
+    
     # Add node if not already added 
     if not pagegraph.nodes.get(dnode):
         pagegraph.nodes.add(dnode)
@@ -317,10 +319,7 @@ def parse_text(request, globaldata, page, text):
     pagelabel = encode(pagename)
     shelve_set_attribute(globaldata, quotedname, 'label', pagelabel)
 
-#def add_link(globaldata, quotedname, pagegraph, cat_re,
-#             nodename, nodelabel, nodeurl, linktype, hit):
-
-    snode = encode(quotedname)
+    snode = quotedname
     for type, value in p.interesting:
         dnode = None
         url = None
@@ -335,9 +334,11 @@ def parse_text(request, globaldata, page, text):
             dnode=encode("%s:%s" % (value[0],value[1]))
             label=dnode
             if ret[3] == False:
-                url=encode(ret[1]+value[1])
+                url=ret[1]+value[1]
+            else:
+                type='wikilink'
         elif type == 'category':
-            add_category(globaldata, pagegraph, encode(snode), encode(value))
+            add_category(globaldata, pagegraph, snode, value)
         if url or label:
             set_node_params(globaldata, pagegraph, dnode, url, label)
         if dnode:
@@ -345,7 +346,7 @@ def parse_text(request, globaldata, page, text):
 
     for definition, type, link in lcpage.formatter.definitions:
         if type == 'link':
-            add_link(globaldata, pagegraph, snode, encode(link), encode(definition))
+            add_link(globaldata, pagegraph, snode, link, definition)
     
 
     return globaldata, pagegraph
