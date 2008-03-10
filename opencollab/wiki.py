@@ -218,7 +218,7 @@ class GraphingWiki(object):
 
         return pages
 
-    def setMeta(self, page, meta, replace=False):
+    def setMeta(self, page, meta, replace=False, template=None):
         if replace:
             metaMode, categoryMode = "repl", "set"
         else:
@@ -232,4 +232,5 @@ class GraphingWiki(object):
         createPageOnDemand = True
 
         return self.request("SetMeta", page, keys, metaMode,
-                            createPageOnDemand, categoryMode, categories)
+                            createPageOnDemand, categoryMode, categories,
+                            template)
