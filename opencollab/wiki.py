@@ -229,7 +229,7 @@ class GraphingWiki(object):
         for key, values in meta.iteritems():
             keys[key] = list(values)
 
-        categories = list(meta.pop("category"))
+        categories = keys.pop("category", list())
         createPageOnDemand = True
 
         return self.request("SetMeta", page, keys, metaMode,
