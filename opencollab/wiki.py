@@ -8,7 +8,11 @@ import md5
 import random
 import getpass
 
-from transport import CustomTransport
+try:
+  from curltransport import CURLTransport as CustomTransport
+except ImportError:
+  from transport import CustomTransport
+
 from meta import Meta
 
 class WikiFailure(Exception):
