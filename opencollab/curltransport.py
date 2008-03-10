@@ -15,7 +15,7 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-import xmlrpclib, pycurl2
+import xmlrpclib, pycurl
 
 class CURLTransport(xmlrpclib.Transport):
     """Handles a cURL HTTP transaction to an XML-RPC server."""
