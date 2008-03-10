@@ -1,20 +1,5 @@
-import getpass
-
-from wiki import GraphingWiki, AuthorizationRequired
-from meta import Meta, Integer
-
-class CLIWiki(GraphingWiki):
-    def request(self, name, *args):
-        while True:
-            try:
-                result = GraphingWiki.request(self, name, *args)
-            except AuthorizationRequired:
-                username = raw_input("Username:")
-                password = getpass.getpass("Password:")
-
-                self.setCredentials(username, password)
-            else:
-                return result
+from wiki import CLIWiki
+from meta import Meta
 
 def main():
     import os

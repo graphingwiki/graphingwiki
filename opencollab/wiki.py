@@ -6,6 +6,7 @@ import httplib
 import re
 import md5
 import random
+import getpass
 
 from transport import CustomTransport
 from meta import Meta
@@ -234,3 +235,20 @@ class GraphingWiki(object):
         return self.request("SetMeta", page, keys, metaMode,
                             createPageOnDemand, categoryMode, categories,
                             template)
+
+class CLIWiki(GraphingWiki):
+    # A version of the GraphingWiki class intended for command line
+    # usage. Automatically asks username and password should the wiki
+    # need it.
+
+    def request(self, name, *args):
+        while True:
+            try:
+                result = GraphingWiki.request(self, name, *args)
+            except AuthorizationRequired:
+                username = raw_input("Username:")
+                password = getpass.getpass("Password:")
+
+                self.setCredentials(username, password)
+            else:
+                return result
