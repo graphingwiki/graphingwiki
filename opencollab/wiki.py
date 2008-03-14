@@ -223,7 +223,7 @@ class GraphingWiki(object):
 
         return pages
 
-    def setMeta(self, page, meta, replace=False, template=None):
+    def setMeta(self, page, meta, replace=False, template=""):
         if replace:
             metaMode, categoryMode = "repl", "set"
         else:
