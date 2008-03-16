@@ -21,7 +21,7 @@ class WikiFailure(Exception):
 class AuthorizationRequired(WikiFailure):
     pass
 
-LINK_REX = re.compile("\[\"(.*)\"\]")
+LINK_REX = re.compile("\[[\"|'](.*)[\"|']\]")
 
 def unquote(string):
     string = urllib.unquote(string)
