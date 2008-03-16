@@ -63,7 +63,7 @@ class MetaKey(object):
             return item
 
         if not args:
-            raise
+            raise ValueError, "no values for the meta key"
         return args[0]
 
     def __iter__(self):
