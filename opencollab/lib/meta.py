@@ -77,6 +77,11 @@ class MetaKey(object):
 
     def __repr__(self):
         return repr(list(self))
+    
+    def __eq__(self, other):
+        if not isinstance(other, MetaKey):
+            return NotImplemented
+        return self.set == other.set
 
 class Meta(UserDict.DictMixin):
     def __init__(self):
