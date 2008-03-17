@@ -106,3 +106,6 @@ class Meta(UserDict.DictMixin):
         if value:
             return True
         return False
+
+    def has_key(self, key):
+        return key in self
