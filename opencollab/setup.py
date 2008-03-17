@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-setup(name='opencollab', version='355',
+setup(name='opencollab', version='341',
       author='Joachim Viide',
       author_email='contact@clarifiednetworks.com',
       description='OpenCollab XML-RPC SDK',
