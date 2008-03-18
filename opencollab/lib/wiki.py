@@ -67,7 +67,7 @@ class GraphingWiki(object):
         scheme, netloc, path, _, _, _ = urlparse.urlparse(self.url)
 
         if scheme.lower() == "https":
-            transport = CustomTransport(CustomTransport.HTTPS, self.opts)
+            transport = CustomTransport(CustomTransport.HTTPS, **self.opts)
             if None not in (self.username, self.password):
                 netloc = "%s:%s@%s" % (urlQuote(self.username), 
                                        urlQuote(self.password), 

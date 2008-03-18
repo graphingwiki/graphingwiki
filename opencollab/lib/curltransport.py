@@ -57,6 +57,11 @@ class CURLTransport(xmlrpclib.Transport):
                 host + handler,
                 v[0], v[1], None
                 )
+        if self.c.getinfo(pycurl.HTTP_CODE) != 200:
+            raise xmlrpclib.ProtocolError(
+                host + handler,
+                self.c.getinfo(pycurl.HTTP_CODE), "Error", None
+                )
         b.seek(0)
         return self.parse_response(b)
 
