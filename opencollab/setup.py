@@ -7,5 +7,5 @@ setup(name='opencollab', version='341',
       packages=['opencollab'],
       package_dir={'opencollab': 'lib'},
       package_data={'': ['lib/*.py']},
-      scripts=['scripts/example-uploader.py'])
+      scripts=['scripts/opencollab-uploader'])
 

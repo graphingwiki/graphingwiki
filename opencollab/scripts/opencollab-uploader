@@ -1,5 +1,6 @@
-from wiki import CLIWiki
-from meta import Meta
+#!/bin/env python
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Meta
 
 import os
 import sys
