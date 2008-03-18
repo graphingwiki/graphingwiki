@@ -251,9 +251,14 @@ class CLIWiki(GraphingWiki):
             try:
                 result = GraphingWiki.request(self, name, *args)
             except AuthorizationRequired:
+                # Redirecting stdout to stderr for these queries
+                old_stdout = sys.stdout
+                sys.stdout = sys.stderr
+
                 username = raw_input("Username:")
                 password = getpass.getpass("Password:")
 
+                sys.stdout = old_stdout
                 self.setCredentials(username, password)
             else:
                 return result
