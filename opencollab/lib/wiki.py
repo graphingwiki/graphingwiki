@@ -5,6 +5,7 @@ import socket
 import httplib
 import re
 import md5
+import sys
 import random
 import getpass
 
