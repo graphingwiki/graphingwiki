@@ -32,12 +32,21 @@ def main():
     wiki = CLIWiki(url)
 
     if options.recursive:
+        filelist = list()
+
         for root, dirs, files in os.walk(path):
             for file in files:
                 filename = os.path.join(root, file)
-                wikiname = quote(filename, safe="")
-                sys.stdout.write("Uploading %s as %s\n" % (filename, wikiname)) 
-                uploadFile(wiki, page, wikiname, filename)
+                wikiname = filename[len(os.path.dirname(path)):].lstrip("/")
+                wikiname = quote(wikiname, safe="")
+                filelist.append((filename, wikiname))
+
+        total = len(filelist)
+        n = 1
+        for filename, wikiname in filelist:
+            sys.stdout.write("%d/%d uploading %s as %s\n" % (n, total, filename, wikiname)) 
+            uploadFile(wiki, page, wikiname, filename)
+            n += 1 
 
         sys.exit()
 
@@ -51,17 +60,17 @@ def main():
 def uploadFile(wiki, page, filename, path):
     file = open(path, "rb")
     
-    sys.stdout.write("\rconnecting & precalculating chunks...")
+    sys.stdout.write("connecting & precalculating chunks...\n")
     sys.stdout.flush()
 
     for current, total in wiki.putAttachmentChunked(page, filename, file):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
 
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
         sys.stdout.flush()
 
-    sys.stdout.write("\ndone\n")
+    sys.stdout.write("done\n")
     sys.stdout.flush()
 
     file.close()
