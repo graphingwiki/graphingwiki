@@ -6,15 +6,15 @@
 # We should ignore SIGPIPE when using pycurl.NOSIGNAL - see
 # the libcurl tutorial for more info.
 try:
-    import signal
-    from signal import SIGPIPE, SIG_IGN
-    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+     import signal
+     from signal import SIGPIPE, SIG_IGN
+     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 except ImportError:
-    pass
+     pass
 try:
-    from cStringIO import StringIO
+     from cStringIO import StringIO
 except ImportError:
-    from StringIO import StringIO
+     from StringIO import StringIO
 import xmlrpclib, pycurl
 
 class CURLTransport(xmlrpclib.Transport):
@@ -23,8 +23,8 @@ class CURLTransport(xmlrpclib.Transport):
     xmlrpc_h = [ "Content-Type: text/xml" ]
     HTTP = 0
     HTTPS = 1
-    
-    def __init__(self, scheme=HTTP, **kw):
+   
+    def __init__(self, scheme=HTTP, sslPeerVerify=False):
         # Python 2.4 version of xmlrpclib.Transport of doesn't have
         # the __init__ method, whereas python 2.5 version does.
         if hasattr(xmlrpclib.Transport, "__init__"):
@@ -39,7 +39,7 @@ class CURLTransport(xmlrpclib.Transport):
         self.c.setopt(pycurl.NOSIGNAL, 1)
         self.c.setopt(pycurl.CONNECTTIMEOUT, 30)
         if scheme == self.HTTPS:
-          self.c.setopt(pycurl.SSL_VERIFYPEER, kw.get("sslpeerverify", True))
+            self.c.setopt(pycurl.SSL_VERIFYPEER, sslPeerVerify)
         self.c.setopt(pycurl.HTTPHEADER, self.xmlrpc_h)
         self._use_datetime = False
 
@@ -51,12 +51,10 @@ class CURLTransport(xmlrpclib.Transport):
         self.c.setopt(pycurl.VERBOSE, verbose)
         self.verbose = verbose
         try:
-           self.c.perform()
+            self.c.perform()
         except pycurl.error, v:
-            raise xmlrpclib.ProtocolError(
-                host + handler,
-                v[0], v[1], None
-                )
+            raise xmlrpclib.ProtocolError(host + handler, v[0], v[1], None)
+
         if self.c.getinfo(pycurl.HTTP_CODE) != 200:
             raise xmlrpclib.ProtocolError(
                 host + handler,
@@ -64,13 +62,3 @@ class CURLTransport(xmlrpclib.Transport):
                 )
         b.seek(0)
         return self.parse_response(b)
-
-
-if __name__ == "__main__":
-    ## Test
-    server = xmlrpclib.ServerProxy("http://wiki.cabal.fi/?action=xmlrpc2",
-                                   transport=CURLTransport())
-    try:
-        print server.GetMeta("FrontPage", False)
-    except xmlrpclib.Error, v:
-        print "ERROR", v

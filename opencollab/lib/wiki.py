@@ -9,12 +9,12 @@ import sys
 import random
 import getpass
 
-try:
-  from curltransport import CURLTransport as CustomTransport
-except ImportError:
-  from transport import CustomTransport
-
 from meta import Meta
+
+try:
+    from curltransport import CURLTransport as CustomTransport
+except ImportError:
+    from transport import CustomTransport
 
 class WikiFailure(Exception):
     pass
@@ -22,7 +22,8 @@ class WikiFailure(Exception):
 class AuthorizationRequired(WikiFailure):
     pass
 
-LINK_REX = re.compile("\[[\"|'](.*)[\"|']\]")
+DEFAULT_CHUNK = 256 * 1024
+LINK_REX = re.compile("\[[\"'](.*)[\"']\]")
 
 def unquote(string):
     string = urllib.unquote(string)
@@ -47,13 +48,13 @@ def mangleFaultString(faultString):
     message = "There was an error in the wiki side (%s)" % faultString
     return message
 
-DEFAULT_CHUNK = 256 * 1024
-
 class GraphingWiki(object):
-    def __init__(self, url, **kw):
+    def __init__(self, url, username=None, password=None, sslPeerVerify=False):
+        object.__init__(self)
+
         self.url = urlQuote(url)
-        self.opts=kw
-        self.setCredentials(kw.get('username',None), kw.get('password',None))
+        self.sslPeerVerify = sslPeerVerify
+        self.setCredentials(username, password)
 
     def setCredentials(self, username, password):
         self.username = username
@@ -68,7 +69,8 @@ class GraphingWiki(object):
         scheme, netloc, path, _, _, _ = urlparse.urlparse(self.url)
 
         if scheme.lower() == "https":
-            transport = CustomTransport(CustomTransport.HTTPS, **self.opts)
+            transport = CustomTransport(CustomTransport.HTTPS,
+                                        sslPeerVerify=self.sslPeerVerify)
             if None not in (self.username, self.password):
                 netloc = "%s:%s@%s" % (urlQuote(self.username), 
                                        urlQuote(self.password), 
@@ -253,13 +255,13 @@ class CLIWiki(GraphingWiki):
                 result = GraphingWiki.request(self, name, *args)
             except AuthorizationRequired:
                 # Redirecting stdout to stderr for these queries
-                old_stdout = sys.stdout
+                oldStdout = sys.stdout
                 sys.stdout = sys.stderr
 
                 username = raw_input("Username:")
                 password = getpass.getpass("Password:")
 
-                sys.stdout = old_stdout
+                sys.stdout = oldStdout
                 self.setCredentials(username, password)
             else:
                 return result

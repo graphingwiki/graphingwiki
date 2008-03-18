@@ -8,7 +8,11 @@ class CustomTransport(xmlrpclib.Transport):
     HTTP = 0
     HTTPS = 1
 
-    def __init__(self, scheme=HTTP, **kw):
+    def __init__(self, scheme=HTTP, sslPeerVerify=False):
+        if sslPeerVerify:
+            error = "%s can not do SSL peer verification" % self.__class__
+            raise ValueError, error
+
         # Python 2.4 version of xmlrpclib.Transport of doesn't have
         # the __init__ method, whereas python 2.5 version does.
         if hasattr(xmlrpclib.Transport, "__init__"):
