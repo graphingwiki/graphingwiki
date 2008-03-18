@@ -49,9 +49,10 @@ def mangleFaultString(faultString):
 DEFAULT_CHUNK = 256 * 1024
 
 class GraphingWiki(object):
-    def __init__(self, url, username=None, password=None):
+    def __init__(self, url, **kw):
         self.url = urlQuote(url)
-        self.setCredentials(username, password)
+        self.opts=kw
+        self.setCredentials(kw.get('username',None), kw.get('password',None))
 
     def setCredentials(self, username, password):
         self.username = username
@@ -66,7 +67,7 @@ class GraphingWiki(object):
         scheme, netloc, path, _, _, _ = urlparse.urlparse(self.url)
 
         if scheme.lower() == "https":
-            transport = CustomTransport(CustomTransport.HTTPS)
+            transport = CustomTransport(CustomTransport.HTTPS, self.opts)
             if None not in (self.username, self.password):
                 netloc = "%s:%s@%s" % (urlQuote(self.username), 
                                        urlQuote(self.password), 

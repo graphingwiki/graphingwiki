@@ -24,7 +24,7 @@ class CURLTransport(xmlrpclib.Transport):
     HTTP = 0
     HTTPS = 1
     
-    def __init__(self, scheme=HTTP, verifypeer=True):
+    def __init__(self, scheme=HTTP, **kw):
         # Python 2.4 version of xmlrpclib.Transport of doesn't have
         # the __init__ method, whereas python 2.5 version does.
         if hasattr(xmlrpclib.Transport, "__init__"):
@@ -39,7 +39,7 @@ class CURLTransport(xmlrpclib.Transport):
         self.c.setopt(pycurl.NOSIGNAL, 1)
         self.c.setopt(pycurl.CONNECTTIMEOUT, 30)
         if scheme == self.HTTPS:
-          self.c.setopt(pycurl.SSL_VERIFYPEER, verifypeer)
+          self.c.setopt(pycurl.SSL_VERIFYPEER, kw.get("sslpeerverify", True))
         self.c.setopt(pycurl.HTTPHEADER, self.xmlrpc_h)
         self._use_datetime = False
 
