@@ -1,10 +1,13 @@
 from wiki import CLIWiki
 from meta import Meta
 
+import os
+import sys
+import optparse
+
+from urllib import quote
+
 def main():
-    import os
-    import sys
-    import optparse
 
     parser = optparse.OptionParser()
     parser.add_option("-o", "--output",
@@ -12,6 +15,10 @@ def main():
                       default=None,
                       metavar="OUTPUT",
                       help="save the file to name OUTPUT in the wiki")
+    parser.add_option("-r", "--recursive",
+                      action="store_true",
+                      dest="recursive",
+                      help="recursivly upload files")
 
     parser.set_usage("%prog [options] WIKIURL PAGENAME FILENAME")
 
@@ -21,13 +28,27 @@ def main():
 
     url, page, path = args
 
+    wiki = CLIWiki(url)
+
+    if options.recursive:
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                filename = os.path.join(root, file)
+                wikiname = quote(filename, safe="")
+                sys.stdout.write("Uploading %s as %s\n" % (filename, wikiname)) 
+                uploadFile(wiki, page, wikiname, filename)
+
+        sys.exit()
+
     if options.output is None:
         _, filename = os.path.split(path)
     else:
         filename = options.output
 
+    uploadFile(wiki, page, filename, path)
+
+def uploadFile(wiki, page, filename, path):
     file = open(path, "rb")
-    wiki = CLIWiki(url)
     
     sys.stdout.write("\rconnecting & precalculating chunks...")
     sys.stdout.flush()
