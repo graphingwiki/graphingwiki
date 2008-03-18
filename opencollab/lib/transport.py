@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
 import xmlrpclib
 import httplib
 

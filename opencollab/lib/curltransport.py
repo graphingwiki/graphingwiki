@@ -1,8 +1,12 @@
-#! /usr/bin/env python
-# -*- coding: iso-8859-1 -*-
-# vi:ts=4:et
-# $Id: xmlrpc_curl.py,v 1.13 2007/03/04 19:26:59 kjetilja Exp $
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
+    Based on a pycurl example obtained from http://pycurl.sourceforge.net/,
+    which is LGPLv2.1+.
+ """
+# vi:ts=4:et
 # We should ignore SIGPIPE when using pycurl.NOSIGNAL - see
 # the libcurl tutorial for more info.
 try:
