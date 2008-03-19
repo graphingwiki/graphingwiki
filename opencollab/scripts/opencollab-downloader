@@ -1,0 +1,71 @@
+#!/bin/env python
+import os
+import sys
+import optparse
+
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Meta
+from urllib import unquote
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option("-o", "--output",
+                      dest="output",
+                      default=None,
+                      metavar="OUTPUT",
+                      help="save the file to name OUTPUT in the wiki")
+
+    parser.set_usage("%prog [options] WIKIURL PAGENAME")
+    options, args = parser.parse_args()
+    if len(args) != 2:
+        parser.error("wiki url and pagename have to be defined")
+
+    url, page = args
+    wiki = CLIWiki(url)
+
+    if options.output is None:
+        basePath = os.getcwd()
+    else:
+        basePath = options.output
+
+    print "Connecting to wiki..."
+    for attachment in wiki.listAttachments(page):
+        downloadFile(wiki, page, attachment, basePath)
+
+def downloadFile(wiki, page, quotedFile, basePath):
+    # Canonize the file path
+    filePath = unquote(quotedFile)
+    filePath = os.path.abspath(filePath)
+
+    # Canonize the base path
+    basePath = os.path.abspath(basePath)
+
+    # Check that the file path starts with the base path
+    directory, _ = os.path.split(filePath)
+    directory = os.path.join(directory, "")
+    basePath = os.path.join(basePath, "")
+    if not directory.startswith(basePath):
+        raise IOError("file path '%s' not under the base path" % filePath)
+
+    file = open(filePath, "wb")
+    shortName = filePath[len(basePath):]
+
+    sys.stdout.write("\r%s: starting download..." % shortName)
+    sys.stdout.flush()
+
+    for data, current, total in wiki.getAttachmentChunked(page, quotedFile):
+        percent = 100.0 * current / float(max(total, 1))
+        status = shortName, current, total, percent
+
+        file.write(data)
+
+        sys.stdout.write("\r%s: downloaded %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.flush()
+
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+    file.close()
+
+if __name__ == "__main__":
+    main()
