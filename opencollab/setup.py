@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 from distutils.core import setup
 
-setup(name='opencollab', version='351',
+setup(name='opencollab', version='355',
       author='Joachim Viide, Pekka Pietikäinen, Mika Seppänen',
       author_email='contact@clarifiednetworks.com',
       description='OpenCollab XML-RPC SDK',
       packages=['opencollab'],
       package_dir={'opencollab': 'lib'},
       package_data={'': ['lib/*.py']},
-      scripts=['scripts/opencollab-uploader'])
+      scripts=['scripts/opencollab-uploader', 
+        'scripts/opencollab-push-tickets'])
 
