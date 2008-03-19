@@ -34,10 +34,11 @@ def main():
         basePath = options.output
 
     print "Connecting to wiki..."
-    for attachment in wiki.listAttachments(page):
-        downloadFile(wiki, page, attachment, basePath)
+    attachments = wiki.listAttachments(page)
+    for num, attachment in enumerate(attachments):
+        downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
 
-def downloadFile(wiki, page, quotedFile, basePath):
+def downloadFile(wiki, page, quotedFile, basePath, num, count):
     # Canonize the file path
     filePath = unquote(quotedFile)
     filePath = os.path.abspath(filePath)
@@ -52,19 +53,23 @@ def downloadFile(wiki, page, quotedFile, basePath):
     if not directory.startswith(basePath):
         raise IOError("file path '%s' not under the base path" % filePath)
 
-    file = open(filePath, "wb")
-    shortName = filePath[len(basePath):]
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    sys.stdout.write("\r%s: starting download..." % shortName)
+    file = open(filePath, "wb")
+
+    shortName = filePath[len(basePath):]
+    sys.stdout.write("%d/%d downloading %s\n" % (num, count, shortName))
+    sys.stdout.write("\rstarting download...")
     sys.stdout.flush()
 
     for data, current, total in wiki.getAttachmentChunked(page, quotedFile):
         percent = 100.0 * current / float(max(total, 1))
-        status = shortName, current, total, percent
+        status = current, total, percent
 
         file.write(data)
 
-        sys.stdout.write("\r%s: downloaded %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
         sys.stdout.flush()
 
     sys.stdout.write("\n")
