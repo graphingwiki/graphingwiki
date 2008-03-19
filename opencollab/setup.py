@@ -9,5 +9,6 @@ setup(name='opencollab', version='355',
       package_dir={'opencollab': 'lib'},
       package_data={'': ['lib/*.py']},
       scripts=['scripts/opencollab-uploader', 
+        'scripts/opencollab-downloader',
         'scripts/opencollab-push-tickets'])
 
