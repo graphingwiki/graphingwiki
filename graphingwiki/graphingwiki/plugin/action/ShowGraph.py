@@ -1590,7 +1590,6 @@ class GraphShower(object):
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
         #print "Traverse over"
         cl.stop('traverse')
-
         
         if gv_found:
             cl.start('layout')

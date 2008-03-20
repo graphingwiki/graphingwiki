@@ -110,6 +110,7 @@ def execute(pagename, request):
             editor = PageEditor(newreq, template_page)
             editor.user = newreq.user
             text = editor.get_raw_body()
+            editor.page_name = pagename
             newreq.page._raw_body = editor._expand_variables(text)
             newreq.page.exists = lambda **kw: True
             newreq.page.lastEditInfo = lambda: {}
