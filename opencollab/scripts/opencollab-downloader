@@ -6,6 +6,7 @@
 """
 import os
 import sys
+import md5
 import optparse
 
 from opencollab.wiki import CLIWiki
@@ -38,6 +39,33 @@ def main():
     for num, attachment in enumerate(attachments):
         downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
 
+def fileExists(wiki, attachment, filename, digest, size, chunkSize=1024*1024):
+    if not os.path.exists(filename):
+        return False
+
+    digest, size = wiki.getAttachmentInfo(attachment)
+    opened = open(filename, "rb")
+    hashed = md5.new()
+    total = 0
+
+    while True:
+        data = opened.read(chunkSize)
+        if not data:
+            break
+
+        total += len(data)
+        hashed.update(data)
+
+    opened.close()
+    
+    if total != size:
+        return False
+
+    if hashed.hexdigest() != digest:
+        return False
+
+    return True
+
 def downloadFile(wiki, page, quotedFile, basePath, num, count):
     # Canonize the file path
     filePath = unquote(quotedFile)
@@ -53,12 +81,18 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     if not directory.startswith(basePath):
         raise IOError("file path '%s' not under the base path" % filePath)
 
+    shortName = filePath[len(basePath):]
+
+    # Check whether the file actually already exists
+    if fileExists(wiki, quotedFile, filePath, digest, size):
+        status = num, count, shortName
+        sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
+        sys.stdout.flush()
+        return
+
     if not os.path.exists(directory):
         os.makedirs(directory)
-
     file = open(filePath, "wb")
-
-    shortName = filePath[len(basePath):]
     sys.stdout.write("%d/%d downloading %s\n" % (num, count, shortName))
     sys.stdout.write("\rstarting download...")
     sys.stdout.flush()

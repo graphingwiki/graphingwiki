@@ -135,6 +135,9 @@ class GraphingWiki(object):
         result = self.request("AttachFile", page, filename, "load", "", False)
         return str(result)
 
+    def getAttachmentInfo(self, page, filename):
+        return self.request("ChunkedAttachFile", page, filename, "info")
+
     def putAttachmentChunked(self, page, filename, seekableStream, 
                              chunksPerCheck=10, chunkSize=DEFAULT_CHUNK):
         count = 0
@@ -181,7 +184,7 @@ class GraphingWiki(object):
                 yield done, total
                     
     def getAttachmentChunked(self, page, filename, chunkSize=DEFAULT_CHUNK):
-        digest, size = self.request("ChunkedAttachFile", page, filename, "info")
+        digest, size = self.getAttachmentInfo(page, filename)
 
         dataDigest = md5.new()
         current = 0
