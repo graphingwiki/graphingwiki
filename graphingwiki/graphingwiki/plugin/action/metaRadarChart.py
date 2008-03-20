@@ -38,6 +38,7 @@ except ImportError:
     pass
 
 from urllib import unquote as url_unquote
+from urllib import quote as url_quote
 from tempfile import mkstemp
 
 from MoinMoin import config
@@ -168,6 +169,7 @@ def execute(pagename, request):
         values = set()
         for key in metakeys:
             for val in data[key]:
+                val = url_unquote(val)
                 # Opportunistic parsing of values
                 values.add(ordervalue(val))
     else:
@@ -206,6 +208,8 @@ def execute(pagename, request):
             val = val.pop()
             # Opportunistic parsing of values
             val = ordervalue(val)
+            if isinstance(val, basestring):
+                val = url_unquote(val)
             radius = values.index(val)
         else:
             # If no values exist, it's in the bottom

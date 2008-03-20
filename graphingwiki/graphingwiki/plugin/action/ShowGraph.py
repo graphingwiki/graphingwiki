@@ -90,6 +90,25 @@ Content-Transfer-Encoding: base64
 
 msie_end = "\n--partboundary--\n\n"
 
+def get_interwikilist(request):
+    # request.cfg._interwiki_list is gathered by wikiutil
+    # the first time resolve_wiki is called
+    _interwiki_list = wikiutil.load_wikimap(request)
+
+    iwlist = {}
+    selfname = get_selfname(request)
+
+    # Add interwikinames to namespaces
+    for iw in _interwiki_list:
+        iw_url = _interwiki_list[iw]
+        if iw_url.startswith('/'):
+            if iw != selfname:
+                continue
+            iw_url = get_wikiurl(request)
+        iwlist[iw] = iw_url
+
+    return iwlist
+
 def get_selfname(request):
     if request.cfg.interwikiname:
         return request.cfg.interwikiname
@@ -1594,7 +1613,7 @@ class GraphShower(object):
                      self.urladd.replace('&inline=Inline', '')
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
-            self.request.write('[[InlineGraph(%s)]]' % urladd)
+            self.request.write('<<InlineGraph(%s)>>' % urladd)
         elif self.format in ['svg', 'dot', 'png']:
             if not gv_found:
                 self.sendForm()

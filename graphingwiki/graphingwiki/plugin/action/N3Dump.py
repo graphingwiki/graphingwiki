@@ -34,7 +34,7 @@ from urllib import unquote as url_unquote
 
 from MoinMoin import config
 
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import GraphData, debug
 
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 
@@ -53,15 +53,15 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
 
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
-        linktype = getattr(edgegraph, 'linktype', 'Link')
-        if not isinstance(linktype, unicode):
-            linktype = unicode(linktype, config.charset)
-        if not isinstance(edge[1], unicode):
-            dst = unicode(edge[1], config.charset)
-        else:
-            dst = edge[1]
-        out = out + formatfunc(selfname,
-                               (edge[0], linktype, dst))
+        for linktype in getattr(edgegraph, 'linktype', 'Link'):
+            if not isinstance(linktype, unicode):
+                linktype = unicode(linktype, config.charset)
+            if not isinstance(edge[1], unicode):
+                dst = unicode(edge[1], config.charset)
+            else:
+                dst = edge[1]
+            out = out + formatfunc(selfname,
+                                   (edge[0], linktype, dst))
 
     return out
 
@@ -158,7 +158,7 @@ def n3dump(request, pages):
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
 """
 
-    for iw, iw_url in get_interwikilist(request):
+    for iw, iw_url in get_interwikilist(request).items():
         outstr = (outstr + '@prefix '+ iw + ': <' + 
                   iw_url + '> .' + "\n")
 

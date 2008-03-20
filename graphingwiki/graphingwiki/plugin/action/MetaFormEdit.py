@@ -20,7 +20,7 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import GraphData, encode, actionname
+from graphingwiki.patterns import GraphData, encode, actionname, debug
 
 from savegraphdata import parse_text
 
@@ -38,14 +38,13 @@ class FormPage(Page):
 
     # It's important not to cache this, as the wiki thinks we are
     # using the default parser
-    def send_page_content(self, request, Parser, body, format_args='',
-                          do_cache=0, **kw):
-        parser = wikiutil.importPlugin(request.cfg, "parser",
-                                       'wiki_form', "Parser")
+    def send_page_content(self, request, body, format='wiki_form', 
+                          do_cache=0, format_args='', **kw):
 
         kw['format_args'] = format_args
         kw['do_cache'] = 0
-        apply(Page.send_page_content, (self, request, parser, body), kw)
+        
+        apply(Page.send_page_content, (self, request, body, 'wiki_form'), kw)
 
 def htmlquote(s):
     return cgi.escape(s, 1)
@@ -60,7 +59,7 @@ def wr(fmt, *args):
     return fmt % args
 
 def execute(pagename, request):
-    request.http_headers()
+    #request.http_headers()
     _ = request.getText
 
     formpage = '../' * pagename.count('/') + urlquote(pagename)
@@ -110,7 +109,8 @@ def execute(pagename, request):
             editor = PageEditor(newreq, template_page)
             editor.user = newreq.user
             text = editor.get_raw_body()
-            newreq.page._raw_body = editor._expand_variables(text)
+            editor.page_name = pagename
+            newreq.page.body = editor._expand_variables(text)
             newreq.page.exists = lambda **kw: True
             newreq.page.lastEditInfo = lambda: {}
             newpage = True
@@ -131,7 +131,7 @@ def execute(pagename, request):
     # page is not sent as it is
     out = StringIO.StringIO()
     newreq.redirect(out)
-    newreq.page.send_page(newreq)
+    newreq.page.send_page()
     newreq.redirect()
 
     graphdata = GraphData(newreq)
@@ -141,7 +141,7 @@ def execute(pagename, request):
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
-        data, g = parse_text(newreq, {}, newreq.page, newreq.page._raw_body)
+        data, g = parse_text(newreq, {}, newreq.page, newreq.page.body)
         for page in data:
             for key in data[page].get('meta', {}):
                 for val in data[page]['meta'][key]:
@@ -158,7 +158,9 @@ def execute(pagename, request):
         pagekey, val = mo.groups()
 
         msg = ''
-        key = url_quote(encode(pagekey.split('!')[1]))
+        key = pagekey.split('!')[1]
+        key = ':'.join(url_quote(encode(x)) for x in key.split(':'))
+
         # Placeholder key key
         if key in vals_on_keys:
             msg = '<select name="%s">' % (pagekey)

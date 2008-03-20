@@ -35,7 +35,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode, debug
 
 cairo_found = True
 try:

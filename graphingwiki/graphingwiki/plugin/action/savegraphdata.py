@@ -328,6 +328,8 @@ def parse_text(request, globaldata, page, text):
                 hit = item[0]
             elif type == 'category':
                 # print "adding cat",item
+                dnode = item
+                hit = item
                 add_category(globaldata, pagegraph, snode, item)
             elif type == 'meta':
                 add_meta(globaldata, pagenode, quotedname, 
