@@ -70,11 +70,12 @@ def execute(macro, args):
         text = revpage.get_raw_body()
         alldata, pagegraph = parse_text(request, alldata, revpage, text)
         revlink = '%s?action=recall&rev=%d' % (encode(pagename), rev)
-        alldata[revlink] = alldata[quotedname]
-        # So that new values are appended rather than overwritten
-        del alldata[quotedname]
-        alldata[revlink]['meta']['#rev'] = [str(rev)]
-        revisions[rev] = revlink
+        if alldata.has_key(quotedname):
+            alldata[revlink] = alldata[quotedname]
+            # So that new values are appended rather than overwritten
+            del alldata[quotedname]
+            alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
+            revisions[rev] = revlink
 
     class GraphData(object):
         def __init__(self, globaldata):
