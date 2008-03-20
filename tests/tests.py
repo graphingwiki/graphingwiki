@@ -32,33 +32,52 @@ class GwikiTests(unittest.TestCase):
 class TestSetMeta(GwikiTests):
     '''Tests for SetMeta(...) call.'''
 
-    def testAdd1(self):
-        metaKey = "testiMetaData"
-        metaData = ["desdi dadaa"]
-        server.SetMeta(self.pageName, {metaKey: metaData}, 'add')
+    def setUp(self):
+        GwikiTests.setUp(self)
+        self.metaKey = "testiMeta"   # Default metaKey to use in tests.
+                                     # Might be overwritten per test case.
+        self.metaData = ["dumdidaa"] # Default metaData to use in tests.
+
+    def tearDown(self):
+        '''Tear down.. Check the metadata from page and fail if not found.'''
         res = server.getPage(self.pageName)
-        findMeta = re.compile(r"\s*%s:: %s" % (metaKey, metaData.pop()))
-        self.assert_(findMeta)
+        findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, self.metaData.pop()))
+        self.assert_(findMeta.search(res))
+        GwikiTests.tearDown(self)
+
+    def testAdd1(self):
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
 
     def testAdd2(self):
-        server.SetMeta(self.pageName, {'testMeta': ["desdi", "dadaa"]}, 'add')
+        self.metaData = ["desdi", "dadaa"]
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
+
+    def testAdd3(self):
+        self.metaKey = "testi foo"
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
 
     def testReplace1(self):
-        server.SetMeta(self.pageName, {'testMeta': ['456']}, 'replace')
+        self.metaData = ["desdi", "dadaa"]
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
 
     def testReplace2(self):
-        server.SetMeta(self.pageName, {'testMeta': ['456']}, 'add')
-        server.SetMeta(self.pageName, {'testMeta': ['123']}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'add')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
 
     def testReplace3(self):
-        server.SetMeta(self.pageName, {'testMeta': ['456']}, 'replace')
-        server.SetMeta(self.pageName, {'testMeta': ['123']}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+
+    def testReplace4(self):
+        self.metaKey = "testi foo"
+        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
 
     def testAddCategories1(self):
-        server.SetMeta(self.pageName, {}, 'add', False, 'add', ['CategoryUnitTest'])
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', False, 'add', ['CategoryUnitTest'])
 
     def testAddCategories2(self):
-        server.SetMeta(self.pageName, {}, 'add', True, 'add', ['CategoryUnitTest'])
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', True, 'add', ['CategoryUnitTest'])
 
 
 class TestGetMeta(GwikiTests):
@@ -107,16 +126,21 @@ class TestDeletePage(unittest.TestCase):
 
 
 # class TestRandomPages(unittest.TestCase):
-#     def testAddPage(self):
-#         from random import randrange
-#         def rStr(l): return "".join([chr(randrange(256)) for i in range(randrange(1,l+1))])
-#         pageName = rStr(256)
-#         try:
-#             server.putPage(pageName, rStr(65535))
-#             server.getPage(pageName)
-#         except Error, v:
-#             return
+#     def setUp(self):
+#         self.pageName = rStr(16) # A magic number
+#         self.pageCont = rStr(65535) # Another magic number
 
+#     def testAddPage(self):
+#         try:
+#             server.putPage(self.pageName, self.pageCont)
+#             server.getPage(self.pageName)
+#             # server.DeletePage(self.pageName)
+#         except Error, v:
+#             self.fail(v)
+
+# def rStr(l):
+#     from random import randrange
+#     return "".join([chr(randrange(256)) for i in range(randrange(1,l+1))])
 
 if __name__ == '__main__':
     unittest.main()
