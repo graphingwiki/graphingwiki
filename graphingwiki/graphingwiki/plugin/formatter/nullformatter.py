@@ -1,38 +1,15 @@
-# -*- coding: iso-8859-1 -*-
-"""
-    MoinMoin - pagelinks Formatter
-
-    @copyright: 2005 Nir Soffer <nirs@freeshell.org>
-    @license: GNU GPL, see COPYING for details.
-"""
+# -*- coding: utf-8 -*-
 
 from MoinMoin.formatter import FormatterBase
 
 class Formatter(FormatterBase):
-    """ Collect pagelinks and format nothing :-) """
+    """ Collect text (metadata text values) and format nothing :-) """
     def __init__(self, request, **kw):
-        self.linkstorage = None
-        self.textstorage = None
-        self.definitions = [] 
-        self.curdef = None
+        self.textstorage = ''
         FormatterBase.__init__(self, request, **kw)
     
-    def pagelink(self, on, pagename='', page=None, **kw):
-        if on and not self.curdef:
-            self.pagelinks.append(pagename)
-        self.linkstorage = pagename
-        return self.null()
-
-    def definition_desc(self, *args, **kw):
-        if self.curdef:
-            if self.linkstorage:
-                self.definitions.append((self.curdef, "link", self.linkstorage.strip()))
-            elif self.textstorage:
-                self.definitions.append((self.curdef, "text", self.textstorage.strip()))
-        return self.null()
-
     def text(self, *args, **kw):
-        self.textstorage = args[0]
+        self.textstorage += args[0]
         return self.null()
         
     def null(self, *args, **kw):
@@ -49,4 +26,5 @@ class Formatter(FormatterBase):
     table_row = table_cell = attachment_link = attachment_image = attachment_drawing = null
     transclusion = transclusion_param = null
     definition_term = definition_list = null
-
+    pagelink = definition_desc = null
+    macro=null
