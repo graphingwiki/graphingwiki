@@ -33,21 +33,21 @@ import cPickle
 import shelve
 from codecs import getencoder
 from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 from time import time
 
 # MoinMoin imports
 from MoinMoin import config
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
 from MoinMoin.util.lock import WriteLock
+from MoinMoin.Page import Page
 
 # graphlib imports
 from graphingwiki import graph
 from graphingwiki.patterns import special_attrs
 
 # Page names cannot contain '//'
-url_re = re.compile(u'^(%s)%%3A//' % (Parser.url_pattern))
+url_re = re.compile(u'^(%s)%%3A//' % (Parser.url_rule))
 
 # We only want to save linkage data releted to pages in this wiki
 # Interwiki links will have ':' in their names (this will not affect
@@ -102,6 +102,7 @@ def shelve_add_out(shelve, (frm, to), linktype, hit):
 def shelve_remove_in(shelve, (frm, to), linktype):
     import sys
 #    sys.stderr.write('Starting to remove in\n')
+    to = encode(to)
     temp = shelve.get(to, {})
     if local_page(to) and temp.has_key('in'):
         for type in linktype:
@@ -193,13 +194,8 @@ def shelve_set_attribute(shelve, node, key, val):
 
     shelve[node] = temp
 
-## Different encoding/quoting functions
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
-def wiki_unquote(str):
-    return url_unquote(str).replace('_', ' ')
+def encode(s):
+    return s.encode(config.charset, 'replace')
 
 # Escape quotes in str, remove existing quotes, add outer quotes.
 def quotedstring(str):
@@ -211,17 +207,6 @@ def quotedstring(str):
 # Quote names with namespace/interwiki (for rdf/n3 use)
 def quotens(str):
     return ':'.join([url_quote(encode(x)) for x in str.split(':')])
-
-def getlinktype(augdata):
-    linktype = ''
-    if len(augdata) > 1:
-        if ':' in augdata[0]:
-            # links with namespace!
-            linktype = quotens(augdata[0])
-        else:
-            # quote all link types
-            linktype = url_quote(augdata[0])
-    return linktype
 
 def add_meta(globaldata, pagenode, quotedname, hit):
     # decode to target charset, grab comma-separated key,val
@@ -245,7 +230,7 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     if key in special_attrs:
         setattr(pagenode, key, val)
         shelve_set_attribute(globaldata, quotedname, key, val)
-        # If color defined¸ set page as filled
+        # If color defined, set page as filled
         if key == 'fillcolor':
             setattr(pagenode, 'style', 'filled')
             shelve_set_attribute(globaldata, quotedname,
@@ -256,98 +241,37 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     node_set_attribute(pagenode, key, val)
     shelve_set_attribute(globaldata, quotedname, key, val)
 
-def parse_link(wikiparse, hit, type):
-    replace = getattr(wikiparse, '_' + type + '_repl')
-    attrs = replace(hit)
-    nodelabel = ''
+def add_category(globaldata, pagegraph, node, category):
+    category=encode(category)
+    pagenode = pagegraph.nodes.get(node)
+    node_set_attribute(pagenode, 'WikiCategory', category)
+    shelve_set_attribute(globaldata, node, 'WikiCategory', category)
 
-    if len(attrs) == 4:
-        # Attachments, eg:
-        # URL   = Page?action=AttachFile&do=get&target=k.txt
-        # name  = Page/k.txt
-        # label = k.txt
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
-        nodelabel = encode(attrs[2])
-    elif len(attrs) == 3:
-        # Local pages
-        # Name of node for local nodes = pagename
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
-        # To prevent subpagenames from sucking
-        if nodeurl.startswith('/'):
-            nodeurl = './' + nodename
-        # Nicer looking labels for nodes
-        unqname = wiki_unquote(nodename)
-        if unqname != nodename:
-            nodelabel = unqname
-    elif len(attrs) == 2:
-        # Name of other nodes = url
-        nodeurl = encode(attrs[0])
-        nodename = url_quote(nodeurl)
-
-        # Change name for different type of interwikilinks
-        if type == 'interwiki':
-            nodename = quotens(hit)
-            nodelabel = nodename
-        elif type == 'url_bracket':
-            # Interwikilink in brackets?
-            iw = re.search(r'\[(?P<iw>.+?)[\] ]',
-                           hit).group('iw')
-
-            if iw.split(":")[0] == 'wiki':
-                iw = iw.split(None, 1)[0]
-                iw = iw[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
-                nodelabel = nodename
-        # Interwikilink turned url?
-        elif type == 'url':
-            if hit.split(":")[0] == 'wiki':
-                iw = hit[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
-                nodelabel = nodename
-    else:
-        # Catch-all
-        return "", "", "", ""
-
-    # augmented links, eg. [:PaGe:Ooh: PaGe]
-    augdata = [x.strip() for x in
-               encode(attrs[-1]).split(': ')]
-
-    linktype = getlinktype(augdata)
-
-    return nodename, nodelabel, nodeurl, linktype
-
-def add_link(globaldata, quotedname, pagegraph, cat_re,
-             nodename, nodelabel, nodeurl, linktype, hit):
-    if cat_re.search(nodename):
-        pagenode = pagegraph.nodes.get(quotedname)
-        node_set_attribute(pagenode, 'WikiCategory', nodename)
-        shelve_set_attribute(globaldata, quotedname,
-                             'WikiCategory', nodename)
-
-    # Add node w/ URL, label if not already added
-    shelve_set_attribute(globaldata, nodename, 'URL', nodeurl)
-    if not pagegraph.nodes.get(nodename):
-        n = pagegraph.nodes.add(nodename)
-        n.URL = nodeurl
-        # Add label, if not already added
-        if nodelabel and not getattr(n, 'label', ''):
-            n.label = nodelabel
-            meta = globaldata.get(nodename, {}).get('meta', {})
+def set_node_params(globaldata, pagegraph, node, url, label):
+    url = encode(url)
+    shelve_set_attribute(globaldata, node, 'URL', url)
+    if not pagegraph.nodes.get(node):
+        n = pagegraph.nodes.add(node)
+        n.URL = url
+        if label and not getattr(n, 'label', ''):
+            n.label = label
+            meta = globaldata.get(node, {}).get('meta', {})
             if not meta.get('label', ''):
-                shelve_set_attribute(globaldata, nodename,
-                                     'label', nodelabel)
+                shelve_set_attribute(globaldata, node, 'label', label)
 
-    edge = [quotedname, nodename]
+def add_link(globaldata, pagegraph, snode, dnode, linktype):
+    snode=encode(snode)
+    dnode=encode(url_quote(dnode))
+    linktype=encode(linktype)
+    
+    # Add node if not already added 
+    if not pagegraph.nodes.get(dnode):
+        pagegraph.nodes.add(dnode)
 
-    # in-links
-    if linktype.endswith('From'):
-        linktype = linktype[:-4]
-        edge.reverse()
+    edge = [snode, dnode]
 
     shelve_add_in(globaldata, edge, linktype)
-    shelve_add_out(globaldata, edge, linktype, hit)
+    shelve_add_out(globaldata, edge, linktype, dnode)
 
     # Add edge if not already added
     e = pagegraph.edges.get(*edge)
@@ -362,64 +286,30 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
     else:
         e.linktype = set([linktype])
 
-
 def parse_text(request, globaldata, page, text):
     pagename = page.page_name
     quotedname = url_quote(encode(pagename))
-
-    # import text_url -formatter
-    try:
-        Formatter = importPlugin(request.cfg, 'formatter',
-                                 'text_url', "Formatter")
-    except:
-        # default to plain text
-        from MoinMoin.formatter.text_plain import Formatter
-
-    urlformatter = Formatter(request)
-
-    # Get formatting rules from Parser/wiki
-    # Regexps used below are also from there
-    wikiparse = Parser(text, request)
-    wikiparse.formatter = urlformatter
-    urlformatter.setPage(page)
-
-    # Category matching regexp
-    cat_re = re.compile(request.cfg.page_category_regex)
-
-    rules = wikiparse.formatting_rules.replace('\n', '|')
-
-    if request.cfg.bang_meta:
-        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
-            'word_rule': wikiparse.word_rule,
-            'rules': rules,
-            }
-
-    # For versions with the deprecated config variable allow_extended_names
-    if not '?P<wikiname_bracket>' in rules:
-        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
-
-    all_re = re.compile(rules, re.UNICODE)
-    eol_re = re.compile(r'\r?\n', re.UNICODE)
-    # end space removed from heading_re, it means '\n' in parser/wiki
-    heading_re = re.compile(r'\s*(?P<hmarker>=+)\s.*\s(?P=hmarker)',
-                            re.UNICODE)
+    
+    from copy import copy
+    newreq = copy(request)
+    newreq.cfg = copy(request.cfg)
+    newreq.page = lcpage = LinkCollectingPage(newreq, pagename)
+    newreq.theme = copy(request.theme)
+    newreq.theme.request = newreq
+    newreq.theme.cfg = newreq.cfg
+    parserclass = importPlugin(request.cfg, "parser",
+                                   'link_collect', "Parser")
+    p = parserclass(lcpage.get_raw_body(), newreq)
+    import MoinMoin.wikiutil as wikiutil
+    myformatter = wikiutil.importPlugin(request.cfg, "formatter",
+                                      'nullformatter', "Formatter")
+    lcpage.formatter = myformatter(newreq)
+    lcpage.formatter.page = lcpage
+    lcpage.format(p)
 
     # These are the match types that really should be noted
-    linktypes = ["wikiname_bracket", "word",
-                  "interwiki", "url", "url_bracket"]
-
-    # Get lines of raw wiki markup
-    lines = eol_re.split(text)
-
-    # status: are we in preprocessed areas?
-    inpre = False
-    pretypes = ["pre", "processor"]
-
-    # status: have we just entered a link with dict,
-    # we should not enter it again
-    dicturl = False
-
-    # Init pagegraph
+    linktypes = ["wikiname_bracket", "word", "interwiki", "url", "url_bracket"]
+    
     pagegraph = graph.Graph()
     pagegraph.charset = config.charset
 
@@ -429,100 +319,35 @@ def parse_text(request, globaldata, page, text):
     pagelabel = encode(pagename)
     shelve_set_attribute(globaldata, quotedname, 'label', pagelabel)
 
-    for line in lines:
-        # Comments not processed
-        if line[0:2] == "##":
-            continue
-        # Headings not processed
-        if heading_re.match(line):
-            continue
-        for match in all_re.finditer(line):
-            for type, hit in match.groupdict().items():
-                #if hit:
-                #    print hit, type
+    snode = quotedname
+    for type, value in p.interesting:
+        dnode = None
+        url = None
+        label = None
+        if type == 'wikilink':
+            dnode=encode(value[0])
+        elif type == 'url':
+            dnode=encode(value[1])
+            url=encode(value[1])
+        elif type == 'interwiki':
+            ret=wikiutil.resolve_interwiki(request,value[0], value[1])
+            dnode=encode("%s:%s" % (value[0],value[1]))
+            label=dnode
+            if ret[3] == False:
+                url=ret[1]+value[1]
+            else:
+                type='wikilink'
+        elif type == 'category':
+            add_category(globaldata, pagegraph, snode, value)
+        if url or label:
+            set_node_params(globaldata, pagegraph, dnode, url, label)
+        if dnode:
+            add_link(globaldata, pagegraph, snode, dnode, type)
 
-                # Skip empty hits
-                if hit is None:
-                    continue
-
-                # We don't want to handle anything inside preformatted
-                if type in pretypes:
-                    inpre = not inpre
-                    #print inpre
-
-                # Handling of MetaData-macro
-                elif type == 'macro' and not inpre:
-                    if hit.startswith('[[MetaData'):
-                        add_meta(globaldata, pagenode, quotedname, hit)
-
-                # Handling of links
-                elif type in linktypes and not inpre:
-                    # If we just came from a dict, which saved a typed
-                    # link, do not save it again
-                    if dicturl:
-                        dicturl = False
-                        continue
-
-                    name, label, url, linktype = parse_link(wikiparse,
-                                                            hit,
-                                                            type)
-
-                    if name:
-                        add_link(globaldata, quotedname, pagegraph, cat_re,
-                                 name, label, url, linktype, hit)
-
-                # Links and metadata defined in a definition list
-                elif type == 'dl' and not inpre:
-                    data = line.split('::')
-                    key, val = data[0], '::'.join(data[1:])
-                    key = key.lstrip()
-
-                    if not key:
-                        continue
-
-                    # Try to find if the value points to a link
-                    matches = all_re.match(val.lstrip())
-                    if matches:
-                        # Take all matches if hit non-empty
-                        # and hit type in linktypes
-                        match = [(type, hit) for type, hit in
-                                 matches.groupdict().iteritems()
-                                 if hit is not None \
-                                 and type in linktypes]
-
-                        # If link, 
-                        if match:
-                            type, hit = match[0]
-
-                            # and nothing but link, save as link
-                            if hit == val.strip():
-
-                                val = val.strip()
-                                name, label, url, \
-                                      linktype = parse_link(wikiparse,\
-                                                            hit, type)
-
-                                # Take linktype from the dict key
-                                linktype = getlinktype([encode(x)
-                                                        for x in key, val])
-
-                                if name:
-                                    add_link(globaldata, quotedname,
-                                             pagegraph, cat_re,
-                                             name, label, url, linktype, hit)
-
-                                    # The val will also be parsed by
-                                    # Moin's link parser -> need to
-                                    # have state in the loop that this
-                                    # link has already been saved
-                                    dicturl = True
-
-                    if dicturl:
-                        continue
-
-                    # If it was not link, save as metadata. 
-                    add_meta(globaldata, pagenode, quotedname,
-                             "[[MetaData(%s,%s)]]" % (key, val))
+    for definition, type, link in lcpage.formatter.definitions:
+        if type == 'link':
+            add_link(globaldata, pagegraph, snode, link, definition)
+    
 
     return globaldata, pagegraph
 
@@ -547,7 +372,6 @@ def execute(pagename, request, text, pagedir, page):
     
     # The global graph data contains all the links, even those that
     # are not immediately available in the page's graphdata pickle
-
     quotedname = url_quote(encode(pagename))
 
     # Page graph file to save detailed data in
@@ -593,3 +417,27 @@ def execute(pagename, request, text, pagedir, page):
     # Remove locks, close shelves
     globaldata.close()
     lock.release()
+
+
+# - code below lifted from MetaFormEdit -
+
+# Override Page.py to change the parser. This method has the advantage
+# that it works regardless of any processing instructions written on
+# page, including the use of other parsers
+class LinkCollectingPage(Page):
+
+    def __init__(self, request, page_name, **keywords):
+        # Cannot use super as the Moin classes are old-style
+        apply(Page.__init__, (self, request, page_name), keywords)
+
+    # It's important not to cache this, as the wiki thinks we are
+    # using the default parser
+    def send_page_content(self, request, notparser, body, format_args='',
+                          do_cache=0, **kw):
+        parser = wikiutil.importPlugin(request.cfg, "parser",
+                                       'link_collect', "Parser")
+
+        kw['format_args'] = format_args
+        kw['do_cache'] = 0
+        apply(Page.send_page_content, (self, request, parser, body), kw)
+

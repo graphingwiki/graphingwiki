@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 """
     gwiki-rehash
@@ -36,7 +36,7 @@ from codecs import getencoder
 from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
-from MoinMoin import request
+from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin import config
 
@@ -102,7 +102,7 @@ for pagename in pages:
     print "Rehashing " + _e(pagename)
     page_enc = _e(pagename)
     # Make a new request for the page, get raw text
-    req = request.RequestCLI(pagename=page_enc)
+    req = RequestCLI(pagename=page_enc)
     p = Page(req, pagename)
     pagedir = p.getPagePath()
     if "underlay/pages" in pagedir:
