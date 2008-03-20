@@ -90,25 +90,6 @@ Content-Transfer-Encoding: base64
 
 msie_end = "\n--partboundary--\n\n"
 
-def get_interwikilist(request):
-    # request.cfg._interwiki_list is gathered by wikiutil
-    # the first time resolve_wiki is called
-    wikiutil.resolve_wiki(request, 'Dummy:Testing')
-
-    iwlist = {}
-    selfname = get_selfname(request)
-
-    # Add interwikinames to namespaces
-    for iw in request.cfg._interwiki_list:
-        iw_url = request.cfg._interwiki_list[iw]
-        if iw_url.startswith('/'):
-            if iw != selfname:
-                continue
-            iw_url = get_wikiurl(request)
-        iwlist[iw] = iw_url
-
-    return iwlist
-
 def get_selfname(request):
     if request.cfg.interwikiname:
         return request.cfg.interwikiname
@@ -580,24 +561,19 @@ class GraphShower(object):
 
             # Shapefiles
             if getattr(obj, 'shapefile', None):
-
                 # Enter file path for attachment shapefiles
-                value = obj.shapefile[11:]
-                components = value.split('/')
-                if len(components) == 1:
-                    page = obj.node
-                else:
-                    page = '/'.join(components[:-1])
-                file = unicode(url_unquote(components[-1]), config.charset)
+                value = obj.shapefile[2:-2]
+                value = value.split('|')[0][11:]
 
-                page = unicode(url_unquote(page), config.charset)
+                page, file = attachment_pagefile(value, obj.node)
+
                 shapefile = AttachFile.getFilename(self.request,
-                                                         page, file)
+                                                   page, file)
 
                 # get attach file path, empty label
                 if os.path.isfile(shapefile):
                     n.shapefile = shapefile
-                    
+                
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
                     # of box shape, so the default peripheries value is 1
@@ -757,6 +733,7 @@ class GraphShower(object):
         # Also fix overlong labels
         for name, in outgraph.nodes.getall():
             node = outgraph.nodes.get(name)
+
             # If local link:
             if node.URL[0] in ['.', '/']:
                 node.URL = self.request.getScriptname() + \
@@ -792,20 +769,20 @@ class GraphShower(object):
     def getURLns(self, link):
         # Find out subpage level to adjust URL:s accordingly
         subrank = self.request.page.page_name.count('/')
-        if not self.interwikilist:
-            self.interwikilist = get_interwikilist(self.request)
-        # Namespaced names
+
         if ':' in link:
             iwname = link.split(':')
-            if self.interwikilist.has_key(iwname[0]):
-                return self.interwikilist[iwname[0]] + iwname[1]
-            else:
-                return '../' * subrank + './InterWiki'
-        # handle categories differently as ordernodes:
-        # they will just direct to the category page
-        if link == 'WikiCategory':
-            return ''
-        return '../' * subrank + './Property' + link
+            wiki, page = iwname
+            iw_url = resolve_iw_url(self.request, wiki, page)
+            if iw_url.startswith('.'):
+                iw_url = '../' * subrank + './InterWiki'
+            return iw_url
+        else:
+            # handle categories differently as ordernodes:
+            # they will just direct to the category page
+            if link == 'WikiCategory':
+                return ''
+            return '../' * subrank + './Property' + link
 
     def orderGraph(self, gr, outgraph):
         # Now it's time to order the nodes
@@ -1412,7 +1389,8 @@ class GraphShower(object):
     def sendMap(self, graphviz):
         mappi = self.getLayoutInFormat(graphviz, 'cmapx')
 
-        self.request.write(unicode(mappi, config.charset) + '\n')
+#        self.request.write(unicode(mappi, config.charset) + '\n')
+        self.request.write(mappi+"\n")
 
     def sendGv(self, gr):
         gvdata = self.getLayoutInFormat(gr.graphviz, 'dot')

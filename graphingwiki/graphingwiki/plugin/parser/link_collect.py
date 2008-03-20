@@ -8,6 +8,7 @@ from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
 from string import rsplit
 
+from graphingwiki.patterns import resolve_iw_url
 from wiki_form import Parser as listParser
 
 Dependencies = []
@@ -78,8 +79,10 @@ class Parser(WikiParser):
         wikipage = "%s:%s" % (wiki, page)
         if self.__add_link(wikipage, groups):
             return u""
-        
-        self.currentitems.append(('interwiki', (wikipage, wikipage)))
+
+        iw_url = resolve_iw_url(self.request, wiki, page)
+
+        self.currentitems.append(('interwiki', (wikipage, iw_url)))
         self.new_item = False
         return u''
 

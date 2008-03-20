@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 from MoinMoin.security import Permissions
-from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
+from graphingwiki.patterns import debug
 
-class SecurityPolicy(AntiSpam):
+class SecurityPolicy(Permissions):
     def save(self, editor, newtext, rev, **kw):
-        if getattr(self.request.cfg, 'antispam', False) and not AntiSpam.save(self, editor, newtext, rev, **kw):
-          return False
         # No problem to save if my base class agree
         if Permissions.save(self, editor, newtext, rev, **kw):
-            from MoinMoin.wikiutil import importPlugin,  PluginMissingError
+            from MoinMoin.wikiutil import importPlugin, PluginMissingError
 
             try:
                 # save to graph file, if plugin available

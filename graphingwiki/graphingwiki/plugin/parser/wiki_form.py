@@ -9,7 +9,7 @@
 """
 import cgi
  
-from MoinMoin.parser.wiki import Parser as wikiParser
+from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
 
 def htmlquote(s):
     return cgi.escape(s, 1)
@@ -29,18 +29,18 @@ class Parser(wikiParser):
 
         return wikiParser._line_anchordef(self)
 
-    def replace(self, match):
+    def replace(self, match, inhibit_p=False):
         if self.in_dd:
             # We probably don't want new paragraphs in dd:s as
             # paragraph html code might litter forms
-            self.inhibit_p = 1
+            self.inhibit_p = True
 
-        result = apply(wikiParser.replace, (self, match))
+        result = apply(wikiParser.replace, (self, match, self.inhibit_p))
 
         if self.in_dd:
             # Some matches disable inhibit_p, and if there are multiple
             # matches in one row, pre-matches might emit <p class=862
-            self.inhibit_p = 1
+            self.inhibit_p = True
 
         return result
 
@@ -53,42 +53,42 @@ class Parser(wikiParser):
 
         apply(wikiParser._close_item, (self, result))
         
-    def _dl_repl(self, match):
+    def _dl_repl(self, match, groups):
         dt = match[1:-3].lstrip(' ')
 
-        return apply(wikiParser._dl_repl, (self, match)) + \
+        return apply(wikiParser._dl_repl, (self, match, groups)) + \
                '\n<input class="metavalue" type="text" name="' + \
                htmlquote('%s!%s' % (self.pagename, dt)) + '" value="'
 
-    def _url_repl(self, word):
+    def _url_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._url_repl, (self, word))
+        return apply(wikiParser._url_repl, (self, word, groups))
 
-    def _word_repl(self, word, text=None):
+    def _word_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._word_repl, (self, word, text))
+        return apply(wikiParser._word_repl, (self, word, groups))
 
-    def _notword_repl(self, word):
+    def _notword_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._notword_repl, (self, word))
+        return apply(wikiParser._notword_repl, (self, word, groups))
 
-    def _interwiki_repl(self, word):
+    def _interwiki_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._interwiki_repl, (self, word))
+        return apply(wikiParser._interwiki_repl, (self, word, groups))
 
-    def _macro_repl(self, word):
+    def _macro_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._macro_repl, (self, word))
+        return apply(wikiParser._macro_repl, (self, word, groups))
 
     def attachment(self, url_and_text, **kw):
         if self.in_dd:
@@ -96,116 +96,116 @@ class Parser(wikiParser):
 
         return apply(wikiParser.attachment, (self, url_and_text), kw)
 
-    def _wikiname_bracket_repl(self, word):
+    def _wikiname_bracket_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._wikiname_bracket_repl, (self, word))
+        return apply(wikiParser._wikiname_bracket_repl, (self, word, groups))
 
-    def _url_bracket_repl(self, word):
+    def _url_bracket_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._url_bracket_repl, (self, word))
+        return apply(wikiParser._url_bracket_repl, (self, word, groups))
 
-    def _email_repl(self, word):
+    def _email_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._email_repl, (self, word))
+        return apply(wikiParser._email_repl, (self, word, groups))
 
-    def _u_repl(self, word):
+    def _u_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._u_repl, (self, word))
+        return apply(wikiParser._u_repl, (self, word, groups))
 
-    def _strike_repl(self, word):
+    def _strike_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._strike_repl, (self, word))
+        return apply(wikiParser._strike_repl, (self, word, groups))
 
-    def _small_repl(self, word):
+    def _small_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._small_repl, (self, word))
+        return apply(wikiParser._small_repl, (self, word, groups))
 
-    def _big_repl(self, word):
+    def _big_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._big_repl, (self, word))
+        return apply(wikiParser._big_repl, (self, word, groups))
 
-    def _pre_repl(self, word):
+    def _pre_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._pre_repl, (self, word))
+        return apply(wikiParser._pre_repl, (self, word, groups))
 
-    def _smiley_repl(self, word):
+    def _smiley_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._smiley_repl, (self, word))
+        return apply(wikiParser._smiley_repl, (self, word, groups))
 
-    def _emph_ibb_repl(self, word):
+    def _emph_ibb_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._emph_ibb_repl, (self, word))
+        return apply(wikiParser._emph_ibb_repl, (self, word, groups))
 
-    def _emph_repl(self, word):
+    def _emph_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._emph_repl, (self, word))
+        return apply(wikiParser._emph_repl, (self, word, groups))
 
-    def _emph_ibi_repl(self, word):
+    def _emph_ibi_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._emph_ibi_repl, (self, word))
+        return apply(wikiParser._emph_ibi_repl, (self, word, groups))
 
-    def _emph_ib_or_bi_repl(self, word):
+    def _emph_ib_or_bi_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._emph_ib_or_bi_repl, (self, word))
+        return apply(wikiParser._emph_ib_or_bi_repl, (self, word, groups))
 
-    def _sup_repl(self, word):
+    def _sup_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._sup_repl, (self, word))
+        return apply(wikiParser._sup_repl, (self, word, groups))
 
-    def _sub_repl(self, word):
+    def _sub_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._sub_repl, (self, word))
+        return apply(wikiParser._sub_repl, (self, word, groups))
 
-    def _processor_repl(self, word):
+    def _processor_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._processor_repl, (self, word))
+        return apply(wikiParser._processor_repl, (self, word, groups))
 
-    def _ent_repl(self, word):
+    def _ent_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._ent_repl, (self, word))
+        return apply(wikiParser._ent_repl, (self, word, groups))
 
-    def _ent_numeric_repl(self, word):
+    def _ent_numeric_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._ent_numeric_repl, (self, word))
+        return apply(wikiParser._ent_numeric_repl, (self, word, groups))
 
-    def _ent_symbolic_repl(self, word):
+    def _ent_symbolic_repl(self, word, groups):
         if self.in_dd:
             return word
 
-        return apply(wikiParser._ent_symbolic_repl, (self, word))
+        return apply(wikiParser._ent_symbolic_repl, (self, word, groups))

@@ -39,6 +39,7 @@ from urllib import unquote as url_unquote
 
 from MoinMoin.Page import Page
 from MoinMoin import config
+from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.graph import Graph
@@ -51,6 +52,11 @@ def actionname(request, pagename):
 encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
+
+def debug(val):
+    d = file('/tmp/k', 'a')
+    d.write(encode(val) + '\n')
+    d.flush()
 
 # Default node attributes that should not be shown
 special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
@@ -66,6 +72,28 @@ qstrip_p = lambda lst: ('"' +
                         '"')
 qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
+
+def attachment_pagefile(value, curpage):
+    components = value.split('/')
+    if len(components) == 1:
+        page = curpage
+    else:
+        page = '/'.join(components[:-1])
+
+    file = unicode(url_unquote(components[-1].split(':')[-1]), config.charset)
+    
+    page = unicode(url_unquote(page), config.charset)
+
+    return page, file
+
+def resolve_iw_url(request, wiki, page):
+    res = wikiutil.resolve_interwiki(request, wiki, page)
+    if res[3] == False:
+        iw_url = res[1] + res[2]
+    else:
+        iw_url = './InterWiki'
+
+    return iw_url
 
 class GraphData(object):
     def __init__(self, request):
@@ -154,11 +182,20 @@ class GraphData(object):
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'URL'):
-            node.URL = './' + pagename
+            node.URL = pagename
 
         # Nodes representing existing local nodes may be traversed
         if page.has_key('saved'):
             node.URL += urladd
+            node.URL = './' + node.URL
+
+        if node.URL.startswith('attachment:'):
+            pagefile = node.URL.split(':')[1]
+            page, file = attachment_pagefile(pagefile, pagename)
+
+            node.label = encode(file)
+            node.URL = encode(actionname(self.request, page) + \
+                '?action=AttachFile&do=get&target=' + file)
 
         return graph
 
