@@ -1,0 +1,66 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    gwiki-showgraph
+     - Debug: A CLI interface to the ShowGraph action.
+
+    @copyright: 2006 by Juhani Eronen <exec@iki.fi>
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+    Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation
+    files (the "Software"), to deal in the Software without
+    restriction, including without limitation the rights to use, copy,
+    modify, merge, publish, distribute, sublicense, and/or sell copies
+    of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+"""
+
+import sys, os
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
+
+try:
+    wikipath = sys.argv[2]
+    os.chdir(wikipath)
+except:
+    print "Usage: " + sys.argv[0] + " <pagename> <path-to-wiki>\n" 
+    raise
+
+# Moin dirs
+sys.path.insert(0, os.path.join(wikipath, 'config'))
+from MoinMoin import wikiutil
+from MoinMoin import request
+from MoinMoin.Page import Page
+
+pagename = sys.argv[1]
+
+# Make a new request for the page, get raw text
+req = request.RequestCLI(pagename=pagename)
+
+# Fix for 1.3.4
+if not hasattr(req, form):
+    req.form = {}
+
+req.form['action'] = ['ShowGraph']
+req.form['colorby'] = ['Status']
+req.form['orderby'] = ['Year']
+p = Page(req, pagename)
+pagedir = p.getPagePath()
+text = p.get_raw_body()
+
+# Apply the showgraph-action to the page
+showgraph = wikiutil.importPlugin(req.cfg, 'action', 'ShowGraph')
+showgraph(pagename, req)

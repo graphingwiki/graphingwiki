@@ -1,0 +1,179 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    opencollab-push-tickets is an attempt to learn 
+    roundup data retrieval for push semantics 
+    wautomation to MoinMoin over XML-RPC.
+
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import sys
+import re
+import ConfigParser
+import cStringIO
+from optparse import OptionParser
+from roundup import instance
+from opencollab.meta import Meta
+from opencollab.wiki import GraphingWiki
+
+def parse_config( cpath ):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    creds = dict( configparser.items('creds') )
+    uris = dict( configparser.items('dbs') )
+    username = creds.pop("username")
+    password = creds.pop("password")
+    tracker = uris.pop("tracker")
+    tpath = uris.pop("tpath")
+    wiki = uris.pop("collab")
+    return username, password, tracker, tpath, wiki
+
+def open_db( tpath ):
+    tracker = instance.open( tpath )
+    db = tracker.open( "admin" )
+    return db
+
+def handle_unknown( odata, object, tracker, oname, target, key ): 
+    if object is not None:
+        odata[oname].add(target)
+
+def handle_link( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        if re.search('@', object):
+            odata[oname].add(link)
+        else:
+            odata[oname].add( '["' + tracker + '/' + target + object + '"]' )
+
+def handle_multilink( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        links = map( lambda x: '["' + tracker + '/' + target + '%s"]' % x, object )
+        for t in links:
+            odata[oname].add( t )
+
+def handle_number( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        odata[oname].add( str(object) )
+
+def handle_interval( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        odata[oname].add( str(object) )
+
+def handle_password( odata, object, tracker, oname, target, key ):
+    odata[oname].add( "REMOVED BY WAUTOMATION" )
+
+def handle_date( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        odata[oname].add( str(object) )
+
+def handle_string( odata, object, tracker, oname, target, key ):
+    if object is not None:
+        if oname == "content" and (key == "file" or key == "msg"):
+            odata[oname].add( object )
+        else:
+            odata[oname].add(str(object))
+
+def get_handler( type ):
+    fname = "handle_"
+    handlers = [
+    'handle_link',
+    'handle_multilink',
+    'handle_number',
+    'handle_interval',
+    'handle_password',
+    'handle_date',
+    'handle_string'
+    ]
+    hset = set( handlers )
+    if re.search( '(Multi)?[Ll]ink', repr(type) ):
+        p1 = re.compile('<roundup\.hyperdb\.(\w+ ?.*)>') 
+        p2 = re.compile('\s+\w+\s+')
+        tmp = p1.sub( r'\1', repr(type) )
+        tmp2, target = p2.split( tmp )
+        target = re.sub( '"', '', target )
+        fname += tmp2
+    else:
+        p1 = re.compile('<roundup\.hyperdb\.(\w+) ?.*>') 
+        fname += p1.sub( r'\1', repr(type))
+        target = "None"
+    fname = fname.lower()
+    target = target.lower()
+    if fname in hset:
+        return fname.lower(), target.lower()
+    else:
+        print fname
+        fname = "handle_unknown"
+        target = "FixMe"
+        return fname, target 
+
+def push_object( odata, pname, collab, tracker, category, verbose ):
+    ptemplate = tracker.capitalize() + "TrackerTemplate"
+    status = ""
+    fcontent = ""
+    odata["category"].add(category)
+    if re.search( 'file|msg', pname ):
+        if "content" in odata:
+            if "name" in odata:
+                fname = odata.get("name").single()
+            else:
+                fname = "raw"
+            fcontent = cStringIO.StringIO( odata.pop("content").single() )
+            odata["content"].add( "inline:" + fname )
+            for current, total in collab.putAttachmentChunked( pname, fname, fcontent ):
+                percent = 100.0 * current / float(max(total, 1))
+                status = current, total, percent
+                if verbose:
+                    sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
+                    sys.stdout.flush()
+            if verbose:
+                sys.stdout.write("\ndone\n")
+                sys.stdout.flush()
+    status = collab.setMeta( pname, odata, template=ptemplate, replace=True )
+    if verbose:
+        print status
+
+def transfer_data( db, tracker, collab, verbose ):
+    odata = Meta()
+    for (key, cl) in db.classes.iteritems():
+        name = getattr( db, cl.classname )
+        category = "Category" + tracker.capitalize() + key.capitalize()
+        existing = collab.getMeta( category )
+        for id in name.list()[:42]:
+            entry = name.getnode( id )
+            upload = True
+            for (oname, type) in cl.properties.iteritems():
+                handler, target = get_handler( type )
+                if handler == "handle_multilink":
+                    object = entry.get( oname, [] )
+                else:
+                    object = entry.get( oname )
+                handler = globals().get(handler, handle_unknown)
+                handler( odata, object, tracker, oname, target, key )
+            pname = tracker + "/" + key + id
+            if pname in existing and odata == existing[pname]:
+                    upload = False 
+            if upload:
+                push_object( odata, pname, collab, tracker, category, verbose )
+            odata = Meta()
+
+def main():
+    usage = "usage: %prog [-v] -c CPATH"
+    parser = OptionParser(usage=usage)
+    parser.add_option( "-c", 
+        action="store", type="string", dest="cpath",
+        help="Config file path." )
+    parser.add_option("-v", 
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." ) 
+    ( options, args ) = parser.parse_args()
+    if options.cpath:
+        username, password, tracker, tpath, wiki = parse_config( options.cpath )
+        db = open_db( tpath )
+        collab = GraphingWiki( wiki, username=username, password=password  )
+        transfer_data( db, tracker, collab, options.verbose )
+        db.close()
+    else:
+        parser.error("Option -c is mandatory. Use -h for help.")
+
+if __name__ == "__main__":
+    main()
