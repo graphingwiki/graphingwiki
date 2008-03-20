@@ -41,8 +41,10 @@ class TestSetMeta(GwikiTests):
     def tearDown(self):
         '''Tear down.. Check the metadata from page and fail if not found.'''
         res = server.getPage(self.pageName)
-        findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, self.metaData.pop()))
-        self.assert_(findMeta.search(res))
+        for md in self.metaData:
+            # Check that all metadata is there
+            findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, md))
+            self.assert_(findMeta.search(res))
         GwikiTests.tearDown(self)
 
     def testAdd1(self):
@@ -70,6 +72,21 @@ class TestSetMeta(GwikiTests):
 
     def testReplace4(self):
         self.metaKey = "testi foo"
+        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+
+    def testReplace5(self):
+        self.metaKey = "testi:foo"
+        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+
+    def testReplace6(self):
+        self.metaKey = u"☠☠☠☠☠☠☃☃☃☃☃äääöööÄÄÄÖÖÖ€€€¶‰"
+        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+
+    def testReplace7(self):
+        self.metaKey = u"“بسملة”"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
         server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
 
@@ -123,6 +140,14 @@ class TestDeletePage(unittest.TestCase):
 
     def testDelete2(self):
         server.DeletePage(self.pageName, u'DELETE PAGE')
+
+    def testDelete3(self):
+        server.DeletePage(self.pageName)
+        try:
+            server.DeletePage(u'liipalaapasivujotaeioleolemassa')
+        except Error, v:
+            # Should check that we have correct error here
+            return
 
 
 # class TestRandomPages(unittest.TestCase):
