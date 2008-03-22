@@ -10,5 +10,6 @@ setup(name='opencollab', version='360',
       package_data={'opencollab': ['opencollab/*.py']},
       scripts=['scripts/opencollab-uploader', 
         'scripts/opencollab-downloader',
+        'scripts/opencollab-delete-pages',
         'scripts/opencollab-push-tickets'])
 
