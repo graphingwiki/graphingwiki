@@ -57,12 +57,15 @@ def process_image( f, imeta ):
            resimg = img.resize(( int(float(maxh*iaspect) + 0.5), maxh), Image.ANTIALIAS) 
            resthumb = img.resize(( int(float(maxth*iaspect) + 0.5), maxth), Image.ANTIALIAS) 
         try:
-            ofile = "/tmp/" + fname + ext
-            othumb = "/tmp/" + fname + ".thumb" + ext
-            imeta["ofile"].add( ofile )
-            imeta["othumb"].add( othumb )
-            resimg.save( ofile, img.format ) 
-            resthumb.save( othumb, img.format ) 
+            opath = "/tmp/"
+            ofile = fname + ext
+            othumb = fname + ".thumb" + ext
+            imeta["ofile"].add( opath + ofile )
+            imeta["filename"].add( "attachment:" + ofile )
+            imeta["othumb"].add( opath + othumb )
+            imeta["shapefile"].add( "attachment:" + othumb )
+            resimg.save( opath + ofile, img.format ) 
+            resthumb.save( opath + othumb, img.format ) 
         except IOError:
             print "Temporary image save failed!"
             return False
