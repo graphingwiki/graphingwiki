@@ -10,9 +10,12 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import os
+import sys
+import md5
 import ConfigParser
-import Image
 from optparse import OptionParser
+from PIL import Image
+from PIL.ExifTags import TAGS
 from opencollab.meta import Meta
 from opencollab.wiki import GraphingWiki
 
@@ -32,12 +35,33 @@ def store_names( flist, dname, names ):
         flist.append( os.path.join( dname, name ) )
 
 def process_image( f, imeta ):
+"""
+Aspect ratio calculation from:
+http://osdir.com/ml/python.image/2006-01/msg00010.html
+"""
+    maxw = 800
+    maxh = 600
+    oaspect = float(maxw) / float(maxw)
+    file, ext = os.path.splitext(f)
     try:
         img = Image.open( f )
-        print f, img.format, "%dx%d" % img.size, img.mode
+        iaspect = float(img.size[0])/float(img.size[1])
+        if iaspect >= oaspect:
+           resimg = img.resize(( maxw , int(float(maxw/iaspect) + 0.5)), Image.ANTIALIAS) 
+        else:
+           resimg = img.resize(( int(float(maxh*iaspect) + 0.5), maxh), Image.ANTIALIAS) 
+        try:
+            ofile = file + ".web" + ext
+            resimg.save( ofile, img.format ) 
+        except IOError:
+            print "save failed!"
+            return False
         return True
     except IOError: 
         return False
+
+def read_exif( f, imeta ):
+    pass
 
 def push_image( collab, imeta ):
     pass
@@ -61,6 +85,7 @@ def main():
             imeta = Meta()
             image = process_image( f, imeta )
             if image:
+                read_exif( f, imeta )
                 push_image( collab, imeta )
     else:
         parser.error("Option -c is mandatory. Use -h for help.")
