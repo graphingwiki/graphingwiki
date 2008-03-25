@@ -35,26 +35,36 @@ def store_names( flist, dname, names ):
         flist.append( os.path.join( dname, name ) )
 
 def process_image( f, imeta ):
-"""
-Aspect ratio calculation from:
-http://osdir.com/ml/python.image/2006-01/msg00010.html
-"""
+    """
+    Aspect ratio calculation from:
+    http://osdir.com/ml/python.image/2006-01/msg00010.html
+    """
     maxw = 800
+    maxtw = 128
     maxh = 600
-    oaspect = float(maxw) / float(maxw)
-    file, ext = os.path.splitext(f)
+    maxth = 128
+    oaspect = float(maxw) / float(maxh)
+    path, file = os.path.split(f)
+    fname, ext = os.path.splitext(file)
+    imeta["Filename"].add( file )
     try:
         img = Image.open( f )
         iaspect = float(img.size[0])/float(img.size[1])
         if iaspect >= oaspect:
            resimg = img.resize(( maxw , int(float(maxw/iaspect) + 0.5)), Image.ANTIALIAS) 
+           resthumb = img.resize(( maxtw , int(float(maxtw/iaspect) + 0.5)), Image.ANTIALIAS) 
         else:
            resimg = img.resize(( int(float(maxh*iaspect) + 0.5), maxh), Image.ANTIALIAS) 
+           resthumb = img.resize(( int(float(maxth*iaspect) + 0.5), maxth), Image.ANTIALIAS) 
         try:
-            ofile = file + ".web" + ext
+            ofile = "/tmp/" + fname + ext
+            othumb = "/tmp/" + fname + ".thumb" + ext
+            imeta["ofile"].add( ofile )
+            imeta["othumb"].add( othumb )
             resimg.save( ofile, img.format ) 
+            resthumb.save( othumb, img.format ) 
         except IOError:
-            print "save failed!"
+            print "Temporary image save failed!"
             return False
         return True
     except IOError: 
