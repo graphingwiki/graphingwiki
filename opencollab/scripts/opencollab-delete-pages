@@ -33,12 +33,14 @@ def main():
 
     metas = wiki.getMeta(searchstring)
     for k,v in metas.iteritems():
-        print "Deleting %r..." % (k)
+        print "Deleting %r..." % (k),
         if not options.dryrun:
             try:
                 wiki.deletePage(k)
-            except opencollab.wiki.WikiFailure:
-                print " ...could not delete %r"  % (k)
+                print "[ok].",
+            except opencollab.wiki.WikiFailure, (strerror):
+                print "[failed]: %s"  % (strerror),
+        print
     print
     
 if __name__ == "__main__":
