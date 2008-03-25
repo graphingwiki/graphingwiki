@@ -1,0 +1,52 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    The purpose of this script is to create an object oriented wiki image
+    gallery utilizing a file system based image repository as a source.
+    The path names are turned into categories, which classify a given
+    image.
+
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import os
+import ConfigParser
+from optparse import OptionParser
+from opencollab.meta import Meta
+from opencollab.wiki import GraphingWiki
+
+def parse_config( cpath ):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    creds = dict( configparser.items('creds') )
+    uris = dict( configparser.items('dbs') )
+    username = creds.pop("username")
+    password = creds.pop("password")
+    spath = uris.pop("spath")
+    wiki = uris.pop("collab")
+    return username, password, spath, wiki
+
+def print_names( arg, dname, names ): 
+    for name in names:
+        print os.path.join( dname, name )
+
+def main():
+    usage = "usage: %prog [-v] -c CPATH"
+    parser = OptionParser(usage=usage)
+    parser.add_option( "-c", 
+        action="store", type="string", dest="cpath",
+        help="Config file path." )
+    parser.add_option("-v", 
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." ) 
+    ( options, args ) = parser.parse_args()
+    if options.cpath:
+        username, password, spath, wiki = parse_config( options.cpath )
+        os.path.walk( spath, print_names, None ) 
+        collab = GraphingWiki( wiki, username=username, password=password  )
+    else:
+        parser.error("Option -c is mandatory. Use -h for help.")
+
+if __name__ == "__main__":
+    main()
+
