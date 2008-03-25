@@ -11,6 +11,7 @@
 """
 import os
 import ConfigParser
+import Image
 from optparse import OptionParser
 from opencollab.meta import Meta
 from opencollab.wiki import GraphingWiki
@@ -26,9 +27,20 @@ def parse_config( cpath ):
     wiki = uris.pop("collab")
     return username, password, spath, wiki
 
-def print_names( arg, dname, names ): 
+def store_names( flist, dname, names ): 
     for name in names:
-        print os.path.join( dname, name )
+        flist.append( os.path.join( dname, name ) )
+
+def process_image( f, imeta ):
+    try:
+        img = Image.open( f )
+        print f, img.format, "%dx%d" % img.size, img.mode
+        return True
+    except IOError: 
+        return False
+
+def push_image( collab, imeta ):
+    pass
 
 def main():
     usage = "usage: %prog [-v] -c CPATH"
@@ -41,9 +53,15 @@ def main():
         help="Enable verbose output." ) 
     ( options, args ) = parser.parse_args()
     if options.cpath:
+        flist = []
         username, password, spath, wiki = parse_config( options.cpath )
-        os.path.walk( spath, print_names, None ) 
+        os.path.walk( spath, store_names, flist ) 
         collab = GraphingWiki( wiki, username=username, password=password  )
+        for f in flist:
+            imeta = Meta()
+            image = process_image( f, imeta )
+            if image:
+                push_image( collab, imeta )
     else:
         parser.error("Option -c is mandatory. Use -h for help.")
 
