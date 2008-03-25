@@ -37,7 +37,7 @@ def main():
     print "Connecting to wiki..."
     attachments = wiki.listAttachments(page)
     for num, attachment in enumerate(attachments):
-        downloadFile(wiki, page, os.path.join(page,attachment), os.path.join(page,basePath), num+1, len(attachments))
+        downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
 
 def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
     if not os.path.exists(filename):
@@ -78,7 +78,6 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     directory, _ = os.path.split(filePath)
     directory = os.path.join(directory, "")
     basePath = os.path.join(basePath, "")
-    print "dir:%s basePath:%s" %( directory, basePath)
     if not directory.startswith(basePath):
         raise IOError("file path '%s' not under the base path" % filePath)
 
