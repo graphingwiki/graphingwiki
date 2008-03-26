@@ -34,7 +34,7 @@ def store_names( flist, dname, names ):
     for name in names:
         flist.append( os.path.join( dname, name ) )
 
-def process_image( f, imeta ):
+def scale_image( f, imeta ):
     """
     Aspect ratio calculation from:
     http://osdir.com/ml/python.image/2006-01/msg00010.html
@@ -74,7 +74,18 @@ def process_image( f, imeta ):
         return False
 
 def read_exif( f, imeta ):
-    pass
+    """
+    PIL + exif reading from
+    http://wolfram.kriesing.de/blog/index.php/2006/reading-out-exif-data-via-python
+    """
+    try:
+        img = Image.open( f )
+        info = img._getexif() 
+        for tag, value in info.items():
+            decoded = TAGS.get( tag, tag )
+            imeta[tag].add( value )
+    except IOError:
+        pass
 
 def push_image( collab, imeta ):
     pass
@@ -96,7 +107,7 @@ def main():
         collab = GraphingWiki( wiki, username=username, password=password  )
         for f in flist:
             imeta = Meta()
-            image = process_image( f, imeta )
+            image = scale_image( f, imeta )
             if image:
                 read_exif( f, imeta )
                 push_image( collab, imeta )
