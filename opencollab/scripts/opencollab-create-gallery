@@ -46,7 +46,7 @@ def scale_image( f, imeta ):
     oaspect = float(maxw) / float(maxh)
     path, file = os.path.split(f)
     fname, ext = os.path.splitext(file)
-    imeta["Filename"].add( file )
+    imeta["filename"].add( file )
     try:
         img = Image.open( f )
         iaspect = float(img.size[0])/float(img.size[1])
@@ -97,9 +97,9 @@ def upload_image( collab, pname, fn, fh, verbose ):
         if verbose:
             sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
             sys.stdout.flush()
-        if verbose:
-            sys.stdout.write("\ndone\n")
-            sys.stdout.flush()
+     if verbose:
+        sys.stdout.write("\ndone\n")
+        sys.stdout.flush()
 
 def push_image( collab, imeta, verbose ):
     template = "PhotoTemplate"
