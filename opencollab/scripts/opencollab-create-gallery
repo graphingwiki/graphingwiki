@@ -59,13 +59,15 @@ def scale_image( f, imeta ):
         try:
             opath = "/tmp/"
             ofile = fname + ext
-            othumb = fname + ".thumb" + ext
+            othumb = fname + ".thumb.png"
             imeta["ofile"].add( opath + ofile )
-            imeta["filename"].add( "attachment:" + ofile )
+            imeta["ofname"].add( ofile )
+            imeta["image"].add( "attachment:" + ofile )
             imeta["othumb"].add( opath + othumb )
+            imeta["otname"].add( othumb )
             imeta["shapefile"].add( "attachment:" + othumb )
             resimg.save( opath + ofile, img.format ) 
-            resthumb.save( opath + othumb, img.format ) 
+            resthumb.save( opath + othumb ) 
         except IOError:
             print "Temporary image save failed!"
             return False
@@ -77,6 +79,7 @@ def read_exif( f, imeta ):
     """
     PIL + exif reading from
     http://wolfram.kriesing.de/blog/index.php/2006/reading-out-exif-data-via-python
+    This approach does not work, since the values are uninterpreted.
     """
     try:
         img = Image.open( f )
@@ -87,8 +90,36 @@ def read_exif( f, imeta ):
     except IOError:
         pass
 
-def push_image( collab, imeta ):
-    pass
+def upload_image( collab, pname, fn, fh, verbose ):
+    for current, total in collab.putAttachmentChunked( pname, fn, fh ):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+        if verbose:
+            sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
+            sys.stdout.flush()
+        if verbose:
+            sys.stdout.write("\ndone\n")
+            sys.stdout.flush()
+
+def push_image( collab, imeta, verbose ):
+    template = "PhotoTemplate"
+    imeta["category"].add("CategoryPhoto")
+    ofname = imeta.pop("ofname").single()
+    ofile = imeta.pop("ofile").single()
+    othumb = imeta.pop("othumb").single()
+    otname = imeta.pop("otname").single()
+    try:
+        fh = file( ofile, 'rb' )
+        pname = md5.new( fh.read() ).hexdigest()
+    except IOError:
+        raise
+    status = collab.setMeta( pname, imeta, template=template, replace=True )
+    if verbose:
+        print status
+    fh = file( ofile, 'rb' )
+    upload_image( collab, pname, ofname, fh, verbose )
+    fh = file( othumb, 'rb' )
+    upload_image( collab, pname, otname, fh, verbose )
 
 def main():
     usage = "usage: %prog [-v] -c CPATH"
@@ -109,8 +140,8 @@ def main():
             imeta = Meta()
             image = scale_image( f, imeta )
             if image:
-                read_exif( f, imeta )
-                push_image( collab, imeta )
+                #read_exif( f, imeta )
+                push_image( collab, imeta, options.verbose )
     else:
         parser.error("Option -c is mandatory. Use -h for help.")
 
