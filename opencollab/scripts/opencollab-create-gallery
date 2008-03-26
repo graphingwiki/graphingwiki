@@ -46,7 +46,6 @@ def scale_image( f, imeta ):
     oaspect = float(maxw) / float(maxh)
     path, file = os.path.split(f)
     fname, ext = os.path.splitext(file)
-    imeta["filename"].add( file )
     try:
         img = Image.open( f )
         iaspect = float(img.size[0])/float(img.size[1])
@@ -57,17 +56,21 @@ def scale_image( f, imeta ):
            resimg = img.resize(( int(float(maxh*iaspect) + 0.5), maxh), Image.ANTIALIAS) 
            resthumb = img.resize(( int(float(maxth*iaspect) + 0.5), maxth), Image.ANTIALIAS) 
         try:
-            opath = "/tmp/"
-            ofile = fname + ext
-            othumb = fname + ".thumb.png"
-            imeta["ofile"].add( opath + ofile )
-            imeta["ofname"].add( ofile )
-            imeta["image"].add( "attachment:" + ofile )
-            imeta["othumb"].add( opath + othumb )
-            imeta["otname"].add( othumb )
-            imeta["shapefile"].add( "attachment:" + othumb )
-            resimg.save( opath + ofile, img.format ) 
-            resthumb.save( opath + othumb ) 
+            tpath = "/tmp/"
+            tfile = fname + ext
+            webnail = fname + ".webnail" + ext
+            thumb = fname + ".thumb.png"
+            imeta["origfile"].add( f )
+            imeta["webfile"].add( tpath + webnail )
+            imeta["thumbfile"].add( tpath + thumb )
+            imeta["origname"].add( file )
+            imeta["webname"].add( webnail )
+            imeta["thumbname"].add( thumb )
+            imeta["image"].add( "[attachment:" + file + " " + file + "]" )
+            imeta["webnail"].add( "attachment:" + webnail )
+            imeta["shapefile"].add( "attachment:" + thumb )
+            resimg.save( tpath + webnail, img.format ) 
+            resthumb.save( tpath + thumb ) 
         except IOError:
             print "Temporary image save failed!"
             return False
@@ -97,29 +100,33 @@ def upload_image( collab, pname, fn, fh, verbose ):
         if verbose:
             sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
             sys.stdout.flush()
-     if verbose:
+    if verbose:
         sys.stdout.write("\ndone\n")
         sys.stdout.flush()
 
 def push_image( collab, imeta, verbose ):
     template = "PhotoTemplate"
     imeta["category"].add("CategoryPhoto")
-    ofname = imeta.pop("ofname").single()
-    ofile = imeta.pop("ofile").single()
-    othumb = imeta.pop("othumb").single()
-    otname = imeta.pop("otname").single()
+    origfile = imeta.pop("origfile").single()
+    webfile = imeta.pop("webfile").single()
+    thumbfile = imeta.pop("thumbfile").single()
+    origname = imeta.pop("origname").single()
+    webname = imeta.pop("webname").single()
+    thumbname = imeta.pop("thumbname").single()
     try:
-        fh = file( ofile, 'rb' )
+        fh = file( origfile, 'rb' )
         pname = md5.new( fh.read() ).hexdigest()
     except IOError:
         raise
     status = collab.setMeta( pname, imeta, template=template, replace=True )
     if verbose:
         print status
-    fh = file( ofile, 'rb' )
-    upload_image( collab, pname, ofname, fh, verbose )
-    fh = file( othumb, 'rb' )
-    upload_image( collab, pname, otname, fh, verbose )
+    fh = file( origfile, 'rb' )
+    upload_image( collab, pname, origname, fh, verbose )
+    fh = file( webfile, 'rb' )
+    upload_image( collab, pname, webname, fh, verbose )
+    fh = file( thumbfile, 'rb' )
+    upload_image( collab, pname, thumbname, fh, verbose )
 
 def main():
     usage = "usage: %prog [-v] -c CPATH"
