@@ -15,7 +15,8 @@ import md5
 import ConfigParser
 from optparse import OptionParser
 from PIL import Image
-from PIL.ExifTags import TAGS
+#from PIL.ExifTags import TAGS
+from kaa import metadata
 from opencollab.meta import Meta
 from opencollab.wiki import GraphingWiki
 
@@ -80,16 +81,15 @@ def scale_image( f, imeta ):
 
 def read_exif( f, imeta ):
     """
-    PIL + exif reading from
-    http://wolfram.kriesing.de/blog/index.php/2006/reading-out-exif-data-via-python
-    This approach does not work, since the values are uninterpreted.
+    Use python-kaa-metadata.
     """
     try:
-        img = Image.open( f )
-        info = img._getexif() 
-        for tag, value in info.items():
-            decoded = TAGS.get( tag, tag )
-            imeta[tag].add( value )
+        exif = metadata.parse( f )
+        exif["thumbnail"] = "REMOVED"
+        for key in exif.keys():
+            value = exif.get(key)
+            if value:
+                imeta[key].add( unicode(value) )
     except IOError:
         pass
 
@@ -113,6 +113,7 @@ def push_image( collab, imeta, verbose ):
     origname = imeta.pop("origname").single()
     webname = imeta.pop("webname").single()
     thumbname = imeta.pop("thumbname").single()
+    thumbnail = imeta.pop("thumbnail").single()
     try:
         fh = file( origfile, 'rb' )
         pname = md5.new( fh.read() ).hexdigest()
@@ -121,12 +122,21 @@ def push_image( collab, imeta, verbose ):
     status = collab.setMeta( pname, imeta, template=template, replace=True )
     if verbose:
         print status
-    fh = file( origfile, 'rb' )
-    upload_image( collab, pname, origname, fh, verbose )
-    fh = file( webfile, 'rb' )
-    upload_image( collab, pname, webname, fh, verbose )
-    fh = file( thumbfile, 'rb' )
-    upload_image( collab, pname, thumbname, fh, verbose )
+    try:
+        fh = file( origfile, 'rb' )
+        upload_image( collab, pname, origname, fh, verbose )
+    except IOError:
+        raise
+    try:
+        fh = file( webfile, 'rb' )
+        upload_image( collab, pname, webname, fh, verbose )
+    except IOError:
+        raise
+    try:
+        fh = file( thumbfile, 'rb' )
+        upload_image( collab, pname, thumbname, fh, verbose )
+    except IOError:
+        raise
 
 def main():
     usage = "usage: %prog [-v] -c CPATH"
@@ -147,7 +157,7 @@ def main():
             imeta = Meta()
             image = scale_image( f, imeta )
             if image:
-                #read_exif( f, imeta )
+                read_exif( f, imeta )
                 push_image( collab, imeta, options.verbose )
     else:
         parser.error("Option -c is mandatory. Use -h for help.")
