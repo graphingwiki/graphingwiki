@@ -13,10 +13,9 @@ import os
 import sys
 import md5
 import ConfigParser
+import EXIF
 from optparse import OptionParser
 from PIL import Image
-#from PIL.ExifTags import TAGS
-from kaa import metadata
 from opencollab.meta import Meta
 from opencollab.wiki import GraphingWiki
 
@@ -81,15 +80,16 @@ def scale_image( f, imeta ):
 
 def read_exif( f, imeta ):
     """
-    Use python-kaa-metadata.
+    Use EXIF.py.
     """
     try:
-        exif = metadata.parse( f )
-        exif["thumbnail"] = "REMOVED"
-        for key in exif.keys():
-            value = exif.get(key)
-            if value:
+        fh = open(f, 'rb')
+        exif = EXIF.process_file( fh, details=False )
+        for key, value in exif.items():
+            try:
                 imeta[key].add( unicode(value) )
+            except UnicodeDecodeError:
+                pass
     except IOError:
         pass
 
@@ -113,7 +113,6 @@ def push_image( collab, imeta, verbose ):
     origname = imeta.pop("origname").single()
     webname = imeta.pop("webname").single()
     thumbname = imeta.pop("thumbname").single()
-    thumbnail = imeta.pop("thumbnail").single()
     try:
         fh = file( origfile, 'rb' )
         pname = md5.new( fh.read() ).hexdigest()
