@@ -27,27 +27,28 @@ def execute(script, keys):
     func = locals.get("execute")
     return func(**keys)
 
-def runOneTask(wiki, interval=10.0, dieAfter=10*60.0):
-    newTask = wiki.request("TaskServer", "get", "jee")
-    if newTask is None:
+def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
+    while True:
+        print "Fetching a new task"
+        newTask = wiki.request("TaskServer", agentId, "get")
+        if newTask is not None:
+            break
+
+        print "No new task found"
         time.sleep(interval)
-        return
 
     page, metas, lang, script = newTask
-    print
-    print page
-    print metas
-    print lang
-    print script
-    return
-   
+    print "Got task '%s'" % page
+    print " lang: %s" % lang
+    print " metas: %s" % repr(metas)
+
     readFd, writeFd = os.pipe()
 
     pid = os.fork()
     if pid == 0:
         os.close(readFd)
 
-        result = execute(script, keys)
+        result = execute(script, metas)
         os.write(writeFd, pickle.dumps(result))
         os.close(writeFd)
         os._exit(0)
@@ -62,16 +63,19 @@ def runOneTask(wiki, interval=10.0, dieAfter=10*60.0):
             data = reader.read()
             reader.close()
 
-            print "process died:", pickle.loads(data)
-            # wiki.request("agent", "close")
+            result = pickle.loads(data)
+            print "Got result %s" % repr(result)
+
+            wiki.request("agent", agentId, "close", page, result)
+            print "Sent result"
             break
 
         if time.time()-checkpoint >= interval:
             socket.setdefaulttimeout(2 * interval)
             try:
                 try:
-                    # wiki.request("agent", "heartbeat")
-                    pass
+                    wiki.request("TaskServer", agentId, "heartbeat", page)
+                    print " ...heartbeat..."
                 except WikiFailure:
                     pass
                 else:
