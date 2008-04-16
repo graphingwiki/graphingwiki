@@ -44,6 +44,7 @@ def urlQuote(string):
     return urllib.quote(string, "/:")
                                
 def mangleFaultString(faultString):
+    return faultString
     faultString = faultString.strip()
     faultLines = faultString.split("\n")
     if faultLines:

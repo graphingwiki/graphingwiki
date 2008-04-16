@@ -66,7 +66,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
             result = pickle.loads(data)
             print "Got result %s" % repr(result)
 
-            wiki.request("agent", agentId, "close", page, result)
+            wiki.request("TaskServer", agentId, "close", page, result)
             print "Sent result"
             break
 
@@ -111,7 +111,7 @@ def main():
         loadCredsFromConfig(wiki, options.config)
 
     while True:
-        runOneTask(wiki)
+        runOneTask('jee', wiki)
 
 if __name__ == "__main__":
     main()
