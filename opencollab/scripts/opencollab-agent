@@ -1,0 +1,113 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import time
+import socket
+import signal
+import pickle
+
+from opencollab.meta import Meta
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util import loadCredsFromConfig
+
+def processIsAlive(processId):
+    try:
+        pid, status = os.waitpid(processId, os.WNOHANG)
+    except os.error:
+        return False
+
+    return pid != processId
+
+def execute(script, keys):
+    locals = dict()
+
+    exec script in locals
+
+    func = locals.get("execute")
+    return func(**keys)
+
+def runOneTask(wiki, interval=10.0, dieAfter=10*60.0):
+    newTask = wiki.request("TaskServer", "get", "jee")
+    if newTask is None:
+        time.sleep(interval)
+        return
+
+    page, metas, lang, script = newTask
+    print
+    print page
+    print metas
+    print lang
+    print script
+    return
+   
+    readFd, writeFd = os.pipe()
+
+    pid = os.fork()
+    if pid == 0:
+        os.close(readFd)
+
+        result = execute(script, keys)
+        os.write(writeFd, pickle.dumps(result))
+        os.close(writeFd)
+        os._exit(0)
+
+    os.close(writeFd)
+
+    pollInterval = 0.1
+    checkpoint = time.time()
+    while True:
+        if not processIsAlive(pid):
+            reader = os.fdopen(readFd, "rb")
+            data = reader.read()
+            reader.close()
+
+            print "process died:", pickle.loads(data)
+            # wiki.request("agent", "close")
+            break
+
+        if time.time()-checkpoint >= interval:
+            socket.setdefaulttimeout(2 * interval)
+            try:
+                try:
+                    # wiki.request("agent", "heartbeat")
+                    pass
+                except WikiFailure:
+                    pass
+                else:
+                    checkpoint = time.time()
+            finally:
+                socket.setdefaulttimeout(None)
+
+        if time.time()-checkpoint >= dieAfter:
+            os.kill(pid, signal.SIGINT)
+            while processIsAlive(pid):
+                time.sleep(pollInterval)
+            return
+
+        time.sleep(pollInterval)
+
+def main():
+    import optparse
+
+    parser = optparse.OptionParser()
+    parser.add_option("-c", "--config",
+                      dest="config",
+                      default=None,
+                      metavar="CONFIG",
+                      help=("read the username and password from the "+
+                            "config file CONFIG"))
+    options, args = parser.parse_args()
+    if len(args) < 1:
+        parser.error("wiki url has to be defined")
+
+    wiki = CLIWiki(args[0])
+
+    if options.config is not None:
+        loadCredsFromConfig(wiki, options.config)
+
+    while True:
+        runOneTask(wiki)
+
+if __name__ == "__main__":
+    main()

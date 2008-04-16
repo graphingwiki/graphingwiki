@@ -36,7 +36,7 @@ def execute(xmlrpcobj, agentid, page='', oper='get', metas={}):
 
         if not pagelist:
             # Then, get from pending tasks with overdue heartbeat
-            globaldata, pagelist = get_pagelist(request, 'pending')
+            globaldata, pages = get_pagelist(request, 'pending')
             for page in pages:
                 for val, typ in getvalues(page, 'heartbeat'):
                     try:
@@ -60,7 +60,7 @@ def execute(xmlrpcobj, agentid, page='', oper='get', metas={}):
 
             code = Page(request, page).get_raw_body()
             code = code.split('}}}', 1)[0]
-            code = code.split('{{!#', 1)
+            code = code.split('{{#!', 1)
 
             ret = save_meta(request, page,
                             {'agent': [agentid], 'status': ['pending'],
