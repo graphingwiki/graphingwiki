@@ -19,13 +19,13 @@ def processIsAlive(processId):
 
     return pid != processId
 
-def execute(script, keys):
+def execute(page, script, keys):
     locals = dict()
 
     exec script in locals
 
     func = locals.get("execute")
-    return func(**keys)
+    return func(page, **keys)
 
 def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     while True:
@@ -48,7 +48,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     if pid == 0:
         os.close(readFd)
 
-        result = execute(script, metas)
+        result = execute(page, script, metas)
         os.write(writeFd, pickle.dumps(result))
         os.close(writeFd)
         os._exit(0)
