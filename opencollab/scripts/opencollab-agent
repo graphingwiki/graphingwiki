@@ -31,7 +31,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     while True:
         print "Fetching a new task"
         newTask = wiki.request("TaskServer", agentId, "get")
-        if newTask is not None:
+        if newTask:
             break
 
         print "No new task found"
