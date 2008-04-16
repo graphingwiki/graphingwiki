@@ -6,6 +6,7 @@ import time
 import socket
 import signal
 import pickle
+import random
 
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -56,7 +57,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     os.close(writeFd)
 
     pollInterval = 0.1
-    checkpoint = time.time()
+    lastHeartBeat = checkpoint = time.time()
     while True:
         if not processIsAlive(pid):
             reader = os.fdopen(readFd, "rb")
@@ -70,18 +71,19 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
             print "Sent result"
             break
 
-        if time.time()-checkpoint >= interval:
+        if time.time()-lastHeartBeat >= interval:
             socket.setdefaulttimeout(2 * interval)
             try:
                 try:
-                    wiki.request("TaskServer", agentId, "heartbeat", page)
                     print " ...heartbeat..."
-                except WikiFailure:
-                    pass
+                    wiki.request("TaskServer", agentId, "change", page)
+                except WikiFailure, failure:
+                    print failure
                 else:
                     checkpoint = time.time()
             finally:
                 socket.setdefaulttimeout(None)
+            lastHeartBeat = time.time()
 
         if time.time()-checkpoint >= dieAfter:
             os.kill(pid, signal.SIGINT)
@@ -95,6 +97,11 @@ def main():
     import optparse
 
     parser = optparse.OptionParser()
+    parser.add_option("-n", "--name",
+                      dest="name",
+                      default=None,
+                      metavar="NAME",
+                      help="force the agent's name to NAME")
     parser.add_option("-c", "--config",
                       dest="config",
                       default=None,
@@ -105,13 +112,21 @@ def main():
     if len(args) < 1:
         parser.error("wiki url has to be defined")
 
-    wiki = CLIWiki(args[0])
+    url = args[0]
+    wiki = CLIWiki(url)
 
     if options.config is not None:
         loadCredsFromConfig(wiki, options.config)
 
+    name = options.name
+    if name is None:
+        name = socket.gethostbyname(socket.gethostname())
+    name += "-%d" % random.randint(0, 2**32)
+
+    print "Getting tasks from %s as agent %s" % (url, name)
+
     while True:
-        runOneTask('jee', wiki)
+        runOneTask(name, wiki)
 
 if __name__ == "__main__":
     main()
