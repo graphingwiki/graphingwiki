@@ -13,18 +13,19 @@ from time import time
 
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, getmetas, getvalues
 from SetMeta import execute as save_meta
 
 def get_pagelist(request, status, globaldata=None):
-    globaldata, pagelist, _, _ = \
+    globaldata, pagelist, metakeys, _ = \
                 metatable_parseargs(request,
                                     'CategoryTask, status=%s' % (status),
                                     globaldata)
 
-    return globaldata, pagelist
+    return globaldata, pagelist, metakeys
 
-def execute(xmlrpcobj, agentid, page='', oper='get', metas={}):
+def execute(xmlrpcobj, agentid, oper='get',
+            page='', result={}):
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -36,33 +37,41 @@ def execute(xmlrpcobj, agentid, page='', oper='get', metas={}):
 
         if not pagelist:
             # Then, get from pending tasks with overdue heartbeat
-            globaldata, pages = get_pagelist(request, 'pending')
+            globaldata, pages, metakeys = \
+                        get_pagelist(request, 'pending')
             for page in pages:
-                for val, typ in getvalues(page, 'heartbeat'):
+                for val, typ in getvalues(request, globaldata,
+                                          page, 'heartbeat'):
                     try:
                         val = float(val) + (10 * 60)
                         if val < curtime:
-                            pagelist.append(val)
+                            pagelist.append(page)
                     except ValueError:
                         pass
 
         if not pagelist:
             # Finally, get from open tasks
-            globaldata, pagelist = get_pagelist(request, 'open', globaldata)
+            globaldata, pagelist, metakeys = \
+                        get_pagelist(request, 'open', globaldata)
 
+        # Nothing to do...
         if not pagelist:
             globaldata.closedb()
-            return xmlrpclib.Fault(4, _("Error: No tasks!"))
-
-        for page in random.shuffle(pagelist):
-            metas = [x for x, y in getmetas(request, globaldata, page,
-                                            display=False)]
-
+            return ''
+        
+        random.shuffle(pagelist)
+        for page in pagelist:
+            stuff = getmetas(request, globaldata, page,
+                             metakeys, display=False)
+            metas = dict()
+            for key in stuff:
+                metas[key] = [x for x, y in stuff[key]]
+            
             code = Page(request, page).get_raw_body()
             code = code.split('}}}', 1)[0]
             code = code.split('{{#!', 1)
 
-            ret = save_meta(request, page,
+            ret = save_meta(xmlrpcobj, page,
                             {'agent': [agentid], 'status': ['pending'],
                              'heartbeat': [str(curtime)]},
                             action='repl')
@@ -78,18 +87,32 @@ def execute(xmlrpcobj, agentid, page='', oper='get', metas={}):
 
         return xmlrpclib.Fault(3, _("Error: Could not save status!"))
 
+    a = file('/tmp/k', 'a')
+    a.write(repr(result))
+    a.flush()
+    a.close()
+
     # Page argument needed for actions beyond this point
     if not page:
         return xmlrpclib.Fault(1, _("Error: Page not specified!"))
 
     elif oper == 'change':
-        metas['heartbeat'] = [str(curtime)]
-        ret = save_meta(request, page, metas, action='repl')
+        result['heartbeat'] = [str(curtime)]
+        ret = save_meta(xmlrpcobj, page, result, action='repl')
 
     elif oper == 'close':
-        metas['status'] = ['closed']
-        metas['heartbeat'] = [str(curtime)]
-        ret = save_meta(request, page, metas, action='repl')
+        if result:
+            metas, template = result
+        else:
+            metas = {page: {}}
+            template = ''
+
+        metas.setdefault(page, {})
+        metas[page]['status'] = ['closed']
+        metas[page]['heartbeat'] = [str(curtime)]
+        for page in metas:
+            ret = save_meta(xmlrpcobj, page, metas[page],
+                            action='repl', template=template)
 
     else:
         return xmlrpclib.Fault(2, _("Error: No such operation '%s'!" % (oper)))
