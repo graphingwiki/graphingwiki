@@ -87,10 +87,10 @@ def execute(xmlrpcobj, agentid, oper='get',
 
         return xmlrpclib.Fault(3, _("Error: Could not save status!"))
 
-    a = file('/tmp/k', 'a')
-    a.write(repr(result))
-    a.flush()
-    a.close()
+#    a = file('/tmp/k', 'a')
+#    a.write(repr(result))
+#    a.flush()
+#    a.close()
 
     # Page argument needed for actions beyond this point
     if not page:
