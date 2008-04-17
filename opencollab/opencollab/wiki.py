@@ -90,6 +90,8 @@ class GraphingWiki(object):
         if not configparser.read(filenames):
             return False
 
+        self._proxy = None
+
         try:
             self.username = configparser.get(section, "username")
             self.password = configparser.get(section, "password")
@@ -145,7 +147,7 @@ class GraphingWiki(object):
             raise WikiFailure(e.errmsg)
         except (socket.gaierror, socket.error), (code, msg):
             raise WikiFailure(msg)
-        except (httplib.HTTPException), msg:
+        except httplib.HTTPException, msg:
             raise WikiFailure(msg)
 
         if isinstance(result, dict) and "faultString" in result:
@@ -323,6 +325,7 @@ class CLIWiki(GraphingWiki):
 
                 self.username = raw_input("Username:")
                 self.password = getpass.getpass("Password:")
+                self._proxy = None
 
                 sys.stdout = oldStdout
             else:

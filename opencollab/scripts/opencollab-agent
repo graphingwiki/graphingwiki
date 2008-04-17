@@ -6,11 +6,13 @@
 """
 
 import os
+import sys
 import time
 import socket
 import signal
 import pickle
 import random
+import select
 
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -20,7 +22,6 @@ def processIsAlive(processId):
         pid, status = os.waitpid(processId, os.WNOHANG)
     except os.error:
         return False
-
     return pid != processId
 
 def execute(page, script, keys):
@@ -30,6 +31,18 @@ def execute(page, script, keys):
 
     func = locals.get("execute")
     return func(page, **keys)
+
+def readData(*fds):
+    datas = list()
+    readable, _, _ = select.select(fds, [], [], 0)
+
+    for index, fd in enumerate(fds):
+        if fd in readable:
+            datas.append(os.read(fd, 1024**2))
+        else:
+            datas.append("")
+
+    return datas
 
 def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     while True:
@@ -46,32 +59,65 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     print " lang: %s" % lang
     print " metas: %s" % repr(metas)
 
-    readFd, writeFd = os.pipe()
+    resultReadFd, resultWriteFd = os.pipe()
+    outReadFd, outWriteFd = os.pipe()
+    errReadFd, errWriteFd = os.pipe()
 
     pid = os.fork()
     if pid == 0:
-        os.close(readFd)
+        os.close(resultReadFd)
+        os.close(outReadFd)
+        os.close(errReadFd)
+
+        # Redirect stdout
+        os.dup2(outWriteFd, 1)
+        os.close(outWriteFd)
+
+        # Redirect stderr
+        os.dup2(errWriteFd, 2)
+        os.close(errWriteFd)
 
         result = execute(page, script, metas)
-        os.write(writeFd, pickle.dumps(result))
-        os.close(writeFd)
+        os.write(resultWriteFd, pickle.dumps(result))
+
+        os.close(resultWriteFd)
         os._exit(0)
 
-    os.close(writeFd)
+    os.close(outWriteFd)
+    os.close(errWriteFd)
+    os.close(resultWriteFd)
 
+    outData = ""
+    errData = ""
     pollInterval = 0.1
     lastHeartBeat = checkpoint = time.time()
     while True:
+        newOutData, newErrData = readData(outReadFd, errReadFd)
+
+        sys.stdout.write(newOutData)
+        sys.stdout.flush()
+        outData += newOutData
+
+        sys.stderr.write(newErrData)
+        sys.stderr.flush()
+        errData += newErrData
+
         if not processIsAlive(pid):
-            reader = os.fdopen(readFd, "rb")
+            reader = os.fdopen(resultReadFd, "rb")
             data = reader.read()
             reader.close()
 
-            result = pickle.loads(data)
-            print "Got result %s" % repr(result)
+            try:
+                result = pickle.loads(data)
+            except EOFError:
+                wiki.request("TaskServer", agentId, "change", page,
+                             dict(status=["failed"]))
+                print "Task failed"
+            else:
+                print "Got result %s" % repr(result)
+                wiki.request("TaskServer", agentId, "close", page, result)
+                print "Sent result"
 
-            wiki.request("TaskServer", agentId, "close", page, result)
-            print "Sent result"
             break
 
         if time.time()-lastHeartBeat >= interval:
@@ -114,9 +160,8 @@ def main():
     options, args = parser.parse_args()
 
     url = ''
-    if len(args):
+    if args:
         url = args[0]
-
     wiki = CLIWiki(url, config=options.config)
 
     name = options.name
