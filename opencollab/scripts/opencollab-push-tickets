@@ -15,18 +15,14 @@ import cStringIO
 from optparse import OptionParser
 from roundup import instance
 from opencollab.meta import Meta
-from opencollab.wiki import GraphingWiki
+from opencollab.wiki import CLIWiki, WikiFailure
 
 def parse_config( cpath ):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
-    creds = dict( configparser.items('creds') )
     uris = dict( configparser.items('dbs') )
-    username = creds.pop("username")
-    password = creds.pop("password")
     tracker = uris.pop("tracker")
     tpath = uris.pop("tpath")
-    wiki = uris.pop("collab")
     return username, password, tracker, tpath, wiki
 
 def open_db( tpath ):
@@ -167,9 +163,9 @@ def main():
         help="Enable verbose output." ) 
     ( options, args ) = parser.parse_args()
     if options.cpath:
-        username, password, tracker, tpath, wiki = parse_config( options.cpath )
+        tracker, tpath = parse_config( options.cpath )
         db = open_db( tpath )
-        collab = GraphingWiki( wiki, username=username, password=password  )
+        collab = CLIWiki(wiki, config=options.cpath)
         transfer_data( db, tracker, collab, options.verbose )
         db.close()
     else:
