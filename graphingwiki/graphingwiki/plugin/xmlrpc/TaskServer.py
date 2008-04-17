@@ -9,11 +9,16 @@
 """
 import xmlrpclib
 import random
-from time import time
 
+from time import time
+from urllib import unquote as url_unquote
+
+from MoinMoin import config
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas, getvalues
+from AttachFile import save as save_attachment
+
 from SetMeta import execute as save_meta
 
 def get_pagelist(request, status, globaldata=None):
@@ -25,7 +30,7 @@ def get_pagelist(request, status, globaldata=None):
     return globaldata, pagelist, metakeys
 
 def execute(xmlrpcobj, agentid, oper='get',
-            page='', result={}):
+            page='', status=('', ''), result=({}, '')):
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -59,6 +64,7 @@ def execute(xmlrpcobj, agentid, oper='get',
             globaldata.closedb()
             return ''
         
+        unqpage = ''
         random.shuffle(pagelist)
         for page in pagelist:
             stuff = getmetas(request, globaldata, page,
@@ -67,7 +73,9 @@ def execute(xmlrpcobj, agentid, oper='get',
             for key in stuff:
                 metas[key] = [x for x, y in stuff[key]]
             
-            code = Page(request, page).get_raw_body()
+            unqpage = unicode(url_unquote(page), config.charset)
+            code = Page(request, unqpage).get_raw_body()
+
             code = code.split('}}}', 1)[0]
             code = code.split('{{#!', 1)
 
@@ -96,20 +104,30 @@ def execute(xmlrpcobj, agentid, oper='get',
     if not page:
         return xmlrpclib.Fault(1, _("Error: Page not specified!"))
 
+    metas, template = result
+    metas.setdefault(page, {})
+    metas[page]['heartbeat'] = [str(curtime)]
+
+    stdin, stdout = status
+    if stdin or stdout:
+        if stdin:
+            ret = save_attachfile(request, unqpage, 'stdin.txt', stdin, True)
+            metas[page]['input'] = ['inline:stdin.txt']
+
+        if stdout:
+            ret = save_attachfile(request, unqpage, 'stdout.txt', stdout, True)
+            metas[page]['output'] = ['inline:stdout.txt']
+
+        if not ret == True:
+            return xmlrpclib.Fault(4, _("Error: Could not save attachments !"))
+        
     elif oper == 'change':
-        result['heartbeat'] = [str(curtime)]
-        ret = save_meta(xmlrpcobj, page, result, action='repl')
+        for page in metas:
+            ret = save_meta(xmlrpcobj, page, metas[page],
+                            action='repl', template=template)
 
     elif oper == 'close':
-        if result:
-            metas, template = result
-        else:
-            metas = {page: {}}
-            template = ''
-
-        metas.setdefault(page, {})
         metas[page]['status'] = ['closed']
-        metas[page]['heartbeat'] = [str(curtime)]
         for page in metas:
             ret = save_meta(xmlrpcobj, page, metas[page],
                             action='repl', template=template)
