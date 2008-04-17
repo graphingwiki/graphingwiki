@@ -13,8 +13,11 @@ import md5
 import sys
 import random
 import getpass
+import ConfigParser
 
 from meta import Meta
+
+from opencollab.util import loadConfig
 
 try:
     from curltransport import CURLTransport as CustomTransport
@@ -25,6 +28,9 @@ class WikiFailure(Exception):
     pass
 
 class AuthorizationRequired(WikiFailure):
+    pass
+
+class UrlRequired(WikiFailure):
     pass
 
 DEFAULT_CHUNK = 256 * 1024
@@ -55,17 +61,51 @@ def mangleFaultString(faultString):
     return message
 
 class GraphingWiki(object):
-    def __init__(self, url, username=None, password=None, sslPeerVerify=False):
+    def __init__(self, url, username=None, password=None,
+                 sslPeerVerify=False, config=None):
         object.__init__(self)
 
-        self.url = urlQuote(url)
         self.sslPeerVerify = sslPeerVerify
-        self.setCredentials(username, password)
 
-    def setCredentials(self, username, password):
-        self.username = username
-        self.password = password
+        if config is not None:
+            loadConfig(config)
+
+        if not self.url:
+            self.url = self.setUrl(url)
+
+        if not self.username:
+            self.username = username
+
+        if not self.password:
+            self.password = password
+
+    def setUrl(self, url):
+        if not url:
+            raise UrlRequired
+
+        self.url = urlQuote(url)
         self._proxy = None
+
+    def loadConfig(self, filenames, section="creds"):
+        configparser = ConfigParser.ConfigParser()
+        if not configparser.read(filenames):
+            return False
+
+        try:
+            self.username = configparser.get(section, "username")
+            self.password = configparser.get(section, "password")
+        except ConfigParser.NoOptionError:
+            pass
+
+        try:
+            url = configparser.get(section, "url")
+            self.setUrl(url)
+        except ConfigParser.NoOptionError:
+            pass
+        except UrlRequired:
+            pass
+
+        return True
 
     def _getProxy(self):
         if self._proxy is not None:
@@ -257,6 +297,22 @@ class CLIWiki(GraphingWiki):
     # A version of the GraphingWiki class intended for command line
     # usage. Automatically asks username and password should the wiki
     # need it.
+
+    def __init__(self, name='', config, *args, **kw):
+        while True:
+            try:
+                super(GraphingWiki, self).__init__(name, *args, **kw)
+            except UrlRequired:
+                # Redirecting stdout to stderr for these queries
+                oldStdout = sys.stdout
+                sys.stdout = sys.stderr
+
+                url = raw_input("Wiki:")
+
+                sys.stdout = oldStdout
+                self.setUrl(url)
+            else:
+                return
 
     def request(self, name, *args):
         while True:

@@ -10,7 +10,6 @@ import random
 
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util import loadCredsFromConfig
 
 def processIsAlive(processId):
     try:
@@ -109,14 +108,12 @@ def main():
                       help=("read the username and password from the "+
                             "config file CONFIG"))
     options, args = parser.parse_args()
-    if len(args) < 1:
-        parser.error("wiki url has to be defined")
 
-    url = args[0]
-    wiki = CLIWiki(url)
+    url = ''
+    if len(args):
+        url = args[0]
 
-    if options.config is not None:
-        loadCredsFromConfig(wiki, options.config)
+    wiki = CLIWiki(url, options.config)
 
     name = options.name
     if name is None:
