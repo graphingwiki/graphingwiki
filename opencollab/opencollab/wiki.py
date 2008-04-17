@@ -306,10 +306,9 @@ class CLIWiki(GraphingWiki):
                 oldStdout = sys.stdout
                 sys.stdout = sys.stderr
 
-                url = raw_input("Wiki:")
+                name = raw_input("Wiki:")
 
                 sys.stdout = oldStdout
-                self.setUrl(url)
             else:
                 return
 
