@@ -43,6 +43,7 @@ def main():
         wiki = CLIWiki( config=options.cpath )
     elif len(args) != 2:
         parser.error("wiki url and pagename have to be defined")
+    else:
         url, page = args
         wiki = CLIWiki(url)
 
