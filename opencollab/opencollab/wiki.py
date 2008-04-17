@@ -95,7 +95,7 @@ class GraphingWiki(object):
         try:
             self.username = configparser.get(section, "username")
             self.password = configparser.get(section, "password")
-        except ConfigParser.NoOptionError:
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             pass
 
         try:
