@@ -17,10 +17,9 @@ from urllib import unquote
 def parse_config( path):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
-    uris = dict( configparser.items('downloader') )
+    uris = dict( configparser.items("downloader") )
     page = uris.pop("page")
     return page
-
 
 def main():
     parser = optparse.OptionParser()
@@ -38,7 +37,7 @@ def main():
     options, args = parser.parse_args()
     if options.cpath:
         if len(args) == 0:
-            page = parse_config(cpath)
+            page = parse_config(options.cpath)
         else: 
             page = args[0]
         wiki = CLIWiki( config=options.cpath )
