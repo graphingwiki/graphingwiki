@@ -17,8 +17,8 @@ from MoinMoin import config
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas, getvalues
-from AttachFile import save as save_attachment
 
+from AttachFile import save as save_attachment
 from SetMeta import execute as save_meta
 
 def get_pagelist(request, status, globaldata=None):
@@ -30,7 +30,7 @@ def get_pagelist(request, status, globaldata=None):
     return globaldata, pagelist, metakeys
 
 def execute(xmlrpcobj, agentid, oper='get',
-            page='', status=('', ''), result=({}, '')):
+            page='', status=('', ''), result={}):
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -95,42 +95,46 @@ def execute(xmlrpcobj, agentid, oper='get',
 
         return xmlrpclib.Fault(3, _("Error: Could not save status!"))
 
-#    a = file('/tmp/k', 'a')
-#    a.write(repr(result))
-#    a.flush()
-#    a.close()
-
     # Page argument needed for actions beyond this point
     if not page:
         return xmlrpclib.Fault(1, _("Error: Page not specified!"))
 
-    metas, template = result
-    metas.setdefault(page, {})
-    metas[page]['heartbeat'] = [str(curtime)]
+    unqpage = unicode(url_unquote(page), config.charset)
 
-    stdin, stdout = status
-    if stdin or stdout:
-        if stdin:
-            ret = save_attachfile(request, unqpage, 'stdin.txt', stdin, True)
-            metas[page]['input'] = ['inline:stdin.txt']
+    result.setdefault(page, {})
+    result[page]['heartbeat'] = [str(curtime)]
+
+    stdout, stderr = status
+    if stderr or stdout:
+        if stderr:
+            ret = save_attachment(request, unqpage, 'stderr.txt', stdin, True)
+            result[page]['stderr'] = ['inline:stderr.txt']
 
         if stdout:
-            ret = save_attachfile(request, unqpage, 'stdout.txt', stdout, True)
-            metas[page]['output'] = ['inline:stdout.txt']
+            ret = save_attachment(request, unqpage, 'stdout.txt', stdout, True)
+            result[page]['stdout'] = ['inline:stdout.txt']
 
         if not ret == True:
-            return xmlrpclib.Fault(4, _("Error: Could not save attachments !"))
-        
-    elif oper == 'change':
-        for page in metas:
-            ret = save_meta(xmlrpcobj, page, metas[page],
+            return ret
+
+    if oper in ['change', 'close']:
+        if oper == 'close':
+            result[page]['status'] = ['closed']
+
+        for page in result:
+            unqpage = unicode(url_unquote(page), config.charset)
+
+            template = result[page].get('template', '')
+
+            metas = result[page].get('metas', {})
+
+            ret = save_meta(xmlrpcobj, page, metas,
                             action='repl', template=template)
 
-    elif oper == 'close':
-        metas[page]['status'] = ['closed']
-        for page in metas:
-            ret = save_meta(xmlrpcobj, page, metas[page],
-                            action='repl', template=template)
+            attach = result[page].get('attachments', {})
+            for name in attach:
+                ret = save_attachment(request, unqpage,
+                                      name, attach[name], True)
 
     else:
         return xmlrpclib.Fault(2, _("Error: No such operation '%s'!" % (oper)))
