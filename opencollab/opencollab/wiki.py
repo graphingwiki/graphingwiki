@@ -17,8 +17,6 @@ import ConfigParser
 
 from meta import Meta
 
-from opencollab.util import loadConfig
-
 try:
     from curltransport import CURLTransport as CustomTransport
 except ImportError:
@@ -66,17 +64,18 @@ class GraphingWiki(object):
         object.__init__(self)
 
         self.sslPeerVerify = sslPeerVerify
+        self._proxy = None
 
         if config is not None:
             loadConfig(config)
 
-        if not self.url:
-            self.url = self.setUrl(url)
+        if not hasattr(self, 'url'):
+            self.setUrl(url)
 
-        if not self.username:
+        if not hasattr(self, 'username'):
             self.username = username
 
-        if not self.password:
+        if not hasattr(self, 'password'):
             self.password = password
 
     def setUrl(self, url):
@@ -298,10 +297,10 @@ class CLIWiki(GraphingWiki):
     # usage. Automatically asks username and password should the wiki
     # need it.
 
-    def __init__(self, name='', config, *args, **kw):
+    def __init__(self, name='', *args, **kw):
         while True:
             try:
-                super(GraphingWiki, self).__init__(name, *args, **kw)
+                super(CLIWiki, self).__init__(name, *args, **kw)
             except UrlRequired:
                 # Redirecting stdout to stderr for these queries
                 oldStdout = sys.stdout
@@ -323,10 +322,9 @@ class CLIWiki(GraphingWiki):
                 oldStdout = sys.stdout
                 sys.stdout = sys.stderr
 
-                username = raw_input("Username:")
-                password = getpass.getpass("Password:")
+                self.username = raw_input("Username:")
+                self.password = getpass.getpass("Password:")
 
                 sys.stdout = oldStdout
-                self.setCredentials(username, password)
             else:
                 return result

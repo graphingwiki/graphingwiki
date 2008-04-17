@@ -113,7 +113,7 @@ def main():
     if len(args):
         url = args[0]
 
-    wiki = CLIWiki(url, options.config)
+    wiki = CLIWiki(url, config=options.config)
 
     name = options.name
     if name is None:
