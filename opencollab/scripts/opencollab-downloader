@@ -14,7 +14,7 @@ from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 from urllib import unquote
 
-def parse_config( path):
+def parse_config(cpath):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
     uris = dict( configparser.items("downloader") )
