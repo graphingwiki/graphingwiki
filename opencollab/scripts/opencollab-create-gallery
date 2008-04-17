@@ -17,18 +17,15 @@ import EXIF
 from optparse import OptionParser
 from PIL import Image
 from opencollab.meta import Meta
-from opencollab.wiki import GraphingWiki
+from opencollab.wiki import CLIWiki, WikiFailure
 
 def parse_config( cpath ):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
-    creds = dict( configparser.items('creds') )
     uris = dict( configparser.items('dbs') )
-    username = creds.pop("username")
-    password = creds.pop("password")
     spath = uris.pop("spath")
     wiki = uris.pop("collab")
-    return username, password, spath, wiki
+    return spath, wiki
 
 def store_names( flist, dname, names ): 
     for name in names:
@@ -149,9 +146,9 @@ def main():
     ( options, args ) = parser.parse_args()
     if options.cpath:
         flist = []
-        username, password, spath, wiki = parse_config( options.cpath )
+        spath, wiki = parse_config( options.cpath )
+        collab = CLIWiki(wiki, config=options.cpath)
         os.path.walk( spath, store_names, flist ) 
-        collab = GraphingWiki( wiki, username=username, password=password  )
         for f in flist:
             imeta = Meta()
             image = scale_image( f, imeta )
