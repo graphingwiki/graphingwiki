@@ -67,7 +67,7 @@ class GraphingWiki(object):
         self._proxy = None
 
         if config is not None:
-            loadConfig(config)
+            self.loadConfig(config)
 
         if not hasattr(self, 'url'):
             self.setUrl(url)
