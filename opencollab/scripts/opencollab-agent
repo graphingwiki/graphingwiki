@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+1#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
     @copyright: 2008 by Joachim Viide (but not very proud of it)
@@ -128,7 +128,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
                         result = pickle.loads(data)
                     except EOFError:
                         print "Task failed"
-                        result = dict(status=["failed"])
+                        result = { page : { "metas" : { "status" : ["failed"]}}}
                         wiki.request("TaskServer", agentId, "change", page, status, result)
                     else:
                         print "Got result %s" % repr(result)
