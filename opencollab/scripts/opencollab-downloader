@@ -8,10 +8,19 @@ import os
 import sys
 import md5
 import optparse
+import ConfigParser
 
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 from urllib import unquote
+
+def parse_config( path):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    uris = dict( configparser.items('downloader') )
+    page = uris.pop("page")
+    return page
+
 
 def main():
     parser = optparse.OptionParser()
@@ -28,7 +37,11 @@ def main():
     parser.set_usage("%prog [options] WIKIURL PAGENAME")
     options, args = parser.parse_args()
     if options.cpath:
-        collab = CLIWiki(url, config=options.cpath)
+        if len(args) == 0:
+            page = parse_config(cpath)
+        else: 
+            page = args[0]
+        wiki = CLIWiki( config=options.cpath )
     elif len(args) != 2:
         parser.error("wiki url and pagename have to be defined")
         url, page = args
@@ -117,4 +130,7 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     file.close()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
