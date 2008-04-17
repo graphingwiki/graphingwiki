@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
     @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
@@ -20,14 +20,19 @@ def main():
                       default=None,
                       metavar="OUTPUT",
                       help="save the file to name OUTPUT in the wiki")
-
+    parser.add_option( "-c", "--config",
+                      action="store",
+                      type="string", dest="cpath",
+                      help="Config file path."
+    )
     parser.set_usage("%prog [options] WIKIURL PAGENAME")
     options, args = parser.parse_args()
-    if len(args) != 2:
+    if options.cpath:
+        collab = CLIWiki(url, config=options.cpath)
+    elif len(args) != 2:
         parser.error("wiki url and pagename have to be defined")
-
-    url, page = args
-    wiki = CLIWiki(url)
+        url, page = args
+        wiki = CLIWiki(url)
 
     if options.output is None:
         basePath = os.getcwd()
