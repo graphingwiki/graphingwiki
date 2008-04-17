@@ -41,17 +41,21 @@ def readData(*fds):
             datas.append(os.read(fd, 1024**2))
         else:
             datas.append("")
-
+ 
     return datas
 
 def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     while True:
         print "Fetching a new task"
-        newTask = wiki.request("TaskServer", agentId, "get")
-        if newTask:
-            break
+        try:
+            newTask = wiki.request("TaskServer", agentId, "get")
+        except WikiFailure, msg:
+            print "Wiki failure:", msg
+        else:
+            if newTask:
+                break
+            print "No new task found"
 
-        print "No new task found"
         time.sleep(interval)
 
     page, metas, lang, script = newTask
@@ -68,7 +72,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
         os.close(resultReadFd)
         os.close(outReadFd)
         os.close(errReadFd)
-
+        
         # Redirect stdout
         os.dup2(outWriteFd, 1)
         os.close(outWriteFd)
@@ -79,7 +83,7 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
 
         result = execute(page, script, metas)
         os.write(resultWriteFd, pickle.dumps(result))
-
+        
         os.close(resultWriteFd)
         os._exit(0)
 
@@ -90,68 +94,83 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
     outData = ""
     errData = ""
 
-    pollInterval = 0.1
+    pollInterval = 1.0
     lastHeartBeat = checkpoint = time.time()
-    while True:
-        # Read data from stdout and stderr of the child process
-        newOutData, newErrData = readData(outReadFd, errReadFd)
 
-        sys.stdout.write(newOutData)
-        sys.stdout.flush()
-        outData += newOutData
-
-        sys.stderr.write(newErrData)
-        sys.stderr.flush()
-        errData += newErrData
-
-        status = outData, errData
-
-        # Perform ending rituals if neede
-        if not processIsAlive(pid):
-            reader = os.fdopen(resultReadFd, "rb")
-            data = reader.read()
-            reader.close()
-
-            os.close(outReadFd)
-            os.close(errReadFd)
+    try:
+        while True:
+            # Read data from stdout and stderr of the child process
+            newOutData, newErrData = readData(outReadFd, errReadFd)
             
-            try:
-                result = pickle.loads(data)
-            except EOFError:
-                result = dict(status=["failed"])
-                wiki.request("TaskServer", agentId, "change", page, status, result)
-                print "Task failed"
-            else:
-                print "Got result %s" % repr(result)
-                wiki.request("TaskServer", agentId, "close", page, status, result)
-                print "Sent result"
+            sys.stdout.write(newOutData)
+            sys.stdout.flush()
+            outData += newOutData
+            
+            sys.stderr.write(newErrData)
+            sys.stderr.flush()
+            errData += newErrData
+            
+            status = outData, errData
 
-            break
+            # Perform ending rituals if neede
+            if not processIsAlive(pid):
+                reader = os.fdopen(resultReadFd, "rb")
+                data = reader.read()
+                reader.close()
 
-        # Send out a heartbeat if needed
-        if time.time()-lastHeartBeat >= interval:
-            socket.setdefaulttimeout(2 * interval)
-            try:
+                os.close(outReadFd)
+                os.close(errReadFd)
+
                 try:
-                    print " ...heartbeat..."
-                    wiki.request("TaskServer", agentId, "change", page, status)
-                except WikiFailure, failure:
-                    print failure
+                    try:
+                        result = pickle.loads(data)
+                    except EOFError:
+                        print "Task failed"
+                        result = dict(status=["failed"])
+                        wiki.request("TaskServer", agentId, "change", page, status, result)
+                    else:
+                        print "Got result %s" % repr(result)
+                        wiki.request("TaskServer", agentId, "close", page, status, result)
+                except WikiFailure, msg:
+                    print "Wiki failure:", msg
                 else:
-                    checkpoint = time.time()
-            finally:
-                socket.setdefaulttimeout(None)
-            lastHeartBeat = time.time()
+                    print "Sent result"
 
-        # Kill the child process if we haven't been able to send a heartbeat
-        # for a longish time.
-        if time.time()-checkpoint >= dieAfter:
+                break
+
+            # Send out a heartbeat if needed
+            if time.time()-lastHeartBeat >= interval:
+                socket.setdefaulttimeout(2 * interval)
+                try:
+                    try:
+                        print " ...heartbeat..."
+                        wiki.request("TaskServer", agentId, "change", page, status)
+                    except WikiFailure, msg:
+                        print "Wiki failure:", msg
+                    else:
+                        checkpoint = time.time()
+                finally:
+                    socket.setdefaulttimeout(None)
+                lastHeartBeat = time.time()
+
+            # Quit if we haven't been able to send a heartbeat
+            # for a longish time.            
+            if time.time()-checkpoint >= dieAfter:
+                print "Grace perioid ended, quitting"
+                break
+
+            time.sleep(pollInterval)
+    finally:
+        # Kill the child process
+        try:
             os.kill(pid, signal.SIGINT)
-            while processIsAlive(pid):
-                time.sleep(pollInterval)
-            return
+        except OSError:
+            pass
 
-        time.sleep(pollInterval)
+        while processIsAlive(pid):
+            time.sleep(pollInterval)
+
+        print "Task ended"
 
 def main():
     import optparse
