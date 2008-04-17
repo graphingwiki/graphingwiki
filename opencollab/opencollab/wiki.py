@@ -101,7 +101,7 @@ class GraphingWiki(object):
         try:
             url = configparser.get(section, "url")
             self.setUrl(url)
-        except ConfigParser.NoOptionError:
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             pass
         except UrlRequired:
             pass

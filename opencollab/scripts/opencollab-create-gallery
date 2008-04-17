@@ -24,8 +24,7 @@ def parse_config( cpath ):
     configparser.readfp( open(cpath) )
     uris = dict( configparser.items('dbs') )
     spath = uris.pop("spath")
-    wiki = uris.pop("collab")
-    return spath, wiki
+    return spath
 
 def store_names( flist, dname, names ): 
     for name in names:
@@ -146,7 +145,8 @@ def main():
     ( options, args ) = parser.parse_args()
     if options.cpath:
         flist = []
-        spath, wiki = parse_config( options.cpath )
+        wiki = ""
+        spath = parse_config( options.cpath )
         collab = CLIWiki(wiki, config=options.cpath)
         os.path.walk( spath, store_names, flist ) 
         for f in flist:
