@@ -323,7 +323,8 @@ class CLIWiki(GraphingWiki):
                 oldStdout = sys.stdout
                 sys.stdout = sys.stderr
 
-                self.username = raw_input("Username:")
+                if not getattr(self, 'username', ''):
+                  self.username = raw_input("Username:")
                 self.password = getpass.getpass("Password:")
                 self._proxy = None
 
