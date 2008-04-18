@@ -36,6 +36,7 @@ from urllib import quote as url_quote
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
+from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.editing import formatting_rules
@@ -59,7 +60,7 @@ def t_cell(macro, vals, head=0, style={}):
         out.write(macro.formatter.bullet_list(1))
 
     first_val = True
-    
+
     for data in sorted(vals):
 
         # cosmetic for having a "a, b, c" kind of lists
@@ -145,7 +146,13 @@ def construct_table(macro, globaldata, pagelist, metakeys,
 
     request.write(macro.formatter.table_row(0))
 
+    tmp_page = request.page
+
     for page in pagelist:
+        pageobj = Page(request, unicode(url_unquote(page), config.charset))
+        request.page = pageobj
+        request.formatter.page = pageobj
+
         row = row + 1
         metas = getmetas(request, globaldata, page,
                          metakeys, display=False,
@@ -166,6 +173,10 @@ def construct_table(macro, globaldata, pagelist, metakeys,
             t_cell(macro, values, style=style)
 
         request.write(macro.formatter.table_row(0))
+
+    request.page = tmp_page
+    request.formatter.page = tmp_page
+
     request.write(macro.formatter.table(0))
     request.write(u'</div>')
 

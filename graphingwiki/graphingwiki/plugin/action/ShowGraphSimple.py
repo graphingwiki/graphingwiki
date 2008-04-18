@@ -228,35 +228,36 @@ class GraphShowerSimple(GraphShower):
                 node = outgraph.nodes.get(node)
 
                 # To fix some weird problems with transparency
-                nstyle = getattr(node, 'style', None)
+                nstyle = getattr(node, 'gwikistyle', None)
                 if not nstyle:
-                    node.style = 'filled'
+                    node.gwikistyle = 'filled'
                 elif not 'filled' in nstyle:
-                    node.style += ', filled'
-                if not hasattr(node, 'fillcolor'):
-                    node.fillcolor = 'white'
+                    node.gwikistyle += ', filled'
+                if not hasattr(node, 'gwikifillcolor'):
+                    node.gwikifillcolor = 'white'
 
                 # Fix shapefile from file path to URL
-                if hasattr(node, 'shapefile'):
-                    page, file = node.shapefile.split('/attachments/')
+                if hasattr(node, 'gwikishapefile'):
+                    page, file = node.gwikishapefile.split('/attachments/')
                     page = unquoteWikiname(page.split('/')[-1])
                     shapefile = AttachFile.getAttachUrl(page, file,
                                                         self.request)
-                    node.shapefile = self.request.getQualifiedURL(shapefile)
+                    shapefile = self.request.getQualifiedURL(shapefile)
+                    node.gwikishapefile = shapefile
 
                 # Quoting fix
-                if 'action=AttachFile' in node.URL:
-                    pagepart, args = node.URL[1:].split('?')
-                    node.URL = src + url_quote(pagepart) + '?' + args
+                if 'action=AttachFile' in node.gwikiURL:
+                    pagepart, args = node.gwikiURL[1:].split('?')
+                    node.gwikiURL = src + url_quote(pagepart) + '?' + args
 
                 # Fix other node URL:s
-                if node.URL.startswith('..'):
-                    node.URL = src + node.URL[2:]
-                elif node.URL[0] == '.':
-                    node.URL = src + node.URL[1:]
-                elif node.URL[0] == '/':
-                    node.URL = src + node.URL
-                node.URL = node.URL.replace('&image=1', '')
+                if node.gwikiURL.startswith('..'):
+                    node.gwikiURL = src + node.gwikiURL[2:]
+                elif node.gwikiURL[0] == '.':
+                    node.gwikiURL = src + node.gwikiURL[1:]
+                elif node.gwikiURL[0] == '/':
+                    node.gwikiURL = src + node.gwikiURL
+                node.gwikiURL = node.gwikiURL.replace('&image=1', '')
 
             src = self.request.getQualifiedURL()
             for edge in outgraph.edges.getall():

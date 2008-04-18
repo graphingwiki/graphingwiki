@@ -221,7 +221,7 @@ def link_to_attachment(globaldata, target):
         pass
     else:
         targetMeta = targetPage.get("meta", dict())
-        url = targetMeta.get("URL", set([""]))
+        url = targetMeta.get("gwikiURL", set([""]))
         if url:
             url = url.pop()
             # If the URL attribute of the target looks like the
@@ -239,9 +239,10 @@ def link_to_attachment(globaldata, target):
     return target
 
 def absolute_attach_name(quoted, target):
-    if target.startswith('attachment:') and not '/' in target:
-        target = target.replace('attachment:', 'attachment:%s/' %
-                                (quoted.replace(' ', '_')))
+    abs_method = target.split(':')[0]
+    
+    if abs_method in Parser.attachment_schemas and not '/' in target:
+        target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
 
     return target
 
@@ -348,7 +349,7 @@ def get_pages(request):
     return pages
 
 def edit(pagename, editfun, request=None,
-         category_edit='', catlist=[]):
+         category_edit='', catlist=[], lock=None):
     request, p = getpage(pagename, request)
 
     oldtext = p.get_raw_body()
@@ -369,6 +370,8 @@ def edit(pagename, editfun, request=None,
         return u'No data', p
 
     try:
+        if lock:
+            lock.release()
         msg = p.saveText(newtext, 0)
         graphsaver(pagename, request, newtext, p.getPagePath(), p)
 
@@ -401,7 +404,7 @@ def _fix_key(key):
     return key
 
 def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[]):
+              category_edit='', catlist=[], lock=None):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -579,12 +582,12 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
         return oldtext
 
-    msg, p = edit(pagename, editfun, request, category_edit, catlist)
+    msg, p = edit(pagename, editfun, request, category_edit, catlist, lock)
 
     return msg
 
 def process_edit(request, input,
-                 category_edit='', categories={}):
+                 category_edit='', categories={}, lock=None):
     _ = request.getText
     # request.write(repr(request.form) + '<br>')
     # print repr(input) + '<br>'
@@ -678,7 +681,8 @@ def process_edit(request, input,
             msg.append('%s: ' % url_unquote(keypage) + \
                        edit_meta(request, url_unquote(keypage),
                                  {}, {},
-                                 category_edit, categories[keypage]))
+                                 category_edit, categories[keypage],
+                                 lock))
                                  
     elif changes:
         for keypage in changes:
@@ -687,7 +691,8 @@ def process_edit(request, input,
                        edit_meta(request, url_unquote(keypage),
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
-                                 category_edit, catlist))
+                                 category_edit, catlist,
+                                 lock))
     elif keypage:
         msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
     else:
@@ -861,7 +866,7 @@ def metatable_parseargs(request, args,
                     if style:
                         styles[key] = style[0]
 
-                keyspec.append(url_quote(encode(key)))
+                keyspec.append(url_quote(encode(key.strip())))
 
             continue
 
@@ -914,12 +919,6 @@ def metatable_parseargs(request, args,
             if page_re.match(page):
                 argset.add(page)
 
-    # hmm..
-    def addpage(p):
-        if not isinstance(p, unicode):
-            raise ValueError("only unicode wanted, got %s" % repr(p))
-        argset.add(p)
-
     # If there were no page args, default to all pages
     if not pageargs and not argset:
         # Filter pages the user may not read
@@ -964,6 +963,10 @@ def metatable_parseargs(request, args,
                 except KeyError:
                     continue
 
+                # Added filtering of nonexisting and non-local pages
+                if not page.has_key('saved'):
+                    continue
+                
                 pages.add(arg)
             
     pagelist = set([])

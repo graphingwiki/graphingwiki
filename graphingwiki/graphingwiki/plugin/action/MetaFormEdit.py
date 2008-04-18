@@ -11,7 +11,6 @@ import urllib
 import re
 import StringIO
 
-from graphingwiki.editing import save_template
 from urllib import quote as url_quote
 from copy import copy
 
