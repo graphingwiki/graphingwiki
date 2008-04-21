@@ -74,6 +74,7 @@ def execute(macro, args):
             alldata[revlink] = alldata[quotedname]
             # So that new values are appended rather than overwritten
             del alldata[quotedname]
+            # Add revision as meta so that it is shown in the table
             alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
             revisions[rev] = revlink
 

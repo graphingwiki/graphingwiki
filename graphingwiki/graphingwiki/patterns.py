@@ -144,7 +144,10 @@ class GraphData(object):
         node = graph.nodes.add(pagename)
         # Add metadata
         for key, val in page.get('meta', {}).iteritems():
-            setattr(node, key, ''.join(x.strip('"') for x in val))
+            if key in special_attrs:
+                setattr(node, key, ''.join(x.strip('"') for x in val))
+            else:
+                setattr(node, key, val)
 
         # Shapefile is an extra special case
         for shape in page.get('lit', {}).get('gwikishapefile', []):

@@ -411,14 +411,15 @@ class GraphShower(object):
 
         return graphdata
 
-    def addToAllCats(self, nodename):
+    def addToAllCats(self, cats):
+        if not cats:
+            return
+
+        # No need to list all categories if the list is not going to be used
         if not self.do_form:
             return
 
-        opageobj = Page(self.request,
-                        unicode(url_unquote(nodename),
-                                config.charset))
-        self.allcategories.update(opageobj.getCategories(self.request))
+        self.allcategories.update(cats)
 
     def buildGraphData(self):
         graphdata = Graph()
@@ -427,9 +428,14 @@ class GraphShower(object):
         pagename = url_quote(encode(self.pagename))
         self.pagename = pagename
 
+        def get_categories(nodename):
+            pagedata = self.globaldata.getpage(nodename)
+            return pagedata.get('metas', {}).get('WikiCategory', set())
+
         for nodename in self.otherpages:
             graphdata = self.addToStartPages(graphdata, nodename)
-            self.addToAllCats(nodename)
+
+            self.addToAllCats(get_categories(nodename))
 
         # Do not add self to graph if self is category or
         # template page and we're looking at categories
@@ -457,7 +463,7 @@ class GraphShower(object):
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
                         graphdata = self.addToStartPages(graphdata, newpage)
-                        self.addToAllCats(newpage)
+                        self.addToAllCats(get_categories(newpage))
 
         return graphdata
 
@@ -548,7 +554,9 @@ class GraphShower(object):
             # (for local pages only)
 #            print obj.node
             if obj.gwikiURL[0] in ['.', '/']:
-                self.addToAllCats(obj.node)
+                cats = getattr(obj, 'WikiCategory', set())
+                cats = [x.strip('"') for x in cats]
+                self.addToAllCats(cats)
 
             # Category filter
             for filt in self.filtercats:
@@ -684,6 +692,7 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
+                rule = qstrip_p(rule)
                 re_color = getattr(self, 're_color', None)
                 # Add to filterordervalues in the nonmodified form
                 self.colorfiltervalues.add(rule)

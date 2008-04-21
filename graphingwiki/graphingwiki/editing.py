@@ -240,7 +240,11 @@ def link_to_attachment(globaldata, target):
 
 def absolute_attach_name(quoted, target):
     abs_method = target.split(':')[0]
-    
+
+    # Pages from MetaRevisions may have ?action=recall, breaking attach links
+    if '?' in quoted:
+        quoted = quoted.split('?', 1)[0]
+
     if abs_method in Parser.attachment_schemas and not '/' in target:
         target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
 
@@ -919,10 +923,19 @@ def metatable_parseargs(request, args,
             if page_re.match(page):
                 argset.add(page)
 
+    def unquote_name(name):
+        return unicode(url_unquote(name), config.charset)        
+
+    def is_saved(name):
+        return globaldata.getpage(name).has_key('saved')
+
+    def can_be_read(name):
+        return request.user.may.read(unquote_name(name))
+    
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        # Filter pages the user may not read
-        pages = set(filter(request.user.may.read, globaldata))
+        # Filter nonexisting pages and the pages the user may not read
+        pages = set(filter(can_be_read, filter(is_saved, globaldata)))
 
     # Otherwise check out the wanted pages
     else:
@@ -951,8 +964,7 @@ def metatable_parseargs(request, args,
 
                         if not (cat_re.search(newpage) or
                                 temp_re.search(newpage)):
-                            unqname = unicode(url_unquote(newpage),
-                                              config.charset)
+                            unqname = unquote_name(newpage)
                             # Check that user may view any added pages
                             if request.user.may.read(unqname):
                                 pages.add(newpage)
