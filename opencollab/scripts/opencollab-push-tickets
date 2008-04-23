@@ -172,4 +172,7 @@ def main():
         parser.error("Option -c is mandatory. Use -h for help.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."

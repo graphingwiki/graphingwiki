@@ -1,4 +1,4 @@
-1#! /usr/bin/env python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
     @copyright: 2008 by Joachim Viide (but not very proud of it)
@@ -208,4 +208,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        pass
+        print "Script interrupted via CTRL-C."
+
