@@ -82,20 +82,26 @@ def testPutGetHTMLDeletePage(server, pageName, pageString):
 
 @p.executionDecorator("CategoryInitialization", metadatax = "sdfasdfa" )
 def uglyKill():
-    """kills every running moinmoin or dev-install.sh proceses"""
-    s = output = subprocess.Popen(["ps", "-ax"], stdout=subprocess.PIPE).communicate()[0]
+    """kills every running moinmoin or dev-install.sh proceses 
+    that has the same group id as main process"""
+    ownid = os.getpid()
+    owngid = os.getpgid(ownid)
+    s = subprocess.Popen(["ps", "-ax"], stdout=subprocess.PIPE).communicate()[0]
     eka = True
     ind = 0
     for i in s.split("\n"):
         j = i.strip()
         j = re.split("\s+", j)
-        if i.find("./dev-install.sh") != -1 or i.find("python moin.py") != -1:
+        if i.find("./dev-install.sh") != -1 or i.find("Python moin.py") != -1:
             pid = int(j[ind])
-            try:
-                os.kill(pid, signal.SIGQUIT)
-            except:
-                pass
-
+            gid = os.getpgid(pid)
+            #print "killed", j, "pid", pid, "gids", owngid, gid
+            if gid == owngid:
+                try:
+                    os.kill(pid, signal.SIGQUIT)
+                except:
+                    pass
+            
 
 @p.executionDecorator()
 def testPages(pageNames, pageList, serverAddr):
@@ -128,6 +134,7 @@ def testPages(pageNames, pageList, serverAddr):
     except:
         print traceback.format_exc()
     del server
+
     uglyKill()
 
 
@@ -138,9 +145,5 @@ if __name__ == "__main__":
 """ + u"a"*10,"asdfasdf","123", """<<RaiseException('f','o','o bar')>>"""],serverAddr)
 
     print p
-
-
-
-
 
 
