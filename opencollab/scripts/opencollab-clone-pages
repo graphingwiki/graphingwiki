@@ -48,6 +48,7 @@ def main():
         basePath = options.output
         
     url_src, url_dst, searchstring  = args
+    searchstring = unicode(searchstring, "iso-8859-1")
 
     wiki_src = opencollab.wiki.CLIWiki(url_src)
     wiki_dst = opencollab.wiki.CLIWiki(url_dst)
@@ -132,13 +133,13 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
         sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
         sys.stdout.flush()
         return
-    print "DIR", directory
+    print "DIR", directory.encode("iso-8859-1")
 
-    print "filePath", filePath
+    print "filePath", filePath.encode("iso-8859-1")
     if not os.path.exists(directory):
         os.makedirs(directory)
     file = open(filePath, "wb")
-    sys.stdout.write("%d/%d downloading %s\n" % (num, count, shortName))
+    sys.stdout.write("%d/%d downloading %s\n" % (num, count, shortName.encode("iso-8859-1")))
     sys.stdout.write("\rstarting download...")
     sys.stdout.flush()
 
