@@ -138,7 +138,7 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     if not os.path.exists(directory):
         os.makedirs(directory)
     file = open(filePath, "wb")
-    sys.stdout.write("%d/%d downloading %s\n" % (num, count, shortName))
+    sys.stdout.write("%d/%d downloading %s\n" % (num, count, repr(shortName)))
     sys.stdout.write("\rstarting download...")
     sys.stdout.flush()
 
