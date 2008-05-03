@@ -132,9 +132,9 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
         sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
         sys.stdout.flush()
         return
-    print "DIR", directory
+    print "DIR", repr(directory)
 
-    print "filePath", filePath
+    print "filePath", repr(filePath)
     if not os.path.exists(directory):
         os.makedirs(directory)
     file = open(filePath, "wb")
