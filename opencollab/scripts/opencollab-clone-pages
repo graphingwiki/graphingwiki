@@ -51,6 +51,15 @@ def main():
 
     wiki_src = opencollab.wiki.CLIWiki(url_src)
     wiki_dst = opencollab.wiki.CLIWiki(url_dst)
+
+    try:
+        searchstring = unicode(searchstring, 'utf-8')
+    except UnicodeDecodeError:
+        searchstring = unicode(searchstring, 'iso-8859-1')
+    except UnicodeDecodeError:
+        sys.stdout.write("Could not understand system default encoding")
+        sys.exit(1)
+
     metas = wiki_src.getMeta(searchstring)
 
     for page, v in metas.iteritems():
