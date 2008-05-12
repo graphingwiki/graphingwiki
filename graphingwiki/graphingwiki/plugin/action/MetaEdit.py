@@ -15,7 +15,7 @@ import urllib
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
-from MoinMoin.util.lock import WriteLock
+from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.editing import process_edit, getvalues, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
@@ -191,7 +191,9 @@ def execute(pagename, request):
         template = request.form.get('template', [None])[0]
         if template:
             save_template(request, pagename, template)
-            lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+
+            # Open ReadLock - a flimsy attempt for atomicity of this save
+            lock = ReadLock(request.cfg.data_dir, timeout=10.0)
             lock.acquire()
 
         # process_edit requires a certain order to meta input
