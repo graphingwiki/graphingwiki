@@ -64,7 +64,7 @@ def scale_image( f, imeta ):
             imeta["thumbname"].add( thumb )
             imeta["image"].add( "[attachment:" + file + " " + file + "]" )
             imeta["webnail"].add( "attachment:" + webnail )
-            imeta["shapefile"].add( "attachment:" + thumb )
+            imeta["gwikishapefile"].add( "attachment:" + thumb )
             resimg.save( tpath + webnail, img.format ) 
             resthumb.save( tpath + thumb ) 
         except IOError:
