@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from distutils.core import setup
 
-setup(name='opencollab', version='397',
+setup(name='opencollab', version='447',
       author='Joachim Viide, Pekka Pietikäinen, Mika Seppänen',
       author_email='contact@clarifiednetworks.com',
       description='OpenCollab XML-RPC SDK',
