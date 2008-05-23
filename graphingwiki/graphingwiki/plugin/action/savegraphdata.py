@@ -553,8 +553,15 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    graphshelve = os.path.join(request.cfg.data_dir,
-                               'graphdata.shelve')
+    shelve_present = False
+    if hasattr(request, 'graphdata'):
+        shelve_present = True
+    else:
+        graphshelve = os.path.join(request.cfg.data_dir,
+                                   'graphdata.shelve')
+
+        # Open file db for global graph data, creating it if needed
+        globaldata = shelve.open(graphshelve, flag='c')
 
     # Expires old locks left by crashes etc.
     # Page locking mechanisms should prevent this code being
@@ -562,9 +569,6 @@ def execute(pagename, request, text, pagedir, page):
     # write locks
     lock = WriteLock(request.cfg.data_dir, timeout=10.0)
     lock.acquire()
-
-    # Open file db for global graph data, creating it if needed
-    globaldata = shelve.open(graphshelve, flag='c')
     
     # The global graph data contains all the links, even those that
     # are not immediately available in the page's graphdata pickle
@@ -611,6 +615,8 @@ def execute(pagename, request, text, pagedir, page):
     # Save graph as pickle, close
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
-    # Remove locks, close shelves
-    globaldata.close()
+
+    if not shelve_present:
+        # Remove locks, close shelves
+        globaldata.close()
     lock.release()
