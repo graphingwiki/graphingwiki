@@ -556,6 +556,7 @@ def execute(pagename, request, text, pagedir, page):
     shelve_present = False
     if hasattr(request, 'graphdata'):
         shelve_present = True
+        globaldata = request.graphdata
     else:
         graphshelve = os.path.join(request.cfg.data_dir,
                                    'graphdata.shelve')
@@ -616,7 +617,9 @@ def execute(pagename, request, text, pagedir, page):
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
 
-    if not shelve_present:
+    if shelve_present:
+        request.graphdata = globaldata
+    else:
         # Remove locks, close shelves
         globaldata.close()
     lock.release()
