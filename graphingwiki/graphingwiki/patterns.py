@@ -68,6 +68,23 @@ qstrip_p = lambda lst: ('"' +
 qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
+def getgraphdata(request):
+    "utility function to glue GraphData to the request"
+    if not hasattr(request, 'graphdata'):
+        request.graphdata = GraphData(request)
+        request.origfinish = request.finish
+        def patched_finish():
+            try:
+                request.origfinish()
+            finally:
+                if request.graphdata.opened:
+                    request.graphdata.closedb()
+
+        request.finish = patched_finish
+
+    return request.graphdata
+
+
 class GraphData(object):
     def __init__(self, request):
         self.request = request

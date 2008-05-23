@@ -556,7 +556,7 @@ def execute(pagename, request, text, pagedir, page):
     shelve_present = False
     if hasattr(request, 'graphdata'):
         shelve_present = True
-        globaldata = request.graphdata
+        globaldata = request.graphdata.db
     else:
         graphshelve = os.path.join(request.cfg.data_dir,
                                    'graphdata.shelve')
@@ -618,7 +618,7 @@ def execute(pagename, request, text, pagedir, page):
     pagegraphfile.close()
 
     if shelve_present:
-        request.graphdata = globaldata
+        pass
     else:
         # Remove locks, close shelves
         globaldata.close()
