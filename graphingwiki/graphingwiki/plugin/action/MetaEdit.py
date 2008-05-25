@@ -185,16 +185,14 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
 
     if request.form.has_key('save') or request.form.has_key('saveform'):
-        lock = None
-        
         # Pre-create page if it does not exist, using the template specified
         template = request.form.get('template', [None])[0]
         if template:
             save_template(request, pagename, template)
 
             # Open ReadLock - a flimsy attempt for atomicity of this save
-            lock = ReadLock(request.cfg.data_dir, timeout=10.0)
-            lock.acquire()
+            request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
+            request.lock.acquire()
 
         # process_edit requires a certain order to meta input
         if request.form.has_key('saveform'):
@@ -210,9 +208,9 @@ def execute(pagename, request):
 
             output = order_meta_input(request, pagename,
                                       output, 'repl')
-            msgs = process_edit(request, output, lock=lock)
+            msgs = process_edit(request, output)
         else:
-            msgs = process_edit(request, request.form, lock=lock)
+            msgs = process_edit(request, request.form)
             
         msg = ''
 

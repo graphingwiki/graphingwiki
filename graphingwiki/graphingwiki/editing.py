@@ -29,7 +29,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
 
-from graphingwiki.patterns import GraphData, encode, nonguaranteeds_p
+from graphingwiki.patterns import encode, nonguaranteeds_p, getgraphdata
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -372,8 +372,8 @@ def edit(pagename, editfun, request=None,
                               'savegraphdata')
 
     # Release the possible readlock that template-savers may have acquired
-    if lock:
-        lock.release()
+    if hasattr(request, 'lock'):
+        request.lock.release()
 
     if not newtext:
         return u'No data', p
@@ -411,7 +411,7 @@ def _fix_key(key):
     return key
 
 def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[], lock=None):
+              category_edit='', catlist=[]):
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -589,12 +589,12 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
         return oldtext
 
-    msg, p = edit(pagename, editfun, request, category_edit, catlist, lock)
+    msg, p = edit(pagename, editfun, request, category_edit, catlist)
 
     return msg
 
 def process_edit(request, input,
-                 category_edit='', categories={}, lock=None):
+                 category_edit='', categories={}):
     _ = request.getText
     # request.write(repr(request.form) + '<br>')
     # print repr(input) + '<br>'
@@ -610,7 +610,7 @@ def process_edit(request, input,
             s = unicode(s, config.charset)
         return s
 
-    globaldata = GraphData(request)
+    globaldata = getgraphdata(request)
 
     changes = dict()
     keychanges = dict()
@@ -640,10 +640,12 @@ def process_edit(request, input,
 
         newvals = input[val]
 
-        keypage, key = [urlquote(x) for x in val.split('!')]
+        keypage, key = val.split('!')
 
         if not request.user.may.write(url_unquote(keypage)):
             continue
+
+        keypage, key = map(urlquote, [keypage, key])
 
         oldvals = list()
         for val, typ in getvalues(request, globaldata, keypage,
@@ -677,9 +679,6 @@ def process_edit(request, input,
                     changes[keypage].setdefault('old', {})[key] = oldvals
                 changes[keypage].setdefault('new', {})[key] = newvals
 
-    # Done reading, will start writing now
-    globaldata.closedb()
-
     msg = []
     
     # For category-only changes
@@ -688,8 +687,7 @@ def process_edit(request, input,
             msg.append('%s: ' % url_unquote(keypage) + \
                        edit_meta(request, url_unquote(keypage),
                                  {}, {},
-                                 category_edit, categories[keypage],
-                                 lock))
+                                 category_edit, categories[keypage]))
                                  
     elif changes:
         for keypage in changes:
@@ -698,12 +696,17 @@ def process_edit(request, input,
                        edit_meta(request, url_unquote(keypage),
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
-                                 category_edit, catlist,
-                                 lock))
-    elif keypage:
-        msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
+                                 category_edit, catlist))
     else:
-        msg.append(_('No pages changed'))
+        if keypage:
+            msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
+        else:
+            msg.append(_('No pages changed'))
+
+        # When pages are unchanged, there might be a lock that needs
+        # to be released at this stage
+        if request.lock:
+            request.lock.release()
 
     return msg
 
@@ -852,7 +855,7 @@ def metatable_parseargs(request, args,
     pageargs = False
 
     if not globaldata:
-        globaldata = GraphData(request)
+        globaldata = getgraphdata(request)
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):

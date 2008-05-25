@@ -36,7 +36,7 @@ from MoinMoin.logfile import editlog
 from MoinMoin.Page import Page
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode, GraphData
+from graphingwiki.patterns import encode
 from graphingwiki.editing import getkeys
 
 from MetaTable import construct_table

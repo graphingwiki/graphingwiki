@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+
 from MoinMoin.security import Permissions
 from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
 
@@ -21,12 +23,14 @@ class SecurityPolicy(AntiSpam):
             if not graphsaver:
                 return True
             else:
+                underlaydir = self.request.cfg.data_underlay_dir
+                pagedir = os.path.join(self.request.cfg.data_dir, 'pages')
+
                 path = editor.getPagePath()
                 # If the page has not been created yet,
                 # create its directory and save the stuff there
-                if "underlay/pages" in path:
-                    import os, re
-                    path = re.sub(r'underlay/pages', 'data/pages', path, 1)
+                if underlaydir in path:
+                    pagepath = pagepath.replace(underlaydir, path)
                     if not os.path.exists(path):
                         os.makedirs(path)
 
