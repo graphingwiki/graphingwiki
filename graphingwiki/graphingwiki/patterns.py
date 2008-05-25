@@ -75,7 +75,7 @@ def getgraphdata(request):
         request.origfinish = request.finish
         def patched_finish():
             try:
-                request.origfinish()
+                return request.origfinish()
             finally:
                 if request.graphdata.opened:
                     request.graphdata.closedb()
@@ -83,7 +83,6 @@ def getgraphdata(request):
         request.finish = patched_finish
 
     return request.graphdata
-
 
 class GraphData(object):
     def __init__(self, request):
@@ -108,15 +107,17 @@ class GraphData(object):
     #     read locks around!
     def opendb(self):
         # The timeout parameter in ReadLock is most probably moot...
-        self.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        self.lock.acquire()
+        self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
+        self.request.lock.acquire()
         
         self.opened = True
         self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
         self.opened = False
-        self.lock.release()
+        if self.request.lock.isLocked():
+            self.request.lock.release()
+        self.db.close()
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights -

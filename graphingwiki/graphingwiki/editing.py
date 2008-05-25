@@ -28,6 +28,7 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
+from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.patterns import encode, nonguaranteeds_p, getgraphdata
 
@@ -403,6 +404,9 @@ def edit(pagename, editfun, request=None,
     except p.Unchanged:
         msg = u'Unchanged'
 
+    request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
+    request.lock.acquire()
+
     return msg, p
 
 def _fix_key(key):
@@ -705,7 +709,7 @@ def process_edit(request, input,
 
         # When pages are unchanged, there might be a lock that needs
         # to be released at this stage
-        if request.lock:
+        if hasattr(request, 'lock'):
             request.lock.release()
 
     return msg
@@ -798,9 +802,6 @@ def order_meta_input(request, page, input, action):
                     if val in output[pair]:
                         output[pair].remove(val)
                 output[pair].extend(src)
-
-    # Close db
-    globaldata.closedb()
 
     return output
 

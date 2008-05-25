@@ -583,7 +583,6 @@ def execute(pagename, request, text, pagedir, page):
 
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
-    print gfn
 
     old_data = graph.Graph()
 
@@ -645,4 +644,5 @@ def execute(pagename, request, text, pagedir, page):
     else:
         # Remove locks, close shelves
         globaldata.close()
+
     request.lock.release()
