@@ -29,7 +29,8 @@
 
 """
 
-import sys, os
+import sys
+import os
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
 
 from codecs import getencoder
@@ -39,6 +40,8 @@ from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
 from MoinMoin import request
 from MoinMoin.Page import Page
 from MoinMoin import config
+
+from graphingwiki.editing import underlay_to_pages
 
 usage = "usage: %prog <path-to-wiki> [pagename]\n"
 parser = OptionParser(usage=usage)
@@ -104,7 +107,6 @@ for pagename in pages:
     page_enc = _e(pagename)
     # Make a new request for the page, get raw text
     req = request.RequestCLI(pagename=page_enc)
-    underlaydir = req.cfg.data_underlay_dir
     pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
     picklefile = os.path.join(pagedir, 
@@ -116,12 +118,8 @@ for pagename in pages:
         os.unlink(picklefile)
 
     p = Page(req, pagename)
-    pagepath = p.getPagePath()
 
-    if underlaydir in pagepath:
-        pagepath = pagepath.replace(underlaydir, pagepath)
-        if not os.path.exists(pagepath):
-            os.makedirs(pagepath)
+    pagepath = underlay_to_pages(req, p)
 
     text = p.get_raw_body()
     

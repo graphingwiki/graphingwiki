@@ -52,6 +52,21 @@ default_meta_before = '^----'
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
+def underlay_to_pages(req, p):
+    underlaydir = req.cfg.data_underlay_dir
+    pagedir = os.path.join(req.cfg.data_dir, 'pages')
+
+    pagepath = p.getPagePath()
+
+    # If the page has not been created yet,
+    # create its directory and save the stuff there
+    if underlaydir in pagepath:
+        pagepath = pagepath.replace(underlaydir, pagepath)
+        if not os.path.exists(pagepath):
+            os.makedirs(pagepath)
+
+    return pagepath
+
 def getmeta_to_table(input):
     keyoccur = dict()
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import os
-
 from MoinMoin.security import Permissions
 from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
+
+from graphingwiki.editing import underlay_to_pages
 
 class SecurityPolicy(AntiSpam):
     def save(self, editor, newtext, rev, **kw):
@@ -23,16 +23,7 @@ class SecurityPolicy(AntiSpam):
             if not graphsaver:
                 return True
             else:
-                underlaydir = self.request.cfg.data_underlay_dir
-                pagedir = os.path.join(self.request.cfg.data_dir, 'pages')
-
-                path = editor.getPagePath()
-                # If the page has not been created yet,
-                # create its directory and save the stuff there
-                if underlaydir in path:
-                    path = path.replace(underlaydir, pagedir)
-                    if not os.path.exists(path):
-                        os.makedirs(path)
+                path = underlay_to_pages(self.request, editor)
 
                 graphsaver(editor.page_name, self.request,
                            newtext, path, editor)

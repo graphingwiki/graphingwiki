@@ -186,8 +186,9 @@ def execute(pagename, request):
         # Pre-create page if it does not exist, using the template specified
         template = request.form.get('template', [None])[0]
         if template:
-            getgraphdata(request)
             save_template(request, pagename, template)
+            # Graphdata locked at once in hopes of reducing race conditions
+            getgraphdata(request)
 
         # process_edit requires a certain order to meta input
         if request.form.has_key('saveform'):
