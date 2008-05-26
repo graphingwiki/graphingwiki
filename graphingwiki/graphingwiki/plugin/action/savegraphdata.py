@@ -447,7 +447,7 @@ def parse_text(request, globaldata, page, text):
                 if line.lower().startswith(pi):
                     found = True
                     if pi == '#acl':
-                        temp = globaldata[quotedname]
+                        temp = globaldata.get(quotedname, {})
                         temp['acl'] = line[5:]
                         globaldata[quotedname] = temp
 

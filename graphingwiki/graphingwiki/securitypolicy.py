@@ -30,7 +30,7 @@ class SecurityPolicy(AntiSpam):
                 # If the page has not been created yet,
                 # create its directory and save the stuff there
                 if underlaydir in path:
-                    path = pagepath.replace(underlaydir, pagedir)
+                    path = path.replace(underlaydir, pagedir)
                     if not os.path.exists(path):
                         os.makedirs(path)
 
