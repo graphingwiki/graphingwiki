@@ -627,10 +627,10 @@ def execute(pagename, request, text, pagedir, page):
                 shelve_add_out(globaldata, edge, linktype, hit)
 
     # Insert metas and other stuff from parsed content
-    temp = globaldata[quotedname]
-    temp['meta'] = newdata[quotedname].get('meta', {})
-    temp['acl'] = newdata[quotedname].get('acl', '')
-    temp['include'] = newdata[quotedname].get('include', set())
+    temp = globaldata.get(quotedname, {'time': time(), 'saved': True})
+    temp['meta'] = newdata.get(quotedname, {}).get('meta', {})
+    temp['acl'] = newdata.get(quotedname, {}).get('acl', '')
+    temp['include'] = newdata.get(quotedname, {}).get('include', set())
     temp['mtime'] = time()
     temp['saved'] = True
     globaldata[quotedname] = temp
