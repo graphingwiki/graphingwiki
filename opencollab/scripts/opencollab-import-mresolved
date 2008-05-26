@@ -106,6 +106,10 @@ def import_mresolved_data( fname, wiki, template, verbose ):
             page = dname
             metas['Attribution'].add( epoch )
 
+            # A
+            if not ip == 'UNRESOLVED':
+                metas['A'].add( '["%s"]' % ip )
+
             # mx
             if not mx == 'UNRESOLVED':
                 for case in mx.split(','):
