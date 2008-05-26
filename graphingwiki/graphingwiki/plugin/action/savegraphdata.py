@@ -592,39 +592,50 @@ def execute(pagename, request, text, pagedir, page):
         old_data = cPickle.load(pagegraphfile)
         pagegraphfile.close()
 
-    # Overwrite pagegraphfile with the new data
-    pagegraphfile = file(gfn, 'wb')
-
     # Get new data from parsing the page
     newdata, pagegraph = parse_text(request, dict(), page, text)
 
     # Find out which links need to be saved again
-    oldedges = old_data.edges.getall()
-    newedges = pagegraph.edges.getall()
+    oldedges = set()
+    for edge in old_data.edges.getall():
+        e = old_data.edges.get(*edge)
+        linktypes = getattr(e, 'linktype', ['_notype'])
+        for linktype in linktypes:        
+            ed = tuple(((edge), (linktype)))
+            oldedges.add(ed)
+
+    newedges = set()
+    for edge in pagegraph.edges.getall():
+        e = pagegraph.edges.get(*edge)
+        linktypes = getattr(e, 'linktype', ['_notype'])
+        for linktype in linktypes:        
+            ed = tuple(((edge), linktype))
+            newedges.add(ed)
+
     remove_edges = oldedges.difference(newedges)
     add_edges = newedges.difference(oldedges)
 
     # Save the edges
-    for edge in remove_edges:
-        e = old_data.edges.get(*edge)
-        linktypes = getattr(e, 'linktype', ['_notype'])
-        for linktype in linktypes:
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
-    for edge in add_edges:
-        e = pagegraph.edges.get(*edge)
-        linktypes = getattr(e, 'linktype', ['_notype'])
-        for linktype in linktypes:
-            frm, to = edge
-            data = [(x,y) for x,y in enumerate(newdata[frm]['out'][linktype])
-                    if y == to]
-            # Add gwikiurl:s to some edges
-            nodeurl = newdata[to].get('meta', {}).get('gwikiURL', set(['']))
-            nodeurl = nodeurl.pop()
-            for idx, item in data:
-                hit = newdata[frm]['lit'][linktype][idx]
-                shelve_add_in(globaldata, edge, linktype, nodeurl)
-                shelve_add_out(globaldata, edge, linktype, hit)
+    for edge, linktype in remove_edges:
+#        print "Removed", edge, linktype
+#        print edge, linktype
+        shelve_remove_in(globaldata, edge, [linktype])
+        shelve_remove_out(globaldata, edge, [linktype])
+    for edge, linktype in add_edges:
+#        print "Added", edge, linktype
+        frm, to = edge
+        data = [(x,y) for x,y in enumerate(newdata[frm]['out'][linktype])
+                if y == to]
+
+        # Temporary hack: add gwikiurl:s to some edges
+        nodeurl = newdata[to].get('meta', {}).get('gwikiURL', set(['']))
+        nodeurl = list(nodeurl)[0]
+
+        # Save both the parsed and unparsed versions
+        for idx, item in data:
+            hit = newdata[frm]['lit'][linktype][idx]
+            shelve_add_in(globaldata, edge, linktype, nodeurl)
+            shelve_add_out(globaldata, edge, linktype, hit)
 
     # Insert metas and other stuff from parsed content
     temp = globaldata.get(quotedname, {'time': time(), 'saved': True})
@@ -636,6 +647,7 @@ def execute(pagename, request, text, pagedir, page):
     globaldata[quotedname] = temp
 
     # Save graph as pickle, close
+    pagegraphfile = file(gfn, 'wb')
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
 
