@@ -279,7 +279,7 @@ def add_include(globaldata, pagenode, quotedname, hit):
     if not pagearg:
         return
 
-    temp = globaldata[quotedname]
+    temp = globaldata.get(quotedname, {})
     temp.setdefault('include', set()).add(quotedstring(pagearg))
     globaldata[quotedname] = temp
 
