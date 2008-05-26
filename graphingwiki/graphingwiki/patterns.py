@@ -429,7 +429,7 @@ class WikiNode(object):
             WikiNode.startpages = startpages
 
         if request:
-            WikiNode.graphdata = GraphData(WikiNode.request)
+            WikiNode.graphdata = getgraphdata(WikiNode.request)
 
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)

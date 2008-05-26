@@ -17,7 +17,7 @@ from urllib import quote as url_quote
 from MoinMoin import config
 
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import encode
 
 Dependencies = ["namespace"]
 
@@ -151,8 +151,5 @@ def execute(macro, args):
       #level9
       else:
          html.append(u'<span style="font-size:1.3em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-
-
-   globaldata.closedb()
 
    return ''.join(html)

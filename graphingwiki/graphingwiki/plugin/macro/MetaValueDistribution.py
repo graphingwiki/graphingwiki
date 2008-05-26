@@ -164,12 +164,10 @@ def execute(macro, args):
 
     if not pagelist:
         show_error(macro, args, "No content")
-        globaldata.closedb()
         return ""
 
     if len(metakeys) != 1:
         show_error(macro, args, "Too many keys")
-        globaldata.closedb()
         return ""
 
     key = metakeys[0]
@@ -181,11 +179,9 @@ def execute(macro, args):
 
     if sort_order not in ["value", "count"]:
         show_error(macro, args, "Bad sort order (should be either '''value''' or '''count''')")
-        globaldata.closedb()
         return ""
 
     # We're sure the user has the access to the page, so don't check
     construct_table(macro, globaldata, pagelist, key, sort_order)
 
-    globaldata.closedb()
     return ""

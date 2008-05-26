@@ -104,7 +104,6 @@ class GraphShowerSimple(GraphShower):
             if self.format == 'dot':
                 self.sendGv(gr)
                 # Cleanup
-                self.globaldata.closedb()
                 raise MoinMoinNoFooter
             else:
                 self.sendForm()
@@ -184,9 +183,6 @@ class GraphShowerSimple(GraphShower):
                 self.request.write('<img src="%s" alt="%s" usemap="#%s">'%
                                    (img_url + "2", _('legend'), legend.name))
                 self.sendMap(legend)
-
-        # Cleanup
-        self.globaldata.closedb()
 
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
@@ -312,14 +308,12 @@ class GraphShowerSimple(GraphShower):
             gr = self.generateLayout(outgraph)
             self.sendGraph(gr)
             # Cleanup
-            self.globaldata.closedb()
             raise MoinMoinNoFooter
         else:
             outgraph = self.get_graph()
             gr = self.generateLayout(outgraph)
             self.sendLegend()
             # Cleanup
-            self.globaldata.closedb()
             raise MoinMoinNoFooter
 
     def execute(self):

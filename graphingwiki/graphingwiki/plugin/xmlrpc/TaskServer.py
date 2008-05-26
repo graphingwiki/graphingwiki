@@ -61,7 +61,6 @@ def execute(xmlrpcobj, agentid, oper='get',
 
         # Nothing to do...
         if not pagelist:
-            globaldata.closedb()
             return ''
         
         random.shuffle(pagelist)
@@ -85,8 +84,6 @@ def execute(xmlrpcobj, agentid, oper='get',
 
             if len(code) > 1 and not isinstance(ret, xmlrpclib.Fault):
                 break
-
-        globaldata.closedb()
 
         if not isinstance(ret, xmlrpclib.Fault):
             lang, code = code[-1].split('\n', 1)

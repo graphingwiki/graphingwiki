@@ -207,14 +207,11 @@ def execute(macro, args):
         request.write(macro.formatter.table(0) + 
                       u'</div>')
 
-        globaldata.closedb()
         return ""
 
     # We're sure the user has the access to the page, so don't check
     construct_table(macro, globaldata, pagelist, metakeys,
                     checkAccess=False, styles=styles)
-
-    globaldata.closedb()
 
     def action_link(action, linktext, args):
         req_url = request.getScriptname() + \

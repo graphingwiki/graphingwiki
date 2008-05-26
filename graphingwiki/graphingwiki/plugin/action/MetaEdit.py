@@ -153,8 +153,6 @@ def show_editform(request, pagename, args):
     wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
     wr(u'</form>\n')
 
-    globaldata.closedb()
-
 def _enter_page(request, pagename):
     _ = request.getText
     
