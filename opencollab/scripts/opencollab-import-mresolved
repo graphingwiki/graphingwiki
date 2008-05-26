@@ -116,7 +116,7 @@ def import_mresolved_data( fname, wiki, template, verbose ):
             # cname
             if not cname == 'UNRESOLVED':
                 for srv in cname.split(','):
-                    metas['CNAME'].add( (srv.rstrip('.')) )
+                    metas['CNAME'].add( '["%s"]' % (srv.rstrip('.')) )
                     metas['CNAME-TIMESTAMP'].add( epoch )
 
             # ns
