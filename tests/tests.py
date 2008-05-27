@@ -177,7 +177,7 @@ class TestParsing(unittest.TestCase):
 """
         server.putPage(self.pageName, pageContents)
         res = server.GetMeta(self.pageName, True)
-        self.assert_(not res)
+        self.assert_(res)
         
 
 # class TestRandomPages(unittest.TestCase):
