@@ -54,7 +54,7 @@ def add_soa(metas, rr, soa):
 def parse_mresolved_data( fname, metas ):
     # Possible data:
     # IP;ASN;CC;NICK;REGISTRY;ALLOCATED;ROUTE;PTR;DNAME;CNAME;NS;MX;SOA;EPOCH
-    reader = csv.reader(open(fname[0], "rb"), delimiter=';',
+    reader = csv.reader(open(fname, "r"), delimiter=';',
                         quoting=csv.QUOTE_NONE)
 
         
@@ -180,7 +180,7 @@ def main():
     if options.cpath:
         if( len(args) != 1 ):
             parser.error("File name has to be defined")
-        fname = args
+        fname = args.pop()
         wiki = CLIWiki( config=options.cpath )
     elif len(args) != 2:
         parser.error("wiki url and file name have to be defined")
