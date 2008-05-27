@@ -169,6 +169,15 @@ class TestParsing(unittest.TestCase):
         server.putPage(self.pageName, pageContents)
         res = server.GetMeta(self.pageName, True)
         self.assert_(not res)
+
+    def testMetaData1(self):
+        '''Parse link in meta data'''
+        pageContents = """
+  link:: http://www.google.com/
+"""
+        server.putPage(self.pageName, pageContents)
+        res = server.GetMeta(self.pageName, True)
+        self.assert_(not res)
         
 
 # class TestRandomPages(unittest.TestCase):
