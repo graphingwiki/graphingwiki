@@ -628,8 +628,10 @@ def execute(pagename, request, text, pagedir, page):
                 if y == to]
 
         # Temporary hack: add gwikiurl:s to some edges
-        nodeurl = newdata[to].get('meta', {}).get('gwikiURL', set(['']))
-        nodeurl = list(nodeurl)[0]
+        nodeurl = newdata.get(to, '')
+        if nodeurl:
+            nodeurl = nodeurl.get('meta', {}).get('gwikiURL', set(['']))
+            nodeurl = list(nodeurl)[0]
 
         # Save both the parsed and unparsed versions
         for idx, item in data:
