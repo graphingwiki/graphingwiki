@@ -114,6 +114,10 @@ def construct_table(macro, globaldata, pagelist, key, sort_order):
     elif sort_order == "count":
         tmp.sort(key=lambda (x,y): x, reverse=True)
 
+    s = sum(map(lambda (x,y): x, tmp))
+
+    tmp.append((s, "Sum"))
+
     for value, key in tmp:
         row = row + 1
 
