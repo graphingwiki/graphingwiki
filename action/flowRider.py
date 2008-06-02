@@ -18,6 +18,7 @@ taskpointcategory = u'CategoryTaskpoint'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
 historycategory = u'CategoryHistory'
+statuscategory = u'CategoryStatus'
 
 class FlowPage:
 
@@ -111,7 +112,6 @@ class FlowPage:
             return False, False
 
     def writestatus(self, flowpoint, task):
-        #TODO: add CategoryUserstatus
         flowpoint = encode(flowpoint)
         task = encode(task)
         statuspage = encode(self.request.user.name + "/status")
@@ -150,7 +150,7 @@ class FlowPage:
                 oldmetas[self.coursepoint] = [addlink(oldtask)]
             else:
                 oldmetas[u''] = [u'']
-        edit_meta(self.request, statuspage, oldmetas, newmetas)
+        edit_meta(self.request, statuspage, oldmetas, newmetas, True, [statuscategory])
 
     def readstatus(self):
         course = str()
@@ -298,13 +298,10 @@ class QuestionPage:
         for useranswer, value in successdict.iteritems():
             if not historydata.has_key(value):
                 historydata[value] = list()
-        historydata[value].append(useranswer)
+            historydata[value].append(useranswer)
 
         input = order_meta_input(self.request, historypage, historydata, "add")
         process_edit(self.request, input, True, {historypage:[historycategory]})
-
-#        for answer in successdict:
-#            edit_meta(self.request, historypage, {'': [u'']}, {successdict[answer]: [answer]})
 
 def randompage(request, type):
     pagename = "%s/%i" % (type, random.randint(10000,99999))
@@ -318,15 +315,14 @@ def randompage(request, type):
 def addlink(pagename):
     return '[['+pagename+']]'
 
-def redirect(request, pagename):
+def redirect(request, pagename, tip=None):
     request.http_redirect(request.getBaseURL() + "/" + pagename)
-    #page = Page(request, pagename)
-    tip = u'''{{{
-%s
-This is the new tip system!
-}}}\n''' % pagename
-    #page.set_raw_body(tip + page.get_raw_body())
-    #page.send_page(request, do_cache=0)
+    if tip:
+        pass
+        #tip = u'''{{{
+#%s
+#This is the new tip system!
+#}}}\n''' % pagename
 
 def execute(pagename, request):
     #request.http_headers()
@@ -360,8 +356,7 @@ def execute(pagename, request):
                 if key.startswith('answer'):
                     useranswers[int(key[6:])] = request.form[key]
             if len(useranswers) != len(taskflow) and currentpage.type == u'questionary':
-                #TODO: print "answer all" -message
-                redirect(request, currentpage.pagename)
+                redirect(request, currentpage.pagename, "You should answer all the questions.")
             else:
                 #let's mark user to the first taskpoint
                 taskpage = FlowPage(request, taskflow[0][1])
@@ -394,12 +389,11 @@ def execute(pagename, request):
                             redirect(request, nexttask)
                     else:
                         #TODO: get failed page and print message
-                        redirect(request, currentpage.pagename)
+                        redirect(request, currentpage.pagename, tips[0])
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
-                #TODO: message about giving no answer
-                redirect(request, currentpage.pagename)
+                redirect(request, currentpage.pagename, "You should answer the question.")
         else:
             request.write(u'Invalid input.')
     else:
