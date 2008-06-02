@@ -201,16 +201,23 @@ def coursesform(request):
             html += u'<option value="%s">%s\n' % (page, page)
 
         html += u'''</select>
-    <input type='submit' name='selectcourse' value='SelectCourse'>
+    <input type='submit' name='selectcourse' value='CourseStats'>
 </form>'''
     html += u'''
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editCourse">
+    <select size="1" name="course">''' % request.request_uri.split("?")[0]
+    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, coursecategory)
+    for page in pagelist:
+        html += u'<option name="course" value="%s">%s\n' % (page, page)
+    html += '''
+    </select>
+    <input type='submit' name='edit' value='EditCourse'>
     <input type='submit' name='new' value='NewCourse'>
 </form>
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editTask">
-    <select size="1" name="task">''' % (request.request_uri.split("?")[0], request.request_uri.split("?")[0])
+    <select size="1" name="task">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
         html += u'<option name="task" value="%s">%s\n' % (page, page)
@@ -238,7 +245,7 @@ def getcoursegraph(request, courseobj):
         <option value="%s">%s''' % (user.id, user.id)
     html += u'''
     </select>
-    <br><input type='submit' name='selectuser' value='SelectUser'><br>
+    <input type='submit' name='selectuser' value='SelectUser'><br>
 </form>
 High level flow:'''
     graphhtml = unicode()
