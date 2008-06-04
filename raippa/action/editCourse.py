@@ -16,6 +16,7 @@ from graphingwiki.editing import order_meta_input
 taskcategory = u'CategoryTask'
 coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
+statuscategory = 'CategoryStatus'
 
 def randompage(request, type):
     pagename = "%s/%i" % (type, random.randint(10000,99999))
@@ -202,7 +203,7 @@ def writemeta(request, coursepage=None):
         coursedata = {u'id':[courseid],
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
-                      u'desription':[coursedescription],
+                      u'description':[coursedescription],
                       u'start':[addlink(coursepoint)]}
 
         input = order_meta_input(request, coursepage, coursedata, "add")
@@ -222,15 +223,32 @@ def writemeta(request, coursepage=None):
         tasks, coursepoints = getflow(request, coursepage)
         if tasks != flowlist:
             newflow = list()
+            userstatus = list()
 
-            for index, task in enumerate(tasks):
+            copyofcoursepoints = coursepoints[:]
+            copyofcoursepoints.reverse()
+            for index, task in enumerate(reversed(tasks)):
                 if task not in flowlist:
-                    coursepoint = coursepoints[index]
-                    coursepoints[index] = str()
-                    tasks[index] = str()
-                    pointpage = PageEditor(request, coursepoint, do_editor_backup=0)
-                    if pointpage.exists():
-                        pointpage.deletePage()
+                    coursepoint = copyofcoursepoints[index]
+                    globaldata = GraphData(request)
+                    coursepointpage = globaldata.getpage(coursepoint)
+                    linking_in = coursepointpage.get('in', {})
+                    valuelist = linking_in[coursepage]
+                    coursepointpage = PageEditor(request, coursepoint, do_editor_backup=0)
+                    if coursepointpage.exists():
+                        coursepointpage.deletePage()
+
+                    for value in valuelist:
+                        if value.endswith("/status"):
+                            try:
+                                meta = getmetas(request, globaldata, value, ["WikiCategory", coursepoint])
+                                if meta["WikiCategory"][0][0] == statuscategory:
+                                    user = value.split("/")[0]
+                                    task = meta[coursepoint][0][0]
+                                    userstatus.append([user, task, index])
+                                    process_edit(request, order_meta_input(request, value, {coursepoint: [" "]}, "repl"))
+                            except:
+                                pass
 
             for index, task in enumerate(flowlist):
                 try:
@@ -239,6 +257,50 @@ def writemeta(request, coursepage=None):
                 except:
                     pointpage = randompage(request, coursepage)
                     newflow.append((task, pointpage))
+
+            #handle userstatus here
+            for status in userstatus:
+                user = status[0]
+                task = status[1]
+                if status[2] >= len(newflow):
+                    startindex = len(newflow)-1
+                else:
+                    startindex = status[2]
+
+                reversednewflow = newflow[:]
+                reversednewflow.reverse()
+                nextcoursepoint = str()
+                for index, point in enumerate(reversednewflow):
+                    if index > startindex or startindex == 0:
+                        coursepoint = point[1]
+                        meta = getmetas(request, globaldata, coursepoint, ["task"])
+                        taskpoint = meta["task"][0][0]
+                        questions, taskpoints = getflow(request, taskpoint)
+                        lasttaskpoint = taskpoints[-1]
+                        taskpointpage = globaldata.getpage(lasttaskpoint)
+                        linking_in = taskpointpage.get('in', {})
+                        pagelist = linking_in.get('task', [])
+                        for page in pagelist:
+                            try:
+                                meta = getmetas(request, globaldata, page, ["WikiCategory", "course", "user"])
+                                category = meta["WikiCategory"][0][0]
+                                answerer = meta["user"][0][0]
+                                course = meta["course"][0][0]
+                            except: 
+                                category = str()
+                                answerer = str()
+                                course = str()
+
+                            if category == historycategory and answerer == user and course == coursepage:
+                                nextcoursepoint = reversednewflow[index-1][1]
+                                break
+                        if nextcoursepoint:
+                            break
+                if not nextcoursepoint:
+                    nextcoursepoint = newflow[0][1]
+
+                statuspage = user + "/status"
+                process_edit(request, order_meta_input(request, statuspage, {coursepage: [addlink(coursepoint)], coursepoint: [addlink(taskpoint)]}, "repl"))
 
             coursedata = {u'description':[coursedescription],
                           u'name':[coursename],
@@ -258,26 +320,31 @@ def writemeta(request, coursepage=None):
                 process_edit(request, input, True, {coursepoint:[coursepointcategory]})
         else:
             coursedata = {u'name':[coursename],
-                          u'desription':[coursedescription]}
+                          u'description':[coursedescription]}
             process_edit(request, order_meta_input(request, coursepage, coursedata, "repl"))
 
     return None 
 
-def getflow(request, course):
+def getflow(request, page):
     globaldata = GraphData(request)
-    meta = getmetas(request, globaldata, course, ["start"])
-    coursepoint = encode(meta["start"][0][0])
-    tasks = list()
-    coursepoints = list()
+    meta = getmetas(request, globaldata, encode(page), ["start", "WikiCategory"])
+    flowpoint = encode(meta["start"][0][0])
+    category = encode(meta["WikiCategory"][0][0])
+    if category == coursecategory:
+        keytype = "task"
+    else:
+        keytype = "question"
+    pointpages = list()
+    flowpoints = list()
     
-    while coursepoint != "end":
-        meta = getmetas(request, globaldata, coursepoint, ["task", "next"])
-        taskpage = meta["task"][0][0]
-        tasks.append(taskpage)
-        coursepoints.append(coursepoint)
-        coursepoint = encode(meta["next"][0][0])
+    while flowpoint != "end":
+        meta = getmetas(request, globaldata, flowpoint, [keytype, "next"])
+        pointpage = meta[keytype][0][0]
+        pointpages.append(pointpage)
+        flowpoints.append(flowpoint)
+        flowpoint = encode(meta["next"][0][0])
     globaldata.closedb()
-    return tasks, coursepoints
+    return pointpages, flowpoints
 
 def _enter_page(request, pagename):
     request.http_headers()
