@@ -15,6 +15,7 @@ coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
 taskcategory = u'CategoryTask'
 taskpointcategory = u'CategoryTaskpoint'
+failurecategory = u'CategoryFailure'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
 historycategory = u'CategoryHistory'
@@ -46,7 +47,6 @@ class FlowPage:
             elif self.coursepoint and self.coursepoint != "end":
                 courseflowpoint = FlowPage(self.request, self.coursepoint)
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                #self.writestatus(nextcoursepoint, nexttask)
                 return nextcoursepoint, nexttask
             else:
                 globaldata = GraphData(self.request)
@@ -55,7 +55,6 @@ class FlowPage:
                 if metas["start"]:
                     courseflowpoint = FlowPage(self.request, metas["start"][0][0])
                     nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                    #self.writestatus(nextcoursepoint, nexttask)
                     return nextcoursepoint, nexttask
                 else:
                     return False, False
@@ -102,10 +101,17 @@ class FlowPage:
                     self.writestatus(self.coursepoint, nextpage)
                     return self.coursepoint, nextpage
                 else:
-                    courseflowpoint  = FlowPage(self.request, self.coursepoint)
-                    nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                    self.writestatus(self.coursepoint, "end")
-                    return nextcoursepoint, nexttask
+                    if self.coursepoint.endswith("failure"):
+                        statuspage = self.request.user.name + "/status"
+                        input = order_meta_input(self.request, statuspage, {self.coursepoint: [" "]}, "repl")
+                        process_edit(self.request, input, True, {statuspage:[statuscategory]})
+                        coursepage = FlowPage(self.request, self.course)
+                        return coursepage.coursepoint, coursepage.task
+                    else:
+                        courseflowpoint  = FlowPage(self.request, self.coursepoint)
+                        nextcoursepoint, nexttask = courseflowpoint.setnextpage()
+                        self.writestatus(self.coursepoint, "end")
+                        return nextcoursepoint, nexttask
                 return False, False
         else:
             self.request.write(u'%s has no category.' % self.pagename)
@@ -162,9 +168,13 @@ class FlowPage:
         try:
             metas = getmetas(self.request, globaldata, statuspage, ["current"], checkAccess=False)
             course = encode(metas["current"][0][0])
+            failure = course + "failure"
 
-            metas = getmetas(self.request, globaldata, statuspage, [course], checkAccess=False)
-            flowpoint = encode(metas[course][0][0])
+            metas = getmetas(self.request, globaldata, statuspage, [course, failure], checkAccess=False)
+            if metas[failure]:
+                flowpoint = failure
+            else:
+                flowpoint = encode(metas[course][0][0])
 
             if flowpoint == "end":
                 task = "end"
@@ -319,13 +329,8 @@ def redirect(request, pagename, tip=None):
     request.http_redirect(request.getBaseURL() + "/" + pagename)
     if tip:
         pass
-        #tip = u'''{{{
-#%s
-#This is the new tip system!
-#}}}\n''' % pagename
 
 def execute(pagename, request):
-    #request.http_headers()
 
     if request.form.has_key(u'selectcourse'):
         coursename = request.form.get(u'course', [u''])[0]
@@ -388,8 +393,19 @@ def execute(pagename, request):
                         else:
                             redirect(request, nexttask)
                     else:
-                        #TODO: get failed page and print message
-                        redirect(request, currentpage.pagename, tips[0])
+                        globaldata = GraphData(request)
+                        try:
+                            metas = getmetas(request, globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
+                            failurepage = metas["failed"][0][0]
+                            failurekey = currentpage.course + "failure"
+                            statuspage = request.user.name + "/status"
+                            input = order_meta_input(request, statuspage, {failurekey: [failurepage]}, "repl")
+                            process_edit(request, input, True, {statuspage:[statuscategory]})
+                        except:
+                            failurepage = currentpage.pagename
+
+                        globaldata.closedb()
+                        redirect(request, failurepage, tips[0])
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
