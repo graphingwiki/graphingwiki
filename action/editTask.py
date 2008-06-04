@@ -224,12 +224,13 @@ def writemeta(request, taskpage=None):
             for index, question in enumerate(reversed(questions)):
                 if question not in flowlist:
                     taskpoint = copyoftaskpoints[index]
+
+                    taskpointpage = request.globaldata.getpage(taskpoint)
+                    linking_in = taskpointpage.get('in', {})
                     taskpointpage = PageEditor(request, taskpoint, do_editor_backup=0)
                     if taskpointpage.exists():
                         taskpointpage.deletePage()
 
-                    taskpointpage = request.globaldata.getpage(taskpoint)
-                    linking_in = taskpointpage.get('in', {})
                     for metakey, valuelist in linking_in.iteritems():
                         for value in valuelist:
                             if value.endswith("/status"):
@@ -253,8 +254,6 @@ def writemeta(request, taskpage=None):
                     newflow.append((question, pointpage))
             request.globaldata = GraphData(request)
 
-            #TODO: handle userstatus here
-            #TODO: check overalvalue on basic tasks
             for status in userstatus:
                 user = status[0]
                 coursepoint = status[1]
@@ -273,7 +272,7 @@ def writemeta(request, taskpage=None):
 
                         taskpointpage = request.globaldata.getpage(taskpoint)
                         linking_in = taskpointpage.get('in', {})
-                        pagelist = linking_in['task']
+                        pagelist = linking_in.get('task', [])
                         for page in pagelist:
                             try:
                                 meta = getmetas(request, request.globaldata, page, ["WikiCategory", "course", "user"])
@@ -297,7 +296,6 @@ def writemeta(request, taskpage=None):
                 request.globaldata.closedb()
                 process_edit(request, order_meta_input(request, statuspage, {coursepoint: [addlink(nexttaskpoint)]}, "repl"))
                 request.globaldata = GraphData(request)
-                #request.write(coursepoint, taskpoint, nexttaskpoint, user, answerer, taskpoints, newflow)
 
             taskdata = {u'description':[description],
                         u'type':[type],
