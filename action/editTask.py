@@ -252,8 +252,20 @@ def writemeta(request, taskpage=None):
                     page = PageEditor(request, pointpage)
                     page.saveText("<<Raippa>>", page.get_real_rev())
                     newflow.append((question, pointpage))
-            request.globaldata = GraphData(request)
 
+            for index, questiontuple in enumerate(newflow):
+                question = addlink(questiontuple[0])
+                taskpoint = questiontuple[1]
+                if index >= len(newflow)-1:
+                    next = "end"
+                else:
+                    next = addlink(newflow[index+1][1])
+                taskpointdata = {u'question':[question], u'next':[next]}
+                input = order_meta_input(request, taskpoint, taskpointdata, "repl")
+                process_edit(request, input, True, {taskpoint:[taskpointcategory]})
+
+
+            request.globaldata = GraphData(request)
             for status in userstatus:
                 user = status[0]
                 coursepoint = status[1]
@@ -302,18 +314,6 @@ def writemeta(request, taskpage=None):
                         u'start':[addlink(newflow[0][1])]}
             request.globaldata.closedb()
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
-
-            for index, questiontuple in enumerate(newflow):
-                question = addlink(questiontuple[0])
-                taskpoint = questiontuple[1]
-                if index >= len(newflow)-1:
-                    next = "end"
-                else:
-                    next = addlink(newflow[index+1][1])
-
-                taskpointdata = {u'question':[question], u'next':[next]}
-                input = order_meta_input(request, taskpoint, taskpointdata, "repl")
-                process_edit(request, input, True, {taskpoint:[taskpointcategory]})
             request.globaldata = GraphData(request)
         else:
             taskdata = {u'description':[description],
