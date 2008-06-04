@@ -17,6 +17,7 @@ taskcategory = u'CategoryTask'
 coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
 statuscategory = 'CategoryStatus'
+historycategory = 'CategoryHistory'
 
 def randompage(request, type):
     pagename = "%s/%i" % (type, random.randint(10000,99999))
@@ -233,7 +234,7 @@ def writemeta(request, coursepage=None):
                     globaldata = GraphData(request)
                     coursepointpage = globaldata.getpage(coursepoint)
                     linking_in = coursepointpage.get('in', {})
-                    valuelist = linking_in[coursepage]
+                    valuelist = linking_in.get(coursepage,[])
                     coursepointpage = PageEditor(request, coursepoint, do_editor_backup=0)
                     if coursepointpage.exists():
                         coursepointpage.deletePage()
@@ -258,6 +259,19 @@ def writemeta(request, coursepage=None):
                     pointpage = randompage(request, coursepage)
                     newflow.append((task, pointpage))
 
+            for index, tasktuple in enumerate(newflow):
+                task = addlink(tasktuple[0])
+                coursepoint = tasktuple[1]
+                if index >= len(newflow)-1:
+                    next = "end"
+                else:
+                    next = addlink(newflow[index+1][1])
+                coursepointdata = {u'task':[task], u'next':[next]}
+                input = order_meta_input(request, coursepoint, coursepointdata, "repl")
+                process_edit(request, input, True, {coursepoint:[coursepointcategory]})
+
+            globaldata.closedb()
+            globaldata = GraphData(request)
             #handle userstatus here
             for status in userstatus:
                 user = status[0]
@@ -272,7 +286,7 @@ def writemeta(request, coursepage=None):
                 nextcoursepoint = str()
                 for index, point in enumerate(reversednewflow):
                     if index > startindex or startindex == 0:
-                        coursepoint = point[1]
+                        coursepoint = encode(point[1])
                         meta = getmetas(request, globaldata, coursepoint, ["task"])
                         taskpoint = meta["task"][0][0]
                         questions, taskpoints = getflow(request, taskpoint)
@@ -306,18 +320,6 @@ def writemeta(request, coursepage=None):
                           u'name':[coursename],
                           u'start':[addlink(newflow[0][1])]}
             process_edit(request, order_meta_input(request, coursepage, coursedata, "repl"))
-
-            for index, tasktuple in enumerate(newflow):
-                task = addlink(tasktuple[0])
-                coursepoint = tasktuple[1]
-                if index >= len(newflow)-1:
-                    next = "end"
-                else:
-                    next = addlink(newflow[index+1][1])
-                    
-                coursepointdata = {u'task':[task], u'next':[next]}
-                input = order_meta_input(request, coursepoint, coursepointdata, "repl")
-                process_edit(request, input, True, {coursepoint:[coursepointcategory]})
         else:
             coursedata = {u'name':[coursename],
                           u'description':[coursedescription]}
