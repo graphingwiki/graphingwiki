@@ -251,10 +251,10 @@ class QuestionPage:
                                 linking_in_answer = answerpage.get('in', {})
                                 tiplist = linking_in_answer['answer']
                                 for tippage in tiplist:
-                                    meta = getmetas(self.request, globaldata, tippage, [u'WikiCategory', u'tip'], checkAccess=False)
+                                    meta = getmetas(self.request, globaldata, tippage, [u'WikiCategory'], checkAccess=False)
                                     for metatuple in meta[u'WikiCategory']:
                                         if metatuple[0] == tipcategory:
-                                            tip = meta["tip"][0][0]
+                                            tip = tippage.split("/")[1]
                                             break
                             except:
                                 pass
@@ -286,7 +286,7 @@ class QuestionPage:
                 if answerdict.get(answer, [u'', u''])[1]:
                     tips.append(answerdict[answer][1])
                 else:
-                    tips.append(u'This is generic tip. Et vaan osaa!')
+                    tips.append("generic")
 
         #make sure that all the correct answers are selected
         if self.answertype == u'checkbox' and len(truelist) > 0:
@@ -326,9 +326,13 @@ def addlink(pagename):
     return '[['+pagename+']]'
 
 def redirect(request, pagename, tip=None):
-    request.http_redirect(request.getBaseURL() + "/" + pagename)
-    if tip:
-        pass
+    if tip == "generic":
+        url = u'%s/%s?action=tip' % (request.getBaseURL(), pagename)
+    elif tip:
+        url = u'%s/%s?action=tip&%s' % (request.getBaseURL(), pagename, tip)
+    else:
+        url = u'%s/%s' % (request.getBaseURL(), pagename)
+    request.http_redirect(url)
 
 def execute(pagename, request):
 
@@ -361,7 +365,7 @@ def execute(pagename, request):
                 if key.startswith('answer'):
                     useranswers[int(key[6:])] = request.form[key]
             if len(useranswers) != len(taskflow) and currentpage.type == u'questionary':
-                redirect(request, currentpage.pagename, "You should answer all the questions.")
+                redirect(request, currentpage.pagename, "noanswer")
             else:
                 #let's mark user to the first taskpoint
                 taskpage = FlowPage(request, taskflow[0][1])
@@ -409,7 +413,7 @@ def execute(pagename, request):
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
-                redirect(request, currentpage.pagename, "You should answer the question.")
+                redirect(request, currentpage.pagename, "noanswer")
         else:
             request.write(u'Invalid input.')
     else:
