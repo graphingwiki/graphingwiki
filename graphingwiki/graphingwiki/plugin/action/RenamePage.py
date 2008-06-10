@@ -40,7 +40,7 @@ class RenamePage(RenPage):
         newpagename = form.get('newpagename', [u''])[0]
         newpagename = self.request.normalizePagename(newpagename)
         comment = form.get('comment', [u''])[0]
-        comment = wikiutil.clean_comment(comment)
+        comment = wikiutil.clean_input(comment)
 
         # Get graphsaver
         savegraphdata = wikiutil.importPlugin(self.request.cfg,
