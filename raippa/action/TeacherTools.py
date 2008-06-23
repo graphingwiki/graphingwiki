@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-"
 import random
+from operator import itemgetter
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -38,8 +39,9 @@ class User:
 
         self.name = unicode()
         meta = getmetas(request, globaldata, encode(self.id), ["name"])
-        if meta["name"]:
-            self.name = meta["name"][0][0]
+        for name, type in meta["name"]:
+            self.name = name
+            break
         globaldata.closedb()
 
 class FlowPage:
@@ -63,16 +65,18 @@ class FlowPage:
         globaldata = GraphData(request)
         metas = getmetas(request, globaldata, self.pagename, [u'WikiCategory'])
         globaldata.closedb()
-        for metatuple in metas[u'WikiCategory']:
-            self.categories.append(metatuple[0])
+        for category, type in metas[u'WikiCategory']:
+            self.categories.append(category)
 
         self.flow = self.getflow()
 
     def getflow(self):
         if coursecategory in self.categories:
             metakey = "task"
+            flow = list()
         else:
             metakey = "question"
+            flow = [("start", self.pagename)]
 
         globaldata = GraphData(self.request)
         meta = getmetas(self.request, globaldata, self.pagename, ["start"])
@@ -274,7 +278,7 @@ High level flow:'''
 
                     groups += "Q%i," % (index)
             labels = "&labels=users,average,alltime"
-            graphhtml += "<img src='http://172.16.253.128:8080/RAIPPA?action=drawchart%s%s%s'><br>\n" % (labels, bars, groups.rstrip(","))
+            graphhtml += "<img src='%s/%s?action=drawchart%s%s%s'><br>\n" % (request.getBaseURL(), request.page.page_name, labels, bars, groups.rstrip(","))
         else:
             html += u'<br>%s' % point
             usercount = int()
@@ -311,7 +315,6 @@ def execute(pagename, request):
         request.write(getcoursegraph(request, course))
     elif request.form.has_key('selectuser') and request.form.has_key('course'):
         html = unicode()
-        studentstatus = unicode()
         #?action=drawchart&labels=users,average&start=0,1&Q1=2,3&Q2=3,5&groups=start,Q1,Q2
         barhtml = u'%s/%s?action=drawchart&labels=right,wrong' % (request.getBaseURL(), pagename)
         bars = list()
@@ -337,11 +340,9 @@ def execute(pagename, request):
                 for question in task:
                     bars.append(question)
                     barhtml += "&Q%s=%i,%i" % (question.split("/")[1], successdict[question][0], successdict[question][1])
-                    studentstatus += u"%s: %s<br>\n" % (question, str(successdict[question]))
                     questionlisthtml += u'<option value="%s">%s\n' % (question, question)
 
         html += u"name: %s<br>studentid: %s<br>\n" % (user.name, user.id)
-#        html += studentstatus
         bargroups = "&groups="
         barsize = 750/len(bars)
         start = 22
@@ -354,53 +355,48 @@ def execute(pagename, request):
         html += '<img src="%s%s" usemap="#studentchart">' % (barhtml, bargroups.rstrip(","))
         html += maphtml
         request.write(html)
-    elif request.form.has_key('selectquestion') and request.form.has_key('user'):
+    elif request.form.has_key('selectquestion') and request.form.has_key('question') \
+         and request.form.has_key('course'):
         course = FlowPage(request, encode(request.form["course"][0]))
-        user = User(request, encode(request.form["user"][0]), course.pagename)
         question = Question(request, encode(request.form["question"][0]))
         html = unicode()
-        html += "%s: %s<br>" % (question.pagename, question.question)
-        for answer in question.answers:
-            html += "%s: %s tip: %s<br>" % (question.answers[answer][0], answer, question.answers[answer][1])
-        html += "<br>%s's(%s) answer history:" % (user.name, user.id)
-        for useranswer in question.histories:
-            if useranswer[3] == course.pagename and useranswer[0] == user.id:
-                html += "<br>overal: %s, " % useranswer[1]
-                for answer in useranswer[2]:
-                    html += "%s: %s, " % (useranswer[2][answer], answer)
+        if request.form.has_key('user'):
+            user = User(request, encode(request.form["user"][0]), course.pagename)
+            html += "%s: %s<br>" % (question.pagename, question.question)
+            for answer in question.answers:
+                html += "%s: %s tip: %s<br>" % (question.answers[answer][0], answer, question.answers[answer][1])
+            html += "<br>%s's(%s) answer history:" % (user.name, user.id)
+            for useranswer in question.histories:
+                if useranswer[3] == course.pagename and useranswer[0] == user.id:
+                    html += "<br>overal: %s, " % useranswer[1]
+                    for answer in useranswer[2]:
+                        html += "%s: %s, " % (useranswer[2][answer], answer)
+        else:
+            html += "%s: %s<br>\n" % (question.pagename, question.question)
+            for answer in question.answers:
+                html += "%s: %s " % (question.answers[answer][0], answer)
+                if question.answers[answer][1]:
+                    html += "tip %s<br>\n" % question.answers[answer][1]
+                else:
+                    html += "<br>\n"
+            html += "<br>TOP 10 failures:<br>\n"
+            top5dict = dict()
+            for user, overalvalue, valuedict, course, task in question.histories:
+                if overalvalue == "False":
+                    for answer, value in valuedict.iteritems():
+                        if value == "false":
+                            if not top5dict.has_key(answer):
+                                top5dict[answer] = 1
+                            else:
+                                top5dict[answer] += 1
+
+            html += "<form>"
+            for index, answer in enumerate(sorted(top5dict.items(), key=itemgetter(1), reverse=True)):
+                if index > 9:
+                    break
+                html += u'%s: %i<input type="text"><input type="submit" value="SaveTip"><br>' % (answer[0], answer[1])
+            html += "</form>"
         request.write(html)
-    elif request.form.has_key('raw') and request.form.has_key('course'):
-        course = FlowPage(request, encode(request.form["course"][0]))
-        request.write(course.pagename)
-        for point, coursepoint in course.flow:
-            if isinstance(point, FlowPage):
-                for point, taskpoint in point.flow:
-                    userhtml = unicode()
-                    for user in course.users:
-                        if user.status == taskpoint:
-                            userhtml += u", <b>%s</b>" % user.id
-                        else:
-                            userhtml += u''
-                    if point == "start":
-                        request.write("<br>---> %s: %s%s" % (taskpoint, point, userhtml))
-                    else:
-                        request.write("<br>------>%s: %s%s" % (taskpoint, point.pagename, userhtml))
-                        for answer, value in point.answers.iteritems():
-                            request.write("<br>---------> %s: %s" % (value[0], answer))
-                            if value[1] != "":
-                                request.write(", tip: %s" % value[1])
-                        average, alltimeaverage = point.getaverage(course.pagename, taskpoint)
-                        request.write("<br>average: %i, all time average: %i" % (average, alltimeaverage))
-                        for useranswer in point.histories:
-                            if useranswer[3] == course.pagename and useranswer[4] == taskpoint:
-                                request.write("<br>---------> %s: %s" % (useranswer[0], useranswer[1]))
-                                for answer in useranswer[2]:
-                                    request.write("<br>------------> %s" % answer) 
-            else:
-                request.write("<br>%s: %s" % (course.pagename, point))
-                for user in course.users:
-                    if point == user.status:
-                        request.write(", <b>%s</b>" % user.id)
     else:
         coursesform(request)
     _exit_page(request, pagename)
