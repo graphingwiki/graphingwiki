@@ -16,6 +16,7 @@ usercategory = u'CategoryUser'
 coursecategory = u'CategoryCourse'
 taskcategory = u'CategoryTask'
 taskpointcategory = u'CategoryTaskpoint'
+historycategory = u'CategoryHistory'
 
 def getanswers(request, questionpage):
     globaldata = GraphData(request)
@@ -120,6 +121,8 @@ def questionhtml(request, questionpage, number=""):
         for answer in answerlist:
             html += u'<input type="checkbox" name="answer%s" value="%s"> %s<br>\n' % (str(number), answer, answer)
         html += u'<br><hr>\n'
+    elif answertype ==u'file':
+        html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
     else:
         html += u'%s<br><input type="text" name="answer%s" size="50"><br><hr>\n' % (question, number)
 
@@ -131,19 +134,39 @@ def questionform(request):
     try:
         meta = getmetas(request, globaldata, encode(request.page.page_name), ["question"], checkAccess=False)
         questionpage = encode(meta["question"][0][0])
+        meta = getmetas(request, globaldata, questionpage, ["answertype"], checkAccess=False)
+        answertype = meta["answertype"][0][0]
         globaldata.closedb()
-
-        html = u'''
-        <form method="POST">
-           <input type="hidden" name="action" value="flowRider">
-           %s
-           <input type='submit' name='send' value='Submit'>
-        </form>''' % questionhtml(request, questionpage)
-
-        return html
     except:
         globaldata.closedb()
         return u'Failed to generate question form.'
+
+    if answertype == "file":
+        globaldata = GraphData(request)
+        page = globaldata.getpage(questionpage)
+        linking_in = page.get('in', {})
+        pagelist = linking_in["question"]
+        for page in pagelist:
+            meta = getmetas(request, globaldata, page, ["WikiCategory", "user", "overalvalue"], checkAccess=False)
+            for category, type in meta["WikiCategory"]:
+                if category == historycategory:
+                    for user, type in meta["user"]:
+                        if user == request.user.name:
+                            for value, type in meta["overalvalue"]:
+                                if value == "pending":
+                                    return u'You have already answered this question. Waiting for your answer to be checked.'
+                            break
+                    break
+        globaldata.closedb()
+        
+    html = u'''
+<form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="flowRider">
+    %s
+    <input type='submit' name='send' value='Submit'>
+</form>''' % questionhtml(request, questionpage)
+
+    return html
 
 def taskform(request):
     globaldata = GraphData(request)
@@ -154,47 +177,28 @@ def taskform(request):
     else:
         tasktype = u'basic'
 
-    html = unicode()
-
     if tasktype == u'exam' or tasktype == 'questionary':
         flow = getflow(request, request.page.page_name)
-        html += u'''
-        <form method="POST">
-            <input type="hidden" name="action" value="flowRider">'''
+        html = u'''
+<form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="flowRider">'''
         questionnumber = 0
         for question, flowpoint in flow:
             html += questionhtml(request, question, questionnumber)
             questionnumber += 1
-        html += u'<input type="submit" name="send" value="Submit"></form>\n'
-    else:
         html += u'''
-        <form method="POST">
-            <input type="hidden" name="action" value="flowRider"><br>
-            <input type='submit' name='start' value=Start><br>
-        </form>'''
-
-    return html
-
-def courseform(situation):
-    html = unicode()
-    if situation == u'end':
-        #return u'<br>You have already passed this course.'
-        buttontext = u'Restart'
-    elif situation == u'continue':
-        buttontext = u'Continue'
+    <input type="submit" name="send" value="Submit">
+</form>'''
     else:
-        buttontext = u'Start'
-
-    html = u'''
-    <form method="POST">
-        <input type="hidden" name="action" value="flowRider"><br>
-        <input type='submit' name='start' value=%s><br>
-    </form>''' % buttontext
+        html = u'''
+<form method="POST">
+    <input type="hidden" name="action" value="flowRider"><br>
+    <input type='submit' name='start' value=Start><br>
+</form>'''
 
     return html
 
-
-def selectcourse(request):
+def courselisthtml(request):
     globaldata = GraphData(request)
     globaldata.reverse_meta()
     vals_on_pages = globaldata.vals_on_pages
@@ -205,12 +209,12 @@ def selectcourse(request):
         if page == coursecategory:
             courselist.update(vals_on_pages[page])
 
-    html = unicode()
     if request.user.name:
         if courselist:
-            html = u'<form method="POST">\n'
-            html += u'<input type="hidden" name="action" value="flowRider">\n'
-            html += u'<select name="course">\n'
+            html = u'''
+<form method="POST">
+    <input type="hidden" name="action" value="flowRider">
+    <select name="course">'''
             for page in courselist:
                 globaldata = GraphData(request)
                 metas = getmetas(request, globaldata, encode(page), [u'id', u'name'], checkAccess=False)
@@ -218,24 +222,29 @@ def selectcourse(request):
                 id = metas[u'id'][0][0]
                 name = metas[u'name'][0][0]
                 html += u'<option value="%s">%s - %s\n' % (page, id, name)
-            html += u'</select>'
-            html += u'<br><input type="submit" name="selectcourse" value="SelectCourse"><br></form>\n'
+            html += u'''
+    </select>
+    <br>
+    <input type="submit" name="selectcourse" value="SelectCourse">
+    <br>
+</form>'''
         else:
-            html += u'No courses in system.'
+            html = u'No courses in system.'
     else:
-        html += u'Login or create user.'
+        html = u'Login or create user.'
 
     return html
 
 def execute(macro, text):
     request = macro.request
+    pagename = encode(request.page.page_name)
     
     #request.write(request.cfg.page_front_page)
-    if request.page.page_name == u'RAIPPA':
-        return selectcourse(request) 
+    if pagename == u'RAIPPA':
+        return courselisthtml(request) 
     else:
         globaldata = GraphData(request)
-        meta = getmetas(request, globaldata, encode(request.page.page_name), [u'WikiCategory'], checkAccess=False)
+        meta = getmetas(request, globaldata, pagename, [u'WikiCategory'], checkAccess=False)
         globaldata.closedb()
         for metatuple in meta['WikiCategory']:
             category = metatuple[0]
@@ -243,17 +252,24 @@ def execute(macro, text):
                 globaldata = GraphData(request)
                 try:
                     statuspage = encode(request.user.name + "/status")
-                    meta = getmetas(request, globaldata, statuspage, [request.page.page_name], checkAccess=False)
-                    coursestate = meta[request.page.page_name][0][0]
+                    meta = getmetas(request, globaldata, statuspage, [pagename], checkAccess=False)
+                    coursestate = meta[pagename][0][0]
                     globaldata.closedb()
                     if coursestate == u'end':
-                        situation = u'end'
+                        #return u'<br>You have already passed this course.'
+                        buttontext = u'Restart'
                     else:
-                        situation = u'continue'
+                        buttontext = u'Continue'
                 except:
                     globaldata.closedb()
-                    situation = u'start'
-                return courseform(situation)
+                    buttontext = u'Start'
+
+                html = u'''
+<form method="POST">
+    <input type="hidden" name="action" value="flowRider"><br>
+    <input type='submit' name='start' value=%s><br>
+</form>''' % buttontext
+                return html
             elif category == taskcategory:
                 return taskform(request)
             elif category == taskpointcategory:
