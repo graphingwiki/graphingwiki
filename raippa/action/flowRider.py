@@ -1,7 +1,10 @@
 import random
+import os
 
 from MoinMoin import wikiutil
+from MoinMoin import config
 from MoinMoin.Page import Page
+from MoinMoin.action.AttachFile import getAttachDir
 
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import edit_meta
@@ -22,7 +25,6 @@ historycategory = u'CategoryHistory'
 statuscategory = u'CategoryStatus'
 
 class FlowPage:
-
     def __init__(self, request, pagename):
         self.request = request
         self.pagename = encode(pagename)
@@ -32,8 +34,8 @@ class FlowPage:
         metas = getmetas(request, globaldata, self.pagename, [u'WikiCategory', u'type'], checkAccess=False)
         globaldata.closedb()
         self.categories = list()
-        for metatuple in metas[u'WikiCategory']:
-            self.categories.append(metatuple[0])
+        for category, type in metas[u'WikiCategory']:
+            self.categories.append(category)
 
         if metas[u'type']:
             self.type = metas[u'type'][0][0]
@@ -87,8 +89,9 @@ class FlowPage:
             metas = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
             globaldata.closedb()
             if metas["start"]:
-                self.writestatus(self.coursepoint, metas["start"][0][0])
-                return self.coursepoint, metas["start"][0][0]
+                start = random.choice(metas["start"])[0]
+                self.writestatus(self.coursepoint,start)
+                return self.coursepoint, start
             else:
                 return False, False
         elif taskpointcategory in self.categories:
@@ -96,7 +99,7 @@ class FlowPage:
             metas = getmetas(self.request, globaldata, self.pagename, ["next"], checkAccess=False)
             globaldata.closedb()
             if metas["next"]:
-                nextpage = metas["next"][0][0]
+                nextpage = random.choice(metas["next"])[0]
                 if nextpage != "end":
                     self.writestatus(self.coursepoint, nextpage)
                     return self.coursepoint, nextpage
@@ -236,10 +239,11 @@ class QuestionPage:
             pagelist = linking_in_question['question']
             answerdict = dict()
             for page in pagelist:
-                metas = getmetas(self.request, globaldata, page, [u'WikiCategory', u'true', u'false'], checkAccess=False)
+                metas = getmetas(self.request, globaldata, page, [u'WikiCategory', u'true', u'false', u'option'], checkAccess=False)
                 for metatuple in metas[u'WikiCategory']:
                     if metatuple[0] == answercategory:
                         tip = None
+                        options = list()
                         if metas[u'true']:
                             value = u'true'
                             answer = metas[u'true'][0][0]
@@ -258,7 +262,10 @@ class QuestionPage:
                                             break
                             except:
                                 pass
-                        answerdict[answer] = [value, tip]
+                        if metas["option"]:
+                            for option_tuple in metas["option"]:
+                                options.append(option_tuple[0])
+                        answerdict[answer] = [value, tip, options]
                         break
             globaldata.closedb()
             return answerdict
@@ -277,6 +284,7 @@ class QuestionPage:
             if answerdict[answer][0] == u'true':
                 truelist.append(answer)
 
+        #TODO: regexp, casesensitivity
         for answer in useranswers:
             if answer in truelist:
                 truelist.remove(answer)
@@ -297,8 +305,9 @@ class QuestionPage:
         
         return overalvalue, successdict, tips
 
-    def writehistory(self, overalvalue, successdict):
-        historypage = randompage(self.request, "History")
+    def writehistory(self, overalvalue, successdict, historypage = None):
+        if not historypage:
+            historypage = randompage(self.request, "History")
         historydata = {u'user':[addlink(self.request.user.name)],
                        u'course':[addlink(self.course)],
                        u'task':[addlink(self.task)],
@@ -310,8 +319,34 @@ class QuestionPage:
                 historydata[value] = list()
             historydata[value].append(useranswer)
 
-        input = order_meta_input(self.request, historypage, historydata, "add")
+        input = order_meta_input(self.request, historypage, historydata, "repl")
         process_edit(self.request, input, True, {historypage:[historycategory]})
+
+    def writefile(self):
+        pagename = randompage(self.request, "History")
+        filename = self.request.form['answer__filename__']
+        target = filename
+        filecontent = self.request.form['answer'][0]
+        if len(target) > 1 and (target[1] == ':' or target[0] == '\\'):
+            bsindex = target.rfind('\\')
+            if bsindex >= 0:
+                target = target[bsindex+1:]
+        target = wikiutil.taintfilename(target)
+        attach_dir = getAttachDir(self.request, pagename, create=1)
+        fpath = os.path.join(attach_dir, target).encode(config.charset)
+        exists = os.path.exists(fpath)
+        if exists:
+            try:
+                os.remove(fpath)
+            except:
+                pass
+        stream = open(fpath, 'wb')
+        try:
+            stream.write(filecontent)
+        finally:
+            stream.close()
+
+        return pagename
 
 def randompage(request, type):
     pagename = "%s/%i" % (type, random.randint(10000,99999))
@@ -373,8 +408,12 @@ def execute(pagename, request):
                 for index, page_tuple in enumerate(taskflow):
                     if useranswers.get(index, None):
                         questionpage = QuestionPage(request, page_tuple[0], currentpage.course, page_tuple[1])
-                        overalvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
-                        questionpage.writehistory(overalvalue, successdict)
+                        if questionpage.answertype == "file":
+                            historypage = questionpage.writefile()
+                            questionpage.writehistory("pending", {}, historypage)
+                        else:
+                            overalvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
+                            questionpage.writehistory(overalvalue, successdict)
                     if nextflowpoint != "end" and nexttask != "end" and nextflowpoint == currentpage.coursepoint:
                         taskpage = FlowPage(request, page_tuple[1])
                         nextflowpoint, nexttask = taskpage.setnextpage()
@@ -383,33 +422,38 @@ def execute(pagename, request):
                 else:
                     redirect(request, nexttask)
         elif taskpointcategory in currentpage.categories:
-            if request.form.has_key(u'answer'):
+            if request.form.has_key(u'answer') or request.form.has_key(u'file'):
                 useranswers = request.form[u'answer']
                 questionpage = currentpage.getquestionpage()
                 if questionpage:
                     questionpage = QuestionPage(request, questionpage, currentpage.course, currentpage.task)
-                    overalvalue, successdict, tips = questionpage.checkanswers(useranswers)
-                    questionpage.writehistory(overalvalue, successdict)
-                    if overalvalue:
-                        nextflowpoint, nexttask = currentpage.setnextpage()
-                        if nextflowpoint == "end" and nexttask == "end":
-                            redirect(request, currentpage.course)
-                        else:
-                            redirect(request, nexttask)
+                    if questionpage.answertype == "file":
+                        historypage = questionpage.writefile()
+                        questionpage.writehistory("pending", {}, historypage)
+                        redirect(request, currentpage.pagename)
                     else:
-                        globaldata = GraphData(request)
-                        try:
-                            metas = getmetas(request, globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
-                            failurepage = metas["failed"][0][0]
-                            failurekey = currentpage.course + "failure"
-                            statuspage = request.user.name + "/status"
-                            input = order_meta_input(request, statuspage, {failurekey: [failurepage]}, "repl")
-                            process_edit(request, input, True, {statuspage:[statuscategory]})
-                        except:
-                            failurepage = currentpage.pagename
+                        overalvalue, successdict, tips = questionpage.checkanswers(useranswers)
+                        questionpage.writehistory(overalvalue, successdict)
+                        if overalvalue:
+                            nextflowpoint, nexttask = currentpage.setnextpage()
+                            if nextflowpoint == "end" and nexttask == "end":
+                                redirect(request, currentpage.course)
+                            else:
+                                redirect(request, nexttask)
+                        else:
+                            globaldata = GraphData(request)
+                            try:
+                                metas = getmetas(request, globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
+                                failurepage = metas["failed"][0][0]
+                                failurekey = currentpage.course + "failure"
+                                statuspage = request.user.name + "/status"
+                                input = order_meta_input(request, statuspage, {failurekey: [failurepage]}, "repl")
+                                process_edit(request, input, True, {statuspage:[statuscategory]})
+                            except:
+                                failurepage = currentpage.pagename
 
-                        globaldata.closedb()
-                        redirect(request, failurepage, tips[0])
+                            globaldata.closedb()
+                            redirect(request, failurepage, tips[0])
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
