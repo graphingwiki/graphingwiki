@@ -281,9 +281,9 @@ class Parser(WikiParser):
     def _parser_repl(self, word, groups):
         self.in_pre = True
         
-        return __add_meta(word, groups)
+        return self.__add_meta(word, groups)
         
     def _parser_end_repl(self, word, groups):
         self.in_pre = True
         
-        return __add_meta(word, groups)
+        return self.__add_meta(word, groups)
