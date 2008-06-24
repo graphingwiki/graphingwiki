@@ -32,6 +32,9 @@ class Parser(WikiParser):
     def __add_textmeta(self, word, groups):
         val = ''
 
+        if self.in_pre:
+            return val
+
         if self.in_dd:
             for type, value in self.__nonempty_groups(groups):
                 val += self.__add_meta(value, groups)
