@@ -32,9 +32,6 @@ class Parser(WikiParser):
     def __add_textmeta(self, word, groups):
         val = ''
 
-        if self.in_pre:
-            return val
-
         if self.in_dd:
             for type, value in self.__nonempty_groups(groups):
                 val += self.__add_meta(value, groups)
@@ -43,8 +40,6 @@ class Parser(WikiParser):
 
     def __add_meta(self, word, groups):
         if not word.strip():
-            return ''
-        if self.in_pre:
             return ''
 
         if self.in_dd:
@@ -69,9 +64,6 @@ class Parser(WikiParser):
         return ''
 
     def __add_link(self, word, groups):
-        if self.in_pre:
-            return False
-
         if self.in_dd:
             if not self.new_item:
                 self.__add_meta(word, groups)
@@ -221,7 +213,6 @@ class Parser(WikiParser):
     _entity_repl = __add_meta
     _heading_repl = __add_meta
     _macro_repl = __add_meta
-    _parser_repl = __add_meta
     _remark_repl = __add_meta
     _sgml_entity_repl = __add_meta
     _sub_repl = __add_meta
@@ -234,6 +225,9 @@ class Parser(WikiParser):
 
     def _dl_repl(self, match, groups):
         """Handle definition lists."""
+        if self.in_pre:
+            return u''
+
         # Flush pre-dd:s
         if self.currentitems and not self.curdef:
             self.definitions.setdefault('_notype', 
@@ -283,3 +277,13 @@ class Parser(WikiParser):
     def _close_item(self, result):
         if self.in_dd:
             self._undent()
+
+    def _parser_repl(self, word, groups):
+        self.in_pre = True
+        
+        return __add_meta(word, groups)
+        
+    def _parser_end_repl(self, word, groups):
+        self.in_pre = True
+        
+        return __add_meta(word, groups)
