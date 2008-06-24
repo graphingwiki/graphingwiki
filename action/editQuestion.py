@@ -420,7 +420,7 @@ def _enter_page(request, pagename):
     _ = request.getText
     
     request.theme.send_title(_('Teacher Tools'), formatted=False,
-	html_head='<script type="text/javascript" src="/moin_static163/common/js/mootools-1.2-core.js"></script>')
+	html_head='<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>' % request.cfg.url_prefix_static)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:
@@ -436,8 +436,6 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    #_ = request.getText
-    #request.setContentLanguage(request.lang)
     if request.form.has_key('save'):
         writemetas(request)
         url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
