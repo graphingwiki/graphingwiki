@@ -41,6 +41,9 @@ class Parser(WikiParser):
     def __add_meta(self, word, groups):
         if not word.strip():
             return ''
+        if self.in_pre:
+            return ''
+
         if self.in_dd:
             if not self.new_item:
                 lasttype, items = self.currentitems.pop()
@@ -63,6 +66,9 @@ class Parser(WikiParser):
         return ''
 
     def __add_link(self, word, groups):
+        if self.in_pre:
+            return False
+
         if self.in_dd:
             if not self.new_item:
                 self.__add_meta(word, groups)
