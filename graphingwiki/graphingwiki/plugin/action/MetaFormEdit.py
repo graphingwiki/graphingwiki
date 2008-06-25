@@ -11,7 +11,6 @@ import urllib
 import re
 import StringIO
 
-from graphingwiki.editing import save_template
 from urllib import quote as url_quote
 from copy import copy
 
@@ -110,7 +109,7 @@ def execute(pagename, request):
             editor.user = newreq.user
             text = editor.get_raw_body()
             editor.page_name = pagename
-            newreq.page.body = editor._expand_variables(text)
+            newreq.page.set_raw_body(editor._expand_variables(text))
             newreq.page.exists = lambda **kw: True
             newreq.page.lastEditInfo = lambda: {}
             newpage = True

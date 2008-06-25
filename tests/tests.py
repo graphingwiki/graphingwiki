@@ -150,6 +150,27 @@ class TestDeletePage(unittest.TestCase):
             return
 
 
+class TestParsing(unittest.TestCase):
+    def setUp(self):
+        self.pageName = "Gwiki Unit Test %s" % self.id()
+
+    def tearDown(self):
+        '''Remove a page from wiki after test is done.'''
+        server.DeletePage(self.pageName)
+
+    def testGetMeta1(self):
+        '''Parser should not find meta tags inside {{{source code}}}
+        block.'''
+        pageContents = """
+{{{
+ foo:: bar
+}}}
+"""
+        server.putPage(self.pageName, pageContents)
+        res = server.GetMeta(self.pageName, True)
+        self.assert_(not res)
+        
+
 # class TestRandomPages(unittest.TestCase):
 #     def setUp(self):
 #         self.pageName = rStr(16) # A magic number

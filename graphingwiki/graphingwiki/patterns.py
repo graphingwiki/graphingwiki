@@ -59,9 +59,10 @@ def debug(val):
     d.flush()
 
 # Default node attributes that should not be shown
-special_attrs = ["label", "sides", "tooltip", "skew", "orientation",
-                 "shape", 'belongs_to_patterns', 'URL', 'shapefile',
-                 "fillcolor"]
+special_attrs = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
+                 "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',
+                 'gwikiURL', 'gwikishapefile', "gwikishape", "gwikistyle",
+                 'belongs_to_patterns']
 
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        special_attrs, dict(node))
@@ -177,16 +178,16 @@ class GraphData(object):
                 setattr(node, key, val)
 
         # Shapefile is an extra special case
-        for shape in page.get('lit', {}).get('shapefile', []):
-            node.shapefile = encode(shape)
+        for shape in page.get('lit', {}).get('gwikishapefile', []):
+            node.gwikishapefile = encode(shape)
 
         # Local nonexistent pages must get URL-attribute
-        if not hasattr(node, 'URL'):
-            node.URL = pagename
+        if not hasattr(node, 'gwikiURL'):
+            node.gwikiURL = './' + pagename
 
         # Nodes representing existing local nodes may be traversed
         if page.has_key('saved'):
-            node.URL += urladd
+            node.gwikiURL += urladd
             node.URL = './' + node.URL
 
         if node.URL.startswith('attachment:'):
@@ -451,13 +452,13 @@ class WikiNode(object):
 
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)
-        k = getattr(nodeitem, 'URL', '')
+        k = getattr(nodeitem, 'gwikiURL', '')
 
         if isinstance(k, set):
             k = ''.join(k)
             if k[0] in ['.', '/']:
                 k += WikiNode.urladd
-            nodeitem.URL = k
+            nodeitem.gwikiURL = k
 
         adata = WikiNode.graphdata.load_graph(node, WikiNode.urladd)
 

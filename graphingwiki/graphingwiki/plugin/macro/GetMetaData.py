@@ -10,6 +10,7 @@
 Dependencies = ['metadata']
 
 import urllib
+import StringIO
 
 from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
@@ -46,7 +47,14 @@ def execute(macro, args):
     globaldata.closedb()
 
     request.page.formatter = request.formatter
-    request.page.send_page_content(request, Parser,
-                                   ', '.join(vals),
-                                   do_cache=0,
-                                   line_anchors=False)
+    parser = Parser(', '.join(vals), request)
+    # No line anchors of any type to table cells
+    request.page.formatter.in_p = 1
+    parser._line_anchordef = lambda: ''
+
+    data = StringIO.StringIO()
+    request.redirect(data)
+    request.page.format(parser)
+    request.redirect()
+
+    return data.getvalue().strip()

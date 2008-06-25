@@ -41,7 +41,7 @@ class Graph(Sync):
                          ),
                          ("nodes",
                           ("node",),
-                          ((("label", ""), ("belongs_to_patterns","")))
+                          ((("gwikilabel", ""), ("belongs_to_patterns","")))
                          ) # nodes
                       ) #tables
                      ) #self

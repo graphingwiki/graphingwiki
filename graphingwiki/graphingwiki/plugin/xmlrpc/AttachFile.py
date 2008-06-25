@@ -82,7 +82,7 @@ def save(request, pagename, filename, content, overwrite):
     try:
         tmp = os.path.join(path, filename)
         tmpf = file(tmp, 'wb')
-        tmpf.write(content.data)
+        tmpf.write(content)
         tmpf.close()
     except:
         return xmlrpclib.Fault(3, _("Unknown error"))
@@ -113,7 +113,7 @@ def execute(xmlrpcobj, pagename, filename, action='save',
     elif action == 'delete':
         success = delete(request, pagename, filename)
     elif action == 'save' and content:
-        success = save(request, pagename, filename, content, overwrite)
+        success = save(request, pagename, filename, content.data, overwrite)
     else:
         success = xmlrpclib.Fault(3, _("No method specified or empty data"))
 

@@ -15,6 +15,7 @@ import urllib
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
+from MoinMoin.util.lock import WriteLock
 
 from graphingwiki.editing import process_edit, getvalues, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
@@ -184,10 +185,15 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
 
     if request.form.has_key('save') or request.form.has_key('saveform'):
+        lock = None
+        
         # Pre-create page if it does not exist, using the template specified
         template = request.form.get('template', [None])[0]
         if template:
             save_template(request, pagename, template)
+            lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+            lock.acquire()
+
         # process_edit requires a certain order to meta input
         if request.form.has_key('saveform'):
             # For some reason, keys in request.form are utf-8
@@ -202,9 +208,9 @@ def execute(pagename, request):
 
             output = order_meta_input(request, pagename,
                                       output, 'repl')
-            msgs = process_edit(request, output)
+            msgs = process_edit(request, output, lock=lock)
         else:
-            msgs = process_edit(request, request.form)
+            msgs = process_edit(request, request.form, lock=lock)
             
         msg = ''
 

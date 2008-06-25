@@ -406,18 +406,19 @@ class GraphShower(object):
     def addToStartPages(self, graphdata, pagename):
         self.startpages.append(pagename)
         root = graphdata.nodes.add(pagename)
-        root.URL = './' + pagename
+        root.gwikiURL = './' + pagename
 
         return graphdata
 
-    def addToAllCats(self, nodename):
+    def addToAllCats(self, cats):
+        if not cats:
+            return
+
+        # No need to list all categories if the list is not going to be used
         if not self.do_form:
             return
 
-        opageobj = Page(self.request,
-                        unicode(url_unquote(nodename),
-                                config.charset))
-        self.allcategories.update(opageobj.getCategories(self.request))
+        self.allcategories.update(cats)
 
     def buildGraphData(self):
         graphdata = Graph()
@@ -426,9 +427,14 @@ class GraphShower(object):
         pagename = url_quote(encode(self.pagename))
         self.pagename = pagename
 
+        def get_categories(nodename):
+            pagedata = self.globaldata.getpage(nodename)
+            return pagedata.get('metas', {}).get('WikiCategory', set())
+
         for nodename in self.otherpages:
             graphdata = self.addToStartPages(graphdata, nodename)
-            self.addToAllCats(nodename)
+
+            self.addToAllCats(get_categories(nodename))
 
         # Do not add self to graph if self is category or
         # template page and we're looking at categories
@@ -456,7 +462,7 @@ class GraphShower(object):
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
                         graphdata = self.addToStartPages(graphdata, newpage)
-                        self.addToAllCats(newpage)
+                        self.addToAllCats(get_categories(newpage))
 
         return graphdata
 
@@ -503,7 +509,7 @@ class GraphShower(object):
                     continue
             # or to pages within the wiki
             elif self.limit == 'wiki':
-                if not obj.URL[0] in ['.', '/']:
+                if not obj.gwikiURL[0] in ['.', '/']:
                     continue
 
             # If node already added, nothing to do
@@ -546,8 +552,10 @@ class GraphShower(object):
             # Add page categories to selection choices in the form
             # (for local pages only)
 #            print obj.node
-            if obj.URL[0] in ['.', '/']:
-                self.addToAllCats(obj.node)
+            if obj.gwikiURL[0] in ['.', '/']:
+                cats = getattr(obj, 'WikiCategory', set())
+                cats = [x.strip('"') for x in cats]
+                self.addToAllCats(cats)
 
             # Category filter
             for filt in self.filtercats:
@@ -577,12 +585,16 @@ class GraphShower(object):
                                       for x in pagemeta])
                 n.tooltip = '%s\n%s' % (url_unquote(obj.node), tooldata)
 
-
             # Shapefiles
-            if getattr(obj, 'shapefile', None):
+            if getattr(obj, 'gwikishapefile', None):
                 # Enter file path for attachment shapefiles
-                value = obj.shapefile[2:-2]
-                value = value.split('|')[0][11:]
+                value = obj.gwikishapefile[11:]
+                components = value.split('/')
+                if len(components) == 1:
+                    page = obj.node
+                else:
+                    page = '/'.join(components[:-1])
+                file = unicode(url_unquote(components[-1]), config.charset)
 
                 page, file = attachment_pagefile(value, obj.node)
 
@@ -591,7 +603,7 @@ class GraphShower(object):
 
                 # get attach file path, empty label
                 if os.path.isfile(shapefile):
-                    n.shapefile = shapefile
+                    n.gwikishapefile = shapefile
                 
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
@@ -600,12 +612,12 @@ class GraphShower(object):
                     # bounding rectangle. Setting peripheries=0 will turn
                     # this off."
                     # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
-                    n.label = ' '
-                    n.peripheries = '0'
-                    n.style = 'filled'
-                    n.fillcolor = 'transparent'
+                    n.gwikilabel = ' '
+                    n.gwikiperipheries = '0'
+                    n.gwikistyle = 'filled'
+                    n.gwikifillcolor = 'transparent'
                 else:
-                    del n.shapefile
+                    del n.gwikishapefile
 #            elif 'AttachFile' in obj.node:
 #                # Have shapefiles of image attachments
 #                if obj.node.split('.')[-1] in ['gif', 'png', 'jpg', 'jpeg']:
@@ -697,9 +709,9 @@ class GraphShower(object):
                 if re_color:
                     rule = rule.strip('"')
                     rule = '"' + re_color.sub(self.colorsub, rule) + '"'
-                obj.fillcolor = self.colorfunc(rule)
-                obj.color = self.colorfunc(rule, self.FRINGE_DARKNESS)
-                obj.style = 'filled'
+                obj.gwikifillcolor = self.colorfunc(rule)
+                obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
+                obj.gwikistyle = 'filled'
 
         lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
 
@@ -739,9 +751,7 @@ class GraphShower(object):
         for nodename in self.startpages:
             node = outgraph.nodes.get(nodename)
             if node:
-                node.URL = './\N'
-                if not node.label:
-                    node.label = url_unquote(nodename)
+                node.gwikiURL = './\N'
 
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
@@ -752,22 +762,23 @@ class GraphShower(object):
         # Also fix overlong labels
         for name, in outgraph.nodes.getall():
             node = outgraph.nodes.get(name)
-
+            if not node.gwikilabel:
+                node.gwikilabel = url_unquote(name)
             # If local link:
-            if node.URL[0] in ['.', '/']:
-                node.URL = self.request.getScriptname() + \
-                           node.URL.lstrip('.')
+            if node.gwikiURL[0] in ['.', '/']:
+                node.gwikiURL = self.request.getScriptname() + \
+                                node.gwikiURL.lstrip('.')
                 # If attachment
-                if 'action=AttachFile' in node.URL:
-                    node.label = "%s:\n%s" % (encode(_("Attachment")),
-                                              node.label)
+                if 'action=AttachFile' in node.gwikiURL:
+                    node.gwikilabel = "%s:\n%s" % (encode(_("Attachment")),
+                                                   node.gwikilabel)
 
-            elif len(node.label) == 0 and len(node.URL) > 50:
-                node.label = node.URL[:47] + '...'
-            elif len(node.label) > 50:
-                node.label = node.label[:47] + '...'
-            elif not ':' in node.label:
-                node.label = node.URL
+            elif len(node.gwikilabel) == 0 and len(node.gwikiURL) > 50:
+                node.gwikilabel = node.gwikiURL[:47] + '...'
+            elif len(node.gwikilabel) > 50:
+                node.gwikilabel = node.gwikilabel[:47] + '...'
+            elif not ':' in node.gwikilabel:
+                node.gwikilabel = node.gwikiURL
 
         return outgraph
 
@@ -776,12 +787,12 @@ class GraphShower(object):
         for node in [outgraph.nodes.get(name) for name in self.startpages]:
             if node:
                 # Do not circle image nodes
-                if hasattr(node, 'shapefile'):
+                if hasattr(node, 'gwikishapefile'):
                     continue
-                if hasattr(node, 'style'):
-                    node.style = node.style + ', bold'
+                if hasattr(node, 'gwikistyle'):
+                    node.gwikistyle = node.gwikistyle + ', bold'
                 else:
-                    node.style = 'bold'
+                    node.gwikistyle = 'bold'
 
         return outgraph
 
@@ -837,9 +848,11 @@ class GraphShower(object):
             # so that they would point to the corresponding categories
             # [1:-1] removes quotes from label
             if not orderURL:
-                sg.nodes.add(cur_ordernode, label=label[1:-1], URL=label[1:-1])
+                sg.nodes.add(cur_ordernode, label=label[1:-1],
+                             URL=label[1:-1])
             else:
-                sg.nodes.add(cur_ordernode, label=label[1:-1], URL=orderURL)
+                sg.nodes.add(cur_ordernode, label=label[1:-1],
+                             URL=orderURL)
             for node in self.ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -931,7 +944,9 @@ class GraphShower(object):
                 legend.nodes.add(ln1, style='invis', label='')
                 legend.nodes.add(ln2, style='invis', label='')
 
-                legend.edges.add((ln1, ln2), color=self.hashcolor(linktype, self.EDGE_DARKNESS),
+                legend.edges.add((ln1, ln2),
+                                 color=self.hashcolor(linktype,
+                                                      self.EDGE_DARKNESS),
                                  label=url_unquote(linktype),
                                  URL=self.getURLns(linktype))
                 per_row = per_row + 1
@@ -945,9 +960,10 @@ class GraphShower(object):
 
             fillcolor = self.colorfunc(nodetype)
             color = self.colorfunc(nodetype, self.FRINGE_DARKNESS)
-            
-            legend.nodes.add(cur, label=nodetype[1:-1], style='filled', 
-                             color=color, fillcolor=fillcolor, URL=colorURL)
+
+            legend.nodes.add(cur, label=nodetype, style='filled', 
+                             color=color, fillcolor=fillcolor,
+                             URL=colorURL)
             if prev:
                 if per_row == 3:
                     per_row = 0
@@ -1586,7 +1602,6 @@ class GraphShower(object):
         outgraph = self.doTraverse(graphdata, outgraph, nodes)
         #print "Traverse over"
         cl.stop('traverse')
-
         
         if gv_found:
             cl.start('layout')

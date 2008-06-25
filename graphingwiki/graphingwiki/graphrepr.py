@@ -646,10 +646,17 @@ class GraphRepr:
         return ''.join(label)
 
     def _filterattrs(self, attrs):
-        # return attrs with empty values filtered
-        return dict((key, ''.join(attrs[key])) for key, value
-                    in attrs.items() if value != "" \
-                    and isinstance(value, basestring))
+        # return attrs with empty values filtered and style attrs renamed
+        out = dict()
+        for key, value in attrs.items():
+            if value and isinstance(value, basestring):
+                val = ''.join(attrs[key])
+                if key.startswith('gwiki'):
+                    key = key.replace('gwiki', '', 1)
+                
+                out[key] = val
+
+        return out
 
     # Dummy callback functions
     def _dummy_dynaerror(self, line):
