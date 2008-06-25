@@ -75,6 +75,15 @@ qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
 
+def resolve_iw_url(request, wiki, page): 
+    res = wikiutil.resolve_interwiki(request, wiki, page) 
+    if res[3] == False: 
+        iw_url = res[1] + res[2] 
+    else: 
+        iw_url = './InterWiki' 
+        
+    return iw_url 
+
 def getgraphdata(request):
     "utility function to glue GraphData to the request"
     if not hasattr(request, 'graphdata'):

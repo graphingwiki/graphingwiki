@@ -320,7 +320,52 @@ def parse_link(wikiparse, hit, type):
 
     return nodename, nodeurl, linktype
 
-def add_link(globaldata, quotedname, pagegraph, cat_re,
+
+
+def add_category(globaldata, pagegraph, node, category):
+    category=encode(category)
+    pagenode = pagegraph.nodes.get(node)
+    node_set_attribute(pagenode, 'WikiCategory', category)
+    shelve_set_attribute(globaldata, node, 'WikiCategory', category)
+
+def set_node_params(globaldata, pagegraph, node, url, label):
+    url = encode(url)
+    if not pagegraph.nodes.get(node):
+        n = pagegraph.nodes.add(node)
+        if label and not getattr(n, 'label', ''):
+            n.label = label
+            meta = globaldata.get(node, {}).get('meta', {})
+            if not meta.get('label', ''):
+                shelve_set_attribute(globaldata, node, 'label', label)
+
+def add_link(globaldata, pagegraph, snode, dnode, linktype, hit):
+    snode=encode(snode)
+    dnode=encode(dnode)
+    linktype=encode(linktype)
+    
+    # Add node if not already added 
+    if not pagegraph.nodes.get(dnode):
+        pagegraph.nodes.add(dnode)
+
+    edge = [snode, dnode]
+
+    shelve_add_in(globaldata, edge, linktype)
+    shelve_add_out(globaldata, edge, linktype, hit)
+
+    # Add edge if not already added
+    e = pagegraph.edges.get(*edge)
+    if not e:
+        e = pagegraph.edges.add(*edge)
+
+    if not linktype:
+        linktype = '_notype'
+
+    if hasattr(e, 'linktype'):
+        e.linktype.add(linktype)
+    else:
+        e.linktype = set([linktype])
+
+def add_link_moin15branch(globaldata, quotedname, pagegraph, cat_re,
              nodename, nodeurl, linktype, hit):
     if cat_re.search(nodename):
         pagenode = pagegraph.nodes.get(quotedname)
@@ -356,6 +401,8 @@ def add_link(globaldata, quotedname, pagegraph, cat_re,
     else:
         e.linktype = set([linktype])
 
+
+
 def parse_text(request, globaldata, page, text):
     pagename = page.page_name
     quotedname = url_quote(encode(pagename))
@@ -386,10 +433,9 @@ def parse_text(request, globaldata, page, text):
 
     # add a node for current page
     pagenode = pagegraph.nodes.add(quotedname)
-
     # add a nicer-looking label, also
     pagelabel = encode(pagename)
-    in_processing_instructions = True
+
     snode = quotedname
     
     for metakey, value in p.definitions.iteritems():
@@ -408,135 +454,9 @@ def parse_text(request, globaldata, page, text):
                 add_meta(globaldata, pagenode, quotedname, 
                          '[[MetaData(%s,%s)]]' % (metakey, item))
 
-    for line in lines:
-
-        # Have to handle the whole processing instruction shebang
-        # in order to handle ACL:s correctly
-        if in_processing_instructions:
-            found = False
-            for pi in ("##", "#format", "#refresh", "#redirect", "#deprecated",
-                       "#pragma", "#form", "#acl", "#language"):
-                if line.lower().startswith(pi):
-                    found = True
-                    if pi == '#acl':
-                        temp = globaldata.get(quotedname, {})
-                        temp['acl'] = line[5:]
-                        globaldata[quotedname] = temp
-
-            if not found:
-                in_processing_instructions = False
-            else:
-                continue
-
-        # Comments not processed
-        if line[0:2] == "##":
-            continue
-
-        # Headings not processed
-        if heading_re.match(line):
-            continue
-        for match in all_re.finditer(line):
-            for type, hit in match.groupdict().items():
-                #if hit:
-                #    print hit, type
->>>>>>> .merge-right.r435
-
             if dnode:
                 add_link(globaldata, pagegraph, snode, dnode, metakey, hit)
 
-#         for type, value in values:
-#             if type == 'wikilink':
-#             dnode=encode(value[0])
-#         elif type == 'url':
-#             dnode=encode(value[1])
-#             url=encode(value[1])
-#         elif type == 'interwiki':
-#             ret=wikiutil.resolve_interwiki(request,value[0], value[1])
-#             dnode=encode("%s:%s" % (value[0],value[1]))
-#             label=dnode
-#             if ret[3] == False:
-#                 url=ret[1]+value[1]
-#             else:
-#                 type='wikilink'
-#         elif type == 'category':
-#             add_category(globaldata, pagegraph, snode, value)
-#         if url or label:
-#             set_node_params(globaldata, pagegraph, dnode, url, label)
-#         if dnode:
-#             add_link(globaldata, pagegraph, snode, dnode, type)
-
-                # Handling of MetaData- and Include-macros
-                elif type == 'macro' and not inpre:
-                    if hit.startswith('[[MetaData'):
-                        add_meta(globaldata, pagenode, quotedname, hit)
-                    if hit.startswith('[[Include'):
-                        add_include(globaldata, pagenode, quotedname, hit)
-
-                # Handling of links
-                elif type in linktypes and not inpre:
-                    # If we just came from a dict, which saved a typed
-                    # link, do not save it again
-                    if dicturl:
-                        dicturl = False
-                        continue
-
-                    name, url, linktype = parse_link(wikiparse, hit, type)
-
-                    if name:
-                        add_link(globaldata, quotedname, pagegraph, cat_re,
-                                 name, url, linktype, hit)
-
-                # Links and metadata defined in a definition list
-                elif type == 'dl' and not inpre:
-                    data = line.split('::')
-                    key, val = data[0], '::'.join(data[1:])
-                    key = key.lstrip()
-
-                    if not key:
-                        continue
-
-                    # Try to find if the value points to a link
-                    matches = all_re.match(val.lstrip())
-                    if matches:
-                        # Take all matches if hit non-empty
-                        # and hit type in linktypes
-                        match = [(type, hit) for type, hit in
-                                 matches.groupdict().iteritems()
-                                 if hit is not None \
-                                 and type in linktypes]
-
-                        # If link, 
-                        if match:
-                            type, hit = match[0]
-
-                            # and nothing but link, save as link
-                            if hit == val.strip():
-
-                                val = val.strip()
-                                name, url, linktype = parse_link(wikiparse,\
-                                                                 hit, type)
-
-                                # Take linktype from the dict key
-                                linktype = getlinktype([encode(x)
-                                                        for x in key, val])
-
-                                if name:
-                                    add_link(globaldata, quotedname,
-                                             pagegraph, cat_re,
-                                             name, url, linktype, hit)
-
-                                    # The val will also be parsed by
-                                    # Moin's link parser -> need to
-                                    # have state in the loop that this
-                                    # link has already been saved
-                                    dicturl = True
-
-                    if dicturl:
-                        continue
-
-                    # If it was not link, save as metadata. 
-                    add_meta(globaldata, pagenode, quotedname,
-                             "[[MetaData(%s,%s)]]" % (key, val))
 
     return globaldata, pagegraph
 
@@ -546,23 +466,18 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    shelve_present = False
-    if hasattr(request, 'graphdata'):
-        shelve_present = True
-        globaldata = request.graphdata.db
-    else:
-        graphshelve = os.path.join(request.cfg.data_dir,
-                                   'graphdata.shelve')
-
-        # Open file db for global graph data, creating it if needed
-        globaldata = shelve.open(graphshelve, flag='c')
+    graphshelve = os.path.join(request.cfg.data_dir,
+                               'graphdata.shelve')
 
     # Expires old locks left by crashes etc.
     # Page locking mechanisms should prevent this code being
     # executed prematurely - thus expiring both read and
     # write locks
-    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
+    lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+    lock.acquire()
+
+    # Open file db for global graph data, creating it if needed
+    globaldata = shelve.open(graphshelve, flag='c')
     
     # The global graph data contains all the links, even those that
     # are not immediately available in the page's graphdata pickle
@@ -570,75 +485,47 @@ def execute(pagename, request, text, pagedir, page):
 
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
-
-    old_data = graph.Graph()
-
-    # load graphdata if present and not trashed
+    # load graphdata if present and not trashed, remove it from index
     if os.path.isfile(gfn) and os.path.getsize(gfn):
         pagegraphfile = file(gfn)
         old_data = cPickle.load(pagegraphfile)
+        
+        for edge in old_data.edges.getall(parent=quotedname):
+            e = old_data.edges.get(*edge)
+            linktype = getattr(e, 'linktype', ['_notype'])
+            shelve_remove_in(globaldata, edge, linktype)
+            shelve_remove_out(globaldata, edge, linktype)
+
+        for edge in old_data.edges.getall(child=quotedname):
+            e = old_data.edges.get(*edge)
+            linktype = getattr(e, 'linktype', ['_notype'])
+            shelve_remove_in(globaldata, edge, linktype)
+            shelve_remove_out(globaldata, edge, linktype)
+
+        shelve_unset_attributes(globaldata, quotedname)
+
         pagegraphfile.close()
 
-    # Get new data from parsing the page
-    newdata, pagegraph = parse_text(request, dict(), page, text)
+    # Include timestamp to current page
+    if not globaldata.has_key(quotedname):
+        globaldata[quotedname] = {'mtime': time(), 'saved': True}
+    else:
+        temp = globaldata[quotedname]
+        temp['mtime'] = time()
+        temp['saved'] = True
+        globaldata[quotedname] = temp
 
-    # Find out which links need to be saved again
-    oldedges = set()
-    for edge in old_data.edges.getall():
-        e = old_data.edges.get(*edge)
-        linktypes = getattr(e, 'linktype', ['_notype'])
-        for linktype in linktypes:        
-            ed = tuple(((edge), (linktype)))
-            oldedges.add(ed)
+    # Overwrite pagegraphfile with the new data
+    pagegraphfile = file(gfn, 'wb')
 
-    newedges = set()
-    for edge in pagegraph.edges.getall():
-        e = pagegraph.edges.get(*edge)
-        linktypes = getattr(e, 'linktype', ['_notype'])
-        for linktype in linktypes:        
-            ed = tuple(((edge), linktype))
-            newedges.add(ed)
-
-    remove_edges = oldedges.difference(newedges)
-    add_edges = newedges.difference(oldedges)
-
-    # Save the edges
-    for edge, linktype in remove_edges:
-#        print "Removed", edge, linktype
-#        print edge, linktype
-        shelve_remove_in(globaldata, edge, [linktype])
-        shelve_remove_out(globaldata, edge, [linktype])
-    for edge, linktype in add_edges:
-#        print "Added", edge, linktype
-        frm, to = edge
-        data = [(x,y) for x,y in enumerate(newdata[frm]['out'][linktype])
-                if y == to]
-
-        # Temporary hack: add gwikiurl:s to some edges
-        nodeurl = newdata.get(to, '')
-        if nodeurl:
-            nodeurl = nodeurl.get('meta', {}).get('gwikiURL', set(['']))
-            nodeurl = list(nodeurl)[0]
-
-        # Save both the parsed and unparsed versions
-        for idx, item in data:
-            hit = newdata[frm]['lit'][linktype][idx]
-            shelve_add_in(globaldata, edge, linktype, nodeurl)
-            shelve_add_out(globaldata, edge, linktype, hit)
-
-    # Insert metas and other stuff from parsed content
-    temp = globaldata.get(quotedname, {'time': time(), 'saved': True})
-    temp['meta'] = newdata.get(quotedname, {}).get('meta', {})
-    temp['acl'] = newdata.get(quotedname, {}).get('acl', '')
-    temp['include'] = newdata.get(quotedname, {}).get('include', set())
-    temp['mtime'] = time()
-    temp['saved'] = True
-    globaldata[quotedname] = temp
+    globaldata, pagegraph = parse_text(request, globaldata, page, text)
 
     # Save graph as pickle, close
-    pagegraphfile = file(gfn, 'wb')
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
+    # Remove locks, close shelves
+    globaldata.close()
+    lock.release()
 
 
 # - code below lifted from MetaFormEdit -
@@ -663,12 +550,3 @@ class LinkCollectingPage(Page):
         kw['format_args'] = format_args
         kw['do_cache'] = 0
         apply(Page.send_page_content, (self, request, self.parser, body), kw)
-
-    if shelve_present:
-        pass
-    else:
-        # Remove locks, close shelves
-        globaldata.close()
-
-    request.lock.release()
-
