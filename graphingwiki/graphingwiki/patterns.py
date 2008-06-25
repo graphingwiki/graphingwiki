@@ -185,14 +185,14 @@ class GraphData(object):
         # Nodes representing existing local nodes may be traversed
         if page.has_key('saved'):
             node.gwikiURL += urladd
-            node.URL = './' + node.URL
+            node.gwikiURL = './' + node.gwikiURL
 
-        if node.URL.startswith('attachment:'):
-            pagefile = node.URL.split(':')[1]
+        if node.gwikiURL.startswith('attachment:'):
+            pagefile = node.gwikiURL.split(':')[1]
             page, file = attachment_pagefile(pagefile, pagename)
 
-            node.label = encode(file)
-            node.URL = encode(actionname(self.request, page) + \
+            node.gwikilabel = encode(file)
+            node.gwikiURL = encode(actionname(self.request, page) + \
                 '?action=AttachFile&do=get&target=' + file)
 
         return graph
