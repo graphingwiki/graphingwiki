@@ -407,7 +407,7 @@ def parse_text(request, globaldata, page, text):
             elif type == 'meta':
                 add_meta(globaldata, pagenode, quotedname, 
                          '[[MetaData(%s,%s)]]' % (metakey, item))
-=======
+
     for line in lines:
 
         # Have to handle the whole processing instruction shebang

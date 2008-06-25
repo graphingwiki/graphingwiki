@@ -4,7 +4,7 @@ from graphingwiki.patterns import debug
 
 from graphingwiki.editing import underlay_to_pages
 
-class SecurityPolicy(AntiSpam):
+class SecurityPolicy(Permissions):
     def save(self, editor, newtext, rev, **kw):
         # No problem to save if my base class agree
         if Permissions.save(self, editor, newtext, rev, **kw):

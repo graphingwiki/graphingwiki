@@ -19,7 +19,6 @@ import getpass
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
-from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request.request_cli import Request as RequestCLI
@@ -186,6 +185,8 @@ def edit_categories(request, savetext, category_edit, catlist):
     return savetext
 
 def formatting_rules(request, parser):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     rules = parser.formatting_rules.replace('\n', '|')
 
     if request.cfg.bang_meta:
@@ -255,6 +256,8 @@ def link_to_attachment(globaldata, target):
     return target
 
 def absolute_attach_name(quoted, target):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     abs_method = target.split(':')[0]
 
     # Pages from MetaRevisions may have ?action=recall, breaking attach links
