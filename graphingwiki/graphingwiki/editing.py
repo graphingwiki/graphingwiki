@@ -370,12 +370,15 @@ def edit(pagename, editfun, request=None,
     graphsaver = wikiutil.importPlugin(request.cfg,
                               'action',
                               'savegraphdata')
+
+    # Release the possible readlock that template-savers may have acquired
+    if lock:
+        lock.release()
+
     if not newtext:
         return u'No data', p
 
     try:
-        if lock:
-            lock.release()
         msg = p.saveText(newtext, 0)
         graphsaver(pagename, request, newtext, p.getPagePath(), p)
 

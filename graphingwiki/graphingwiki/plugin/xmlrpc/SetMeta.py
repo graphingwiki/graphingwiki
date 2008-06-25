@@ -11,7 +11,7 @@ import xmlrpclib
 
 from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.util.lock import WriteLock
+from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.patterns import encode
 from graphingwiki.editing import process_edit, order_meta_input, save_template
@@ -49,7 +49,9 @@ def execute(xmlrpcobj, page, input, action='add',
     # Pre-create page if it does not exist, using the template specified
     if createpage:
         save_template(request, page, template)
-        lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+
+        # Open ReadLock - a flimsy attempt for atomicity of this save
+        lock = ReadLock(request.cfg.data_dir, timeout=10.0)
         lock.acquire()
 
     # process_edit requires a certain order to meta input
