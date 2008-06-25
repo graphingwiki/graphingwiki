@@ -2,7 +2,9 @@
 from MoinMoin.security import Permissions
 from graphingwiki.patterns import debug
 
-class SecurityPolicy(Permissions):
+from graphingwiki.editing import underlay_to_pages
+
+class SecurityPolicy(AntiSpam):
     def save(self, editor, newtext, rev, **kw):
         # No problem to save if my base class agree
         if Permissions.save(self, editor, newtext, rev, **kw):
@@ -19,14 +21,7 @@ class SecurityPolicy(Permissions):
             if not graphsaver:
                 return True
             else:
-                path = editor.getPagePath()
-                # If the page has not been created yet,
-                # create its directory and save the stuff there
-                if "underlay/pages" in path:
-                    import os, re
-                    path = re.sub(r'underlay/pages', 'data/pages', path, 1)
-                    if not os.path.exists(path):
-                        os.makedirs(path)
+                path = underlay_to_pages(self.request, editor)
 
                 graphsaver(editor.page_name, self.request,
                            newtext, path, editor)

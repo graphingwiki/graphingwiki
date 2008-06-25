@@ -144,6 +144,4 @@ def execute(macro, args):
 
     out.write(macro.formatter.table(0) + u'</div>')
 
-    globaldata.closedb()
-
     return out.getvalue()

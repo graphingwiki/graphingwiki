@@ -158,8 +158,6 @@ def execute(pagename, request):
                             getvalues(request, globaldata, page, key))
 
 
-    globaldata.closedb()
-
     # Get values for the chart axes
     data_per_axis = dict()
     for axis, key in enumerate(metakeys):

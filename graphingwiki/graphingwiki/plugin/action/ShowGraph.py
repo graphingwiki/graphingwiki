@@ -1679,7 +1679,6 @@ class GraphShower(object):
         cl.stop('execute')
         # print cl.dump()
 
-        self.globaldata.closedb()
         self.sendFooter(formatter)
 
     # IE versions of some relevant functions

@@ -11,9 +11,8 @@ import xmlrpclib
 
 from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.util.lock import ReadLock
 
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode, getgraphdata
 from graphingwiki.editing import process_edit, order_meta_input, save_template
 
 def urlquote(s):
@@ -44,19 +43,16 @@ def execute(xmlrpcobj, page, input, action='add',
     if not page.strip():
         return xmlrpclib.Fault(2, _("No page name entered"))
 
-    lock = None
-
     # Pre-create page if it does not exist, using the template specified
     if createpage:
         save_template(request, page, template)
-
-        # Open ReadLock - a flimsy attempt for atomicity of this save
-        lock = ReadLock(request.cfg.data_dir, timeout=10.0)
-        lock.acquire()
+        # Graphdata locked at once in hopes of reducing race conditions
+        getgraphdata(request)
 
     # process_edit requires a certain order to meta input
     output = order_meta_input(request, page, input, action)
 
     categories = {page: catlist}
 
-    return process_edit(request, output, category_edit, categories, lock)
+    return process_edit(request, output, category_edit, categories)
+

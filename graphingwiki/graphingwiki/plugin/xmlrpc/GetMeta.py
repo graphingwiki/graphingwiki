@@ -21,7 +21,6 @@ def execute(xmlrpcobj, args, keysonly=True):
 
     # If we only want the keys as specified by the args
     if keysonly:
-        globaldata.closedb()
         return list(metakeys), list(pagelist)
 
     # Keys to the first row
@@ -39,8 +38,5 @@ def execute(xmlrpcobj, args, keysonly=True):
         for key in metakeys:
             row.append([value for (value, type) in metas[key]])
         out.append(row)
-    
-    # Close db, get out
-    globaldata.closedb()
 
     return out

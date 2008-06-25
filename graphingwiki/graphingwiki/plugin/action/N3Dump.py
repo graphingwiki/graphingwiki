@@ -34,7 +34,7 @@ from urllib import unquote as url_unquote
 
 from MoinMoin import config
 
-from graphingwiki.patterns import GraphData, debug
+from graphingwiki.patterns import getgraphdata
 
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 
@@ -85,7 +85,7 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
             yield data
 
 def get_page_n3(request, pagename):
-    graphdata = GraphData(request)
+    graphdata = getgraphdata(request)
     
     pagegraph = graphdata.load_with_links(pagename)
     selfname = get_selfname(request)

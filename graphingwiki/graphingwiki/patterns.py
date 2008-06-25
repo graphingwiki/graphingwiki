@@ -74,27 +74,22 @@ qstrip_p = lambda lst: ('"' +
 qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
-def attachment_pagefile(value, curpage):
-    components = value.split('/')
-    if len(components) == 1:
-        page = curpage
-    else:
-        page = '/'.join(components[:-1])
 
-    file = unicode(url_unquote(components[-1].split(':')[-1]), config.charset)
-    
-    page = unicode(url_unquote(page), config.charset)
+def getgraphdata(request):
+    "utility function to glue GraphData to the request"
+    if not hasattr(request, 'graphdata'):
+        request.graphdata = GraphData(request)
+        request.origfinish = request.finish
+        def patched_finish():
+            try:
+                return request.origfinish()
+            finally:
+                if request.graphdata.opened:
+                    request.graphdata.closedb()
 
-    return page, file
+        request.finish = patched_finish
 
-def resolve_iw_url(request, wiki, page):
-    res = wikiutil.resolve_interwiki(request, wiki, page)
-    if res[3] == False:
-        iw_url = res[1] + res[2]
-    else:
-        iw_url = './InterWiki'
-
-    return iw_url
+    return request.graphdata
 
 class GraphData(object):
     def __init__(self, request):
@@ -119,15 +114,17 @@ class GraphData(object):
     #     read locks around!
     def opendb(self):
         # The timeout parameter in ReadLock is most probably moot...
-        self.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        self.lock.acquire()
+        self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
+        self.request.lock.acquire()
         
         self.opened = True
         self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
         self.opened = False
-        self.lock.release()
+        if self.request.lock.isLocked():
+            self.request.lock.release()
+        self.db.close()
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights -
@@ -448,7 +445,7 @@ class WikiNode(object):
             WikiNode.startpages = startpages
 
         if request:
-            WikiNode.graphdata = GraphData(WikiNode.request)
+            WikiNode.graphdata = getgraphdata(WikiNode.request)
 
     def _load(self, graph, node):
         nodeitem = graph.nodes.get(node)

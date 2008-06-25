@@ -41,10 +41,7 @@ def execute(macro, args):
             vals.append(val)
 
     except:
-        globaldata.closedb()
         return ''
-
-    globaldata.closedb()
 
     request.page.formatter = request.formatter
     parser = Parser(', '.join(vals), request)

@@ -36,7 +36,7 @@ from MoinMoin.logfile import editlog
 from MoinMoin.Page import Page
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode, GraphData
+from graphingwiki.patterns import encode
 from graphingwiki.editing import getkeys
 
 from MetaTable import construct_table
@@ -78,14 +78,14 @@ def execute(macro, args):
             alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
             revisions[rev] = revlink
 
-    class GraphData(object):
+    class getgraphdata(object):
         def __init__(self, globaldata):
             self.globaldata = globaldata
 
         def getpage(self, pagename):
             return self.globaldata.get(pagename, {})
 
-    globaldata = GraphData(alldata)
+    globaldata = getgraphdata(alldata)
 
     pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
 

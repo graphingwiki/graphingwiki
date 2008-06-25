@@ -120,7 +120,4 @@ def execute(macro, args):
 
     result.append(macro.formatter.definition_list(0))
 
-    # Cleanup
-    graphdata.closedb()
-
     return u'\n'.join(result)

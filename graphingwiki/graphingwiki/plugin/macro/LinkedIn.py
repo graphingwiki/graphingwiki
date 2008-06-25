@@ -33,7 +33,7 @@ from codecs import getencoder
 
 from MoinMoin import config
 
-from graphingwiki.patterns import encode, GraphData
+from graphingwiki.patterns import encode, getgraphdata
 
 Dependencies = ['pagelinks']
 
@@ -48,7 +48,7 @@ def execute(macro, args):
 
     out = []
     nodes = set()
-    globaldata = GraphData(macro.request)
+    globaldata = getgraphdata(macro.request)
     # User rights are not checked here as the page will not be
     # displayed at all if user does not have rights
     pdata = globaldata.getpage(pagename)
@@ -63,8 +63,6 @@ def execute(macro, args):
                            macro.formatter.text(page + typeinfo) +
                            macro.formatter.pagelink(0, page))
                 nodes.add(page)
-
-    globaldata.closedb()
 
     # linebreak's knowledge of being in a preformatted area sucks
     return "%s: " % _("Linked in pages") + ', '.join(out) + \

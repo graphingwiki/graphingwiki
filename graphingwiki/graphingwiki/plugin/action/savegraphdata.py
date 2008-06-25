@@ -59,7 +59,7 @@ def local_page(pagename):
     return True
 
 # Add in-links from current node to local nodes
-def shelve_add_in(shelve, (frm, to), linktype):
+def shelve_add_in(shelve, (frm, to), linktype, nodeurl=''):
     if not linktype:
         linktype = '_notype'
     if local_page(to):
@@ -71,6 +71,13 @@ def shelve_add_in(shelve, (frm, to), linktype):
              temp['in'][linktype] = [frm]
          else:
              temp['in'][linktype].append(frm)
+
+         # Adding gwikiurl
+         if nodeurl:
+             if not temp.has_key('meta'):
+                 temp['meta'] = {'gwikiURL': set([nodeurl])}
+             else:
+                 temp['meta']['gwikiURL'] = set([nodeurl])
 
          # Notification that the destination has changed
          temp['mtime'] = time()
@@ -257,7 +264,7 @@ def add_include(globaldata, pagenode, quotedname, hit):
     if not pagearg:
         return
 
-    temp = globaldata[quotedname]
+    temp = globaldata.get(quotedname, {})
     temp.setdefault('include', set()).add(quotedstring(pagearg))
     globaldata[quotedname] = temp
 
@@ -412,7 +419,7 @@ def parse_text(request, globaldata, page, text):
                 if line.lower().startswith(pi):
                     found = True
                     if pi == '#acl':
-                        temp = globaldata[quotedname]
+                        temp = globaldata.get(quotedname, {})
                         temp['acl'] = line[5:]
                         globaldata[quotedname] = temp
 
@@ -539,18 +546,23 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    graphshelve = os.path.join(request.cfg.data_dir,
-                               'graphdata.shelve')
+    shelve_present = False
+    if hasattr(request, 'graphdata'):
+        shelve_present = True
+        globaldata = request.graphdata.db
+    else:
+        graphshelve = os.path.join(request.cfg.data_dir,
+                                   'graphdata.shelve')
+
+        # Open file db for global graph data, creating it if needed
+        globaldata = shelve.open(graphshelve, flag='c')
 
     # Expires old locks left by crashes etc.
     # Page locking mechanisms should prevent this code being
     # executed prematurely - thus expiring both read and
     # write locks
-    lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    lock.acquire()
-
-    # Open file db for global graph data, creating it if needed
-    globaldata = shelve.open(graphshelve, flag='c')
+    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+    request.lock.acquire()
     
     # The global graph data contains all the links, even those that
     # are not immediately available in the page's graphdata pickle
@@ -558,47 +570,75 @@ def execute(pagename, request, text, pagedir, page):
 
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
-    # load graphdata if present and not trashed, remove it from index
+
+    old_data = graph.Graph()
+
+    # load graphdata if present and not trashed
     if os.path.isfile(gfn) and os.path.getsize(gfn):
         pagegraphfile = file(gfn)
         old_data = cPickle.load(pagegraphfile)
-
-        for edge in old_data.edges.getall(parent=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
-
-        for edge in old_data.edges.getall(child=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
-
-        shelve_unset_attributes(globaldata, quotedname)
-
         pagegraphfile.close()
 
-    # Include timestamp to current page
-    if not globaldata.has_key(quotedname):
-        globaldata[quotedname] = {'mtime': time(), 'saved': True}
-    else:
-        temp = globaldata[quotedname]
-        temp['mtime'] = time()
-        temp['saved'] = True
-        globaldata[quotedname] = temp
+    # Get new data from parsing the page
+    newdata, pagegraph = parse_text(request, dict(), page, text)
 
-    # Overwrite pagegraphfile with the new data
-    pagegraphfile = file(gfn, 'wb')
+    # Find out which links need to be saved again
+    oldedges = set()
+    for edge in old_data.edges.getall():
+        e = old_data.edges.get(*edge)
+        linktypes = getattr(e, 'linktype', ['_notype'])
+        for linktype in linktypes:        
+            ed = tuple(((edge), (linktype)))
+            oldedges.add(ed)
 
-    globaldata, pagegraph = parse_text(request, globaldata, page, text)
+    newedges = set()
+    for edge in pagegraph.edges.getall():
+        e = pagegraph.edges.get(*edge)
+        linktypes = getattr(e, 'linktype', ['_notype'])
+        for linktype in linktypes:        
+            ed = tuple(((edge), linktype))
+            newedges.add(ed)
+
+    remove_edges = oldedges.difference(newedges)
+    add_edges = newedges.difference(oldedges)
+
+    # Save the edges
+    for edge, linktype in remove_edges:
+#        print "Removed", edge, linktype
+#        print edge, linktype
+        shelve_remove_in(globaldata, edge, [linktype])
+        shelve_remove_out(globaldata, edge, [linktype])
+    for edge, linktype in add_edges:
+#        print "Added", edge, linktype
+        frm, to = edge
+        data = [(x,y) for x,y in enumerate(newdata[frm]['out'][linktype])
+                if y == to]
+
+        # Temporary hack: add gwikiurl:s to some edges
+        nodeurl = newdata.get(to, '')
+        if nodeurl:
+            nodeurl = nodeurl.get('meta', {}).get('gwikiURL', set(['']))
+            nodeurl = list(nodeurl)[0]
+
+        # Save both the parsed and unparsed versions
+        for idx, item in data:
+            hit = newdata[frm]['lit'][linktype][idx]
+            shelve_add_in(globaldata, edge, linktype, nodeurl)
+            shelve_add_out(globaldata, edge, linktype, hit)
+
+    # Insert metas and other stuff from parsed content
+    temp = globaldata.get(quotedname, {'time': time(), 'saved': True})
+    temp['meta'] = newdata.get(quotedname, {}).get('meta', {})
+    temp['acl'] = newdata.get(quotedname, {}).get('acl', '')
+    temp['include'] = newdata.get(quotedname, {}).get('include', set())
+    temp['mtime'] = time()
+    temp['saved'] = True
+    globaldata[quotedname] = temp
 
     # Save graph as pickle, close
+    pagegraphfile = file(gfn, 'wb')
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
-    # Remove locks, close shelves
-    globaldata.close()
-    lock.release()
 
 
 # - code below lifted from MetaFormEdit -
@@ -623,3 +663,12 @@ class LinkCollectingPage(Page):
         kw['format_args'] = format_args
         kw['do_cache'] = 0
         apply(Page.send_page_content, (self, request, self.parser, body), kw)
+
+    if shelve_present:
+        pass
+    else:
+        # Remove locks, close shelves
+        globaldata.close()
+
+    request.lock.release()
+
