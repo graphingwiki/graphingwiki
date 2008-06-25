@@ -10,7 +10,7 @@
 # (darwinports moin and graphviz aren't good enough)
 
 
-moinsrc=$PWD/moin-1.5.7
+moinsrc=$PWD/moin-1.5.9
 gwsrc=$PWD/gw-svn
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
