@@ -1652,6 +1652,13 @@ class GraphShower(object):
                     self.ordernodes.keys()))))
                 self.request.write(formatter.paragraph(0))
 
+            self.request.write(formatter.paragraph(1))
+            self.request.write("%s: " % _('Density'))
+            nroedges = float(len(outgraph.edges.getall()))
+            nronodes = float(len(outgraph.nodes.getall()))
+            self.request.write(str(nroedges / (nronodes*nronodes-1)))
+            self.request.write(formatter.paragraph(0))
+
         cl.stop('format')
 
         cl.stop('execute')
