@@ -10,6 +10,7 @@ from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import getmetas, getvalues
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
@@ -114,10 +115,7 @@ select questions:<br>
     <tr>
     <td>
         <select size="10" name="questionList" multiple="multiple">\n''' % request.request_uri.split("?")[0]
-    request.globaldata.closedb()
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
-    globaldata.closedb()
-    request.globaldata = GraphData(request)
     for page in pagelist:
         if page not in questions:
             try:
@@ -190,7 +188,6 @@ def writemeta(request, taskpage=None):
         taskpage = randompage(request, "Task")
         taskpoint = randompage(request, taskpage)
 
-        request.globaldata.closedb()
         page = PageEditor(request, taskpage)
         page.saveText("<<Raippa>>", page.get_real_rev())
 
@@ -213,7 +210,6 @@ def writemeta(request, taskpage=None):
             input = order_meta_input(request, taskpoint, pointdata, "add")
             process_edit(request, input, True, {taskpoint:[taskpointcategory]})
             taskpoint = nexttaskpoint
-        request.globaldata = GraphData(request)
     else:
         questions, taskpoints = getflow(request, taskpage)
         if questions != flowlist:
@@ -242,7 +238,6 @@ def writemeta(request, taskpage=None):
                                 except:
                                    pass
 
-            request.globaldata.closedb()
             for index, question in enumerate(flowlist):
                 try:
                     taskindex = questions.index(question)
@@ -265,7 +260,6 @@ def writemeta(request, taskpage=None):
                 process_edit(request, input, True, {taskpoint:[taskpointcategory]})
 
 
-            request.globaldata = GraphData(request)
             for status in userstatus:
                 user = status[0]
                 coursepoint = status[1]
@@ -305,22 +299,16 @@ def writemeta(request, taskpage=None):
                     nexttaskpoint = newflow[0][1]
 
                 statuspage = user + "/status"
-                request.globaldata.closedb()
                 process_edit(request, order_meta_input(request, statuspage, {coursepoint: [addlink(nexttaskpoint)]}, "repl"))
-                request.globaldata = GraphData(request)
 
             taskdata = {u'description':[description],
                         u'type':[type],
                         u'start':[addlink(newflow[0][1])]}
-            request.globaldata.closedb()
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
-            request.globaldata = GraphData(request)
         else:
             taskdata = {u'description':[description],
                         u'type':[type]}
-            request.globaldata.closedb()
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
-            request.globaldata = GraphData(request)
 
     return None
 
@@ -356,10 +344,9 @@ def _exit_page(request, pagename):
     request.write(request.page.formatter.endContent())
     # Footer
     request.theme.send_footer(pagename)
-    request.globaldata.closedb()
 
 def execute(pagename, request):
-    request.globaldata = GraphData(request)
+    request.globaldata = getgraphdata(request)
     if request.form.has_key('save'):
         if request.form.has_key('task'):
             task = encode(request.form["task"][0])
@@ -374,7 +361,6 @@ def execute(pagename, request):
         else:
             url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
-            request.globaldata.closedb()
     elif request.form.has_key('edit') and request.form.has_key('task'):
         _enter_page(request, pagename)
         task = encode(request.form["task"][0])

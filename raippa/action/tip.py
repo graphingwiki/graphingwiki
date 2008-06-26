@@ -1,6 +1,6 @@
 from MoinMoin.Page import Page
 from graphingwiki.editing import getmetas
-from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import getgraphdata
 
 tipcategory = "CategoryTip"
 generictip = u'This is generic tip. Et vaan osaa!'
@@ -19,9 +19,8 @@ def execute(pagename, request):
         tippagename = "Tip/" + tip
         tippage = Page(request, tippagename)
         if tippage.exists():
-            globaldata = GraphData(request)
+            globaldata = getgraphdata(request)
             metas = getmetas(request, globaldata, tippagename, ["WikiCategory", "tip"], checkAccess=False)
-            globaldata.closedb()
             try:
                 category = metas["WikiCategory"][0][0]
                 if category == tipcategory:

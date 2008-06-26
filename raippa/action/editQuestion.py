@@ -11,6 +11,7 @@ from MoinMoin.action.AttachFile import getAttachDir
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
@@ -313,7 +314,7 @@ def show_socialform(request):
     globaldata, userlist, metakeys, styles = metatable_parseargs(request, usercategory)
     users = dict()
     for user in userlist:
-        metas = getmetas(request, globaldata, encode(user), ["name"], checkAccess=False)
+        metas = getmetas(request, request.globaldata, encode(user), ["name"], checkAccess=False)
         if metas["name"]:
             users[user] = metas["name"][0][0]
 
@@ -436,6 +437,7 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
+    request.globaldata = getgraphdata(request)
     if request.form.has_key('save'):
         writemetas(request)
         url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)

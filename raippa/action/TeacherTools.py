@@ -9,6 +9,7 @@ from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import edit_meta, getkeys, getmetas
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import getgraphdata
 
 coursecategory = u'CategoryCourse'
 taskcategory = u'CategoryTask'
@@ -23,26 +24,26 @@ class User:
         self.id = userid
         self.status = unicode()
         statuspage = encode(self.id + "/status")
-        globaldata = GraphData(request)
-        metakeys = getkeys(globaldata, statuspage)
+        #globaldata = GraphData(request)
+        metakeys = getkeys(self.request.globaldata, statuspage)
         if metakeys.has_key(course):
             self.incourse = True
-            meta = getmetas(request, globaldata, statuspage, [course])
+            meta = getmetas(request, self.request.globaldata, statuspage, [course])
             coursepoint = meta[course][0][0]
             if coursepoint == u'end':
                 self.status = u'end'
             else:
-                meta = getmetas(request, globaldata, statuspage, [coursepoint])
+                meta = getmetas(request, self.request.globaldata, statuspage, [coursepoint])
                 self.status = meta[coursepoint][0][0]
         else:
             self.incourse = False
 
         self.name = unicode()
-        meta = getmetas(request, globaldata, encode(self.id), ["name"])
+        meta = getmetas(request, self.request.globaldata, encode(self.id), ["name"])
         for name, type in meta["name"]:
             self.name = name
             break
-        globaldata.closedb()
+        #globaldata.closedb()
 
 class FlowPage:
     def __init__(self, request, course, pagename=""):
@@ -57,14 +58,14 @@ class FlowPage:
                 user = User(self.request, user, self.course)
                 if user.incourse:
                     self.users.append(user)
-            globaldata.closedb()
+            #globaldata.closedb()
         else:
             self.pagename = encode(pagename)
 
         self.categories = list()
-        globaldata = GraphData(request)
-        metas = getmetas(request, globaldata, self.pagename, [u'WikiCategory'])
-        globaldata.closedb()
+        #globaldata = GraphData(request)
+        metas = getmetas(request, self.request.globaldata, self.pagename, [u'WikiCategory'])
+        #globaldata.closedb()
         for category, type in metas[u'WikiCategory']:
             self.categories.append(category)
 
@@ -78,8 +79,8 @@ class FlowPage:
             metakey = "question"
             flow = [("start", self.pagename)]
 
-        globaldata = GraphData(self.request)
-        meta = getmetas(self.request, globaldata, self.pagename, ["start"])
+        #globaldata = GraphData(self.request)
+        meta = getmetas(self.request, self.request.globaldata, self.pagename, ["start"])
         flowpoint = encode(meta["start"][0][0])
         if metakey == "question":
             flow = [("start", self.pagename)]
@@ -87,14 +88,14 @@ class FlowPage:
             flow = list()
 
         while flowpoint != "end":
-            meta = getmetas(self.request, globaldata, encode(flowpoint), [metakey, "next"])
+            meta = getmetas(self.request, self.request.globaldata, encode(flowpoint), [metakey, "next"])
             if metakey == "task":
                 metakeypage = FlowPage(self.request, self.course, meta[metakey][0][0])
             else:
                 metakeypage = Question(self.request, meta[metakey][0][0])
             flow.append((metakeypage, flowpoint))
             flowpoint = encode(meta["next"][0][0])
-        globaldata.closedb()
+        #globaldata.closedb()
         if metakey == "task":
             flow.append(("end", self.pagename))
 
@@ -103,13 +104,14 @@ class FlowPage:
 class Question:
     def __init__(self, request, questionpage):
         self.pagename = encode(questionpage)
+        self.request = request
 
         self.question = unicode()
         self.asnwertype = unicode()
         self.note = unicode()
-        globaldata = GraphData(request)
-        metas = getmetas(request, globaldata, self.pagename, [u'question', u'answertype', u'note'])
-        globaldata.closedb()
+        #globaldata = GraphData(request)
+        metas = getmetas(request, self.request.globaldata, self.pagename, [u'question', u'answertype', u'note'])
+        #globaldata.closedb()
         if metas[u'question']:
             self.question = metas[u'question'][0][0]
         if metas[u'answertype']:
@@ -119,12 +121,12 @@ class Question:
 
         self.histories = list()
         self.answers = dict()
-        globaldata = GraphData(request)
-        page = globaldata.getpage(self.pagename)
+        #globaldata = GraphData(request)
+        page = self.request.globaldata.getpage(self.pagename)
         linking_in = page.get('in', {})
         pagelist = linking_in.get("question", [])
         for page in pagelist:
-            metas = getmetas(request, globaldata, page, [u'WikiCategory', u'user', u'overallvalue', u'false', u'true', u'course', u'task'])
+            metas = getmetas(self.request, self.request.globaldata, page, [u'WikiCategory', u'user', u'overallvalue', u'false', u'true', u'course', u'task'])
             for metatuple in metas[u'WikiCategory']:
                 if metatuple[0] == historycategory:
                     if metas[u'user'] and metas[u'overallvalue'] and metas[u'course']:
@@ -147,12 +149,12 @@ class Question:
                     for true in metas["true"]:
                         self.answers[metas["true"][0][0]] = ["true", ""]
                     for false in metas["false"]:
-                        answerpage = globaldata.getpage(page)
+                        answerpage = self.request.globaldata.getpage(page)
                         linking_in = answerpage.get('in', {}) 
                         pagelist = linking_in.get("answer", [])
                         tip = str()
                         for tippage in pagelist:
-                            tipmetas = getmetas(request, globaldata, tippage, [u'WikiCategory', u'tip'])
+                            tipmetas = getmetas(self.request, self.request.globaldata, tippage, [u'WikiCategory', u'tip'])
                             for metatuple in tipmetas[u'WikiCategory']:
                                 if metatuple[0] == tipcategory:
                                     tip = tipmetas[u'tip'][0][0]
@@ -161,7 +163,7 @@ class Question:
                                 break
                         self.answers[metas["false"][0][0]] = ["false", tip]
                     break
-        globaldata.closedb()
+        #globaldata.closedb()
 
     def getaverage(self, coursename=None, taskpoint=None):
         userlist = list()
@@ -194,7 +196,7 @@ def addlink(pagename):
 def coursesform(request):
     html = str()
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, coursecategory)
-    globaldata.closedb()
+    #globaldata.closedb()
     if pagelist:
         html += u'''
 <form method="POST">
@@ -307,6 +309,7 @@ def _exit_page(request, pagename):
 
 def execute(pagename, request):
     request.http_headers()
+    request.globaldata = getgraphdata(request)
 
     _enter_page(request, pagename)
     if request.form.has_key('selectcourse'):
