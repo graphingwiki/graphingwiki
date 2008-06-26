@@ -122,14 +122,14 @@ class Question:
         globaldata = GraphData(request)
         page = globaldata.getpage(self.pagename)
         linking_in = page.get('in', {})
-        pagelist = linking_in["question"]
+        pagelist = linking_in.get("question", [])
         for page in pagelist:
-            metas = getmetas(request, globaldata, page, [u'WikiCategory', u'user', u'overalvalue', u'false', u'true', u'course', u'task'])
+            metas = getmetas(request, globaldata, page, [u'WikiCategory', u'user', u'overallvalue', u'false', u'true', u'course', u'task'])
             for metatuple in metas[u'WikiCategory']:
                 if metatuple[0] == historycategory:
-                    if metas[u'user'] and metas[u'overalvalue'] and metas[u'course']:
+                    if metas[u'user'] and metas[u'overallvalue'] and metas[u'course']:
                         user = metas[u'user'][0][0]
-                        overalvalue = metas[u'overalvalue'][0][0]
+                        overallvalue = metas[u'overallvalue'][0][0]
                         course = metas[u'course'][0][0]
                         if metas[u'task']:
                             task = metas[u'task'][0][0]
@@ -141,7 +141,7 @@ class Question:
                         for false in metas["false"]:
                             useranswers[metas["false"][0][0]] = "false"
                         else:
-                            self.histories.append([user, overalvalue, useranswers, course, task])
+                            self.histories.append([user, overallvalue, useranswers, course, task])
                     break
                 elif metatuple[0] == answercategory:
                     for true in metas["true"]:
@@ -381,8 +381,8 @@ def execute(pagename, request):
                     html += "<br>\n"
             html += "<br>TOP 10 failures:<br>\n"
             top5dict = dict()
-            for user, overalvalue, valuedict, course, task in question.histories:
-                if overalvalue == "False":
+            for user, overallvalue, valuedict, course, task in question.histories:
+                if overallvalue == "False":
                     for answer, value in valuedict.iteritems():
                         if value == "false":
                             if not top5dict.has_key(answer):
