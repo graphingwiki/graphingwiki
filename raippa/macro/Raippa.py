@@ -147,12 +147,12 @@ def questionform(request):
         linking_in = page.get('in', {})
         pagelist = linking_in["question"]
         for page in pagelist:
-            meta = getmetas(request, globaldata, page, ["WikiCategory", "user", "overalvalue"], checkAccess=False)
+            meta = getmetas(request, globaldata, page, ["WikiCategory", "user", "overallvalue"], checkAccess=False)
             for category, type in meta["WikiCategory"]:
                 if category == historycategory:
                     for user, type in meta["user"]:
                         if user == request.user.name:
-                            for value, type in meta["overalvalue"]:
+                            for value, type in meta["overallvalue"]:
                                 if value == "pending":
                                     return u'You have already answered this question. Waiting for your answer to be checked.'
                             break
