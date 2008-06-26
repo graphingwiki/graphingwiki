@@ -1,4 +1,5 @@
 import random
+import time
 import os
 
 from MoinMoin import wikiutil
@@ -277,7 +278,7 @@ class QuestionPage:
         successdict = dict()
         tips = list()
         truelist = list()
-        overalvalue = True
+        overallvalue = True
         answerdict = self.getanswerdict()
 
         for answer in answerdict:
@@ -298,21 +299,22 @@ class QuestionPage:
 
         #make sure that all the correct answers are selected
         if self.answertype == u'checkbox' and len(truelist) > 0:
-            overalvalue = False
+            overallvalue = False
 
         if u'false' in successdict.values():
-            overalvalue = False
+            overallvalue = False
         
-        return overalvalue, successdict, tips
+        return overallvalue, successdict, tips
 
-    def writehistory(self, overalvalue, successdict, historypage = None):
+    def writehistory(self, overallvalue, successdict, historypage = None):
         if not historypage:
             historypage = randompage(self.request, "History")
         historydata = {u'user':[addlink(self.request.user.name)],
                        u'course':[addlink(self.course)],
                        u'task':[addlink(self.task)],
                        u'question':[addlink(self.pagename)],
-                       u'overalvalue':[unicode(overalvalue)]}
+                       u'overallvalue':[unicode(overallvalue)],
+                       u'time':[time.strftime("%Y-%m-%d %H:%M:%S")]}
 
         for useranswer, value in successdict.iteritems():
             if not historydata.has_key(value):
@@ -412,8 +414,8 @@ def execute(pagename, request):
                             historypage = questionpage.writefile()
                             questionpage.writehistory("pending", {}, historypage)
                         else:
-                            overalvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
-                            questionpage.writehistory(overalvalue, successdict)
+                            overallvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
+                            questionpage.writehistory(overallvalue, successdict)
                     if nextflowpoint != "end" and nexttask != "end" and nextflowpoint == currentpage.coursepoint:
                         taskpage = FlowPage(request, page_tuple[1])
                         nextflowpoint, nexttask = taskpage.setnextpage()
@@ -432,9 +434,9 @@ def execute(pagename, request):
                         questionpage.writehistory("pending", {}, historypage)
                         redirect(request, currentpage.pagename)
                     else:
-                        overalvalue, successdict, tips = questionpage.checkanswers(useranswers)
-                        questionpage.writehistory(overalvalue, successdict)
-                        if overalvalue:
+                        overallvalue, successdict, tips = questionpage.checkanswers(useranswers)
+                        questionpage.writehistory(overallvalue, successdict)
+                        if overallvalue:
                             nextflowpoint, nexttask = currentpage.setnextpage()
                             if nextflowpoint == "end" and nexttask == "end":
                                 redirect(request, currentpage.course)
