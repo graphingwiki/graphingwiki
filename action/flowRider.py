@@ -13,6 +13,7 @@ from graphingwiki.editing import getkeys
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 from graphingwiki.patterns import GraphData
+from graphingwiki.patterns import getgraphdata
 from graphingwiki.patterns import encode
 
 coursecategory = u'CategoryCourse'
@@ -31,9 +32,7 @@ class FlowPage:
         self.pagename = encode(pagename)
         self.course, self.coursepoint, self.task = self.readstatus()
 
-        globaldata = GraphData(request)
-        metas = getmetas(request, globaldata, self.pagename, [u'WikiCategory', u'type'], checkAccess=False)
-        globaldata.closedb()
+        metas = getmetas(request, self.request.globaldata, self.pagename, [u'WikiCategory', u'type'], checkAccess=False)
         self.categories = list()
         for category, type in metas[u'WikiCategory']:
             self.categories.append(category)
@@ -52,9 +51,7 @@ class FlowPage:
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                 return nextcoursepoint, nexttask
             else:
-                globaldata = GraphData(self.request)
-                metas = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
-                globaldata.closedb()
+                metas = getmetas(self.request, self.request.globaldata, self.pagename, ["start"], checkAccess=False)
                 if metas["start"]:
                     courseflowpoint = FlowPage(self.request, metas["start"][0][0])
                     nextcoursepoint, nexttask = courseflowpoint.setnextpage()
@@ -62,9 +59,7 @@ class FlowPage:
                 else:
                     return False, False
         elif coursepointcategory in self.categories:
-            globaldata = GraphData(self.request)
-            metas = getmetas(self.request, globaldata, self.pagename, ["task", "next"], checkAccess=False)
-            globaldata.closedb()
+            metas = getmetas(self.request, self.request.globaldata, self.pagename, ["task", "next"], checkAccess=False)
             if metas["task"]:
                 task = metas["task"][0][0]
                 page = Page(self.request, self.task)
@@ -86,9 +81,7 @@ class FlowPage:
                     return self.pagename, task
             return False, False
         elif taskcategory in self.categories:
-            globaldata = GraphData(self.request)
-            metas = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
-            globaldata.closedb()
+            metas = getmetas(self.request, self.request.globaldata, self.pagename, ["start"], checkAccess=False)
             if metas["start"]:
                 start = random.choice(metas["start"])[0]
                 self.writestatus(self.coursepoint,start)
@@ -96,9 +89,7 @@ class FlowPage:
             else:
                 return False, False
         elif taskpointcategory in self.categories:
-            globaldata = GraphData(self.request)
-            metas = getmetas(self.request, globaldata, self.pagename, ["next"], checkAccess=False)
-            globaldata.closedb()
+            metas = getmetas(self.request, self.request.globaldata, self.pagename, ["next"], checkAccess=False)
             if metas["next"]:
                 nextpage = random.choice(metas["next"])[0]
                 if nextpage != "end":
@@ -127,9 +118,7 @@ class FlowPage:
         statuspage = encode(self.request.user.name + "/status")
 
         #can't use process_edit repl here because no read rights
-        globaldata = GraphData(self.request)
-        metakeys = getkeys(globaldata, statuspage)
-        globaldata.closedb()
+        metakeys = getkeys(self.request.globaldata, statuspage)
 
         oldmetas = dict()
         newmetas = dict()
@@ -143,20 +132,16 @@ class FlowPage:
         if flowpoint != u'end' and task != u'end':
             newmetas[flowpoint] = [addlink(task)]
             if metakeys.has_key(flowpoint):
-                globaldata = GraphData(self.request)
-                meta = getmetas(self.request, globaldata, statuspage, [flowpoint], checkAccess=False)
+                meta = getmetas(self.request, self.request.globaldata, statuspage, [flowpoint], checkAccess=False)
                 oldtask = encode(meta[flowpoint][0][0])
-                globaldata.closedb()
                 oldmetas[flowpoint] = [addlink(oldtask)]
             else:
                 oldmetas[u''] = [u'']
         else:
             newmetas[self.coursepoint] = [addlink(task)]
             if metakeys.has_key(self.coursepoint):
-                globaldata = GraphData(self.request)
-                meta = getmetas(self.request, globaldata, statuspage, [self.coursepoint], checkAccess=False)
+                meta = getmetas(self.request, self.request.globaldata, statuspage, [self.coursepoint], checkAccess=False)
                 oldtask = encode(meta[self.coursepoint][0][0])
-                globaldata.closedb()
                 oldmetas[self.coursepoint] = [addlink(oldtask)]
             else:
                 oldmetas[u''] = [u'']
@@ -168,13 +153,12 @@ class FlowPage:
         task = str()
         statuspage = encode(self.request.user.name + "/status")
 
-        globaldata = GraphData(self.request)
         try:
-            metas = getmetas(self.request, globaldata, statuspage, ["current"], checkAccess=False)
+            metas = getmetas(self.request, self.request.globaldata, statuspage, ["current"], checkAccess=False)
             course = encode(metas["current"][0][0])
             failure = course + "failure"
 
-            metas = getmetas(self.request, globaldata, statuspage, [course, failure], checkAccess=False)
+            metas = getmetas(self.request, self.request.globaldata, statuspage, [course, failure], checkAccess=False)
             if metas[failure]:
                 flowpoint = failure
             else:
@@ -183,19 +167,16 @@ class FlowPage:
             if flowpoint == "end":
                 task = "end"
             else:
-                metas = getmetas(self.request, globaldata, statuspage, [flowpoint], checkAccess=False)
+                metas = getmetas(self.request, self.request.globaldata, statuspage, [flowpoint], checkAccess=False)
                 task = encode(metas[flowpoint][0][0])
 
-            globaldata.closedb()
         except:
-            globaldata.closedb()
+            pass
     
         return course, flowpoint, task
 
     def getquestionpage(self):
-        globaldata = GraphData(self.request)
-        meta = getmetas(self.request, globaldata, self.pagename, [u'question'], checkAccess=False)
-        globaldata.closedb()
+        meta = getmetas(self.request, self.request.globaldata, self.pagename, [u'question'], checkAccess=False)
         if meta[u'question']:
             return encode(meta[u'question'][0][0])
         else:
@@ -203,17 +184,15 @@ class FlowPage:
 
     def gettaskflow(self):
         if taskcategory in self.categories:
-            globaldata = GraphData(self.request)
-            meta = getmetas(self.request, globaldata, self.pagename, [u'start'], checkAccess=False)
+            meta = getmetas(self.request, self.request.globaldata, self.pagename, [u'start'], checkAccess=False)
             taskpoint = encode(meta[u'start'][0][0])
             flow = list()
 
             while taskpoint != u'end':
-                meta = getmetas(self.request, globaldata, taskpoint, [u'question', u'next'], checkAccess=False)
+                meta = getmetas(self.request, self.request.globaldata, taskpoint, [u'question', u'next'], checkAccess=False)
                 questionpage = encode(meta[u'question'][0][0])
                 flow.append((questionpage, taskpoint))
                 taskpoint = encode(meta[u'next'][0][0])
-            globaldata.closedb()
             return flow
         else:
             return False
@@ -227,20 +206,17 @@ class QuestionPage:
         self.course = coursename
         self.task = task
 
-        globaldata = GraphData(request)
-        meta = getmetas(request, globaldata, self.pagename, [u'answertype'], checkAccess=False)
-        globaldata.closedb()
+        meta = getmetas(request, self.request.globaldata, self.pagename, [u'answertype'], checkAccess=False)
         self.answertype = meta[u'answertype'][0][0]
 
     def getanswerdict(self):
-        globaldata = GraphData(self.request)
-        questionpage = globaldata.getpage(self.pagename)
+        questionpage = self.request.globaldata.getpage(self.pagename)
         try:
             linking_in_question = questionpage.get('in', {})
             pagelist = linking_in_question['question']
             answerdict = dict()
             for page in pagelist:
-                metas = getmetas(self.request, globaldata, page, [u'WikiCategory', u'true', u'false', u'option'], checkAccess=False)
+                metas = getmetas(self.request, self.request.globaldata, page, [u'WikiCategory', u'true', u'false', u'option'], checkAccess=False)
                 for metatuple in metas[u'WikiCategory']:
                     if metatuple[0] == answercategory:
                         tip = None
@@ -251,12 +227,12 @@ class QuestionPage:
                         else:
                             value = u'false'
                             answer = metas[u'false'][0][0]
-                            answerpage = globaldata.getpage(page)
+                            answerpage = self.request.globaldata.getpage(page)
                             try:
                                 linking_in_answer = answerpage.get('in', {})
                                 tiplist = linking_in_answer['answer']
                                 for tippage in tiplist:
-                                    meta = getmetas(self.request, globaldata, tippage, [u'WikiCategory'], checkAccess=False)
+                                    meta = getmetas(self.request, self.request.globaldata, tippage, [u'WikiCategory'], checkAccess=False)
                                     for metatuple in meta[u'WikiCategory']:
                                         if metatuple[0] == tipcategory:
                                             tip = tippage.split("/")[1]
@@ -268,10 +244,8 @@ class QuestionPage:
                                 options.append(option_tuple[0])
                         answerdict[answer] = [value, tip, options]
                         break
-            globaldata.closedb()
             return answerdict
         except:
-            globaldata.closedb()
             return {}
 
     def checkanswers(self, useranswers):
@@ -372,6 +346,7 @@ def redirect(request, pagename, tip=None):
     request.http_redirect(url)
 
 def execute(pagename, request):
+    request.globaldata = getgraphdata(request)
 
     if request.form.has_key(u'selectcourse'):
         coursename = request.form.get(u'course', [u''])[0]
@@ -379,9 +354,7 @@ def execute(pagename, request):
             currentpage = FlowPage(request, pagename)
             statuspage = encode(request.user.name + "/status")
             #can't use process_edit repl here because no read rights
-            globaldata = GraphData(request)
-            metakeys = getkeys(globaldata, statuspage)
-            globaldata.closedb()
+            metakeys = getkeys(request.globaldata, statuspage)
             if metakeys.has_key(u'current'):
                 edit_meta(request, statuspage, {u'current': [addlink(currentpage.course)]}, {u'current': [addlink(coursename)]})
             else:
@@ -443,9 +416,8 @@ def execute(pagename, request):
                             else:
                                 redirect(request, nexttask)
                         else:
-                            globaldata = GraphData(request)
                             try:
-                                metas = getmetas(request, globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
+                                metas = getmetas(request, request.globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
                                 failurepage = metas["failed"][0][0]
                                 failurekey = currentpage.course + "failure"
                                 statuspage = request.user.name + "/status"
@@ -454,7 +426,6 @@ def execute(pagename, request):
                             except:
                                 failurepage = currentpage.pagename
 
-                            globaldata.closedb()
                             redirect(request, failurepage, tips[0])
                 else:
                     request.write(u'Cannot find questionpage.')

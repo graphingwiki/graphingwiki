@@ -10,6 +10,7 @@ from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
@@ -33,9 +34,7 @@ def addlink(pagename):
 
 def taskform(request, course=None):
     if course:
-        globaldata = GraphData(request)
-        metas = getmetas(request, globaldata, course, [u'id', u'name', u'description'])
-        globaldata.closedb()
+        metas = getmetas(request, request.globaldata, course, [u'id', u'name', u'description'])
         id = metas[u'id'][0][0]
         name = metas[u'name'][0][0]
         try:
@@ -125,12 +124,11 @@ select tasks:
     for page in pagelist:
         if page not in tasks:
             try:
-                metas = getmetas(request, globaldata, encode(page), ["description"])
+                metas = getmetas(request, request.globaldata, encode(page), ["description"])
                 description = metas["description"][0][0]
                 pagehtml += u'<option name="description" value="%s">%s\n' % (page, description)
             except:
                 pass
-    globaldata.closedb()
     pagehtml += '''
         </select>
     </td>
@@ -148,15 +146,13 @@ select tasks:
     pagehtml += '''
     <td>
         <select name="flowlist" id="flist" size="10" multiple="multiple">\n'''
-    globaldata = GraphData(request)
     for page in tasks:
         try:
-            metas = getmetas(request, globaldata, encode(page), ["description"])
+            metas = getmetas(request, request.globaldata, encode(page), ["description"])
             description = metas["description"][0][0]
             pagehtml += u'<option name="description" value="%s">%s\n' % (page, description)
         except:
             pass
-    globaldata.closedb()
     pagehtml += '''
         </select>
     </td>
@@ -231,8 +227,7 @@ def writemeta(request, coursepage=None):
             for index, task in enumerate(reversed(tasks)):
                 if task not in flowlist:
                     coursepoint = copyofcoursepoints[index]
-                    globaldata = GraphData(request)
-                    coursepointpage = globaldata.getpage(coursepoint)
+                    coursepointpage = request.globaldata.getpage(coursepoint)
                     linking_in = coursepointpage.get('in', {})
                     valuelist = linking_in.get(coursepage,[])
                     coursepointpage = PageEditor(request, coursepoint, do_editor_backup=0)
@@ -242,7 +237,7 @@ def writemeta(request, coursepage=None):
                     for value in valuelist:
                         if value.endswith("/status"):
                             try:
-                                meta = getmetas(request, globaldata, value, ["WikiCategory", coursepoint])
+                                meta = getmetas(request, request.globaldata, value, ["WikiCategory", coursepoint])
                                 if meta["WikiCategory"][0][0] == statuscategory:
                                     user = value.split("/")[0]
                                     task = meta[coursepoint][0][0]
@@ -270,8 +265,6 @@ def writemeta(request, coursepage=None):
                 input = order_meta_input(request, coursepoint, coursepointdata, "repl")
                 process_edit(request, input, True, {coursepoint:[coursepointcategory]})
 
-            globaldata.closedb()
-            globaldata = GraphData(request)
             #handle userstatus here
             for status in userstatus:
                 user = status[0]
@@ -287,16 +280,16 @@ def writemeta(request, coursepage=None):
                 for index, point in enumerate(reversednewflow):
                     if index > startindex or startindex == 0:
                         coursepoint = encode(point[1])
-                        meta = getmetas(request, globaldata, coursepoint, ["task"])
+                        meta = getmetas(request, request.globaldata, coursepoint, ["task"])
                         taskpoint = meta["task"][0][0]
                         questions, taskpoints = getflow(request, taskpoint)
                         lasttaskpoint = taskpoints[-1]
-                        taskpointpage = globaldata.getpage(lasttaskpoint)
+                        taskpointpage = request.globaldata.getpage(lasttaskpoint)
                         linking_in = taskpointpage.get('in', {})
                         pagelist = linking_in.get('task', [])
                         for page in pagelist:
                             try:
-                                meta = getmetas(request, globaldata, page, ["WikiCategory", "course", "user"])
+                                meta = getmetas(request, request.globaldata, page, ["WikiCategory", "course", "user"])
                                 category = meta["WikiCategory"][0][0]
                                 answerer = meta["user"][0][0]
                                 course = meta["course"][0][0]
@@ -328,8 +321,7 @@ def writemeta(request, coursepage=None):
     return None 
 
 def getflow(request, page):
-    globaldata = GraphData(request)
-    meta = getmetas(request, globaldata, encode(page), ["start", "WikiCategory"])
+    meta = getmetas(request, request.globaldata, encode(page), ["start", "WikiCategory"])
     flowpoint = encode(meta["start"][0][0])
     category = encode(meta["WikiCategory"][0][0])
     if category == coursecategory:
@@ -340,12 +332,11 @@ def getflow(request, page):
     flowpoints = list()
     
     while flowpoint != "end":
-        meta = getmetas(request, globaldata, flowpoint, [keytype, "next"])
+        meta = getmetas(request, request.globaldata, flowpoint, [keytype, "next"])
         pointpage = meta[keytype][0][0]
         pointpages.append(pointpage)
         flowpoints.append(flowpoint)
         flowpoint = encode(meta["next"][0][0])
-    globaldata.closedb()
     return pointpages, flowpoints
 
 def _enter_page(request, pagename):
@@ -368,6 +359,7 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
+    request.globaldata = getgraphdata(request)
     if request.form.has_key('save'):
         if request.form.has_key('course'):
             course = encode(request.form["course"][0])
