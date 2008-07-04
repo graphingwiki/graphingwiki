@@ -114,7 +114,6 @@ for pagename in pages:
                               'graphdata.pickle')
 
     if os.path.isfile(picklefile):
-        print "Removing pickle", picklefile
         os.unlink(picklefile)
 
     p = Page(req, pagename)

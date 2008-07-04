@@ -389,7 +389,8 @@ def edit(pagename, editfun, request=None,
 
     # Release the possible readlock that template-savers may have acquired
     if hasattr(request, 'lock'):
-        request.lock.release()
+        if request.lock.isLocked():
+            request.lock.release()
 
     if not newtext:
         return u'No data', p
