@@ -56,7 +56,7 @@ def execute(pagename, request):
         
             revision = "rev %s" % (line.rev.lstrip('0'))
         
-        user = line.getInterwikiEditorData(request)[-1]
+        user = ' '.join(line.getInterwikiEditorData(request)[1:])
         comment = " ".join((html_link,
                             page.link_to(request),
                             revision,
