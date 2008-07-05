@@ -166,6 +166,9 @@ def construct_table(macro, globaldata, pagelist, metakeys,
                                                         'metatable-even-row'}))
         t_cell(macro, [url_unquote(page)], head=1)
 
+inc_page.link_to(request, '[%s]' % (_('edit'),), css_class="incl
+ude-edit-link", querystr={'action': 'edit', 'backto': request._Include_backto})
+
         for key in metakeys:
             values = [x for x,y in metas[key]]
             key = unicode(url_unquote(key), config.charset)
