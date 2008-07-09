@@ -19,7 +19,7 @@ from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.editing import process_edit, getvalues, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
-from graphingwiki.patterns import actionname
+from graphingwiki.patterns import actionname, getgraphdata
 
 def urlquote(s):
     if isinstance(s, unicode):
