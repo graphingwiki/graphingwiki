@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-"
 action_name = 'editQuestion'
 import os
-import random
 
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -15,22 +14,12 @@ from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
+from raippa import addlink, randompage
+
 usercategory = u'CategoryUser'
 questioncategory = u'CategoryQuestion'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
-
-def randompage(request, type):
-    pagename = "%s/%i" % (type, random.randint(10000,99999))
-    page = Page(request, pagename)
-    while page.exists():
-        pagename = "%s/%i" % (type, random.randint(10000,99999))
-        page = Page(request, pagename)
-
-    return pagename
-
-def addlink(pagename):
-    return '[['+pagename+']]'
 
 def do_upload(request, pagename):
     filename = None

@@ -1,49 +1,17 @@
-# -*- coding: utf-8 -*-"
-import random
 from operator import itemgetter
-
-from MoinMoin import wikiutil
-from MoinMoin.Page import Page
-from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import edit_meta, getkeys, getmetas
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
 from graphingwiki.patterns import getgraphdata
 
+from raippa import Question
+from raippa import RaippaUser
+from raippa import addlink
+
 coursecategory = u'CategoryCourse'
 taskcategory = u'CategoryTask'
 usercategory = u'CategoryUser'
-historycategory = u'CategoryHistory'
-answercategory = u'CategoryAnswer'
-tipcategory = u'CategoryTip'
-
-class User:
-    def __init__(self, request, userid, course):
-        self.request = request
-        self.id = userid
-        self.status = unicode()
-        statuspage = encode(self.id + "/status")
-        #globaldata = GraphData(request)
-        metakeys = getkeys(self.request.globaldata, statuspage)
-        if metakeys.has_key(course):
-            self.incourse = True
-            meta = getmetas(request, self.request.globaldata, statuspage, [course])
-            coursepoint = meta[course][0][0]
-            if coursepoint == u'end':
-                self.status = u'end'
-            else:
-                meta = getmetas(request, self.request.globaldata, statuspage, [coursepoint])
-                self.status = meta[coursepoint][0][0]
-        else:
-            self.incourse = False
-
-        self.name = unicode()
-        meta = getmetas(request, self.request.globaldata, encode(self.id), ["name"])
-        for name, type in meta["name"]:
-            self.name = name
-            break
-        #globaldata.closedb()
 
 class FlowPage:
     def __init__(self, request, course, pagename=""):
@@ -55,17 +23,14 @@ class FlowPage:
             self.pagename = self.course
             globaldata, allusers, metakeys, styles = metatable_parseargs(self.request, usercategory)
             for user in allusers: 
-                user = User(self.request, user, self.course)
-                if user.incourse:
+                user = RaippaUser(self.request, user)
+                if self.course in user.getcourselist():
                     self.users.append(user)
-            #globaldata.closedb()
         else:
             self.pagename = encode(pagename)
 
         self.categories = list()
-        #globaldata = GraphData(request)
         metas = getmetas(request, self.request.globaldata, self.pagename, [u'WikiCategory'])
-        #globaldata.closedb()
         for category, type in metas[u'WikiCategory']:
             self.categories.append(category)
 
@@ -79,7 +44,6 @@ class FlowPage:
             metakey = "question"
             flow = [("start", self.pagename)]
 
-        #globaldata = GraphData(self.request)
         meta = getmetas(self.request, self.request.globaldata, self.pagename, ["start"])
         flowpoint = encode(meta["start"][0][0])
         if metakey == "question":
@@ -95,108 +59,14 @@ class FlowPage:
                 metakeypage = Question(self.request, meta[metakey][0][0])
             flow.append((metakeypage, flowpoint))
             flowpoint = encode(meta["next"][0][0])
-        #globaldata.closedb()
         if metakey == "task":
             flow.append(("end", self.pagename))
 
         return flow
 
-class Question:
-    def __init__(self, request, questionpage):
-        self.pagename = encode(questionpage)
-        self.request = request
-
-        self.question = unicode()
-        self.asnwertype = unicode()
-        self.note = unicode()
-        #globaldata = GraphData(request)
-        metas = getmetas(request, self.request.globaldata, self.pagename, [u'question', u'answertype', u'note'])
-        #globaldata.closedb()
-        if metas[u'question']:
-            self.question = metas[u'question'][0][0]
-        if metas[u'answertype']:
-            self.answertype = metas[u'answertype'][0][0]
-        if metas[u'note']:
-            self.note = metas[u'note'][0][0]
-
-        self.histories = list()
-        self.answers = dict()
-        #globaldata = GraphData(request)
-        page = self.request.globaldata.getpage(self.pagename)
-        linking_in = page.get('in', {})
-        pagelist = linking_in.get("question", [])
-        for page in pagelist:
-            metas = getmetas(self.request, self.request.globaldata, page, [u'WikiCategory', u'user', u'overallvalue', u'false', u'true', u'course', u'task'])
-            for metatuple in metas[u'WikiCategory']:
-                if metatuple[0] == historycategory:
-                    if metas[u'user'] and metas[u'overallvalue'] and metas[u'course']:
-                        user = metas[u'user'][0][0]
-                        overallvalue = metas[u'overallvalue'][0][0]
-                        course = metas[u'course'][0][0]
-                        if metas[u'task']:
-                            task = metas[u'task'][0][0]
-                        else:
-                            task = u''
-                        useranswers = dict()
-                        for true in metas["true"]:
-                            useranswers[metas["true"][0][0]] = "true"
-                        for false in metas["false"]:
-                            useranswers[metas["false"][0][0]] = "false"
-                        else:
-                            self.histories.append([user, overallvalue, useranswers, course, task])
-                    break
-                elif metatuple[0] == answercategory:
-                    for true in metas["true"]:
-                        self.answers[metas["true"][0][0]] = ["true", ""]
-                    for false in metas["false"]:
-                        answerpage = self.request.globaldata.getpage(page)
-                        linking_in = answerpage.get('in', {}) 
-                        pagelist = linking_in.get("answer", [])
-                        tip = str()
-                        for tippage in pagelist:
-                            tipmetas = getmetas(self.request, self.request.globaldata, tippage, [u'WikiCategory', u'tip'])
-                            for metatuple in tipmetas[u'WikiCategory']:
-                                if metatuple[0] == tipcategory:
-                                    tip = tipmetas[u'tip'][0][0]
-                                    break
-                            if tip != "":
-                                break
-                        self.answers[metas["false"][0][0]] = ["false", tip]
-                    break
-        #globaldata.closedb()
-
-    def getaverage(self, coursename=None, taskpoint=None):
-        userlist = list()
-        answercount = int()
-        average = 0
-        alltimeuserlist = list()
-        alltimeanswercount = len(self.histories)
-        alltimeaverage = 0
-
-        for answer in self.histories:
-            user = answer[0]
-            if answer[3] == coursename and answer[4] == taskpoint:
-                userlist.append(user)
-                answercount += 1
-            alltimeuserlist.append(user)
-
-        usercount = len(set(userlist))
-        if answercount > 0 and usercount > 0:
-            average = answercount / usercount
-
-        alltimeusercount = len(set(alltimeuserlist))
-        if alltimeanswercount > 0 and alltimeusercount > 0:
-            alltimeaverage = alltimeanswercount / alltimeusercount
-
-        return average, alltimeaverage
-
-def addlink(pagename):
-    return '[['+pagename+']]'
-
 def coursesform(request):
     html = str()
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, coursecategory)
-    #globaldata.closedb()
     if pagelist:
         html += u'''
 <form method="POST">
@@ -265,9 +135,9 @@ High level flow:'''
                 usercount = 0
                 taskusercount = 0
                 for user in courseobj.users:
-                    if user.status == taskpoint:
+                    if user.currenttask == taskpoint:
                         usercount += 1
-                    if user.status.startswith(taskpoint):
+                    if user.currenttask.startswith(taskpoint):
                         taskusercount += 1
                 if question == "start":
                     graphhtml += u'<br>%s:<br>' % taskpoint
@@ -285,7 +155,7 @@ High level flow:'''
             html += u'<br>%s' % point
             usercount = int()
             for user in courseobj.users:
-                if user.status.startswith(point):
+                if user.currenttask.startswith(point):
                     usercount += 1
             html += u' %i<br>' % usercount
             html += graphhtml
@@ -324,7 +194,7 @@ def execute(pagename, request):
         questionlisthtml = unicode()
         areahtml = unicode()
         course = FlowPage(request, encode(request.form["course"][0]))
-        user = User(request, encode(request.form["user"][0]), course.pagename)
+        user = RaippaUser(request, encode(request.form["user"][0]))
         for point, coursepoint in course.flow:
             if isinstance(point, FlowPage):
                 task = list()
@@ -334,7 +204,7 @@ def execute(pagename, request):
                         successdict[question.pagename] = [0,0]
                         if question.pagename not in task:
                             task.append(question.pagename)
-                        for useranswer in question.histories:
+                        for useranswer in question.gethistories():
                             if useranswer[3] == course.pagename and useranswer[0] == user.id:
                                 if useranswer[1] == "True":
                                     successdict[question.pagename][0] += 1
@@ -362,16 +232,18 @@ def execute(pagename, request):
          and request.form.has_key('course'):
         course = FlowPage(request, encode(request.form["course"][0]))
         question = Question(request, encode(request.form["question"][0]))
+        question.answers = question.getanswers()
         html = unicode()
         if request.form.has_key('user'):
-            user = User(request, encode(request.form["user"][0]), course.pagename)
+            user = RaippaUser(request, encode(request.form["user"][0]))
             html += "%s: %s<br>" % (question.pagename, question.question)
             for answer in question.answers:
                 html += "%s: %s tip: %s<br>" % (question.answers[answer][0], answer, question.answers[answer][1])
             html += "<br>%s's(%s) answer history:" % (user.name, user.id)
-            for useranswer in question.histories:
+            for useranswer in question.gethistories():
                 if useranswer[3] == course.pagename and useranswer[0] == user.id:
                     html += "<br>overal: %s, " % useranswer[1]
+                    print useranswer
                     for answer in useranswer[2]:
                         html += "%s: %s, " % (useranswer[2][answer], answer)
         else:
@@ -384,7 +256,7 @@ def execute(pagename, request):
                     html += "<br>\n"
             html += "<br>TOP 10 failures:<br>\n"
             top5dict = dict()
-            for user, overallvalue, valuedict, course, task in question.histories:
+            for user, overallvalue, valuedict, course, task in question.gethistories():
                 if overallvalue == "False":
                     for answer, value in valuedict.iteritems():
                         if value == "false":

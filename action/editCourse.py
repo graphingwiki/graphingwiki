@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-"
 action_name = 'editCourse'
 
-import random
-
-from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 
@@ -14,27 +11,17 @@ from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
+from raippa import addlink, randompage
+
 taskcategory = u'CategoryTask'
 coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
 statuscategory = 'CategoryStatus'
 historycategory = 'CategoryHistory'
 
-def randompage(request, type):
-    pagename = "%s/%i" % (type, random.randint(10000,99999))
-    page = Page(request, pagename)
-    while page.exists():
-        pagename = "%s/%i" % (type, random.randint(10000,99999))
-        page = Page(request, pagename)
-
-    return pagename
-
-def addlink(pagename):
-    return '[['+pagename+']]'
-
 def taskform(request, course=None):
     if course:
-        metas = getmetas(request, request.globaldata, course, [u'id', u'name', u'description'])
+        metas = getmetas(request, request.globaldata, course, ["id", "name", "description"])
         id = metas[u'id'][0][0]
         name = metas[u'name'][0][0]
         try:
