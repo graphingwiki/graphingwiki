@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-"
 action_name = 'editTask'
 
-import random
-
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
@@ -14,23 +12,13 @@ from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
+from raippa import addlink, randompage
+
 questioncategory = u'CategoryQuestion'
 taskcategory = u'CategoryTask'
 taskpointcategory = u'CategoryTaskpoint'
 statuscategory = u'CategoryStatus'
 historycategory = u'CategoryHistory'
-
-def randompage(request, type):
-    pagename = "%s/%i" % (type, random.randint(10000,99999))
-    page = Page(request, pagename)
-    while page.exists():
-        pagename = "%s/%i" % (type, random.randint(10000,99999))
-        page = Page(request, pagename)
-
-    return pagename
-
-def addlink(pagename):
-    return '[['+pagename+']]'
 
 def taskform(request, task=None):
     if task:
