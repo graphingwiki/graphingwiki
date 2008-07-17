@@ -8,9 +8,13 @@ Usage:
 
 You need to add the following line to your wikiconfig:
 
-html_head = '<script src="%s/simile/timeline/timeline-api.js" type="text/javascript"></script>\n' % (url_prefix)
+    html_head = \
+        '<script src="%s/simile/ajax/simile-ajax-api.js"' % (url_prefix) + \
+        ' type="text/javascript"></script>\n' + \
+        '<script src="%s/simile/timeline/timeline-api.js"' % (url_prefix) + \
+        ' type="text/javascript"></script>\n'
 
-The simile directory should be placed in the directory as specified by
+This simile directory should be placed in the directory as specified by
 the url_prefix variable in the wikiconfig. 
 
 Then, try adding [[RecentChangesTimeline]] to a page, and enjoy!

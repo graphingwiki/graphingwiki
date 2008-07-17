@@ -26,8 +26,8 @@ function onLoad() {
     Timeline.createBandInfo({
         eventSource:    eventSource,
         date:           focusval,
-        width:          "70%", 
-        intervalUnit:   Timeline.DateTime.MONTH, 
+        width:          "50%", 
+        intervalUnit:   Timeline.DateTime.DAY, 
         intervalPixels: 100
     }),
     Timeline.createBandInfo({
@@ -36,13 +36,25 @@ function onLoad() {
         trackGap:       0.2,
         eventSource:    eventSource,
         date:           focusval,
-        width:          "30%", 
-        intervalUnit:   Timeline.DateTime.YEAR, 
+        width:          "25%", 
+        intervalUnit:   Timeline.DateTime.WEEK, 
         intervalPixels: 200
+    }),
+    Timeline.createBandInfo({
+        showEventText:  false,
+        trackHeight:    0.5,
+        trackGap:       0.2,
+        eventSource:    eventSource,
+        date:           focusval,
+        width:          "25%", 
+        intervalUnit:   Timeline.DateTime.MONTH, 
+        intervalPixels: 300
     })
   ];
   bandInfos[1].syncWith = 0;
   bandInfos[1].highlight = true;
+  bandInfos[2].syncWith = 0;
+  bandInfos[2].highlight = true;
   
   tl = Timeline.create(document.getElementById("recentchangestimeline"), bandInfos);
 
