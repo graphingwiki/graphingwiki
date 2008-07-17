@@ -264,7 +264,7 @@ def absolute_attach_name(quoted, target):
     if '?' in quoted:
         quoted = quoted.split('?', 1)[0]
 
-    if abs_method in Parser.attachment_schemas and not '/' in target:
+    if abs_method in ["attachment", "drawing"] and not '/' in target:
         target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
 
     return target
