@@ -1,6 +1,9 @@
 # -*- coding: iso-8859-1 -*-
 import random
 import os
+import gv
+from tempfile import mkstemp
+from base64 import b64encode
 
 from MoinMoin import config
 from MoinMoin.action.AttachFile import getAttachDir
@@ -20,22 +23,78 @@ taskcategory = u'CategoryTask'
 taskpointcategory = u'CategoryTaskpoint'
 historycategory = u'CategoryHistory'
 
+def drawGraph(request, page, raippauser):
+    G = gv.digraph(page.pagename)
+    gv.setv(G, 'rankdir', 'LR')
+    nodes = dict()
+    flow = page.getflow()
+    for node, nextlist in flow.iteritems():
+        if node not in nodes.keys():
+            nodes[node] = gv.node(G, node)
+        for nextnode in nextlist:
+            if nextnode not in nodes.keys():
+                nodes[nextnode] = gv.node(G, nextnode)
+            gv.edge(nodes[node], nodes[nextnode])
+    for node, nodeobject in nodes.iteritems():
+        if node != "end" and node != "start":
+            status = raippauser.statusdict.get(node, [])
+            may = raippauser.canDo(node, raippauser.currentcourse)
+            if may:
+                gv.setv(nodeobject, 'fillcolor', "blue")
+                url = "../%s?action=flowRider&userselection=%s&start" % (page.pagename, node)
+                gv.setv(nodeobject, 'URL', url)
+                gv.setv(nodeobject, 'label', "do now")
+            elif "[[end]]" in status or "end" in status:
+                gv.setv(nodeobject, 'label', "done")
+                gv.setv(nodeobject, 'fillcolor', "green")
+                #url = "../%s?action=flowRider&userselection=%s&start" % (page.pagename, node)
+                #gv.setv(nodeobject, 'URL', url)
+            else:
+                gv.setv(nodeobject, 'label', "")
+                #url = "../%s?action=flowRider&userselection=%s&start" % (page.pagename, node)
+                #gv.setv(nodeobject, 'URL', url)
+            gv.setv(nodeobject, 'style', "filled")
+        else:
+            gv.setv(nodeobject, 'shape', "doublecircle")
+            gv.setv(nodeobject, 'label', "")
+    gv.layout(G, 'dot')
+
+    #img
+    tmp_fileno, tmp_name = mkstemp()
+    gv.render(G, 'png', tmp_name)
+    f = file(tmp_name)
+    img = f.read()
+    os.close(tmp_fileno)
+    os.remove(tmp_name)
+
+    #map
+    tmp_fileno, tmp_name = mkstemp()
+    gv.render(G, 'cmapx', tmp_name)
+    f = file(tmp_name)
+    map = f.read()
+    os.close(tmp_fileno)
+    os.remove(tmp_name)
+
+    html = '<img src="data:image/png;base64,%s" usemap="#%s">\n' % (b64encode(img), page.pagename)
+    html += map+"\n"
+    return html
+
 def getanswers(request, questionpage):
     page = request.globaldata.getpage(questionpage)
     linking_in = page.get('in', {})
-    pagelist = linking_in["question"]
+    pagelist = linking_in.get("question", [])
 
     answerlist = list()
 
     for page in pagelist:
-        metas = getmetas(request, request.globaldata, page, [u'WikiCategory', u'true', u'false'], checkAccess=False)
-        for metatuple in metas[u'WikiCategory']:
-            category = metatuple[0]
+        metas = getmetas(request, request.globaldata, page, ["WikiCategory", "true", "false"], checkAccess=False)
+        for category, type in metas["WikiCategory"]:
             if category == answercategory:
-                if metas[u'true']:
-                    answerlist.append(metas[u'true'][0][0])
-                if metas[u'false']:
-                    answerlist.append(metas[u'false'][0][0])
+                if metas["true"]:
+                    answerlist.append(metas["true"][0][0])
+                elif metas["false"]:
+                    answerlist.append(metas["false"][0][0])
+                break
 
     return answerlist
 
@@ -144,10 +203,11 @@ def questionform(request):
     return html
 
 def taskform(request):
-    currentpage = FlowPage(request, request.page.page_name, request.raippauser)
+    currentpage = FlowPage(request, request.page.page_name)
+    currentcoursepoint = FlowPage(request, request.raippauser.currentcoursepoint)
     html = unicode()
     disabled = unicode()
-    prerequisites = currentpage.getprerequisite()
+    prerequisites = currentcoursepoint.getprerequisite()
     if prerequisites:
         successdict = dict()
         for task in prerequisites:
@@ -155,19 +215,20 @@ def taskform(request):
             taskpage = FlowPage(request, task)
             lastquestion = Question(request, taskpage.getflow().pop()[1])
             for useranswer in lastquestion.gethistories():
-                if useranswer[3] == request.raippauser.currentcourse and \
-                useranswer[0] == request.raippauser.id and \
-                useranswer[1] != "False":
-                    successdict[task] = True
-                    break
+                if useranswer[3] == request.raippauser.currentcourse and useranswer[0] == request.raippauser.id:
+                    if taskpage.type == "exam" or taskpage.type == "questionary" or  useranswer[1] != "False":
+                        successdict[task] = True
+                        break
 
-        html += u'prerequisites:<br>\n'
+        prerequisitehtml = u'prerequisites:<br>\n'
         for task, value in successdict.iteritems():
             if value == False:
-                html += u'%s: MISSING<br>' % (task)
+                prerequisitehtml += u'%s: MISSING<br>' % (task)
                 disabled = u'disabled'
             else:
-                html += u'%s: DONE<br>' % (task)
+                prerequisitehtml += u'%s: DONE<br>' % (task)
+        if disabled:
+            html += prerequisitehtml
 
     if currentpage.type == u'exam' or currentpage.type == 'questionary':
         flow = currentpage.getflow()
@@ -231,38 +292,36 @@ def execute(macro, text):
     html = str()
     
     #request.write(request.cfg.page_front_page)
-    if pagename == u'RAIPPA':
+    if pagename == "RAIPPA":
         return courselisthtml(request) 
     else:
         metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start"], checkAccess=False)
         for category, type in metas["WikiCategory"]:
             if category == coursecategory:
-                if len(metas["start"]) > 1:
-                    for startpoint, type, in metas["start"]:
-                        html += u'''
-<form method="POST">
-    <input type="hidden" name="action" value="flowRider">
-    <input type="hidden" name="userselection" value="%s">
-    %s<input type='submit' name='start' value="Select"><br>
-</form>''' % (startpoint, startpoint)
-                else:
-                    try:
-                        statuspage = encode(request.user.name + "/status")
-                        meta = getmetas(request, request.globaldata, statuspage, [pagename], checkAccess=False)
-                        coursestate = meta[pagename][0][0]
-                        if coursestate == u'end':
-                            #return u'<br>You have already passed this course.'
-                            buttontext = u'Restart'
-                        else:
-                            buttontext = u'Continue'
-                    except:
-                        buttontext = u'Start'
+                coursepage = FlowPage(request, pagename)
+                html =  drawGraph(request, coursepage, request.raippauser)
+                timetracklist = request.raippauser.gettimetrack(coursepage.pagename)
+                if timetracklist:
+                    html += u'''
+<hr><b>TimeTrack</b><br>
+<table>\n'''
+                    total = int()
+                    for time in timetracklist:
+                        total += int(timetracklist[time][0])
+                        html += u'<tr><td>%s</td><td>%sh</td><td>%s</td></tr>\n' % (time, timetracklist[time][0], timetracklist[time][1])
 
-                    html = u'''
+                    html += u'''
+<tr><td>total:</td><td>%ih</td></tr>
+</table>''' % total
+                html += u'''
 <form method="POST">
-    <input type="hidden" name="action" value="flowRider"><br>
-    <input type='submit' name='start' value=%s><br>
-</form>''' % buttontext
+    <input type="hidden" name="action" value="timetrack"><br>
+    time in hours:
+    <input type="text" size="4" name="hours"><br>
+    description:<br>
+    <input type="text" size="50" name="description"><br>
+    <input type='submit' name='submit' value=Submit><br>
+</form>''' 
                 return html
             elif category == taskcategory:
                 return taskform(request)
