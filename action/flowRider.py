@@ -45,7 +45,10 @@ def execute(pagename, request):
         userselection = request.form.get("userselection", [None])[0]
         currentpage = FlowPage(request, pagename, request.raippauser)
         fp, task = currentpage.setnextpage(userselection)
-        redirect(request, task)
+        if fp == "end" and task == "end":
+            redirect(request, pagename)
+        else:
+            redirect(request, task)
     elif request.form.has_key(u'send'):
         currentpage = FlowPage(request, pagename, request.raippauser)
         if taskcategory in currentpage.categories and (currentpage.type == u'exam' or currentpage.type == u'questionary'):
