@@ -24,15 +24,16 @@ taskpointcategory = u'CategoryTaskpoint'
 historycategory = u'CategoryHistory'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
+timetrackcategory = u'CategoryTimetrack'
 
 class RaippaUser:
     def __init__(self, request, id=None):
         self.request = request
 
         if id:
-            self.id = id
+            self.id = encode(id)
         else:
-            self.id = self.request.user.name
+            self.id = encode(self.request.user.name)
 
         self.name = unicode()
         globaldata = GraphData(self.request)
@@ -61,6 +62,53 @@ class RaippaUser:
                     break
         globaldata.closedb()
         return courselist
+
+    def gettimetrack(self, course):
+        globaldata = GraphData(self.request)
+        page = globaldata.getpage(self.id)
+        linking_in = page.get('in', {}) 
+        pagelist = linking_in.get("user", [])
+        timetracklist = dict()
+        for page in pagelist:
+            metas = getmetas(self.request, globaldata, page, ["course", "WikiCategory", "hours", "description", "time"], checkAccess=False)
+            if metas["course"]:
+                if course == metas["course"][0][0]:
+                    for category, type in metas["WikiCategory"]:
+                        if category == timetrackcategory:
+                            if metas["time"] and metas["hours"]:
+                                time = metas["time"][0][0]
+                                hours = metas["hours"][0][0]
+                                if metas["description"]:
+                                    description = metas["description"][0][0]
+                                else:
+                                    description = unicode()
+                    
+                                timetracklist[time] = [hours, description]
+                            break
+        return timetracklist
+
+    def canDo(self, page, course):
+        page = FlowPage(self.request, page)
+        may = False
+        if "[[end]]" in self.statusdict.get(page.pagename, []):
+            return False
+        elif coursepointcategory in page.categories:
+            course = FlowPage(self.request, course)
+            flow = course.getflow()
+            prelist = list()
+            for point, nextlist in flow.iteritems():
+                if page.pagename in nextlist:
+                    prelist.append(point)
+                    if point == "start":
+                        may = True
+                        continue
+                    statuslist = self.statusdict.get(point, [])
+                    if "[[end]]" in statuslist:
+                        may = True
+                    else:
+                        may = False
+                        break
+        return may
 
     def updatestatus(self, newstatusdict=None):
         if newstatusdict:
@@ -178,7 +226,7 @@ class FlowPage:
                         nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                         return nextcoursepoint, nexttask
                     else:
-                        self.user.editstatus("end", "end", 1)
+                        #self.user.editstatus("end", "end", 1)
                         return "end", "end"
                 else:
                     self.user.editstatus(self.pagename, temp, 2)
@@ -227,7 +275,7 @@ class FlowPage:
             return False, False
 
     def getprerequisite(self):
-        if  not taskcategory in self.categories:
+        if not coursepointcategory in self.categories:
             return []
         else:
             globaldata = GraphData(self.request)
@@ -248,26 +296,43 @@ class FlowPage:
             return None
 
     def getflow(self):
-        if coursecategory in self.categories:
-            metakey = "task"
-        elif taskcategory in self.categories:
-            metakey = "question"
-        else:
-            return []
-            
         globaldata = GraphData(self.request)
-        meta = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
-        taskpoint = encode(meta["start"][0][0])
-        flow = list()
-
-        while taskpoint != "end":
-            meta = getmetas(self.request, globaldata, taskpoint, ["question", "next"], checkAccess=False)
-            questionpage = encode(meta["question"][0][0])
-            flow.append((taskpoint, questionpage))
-            if meta["next"]:
-                taskpoint = encode(meta["next"][0][0])
-            else:
-                taskpoint = "end"
+        if coursecategory in self.categories:
+            flow = dict()
+            def subflow(page):
+                meta = getmetas(self.request, globaldata, page, ["next"], checkAccess=False)
+                for next, type in meta["next"]:
+                    next = encode(next)
+                    if page not in flow.keys():
+                        flow[page] = list()
+                    if next not in flow[page]:
+                        flow[page].append(next)
+                    if next != "end":
+                        subflow(next)
+                    
+            meta = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
+            for start, type in meta["start"]:
+                start = encode(start)
+                if "start" not in flow.keys():
+                    flow["start"] = []
+                if start not in flow["start"]:
+                    flow["start"].append(start)
+                subflow(start)
+        elif taskcategory in self.categories:
+            #if self.type == "exam" or self.type == "questionary":
+            meta = getmetas(self.request, globaldata, self.pagename, ["start"], checkAccess=False)
+            taskpoint = encode(meta["start"][0][0])
+            flow = list()
+            while taskpoint != "end":
+                meta = getmetas(self.request, globaldata, taskpoint, ["question", "next"], checkAccess=False)
+                taskpage = encode(meta["question"][0][0])
+                flow.append((taskpoint, taskpage))
+                if meta["next"]:
+                    taskpoint = encode(meta["next"][0][0])
+                else:
+                    taskpoint = "end"
+        else:
+            return False
         globaldata.closedb()
         return flow
 
@@ -277,17 +342,17 @@ class Question:
         self.request = request
         
         globaldata = GraphData(self.request)
-        metas = getmetas(request, globaldata, self.pagename, [u'question', u'answertype', u'note'])                  
+        metas = getmetas(request, globaldata, self.pagename, ["question", "answertype", "note"])                  
         self.question = unicode()
         self.asnwertype = unicode()
         self.note = unicode()
 
-        if metas[u'question']:
-            self.question = metas[u'question'][0][0]
-        if metas[u'answertype']:
-            self.answertype = metas[u'answertype'][0][0]
-        if metas[u'note']:
-            self.note = metas[u'note'][0][0]
+        if metas["question"]:
+            self.question = metas["question"][0][0]
+        if metas["answertype"]:
+            self.answertype = metas["answertype"][0][0]
+        if metas["note"]:
+            self.note = metas["note"][0][0]
 
         globaldata.closedb()
 
@@ -323,7 +388,7 @@ class Question:
         globaldata = GraphData(self.request)
         questionpage = globaldata.getpage(self.pagename)
         linking_in_question = questionpage.get('in', {})
-        pagelist = linking_in_question["question"]
+        pagelist = linking_in_question.get("question", [])
         answerdict = dict()
         for page in pagelist:
             metas = getmetas(self.request, globaldata, page, ["WikiCategory", "true", "false", "option"], checkAccess=False)
