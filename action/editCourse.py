@@ -38,113 +38,50 @@ def taskform(request, course=None):
 
     _ = request.getText
     pagehtml = '''
-<script language="JavaScript" type="text/javascript">
-<!--
-var NS4 = (navigator.appName == "Netscape" && parseInt(navigator.appVersion) < 5);
-
-function addOption(theSel, theText, theValue)
-{
-    var newOpt = new Option(theText, theValue);
-    var selLength = theSel.length;
-    theSel.options[selLength] = newOpt;
-}
-
-function deleteOption(theSel, theIndex)
-{   
-    var selLength = theSel.length;
-    if(selLength > 0)
-    {
-        theSel.options[theIndex] = null;
-    }
-}
-
-function moveOptions(theSelFrom, theSelTo)
-{
-    var selLength = theSelFrom.length;
-    var selectedText = new Array();
-    var selectedValues = new Array();
-    var selectedCount = 0;
-
-    var i;
-    for(i=selLength-1; i>=0; i--)
-    {
-        if(theSelFrom.options[i].selected)
-        {
-            selectedText[selectedCount] = theSelFrom.options[i].text;
-            selectedValues[selectedCount] = theSelFrom.options[i].value;
-            deleteOption(theSelFrom, i);
-            selectedCount++;
-        }   
-    }
-
-    for(i=selectedCount-1; i>=0; i--)
-    {
-        addOption(theSelTo, selectedText[i], selectedValues[i]);
-    }
-
-    if(NS4) history.go(0);
-}
-
-function selectAllOptions(selStr)
-{
-    var selObj = document.getElementById(selStr);
-    for (var i=0; i<selObj.options.length; i++) 
-    {
-        selObj.options[i].selected = true;
-    }
-}
-
-//-->
-</script>
+<script type="text/javascript"
+src="/moin_static163/common/js/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript"
+src="/moin_static163/common/js/mootools-1.2-more.js"></script>
+<script type="text/javascript"
+src="/moin_static163/common/js/moocanvas.js"></script>
+<script type="text/javascript"
+src="/moin_static163/common/js/dragui.js"></script>
 
 select tasks:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editTask">
     <input type='submit' name='new' value='NewTask'>
-</form>
-<table border="0">
-<form>
-    <tr>
-    <td>
-        <select size="10" name="taskList" multiple="multiple">\n''' % request.request_uri.split("?")[0]
+</form><br>
+        <div style="width:200px;height:250px;overflow:scroll;">\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
-        if page not in tasks:
-            try:
-                metas = getmetas(request, request.globaldata, encode(page), ["description"])
-                description = metas["description"][0][0]
-                pagehtml += u'<option name="description" value="%s">%s\n' % (page, description)
-            except:
-                pass
+        try:
+            metas = getmetas(request, request.globaldata, encode(page), ["description"])
+            description = metas["description"][0][0]
+            pagehtml += u'''<div class="dragItem"><input type="hidden" name="%s"
+			value="%s">%s</div>\n''' % (description, page, description)
+        except:
+            pass
     pagehtml += '''
-        </select>
-    </td>
-    <td align="center" valign="middle">
-        <input type="button" value="--&gt;"
-         onclick="moveOptions(this.form.taskList, courseForm.flowlist);"><br>
-        <input type="button" value="&lt;--"
-         onclick="moveOptions(courseForm.flowlist, this.form.taskList);">
-    </td>
-</form>
-<form method="POST" name="courseForm" onsubmit="selectAllOptions('flist');">
-    <input type="hidden" name="action" value="%s">\n''' % action_name
+        </div><div id="b0"">Start by dragging here!<br></div>
+<form method="post" id="submitform" name="courseForm" onsubmit="submitTree()"
+action="%s">\n''' % action_name
     if course:
         pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course
     pagehtml += '''
-    <td>
-        <select name="flowlist" id="flist" size="10" multiple="multiple">\n'''
+        <script type="text/javascript">
+		function loadData(){\n'''
     for page in tasks:
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["description"])
             description = metas["description"][0][0]
-            pagehtml += u'<option name="description" value="%s">%s\n' % (page, description)
+            pagehtml += u'newBox("b0","%s","%s");\n' % (page, description)
         except:
             pass
     pagehtml += '''
-        </select>
-    </td>
-    </tr>
-</table>\n'''
+		}//loadData
+        </script>
+\n'''
     if id:
         pagehtml += '<input type="hidden" name="courseid" value="%s">' % id 
     else:
