@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-"
 """
-    MetaRadarDiagram macro plugin to MoinMoin
+    SparkLine macro plugin to MoinMoin
      - Makes links to the action that provides for the images
 
     @copyright: 2008 by Juhani Eronen <exec@iki.fi>
@@ -29,18 +29,9 @@
 """
 from urllib import quote as url_quote
 
-from MoinMoin import wikiutil
-
 from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
-
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
 
 def execute(macro, args):
     formatter = macro.formatter
@@ -48,26 +39,17 @@ def execute(macro, args):
     request = macro.request
     _ = request.getText
 
-    if not cairo_found:
-        return formatter.text(_(\
-            "ERROR: Cairo Python extensions not installed. " +\
-            "Not performing layout.")) + formatter.linebreak()
-    
     req_url = request.getScriptname() + '/' + request.page.page_name
-    req_url += '?action=metaRadarChart'
+    req_url += '?action=metasparkline'
 
-    if args:
-        arglist = [x.strip() for x in args.split(',') if x]
-        for arg in arglist:
-            if arg.startswith('chartheight='):
-                req_url += '&height=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-            elif arg.startswith('chartwidth='):
-                req_url += '&width=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-            else:
-                req_url += '&arg=%s' % (url_quote(encode(arg)))
+    arglist = [x.strip() for x in args.split(',')]
+    # Args: page name (mandatory)
+    #       key name (mandatory)
+    #       data points to include (optional)
+    #       sparkline style (default (line+txt), line, dot)
+    args = ['page', 'key', 'points', 'style']
+    for i, x in enumerate(arglist):
+        req_url += "&%s=%s" % (args[i], url_quote(encode(x)))
 
-    return u'<div class="metaradarchart">' + \
-           u'<img src="%s">' % (request.getQualifiedURL(req_url)) + \
-           u'</div>'
+    return u'<img class="metasparkline" src="%s" alt="sparkline">' % \
+        (request.getQualifiedURL(req_url)) 
