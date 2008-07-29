@@ -7,6 +7,7 @@
 /* Initializing some values after page is ready. boxData includes data of 
  * boxes structured in following way:
  * <id>         : box value
+ * <id>_desc	: value description
  * <id>_type    : random | select
  * <id>_wrong   : where to go after a wrong answer
  * <id>_require : boxes that need to be completed before continuing
@@ -20,7 +21,7 @@ window.addEvent('domready', function(){
      'endPoints': new Array()
      });
 
-$$('#b0').each(function(drag){  
+$$('#start').each(function(drag){  
 
     childBoxes.set(drag.id, new Array());
     drag.makeDraggable({
@@ -43,9 +44,10 @@ $$('#b0').each(function(drag){
 $$('.dragItem').each(function(item){
     item.addEvent('mousedown', function(e){
         var oldColor = new Array(2);
-        var drop =  $$('div[id^=b]');
+        var drop =  $$('div[id^=item], #start');
         var e = new Event(e).stop();
         var input = this.getChildren('input')
+
 		var value = input.get('value');
 		var description = input.get('name');
         var clone = this.clone()
@@ -66,7 +68,7 @@ $$('.dragItem').each(function(item){
                 element.destroy();
                 if(droppable){
                 droppable.morph({
-                    'background-color' : oldColor[1],
+                    'background' : oldColor[1],
                     'height' : 50,
                     'width' : 150/*,
                     'border': '0px solid #33cc33'*/
@@ -82,12 +84,21 @@ $$('.dragItem').each(function(item){
                 }
             },
             onEnter: function(el, drop){
-                         if(oldColor[0]!=drop.id){
-                         oldColor[1] = drop.getStyle('backgroundColor');
-                         oldColor[0]= drop.id;
+						 if(drop.id == 'start'){
+                         oldColor[1] ='#6495ed';
+                         }else{
+						 oldColor[1] = '';
+						 }
+						 /*if(oldColor[0]!=drop.id){
+                         oldColor[1] = drop.getStyle('background');
+						 if(oldColor[1].strlen != 7){
+						 oldColor[1] = '';
+							}
                          }
+						 */
+                         oldColor[0]= drop.id;
                     drop.morph({
-                    'background-color' : '#003366',
+                    'background-color' : '#81BBF2',
                     'height' : 60,
                     'width' : 170/*,
                     'border' : '5px solid #000'*/
@@ -95,7 +106,7 @@ $$('.dragItem').each(function(item){
             },
             onLeave : function(el, drop){
                 drop.morph({
-                    'background-color' : oldColor[1],
+                    'background' : oldColor[1],
                     'height' : 50,
                     'width' : 150 /*,
                     'border': '0px solid #33CC33'*/
@@ -138,7 +149,7 @@ function drawline(id){
 if(id != null){
 var boxes = [$(id)];
 }else{
-var boxes = $(document.body).getElements('div[id^=b]');
+var boxes = $(document.body).getElements('div[id^=item], #start');
 $$('canvas[id^=canv]').destroy();
 }
 var coords = new Array();
@@ -218,12 +229,27 @@ if($('canv_'+ pId+'_'+childs[j]) != null){
 }
 
 /* Returns parents of given object */
-function getParentBox(id){
+function getParentBox(id, all){
 var result = new Array();
 childBoxes.each(function(value, key){
     if(value.contains(id)){
         result.include(key);
     }
+	if(all === true){
+		var tmp = new Array();
+		var pars = result.flatten();
+		while(pars.length != 0){
+			result.combine(pars);
+			tmp.empty();
+			pars.each(function(el){
+				tmp.combine(getParentBox(el)); 
+			});
+		pars = tmp.flatten();
+		pars.filter(function(el){
+			return result.flatten().contains(el) != true;
+			});
+		}
+}
 });
 return result.flatten();
 }
@@ -251,7 +277,7 @@ function editMenu(button){
 try{
     $('boxMenu').destroy();
 }catch(e){}
-    var pDiv = $(button).parentNode;
+    var pDiv = $(button).parentNode.parentNode;
     var menu = new Element('div', {
     'id' : 'boxMenu',
     'styles' :{
@@ -386,7 +412,8 @@ var replBut = new Element('input', {
         'type': 'button',
         'value' : 'Replace',
         'events' : {'click' : function(){
-        pDiv.childNodes[0].nodeValue = 'value : ' + value;
+        pDiv.childNodes[0].nodeValue = desc;
+		boxData.set(pDiv.id,value);
         menu.destroy();
         }}
  });
@@ -465,13 +492,15 @@ radioTab.grab(new Element('tr').adopt(
             }))));
 */
 menu.grab(new Element('table').grab(radioTab));
+
 menu.getElements('tr, td').setStyles({'border':'none'})
-//menu.getElements('td').setStyle('border','none'})
 menu.getElements('table').setStyles({'border':'none', 'margin':'0'})
 
 newBut.inject(menu);
     menu.adopt(new Element('br'), new Element('hr'));
+if(pDiv.id != 'start'){
 replBut.inject(menu);
+}
 if(childBoxes.get(pDiv.id).length == 1){
 menu.adopt(new Element('br'), insAfter);
 }
@@ -552,7 +581,7 @@ ctx.fill();
 
 ep.addEvent('mousedown', function(e){
     var e = new Event(e).stop();
-    var drops =  $$('div[id^=b]');
+    var drops =  $$('div[id^=item], #start');
     var drag = ep.makeDraggable({
         droppables : [drops],
         onDrag: function(){
@@ -560,11 +589,16 @@ ep.addEvent('mousedown', function(e){
         },
         onDrop: function(el, drop){
             if(drop){
-                var p_id = el.id.replace('ep_','');
-                childBoxes.get(p_id).include(drop.id);
-                boxData.get('endPoints').erase(p_id);
-                el.destroy();
-                drawline();
+				if(getParentBox(pDiv.id, true).contains(drop.id) === false){
+					var p_id = el.id.replace('ep_','');
+					childBoxes.get(p_id).include(drop.id);
+					boxData.get('endPoints').erase(p_id);
+					el.destroy();
+					drawline();
+				}else{
+				el.destroy();
+				newEndPoint(pDiv);
+				}
             }
         }
     });
@@ -610,7 +644,10 @@ var cancel = new Element('a', {
 menu.grab(cancel);
 var tab = new Element('tbody');
 menu.grab(new Element('table').grab(tab));
-
+tab.grab(new Element('tr').adopt(new Element('td',{'colspan' : '2'}).grab(
+new Element('b',{
+		'text':'Required:'}
+		))));
 var parents = getParentBox(pDiv.id);
 parents.each(function(id){
         var el = new Element('input', {
@@ -625,7 +662,7 @@ parents.each(function(id){
         tab.grab(new Element('tr').adopt(new Element('td').grab(el),
             new Element('td').grab(new Element('label',{
                     'for' : 'req_' + id,
-                    'text' : 'Require '+ boxData.get(id)
+                    'text' :  boxData.get(id+'_desc')
                     }))));
         });
 var submit = new Element('input',{
@@ -642,27 +679,52 @@ var submit = new Element('input',{
                 menu.destroy();
         }}
         });
+
+menu.getElements('tr, td').setStyles({'border':'none'})
+menu.getElements('table').setStyles({'border':'none', 'margin':'0'})
+
 menu.grab(new Element('hr'));
 menu.grab(submit);
 $(document.body).grab(menu);
 }
 
-/* Creates new box and sets child relations and end points*/
-function newBox(to, value, description, type){
+/* Creates new box and sets child relations and end points. Parameters:
+* to			: Element which after box should be placed (either html 
+*					element id or value it's carrying)
+* value			: calue to carry
+* description	: label visible to user
+* optional parameters:
+* type			: random | select
+* posx			: x-coordinate
+* posy			: y-coordinate
+**/
+function newBox(to, value, description, type, posx, posy){
+if(to === null){
+to = 'start';
+} 
 var pDiv = $(to);
+if(pDiv === null){
+childBoxes.each(function(value, id){
+	if(value == to){
+		pDiv = $(id);
+	}
+});
+}
 lkm = boxData.get('lkm');
-while($('b'+lkm)!==null){
+while($('item'+lkm)!==null){
     lkm++;
 }
-var id = 'b'+ lkm;
+var id = 'item'+ lkm;
 boxData.set('lkm', lkm);
 boxData.set(id, value);
+boxData.set(id+'_desc', description);
+
 boxData.set(id+'_required', new Array());
 if(boxData.get('endPoints').contains(pDiv.id) == true){
     boxData.get('endPoints').erase(pDiv.id);
     $('ep_'+pDiv.id).destroy();
 }
-    childBoxes.set('b'+lkm , new Array());
+    childBoxes.set(id , new Array());
 
 if(type == "after"){
 childBoxes.set(id, childBoxes.get(pDiv.id));
@@ -691,32 +753,47 @@ var box = new Element('div', {
     'id' : id,
     'class' : 'l3'
 });
+hfix = description.toString().length > 18 ? 15 : 0;
 box.setStyles({
 		'text-align' : 'center',
 		'cursor' : 'move',
 		'width' : '150px',
-		'height' : '50px'
+		'height' : (50 + hfix) +'px'
 		});
-box.height = 50;
+box.height = 50 + hfix;
 box.widht = 150;
-var content = document.createTextNode(description);
-box.appendChild(content);
-box.grab(new Element('br'));
-color = '81BBF2';
-/*
-color = pDiv.id.length * 50000+ 150000;
-color = color.toString(16);
-while(color.length < 6){
-color = '0' + color;
-}
-*/
-box.style.background = '#' + color;
+var canv = new Canvas();
+canv.setStyles({'position': 'relative'});
+canv.height = 50 + hfix;
+canv.width = 150;
+box.adopt(canv);
+var ctx = canv.getContext('2d');
+ctx.lineWidth =3;
+ctx.fillStyle = "#81BBF2";
+ctx.beginPath();
+ctx.moveTo(75,0);
+ctx.bezierCurveTo(175,0,175,50 + hfix,75,50 + hfix);
+ctx.bezierCurveTo(-25,50 + hfix,-25,0,75,0);
+ctx.fill();
+
+var content = new Element('div',{
+'styles' : {
+	'position' : 'relative',
+	'top' : (-50 - hfix) +'px',
+	'z-index' : '2'
+}});
+var descText = document.createTextNode(description);
+content.appendChild(descText);
+content.grab(new Element('br'));
+
+//box.style.background = '#' + color;
 var but = new Element('input', {
         'type' : 'button',
         'value' : 'Edit'
         });
-but.inject(box);
+but.inject(content);
 but.addEvent('click', function(){ editMenu(this);});
+box.grab(content);
 box.inject(document.body);
 bX =  $(pDiv).getPosition().x + Math.ceil(cLkm/2) * 200 * Math.pow( -1, cLkm); 
 bY =  $(pDiv).getPosition().y+75;
@@ -724,6 +801,8 @@ if(bX < 100){
 bX = Math.abs(bX - 100)  + 100 ;
 bY += 25;
 }
+if(posx){ bX = posx; }
+if(posy){ bY = posy;}
 box.setStyle('left', bX);
 box.setStyle('top',bY);
 var k = 0;
@@ -745,7 +824,6 @@ onDrag: function(){
     }
 });
 
-//window.scrollBy(0, 125);
 if(type != "after"){
 newEndPoint(box);
 }
@@ -762,39 +840,40 @@ var form = new Element('form',{
         });
 }
 childBoxes.each(function(value,id){
-        childs = "";
+        id = id.replace('item','');
+		childs = "";
         if(value){
         childs = value.toString();
         }
         if(id){
 form.adopt(new Element('input', {
             'type':'hidden',
-            'name': id+'[value]',
+            'name': id+'_value',
             'value' : boxData.get(id)
             }),
         new Element('input',{
             'type' : 'hidden',
-            'name' : id+'[next]',
+            'name' : id+'next',
             'value' : childs
             }),
         new Element('input', {
             'type' : 'hidden',
-            'name' : id+'[require]',
+            'name' : id+'require',
             'value' : boxData.get(id+'_required')
             }),
         new Element('input',{
             'type' : 'hidden',
-            'name' : id+'[type]',
+            'name' : id+'type',
             'value' : boxData.get(id+'_type')
             }),
         new Element('input',{
             'type': 'hidden',
-            'name': id+'[wrong]',
+            'name': id+'wrong',
             'value' : boxData.get(id+'_wrong')
             })
     )}});
 
 form.inject(document.body);
-form.submit();
+//form.submit();
 }
 
