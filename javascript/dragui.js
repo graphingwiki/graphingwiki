@@ -181,13 +181,13 @@ for(var j = 0 ; j < childs.length ; j++){
  c2a = $(childs[j]).getCoordinates();
  c2y = c2a.top + 0.5 * c2a.height;
  c2x = c2a.left + 0.5 * c2a.width;
-
+ fix_pid = getParentBox(pId).contains(childs[j]) ? childs[j] : pId;
  if(boxData.get(pId+'_wrong') == $(childs[j]).id){
 color = '#FF0000';
- }else if(boxData.get(pId+'_type') == 'select'){
+ }else if(boxData.get(fix_pid+'_type') == 'select'){
 color = '#00FF00';
- }else if(boxData.get(pId+'_type') == 'random'){
-color = '#0000FF';
+ }else if(boxData.get(fix_pid+'_type') == 'random'){
+color = '#FFFF00';
  }else{
 color = '#000000';
  }
@@ -224,7 +224,7 @@ if($('canv_'+ pId+'_'+childs[j]) != null){
 	ctx = canv.getContext('2d');
 	ctx.lineWidth = 4;
 	ctx.beginPath();
-	ctx.stroStyle = color;
+	ctx.strokeStyle = color;
 	ctx.moveTo(2, ydiff * yswap +2 - yswap * 4);
 	ctx.lineTo(xdiff - 2, ydiff * Math.abs(yswap -1) -2 + yswap * 4);
 	ctx.stroke();
@@ -245,10 +245,10 @@ childBoxes.each(function(value, key){
 		var tmp = new Array();
 		var pars = result.flatten();
 		while(pars.length != 0){
-			result.combine(pars);
-			tmp.empty();
+			result = result.combine(pars);
+			tmp = tmp.empty();
 			pars.each(function(el){
-				tmp.combine(getParentBox(el)); 
+				tmp = tmp.combine(getParentBox(el)); 
 			});
 		pars = tmp.flatten();
 		pars.filter(function(el){
