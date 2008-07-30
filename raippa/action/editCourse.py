@@ -52,36 +52,36 @@ select tasks:
     <input type="hidden" name="action" value="editTask">
     <input type='submit' name='new' value='NewTask'>
 </form><br>
-        <div style="width:200px;height:250px;overflow:scroll;">\n''' % request.request_uri.split("?")[0]
+<div style="width:200px;height:250px;overflow:scroll;">\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["description"])
             description = metas["description"][0][0]
-            pagehtml += u'''<div class="dragItem"><input type="hidden" name="%s"
-			value="%s">%s</div>\n''' % (description, page, description)
+            pagehtml += u'''
+    <div class="dragItem"><input type="hidden" name="%s" value="%s">%s</div>\n''' % (description, page, description)
         except:
             pass
-    pagehtml += '''
-        </div><div id="b0"">Start by dragging here!<br></div>
-<form method="post" id="submitform" name="courseForm" onsubmit="submitTree()"
-action="%s">\n''' % action_name
+    pagehtml += u'''
+</div>
+<div id="start">Start by dragging here!<br></div>
+<form method="post" id="submitform" name="courseForm" onsubmit="submitTree()">
+<input type="hidden" name="action" value="editCourse">\n'''
     if course:
         pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course
-    pagehtml += '''
-        <script type="text/javascript">
-		function loadData(){\n'''
+    pagehtml += u'''
+    <script type="text/javascript">
+	function loadData(){\n'''
     for page in tasks:
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["description"])
             description = metas["description"][0][0]
-            pagehtml += u'newBox("b0","%s","%s");\n' % (page, description)
+            pagehtml += u'newBox("start","%s","%s");\n' % (page, description)
         except:
             pass
     pagehtml += '''
-		}//loadData
-        </script>
-\n'''
+	}//loadData
+    </script>\n'''
     if id:
         pagehtml += '<input type="hidden" name="courseid" value="%s">' % id 
     else:
@@ -285,6 +285,8 @@ def _exit_page(request, pagename):
 def execute(pagename, request):
     request.globaldata = getgraphdata(request)
     if request.form.has_key('save'):
+        for key, values in request.form.iteritems():
+            print key, ": ", values
         if request.form.has_key('course'):
             course = encode(request.form["course"][0])
             msg = writemeta(request, course)
