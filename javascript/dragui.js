@@ -240,6 +240,7 @@ childBoxes.each(function(value, key){
     if(value.contains(id)){
         result.include(key);
     }
+});
 	if(all === true){
 		var tmp = new Array();
 		var pars = result.flatten();
@@ -255,7 +256,6 @@ childBoxes.each(function(value, key){
 			});
 		}
 }
-});
 return result.flatten();
 }
 
@@ -334,7 +334,13 @@ var detach = new Element('input', {
         'type' : 'button',
         'value' : 'Detach',
         'events' : {'click': function(){
-                childBoxes.get(pDiv.id).empty();
+				cId = childBoxes.get(pDiv.id);
+				cId.each(function(c){
+					boxData.get(c+'_required').erase(pDiv.id);
+					if(getParentBox(c).length > 1){
+						childBoxes.get(pDiv.id).erase(c);
+					}
+				});
                 newEndPoint(pDiv);
                 menu.destroy();
         }}
@@ -368,13 +374,15 @@ del.inject(menu);
 if(getParentBox(pDiv.id).length > 1){
 reqMenu.inject(menu);
 }
-if(childBoxes.get(pDiv.id).length == 1){
-    if(getParentBox(childBoxes.get(pDiv.id).getLast()).length > 1){
+var childs  = childBoxes.get(pDiv.id);
+if(childs.length == 1){
+    if(childs.filter(function(c){
+		return getParentBox(c).length > 1;
+		}).length >0){
         detach.inject(menu);
     }
 }
 menu.inject(document.body);
-//menu.fireevent('mouseenter');
 }
 
 
@@ -654,6 +662,9 @@ new Element('b',{
 		'text':'Required:'}
 		))));
 var parents = getParentBox(pDiv.id);
+parents = parents.filter(function(el){
+	return el != 'start';
+	});
 parents.each(function(id){
         var el = new Element('input', {
             'type': 'checkbox',
@@ -783,8 +794,11 @@ ctx.fill();
 
 var content = new Element('div',{
 'styles' : {
+	'height' : (45+hfix) + 'px',
+	'widht' : '145px',
 	'position' : 'relative',
-	'margin-top' : (-50 - hfix) +'px',
+	'margin-top' : (-45 - hfix) +'px',
+	'margin-left' : '3px',
 	'z-index' : '2'
 }});
 var descText = document.createTextNode(description);
@@ -828,6 +842,15 @@ onDrag: function(){
         }
     }
 });
+/*
+content.morph({
+                    'height' : (50+hfix) + 'px',
+                    'width' : '150px'
+                });*/
+canv.morph({
+                    'height' : (50+hfix) + 'px',
+                    'width' : '150px'
+                });
 
 if(type != "after"){
 newEndPoint(box);
@@ -838,13 +861,17 @@ drawline();
 /* Turns box tree into form with hidden inputs*/
 function submitTree(){
 var form = $('submitform');
-
 childBoxes.each(function(value,id){
         id_strip = id.replace('item','');
 		childs = "";
         if(value){
         childs = value.toString().replace(/item/g, '');
         }
+		var req = boxData.get(id +'_required');
+		req = req == null ? null : req.toString().replace(/item/g,'');
+		var wrong = boxData.get(id+'_wrong');
+		wrong = wrong == null ? null : wrong.replace('item','');
+
         if(id_strip){
 form.adopt(new Element('input', {
             'type':'hidden',
@@ -859,7 +886,7 @@ form.adopt(new Element('input', {
         new Element('input', {
             'type' : 'hidden',
             'name' : id_strip+'_require',
-            'value' : boxData.get(id+'_required')
+            'value' : req
             }),
         new Element('input',{
             'type' : 'hidden',
@@ -869,10 +896,8 @@ form.adopt(new Element('input', {
         new Element('input',{
             'type': 'hidden',
             'name': id_strip+'_wrong',
-            'value' : boxData.get(id+'_wrong')
-            })
+            'value' : wrong
+			})
     )}});
-
-form.submit();
 }
 
