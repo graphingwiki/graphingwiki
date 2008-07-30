@@ -784,7 +784,7 @@ ctx.fill();
 var content = new Element('div',{
 'styles' : {
 	'position' : 'relative',
-	'top' : (-50 - hfix) +'px',
+	'margin-top' : (-50 - hfix) +'px',
 	'z-index' : '2'
 }});
 var descText = document.createTextNode(description);
@@ -843,7 +843,7 @@ childBoxes.each(function(value,id){
         id_strip = id.replace('item','');
 		childs = "";
         if(value){
-        childs = value.toString().replace('item', '');
+        childs = value.toString().replace(/item/g, '');
         }
         if(id_strip){
 form.adopt(new Element('input', {
