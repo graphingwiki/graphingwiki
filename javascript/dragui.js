@@ -26,7 +26,7 @@ $$('#start').each(function(drag){
     childBoxes.set(drag.id, new Array());
     drag.makeDraggable({
         onDrag: function(){
-           drawline(); 
+           drawline('start'); 
            }
         });
 	drag.setStyles({
@@ -35,7 +35,7 @@ $$('#start').each(function(drag){
 		'text-align' : 'center',
 		'left' : '550px',
 		'top': '150px',
-		'widht': '150px',
+		'width': '150px',
 		'height': '50px'
 		});
     });
@@ -43,7 +43,7 @@ $$('#start').each(function(drag){
 /* Making all course items draggable*/
 $$('.dragItem').each(function(item){
     item.addEvent('mousedown', function(e){
-        var oldColor = new Array(2);
+        var hfix = 0;
         var drop =  $$('div[id^=item], #start');
         var e = new Event(e).stop();
         var input = this.getChildren('input')
@@ -64,52 +64,57 @@ $$('.dragItem').each(function(item){
             element.setOpacity(0.7);
             },
 
-            onDrop: function(element, droppable){
-                element.destroy();
-                if(droppable){
-                droppable.morph({
-                    'background' : oldColor[1],
-                    'height' : 50,
-                    'width' : 150/*,
-                    'border': '0px solid #33cc33'*/
+            onDrop: function(el, drop){
+                el.destroy();
+                if(drop){
+                drop.morph({
+                    'height' : (50+hfix) + 'px',
+                    'width' : '150px'
                 });
-                    if(childBoxes.get(droppable.id).length ==0){
-                    newBox(droppable.id, value, description);
+				if(drop.id != 'start'){
+				drop.getElements('canvas').morph({
+                    'height' : (50 + hfix) + 'px',
+                    'width' : '150px'
+                });
+
+				}
+                    if(childBoxes.get(drop.id).length ==0){
+                    newBox(drop.id, value, description);
                     setTimeout("drawline()", 500);
                     setTimeout("drawline()", 400);
                     setTimeout("drawline()", 200);
                     }else{
-                        createMenu(droppable, value, description);
+                        createMenu(drop, value, description);
                     }
                 }
             },
             onEnter: function(el, drop){
 						 if(drop.id == 'start'){
-                         oldColor[1] ='#6495ed';
+                         hfix = 0;
                          }else{
-						 oldColor[1] = '';
+
+						 hfix = boxData.get(drop.id+'_desc').toString().length > 18 ? 15 : 0;
+						 drop.getElements('canvas').morph({
+							'height' : (60+ hfix) + 'px',
+							'width' : '170px'
+						 });
 						 }
-						 /*if(oldColor[0]!=drop.id){
-                         oldColor[1] = drop.getStyle('background');
-						 if(oldColor[1].strlen != 7){
-						 oldColor[1] = '';
-							}
-                         }
-						 */
-                         oldColor[0]= drop.id;
-                    drop.morph({
-                    'background-color' : '#81BBF2',
-                    'height' : 60,
-                    'width' : 170/*,
-                    'border' : '5px solid #000'*/
-                });
+                        hfix[0]= drop.id;
+						drop.morph({
+							'height' : (60+hfix) + 'px',
+							'width' : '170px'
+						});
             },
             onLeave : function(el, drop){
+			if(drop.id != 'start'){
+			drop.getElements('canvas').morph({
+                    'height' : (50 + hfix) + 'px',
+                    'width' : '150px'
+                });
+			}
                 drop.morph({
-                    'background' : oldColor[1],
-                    'height' : 50,
-                    'width' : 150 /*,
-                    'border': '0px solid #33CC33'*/
+                    'height' : (50 + hfix) + 'px',
+                    'width' : '150px'
                 });
           }
         });
@@ -760,8 +765,8 @@ box.setStyles({
 		'width' : '150px',
 		'height' : (50 + hfix) +'px'
 		});
-box.height = 50 + hfix;
-box.widht = 150;
+//box.height = 50 + hfix;
+//box.widht = 150;
 var canv = new Canvas();
 canv.setStyles({'position': 'relative'});
 canv.height = 50 + hfix;
@@ -833,47 +838,41 @@ drawline();
 /* Turns box tree into form with hidden inputs*/
 function submitTree(){
 var form = $('submitform');
-if(!form.method){
-var form = new Element('form',{
-        'method' : 'post',
-        'action':''
-        });
-}
+
 childBoxes.each(function(value,id){
-        id = id.replace('item','');
+        id_strip = id.replace('item','');
 		childs = "";
         if(value){
-        childs = value.toString();
+        childs = value.toString().replace('item', '');
         }
-        if(id){
+        if(id_strip){
 form.adopt(new Element('input', {
             'type':'hidden',
-            'name': id+'_value',
+            'name': id_strip+'_value',
             'value' : boxData.get(id)
             }),
         new Element('input',{
             'type' : 'hidden',
-            'name' : id+'next',
+            'name' : id_strip+'_next',
             'value' : childs
             }),
         new Element('input', {
             'type' : 'hidden',
-            'name' : id+'require',
+            'name' : id_strip+'_require',
             'value' : boxData.get(id+'_required')
             }),
         new Element('input',{
             'type' : 'hidden',
-            'name' : id+'type',
+            'name' : id_strip+'_type',
             'value' : boxData.get(id+'_type')
             }),
         new Element('input',{
             'type': 'hidden',
-            'name': id+'wrong',
+            'name': id_strip+'_wrong',
             'value' : boxData.get(id+'_wrong')
             })
     )}});
 
-form.inject(document.body);
-//form.submit();
+form.submit();
 }
 
