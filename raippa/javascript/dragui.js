@@ -79,7 +79,7 @@ $$('.dragItem').each(function(item){
 
 				}
                     if(childBoxes.get(drop.id).length ==0){
-                    newBox(drop.id, value, description);
+                    newBox(boxData.get(drop.id), value.toString(), description);
                     setTimeout("drawline()", 500);
                     setTimeout("drawline()", 400);
                     setTimeout("drawline()", 200);
@@ -161,18 +161,18 @@ var coords = new Array();
 var canvHeight = 0;
 var canvWidth = 0;
 for(var i=0;  i < boxes.length; i++){
- c1 = boxes[i].getCoordinates();
-pId = boxes[i].id;
- c1y = c1.top + c1.height / 2;
- c1x = c1.left + c1.width / 2;
- var childs = childBoxes.get(pId);
-if(childs === null || childs.length < 1){
-    if(boxData.get('endPoints').contains(pId)){
-    childs = ['ep_'+ boxes[i].id];
-    }else{
+	c1 = boxes[i].getCoordinates();
+	pId = boxes[i].id;
+	c1y = c1.top + c1.height / 2;
+	c1x = c1.left + c1.width / 2;
+	var childs = new Array();
+	childs = childs.extend(childBoxes.get(pId));
+
+	if(boxData.get('endPoints').contains(pId)){
+    childs = childs.include('ep_'+ boxes[i].id);
+    }else if(childs.length < 1){
         continue;
     }
-}
 if(id != null){
 childs.combine(getParentBox(id));
 }
@@ -345,6 +345,16 @@ var detach = new Element('input', {
                 menu.destroy();
         }}
 });
+var newep = new Element('input', {
+        'type' : 'button',
+        'value' : 'New endpoint',
+        'events' : {'click': function(){
+                newEndPoint(pDiv);
+                menu.destroy();
+        }}
+});
+
+
 var type = new Element('input');
 var del = new Element('input', {
 'type' : 'button',
@@ -374,6 +384,10 @@ del.inject(menu);
 if(getParentBox(pDiv.id).length > 1){
 reqMenu.inject(menu);
 }
+if(boxData.get('endPoints').contains(pDiv.id) == false){
+newep.inject(menu);
+}
+
 var childs  = childBoxes.get(pDiv.id);
 if(childs.length == 1){
     if(childs.filter(function(c){
@@ -425,7 +439,13 @@ var replBut = new Element('input', {
         'type': 'button',
         'value' : 'Replace',
         'events' : {'click' : function(){
-        pDiv.childNodes[0].nodeValue = desc;
+        c = pDiv.getChildren('div')[0].childNodes;
+		for(i in c){
+			if($type(c[i])== "textnode") c[i].nodeValue = desc;
+		}
+		hfix = desc.toString().length > 18? 15 : 0;
+		pDiv.getChildren('div')[0].setStyle('margin-top',(-45 -hfix) + 'px');
+		pDiv.getElements('canvas').setStyle('height',(50 + hfix)+ 'px');
 		boxData.set(pDiv.id,value);
         menu.destroy();
         }}
@@ -464,7 +484,7 @@ var newBut = new Element('input', {
         type = type.filter(function(el){
             return el.checked;
             }).get('value');
-        newBox(pDiv.id, value, desc, type);
+        newBox(boxData.get(pDiv.id), value, desc, type);
         menu.destroy();
         }}
 
@@ -473,7 +493,7 @@ var insAfter = new Element('input', {
         'type' : 'button',
         'value' : 'Insert after',
         'events' : {'click': function(){
-        newBox(pDiv.id, value, desc,'after');
+        newBox(boxData.get(pDiv.id), value, desc,'after');
         menu.destroy();
         }}
 });
@@ -672,7 +692,7 @@ parents.each(function(id){
             'name' : 'req_'+id,
             'value' : id
             });
-    if(boxData.get(pDiv.id+'_required').contains(id)){
+    if(boxData.get(pDiv.id+'_required').contains(boxData.get(id))){
     el.set('checked','checked');
     }
         tab.grab(new Element('tr').adopt(new Element('td').grab(el),
@@ -688,7 +708,7 @@ var submit = new Element('input',{
                 var req = new Array();
                 menu.getElements('input[name^=req]').each(function(chk){
                     if(chk.checked){
-                        req.include(chk.value);
+                        req.include(boxData.get(chk.value));
                     }
                     });
                 boxData.set(pDiv.id+'_required',req);
@@ -711,20 +731,33 @@ $(document.body).grab(menu);
 * description	: label visible to user
 * optional parameters:
 * type			: random | select
+* required		: required value (task id)
 * posx			: x-coordinate
 * posy			: y-coordinate
 **/
-function newBox(to, value, description, type, posx, posy){
+function newBox(to, value, description, type, required , posx, posy){
 if(to === null){
 to = 'start';
 }
 var pDiv = $(to);
+
 if(pDiv === null){
-childBoxes.each(function(value, id){
-	if(boxData.get(id) == to){
-		pDiv = $(id);
+pid = boxData.keyOf(to);
+if(!pid) return;
+pDiv = $(pid);
+required = required.toString().split(',');
+cid = boxData.keyOf(value);
+//adding only new connection if both to and value allready exists
+	if(cid){
+		childBoxes.get(cid).include(pid);
+		if(boxData.get('endPoints').contains(pid) == true){
+			boxData.get('endPoints').erase(pid);
+			$('ep_'+pid).destroy();
+			boxData.get(pid+'_required').combine(required);
+		}
+		drawline();
+		return;
 	}
-});
 }
 lkm = boxData.get('lkm');
 while($('item'+lkm)!==null){
@@ -734,8 +767,8 @@ var id = 'item'+ lkm;
 boxData.set('lkm', lkm);
 boxData.set(id, value);
 boxData.set(id+'_desc', description);
-
-boxData.set(id+'_required', new Array());
+var req = required ? required : new Array();
+boxData.set(id+'_required', req);
 if(boxData.get('endPoints').contains(pDiv.id) == true){
     boxData.get('endPoints').erase(pDiv.id);
     $('ep_'+pDiv.id).destroy();
@@ -793,6 +826,7 @@ ctx.bezierCurveTo(-25,50 + hfix,-25,0,75,0);
 ctx.fill();
 
 var content = new Element('div',{
+'id' : 'content',
 'styles' : {
 	'height' : (45+hfix) + 'px',
 	'widht' : '145px',
@@ -863,12 +897,13 @@ function submitTree(){
 var form = $('submitform');
 childBoxes.each(function(value,id){
         id_strip = id.replace('item','');
-		childs = "";
-        if(value){
-        childs = value.toString().replace(/item/g, '');
+
+		childs = boxData.get('endPoints').contains(id) ? "end" : "";
+		if(value){
+		childs += childs.length > 1 && value.toString.length > 1 ? "," : "";
+        childs += value.toString().replace(/item/g, '');
         }
 		var req = boxData.get(id +'_required');
-		req = req == null ? null : req.toString().replace(/item/g,'');
 		var wrong = boxData.get(id+'_wrong');
 		wrong = wrong == null ? null : wrong.replace('item','');
 
