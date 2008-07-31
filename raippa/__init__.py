@@ -87,12 +87,16 @@ class RaippaUser:
                             break
         return timetracklist
 
-    def canDo(self, page, course):
-        page = FlowPage(self.request, page)
+    def canDo(self, pagename, course):
+        page = FlowPage(self.request, pagename)
         may = False
         if "[[end]]" in self.statusdict.get(page.pagename, []):
             return False
         elif coursepointcategory in page.categories:
+            prerequisites = page.getprerequisite()
+            for prequisite in prerequisites:
+                 if not self.hasDone(prequisite, course):
+                     return False
             course = FlowPage(self.request, course)
             flow = course.getflow()
             prelist = list()
@@ -105,10 +109,24 @@ class RaippaUser:
                     statuslist = self.statusdict.get(point, [])
                     if "[[end]]" in statuslist:
                         may = True
-                    else:
-                        may = False
-                        break
         return may
+
+    def hasDone(self, pagename, course=None):
+        page = FlowPage(self.request, pagename)
+        globaldata = GraphData(self.request)
+        lasttaskpoint = encode(page.getflow().pop()[0])
+        lasttaskpoint = globaldata.getpage(lasttaskpoint)
+        linking_in = lasttaskpoint.get('in', {})
+        pagelist = linking_in.get("task", [])
+        for page in pagelist:
+            globaldata = GraphData(self.request)
+            metas = getmetas(self.request, globaldata, encode(page), ["WikiCategory", "user", "overallvalue"], checkAccess=False)
+            globaldata.closedb()
+            if metas["user"] and metas["overallvalue"]:
+                for category, type in metas["WikiCategory"]:
+                    if category == historycategory and metas["user"][0][0] == self.id:
+                        return True
+        return False
 
     def updatestatus(self, newstatusdict=None):
         if newstatusdict:
@@ -125,7 +143,7 @@ class RaippaUser:
         self.currenttask = removelink(self.statusdict.get(self.currentcoursepoint, [""])[0])
 
     def editstatus(self, flowpoint, task, debug=None):
-        print debug, flowpoint, task
+        #print debug, flowpoint, task
         flowpoint = encode(flowpoint)
         task = encode(task)
 
@@ -226,7 +244,6 @@ class FlowPage:
                         nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                         return nextcoursepoint, nexttask
                     else:
-                        #self.user.editstatus("end", "end", 1)
                         return "end", "end"
                 else:
                     self.user.editstatus(self.pagename, temp, 2)
