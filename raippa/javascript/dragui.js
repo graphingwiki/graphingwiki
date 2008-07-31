@@ -717,11 +717,11 @@ $(document.body).grab(menu);
 function newBox(to, value, description, type, posx, posy){
 if(to === null){
 to = 'start';
-} 
+}
 var pDiv = $(to);
 if(pDiv === null){
 childBoxes.each(function(value, id){
-	if(value == to){
+	if(boxData.get(id) == to){
 		pDiv = $(id);
 	}
 });
