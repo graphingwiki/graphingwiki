@@ -84,11 +84,32 @@ select tasks:
     def addNode(point):
         html = unicode()
         if point != "end":
-            task = tasks[point]
             nextlist = flow.get(point, [])
             for next in nextlist:
                 if next != "end":
-                    html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], tasks[next])
+                    metas = getmetas(request, request.globaldata, encode(tasks[next]), ["description"])
+                    if metas["description"]:
+                        description = metas["description"][0][0]
+                    else:
+                        description = tasks[next]
+                    metas = getmetas(request, request.globaldata, encode(next), ["prerequisite", "split"])
+                    if metas["split"]:
+                        split = metas["split"][0][0]
+                    else:
+                        split = u'select'
+
+                    if metas["prerequisite"]:
+                        prerequisites = u',"'
+                        temp = list()
+                        for task, type in metas["prerequisite"]:
+                            temp.append(task)
+                        prerequisites += ",".join(temp)
+                        prerequisites += u'"'
+                    else:
+                        prerequisites = unicode()
+
+                    html += u'newBox("%s","%s","%s","%s"%s);\n' % (tasks[point], tasks[next], description, split, prerequisites)
+                    #html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], description)
                     donelist.append(point)
                     if next not in donelist:
                         html += addNode(next)
@@ -97,8 +118,29 @@ select tasks:
     startlist = flow.get("start", None)
     if startlist:
         for point in startlist:
-            task = tasks[point]
-            pagehtml += u'newBox("start","%s","%s");\n' % (task, task)
+            metas = getmetas(request, request.globaldata, encode(tasks[point]), ["description"])
+            if metas["description"]:
+                description = metas["description"][0][0]
+            else:
+                description = tasks[next]
+            metas = getmetas(request, request.globaldata, encode(point), ["prerequisite", "split"])
+            if metas["split"]:
+                split = metas["split"][0][0]
+            else:
+                split = u'select'
+
+            if metas["prerequisite"]:
+                prerequisites = u',"'
+                temp = list()
+                for task, type in metas["prerequisite"]:
+                    temp.append(task)
+                prerequisites += ",".join(temp)
+                prerequisites += u'"'
+            else:
+                prerequisites = unicode()
+
+            pagehtml += u'newBox("start","%s","%s","%s"%s);\n' % (tasks[point], description, split, prerequisites)
+            #pagehtml += u'newBox("start","%s","%s");\n' % (task, description)
             pagehtml += addNode(point)
 
     pagehtml += '''
@@ -125,6 +167,8 @@ def editcourse(request, coursepage=None):
 
     nodedict = dict()
     taskdict = dict()
+    prerequisites = dict()
+    splittypes = dict()
  
     for key in request.form:
         if key == "courseid":
@@ -142,6 +186,18 @@ def editcourse(request, coursepage=None):
                 nodedict[key].extend(values.split(","))
             elif key.endswith("_value"):
                 taskdict[key.split("_")[0]] = request.form.get(key, [u''])[0]
+            elif key.endswith("_require"):
+                values = request.form.get(key, [u''])[0].split(",")
+                #QUICK HACK. remove when dragui.js returns tasklist
+                temp = list()
+                for value in values:
+                    temp.append(taskdict[value]) 
+                values = temp
+                #########
+                if values:
+                    prerequisites[key.split("_")[0]] = values
+            elif key.endswith("_type"):
+                splittypes[key.split("_")[0]] = [request.form.get(key, u'')[0]]
 
     if not courseid:
         return "Missing course id."
@@ -176,7 +232,9 @@ def editcourse(request, coursepage=None):
                     pointdata[u'next'] = [addlink(nextcp)]
                 else:
                     pointdata[u'next'].append(addlink(nextcp))
-                    
+
+            pointdata[u'prerequisite'] = prerequisites.get(number, [])
+            pointdata[u'split'] = splittypes.get(number, [u''])
             input = order_meta_input(request, coursepoint, pointdata, "add")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})             
 
@@ -193,6 +251,7 @@ def editcourse(request, coursepage=None):
             cp = coursepointdict[node]
             coursedata[u'start'].append(addlink(cp))
 
+        coursedata[u'split'] = splittypes.get("start", [u''])
         input = order_meta_input(request, coursepage, coursedata, "add")
         process_edit(request, input, True, {coursepage:[coursecategory]})
     else:
@@ -236,7 +295,9 @@ def editcourse(request, coursepage=None):
                     pointdata[u'next'] = [addlink(nextcp)]
                 else:
                     pointdata[u'next'].append(addlink(nextcp))
-                        
+
+            pointdata[u'prerequisite'] = prerequisites.get(number, [u''])
+            pointdata[u'split'] = splittypes.get(number, [u''])
             input = order_meta_input(request, coursepoint, pointdata, "repl")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})
         coursedata = {u'id':[courseid],
@@ -248,7 +309,8 @@ def editcourse(request, coursepage=None):
         for node in startlist:
             cp = coursepointdict[node]
             coursedata[u'start'].append(addlink(cp))
-        
+
+        coursedata[u'split'] = splittypes.get("start", [u''])
         input = order_meta_input(request, coursepage, coursedata, "repl")
         process_edit(request, input, True, {coursepage:[coursecategory]})
 
