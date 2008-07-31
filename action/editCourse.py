@@ -12,6 +12,7 @@ from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
 from raippa import addlink, randompage
+from raippa import FlowPage
 
 taskcategory = u'CategoryTask'
 coursecategory = u'CategoryCourse'
@@ -28,15 +29,22 @@ def taskform(request, course=None):
             coursedescription = metas[u'description'][0][0]
         except:
             coursedescription = u''
-        tasks, coursepoints = getflow(request, course)
+        coursepage = FlowPage(request, course)
+        flow = coursepage.getflow() 
+        tasks = dict()
+        for cp in flow:
+            if cp != "start":
+                metas = getmetas(request, request.globaldata, encode(cp), ["task"])
+                if metas["task"]:
+                    task = metas["task"][0][0]
+                    tasks[cp] = task
     else:
         id = u''
         name = u''
         coursedescription = u''
-        tasks = list()
-        coursepoints = list()
+        flow = dict()
+        tasks = dict()
 
-    _ = request.getText
     pagehtml = '''
 <script type="text/javascript"
 src="/moin_static163/common/js/mootools-1.2-core-yc.js"></script>
@@ -72,13 +80,27 @@ select tasks:
     pagehtml += u'''
     <script type="text/javascript">
 	function loadData(){\n'''
-    for page in tasks:
-        try:
-            metas = getmetas(request, request.globaldata, encode(page), ["description"])
-            description = metas["description"][0][0]
-            pagehtml += u'newBox("start","%s","%s");\n' % (page, description)
-        except:
-            pass
+    donelist = list()
+    def addNode(point):
+        html = unicode()
+        if point != "end":
+            task = tasks[point]
+            nextlist = flow.get(point, [])
+            for next in nextlist:
+                if next != "end":
+                    html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], tasks[next])
+                    donelist.append(point)
+                    if next not in donelist:
+                        html += addNode(next)
+        return html
+
+    startlist = flow.get("start", None)
+    if startlist:
+        for point in startlist:
+            task = tasks[point]
+            pagehtml += u'newBox("start","%s","%s");\n' % (task, task)
+            pagehtml += addNode(point)
+
     pagehtml += '''
 	}//loadData
     </script>\n'''
@@ -96,27 +118,67 @@ description:<br>
 
     request.write(u'%s' % pagehtml)
 
-def writemeta(request, coursepage=None):
-    courseid = request.form.get("courseid", [u''])[0]
+def editcourse(request, coursepage=None):
+    courseid = unicode()
+    coursename = unicode()
+    coursedescription = unicode()
+
+    nodedict = dict()
+    taskdict = dict()
+ 
+    for key in request.form:
+        if key == "courseid":
+            courseid = request.form.get("courseid", [None])[0]
+        elif key == "coursename":
+            coursename = request.form.get("coursename", [None])[0]
+        elif key == "coursedescription":
+            coursedescription = request.form.get("coursedescription", [u''])[0]
+        elif key != "save" and key != "action":
+            if key.endswith("_next"):
+                values = request.form.get(key, [u''])[0]
+                key = key.split("_")[0]
+                if not nodedict.get(key, None):
+                    nodedict[key] = list()
+                nodedict[key].extend(values.split(","))
+            elif key.endswith("_value"):
+                taskdict[key.split("_")[0]] = request.form.get(key, [u''])[0]
+
     if not courseid:
         return "Missing course id."
-
-    coursename = request.form.get("coursename", [u''])[0]
     if not coursename:
         return "Missing course name."
-
-    flowlist = request.form.get("flowlist", [])
-    if not flowlist:
+    if not taskdict:
         return "Missing task list."
-
-    coursedescription = request.form.get("coursedescription", [u''])[0]
 
     if not coursepage:
         coursepage = u'Course/' + courseid
         page = Page(request, coursepage)
         if page.exists():
             return "Course already exists."
-        coursepoint = randompage(request, coursepage)
+
+        coursepointdict = dict()
+        for number, taskpage in taskdict.iteritems():
+            coursepoint = coursepointdict.get(number, None)
+            if not coursepoint:
+                coursepoint = randompage(request, coursepage)
+                coursepointdict[number] = coursepoint
+            pointdata = {u'task':[addlink(taskpage)]}
+            nextlist = nodedict.get(number, [u'end'])
+            for next in nextlist:
+                if next != u'end':
+                    nextcp = coursepointdict.get(next, None)
+                    if not nextcp:
+                        nextcp = randompage(request, coursepage)
+                        coursepointdict[next] = nextcp
+                else:
+                    nextcp = next
+                if not pointdata.get(u'next', None):
+                    pointdata[u'next'] = [addlink(nextcp)]
+                else:
+                    pointdata[u'next'].append(addlink(nextcp))
+                    
+            input = order_meta_input(request, coursepoint, pointdata, "add")
+            process_edit(request, input, True, {coursepoint:[coursepointcategory]})             
 
         page = PageEditor(request, coursepage)
         page.saveText("<<Raippa>>", page.get_real_rev())
@@ -125,173 +187,95 @@ def writemeta(request, coursepage=None):
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
                       u'description':[coursedescription],
-                      u'start':[addlink(coursepoint)]}
+                      u'start':[]}
+        startlist = nodedict["start"]
+        for node in startlist:
+            cp = coursepointdict[node]
+            coursedata[u'start'].append(addlink(cp))
 
         input = order_meta_input(request, coursepage, coursedata, "add")
         process_edit(request, input, True, {coursepage:[coursecategory]})
-
-        for index, taskpage in enumerate(flowlist):
-            nextcoursepoint = randompage(request, coursepage)
-            pointdata = {u'task':[addlink(taskpage)]}
-            if index >= len(flowlist)-1:
-                pointdata[u'next'] = [u'end']
-            else:
-                pointdata[u'next'] = [addlink(nextcoursepoint)]
-            input = order_meta_input(request, coursepoint, pointdata, "add")
-            process_edit(request, input, True, {coursepoint:[coursepointcategory]})
-            coursepoint = nextcoursepoint
     else:
-        tasks, coursepoints = getflow(request, coursepage)
-        if tasks != flowlist:
-            newflow = list()
-            userstatus = list()
-
-            copyofcoursepoints = coursepoints[:]
-            copyofcoursepoints.reverse()
-            for index, task in enumerate(reversed(tasks)):
-                if task not in flowlist:
-                    coursepoint = copyofcoursepoints[index]
-                    coursepointpage = request.globaldata.getpage(coursepoint)
-                    linking_in = coursepointpage.get('in', {})
-                    valuelist = linking_in.get(coursepage,[])
-                    coursepointpage = PageEditor(request, coursepoint, do_editor_backup=0)
-                    if coursepointpage.exists():
-                        coursepointpage.deletePage()
-
-                    for value in valuelist:
-                        if value.endswith("/status"):
-                            try:
-                                meta = getmetas(request, request.globaldata, value, ["WikiCategory", coursepoint])
-                                if meta["WikiCategory"][0][0] == statuscategory:
-                                    user = value.split("/")[0]
-                                    task = meta[coursepoint][0][0]
-                                    userstatus.append([user, task, index])
-                                    process_edit(request, order_meta_input(request, value, {coursepoint: [" "]}, "repl"))
-                            except:
-                                pass
-
-            for index, task in enumerate(flowlist):
-                try:
-                    courseindex = tasks.index(task)
-                    newflow.append((task, coursepoints[courseindex]))
-                except:
-                    pointpage = randompage(request, coursepage)
-                    newflow.append((task, pointpage))
-
-            for index, tasktuple in enumerate(newflow):
-                task = addlink(tasktuple[0])
-                coursepoint = tasktuple[1]
-                if index >= len(newflow)-1:
-                    next = "end"
+        course = FlowPage(request, coursepage)
+        oldflow = course.getflow()
+        oldtasks = dict()
+        globaldata = GraphData(request)
+        for cp in oldflow:
+            if cp != "start":
+                metas = getmetas(request, globaldata, encode(cp), ["task"])
+                if metas["task"]:
+                    task = metas["task"][0][0]
+                    if task not in taskdict.values():
+                        deletablepage = PageEditor(request, cp, do_editor_backup=0)
+                        if deletablepage.exists():
+                            deletablepage.deletePage()
+                    oldtasks[task] = cp
+        coursepointdict = dict()
+        for number, taskpage in taskdict.iteritems():
+            coursepoint = coursepointdict.get(number, None)
+            if not coursepoint:
+                if taskpage in oldtasks:
+                    coursepoint = oldtasks[taskpage]
+                else: 
+                    coursepoint = randompage(request, coursepage)
+                coursepointdict[number] = coursepoint
+            pointdata = {u'task':[addlink(taskpage)]}
+            nextlist = nodedict.get(number, [u'end'])
+            for next in nextlist:
+                if next != u'end':
+                    nextcp = coursepointdict.get(next, None)
+                    if not nextcp:
+                        if next in oldtasks:
+                            nextcp = oldtasks[next]
+                        else: 
+                            nextcp = randompage(request, coursepage)
+                        coursepointdict[next] = nextcp
                 else:
-                    next = addlink(newflow[index+1][1])
-                coursepointdata = {u'task':[task], u'next':[next]}
-                input = order_meta_input(request, coursepoint, coursepointdata, "repl")
-                process_edit(request, input, True, {coursepoint:[coursepointcategory]})
-
-            #handle userstatus here
-            for status in userstatus:
-                user = status[0]
-                task = status[1]
-                if status[2] >= len(newflow):
-                    startindex = len(newflow)-1
+                    nextcp = next
+                if not pointdata.get(u'next', None):
+                    pointdata[u'next'] = [addlink(nextcp)]
                 else:
-                    startindex = status[2]
-
-                reversednewflow = newflow[:]
-                reversednewflow.reverse()
-                nextcoursepoint = str()
-                for index, point in enumerate(reversednewflow):
-                    if index > startindex or startindex == 0:
-                        coursepoint = encode(point[1])
-                        meta = getmetas(request, request.globaldata, coursepoint, ["task"])
-                        taskpoint = meta["task"][0][0]
-                        questions, taskpoints = getflow(request, taskpoint)
-                        lasttaskpoint = taskpoints[-1]
-                        taskpointpage = request.globaldata.getpage(lasttaskpoint)
-                        linking_in = taskpointpage.get('in', {})
-                        pagelist = linking_in.get('task', [])
-                        for page in pagelist:
-                            try:
-                                meta = getmetas(request, request.globaldata, page, ["WikiCategory", "course", "user"])
-                                category = meta["WikiCategory"][0][0]
-                                answerer = meta["user"][0][0]
-                                course = meta["course"][0][0]
-                            except: 
-                                category = str()
-                                answerer = str()
-                                course = str()
-
-                            if category == historycategory and answerer == user and course == coursepage:
-                                nextcoursepoint = reversednewflow[index-1][1]
-                                break
-                        if nextcoursepoint:
-                            break
-                if not nextcoursepoint:
-                    nextcoursepoint = newflow[0][1]
-
-                statuspage = user + "/status"
-                process_edit(request, order_meta_input(request, statuspage, {coursepage: [addlink(coursepoint)], coursepoint: [addlink(taskpoint)]}, "repl"))
-
-            coursedata = {u'description':[coursedescription],
-                          u'name':[coursename],
-                          u'start':[addlink(newflow[0][1])]}
-            process_edit(request, order_meta_input(request, coursepage, coursedata, "repl"))
-        else:
-            coursedata = {u'name':[coursename],
-                          u'description':[coursedescription]}
-            process_edit(request, order_meta_input(request, coursepage, coursedata, "repl"))
+                    pointdata[u'next'].append(addlink(nextcp))
+                        
+            input = order_meta_input(request, coursepoint, pointdata, "repl")
+            process_edit(request, input, True, {coursepoint:[coursepointcategory]})
+        coursedata = {u'id':[courseid],
+                      u'author':[addlink(request.user.name)],
+                      u'name':[coursename],
+                      u'description':[coursedescription],
+                      u'start':[]}
+        startlist = nodedict["start"]
+        for node in startlist:
+            cp = coursepointdict[node]
+            coursedata[u'start'].append(addlink(cp))
+        
+        input = order_meta_input(request, coursepage, coursedata, "repl")
+        process_edit(request, input, True, {coursepage:[coursecategory]})
 
     return None 
 
-def getflow(request, page):
-    meta = getmetas(request, request.globaldata, encode(page), ["start", "WikiCategory"])
-    flowpoint = encode(meta["start"][0][0])
-    category = encode(meta["WikiCategory"][0][0])
-    if category == coursecategory:
-        keytype = "task"
-    else:
-        keytype = "question"
-    pointpages = list()
-    flowpoints = list()
-    
-    while flowpoint != "end":
-        meta = getmetas(request, request.globaldata, flowpoint, [keytype, "next"])
-        pointpage = meta[keytype][0][0]
-        pointpages.append(pointpage)
-        flowpoints.append(flowpoint)
-        flowpoint = encode(meta["next"][0][0])
-    return pointpages, flowpoints
-
 def _enter_page(request, pagename):
     request.http_headers()
-    _ = request.getText
-    
-    request.theme.send_title(_('Teacher Tools'), formatted=False)
+    request.theme.send_title("Teacher Tools", formatted=False)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:
         formatter = request.formatter
     request.page.formatter = formatter
-
     request.write(request.page.formatter.startContent("content"))
 
 def _exit_page(request, pagename):
-    # End content
     request.write(request.page.formatter.endContent())
-    # Footer
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
     request.globaldata = getgraphdata(request)
     if request.form.has_key('save'):
-        for key, values in request.form.iteritems():
-            print key, ": ", values
         if request.form.has_key('course'):
             course = encode(request.form["course"][0])
-            msg = writemeta(request, course)
+            msg = editcourse(request, course)
         else:
-            msg = writemeta(request)
+            msg = editcourse(request)
 
         if msg:
             _enter_page(request, pagename)
