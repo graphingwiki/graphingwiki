@@ -745,7 +745,7 @@ if(pDiv === null){
 pid = boxData.keyOf(to);
 if(!pid) return;
 pDiv = $(pid);
-required = required.toString().split(',');
+required = required ? required.toString().split(',') : new Array();
 cid = boxData.keyOf(value);
 //adding only new connection if both to and value allready exists
 	if(cid){
