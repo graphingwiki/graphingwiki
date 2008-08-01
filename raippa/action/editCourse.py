@@ -44,17 +44,16 @@ def taskform(request, course=None):
         coursedescription = u''
         flow = dict()
         tasks = dict()
-
     pagehtml = '''
 <script type="text/javascript"
-src="/moin_static163/common/js/mootools-1.2-core-yc.js"></script>
+src="%s/common/js/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript"
-src="/moin_static163/common/js/mootools-1.2-more.js"></script>
+src="%s/common/js/mootools-1.2-more.js"></script>
 <script type="text/javascript"
-src="/moin_static163/common/js/moocanvas.js"></script>
+src="%s/common/js/moocanvas.js"></script>
 <script type="text/javascript"
-src="/moin_static163/common/js/dragui.js"></script>
-
+src="%s/common/js/dragui.js"></script>\n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static)
+    pagehtml += u'''
 select tasks:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editTask">
@@ -73,7 +72,7 @@ select tasks:
     pagehtml += u'''
 </div>
 <div id="start">Start by dragging here!<br></div>
-<form method="post" id="submitform" name="courseForm" onsubmit="submitTree()">
+<form method="post" id="submitform" name="courseForm" onsubmit="return submitTree()">
 <input type="hidden" name="action" value="editCourse">\n'''
     if course:
         pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course
@@ -147,11 +146,11 @@ select tasks:
 	}//loadData
     </script>\n'''
     if id:
-        pagehtml += '<input type="hidden" name="courseid" value="%s">' % id 
+        pagehtml += '<input id="courseid" type="hidden" name="courseid" value="%s">' % id 
     else:
-        pagehtml += 'id: <input type="text" name="courseid"><br>'
+        pagehtml += 'id: <input id="courseid" type="text" name="courseid"><br>'
     pagehtml += '''
-name: <input type="text" name="coursename" value="%s"><br> 
+name: <input type="text" id="coursename" name="coursename" value="%s"><br> 
 description:<br> 
 <textarea name="coursedescription" rows="10" cols="40">%s</textarea><br>
 <input type="submit" name="save" value="Save">
