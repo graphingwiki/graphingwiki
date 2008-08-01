@@ -79,7 +79,7 @@ $$('.dragItem').each(function(item){
 
 				}
                     if(childBoxes.get(drop.id).length ==0){
-                    newBox(boxData.get(drop.id), value.toString(), description);
+                    newBox(drop.id, value.toString(), description);
                     setTimeout("drawline()", 500);
                     setTimeout("drawline()", 400);
                     setTimeout("drawline()", 200);
@@ -144,7 +144,6 @@ canvDiv.set('top' , 0);
 try{
 loadData();
 }catch(E){}
-
 drawline();
 });//domready
 
@@ -184,9 +183,11 @@ for(var j = 0 ; j < childs.length ; j++){
  fix_pid = getParentBox(pId).contains(childs[j]) ? childs[j] : pId;
  if(boxData.get(pId+'_wrong') == $(childs[j]).id){
 color = '#FF0000';
- }else if(boxData.get(fix_pid+'_type') == 'select'){
+ }else if(boxData.get(fix_pid+'_type') == 'select' &&
+ childBoxes.get(fix_pid).length >1){
 color = '#00FF00';
- }else if(boxData.get(fix_pid+'_type') == 'random'){
+ }else if(boxData.get(fix_pid+'_type') == 'random' &&
+ childBoxes.get(fix_pid).length >1){
 color = '#FFFF00';
  }else{
 color = '#000000';
@@ -484,7 +485,7 @@ var newBut = new Element('input', {
         type = type.filter(function(el){
             return el.checked;
             }).get('value');
-        newBox(boxData.get(pDiv.id), value, desc, type);
+        newBox(pDiv.id, value, desc, type);
         menu.destroy();
         }}
 
@@ -493,7 +494,7 @@ var insAfter = new Element('input', {
         'type' : 'button',
         'value' : 'Insert after',
         'events' : {'click': function(){
-        newBox(boxData.get(pDiv.id), value, desc,'after');
+        newBox(pDiv.id, value, desc,'after');
         menu.destroy();
         }}
 });
@@ -743,6 +744,7 @@ var pDiv = $(to);
 
 if(pDiv === null){
 pid = boxData.keyOf(to);
+if(to.toString() == value.toString()) return;
 if(!pid) return;
 pDiv = $(pid);
 required = required ? required.toString().split(',') : new Array();
@@ -934,5 +936,14 @@ form.adopt(new Element('input', {
             'value' : wrong
 			})
     )}});
+	if($('courseid').value.length < 1){
+	alert('Please fill course id before saving');
+	return false;
+	}else if($('coursename').value.length < 1){
+	alert('Please fill course name before saving');
+	return false;
+	}else{
+	return true;
+	}
 }
 
