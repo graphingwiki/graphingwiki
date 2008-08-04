@@ -5,6 +5,7 @@ from graphingwiki.patterns import getgraphdata
 tipcategory = "CategoryTip"
 generictip = u'This is generic tip. Et vaan osaa!'
 noanswer = u'You should answer all the questions.'
+penalty = u'Your answer was incorrect and now you have do extra penalty task.'
 
 def execute(pagename, request):
     tip = None
@@ -15,6 +16,8 @@ def execute(pagename, request):
     
     if tip == "noanswer":
         tiptext = noanswer
+    elif tip == "penalty":
+        tiptext = penalty
     elif tip:
         tippagename = "Tip/" + tip
         tippage = Page(request, tippagename)
