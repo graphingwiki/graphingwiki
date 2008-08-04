@@ -28,16 +28,16 @@ def redirect(request, pagename, tip=None):
 def execute(pagename, request):
     request.raippauser = RaippaUser(request)
 
-    if request.form.has_key(u'selectcourse'):
-        coursename = request.form.get(u'course', [u''])[0]
+    if request.form.has_key("selectcourse"):
+        coursename = request.form.get("course", [u''])[0]
         if coursename:
             currentpage = FlowPage(request, pagename, request.raippauser)
             globaldata = GraphData(request)
             metakeys = getkeys(globaldata, request.raippauser.statuspage)
-            if metakeys.has_key(u'current'):
-                edit_meta(request, request.raippauser.statuspage, {u'current': [addlink(request.raippauser.currentcourse)]}, {u'current': [addlink(coursename)]})
+            if metakeys.has_key("current"):
+                edit_meta(request, request.raippauser.statuspage, {"current": [addlink(request.raippauser.currentcourse)]}, {"current": [addlink(coursename)]})
             else:
-                edit_meta(request, request.raippauser.statuspage, {u'': [u'']}, {u'current': [addlink(coursename)]})
+                edit_meta(request, request.raippauser.statuspage, {"": [""]}, {"current": [addlink(coursename)]})
             redirect(request, coursename)
         else:
             request.write(u'Missing course name.')
@@ -48,6 +48,9 @@ def execute(pagename, request):
         if fp == "end" and task == "end":
             redirect(request, pagename)
         else:
+            statusdata = {request.raippauser.currentcourse: [addlink(fp)]}
+            input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
+            process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
             redirect(request, task)
     elif request.form.has_key(u'send'):
         currentpage = FlowPage(request, pagename, request.raippauser)
@@ -101,17 +104,17 @@ def execute(pagename, request):
                         else:
                             try:
                                 globaldata = GraphData(request)
-                                metas = getmetas(request, globaldata, currentpage.pagename, [u'failure'], checkAccess=False)
+                                metas = getmetas(request, globaldata, currentpage.pagename, ["penalty"], checkAccess=False)
                                 globaldata.closedb()
-                                failurepage = metas["failed"][0][0]
-                                failurekey = request.raippauser.currentcourse + "failure"
-                                input = order_meta_input(request, request.raippauser.statuspage, {failurekey: [failurepage]}, "repl")
+                                failurepage = metas["penalty"][0][0]
+                                failurekey = request.raippauser.currentcoursepoint + "/penalty"
+                                statusdata = {request.raippauser.currentcourse:[addlink(failurekey)],
+                                              failurekey:[addlink(failurepage)]}
+                                input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
                                 process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
-                                #TODO: penalty round message
-                                redirect(request, failurepage)
+                                redirect(request, failurepage, "penalty")
                             except:
-                                failurepage = currentpage.pagename
-                                redirect(request, failurepage, tips[0])
+                                redirect(request, currentpage.pagename, tips[0])
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
