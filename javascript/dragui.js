@@ -167,14 +167,15 @@ for(var i=0;  i < boxes.length; i++){
 	var childs = new Array();
 	childs = childs.extend(childBoxes.get(pId));
 
+	if(id != null){
+		childs.combine(getParentBox(id));
+	}
+
 	if(boxData.get('endPoints').contains(pId)){
     childs = childs.include('ep_'+ boxes[i].id);
     }else if(childs.length < 1){
         continue;
     }
-if(id != null){
-childs.combine(getParentBox(id));
-}
 for(var j = 0 ; j < childs.length ; j++){
  c2 = $(childs[j]).getCoordinates($(pId));
  c2a = $(childs[j]).getCoordinates();
@@ -354,6 +355,17 @@ var newep = new Element('input', {
                 menu.destroy();
         }}
 });
+var delep = new Element('input', {
+        'type' : 'button',
+        'value' : 'Remove endpoint',
+        'events' : {'click': function(){
+                $('ep_'+pDiv.id).destroy();
+				boxData.get('endPoints').erase(pDiv.id);
+				menu.destroy();
+				drawline();
+        }}
+});
+
 
 
 var type = new Element('input');
@@ -387,8 +399,9 @@ reqMenu.inject(menu);
 }
 if(boxData.get('endPoints').contains(pDiv.id) == false){
 newep.inject(menu);
+}else if(childBoxes.get(pDiv.id).length > 0){
+delep.inject(menu);
 }
-
 var childs  = childBoxes.get(pDiv.id);
 if(childs.length == 1){
     if(childs.filter(function(c){
@@ -750,8 +763,8 @@ pDiv = $(pid);
 required = required ? required.toString().split(',') : new Array();
 cid = boxData.keyOf(value);
 //adding only new connection if both to and value allready exists
-	if(cid){
-		childBoxes.get(cid).include(pid);
+	if(cid && pid){
+		childBoxes.get(pid).include(cid);
 		if(boxData.get('endPoints').contains(pid) == true){
 			boxData.get('endPoints').erase(pid);
 			$('ep_'+pid).destroy();
@@ -869,7 +882,7 @@ onDrag: function(){
                 'top': box.getPosition().y + 75
                 });
         }
-        drawline(box.id); 
+        drawline(box.id);
         if(box.getPosition().x < 0){
             box.setStyle('left', 0);
         }
