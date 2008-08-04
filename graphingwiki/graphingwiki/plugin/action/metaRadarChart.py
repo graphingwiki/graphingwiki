@@ -47,7 +47,8 @@ from MoinMoin.request import RequestModPy
 from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
 from graphingwiki.patterns import encode
 
-from sparkline import draw_path, cairo_not_found, write_surface, image_headers
+from metasparkline import draw_path, cairo_not_found, \
+    write_surface, image_headers, plot_error
 
 def add_to_center(center, coords):
     return center[0] + coords[0], center[1] + coords[1]
@@ -138,7 +139,8 @@ def execute(pagename, request):
 
     # If no keys, print nothing
     if not pagelist:
-        return u''
+        request.write(plot_error())
+        raise MoinMoinNoFooter
 
     # Populate data to the radar chart
     data = dict()
@@ -146,7 +148,6 @@ def execute(pagename, request):
         for key in metakeys:
             data[key] = set(x for x, y in
                             getvalues(request, globaldata, page, key))
-
 
     # Get values for the chart axes
     data_per_axis = dict()
@@ -166,7 +167,8 @@ def execute(pagename, request):
 
     # No use in having tables with 
     if len(values) < 2:
-        return u''
+        request.write(plot_error())
+        raise MoinMoinNoFooter
 
     per_value = radius / len(values)
 
