@@ -34,24 +34,128 @@ def taskform(request, task=None):
 
     _ = request.getText
     pagehtml = '''
-<script language="JavaScript" type="text/javascript">
-<!--
-var NS4 = (navigator.appName == "Netscape" && parseInt(navigator.appVersion) < 5);
+<script type="text/javascript">
+function createPenaltySel(el, defVal){
+  var opt = $(el);
+	var noPenalty = 'selected';
+  if(defVal){
+	noPenalty = '';
+	}
+  var form = $('taskForm');
+  document.getElements('select[id^=penalty_]').setStyle('display', 'none');
+  var select = $('penalty_'+opt.value);
 
-function addOption(theSel, theText, theValue)
+  if(select != null){
+	select.setStyles({
+	  'display': '',
+	  'top' : opt.getPosition().y,
+	  'left' : opt.getPosition().x + opt.getCoordinates().width + 65
+	});
+  }else{
+	var select = new Element('select', {
+	'id' : 'penalty_' + opt.value,
+	'size' : 1,
+	'styles': {
+		'position' : 'absolute',
+		'display' : '',
+		'top' : opt.getPosition().y,
+		'left' : opt.getPosition().x + opt.getCoordinates().width + 65
+		},
+	'events' : {
+		'change' : function(){
+		  if(this.value == ''){
+			opt.setStyle('background-color', '');
+			}else{
+			opt.setStyle('background-color', 'red');
+			  }
+		  }
+	  }
+	});
+  select.grab(new Element('option',{
+	  'value' : '',
+	  'text' : 'no penalty',
+	  'selected': noPenalty
+	}));\n'''
+    globaldata, tasklist, metakeys, styles = metatable_parseargs(request, taskcategory)
+    for ti in tasklist:
+        try:
+            data = getmetas(request, request.globaldata, encode(ti),["description"])
+            desc = data["description"][0][0]
+            pagehtml += u'''
+  select.grab(new Element('option', {
+	  'value' : '%s',
+	  'text' : '%s'
+	}));
+  if(defVal == '%s'){
+	select.getLast('option').set('selected','selected');
+	}
+  \n''' % (ti, desc,ti)
+        except:
+            pass
+    pagehtml += u'''
+  select.inject($('flowtd'));
+  }
+}
+
+function moveSel(theSel, dir){
+  var opts = theSel.getChildren('option');
+  if(dir == '+') opts.reverse();
+  opts.each(function(el){
+	if(el.selected){
+	  if(dir == '-' && el.getPrevious('option')){
+		el.inject(el.getPrevious('option'), 'before');
+	  }else if(dir == '+' && el.getNext('option')){
+		el.inject(el.getNext('option'), 'after');
+	  }
+	  }
+	});
+ 
+}
+
+function addOption(theSel, theText, theValue, penalty)
 {
-    var newOpt = new Option(theText, theValue);
+	var newOpt = new Element('option', {
+	  'text' : theText,
+	  'value' : theValue,
+	  'events' : {
+		  'mousedown' : function(){
+			  if(theSel.id == 'flist'){
+				createPenaltySel(newOpt);
+			  }
+			}
+		}
+  });
+	if(penalty){
+	  newOpt.setStyle('background-color', 'red');
+	  createPenaltySel(newOpt, penalty);
+	  }
+	$(theSel).addEvent('keyup', function(event){
+			  if(theSel.id == 'flist'){
+				sel = $(theSel).getChildren('option').filter(function(el){
+				  return el.selected == true
+				  });
+				  if(sel){
+					createPenaltySel(sel[0]);
+				  }
+			  }
+			});
+
     var selLength = theSel.length;
     theSel.options[selLength] = newOpt;
 }
 
 function deleteOption(theSel, theIndex)
-{   
+{
     var selLength = theSel.length;
     if(selLength > 0)
     {
+		var penSel = $('penalty_'+theSel.options[theIndex].value);
+		if(penSel != null){
+			penSel.destroy();
+		  }
         theSel.options[theIndex] = null;
     }
+  document.getElements('select[id^=penalty_]').setStyle('display', 'none');
 }
 
 function moveOptions(theSelFrom, theSelTo)
@@ -60,7 +164,7 @@ function moveOptions(theSelFrom, theSelTo)
     var selectedText = new Array();
     var selectedValues = new Array();
     var selectedCount = 0;
-                        
+
     var i;
     for(i=selLength-1; i>=0; i--)
     {
@@ -70,27 +174,25 @@ function moveOptions(theSelFrom, theSelTo)
             selectedValues[selectedCount] = theSelFrom.options[i].value;
             deleteOption(theSelFrom, i);
             selectedCount++;
-        }   
+        }
     }
 
     for(i=selectedCount-1; i>=0; i--)
     {
         addOption(theSelTo, selectedText[i], selectedValues[i]);
     }
-    
-    if(NS4) history.go(0);
+
 }
 
 function selectAllOptions(selStr)
 {
     var selObj = document.getElementById(selStr);
-    for (var i=0; i<selObj.options.length; i++) 
+    for (var i=0; i<selObj.options.length; i++)
     {
         selObj.options[i].selected = true;
     }
 }
 
-//-->
 </script>
 
 select questions:<br>
@@ -109,7 +211,7 @@ select questions:<br>
             try:
                 metas = getmetas(request, request.globaldata, encode(page), ["question"])
                 question = metas["question"][0][0]
-                pagehtml += u'<option name="question" value="%s">%s\n' % (page, question)
+                pagehtml += u'<option name="question" value="%s">%s</option>\n' % (page, question)
             except:
                 pass
     pagehtml += '''
@@ -122,23 +224,26 @@ select questions:<br>
          onclick="moveOptions(taskForm.flowlist, this.form.questionList);">
     </td>
 </form>
-<form method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">
+<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">
     <input type="hidden" name="action" value="%s">\n''' % action_name
     if task:
         pagehtml += u'<input type="hidden" name="task" value="%s">\n' % task
     pagehtml += '''
-    <td>
-        <select name="flowlist" id="flist" size="10" multiple="multiple">\n'''
+    <td id="flowtd">
+        <select name="flowlist" id="flist" size="10"
+		multiple="multiple"></select><script type="text/javascript">\n'''
     for page in questions:
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["question"])
             question = metas["question"][0][0]
-            pagehtml += u'<option name="question" value="%s">%s\n' % (page, question)
+            pagehtml +=u'''addOption(document.getElementById("flist"),"%s","%s");\n''' %(question,page)
         except:
             pass
     pagehtml += '''
-        </select>
-    </td>
+        </script>
+    </td><td>
+	<input type="button" value="&uArr;" onclick="moveSel($('flist'), '-');"><br>
+	<input type="button" value="&dArr;" onclick="moveSel($('flist'), '+');"></td>
     </tr>
 </table>
 select task type: <select name="type">\n'''
@@ -150,9 +255,9 @@ select task type: <select name="type">\n'''
             pagehtml += '<option value="%s">%s\n' % (item, item)
     pagehtml += '''
 </select><br>
-description:<br> 
+description:<br>
 <textarea name="description" rows="10" cols="40">%s</textarea><br>
-''' % description 
+''' % description
     pagehtml += '''
 <input type="submit" name="save" value="Save">
 </form>
@@ -318,7 +423,8 @@ def _enter_page(request, pagename):
     request.http_headers()
     _ = request.getText
     
-    request.theme.send_title(_('Teacher Tools'), formatted=False)
+    request.theme.send_title(_('Teacher Tools'), formatted=False,
+    html_head='<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>' % request.cfg.url_prefix_static)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:
