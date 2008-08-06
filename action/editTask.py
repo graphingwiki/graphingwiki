@@ -35,39 +35,52 @@ def taskform(request, task=None):
     _ = request.getText
     pagehtml = '''
 <script type="text/javascript">
+window.addEvent('domready', function(){
+  addOpts();
+  });
+
 function createPenaltySel(el, defVal){
   var opt = $(el);
+  var sel = opt.getParent('select');
+  var posx = sel.getCoordinates().width + sel.getCoordinates().left + 55;
+  var posy = sel.getCoordinates().top + 15 *
+  opt.getAllPrevious('option').length;
 	var noPenalty = 'selected';
   if(defVal){
 	noPenalty = '';
 	}
   var form = $('taskForm');
-  document.getElements('select[id^=penalty_]').setStyle('display', 'none');
-  var select = $('penalty_'+opt.value);
+  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
+  var select = $(opt.value+'_penalty');
 
   if(select != null){
 	select.setStyles({
 	  'display': '',
-	  'top' : opt.getPosition().y,
-	  'left' : opt.getPosition().x + opt.getCoordinates().width + 65
+	  'top' : posy,
+	  'left' : posx
 	});
   }else{
 	var select = new Element('select', {
-	'id' : 'penalty_' + opt.value,
+	'id' : opt.value+'_penalty',
+	'name' : opt.value+'_penalty',
 	'size' : 1,
 	'styles': {
 		'position' : 'absolute',
 		'display' : '',
-		'top' : opt.getPosition().y,
-		'left' : opt.getPosition().x + opt.getCoordinates().width + 65
+		'top' : posy,
+		'left' : posx
 		},
 	'events' : {
 		'change' : function(){
 		  if(this.value == ''){
-			opt.setStyle('background-color', '');
+			  opt.setStyle('background-color', '');
 			}else{
-			opt.setStyle('background-color', 'red');
-			  }
+			  opt.setStyle('background-color', 'red');
+			}
+			if(window.opera){
+			  document.body.style += ""; // Force Opera redraw.
+			}
+
 		  }
 	  }
 	});
@@ -93,7 +106,7 @@ function createPenaltySel(el, defVal){
         except:
             pass
     pagehtml += u'''
-  select.inject($('flowtd'));
+  select.inject(document.body);
   }
 }
 
@@ -116,19 +129,18 @@ function addOption(theSel, theText, theValue, penalty)
 {
 	var newOpt = new Element('option', {
 	  'text' : theText,
-	  'value' : theValue,
-	  'events' : {
-		  'mousedown' : function(){
-			  if(theSel.id == 'flist'){
-				createPenaltySel(newOpt);
-			  }
-			}
-		}
-  });
+	  'value' : theValue
+});
+    $(theSel).grab(newOpt);
+	
 	if(penalty){
 	  newOpt.setStyle('background-color', 'red');
 	  createPenaltySel(newOpt, penalty);
-	  }
+	}else{
+	  createPenaltySel(newOpt, '');
+	}
+	  newOpt.setStyle('width', 'auto');
+  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
 	$(theSel).addEvent('keyup', function(event){
 			  if(theSel.id == 'flist'){
 				sel = $(theSel).getChildren('option').filter(function(el){
@@ -139,9 +151,16 @@ function addOption(theSel, theText, theValue, penalty)
 				  }
 			  }
 			});
-
-    var selLength = theSel.length;
-    theSel.options[selLength] = newOpt;
+$(theSel).addEvent('click', function(event){
+			  if(theSel.id == 'flist'){
+				sel = $(theSel).getChildren('option').filter(function(el){
+				  return el.selected == true
+				  });
+				  if(sel){
+					createPenaltySel(sel[0]);
+				  }
+			  }
+			});
 }
 
 function deleteOption(theSel, theIndex)
@@ -149,13 +168,13 @@ function deleteOption(theSel, theIndex)
     var selLength = theSel.length;
     if(selLength > 0)
     {
-		var penSel = $('penalty_'+theSel.options[theIndex].value);
+		var penSel = $(theSel.options[theIndex].value +'_penalty');
 		if(penSel != null){
 			penSel.destroy();
 		  }
         theSel.options[theIndex] = null;
     }
-  document.getElements('select[id^=penalty_]').setStyle('display', 'none');
+  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
 }
 
 function moveOptions(theSelFrom, theSelTo)
@@ -186,11 +205,18 @@ function moveOptions(theSelFrom, theSelTo)
 
 function selectAllOptions(selStr)
 {
-    var selObj = document.getElementById(selStr);
-    for (var i=0; i<selObj.options.length; i++)
-    {
-        selObj.options[i].selected = true;
-    }
+    $(selStr).getChildren('option').each(function(el){
+	  el.selected = true;
+	  var sel = $(el.value +'_penalty');
+	  var val = sel != null ? sel.value : false;
+	  if(val != ""){
+		$('taskForm').grab(new Element('input', {
+		  'type' : 'hidden',
+		  'name' : el.value +'_penalty',
+		  'value' : val
+		  }));
+		}
+	  });
 }
 
 </script>
@@ -201,10 +227,10 @@ select questions:<br>
     <input type='submit' name='new' value='NewQuestion'>
 </form>
 <table border="0">
-<form>
+<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">
     <tr>
     <td>
-        <select size="10" name="questionList" multiple="multiple">\n''' % request.request_uri.split("?")[0]
+        <select size="10" id="qlist" name="questionList" multiple="multiple">\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
     for page in pagelist:
         if page not in questions:
@@ -219,19 +245,19 @@ select questions:<br>
     </td>
     <td align="center" valign="middle">
         <input type="button" value="--&gt;"
-         onclick="moveOptions(this.form.questionList, taskForm.flowlist);"><br>
+         onclick="moveOptions($('qlist'), taskForm.flowlist);"><br>
         <input type="button" value="&lt;--"
-         onclick="moveOptions(taskForm.flowlist, this.form.questionList);">
+         onclick="moveOptions(taskForm.flowlist, $('qlist'));">
     </td>
-</form>
-<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">
     <input type="hidden" name="action" value="%s">\n''' % action_name
     if task:
         pagehtml += u'<input type="hidden" name="task" value="%s">\n' % task
     pagehtml += '''
     <td id="flowtd">
         <select name="flowlist" id="flist" size="10"
-		multiple="multiple"></select><script type="text/javascript">\n'''
+		multiple="multiple"></select><script type="text/javascript">
+		function addOpts(){
+		\n'''
     for page in questions:
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["question"])
@@ -240,10 +266,11 @@ select questions:<br>
         except:
             pass
     pagehtml += '''
+		}
         </script>
-    </td><td>
-	<input type="button" value="&uArr;" onclick="moveSel($('flist'), '-');"><br>
-	<input type="button" value="&dArr;" onclick="moveSel($('flist'), '+');"></td>
+    </td><td style="width: 15px">
+	<input type="button" value="&uarr;" onclick="moveSel($('flist'), '-');"><br>
+	<input type="button" value="&darr;" onclick="moveSel($('flist'), '+');"></td>
     </tr>
 </table>
 select task type: <select name="type">\n'''
@@ -254,8 +281,9 @@ select task type: <select name="type">\n'''
         else:
             pagehtml += '<option value="%s">%s\n' % (item, item)
     pagehtml += '''
-</select><br>
-description:<br>
+</select>
+<br>description:
+<br>
 <textarea name="description" rows="10" cols="40">%s</textarea><br>
 ''' % description
     pagehtml += '''
