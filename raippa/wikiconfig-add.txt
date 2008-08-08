@@ -1,0 +1,60 @@
+    user_form_fields = [ 
+            ('name', 'Id', "text", "36", "(Studentnumber)"),
+            ('aliasname', 'Name', "text", "36", ''),
+            ('password', 'Password', "password", "36", ''),
+            ('password2', 'Password repeat', "password", "36", '(Only for password change or new account)'),      
+            ('email', 'Email', "text", "36", ''),
+            ('css_url', 'User CSS URL', "text", "40", '(Leave it empty for disabling user CSS)'),
+            ('edit_rows', 'Editor size', "text", "3", ''),
+            ]
+                
+    from graphingwiki.securitypolicy import SecurityPolicy as GraphingWiki
+    class SecurityPolicy(GraphingWiki):
+        def read(self, page_name):
+            print "read", page_name, self.request.user.name
+            if self.request.user.name:
+                from raippa import RaippaUser
+                raippauser = RaippaUser(self.request, self.request.user.name)
+                if "CategoryAdmin" in raippauser.categories or \
+                   "CategoryTeacher" in raippauser.categories:
+                   return True
+                else:
+                    pagelist = ["RAIPPA", "UserPreferences", raippauser.currentcourse, raippauser.currenttask, "RecentChanges", "ecode/status"]
+                    if page_name in pagelist:
+                        return True
+                    else:
+                        return False
+            else:
+                if page_name == "UserPreferences" \
+                  or page_name == "RAIPPA":
+                    return True
+                else:
+                    return False
+
+        def write(self, page_name):
+            print "write", page_name, self.request.user.name
+            if self.request.user.name:
+                from raippa import RaippaUser
+                raippauser = RaippaUser(self.request, self.request.user.name)
+                if "CategoryAdmin" in raippauser.categories or \
+                   "CategoryTeacher" in raippauser.categories:
+                    return True
+                else:
+                    if page_name == raippauser.statuspage \
+                      or page_name == raippauser.id \
+                      or page_name.startswith("History/") \
+                      or page_name.startswith("TimeTrack/") \
+                      or page_name == "UserPreferences":
+                        return True
+                    else:
+                        return False
+            else:
+                return False
+
+        def save(self, editor, newtext, rev, **kw):
+            from graphingwiki.securitypolicy import SecurityPolicy as GraphingWiki
+            if GraphingWiki.save(self, editor, newtext, rev, **kw):
+                return True
+            else:
+                return False
+
