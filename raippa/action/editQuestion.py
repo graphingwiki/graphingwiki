@@ -53,6 +53,12 @@ def show_basicform(request):
     html += u'''
  <script type="text/javascript">
 /*	Using mootools javascript framework */
+window.addEvent('domready', function(){
+  /* Hide tip-fields, regexp and casesensitive checkboxes on pageload */
+
+  typeCheck();
+  $('ansRow').getElements('span').set('style', 'visibility:hidden');
+});
 
 /* Set object given in parameters visible */
 function show(obj){
@@ -121,6 +127,7 @@ td4.grab(new Element('input' , {
 );
 var radioTrue = new Element('input', {
 	'type' : 'radio',
+	'id' : 'value'+lkm,
 	'name' : 'value'+lkm,
 	'value' : 'true',
 	'checked': 'true'
@@ -189,7 +196,6 @@ for(var i in checks){
 		  }
 
 	  if(regExp.test(name) == true && checked == true){
-	  /* Create tr to keep field adder in track */
 	  tab.removeChild(input.parentNode.parentNode);
       done = 0;
       deleted++;
@@ -204,18 +210,15 @@ for(var i in checks){
 /* Change visibility of answer data fields depending on which answertype has
 been selected */
 function typeCheck(){
-var sel = document.getElementById('typeSelect').value;
+var sel = $('typeSelect').value;
 var tds = document.getElementsByTagName('TD');
 var td = null;
   if(sel === "file"){
 	document.getElementById('ansRow').style.display = "none";
 	document.getElementById('fieldCreator').style.display = "none";
-
  }else{
 	document.getElementById('ansRow').style.display = "";
   	document.getElementById('fieldCreator').style.display = "";
-  
-
   }
 
 for(var i in tds){
@@ -229,12 +232,37 @@ for(var i in tds){
   }
 }
 }
+
+function submitCheck(){
+  var form = $('dataform');
+  if($('questionfield').value == ''){
+	alert('Please insert question before saving!');
+	return false;
+	}
+var type = $('typeSelect').value;
+  if(type != 'file'){
+	var ans = $$('input[name^=answer]');
+	hasAnswer = ans.some(function(a){
+	  var value = $(a.name.replace(/answer/,'value')).checked;
+	  var pass = a.value.length > 0  && value;
+	  return pass == true;
+	  });
+	if(!hasAnswer){
+	  var msg = "There is no right answer! Do you still want to save the question?";
+	  return confirm(msg);
+	  }
+	}
+return true;
+  }
 </script>
 
-<form method="POST" enctype="multipart/form-data">
+<form id="dataform" method="POST" enctype="multipart/form-data"
+onsubmit="return submitCheck();">
 <input type="hidden" name="action" value="%s">
 <table style="border-style:hidden">
-<tr style="border-style:hidden"><td  style="border-style:hidden">question:</td><td style="border-style:hidden"colspan="2"> <input type="text" name="question"></td><tr>
+<tr style="border-style:hidden"><td
+style="border-style:hidden">question:</td><td
+style="border-style:hidden"colspan="2"> <input id="questionfield" type="text" name="question"></td><tr>
 <tr style="border-style:hidden"><td  style="border-style:hidden">note:</td><td colspan="2"style="border-style:hidden"> <input type="text" name="note"></td><tr>
 <tr style="border-style:hidden"><td  style="border-style:hidden">image:</td><td colspan="2"style="border-style:hidden">
 <input type="file" name="file" value="Select..."></td><tr>
@@ -274,7 +302,7 @@ answer to be deleted"></td>
     	title="Answer is case sensitive"></td>
     <td class="rexp"><input type="checkbox" name="rexp%s"value="true"
     	title="Answer is regular expression" ></td>
-    <td><input type="radio" name="value%s" value="true"
+    <td><input type="radio" id="value%s" name="value%s" value="true"
     	onClick="hide(this);" checked ></td>
     <td><input type="radio" name="value%s" value="false" 
     	onClick="show(this);"></td>
@@ -282,19 +310,13 @@ answer to be deleted"></td>
 </tr>
 
 
-''' % (answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber)
+''' % (answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber)
 
     html += u'''
   </table>
     <hr>
      <input type="submit" name="save" value="Save">
     </form>
-<script type="text/javascript">
-/* Hide tip-fields, regexp and casesensitive checkboxes on pageload */
-
-typeCheck();
-$('ansRow').getElements('span').set('style', 'visibility:hidden');
-</script>
 '''
 
     request.write(html)
