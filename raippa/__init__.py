@@ -25,6 +25,7 @@ historycategory = u'CategoryHistory'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
 timetrackcategory = u'CategoryTimetrack'
+usercategory = u'CategoryUser'
 
 class RaippaUser:
     def __init__(self, request, id=None):
@@ -40,20 +41,29 @@ class RaippaUser:
         else:
             self.id = encode(self.request.user.name)
 
-        self.name = unicode()
-        #globaldata = GraphData(self.request)
-        namemeta = getmetas(request, self.globaldata, encode(self.id), ["name"])
-        for name, type in namemeta["name"]:
-            self.name = name
-            break
-            
+        self.name = self.request.user.aliasname
+        self.categories = list()
+        page = Page(request, self.id)
+        if page.exists():
+            meta = getmetas(request, self.globaldata, encode(self.id), ["name", "WikiCategory"], checkAccess=False)
+            for name, type in meta["name"]:
+                self.name = name
+                break
+            for category, type in meta["WikiCategory"]:
+                self.categories.append(category)
+        if not self.categories:
+            self.categories.append(usercategory)
+ 
         self.statuspage = encode("%s/status" % self.id)
-                
-        self.statusdict = self.globaldata.getpage(self.statuspage).get('lit', {})
+        page = Page(request, self.statuspage)
+        if page.exists():   
+            self.statusdict = self.globaldata.getpage(self.statuspage).get('lit', {})
+        else:
+            self.statusdict = dict()
+
         self.currentcourse = removelink(self.statusdict.get("current", [""])[0])
         self.currentcoursepoint = removelink(self.statusdict.get(self.currentcourse, [""])[0])
         self.currenttask = removelink(self.statusdict.get(self.currentcoursepoint, [""])[0])
-        #globaldata.closedb()
 
     def getcourselist(self):
         courselist = list()
