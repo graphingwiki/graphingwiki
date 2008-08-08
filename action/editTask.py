@@ -22,15 +22,21 @@ historycategory = u'CategoryHistory'
 
 def taskform(request, task=None):
     if task:
-        metas = getmetas(request, request.globaldata, task, [u'description', u'type'])
-        description = metas[u'description'][0][0]
-        type = metas[u'type'][0][0]
+        metas = getmetas(request, request.globaldata, task, ["description", "type"])
+        description = metas["description"][0][0]
+        type = metas["type"][0][0]
         questions, taskpoints = getflow(request, task)
+        penaltydict = dict()
+        for taskpoint in taskpoints:
+            metas = getmetas(request, request.globaldata, taskpoint, ["question","penalty"])
+            if metas["penalty"] and metas["question"]:
+                penaltydict[metas["question"][0][0]] = metas["penalty"][0][0]
     else:
         description = u''
         type = u'basic'
         questions = list()
         taskpoints = list()
+        penaltydict = dict()
 
     _ = request.getText
     pagehtml = '''
@@ -262,7 +268,7 @@ select questions:<br>
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["question"])
             question = metas["question"][0][0]
-            pagehtml +=u'''addOption(document.getElementById("flist"),"%s","%s");\n''' %(question,page)
+            pagehtml +=u'''addOption(document.getElementById("flist"),"%s","%s","%s");\n''' %(question,page,penaltydict.get(page,""))
         except:
             pass
     pagehtml += '''
@@ -293,15 +299,28 @@ select task type: <select name="type">\n'''
     request.write(u'%s' % pagehtml)
 
 def writemeta(request, taskpage=None):
-    description = request.form.get(u'description', [u''])[0]
+    description = unicode() 
+    type = unicode()
+    flowlist = list() 
+    penaltydict = dict()
+
+    for key in request.form:
+        if key == "description":
+            description = request.form.get(u'description', [u''])[0]
+        elif key == "type":
+            type = request.form.get('type', [u''])[0]
+        elif key == "flowlist":
+            flowlist = request.form.get("flowlist", [])
+        elif key.endswith("_penalty"):
+            question = key.split("_")[0]
+            penaltytask = request.form.get(key, [None])[0]
+            if penaltytask:
+                penaltydict[question] = penaltytask
+
     if not description:
         return "Missing task description."
-
-    type = request.form.get('type', [u''])[0]
     if not type:
         return "Missing task type."
-
-    flowlist = request.form.get("flowlist", [])
     if not flowlist:
         return "Missing question list."
 
@@ -312,9 +331,9 @@ def writemeta(request, taskpage=None):
         page = PageEditor(request, taskpage)
         page.saveText("<<Raippa>>", page.get_real_rev())
 
-        taskdata = {u'description':[description],
-                    u'type':[type],
-                    u'start':[addlink(taskpoint)]}
+        taskdata = {"description":[description],
+                    "type":[type],
+                    "start":[addlink(taskpoint)]}
 
         input = order_meta_input(request, taskpage, taskdata, "add")
         process_edit(request, input, True, {taskpage:[taskcategory]})
@@ -323,17 +342,20 @@ def writemeta(request, taskpage=None):
             page = PageEditor(request, taskpoint)
             page.saveText("<<Raippa>>", page.get_real_rev())
             nexttaskpoint = randompage(request, taskpage)
-            pointdata = {u'question':[addlink(questionpage)]}
+            pointdata = {"question":[addlink(questionpage)]}
+            penalty = penaltydict.get(questionpage, None)
+            if penalty:
+                pointdata["penalty"] = addlink(penalty)
             if index >= len(flowlist)-1:
-                pointdata[u'next'] = [u'end']
+                pointdata["next"] = ["end"]
             else:
-                pointdata[u'next'] = [addlink(nexttaskpoint)]
+                pointdata["next"] = [addlink(nexttaskpoint)]
             input = order_meta_input(request, taskpoint, pointdata, "add")
             process_edit(request, input, True, {taskpoint:[taskpointcategory]})
             taskpoint = nexttaskpoint
     else:
         questions, taskpoints = getflow(request, taskpage)
-        if questions != flowlist:
+        if questions != flowlist or penaltydict:
             newflow = list()
             userstatus = list()
             copyoftaskpoints = taskpoints[:]
@@ -376,7 +398,11 @@ def writemeta(request, taskpage=None):
                     next = "end"
                 else:
                     next = addlink(newflow[index+1][1])
-                taskpointdata = {u'question':[question], u'next':[next]}
+                taskpointdata = {"question":[question],
+                                 "next":[next]}
+                penalty = penaltydict.get(questiontuple[0], None)
+                if penalty:
+                    taskpointdata["penalty"] = [addlink(penalty)]
                 input = order_meta_input(request, taskpoint, taskpointdata, "repl")
                 process_edit(request, input, True, {taskpoint:[taskpointcategory]})
 
