@@ -282,35 +282,31 @@ style="border-style:hidden"colspan="2"> <input id="questionfield" type="text" na
 <tr>
     <td style="text-align:center"><a title="Remove selected answers"
 	style="color:red"  href="javascript: rmField();">X</a></td>
-    <td style="width:150px">Answer:</td>
-    <td title="Case sensitive" class="rexp" style="width:110px; text-align:
-    center">Case sensitive</td>
-<td title="Regular Expression" class="rexp" style="width:75px; text-align:
-    center">Regexp</td>
+    <td style="width:150px">Answer:</td>''' % action_name
+    #html += u'''
+    #<td title="Case sensitive" class="rexp" style="width:110px; text-align: center">Case sensitive</td>
+    #<td title="Regular Expression" class="rexp" style="width:75px; text-align: center">Regexp</td>
+    #'''
+    html += u'''
     <td style="width:50px">Right</td>
     <td style="width:50px">Wrong</td>
     <td></td>
-</tr>
-  ''' % action_name
+</tr>'''
 
     for answernumber in range(1,5):
         html += '''
 <tr id="ansTr%s"><td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this
 answer to be deleted"></td>
-    <td> <input type="text" name="answer%s"></td>
-    <td class="rexp"><input type="checkbox" name="cSens%s"  value="true" 
-    	title="Answer is case sensitive"></td>
-    <td class="rexp"><input type="checkbox" name="rexp%s"value="true"
-    	title="Answer is regular expression" ></td>
+    <td> <input type="text" name="answer%s"></td>''' % (answernumber, answernumber, answernumber)
+    #<td class="rexp"><input type="checkbox" name="cSens%s" value="true" title="Answer is case sensitive"></td>
+    #<td class="rexp"><input type="checkbox" name="rexp%s"value="true" title="Answer is regular expression" ></td>
+        html += '''
     <td><input type="radio" id="value%s" name="value%s" value="true"
     	onClick="hide(this);" checked ></td>
     <td><input type="radio" name="value%s" value="false" 
     	onClick="show(this);"></td>
     <td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
-</tr>
-
-
-''' % (answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber, answernumber)
+</tr>''' % (answernumber, answernumber, answernumber, answernumber)
 
     html += u'''
   </table>
