@@ -12,6 +12,7 @@ from raippa import addlink
 coursecategory = u'CategoryCourse'
 taskcategory = u'CategoryTask'
 usercategory = u'CategoryUser'
+questioncategory = u'CategoryQuestion'
 
 class FlowPage:
     def __init__(self, request, course, pagename=""):
@@ -101,11 +102,19 @@ def coursesform(request):
     </select>
     <input type='submit' name='edit' value='EditTask'>
     <input type='submit' name='new' value='NewTask'>
-</form>
+</form>'''
+    html += '''
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editQuestion">
+    <select size="1" name="question">''' % request.request_uri.split("?")[0]
+    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
+    for page in pagelist:
+        html += u'<option name="question" value="%s">%s\n' % (page, page)
+    html += '''
+    </select>
+    <input type='submit' name='edit' value='EditQuestion'>
     <input type='submit' name='new' value='NewQuestion'>
-</form>''' % request.request_uri.split("?")[0]
+</form>'''
 
     request.write(html)
 
