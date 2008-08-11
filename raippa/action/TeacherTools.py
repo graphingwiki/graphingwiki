@@ -106,13 +106,14 @@ def coursesform(request):
     html += '''
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editQuestion">
-    <select size="1" name="question">''' % request.request_uri.split("?")[0]
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
-    for page in pagelist:
-        html += u'<option name="question" value="%s">%s\n' % (page, page)
+    ''' % request.request_uri.split("?")[0]
+    #<select size="1" name="question">
+    #globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
+    #for page in pagelist:
+    #    html += u'<option name="question" value="%s">%s\n' % (page, page)
+    #</select>
+    #<input type='submit' name='edit' value='EditQuestion'>
     html += '''
-    </select>
-    <input type='submit' name='edit' value='EditQuestion'>
     <input type='submit' name='new' value='NewQuestion'>
 </form>'''
 
