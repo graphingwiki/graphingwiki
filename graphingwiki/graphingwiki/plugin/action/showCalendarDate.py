@@ -8,7 +8,7 @@ from graphingwiki.editing import metatable_parseargs, getmetas
 
 def _enter_page(request, pagename):
     _ = request.getText
-	   
+
     title = _('Calendar')
 
     request.theme.send_title(title,
@@ -21,11 +21,11 @@ def _enter_page(request, pagename):
         formatter = HtmlFormatter(request)
     else:
         formatter = request.formatter
-    
+
     request.page.formatter = formatter
 
     request.write(request.page.formatter.startContent("content"))
-    
+
 def _exit_page(request, pagename):
     # End content
     request.write(request.page.formatter.endContent()) # end content div
@@ -35,7 +35,7 @@ def _exit_page(request, pagename):
 def addEntry(pagename, date, request):
     request.write('<a href="%s?action=edit&backto=%s">Add entry</a>' % (date, pagename))
 
-      
+
 def printEvents(events, date, pagename, request):
 
     def writeCell(stuff, width=''):
@@ -58,29 +58,32 @@ def printEvents(events, date, pagename, request):
         minutes = int(event['Duration'][0][0].split(':')[1])
         endTime = startTime + datetime.timedelta(hours = hours, minutes = minutes)
         writeCell(startTime.strftime('%H:%M - ') + endTime.strftime('%H:%M'))
-        
+
         #Parser('== foo ==', request).format(request.formatter)
         writeCell(request.formatter.text(event['Content']), width="50%")
 
         writeCell('<a href="%s?action=edit&backto=%s">edit</a>' % (event['Page'], backto)) #request.request_uri[1:]))
         writeCell('<a href="%s?action=DeletePage">remove</a>' % event['Page'])
-        
+
         request.write('</tr>')
-        
+
     request.write('</table>')
 
 
 def execute(pagename, request):
     request.http_headers()
-    
-    #_enter_page(request, pagename)
+
+    plainpage = request.form.get('plainpage', [None])[0]
+
+    if not plainpage == "true":
+	    _enter_page(request, pagename)
 
     date = request.form.get('date', [None])[0]
-                  
+
     categories = request.form.get('categories', [None])
-                  
+
     categories = ','.join(categories)
-    
+
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, 'Date=%s,%s' % (date, categories), get_all_keys=True)
 
     globaldata.closedb()
@@ -104,8 +107,9 @@ def execute(pagename, request):
     events.sort(key = lambda x: x['Time'])
 
     printEvents(events, date, pagename, request)
-    
+
     addEntry(pagename, date, request)
 
-    #_exit_page(request, pagename)
-    
+    if not plainpage == "true":
+        _exit_page(request, pagename)
+
