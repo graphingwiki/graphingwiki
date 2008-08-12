@@ -199,6 +199,15 @@ def execute(pagename, request):
     elif request.form.has_key('selectuser') and request.form.has_key('course'):
         html = unicode()
         #?action=drawchart&labels=users,average&start=0,1&Q1=2,3&Q2=3,5&groups=start,Q1,Q2
+        html += u''' 
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
+		<script type="text/javascript">
+		window.addEvent('domready', function(){
+        var tip = new Tips('.tips');
+		  });
+		</script>
+        ''' % (request.cfg.url_prefix_static,request.cfg.url_prefix_static)
         barhtml = u'%s/%s?action=drawchart&labels=right,wrong' % (request.getBaseURL(), pagename)
         bars = list()
         questionlisthtml = unicode()
