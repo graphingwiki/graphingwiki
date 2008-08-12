@@ -335,7 +335,10 @@ G.async=false;G.loadXML(D);}else{G=new DOMParser().parseFromString(D,"text/xml")
 F<E;F++){var H=Element.clone(D.childNodes[F],true,true);if(H){A.grab(H);}}return A;})||A.set("html",C);},success:function(D){var C=this.options,B=this.response;
 B.html=D.stripScripts(function(E){B.javascript=E;});var A=this.processHTML(B.html);B.tree=A.childNodes;B.elements=A.getElements("*");if(C.filter){B.tree=B.elements.filter(C.filter);
 }if(C.update){$(C.update).empty().adopt(B.tree);}if(C.evalScripts){$exec(B.javascript);}this.onSuccess(B.tree,B.elements,B.html,B.javascript);}});Element.Properties.load={set:function(A){var B=this.retrieve("load");
-if(B){send.cancel();}return this.eliminate("load").store("load:options",$extend({data:this,link:"cancel",update:this,method:"get"},A));},get:function(A){if(A||!this.retrieve("load")){if(A||!this.retrieve("load:options")){this.set("load",A);
+/*bugfix send -> B*/
+if(B){B.cancel();}
+/* fix end*/
+return this.eliminate("load").store("load:options",$extend({data:this,link:"cancel",update:this,method:"get"},A));},get:function(A){if(A||!this.retrieve("load")){if(A||!this.retrieve("load:options")){this.set("load",A);
 }this.store("load",new Request.HTML(this.retrieve("load:options")));}return this.retrieve("load");}};Element.implement({load:function(){this.get("load").send(Array.link(arguments,{data:Object.type,url:String.type}));
 return this;}});Request.JSON=new Class({Extends:Request,options:{secure:true},initialize:function(A){this.parent(A);this.headers.extend({Accept:"application/json","X-Request":"JSON"});
 },success:function(A){this.response.json=JSON.decode(A,this.options.secure);this.onSuccess(this.response.json,A);}});
