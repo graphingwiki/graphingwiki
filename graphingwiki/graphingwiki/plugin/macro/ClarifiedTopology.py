@@ -33,7 +33,7 @@ def execute(macro, args):
     # Get all containers
     args = 'CategoryContainer, %s=/.+/' % (args)
 
-    request.write(args)
+    #request.write(args)
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
@@ -44,7 +44,20 @@ def execute(macro, args):
     aliases = dict()
 
     for page in pagelist:
-        coords[page] = [x.split(', ') for x,y in getvalues(request, globaldata, page, topology)][0]
+        crds = [x.split(',') for x,y in getvalues(request, globaldata, page, topology)]
+
+        if not crds:
+            continue
+        crds = [x.strip() for x in crds[0]]
+        if not len(crds) == 2:
+            continue
+
+        try:
+            [int(x) for x in crds]
+        except ValueError:
+            continue
+
+        coords[page] = crds
 
         images[page] = AttachFile.getFilename(request,
                                               page, u'shapefile.png')
@@ -65,7 +78,7 @@ def execute(macro, args):
     # Setup Cairo
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  surface_x, surface_y)
-    request.write(repr([surface_x, surface_y]))
+    # request.write(repr([surface_x, surface_y]))
     ctx = cairo.Context(surface)
     ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
                          cairo.FONT_WEIGHT_BOLD)
@@ -76,6 +89,9 @@ def execute(macro, args):
     ctx.fill()
 
     for page in pagelist:
+        if not coords.has_key(page):
+            continue
+
         x, y = [int(x) for x in coords[page]]
 #         request.write('<br>' + repr(getvalues(request, globaldata, page, 'tia-name')) + '<br>')
 #         request.write(repr(coords[page]) + '<br>')
