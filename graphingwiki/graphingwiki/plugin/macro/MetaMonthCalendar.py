@@ -29,9 +29,11 @@
 import re
 import calendar, datetime, time
 
+
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
 
+from MoinMoin.Page import Page
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
@@ -57,19 +59,27 @@ def execute(macro, args):
 
     out = macro.request
 
-    out.write(u'I can calendars\n\n')
-
     entries = dict()
 
     for page in pagelist:
         metas = getmetas(request, globaldata, page, metakeys, display=False, checkAccess=True)
-        if u'StartTime' not in metas.keys():
+        if u'Date' not in metas.keys():
             continue
         #FIXME stoptime
-        if metas[u'StartTime']:
-            metadate = metas[u'StartTime'][0][0] 
-            temp = entries.setdefault(metadate, list())
-            temp.append(page)
+        if metas[u'Date']:
+            date = metas[u'Date'][0][0]
+            datedata = entries.setdefault(date, list())
+            entrycontent = dict()
+            content = Page(request, page).get_raw_body()
+            if '----' in content:
+                content = content.split('----')[0]
+            entrycontent['content'] = content
+            for meta in metas:
+                entrycontent[meta] = metas[meta][0][0]
+            datedata.append(entrycontent)
+
+
+    print entries
 
     globaldata.closedb()
 
@@ -92,18 +102,11 @@ def execute(macro, args):
             output += macro.formatter.table_cell(1)
             timestamp =u'%04d-%02d-%02d' % (year, month, day)
             if day:
-                if timestamp in entries:
-                    for entry in entries[timestamp]:
-                        page = entry 
-                        output += macro.formatter.pagelink(1, page, **cssClass)
-                        output += macro.formatter.text(u'%d' % day)
-                        output += macro.formatter.pagelink(0)
-                else:
-                    urldict = dict(date = timestamp, backto = macro.request.page.page_name, categories = categories)
-                    url = macro.request.getQualifiedURL() + '/' + '?action=showCalendarDate&date=%(date)s&backto=%(backto)s&categories=%(categories)s' % urldict
-                    output += macro.formatter.url(1, url, u'metamonthcalendar_noentry_url')
-                    output += macro.formatter.text(u'%d' % day)
-                    output += macro.formatter.url(0)
+                urldict = dict(date = timestamp, backto = macro.request.page.page_name, categories = categories)
+                url = macro.request.getQualifiedURL() + '/' + '?action=showCalendarDate&date=%(date)s&backto=%(backto)s&categories=%(categories)s' % urldict
+                output += macro.formatter.url(1, url, u'metamonthcalendar_noentry_url')
+                output += macro.formatter.text(u'%d' % day)
+                output += macro.formatter.url(0)
             output += macro.formatter.table_cell(0)
         output += macro.formatter.table_row(1)
     output += macro.formatter.table_row(0)
