@@ -86,7 +86,7 @@ var to = document.getElementById('ansRow').tBodies[0];
 		}
 	}
 
-var newRow = new Element('tr');
+var newRow = new Element('tr',{'id': 'ansTr'+lkm});
 var td1 = new Element('td');
 var td2 = new Element('td');
 var td3 = new Element('td', { 'class' : 'rexp' });
@@ -155,7 +155,9 @@ span.grab(new Element('input', {
 
 td7.grab(span);
 
-newRow.adopt(td1, td2, td3, td4, td5, td6, td7);
+newRow.adopt(td1, td2);
+//newRow.adopt(td3, td4);
+newRow.adopt(td5, td6, td7);
 
 /* Add tip-field visibility controlling */
 td5.getFirst('input').addEvent('click', function(){
@@ -211,7 +213,7 @@ for(var i in checks){
 been selected */
 function typeCheck(){
 var sel = $('typeSelect').value;
-var tds = document.getElementsByTagName('TD');
+var tds = $$('td.rexp');
 var td = null;
   if(sel === "file"){
 	document.getElementById('ansRow').style.display = "none";
