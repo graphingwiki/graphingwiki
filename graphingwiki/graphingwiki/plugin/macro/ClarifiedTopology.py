@@ -59,8 +59,12 @@ def execute(macro, args):
 
         coords[page] = crds
 
-        images[page] = AttachFile.getFilename(request,
-                                              page, u'shapefile.png')
+        img = getvalues(request, globaldata, page, 'gwikishapefile')
+        if img:
+            img = [x[0] for x in img][0]
+            img = img.split('/')[-1]
+
+            images[page] = AttachFile.getFilename(request, page, img)
 
         alias = getvalues(request, globaldata, page, 'tia-name')
         if alias:
@@ -98,21 +102,25 @@ def execute(macro, args):
 #         request.write(str(x-min_x) + '<br>')
 #         request.write(str(y-min_y) + '<br>')
 
-        if not images.has_key(page):
-            ctx.set_source_rgb(0, 0, 0)
-            ctx.rectangle(x-min_x, y-min_y, 10, 10)
-        else:
-            sf_temp = cairo.ImageSurface.create_from_png(images[page])
-            w = sf_temp.get_height()
-            h = sf_temp.get_width()
-            ctx.set_source_surface(sf_temp, x-min_x, y-min_y)
-            ctx.rectangle(x-min_x, y-min_y, w, h)
-
-        ctx.fill()
         if page in aliases:
             ctx.set_source_rgb(0, 0, 0)
             ctx.move_to(x-min_x, y-min_y)
             ctx.show_text(aliases[page])
+
+        if not images.has_key(page):
+            ctx.set_source_rgb(0, 0, 0)
+            ctx.rectangle(x-min_x, y-min_y, 10, 10)
+        else:
+            try:
+                sf_temp = cairo.ImageSurface.create_from_png(images[page])
+                w = sf_temp.get_height()
+                h = sf_temp.get_width()
+                ctx.set_source_surface(sf_temp, x-min_x, y-min_y)
+                ctx.rectangle(x-min_x, y-min_y, w, h)
+            except cairo.Error:
+                continue
+
+        ctx.fill()
 
     # Output a PNG file
     tmp_fileno, tmp_name = mkstemp()
