@@ -122,7 +122,23 @@ window.addEvent('domready', function(){
  links.each(function(el){
    topic = el.href.match(/\d{4}[-]\d\d[-]\d\d/)[0].clean();
    el.store('tip:title',topic);
-   content = dates.get(topic)? dates.get(topic) : "No events";
+   content = dates.get(topic);
+   if(content){
+     td = el.getParent('td');
+     td.setStyles({
+       'background-color' : 'red'
+       });
+     el.addEvents({
+       'mouseenter': function(){
+         el.setStyle('color', 'green');
+         },
+       'mouseleave': function(){
+         el.setStyle('color','');
+         }
+      });
+   }else{
+    content = "No events"; 
+   }
    el.store('tip:text',content);
    });
   });
