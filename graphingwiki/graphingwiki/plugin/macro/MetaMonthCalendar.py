@@ -82,9 +82,52 @@ def execute(macro, args):
             datedata.append(entrycontent)
 
 
-    print entries
+    #print entries
 
     globaldata.closedb()
+
+    html = u'''
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
+
+<script type="text/javascript">
+window.addEvent('domready', function(){
+  var dates = new Hash();
+    \n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
+
+    for date, d in entries.iteritems():
+        html += u'dates.set("%s","' % date
+        for cont in d:
+            try:
+                time = cont['Time']
+            except:
+                time = "?"
+
+            try:
+                desc = cont['content'].replace('\n','')
+            except:
+                desc = "?"
+
+            html += u'<b>%s :</b> %s<br>' % (time,desc)
+
+        html += u'");\n'
+    html += u'''
+   var links = $$('a');
+  var links = links.filter(function(el){
+    return el.href.match("action=showCalendarDate") != null;
+    });
+  var tips = new Tips(links);
+ links.each(function(el){
+   topic = el.href.match(/\d{4}[-]\d\d[-]\d\d/)[0].clean();
+   el.store('tip:title',topic);
+   content = dates.get(topic)? dates.get(topic) : "No events";
+   el.store('tip:text',content);
+   });
+  });
+  </script>
+   \n'''
+    out.write(html)
+
 
     now = datetime.datetime.today()
     year = now.year
