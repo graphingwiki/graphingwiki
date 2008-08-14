@@ -105,6 +105,8 @@ window.addEvent('domready', function(){
 
             try:
                 desc = cont['content'].replace('\n','')
+                if len(desc) > 35:
+                    desc = desc[0:35] + " ..."
             except:
                 desc = "?"
 
