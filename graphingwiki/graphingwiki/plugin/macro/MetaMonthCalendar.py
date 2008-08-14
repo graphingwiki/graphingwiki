@@ -65,7 +65,7 @@ def execute(macro, args):
         metas = getmetas(request, globaldata, page, metakeys, display=False, checkAccess=True)
         if u'Date' not in metas.keys():
             continue
-        #FIXME stoptime
+
         if metas[u'Date']:
             date = metas[u'Date'][0][0]
             datedata = entries.setdefault(date, list())
@@ -74,7 +74,10 @@ def execute(macro, args):
             if '----' in content:
                 content = content.split('----')[0]
             entrycontent['content'] = content
+
             for meta in metas:
+                if not metas[meta]:
+                    continue
                 entrycontent[meta] = metas[meta][0][0]
             datedata.append(entrycontent)
 
@@ -95,6 +98,7 @@ def execute(macro, args):
     categories = ','.join(categories)
 
     cssClass = dict()
+
 
     for week in cal:
         output += macro.formatter.table_row(1)
