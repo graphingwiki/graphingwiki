@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-"
+# -*- coding: utf-8 -*-
 """
     FIXME DOCUMENT!
 
@@ -73,7 +73,7 @@ def execute(macro, args):
             content = Page(request, page).get_raw_body()
             if '----' in content:
                 content = content.split('----')[0]
-            entrycontent['content'] = content
+            entrycontent['Content'] = content
 
             for meta in metas:
                 if not metas[meta]:
@@ -82,10 +82,74 @@ def execute(macro, args):
             datedata.append(entrycontent)
 
 
-    #print entries
+    #Getting current month
+    now = datetime.datetime.today()
+    today = now.strftime('%Y-%m-%d')
+    now = now.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
+    year = now.year
+    month = now.month
+    cal = calendar.monthcalendar(year, month)
+
+    try:
+        last_date = now.replace(month = month + 1, day = 1)
+    except ValueError:
+        last_date = now.replace(month = 1, year = year + 1, day = 1)
+
+    # counting week numbers
+
+    first_date = now.replace(day = 1)
+
+    weeknum = int(first_date.strftime('%W'))
+
+    if weeknum == 0:
+        weeknum = 53
+    weeknum += 1
+    
+    #adding reoccurring events to dict
+
+    new_entries = dict()
+
+    for date in entries.values():
+        for entry in date:
+            if not 'Type' in entry:
+                continue
+
+            type = entry['Type']
+
+            if type == 'Once' or type == '0':
+                continue
+
+            until = None
+            if 'Until' in entry:
+                until = datetime.datetime.strptime(entry['Until'], '%Y-%m-%d')
+                
+            #FIXME tähän niitä weekly ym
+
+            try:
+                type = int(type)
+            except ValueError:
+                continue
+            
+            curdate = datetime.datetime.strptime(entry['Date'], '%Y-%m-%d')
+
+            delta = datetime.timedelta(days = type)
+
+            while curdate <= last_date:
+                if until:
+                    if curdate >= until:
+                        break
+                curdate += delta
+                newdate = curdate.strftime('%Y-%m-%d')
+                
+                new_entries.setdefault(newdate, list())
+                new_entries[newdate].append(entry)
+
+    for entry in new_entries:
+        entries.setdefault(entry, list())
+        entries[entry].extend(new_entries[entry])
 
     globaldata.closedb()
-
+    
     html = u'''
   <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
   <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
@@ -104,7 +168,7 @@ window.addEvent('domready', function(){
                 time = "?"
 
             try:
-                desc = cont['content'].replace('\n','')
+                desc = cont['Content'].replace('\n','')
                 if len(desc) > 35:
                     desc = desc[0:35] + " ..."
             except:
@@ -146,26 +210,38 @@ window.addEvent('domready', function(){
    \n'''
     out.write(html)
 
-
-    now = datetime.datetime.today()
-    year = now.year
-    month = now.month
-    cal = calendar.monthcalendar(year, month)
-
     output = ""
-    output += macro.formatter.table(1)
+    output += macro.formatter.table(1, {'class' : 'calendar'})
 
     categories = [x.strip() for x in args.split(',') if 'Category' in x]
     categories = ','.join(categories)
 
-    cssClass = dict()
+    print dir(macro.formatter.table_cell)
 
+    output += macro.formatter.table_row(1)
+
+    output += macro.formatter.table_cell(1, {'id': 'calendar_empty'})
+    output += macro.formatter.table_cell(0)
+
+    for i in 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun':
+        output += macro.formatter.table_cell(1, {'id': 'calendar_dayname'})
+        output += macro.formatter.text(i)
+        output += macro.formatter.table_cell(0)
+    output += macro.formatter.table_row(0)
 
     for week in cal:
         output += macro.formatter.table_row(1)
+        output += macro.formatter.table_cell(1, {'id': 'calendar_weeknumber'})
+        output += macro.formatter.text("%2d" % weeknum)
+        output += macro.formatter.table_cell(0)
+        weeknum += 1
+
         for day in week:
-            output += macro.formatter.table_cell(1)
-            timestamp =u'%04d-%02d-%02d' % (year, month, day)
+            if day and str(day) == now.day:
+                output += macro.formatter.table_cell(1, {'id' : 'calendar_today'})
+            else:
+                output += macro.formatter.table_cell(1, {'class': 'caledar_day'})
+            timestamp = u'%04d-%02d-%02d' % (year, month, day)
             if day:
                 urldict = dict(date = timestamp, backto = macro.request.page.page_name, categories = categories)
                 url = macro.request.getQualifiedURL() + '/' + '?action=showCalendarDate&date=%(date)s&backto=%(backto)s&categories=%(categories)s' % urldict
@@ -179,7 +255,3 @@ window.addEvent('domready', function(){
 
 
     return output
-
-def makeCalendar():
-    pass
-
