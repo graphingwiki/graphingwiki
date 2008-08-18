@@ -34,10 +34,8 @@ from codecs import getencoder
 from MoinMoin import config
 from MoinMoin.logfile import editlog
 from MoinMoin.Page import Page
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode
-from graphingwiki.editing import getkeys
+from graphingwiki.editing import get_revisions
 
 from MetaTable import construct_table
 
@@ -47,53 +45,12 @@ def execute(macro, args):
     request = macro.request
     _ = macro.request.getText
 
-    # save to graph file, if plugin available
-    parse_text = importPlugin(request.cfg,
-                              'action',
-                              'savegraphdata',
-                              'parse_text')
-    
-    alldata = dict()
-    revisions = dict()
-
     if args:
-        pagename = args
         page = Page(request, args)
     else:
-        pagename = macro.formatter.page.page_name
         page = request.page
 
-    quotedname = url_quote(encode(pagename))
-
-    for rev in page.getRevList():
-        revpage = Page(request, pagename, rev=rev)
-        text = revpage.get_raw_body()
-        alldata, pagegraph = parse_text(request, alldata, revpage, text)
-        revlink = '%s?action=recall&rev=%d' % (encode(pagename), rev)
-        if alldata.has_key(quotedname):
-            alldata[revlink] = alldata[quotedname]
-            # So that new values are appended rather than overwritten
-            del alldata[quotedname]
-            # Add revision as meta so that it is shown in the table
-            alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
-            revisions[rev] = revlink
-
-    class getgraphdata(object):
-        def __init__(self, globaldata):
-            self.globaldata = globaldata
-
-        def getpage(self, pagename):
-            return self.globaldata.get(pagename, {})
-
-    globaldata = getgraphdata(alldata)
-
-    pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
-
-    metakeys = set()
-    for page in pagelist:
-        for key in getkeys(globaldata, page):
-            metakeys.add(key)
-    metakeys = sorted(metakeys, key=str.lower)
+    globaldata, pagelist, metakeys = get_revisions(request, page)
 
     construct_table(macro, globaldata, pagelist,
                     metakeys, 'Meta by Revision')

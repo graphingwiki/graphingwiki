@@ -28,6 +28,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
 from MoinMoin.util.lock import ReadLock
+from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import encode, nonguaranteeds_p, getgraphdata
 
@@ -50,6 +51,50 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
+
+def get_revisions(request, page):
+    parse_text = importPlugin(request.cfg,
+                              'action',
+                              'savegraphdata',
+                              'parse_text')
+    
+    alldata = dict()
+    revisions = dict()
+
+    pagename = page.page_name
+    quotedname = url_quote(encode(pagename))
+
+    for rev in page.getRevList():
+        revpage = Page(request, pagename, rev=rev)
+        text = revpage.get_raw_body()
+        alldata, pagegraph = parse_text(request, alldata, revpage, text)
+        revlink = '%s?action=recall&rev=%d' % (encode(pagename), rev)
+        if alldata.has_key(quotedname):
+            alldata[revlink] = alldata[quotedname]
+            # So that new values are appended rather than overwritten
+            del alldata[quotedname]
+            # Add revision as meta so that it is shown in the table
+            alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
+            revisions[rev] = revlink
+
+    class getgraphdata(object):
+        def __init__(self, globaldata):
+            self.globaldata = globaldata
+
+        def getpage(self, pagename):
+            return self.globaldata.get(pagename, {})
+
+    globaldata = getgraphdata(alldata)
+
+    pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
+
+    metakeys = set()
+    for page in pagelist:
+        for key in getkeys(globaldata, page):
+            metakeys.add(key)
+    metakeys = sorted(metakeys, key=str.lower)
+
+    return globaldata, pagelist, metakeys
 
 def underlay_to_pages(req, p):
     underlaydir = req.cfg.data_underlay_dir
@@ -392,7 +437,8 @@ def edit(pagename, editfun, request=None,
 
     # Release the possible readlock that template-savers may have acquired
     if hasattr(request, 'lock'):
-        request.lock.release()
+        if request.lock.isLocked():
+            request.lock.release()
 
     if not newtext:
         return u'No data', p

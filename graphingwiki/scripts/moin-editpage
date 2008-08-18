@@ -19,12 +19,11 @@ if __name__ == '__main__':
         sys.exit(2)
 
     # Configdir to path, so wikiconfig can be imported by Request
-    try:
-        configdir = os.path.join(args[0], 'config')
-        sys.path.append(configdir)
-    except:
-        configdir = args[0]
-        sys.path.append(configdir)
+    cp = args[0]
+    cp2 = os.path.join(cp, 'config')
+    if os.path.isdir(cp2):
+        cp = cp2
+    sys.path.append(cp)
 
     pagename = args[1]
 

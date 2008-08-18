@@ -27,7 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import os
 import math
 
 cairo_found = True
@@ -38,8 +37,6 @@ except ImportError:
     pass
 
 from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-from tempfile import mkstemp
 
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -49,6 +46,9 @@ from MoinMoin.request.request_modpython import Request as RequestModPy
 from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
 from graphingwiki.patterns import encode
 
+from metasparkline import draw_path, cairo_not_found, \
+    write_surface, image_headers, plot_error
+
 def add_to_center(center, coords):
     return center[0] + coords[0], center[1] + coords[1]
 
@@ -57,14 +57,6 @@ def spider_coords(radius, angle):
     y = -radius * round(math.cos(angle), 2)
 
     return x, y
-
-# Draw a path between a set of points
-def draw_path(ctx, endpoints):
-    ctx.move_to(*endpoints[-1])
-    for coord in endpoints:
-        ctx.line_to(*coord)
-
-    return ctx
 
 # Draw a radar diagram at a certain radious
 def spider_radius(ctx, center, radius, sectors):
@@ -93,10 +85,15 @@ def execute(pagename, request):
     _ = request.getText
 
     if not cairo_found:
+<<<<<<< .working
         request.setHttpHeader('Content-type: text/plain')
         request.write(_("ERROR: Cairo Python extensions not installed. " +\
                         "Not performing layout."))
         return
+=======
+        cairo_not_found()
+
+>>>>>>> .merge-right.r560
     # Grab arguments
     args = ', '.join(x for x in request.form.get('arg', []))
 
@@ -148,7 +145,8 @@ def execute(pagename, request):
 
     # If no keys, print nothing
     if not pagelist:
-        return u''
+        request.write(plot_error())
+        raise MoinMoinNoFooter
 
     # Populate data to the radar chart
     data = dict()
@@ -156,7 +154,6 @@ def execute(pagename, request):
         for key in metakeys:
             data[key] = set(x for x, y in
                             getvalues(request, globaldata, page, key))
-
 
     # Get values for the chart axes
     data_per_axis = dict()
@@ -177,7 +174,8 @@ def execute(pagename, request):
 
     # No use in having tables with 
     if len(values) < 2:
-        return u''
+        request.write(plot_error())
+        raise MoinMoinNoFooter
 
     per_value = radius / len(values)
 
@@ -243,20 +241,8 @@ def execute(pagename, request):
         ctx.move_to(*point)
         ctx.show_text(text)
 
-    # Output a PNG file
-    tmp_fileno, tmp_name = mkstemp()
-    surface.write_to_png(tmp_name)
-    surface.finish()
-    
-    f = file(tmp_name)
-    data = f.read()
-    os.close(tmp_fileno)
-    os.remove(tmp_name)
+    data = write_surface(surface)
 
-    if isinstance(request, RequestModPy):
-        request.setHttpHeader('Content-type: image/png')
-        del request.mpyreq.headers_out['Vary']
-    else:
-        request.write("Content-type: image/png\n\n")
+    image_headers(request)
         
     request.write(data)
