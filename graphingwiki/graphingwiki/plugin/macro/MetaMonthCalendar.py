@@ -99,12 +99,8 @@ def execute(macro, args):
 
     first_date = now.replace(day = 1)
 
-    weeknum = int(first_date.strftime('%W'))
+    weeknum = first_date.isocalendar()[1]
 
-    if weeknum == 0:
-        weeknum = 53
-    weeknum += 1
-    
     #adding reoccurring events to dict
 
     new_entries = dict()
