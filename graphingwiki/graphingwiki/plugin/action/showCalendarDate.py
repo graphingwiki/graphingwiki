@@ -35,7 +35,9 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def addEntry(pagename, date, request):
-    request.write('<br><a href="%s?action=edit&backto=%s">Add entry</a>' % (date, pagename))
+    backto = request.form.get('backto', [None])[0].encode()
+    request.write('<br><a href="?action=editCalendarEntry&date=%s&backto=%s&categories=%s">Add entry</a>' % (date,
+    backto, request.form.get('categories',[u''])[0].encode()))
 
       
 def printEntries(entries, date, pagename, request):
