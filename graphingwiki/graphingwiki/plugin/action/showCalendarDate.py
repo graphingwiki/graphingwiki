@@ -58,9 +58,6 @@ def printEntries(entries, date, pagename, request):
         if day != date:
             continue
 
-        print entries[day]
-        
-        
         for entry in entries[day]:
 
             request.write('<tr>')
@@ -192,7 +189,7 @@ def execute(pagename, request):
 
     printEntries(entries, thisdate, pagename, request)
     
-    addEntry(pagename, date, request)
+    addEntry(pagename, thisdate, request)
 
     _exit_page(request, pagename)
     

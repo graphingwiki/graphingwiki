@@ -212,8 +212,6 @@ window.addEvent('domready', function(){
     categories = [x.strip() for x in args.split(',') if 'Category' in x]
     categories = ','.join(categories)
 
-    print dir(macro.formatter.table_cell)
-
     output += macro.formatter.table_row(1)
 
     output += macro.formatter.table_cell(1, {'id': 'calendar_empty'})
