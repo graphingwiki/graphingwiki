@@ -102,8 +102,6 @@ def execute(pagename, request):
     
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
 
-    globaldata.closedb()
-
     entries = dict()
 
     for page in pagelist:
@@ -128,6 +126,8 @@ def execute(pagename, request):
                 entrycontent[meta] = metas[meta][0][0]
             datedata.append(entrycontent)
 
+
+    globaldata.closedb()
 
     #Getting current month
     now = datetime.datetime.strptime(thisdate, '%Y-%m-%d')
