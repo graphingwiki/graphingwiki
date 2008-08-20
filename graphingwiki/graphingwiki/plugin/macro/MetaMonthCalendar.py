@@ -186,7 +186,7 @@ window.addEvent('domready', function(){
    if(content){
      td = el.getParent('td');
      td.setStyles({
-       'background-color' : 'red'
+       'background-color' : '#FFB6C1'
        });
      el.addEvents({
        'mouseenter': function(){
@@ -214,27 +214,35 @@ window.addEvent('domready', function(){
 
     output += macro.formatter.table_row(1)
 
-    output += macro.formatter.table_cell(1, {'id': 'calendar_empty'})
+    output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
     output += macro.formatter.table_cell(0)
 
     for i in 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun':
-        output += macro.formatter.table_cell(1, {'id': 'calendar_dayname'})
+        if i in ['Sat', 'Sun']:
+            output += macro.formatter.table_cell(1, {'class': 'calendar-topic-weekend'})
+        else:
+            output += macro.formatter.table_cell(1, {'class': 'calendar-topic-workday'})
+
         output += macro.formatter.text(i)
         output += macro.formatter.table_cell(0)
     output += macro.formatter.table_row(0)
 
     for week in cal:
         output += macro.formatter.table_row(1)
-        output += macro.formatter.table_cell(1, {'id': 'calendar_weeknumber'})
+        output += macro.formatter.table_cell(1, {'class': 'calendar-weeknumber'})
         output += macro.formatter.text("%2d" % weeknum)
         output += macro.formatter.table_cell(0)
         weeknum += 1
 
-        for day in week:
-            if day and str(day) == now.day:
-                output += macro.formatter.table_cell(1, {'id' : 'calendar_today'})
+        for i,day in enumerate(week):
+            if day and str(day) == str(now.day):
+                output += macro.formatter.table_cell(1, {'class' : 'calendar-today'})
+            elif not day:
+                output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
+            elif i in [5,6]:
+                output += macro.formatter.table_cell(1, {'class': 'calendar-weekend'})
             else:
-                output += macro.formatter.table_cell(1, {'class': 'caledar_day'})
+                output += macro.formatter.table_cell(1, {'class': 'calendar-day'})
             timestamp = u'%04d-%02d-%02d' % (year, month, day)
             if day:
                 urldict = dict(date = timestamp, backto = macro.request.page.page_name, categories = categories)
