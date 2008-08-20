@@ -10,7 +10,7 @@
 import os
 import xmlrpclib
 
-from tempfile import mkdtemp
+from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
 
 import traceback
@@ -82,7 +82,7 @@ def save(request, pagename, filename, content, overwrite):
     # Create a temp file where to decode the data
     path = mkdtemp()
     try:
-        _, tmp = tempfile.mkstemp(dir = path)
+        _, tmp = mkstemp(dir = path)
         tmpf = file(tmp, 'wb')
         tmpf.write(content)
         tmpf.close()
