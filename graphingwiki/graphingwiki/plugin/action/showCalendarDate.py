@@ -79,7 +79,7 @@ def printEntries(entries, date, pagename, request):
             else:
                 writeCell('?')
 
-            writeCell(request.formatter.text(entry['Content']+ ' ' + entry['Date']), width="50%")
+            writeCell(request.formatter.text(entry['Content'], width="40%"))
             #edit link
             writeCell('<a href="%s?action=edit&backto=%s">edit</a>' % (entry['Page'], backto)) #request.request_uri[1:]))
             #remove link
@@ -120,6 +120,7 @@ def execute(pagename, request):
             if '----' in content:
                 content = content.split('----')[0]
             entrycontent['Content'] = content
+
             entrycontent['Page'] = page
 
             for meta in metas:
