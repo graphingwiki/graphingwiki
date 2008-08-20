@@ -13,6 +13,8 @@ import xmlrpclib
 from tempfile import mkdtemp
 from shutil import rmtree
 
+import traceback
+
 from graphingwiki.editing import save_attachfile
 from graphingwiki.editing import load_attachfile
 from graphingwiki.editing import delete_attachfile
@@ -80,12 +82,18 @@ def save(request, pagename, filename, content, overwrite):
     # Create a temp file where to decode the data
     path = mkdtemp()
     try:
-        tmp = os.path.join(path, filename)
+        _, tmp = tempfile.mkstemp(dir = path)
         tmpf = file(tmp, 'wb')
         tmpf.write(content)
         tmpf.close()
-    except:
-        return xmlrpclib.Fault(3, _("Unknown error"))
+    except Exception, e:
+        desc = "Unknown error"
+        #there has been some problems with xmlrpclib and str() .. so this try: ... is for em
+        try:
+            desc = traceback.format_exc()
+        except:
+            pass
+        return xmlrpclib.Fault(3, _(desc))
 
     # Attach the decoded file
     success = save_attachfile(request, pagename, tmp, filename, overwrite)
