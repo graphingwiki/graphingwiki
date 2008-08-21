@@ -242,8 +242,14 @@ function setDuration(absolute_time, reverse){
           eday = end_time.getDate();
           eday = eday < 10 ? '0'+eday : eday;
           $('end_date').set('value',eyear +'-'+ emonth +'-' + eday);
+
+          if(em != "00" && em != "30"){
+            $('end_time').grab(new Element('option', {
+              'value' : eh + ':' + em,
+              'text' : eh + ':' + em
+              }));
+            }
           $('end_time').set('value', eh+ ':' +em);
-        //  $('end_time').value = eh+ ':' +em;
         }
         return;
       }
