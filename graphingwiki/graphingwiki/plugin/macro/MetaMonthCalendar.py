@@ -179,10 +179,15 @@ window.addEvent('domready', function(){
     return el.href.match("action=showCalendarDate") != null;
     });
   var tips = new Tips(links);
+  var content = '';
  links.each(function(el){
    topic = el.href.match(/\d{4}[-]\d\d[-]\d\d/)[0].clean();
    el.store('tip:title',topic);
-   content = dates.get(topic);
+  try{
+  content = dates.get(topic);
+  }catch(e){
+  content = '';
+    }
    if(content){
      td = el.getParent('td');
      td.setStyles({
