@@ -81,7 +81,8 @@ def printEntries(entries, date, pagename, request):
 
             writeCell(request.formatter.text(entry['Content'], width="40%"))
             #edit link
-            writeCell('<a href="%s?action=edit&backto=%s">edit</a>' % (entry['Page'], backto)) #request.request_uri[1:]))
+            writeCell('<a href="?action=editCalendarEntry&edit=%s&backto=%s&categories=%s">edit</a>' % (entry['Page'],
+            backto, request.form.get('categories',[u''])[0].encode())) #request.request_uri[1:]))
             #remove link
             writeCell('<a href="%s?action=DeletePage">remove</a>' % entry['Page'])
 
