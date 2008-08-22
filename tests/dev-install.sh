@@ -17,7 +17,7 @@
 
 PWD=/Users/prikula/asennukset
 
-moinsrc=$PWD/moin-1.6.3
+moinsrc=$PWD/moin-1.6.4
 gwsrc=$PWD/branches/moin-1.6-branch/graphingwiki
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
@@ -25,9 +25,10 @@ gwinstall=$PWD/gw-install
 
 
 function installmoin {
-
+    
+    echo 'installing moinmoin'
+    echo $gwinstall
     mkdir -p $gwinstall
-
     (cd $moinsrc &&
     python setup.py install --prefix=$gwinstall)
 }
@@ -75,3 +76,6 @@ sleep 1
 echo start command:
 echo "cd $gwdata; env PYTHONPATH=$PYTHONPATH python moin.py"
 (cd $gwdata; python moin.py)
+
+
+

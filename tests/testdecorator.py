@@ -30,10 +30,27 @@ def tryStr(s):
             out += str(e)
     return out
 
-
+class FncInfo:
+    def __init__(self, fnc=None, fId=0, longName=None, categories=None, metadatas=None ):
+        self.fnc = fnc
+        self.fId = fId
+        self.longName = longName
+        self.categories = categories
+        self.metadatas = metadatas
+        self.docStr = fnc.__doc__
+    
+    
+    def __str__(self):
+        return tryStr(self.__dict__)
+    
+    
+    #def setId(self,fId):
+    #    self.fId = fId
+        
+    
 
 class ExecutionTree:
-    def __init__(self, fcn,fId, params):
+    def __init__(self, fncInfo=None, executionId=0, stackPoint = 0, params=None):
         """
            fcn : pointer to executed function. takes the name of the function using this.
              TODO: might need a fix, because does not work with the rest of th program if
@@ -43,30 +60,34 @@ class ExecutionTree:
            params: a tuple (args, kw), where args is the parameters without key and kw is a dictionary of parameters with a key
         """
         
-        self.fcn = fcn
-        self.fId = fId
+        self.fncInfo = fncInfo
         self.params = tryStr(params)
 
         self.excdesc = None
         self.executionSummary = None
         self.exception = None
         self.returnValues = None
-
+        
+        self.executionId = executionId
+        self.stackPoint = stackPoint
     
     def add(self, a):
         if self.executionSummary == None:
-            self.executionSummary = []
+            self.executionSummary = [ ]
         self.executionSummary.append(a)
+
+    def yieldChilds(self):
+        yield self
+        if self.executionSummary != None:
+            for i in self.executionSummary:
+                for j in i.yieldChilds():
+                    yield j
+                
     
     def __str__(self):
-        name = "Root"
-        longName = "Root"
-        returnValues = []
-        if self.fcn != None:
-            name = self.fcn.__name__
         out = """
-%s_%s:%s --> (exception: %s, returnvalues %s)
-"""%(name, str(self.fId),
+ * %s : %s --> (exception: %s, returnvalues %s)
+"""%(self.fncInfo,
      str(self.params),
      str((type(self.exception), str(self.exception), str(self.excdesc) )),
      str(self.returnValues)
@@ -75,7 +96,7 @@ class ExecutionTree:
             for i in self.executionSummary:
                 out += str(i).replace("""
 """, """
-|-""")
+  """)
         return out
     
     def setException(self, e, excdesc ):
@@ -84,13 +105,18 @@ class ExecutionTree:
 
     def setReturnValues(self, returnValues):
         self.returnValues = str(returnValues)
+
+    
     
     
 class ExecPntr:
-    def __init__(self, root = ExecutionTree(None,None,None)):
-        #execution Pntr
+    def __init__(self, root = None, ExecutionTree = ExecutionTree):
+        
+        self.ExecutionTree = ExecutionTree
+        if root == None:
+            root = self.ExecutionTree()
         self.initValues(root)
-
+        
         self.removedStack = []
         
         @self.executionDecorator()
@@ -101,26 +127,29 @@ class ExecPntr:
         
         print "NULLSTACK", self.removedStack
         self.initValues(root)
-    
-        
+
     def initValues(self, root):
         self.pntr = root
         self.root = root
         self.stack = []
+        self.fncInfos = {}
+        self.nextExecutionId = 1
         
-        self.fcnDatas = {}
-        
-        self.nameIds = {}
-    
-    def noteNameId(self, n, longName):
-        nameDict = self.nameIds.setdefault(n, {})
-        nId = nameDict.setdefault(longName, len(nameDict))
+    def getFncId(self, fnc):
+        nId = self.fncInfos.get(fnc, None)
         return nId
+    
+    def noteFcnInfo(self,fnc=None,longName=None, categories=None, metadatas=None ):
+        info =  self.fncInfos.get(fnc, None)
+        if info == None:
+            fId =  len(self.fncInfos) +1
+            info = FncInfo( fnc=fnc, fId = fId, longName=longName, categories=categories, metadatas=metadatas)
+            self.fncInfos[fnc] = info
+        return info
     
     def getStack(self):
         offset = -1
         myStack = traceback.extract_stack()
-        #print "Trace"
         returned = []
         for i in range(len(myStack)):
             j = myStack[offset - i][:3]
@@ -131,30 +160,12 @@ class ExecPntr:
         returned.reverse()
         if len(self.removedStack) == 0:
             self.removedStack = copy(returned)
-        return returned
+        return returned    
     
-    
-    def __str__(self):
-        restOut = ""
-        for i in self.fcnDatas.items():
-            restOut += """
-Long Name: %s
-%s
-"""%(i[0],str(i[1]))
-        return """
-Traceback:
-
-"""+str(self.root) + """
-
-
-categories and datas:
-
-%s
-"""%restOut
-    
-    
-    def branch(self, fcn, fId, args, kw):
-        newtree = ExecutionTree(fcn, fId, (args, kw))
+    def branch(self, fncInfo, args, kw):
+        executionId = self.nextExecutionId
+        self.nextExecutionId += 1
+        newtree = self.ExecutionTree(fncInfo = fncInfo, executionId = executionId, params = (args, kw), stackPoint = len(self.stack) +1)
         self.pntr.add(newtree)
         self.stack.append(self.pntr)
         self.pntr = newtree
@@ -166,27 +177,40 @@ categories and datas:
         self.pntr = self.stack.pop()
     
     def executionDecorator(self, *categories, **metadatas):
-        def ExecutionTreeLog(fcn):
-            name = fcn.__name__
-            lname = (name, str(self.getStack())[1:-1])
-            fId = fId = self.noteNameId(*lname)
-            self.fcnDatas[lname] = {"fId":fId, "docStr":fcn.__doc__, "categories":categories, "metadatas":metadatas}
+        def ExecutionTreeLog(fnc):
+            lname = str(self.getStack())[1:-1]
+            fncInfo = self.noteFcnInfo(fnc=fnc, longName=lname, categories=categories, metadatas=metadatas)
             def decorator(*args, **kw):                
                 log = self
-                log.branch(fcn, fId, args,kw)
+                log.branch(fncInfo, args,kw)
                 try:
-                    returnValues = fcn(*args,**kw)
+                    returnValues = fnc(*args,**kw)
                 except Exception, e:
                     log.goBack(exp = e, excdesc = traceback.format_exc())
                     raise
                 log.goBack(returnValues = returnValues)
                 return returnValues
             
-            decorator.__name__ = name
-            decorator.__doc__ = fcn.__doc__
-            decorator.className = fcn.__class__
             return decorator
         return ExecutionTreeLog
+    
+    def __str__(self):
+        restOut = ""
+        for i in self.fncInfos.values():
+            restOut += """
+%s"""%(i)
+        return """
+Traceback:
+
+"""+str(self.root) + """
+
+
+categories and datas:
+
+%s
+"""%restOut
+
+
 
 
 

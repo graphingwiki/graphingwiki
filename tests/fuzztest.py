@@ -6,6 +6,10 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+#python sys.settrace 
+
+#pprint objektien tulostusta nätisti
+
 
 import unittest
 import re
@@ -24,9 +28,110 @@ import time
 import re
 
 
-from testdecorator import ExecPntr
+import getpass
+from wiki import GraphingWiki, AuthorizationRequired
+from meta import Meta, Integer
+
+
+"""for test documentation"""
+from testdecorator import ExecPntr, ExecutionTree
+
+#TODO: fix the format string
+class WExecutionTree(ExecutionTree):
+    def toPage(self, connection, sessionName):
+        childs = ""
+        if self.executionSummary != None:
+            for i in self.executionSummary:
+                childs += """
+  step:: [[%s]]
+"""%("%s/step_%05d"%(sessionName, i.executionId))
+        
+        fId = 0
+        if self.fncInfo != None:
+            fId = self.fncInfo.fId
+        
+        fnc = """
+  function:: [[%s/fnc_%05d]]
+"""%(sessionName,fId)
+        
+        stcpnt = """
+  stackpoint:: %d
+"""%self.stackPoint
+        
+        categories = """
+CategoryExecutionStep
+Category%s
+"""%sessionName
+        try:
+            connection.putPage("%s/step_%05d"%(sessionName, self.executionId), fnc + stcpnt + childs + categories)
+        except Exception, e:
+            print e
+    
+
+class WExecPntr(ExecPntr):
+    def __init__(self, url, sessionId = 0):
+        self.url = url
+        ExecPntr.__init__(self, ExecutionTree = WExecutionTree)
+        self.connection = None
+        self.sessionId = sessionId
+        
+
+    def connect(self):
+        self.connection = CLIWiki(self.url)
+        try:
+            self.connection.putPage( "page_front_page",u"""
+= Test =
+
+[[ExecutionTrace]]
+
+[[MethodDescriptions]]
+
+""")
+        except Exception, e:
+            print e
+
+    def putTrace(self):
+        #    self.connection.putPage( "Session-%d/ExecutionTrace"%self.sessionId, unicode(str(self.root)) )
+        for i in self.root.yieldChilds():
+            i.toPage(self.connection, "Session_%d"%self.sessionId)
+            #self.connection.putPage( "Session-%d/ExecutionTrace/step-%d"%(self.sessionId, i.executionId), str(i))
+    
+    def putFncInfos(self):     
+        for i in self.fncInfos.itervalues():
+            try:
+                self.connection.putPage( "Session_%d/fnc_%05d"%(self.sessionId, i.fId), str(i) )
+            except Exception, e:
+                print e
+    
+p = WExecPntr("http://localhost:8081")
+
+
+
+class CLIWiki(GraphingWiki):
+    #@p.executionDecorator("CategoryResultWikiInitialization")
+    def request(self, name, *args):
+        while True:
+            try:
+                result = GraphingWiki.request(self, name, *args)
+            except AuthorizationRequired:
+                username = raw_input("Username:")
+                password = getpass.getpass("Password:")
+
+                self.setCredentials(username, password)
+            else:
+                return result
+    
+    #@p.executionDecorator("CategoryResultWikiInitialization")
+    def putPage(self, *args, **kw):
+        GraphingWiki.putPage(self,*args, **kw)
+
+
+
+p.connect()
+
 # Server URL
 serverAddr = "http://localhost:8080/?action=xmlrpc2"
+
 
 # xmlrpc timeouts
 putPageTimeout = 10*60#10 * 60
@@ -37,7 +142,6 @@ deletePageTimeout = 10*60#10 * 60
 wikiInstallTries = 30
 wikiInitWait = 10
 
-p = ExecPntr()
 
 class CustomException(Exception):
     def __init__(self, value):
@@ -101,7 +205,6 @@ def uglyKill():
                     os.kill(pid, signal.SIGQUIT)
                 except:
                     pass
-            
 
 @p.executionDecorator()
 def testPages(pageNames, pageList, serverAddr):
@@ -140,10 +243,19 @@ def testPages(pageNames, pageList, serverAddr):
 
 
 
+
+
 if __name__ == "__main__":
+
+    #wiki = CLIWiki(url)
+    
+    #sys.stdout.write("\rconnecting & precalculating chunks...")
+    #sys.stdout.flush()
+
     print testPages(["basic", "asdfasdf", "123","should fail" ],[u"""#format plain
 """ + u"a"*10,"asdfasdf","123", """<<RaiseException('f','o','o bar')>>"""],serverAddr)
 
     print p
 
-
+    p.putTrace()
+    p.putFncInfos()

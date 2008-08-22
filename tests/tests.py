@@ -8,7 +8,7 @@
 
 import unittest
 import re
-from xmlrpclib import ServerProxy, Error
+from xmlrpclib import ServerProxy, Error, Binary
 
 # Server URL
 server = ServerProxy("http://localhost:8080/?action=xmlrpc2")
@@ -178,7 +178,27 @@ class TestParsing(unittest.TestCase):
         server.putPage(self.pageName, pageContents)
         res = server.GetMeta(self.pageName, True)
         self.assert_(res)
+
+
+class TestAttachFile(GwikiTests):
+    '''Tests for AttachFile(...) call.'''
+    
+    #Syntax:  AttachFile(<pagename>, <attachment name>, <action> = ("delete" |  "save" | "list" | "load"), <content>, <overwrite> = (True | False) )
+    def testSaveLoadDeleteWithNiceData(self):
+        niceData = "jee\n"
+        response1 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+        exception = None
+        try:
+            response1_2 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+        except Exception, e:
+            exception = e
+        response1_3 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), True)
+
+        response2 = server.AttachFile(self.pageName, "niceData", "load",Binary(""), False)
+        response3 = server.AttachFile(self.pageName, "niceData", "delete",Binary(""), False)
         
+        self.assertEqual(response2, niceData)
+        self.assert_(exception != None)        
 
 # class TestRandomPages(unittest.TestCase):
 #     def setUp(self):
