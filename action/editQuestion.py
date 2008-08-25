@@ -422,8 +422,11 @@ def writemetas(request,  questionpage=None, answerpage=None, tippage=None):
                     input = order_meta_input(request, tippage, tipdata, "add")
                     process_edit(request, input, True, {tippage:[tipcategory]})
 
-    if request.form.get('file', [u''])[0]:
+    try:
+        file = request.form.get('file', [u''])[0]
         do_upload(request, questionpage)
+    except:
+        pass
 
 def _enter_page(request, pagename):
     request.http_headers()
