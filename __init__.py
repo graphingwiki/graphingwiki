@@ -396,7 +396,7 @@ class Question:
         #globaldata = GraphData(self.request)
         metas = getmetas(request, self.globaldata, self.pagename, ["question", "answertype", "note"])                  
         self.question = unicode()
-        self.asnwertype = unicode()
+        self.answertype = unicode()
         self.note = unicode()
 
         if metas["question"]:
