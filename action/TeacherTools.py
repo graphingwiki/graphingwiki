@@ -1,5 +1,7 @@
 from operator import itemgetter
 
+from MoinMoin.PageEditor import PageEditor
+
 from graphingwiki.editing import edit_meta, getkeys, getmetas
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.patterns import GraphData, encode
@@ -13,8 +15,11 @@ coursecategory = u'CategoryCourse'
 taskcategory = u'CategoryTask'
 usercategory = u'CategoryUser'
 questioncategory = u'CategoryQuestion'
+tipcategory = u'CategoryTip'
+answercategory = u'CategoryAnswer'
+taskpointcategory = u'CategoryTaskpoint'
 
-class FlowPage:
+class RaippaPage:
     def __init__(self, request, course, pagename=""):
         self.request = request
         self.course = encode(course)
@@ -55,7 +60,7 @@ class FlowPage:
         while flowpoint != "end":
             meta = getmetas(self.request, self.request.globaldata, encode(flowpoint), [metakey, "next"])
             if metakey == "task":
-                metakeypage = FlowPage(self.request, self.course, meta[metakey][0][0])
+                metakeypage = RaippaPage(self.request, self.course, meta[metakey][0][0])
             else:
                 metakeypage = Question(self.request, meta[metakey][0][0])
             flow.append((metakeypage, flowpoint))
@@ -67,56 +72,78 @@ class FlowPage:
 
 def coursesform(request):
     html = str()
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, coursecategory)
-    if pagelist:
+    globaldata, courselist, metakeys, styles = metatable_parseargs(request, coursecategory)
+    if courselist:
         html += u'''
+Stats:
 <form method="POST">
     <input type="hidden" name="action" value="TeacherTools">
     <select name="course">'''
-
-        for page in pagelist:
-            html += u'<option value="%s">%s\n' % (page, page)
-
+        for page in courselist:
+            listtext = unicode()
+            metas = getmetas(request, request.globaldata, page, ["id", "name"])
+            for id, type in metas["id"]:
+                listtext += id
+                break
+            for name, type in metas["name"]:
+                listtext += u' - ' + name
+                break
+            html += u'<option value="%s">%s\n' % (page, listtext)
         html += u'''</select>
-    <input type='submit' name='selectcourse' value='CourseStats'>
+    <input type='submit' name='selectcourse' value='stats'>
 </form>'''
     html += u'''
+Courses:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editCourse">
     <select size="1" name="course">''' % request.request_uri.split("?")[0]
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, coursecategory)
-    for page in pagelist:
-        html += u'<option name="course" value="%s">%s\n' % (page, page)
+    for page in courselist:
+        listtext = unicode()
+        metas = getmetas(request, request.globaldata, page, ["id", "name"]) 
+        for id, type in metas["id"]:
+            listtext += id
+            break
+        for name, type in metas["name"]:
+            listtext += u' - ' + name
+            break
+        html += u'<option name="course" value="%s">%s\n' % (page, listtext)
     html += '''
     </select>
-    <input type='submit' name='edit' value='EditCourse'>
-    <input type='submit' name='new' value='NewCourse'>
+    <input type='submit' name='delete' value='delete'>
+    <input type='submit' name='edit' value='edit'>
+    <input type='submit' name='new' value='new'>
 </form>
+Tasks:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editTask">
     <select size="1" name="task">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
-        html += u'<option name="task" value="%s">%s\n' % (page, page)
+        metas = getmetas(request, request.globaldata, page, ["description"])
+        for description, type in metas["description"]:
+            break
+        html += u'<option name="task" value="%s">%s\n' % (page, description)
     html += '''
     </select>
-    <input type='submit' name='edit' value='EditTask'>
-    <input type='submit' name='new' value='NewTask'>
+    <input type='submit' name='delete' value='delete'>
+    <input type='submit' name='edit' value='edit'>
+    <input type='submit' name='new' value='new'>
 </form>'''
-    html += '''
+    html += u'''
+Questions:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editQuestion">
-    ''' % request.request_uri.split("?")[0]
-    #<select size="1" name="question">
-    #globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
-    #for page in pagelist:
-    #    html += u'<option name="question" value="%s">%s\n' % (page, page)
-    #</select>
-    #<input type='submit' name='edit' value='EditQuestion'>
-    html += '''
-    <input type='submit' name='new' value='NewQuestion'>
+    <select name="question">''' % request.request_uri.split("?")[0]
+    globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
+    for page in questionlist:
+        metas = getmetas(request, request.globaldata, page, ["question"])
+        for question, type in metas["question"]:
+            break
+        html += u'<option value="%s">%s\n' % (page, question)
+    html += u'''</select>
+    <input type='submit' name='delete' value='delete'>
+    <input type='submit' name='new' value='new'>
 </form>'''
-
     request.write(html)
 
 def getcoursegraph(request, courseobj):
@@ -136,7 +163,7 @@ def getcoursegraph(request, courseobj):
 High level flow:'''
     graphhtml = unicode()
     for point, coursepoint in courseobj.flow:
-        if isinstance(point, FlowPage):
+        if isinstance(point, RaippaPage):
             bars = str()
             groups = "&groups="
             for index, point_tuple in enumerate(point.flow):
@@ -188,15 +215,18 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    request.http_headers()
     request.globaldata = getgraphdata(request)
 
-    _enter_page(request, pagename)
     if request.form.has_key('selectcourse'):
+        request.http_headers()
+        _enter_page(request, pagename)
         coursesform(request)
-        course = FlowPage(request, encode(request.form["course"][0]))
+        course = RaippaPage(request, encode(request.form["course"][0]))
         request.write(getcoursegraph(request, course))
+        _exit_page(request, pagename)
     elif request.form.has_key('selectuser') and request.form.has_key('course'):
+        request.http_headers()
+        _enter_page(request, pagename)
         html = unicode()
         #?action=drawchart&labels=users,average&start=0,1&Q1=2,3&Q2=3,5&groups=start,Q1,Q2
         html += u''' 
@@ -212,10 +242,10 @@ def execute(pagename, request):
         bars = list()
         questionlisthtml = unicode()
         areahtml = unicode()
-        course = FlowPage(request, encode(request.form["course"][0]))
+        course = RaippaPage(request, encode(request.form["course"][0]))
         user = RaippaUser(request, encode(request.form["user"][0]))
         for point, coursepoint in course.flow:
-            if isinstance(point, FlowPage):
+            if isinstance(point, RaippaPage):
                 task = list()
                 successdict = dict()
                 for question, taskpoint in point.flow:
@@ -247,9 +277,12 @@ def execute(pagename, request):
         html += '<img src="%s%s" usemap="#studentchart">' % (barhtml, bargroups.rstrip(","))
         html += maphtml
         request.write(html)
+        _exit_page(request, pagename)
     elif request.form.has_key('selectquestion') and request.form.has_key('question') \
          and request.form.has_key('course'):
-        course = FlowPage(request, encode(request.form["course"][0]))
+        request.http_headers()
+        _enter_page(request, pagename)
+        course = RaippaPage(request, encode(request.form["course"][0]))
         question = Question(request, encode(request.form["question"][0]))
         question.answers = question.getanswers()
         html = unicode()
@@ -262,7 +295,6 @@ def execute(pagename, request):
             for useranswer in question.gethistories():
                 if useranswer[3] == course.pagename and useranswer[0] == user.id:
                     html += "<br>overal: %s, " % useranswer[1]
-                    print useranswer
                     for answer in useranswer[2]:
                         html += "%s: %s, " % (useranswer[2][answer], answer)
         else:
@@ -291,6 +323,9 @@ def execute(pagename, request):
                 html += u'%s: %i<input type="text"><input type="submit" value="SaveTip"><br>' % (answer[0], answer[1])
             html += "</form>"
         request.write(html)
+        _exit_page(request, pagename)
     else:
+        request.http_headers()
+        _enter_page(request, pagename)
         coursesform(request)
-    _exit_page(request, pagename)
+        _exit_page(request, pagename)
