@@ -13,6 +13,7 @@ from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
 from raippa import addlink, randompage
+from raippa import FlowPage
 
 questioncategory = u'CategoryQuestion'
 taskcategory = u'CategoryTask'
@@ -473,6 +474,32 @@ def getflow(request, task):
         taskpoint = encode(meta["next"][0][0])
     return questions, taskpoints
 
+def delete(request, pagename):
+    pagename = encode(pagename)
+    page = PageEditor(request, pagename, do_editor_backup=0)
+    if page.exists():
+        categories = list()
+        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        for category, type in metas["WikiCategory"]:
+            if category == taskcategory:
+                linkedpage = request.globaldata.getpage(pagename)
+                linking_in = linkedpage.get('in', {})
+                linkinglist = linking_in.get("task", [])
+                if linkinglist:
+                    return "Task is in use."
+                taskpage = FlowPage(request, pagename)
+                taskflow = taskpage.getflow()
+                for task, question in taskflow:
+                    taskpage = PageEditor(request, task, do_editor_backup=0)
+                    #print "delete", taskpage.page_name
+                    taskpage.deletePage()
+                break
+        #print "delete", page.page_name
+        page.deletePage()
+        return "Success"
+    else:
+        return "Page doesn't exist!"
+
 def _enter_page(request, pagename):
     request.http_headers()
     _ = request.getText
@@ -509,6 +536,19 @@ def execute(pagename, request):
         else:
             url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
+    elif request.form.has_key("delete") and request.form.has_key("task"):
+        #try:
+        page = request.form["task"][0]
+        msg = delete(request, page)
+        #except:
+        #    msg = "Failed to delete the Task."
+        if msg == "Success":
+            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+        else:
+            _enter_page(request, pagename)
+            request.write(msg)
+            _exit_page(request, pagename)
     elif request.form.has_key('edit') and request.form.has_key('task'):
         _enter_page(request, pagename)
         task = encode(request.form["task"][0])

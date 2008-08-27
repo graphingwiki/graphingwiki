@@ -315,6 +315,29 @@ def editcourse(request, coursepage=None):
 
     return None 
 
+def delete(request, pagename):
+    pagename = encode(pagename)
+    page = PageEditor(request, pagename, do_editor_backup=0)
+    if page.exists():
+        categories = list()
+        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        for category, type in metas["WikiCategory"]:
+            if category == coursecategory:
+                coursepage = FlowPage(request, pagename)
+                courseflow = coursepage.getflow()
+                for coursepoint in courseflow:
+                    if coursepoint != "start":
+                        pointpage = PageEditor(request, coursepoint, do_editor_backup=0)
+                        if pointpage.exists():
+                            #print "delete", pointpage.page_name
+                            pointpage.deletePage()
+                #print "delete", page.page_name
+                page.deletePage()
+                break
+        return "Success"
+    else:
+        return "Page doesn't exist!"
+
 def _enter_page(request, pagename):
     request.http_headers()
     request.theme.send_title("Teacher Tools", formatted=False)
@@ -345,6 +368,19 @@ def execute(pagename, request):
         else:
             url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
+    elif request.form.has_key("delete") and request.form.has_key("course"):
+        try:
+            page = request.form["course"][0]
+            msg = delete(request, page)
+        except:
+            msg = "Failed to delete page."
+        if msg == "Success":
+            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+        else:
+            _enter_page(request, pagename)
+            request.write(msg)
+            _exit_page(request, pagename)
     elif request.form.has_key('edit') and request.form.has_key('course'):
         _enter_page(request, pagename)
         course = encode(request.form["course"][0])
