@@ -428,6 +428,53 @@ def writemetas(request,  questionpage=None, answerpage=None, tippage=None):
     except:
         pass
 
+def delete(request, pagename):
+    pagename = encode(pagename)
+    page = PageEditor(request, pagename, do_editor_backup=0)
+    if page.exists():
+        categories = list()
+        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        for category, type in metas["WikiCategory"]:
+            if category == questioncategory:
+                linkedpage = request.globaldata.getpage(pagename)
+                linking_in = linkedpage.get('in', {})
+                linkinglist = linking_in.get("question", [])
+                for linkingpage in linkinglist:
+                    meta = getmetas(request, request.globaldata, linkingpage, ["WikiCategory"])
+                    for category, type in meta["WikiCategory"]:
+                        if category == taskpointcategory:
+                            return "Question is in use."
+                questionpage = request.globaldata.getpage(pagename)
+                linking_in = questionpage.get('in', {})
+                pagelist = linking_in.get("question", [])
+                for answerpage in pagelist:
+                    meta = getmetas(request, request.globaldata, answerpage, ["WikiCategory"])
+                    for category, type in meta["WikiCategory"]:
+                        if category == answercategory:
+                            linkedpage = request.globaldata.getpage(answerpage)
+                            linking = linkedpage.get('in', {})
+                            tiplist = linking.get("answer", [])
+                            for tippage in tiplist:
+                                tipmeta = getmetas(request, request.globaldata, tippage, ["WikiCategory"])
+                                for category, type in tipmeta["WikiCategory"]:
+                                    if category == tipcategory:
+                                        tippage = PageEditor(request, tippage, do_editor_backup=0)
+                                        if tippage.exists():
+                                            #print "delete", tippage.page_name
+                                            tippage.deletePage()
+                                        break
+                            answerpage = PageEditor(request, answerpage, do_editor_backup=0)
+                            if answerpage.exists():
+                                #print "delete", answerpage.page_name
+                                answerpage.deletePage()
+                            break
+                #print "delete", page.page_name
+                page.deletePage()
+                break
+        return "Success"
+    else:
+        return "Page doesn't exist!"
+
 def _enter_page(request, pagename):
     request.http_headers()
     _ = request.getText
@@ -461,6 +508,19 @@ def execute(pagename, request):
         else:
             show_basicform(request)
         _exit_page(request, pagename)
+    elif request.form.has_key("delete") and request.form.has_key("question"):
+        try:
+            page = request.form["question"][0]
+            msg = delete(request, page)
+        except:
+            msg = "Failed to delete the question."
+        if msg == "Success":
+            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+        else:
+            _enter_page(request, pagename)
+            request.write(msg)
+            _exit_page(request, pagename)
     else:
         _enter_page(request, pagename)
         show_typeselector(request)
