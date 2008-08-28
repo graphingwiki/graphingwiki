@@ -142,6 +142,7 @@ Questions:
         html += u'<option value="%s">%s\n' % (page, question)
     html += u'''</select>
     <input type='submit' name='delete' value='delete'>
+    <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
 </form>'''
     request.write(html)
@@ -199,8 +200,8 @@ High level flow:'''
     return html
 
 def _enter_page(request, pagename):
+    request.http_headers()
     _ = request.getText
-    
     request.theme.send_title(_('Teacher Tools'), formatted=False)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
@@ -218,14 +219,20 @@ def execute(pagename, request):
     request.globaldata = getgraphdata(request)
 
     if request.form.has_key('selectcourse'):
-        request.http_headers()
         _enter_page(request, pagename)
         coursesform(request)
         course = RaippaPage(request, encode(request.form["course"][0]))
         request.write(getcoursegraph(request, course))
         _exit_page(request, pagename)
     elif request.form.has_key('selectuser') and request.form.has_key('course'):
-        request.http_headers()
+        try:
+            course = RaippaPage(request, encode(request.form["course"][0]))
+            user = RaippaUser(request, encode(request.form["user"][0]))
+        except:
+            _enter_page(request, pagename)
+            request.write("Missing course or user.")
+            _exit_page(request, pagename)
+            return None
         _enter_page(request, pagename)
         html = unicode()
         #?action=drawchart&labels=users,average&start=0,1&Q1=2,3&Q2=3,5&groups=start,Q1,Q2
@@ -242,8 +249,6 @@ def execute(pagename, request):
         bars = list()
         questionlisthtml = unicode()
         areahtml = unicode()
-        course = RaippaPage(request, encode(request.form["course"][0]))
-        user = RaippaUser(request, encode(request.form["user"][0]))
         for point, coursepoint in course.flow:
             if isinstance(point, RaippaPage):
                 task = list()
@@ -280,7 +285,6 @@ def execute(pagename, request):
         _exit_page(request, pagename)
     elif request.form.has_key('selectquestion') and request.form.has_key('question') \
          and request.form.has_key('course'):
-        request.http_headers()
         _enter_page(request, pagename)
         course = RaippaPage(request, encode(request.form["course"][0]))
         question = Question(request, encode(request.form["question"][0]))
@@ -325,7 +329,6 @@ def execute(pagename, request):
         request.write(html)
         _exit_page(request, pagename)
     else:
-        request.http_headers()
         _enter_page(request, pagename)
         coursesform(request)
         _exit_page(request, pagename)
