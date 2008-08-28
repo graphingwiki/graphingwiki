@@ -5,6 +5,7 @@ import os
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.AttachFile import getAttachDir
 
 from graphingwiki.editing import getmetas
@@ -15,11 +16,22 @@ from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
 
 from raippa import addlink, randompage
+from raippa import Question
 
 usercategory = u'CategoryUser'
 questioncategory = u'CategoryQuestion'
 answercategory = u'CategoryAnswer'
 tipcategory = u'CategoryTip'
+taskpointcategory = u'CategoryTaskpoint'
+
+
+def getattachments(request, pagename):
+    attach_dir = getAttachDir(request, pagename)
+    if os.path.isdir(attach_dir):
+        files = map(lambda a: a.decode(config.charset), os.listdir(attach_dir))
+        files.sort()
+        return files
+    return []
 
 def do_upload(request, pagename):
     filename = None
@@ -48,8 +60,10 @@ def do_upload(request, pagename):
     finally:
         stream.close()
 
-def show_basicform(request):
-    html = str()
+def show_basicform(request, questionpage=None):
+    html = unicode()
+    if questionpage:
+        question = Question(request, questionpage)
     html += u'''
  <script type="text/javascript">
 /*	Using mootools javascript framework */
@@ -258,24 +272,57 @@ return true;
   }
 </script>
 
-<form id="dataform" method="POST" enctype="multipart/form-data"
-onsubmit="return submitCheck();">
+<form id="dataform" method="POST" enctype="multipart/form-data" onsubmit="return submitCheck();">
 <input type="hidden" name="action" value="%s">
 <table style="border-style:hidden">
-<tr style="border-style:hidden"><td
-style="border-style:hidden">question:</td><td
-style="border-style:hidden"colspan="2"> <input id="questionfield" type="text" name="question"></td><tr>
-<tr style="border-style:hidden"><td  style="border-style:hidden">note:</td><td colspan="2"style="border-style:hidden"> <input type="text" name="note"></td><tr>
-<tr style="border-style:hidden"><td  style="border-style:hidden">image:</td><td colspan="2"style="border-style:hidden">
-<input type="file" name="file" value="Select..."></td><tr>
+<tr style="border-style:hidden">
+<td style="border-style:hidden">question:</td>
+<td style="border-style:hidden"colspan="2">''' % action_name
+    if questionpage:
+        html += u'<input type="hidden" name="questionpage" value="%s">' % questionpage
+        html += u'<input id="questionfield" size="40" ype="text" name="question" value="%s">' % question.question
+    else:
+        html += u'<input id="questionfield" size="40" type="text" name="question">'
+    html += u'''
+</td>
+<tr>
+<tr style="border-style:hidden">
+<td  style="border-style:hidden">note:</td>
+<td colspan="2"style="border-style:hidden">'''
+    if questionpage:
+        html += u'<textarea name="note" rows="5" cols="40">%s</textarea>' % question.note
+    else:
+        html += u'<textarea name="note" rows="5" cols="40"></textarea>'
+    html += u'''
+</td>
+<tr>
+<tr style="border-style:hidden">
+<td style="border-style:hidden">image:</td>
+<td colspan="2"style="border-style:hidden">\n'''
+    if questionpage:
+        files = getattachments(request, questionpage)
+        if files:
+            for file in files:
+                html += u'%s\n' % file
+        html += u'<input type="file" name="file" value="Select...">'
+    else:
+        html += u'<input type="file" name="file" value="Select...">'
+    html += u'''
+</td>
+<tr>
 </table>
     <hr>
-    answer type: &nbsp; <select id="typeSelect" name="answertype"
-    onChange="typeCheck();">
-        <option value="radio">radio</option>
-        <option value="checkbox">checkbox</option>
-        <option value="text">text</option>
-        <option value="file">file</option>
+    answer type: &nbsp; <select id="typeSelect" name="answertype" onChange="typeCheck();">\n'''
+    answertypes = ["radio", "checkbox", "text", "file"]
+    for type in answertypes:
+        if questionpage:
+            if type == question.answertype:
+                html += u'<option value="%s" selected="selected">%s</option>\n' % (type, type)
+            else:
+                html += u'<option value="%s">%s</option>\n' % (type, type)
+        else:
+            html += u'<option value="%s">%s</option>\n' % (type, type)
+    html += u'''
     </select> &nbsp; 
     <input id="fieldCreator" type="button" name="addButton" title="Add more answer fields"
     value="Add new field" onClick="addField();">
@@ -284,7 +331,7 @@ style="border-style:hidden"colspan="2"> <input id="questionfield" type="text" na
 <tr>
     <td style="text-align:center"><a title="Remove selected answers"
 	style="color:red"  href="javascript: rmField();">X</a></td>
-    <td style="width:150px">Answer:</td>''' % action_name
+    <td style="width:150px">Answer:</td>'''
     #html += u'''
     #<td title="Case sensitive" class="rexp" style="width:110px; text-align: center">Case sensitive</td>
     #<td title="Regular Expression" class="rexp" style="width:75px; text-align: center">Regexp</td>
@@ -295,19 +342,51 @@ style="border-style:hidden"colspan="2"> <input id="questionfield" type="text" na
     <td></td>
 </tr>'''
 
-    for answernumber in range(1,5):
-        html += '''
-<tr id="ansTr%s"><td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this
-answer to be deleted"></td>
-    <td> <input type="text" name="answer%s"></td>''' % (answernumber, answernumber, answernumber)
+    if questionpage:
+        if question.answertype != "file":
+            answerdict = question.getanswers()
+            number = 0
+            for answer, answeroptions in answerdict.iteritems():
+                number += 1
+                html += u'''
+<tr id="ansTr%s">
+<td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this answer to be deleted"></td>
+<td><input type="text" name="answer%s" value="%s"></td>''' % (number, number, number, answer)
+                #regexp and CaseSens goes here
+                value = answeroptions[0]
+                if value == "true":
+                    html += u'''
+<td><input type="radio" id="value%s" name="value%s" value="true" onClick="hide(this);" checked></td>
+<td><input type="radio" name="value%s" value="false" onClick="show(this);"></td>''' % (number, number, number)
+                else:
+                    html += u'''
+<td><input type="radio" id="value%s" name="value%s" value="true" onClick="(this);"></td>
+<td><input type="radio" name="value%s" value="false" onClick="show(this);" checked></td>''' % (number, number, number)
+                tip = answeroptions[1]
+                if tip:
+                    tippage = "Tip/%s" % tip
+                    meta = getmetas(request, request.globaldata, tippage, ["tip"])
+                    for tipnote, type in meta["tip"]:
+                        break
+                    html += u'''
+<td><span class="tip">Tip: <input type="text" name="tip%s" value="%s"></span></td>
+</tr>''' % (number, tipnote)
+                else:
+                    html += u'''
+<td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
+</tr>''' % number
+    else:
+        for answernumber in range(1,5):
+            html += '''
+<tr id="ansTr%s">
+<td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this answer to be deleted"></td>
+<td><input type="text" name="answer%s"></td>''' % (answernumber, answernumber, answernumber)
     #<td class="rexp"><input type="checkbox" name="cSens%s" value="true" title="Answer is case sensitive"></td>
     #<td class="rexp"><input type="checkbox" name="rexp%s"value="true" title="Answer is regular expression" ></td>
-        html += '''
-    <td><input type="radio" id="value%s" name="value%s" value="true"
-    	onClick="hide(this);" checked ></td>
-    <td><input type="radio" name="value%s" value="false" 
-    	onClick="show(this);"></td>
-    <td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
+            html += '''
+<td><input type="radio" id="value%s" name="value%s" value="true" onClick="hide(this);" checked ></td>
+<td><input type="radio" name="value%s" value="false" onClick="show(this);"></td>
+<td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
 </tr>''' % (answernumber, answernumber, answernumber, answernumber)
 
     html += u'''
@@ -369,15 +448,18 @@ def show_typeselector(request):
 
     request.write(html)
 
-def writemetas(request,  questionpage=None, answerpage=None, tippage=None):
+def savequestion(request,  oldquestion=None):
     #edit questionpage
-    questiondata = {u'question': [request.form["question"][0]],
-                    u'note': [request.form["note"][0]],
-                    u'answertype': [request.form["answertype"][0]]}
+    questiondata = {"question": [request.form["question"][0]],
+                    "note": [request.form["note"][0]],
+                    "answertype": [request.form["answertype"][0]]}
 
-    if questionpage:
+    if oldquestion:
+        questionpage = oldquestion
         input = order_meta_input(request, questionpage, questiondata, "repl")
         process_edit(request, input)
+        question = Question(request, questionpage)
+        oldanswers = question.getanswers()
     else:
         questionpage = randompage(request, "Question")
         input = order_meta_input(request, questionpage, questiondata, "add")
@@ -386,11 +468,10 @@ def writemetas(request,  questionpage=None, answerpage=None, tippage=None):
     #find all the answers
     answerdict = dict()
     for key in request.form:
-        if key != u'answertype' and key.startswith(u'answer'):
+        if key != "answertype" and key.startswith("answer"):
             answer = request.form[key][0]
             if not answer:
                 continue
-            answerpage = None
             answernumber = key[6:]
             value = request.form["value"+answernumber][0]
             tip = request.form.get("tip"+answernumber, [u''])[0]
@@ -399,28 +480,57 @@ def writemetas(request,  questionpage=None, answerpage=None, tippage=None):
             answerdata = {u'question': [addlink(questionpage)]} 
             if value == u'true': 
                 answerdata[u'true'] = [answer]
+                answerdata[u'false'] = [u' ']
             else:
                 answerdata[u'false'] = [answer]
+                answerdata[u'true'] = [u' ']
 
-            if answerpage:
+            if oldquestion and oldanswers.has_key(answer):
+                answerpage = oldanswers[answer][3] 
                 input = order_meta_input(request, answerpage, answerdata, "repl")
                 process_edit(request, input)
+                #print "editold", input
+
+                #edit tippage
+                tipid = oldanswers[answer][1]
+                if value != u'true' and tip != u'':
+                    tipdata = {u'answer': [addlink(answerpage)],
+                               u'tip': [tip]}
+                    if tipid:
+                        tippage = "Tip/"+tipid 
+                    else:
+                        tippage = randompage(request, "Tip")
+                    input = order_meta_input(request, tippage, tipdata, "repl")
+                    process_edit(request, input, True, {tippage:[tipcategory]})
+                    #print "editoldtip", input
+                elif tipid:
+                    tippage = "Tip/"+tipid
+                    tippage = PageEditor(request, tippage, do_editor_backup=0)
+                    if tippage.exists():
+                        #print "deletetip", tippage.page_name
+                        tippage.deletePage()
+                del oldanswers[answer]
             else:
                 answerpage = randompage(request, "Answer")
                 input = order_meta_input(request, answerpage, answerdata, "add")
                 process_edit(request, input, True, {answerpage:[answercategory]})
+                #print "editnew", input
 
-            #edit tippage
-            if value != u'true' and tip != u'':
-                tipdata = {u'answer': [addlink(answerpage)],
-                           u'tip': [tip]}
-                if tippage:
-                    input = order_meta_input(request, tippage, tipdata, "repl")
-                    process_edit(request, input)
-                else:
+                #edit tippage
+                if value != u'true' and tip != u'':
+                    tipdata = {u'answer': [addlink(answerpage)],
+                               u'tip': [tip]}
                     tippage = randompage(request, "Tip")
                     input = order_meta_input(request, tippage, tipdata, "add")
                     process_edit(request, input, True, {tippage:[tipcategory]})
+                    #print "editnewtip", input
+
+    if oldquestion:
+        for answer, answerdata in oldanswers.iteritems():
+            deletepage = PageEditor(request, answerdata[3], do_editor_backup=0)
+            if deletepage.exists():
+                #print "delete", deletepage.page_name
+                deletepage.deletePage()
 
     try:
         file = request.form.get('file', [u''])[0]
@@ -497,23 +607,34 @@ def _exit_page(request, pagename):
 
 def execute(pagename, request):
     request.globaldata = getgraphdata(request)
-    if request.form.has_key('save'):
-        writemetas(request)
-        url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
-        request.http_redirect(url)
-    elif request.form.has_key('type'):
+    if request.form.has_key("save"):
+        if request.form.has_key("questionpage"):
+            #try:
+            questionpage = request.form["questionpage"][0]
+            savequestion(request, questionpage)
+            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+            #except:
+            #    _enter_page(request, pagename)
+            #    request.write("Failed to save the question.")
+            #    _exit_page(request, pagename)
+        else:
+            savequestion(request)
+            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+    elif request.form.has_key("type"):
         _enter_page(request, pagename)
-        if request.form[u'type'][0] == u'social':
+        if request.form["type"][0] == "social":
             show_socialform(request)
         else:
             show_basicform(request)
         _exit_page(request, pagename)
     elif request.form.has_key("delete") and request.form.has_key("question"):
-        try:
-            page = request.form["question"][0]
-            msg = delete(request, page)
-        except:
-            msg = "Failed to delete the question."
+        #try:
+        page = request.form["question"][0]
+        msg = delete(request, page)
+        #except:
+        #    msg = "Failed to delete the question."
         if msg == "Success":
             url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
@@ -521,6 +642,11 @@ def execute(pagename, request):
             _enter_page(request, pagename)
             request.write(msg)
             _exit_page(request, pagename)
+    elif request.form.has_key("edit") and request.form.has_key("question"):
+        questionpage = request.form["question"][0]
+        _enter_page(request, pagename)
+        show_basicform(request, questionpage)
+        _exit_page(request, pagename)
     else:
         _enter_page(request, pagename)
         show_typeselector(request)
