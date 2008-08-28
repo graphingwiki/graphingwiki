@@ -469,7 +469,7 @@ class Question:
                     if metas["option"]:
                         for option, type in metas["option"]:
                             options.append(option)
-                    answerdict[answer] = [value, tip, options]
+                    answerdict[answer] = [value, tip, options, page]
                     break
         #globaldata.closedb()
         return answerdict
