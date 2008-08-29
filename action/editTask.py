@@ -23,9 +23,16 @@ historycategory = u'CategoryHistory'
 
 def taskform(request, task=None):
     if task:
-        metas = getmetas(request, request.globaldata, task, ["description", "type"])
-        description = metas["description"][0][0]
-        type = metas["type"][0][0]
+        title = unicode()
+        description = unicode()
+        type = u'basic'
+        metas = getmetas(request, request.globaldata, task, ["title","description", "type"])
+        if metas["title"]:
+            title = metas["title"][0][0]
+        if metas["description"]:
+            description = metas["description"][0][0]
+        if metas["type"]:
+            type = metas["type"][0][0]
         questions, taskpoints = getflow(request, task)
         penaltydict = dict()
         for taskpoint in taskpoints:
@@ -33,7 +40,8 @@ def taskform(request, task=None):
             if metas["penalty"] and metas["question"]:
                 penaltydict[metas["question"][0][0]] = metas["penalty"][0][0]
     else:
-        description = u''
+        title = unicode()
+        description = unicode()
         type = u'basic'
         questions = list()
         taskpoints = list()
@@ -99,8 +107,11 @@ function createPenaltySel(el, defVal){
     globaldata, tasklist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for ti in tasklist:
         try:
-            data = getmetas(request, request.globaldata, encode(ti),["description"])
-            desc = data["description"][0][0]
+            data = getmetas(request, request.globaldata, encode(ti),["title","description"])
+            if data["title"]:
+                desc = data["title"][0][0]
+            else:
+                desc = data["description"][0][0]
             pagehtml += u'''
   select.grab(new Element('option', {
 	  'value' : '%s',
@@ -269,7 +280,7 @@ select questions:<br>
         try:
             metas = getmetas(request, request.globaldata, encode(page), ["question"])
             question = metas["question"][0][0]
-            pagehtml +=u'''addOption(document.getElementById("flist"),"%s","%s","%s");\n''' %(question,page,penaltydict.get(page,""))
+            pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question,page,penaltydict.get(page,""))
         except:
             pass
     pagehtml += '''
@@ -289,10 +300,13 @@ select task type: <select name="type">\n'''
             pagehtml += '<option value="%s">%s\n' % (item, item)
     pagehtml += '''
 </select>
+<br>title:
+<br>
+<input type="text" size="40" name="title" value="%s">
 <br>description:
 <br>
 <textarea name="description" rows="10" cols="40">%s</textarea><br>
-''' % description
+''' % (title, description)
     pagehtml += '''
 <input type="submit" name="save" value="Save">
 </form>
@@ -300,13 +314,16 @@ select task type: <select name="type">\n'''
     request.write(u'%s' % pagehtml)
 
 def writemeta(request, taskpage=None):
+    title = unicode()
     description = unicode() 
     type = unicode()
     flowlist = list() 
     penaltydict = dict()
 
     for key in request.form:
-        if key == "description":
+        if key == "title":
+            title = request.form.get(u'title', [u''])[0]
+        elif key == "description":
             description = request.form.get(u'description', [u''])[0]
         elif key == "type":
             type = request.form.get('type', [u''])[0]
@@ -318,6 +335,8 @@ def writemeta(request, taskpage=None):
             if penaltytask:
                 penaltydict[question] = penaltytask
 
+    if not title:
+        return "Missing task title."
     if not description:
         return "Missing task description."
     if not type:
@@ -332,7 +351,8 @@ def writemeta(request, taskpage=None):
         page = PageEditor(request, taskpage)
         page.saveText("<<Raippa>>", page.get_real_rev())
 
-        taskdata = {"description":[description],
+        taskdata = {"title":[title],
+                    "description":[description],
                     "type":[type],
                     "start":[addlink(taskpoint)]}
 
@@ -449,12 +469,14 @@ def writemeta(request, taskpage=None):
                 statuspage = user + "/status"
                 process_edit(request, order_meta_input(request, statuspage, {coursepoint: [addlink(nexttaskpoint)]}, "repl"))
 
-            taskdata = {u'description':[description],
+            taskdata = {u'title':[title],
+                        u'description':[description],
                         u'type':[type],
                         u'start':[addlink(newflow[0][1])]}
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
         else:
-            taskdata = {u'description':[description],
+            taskdata = {u'title':[title],
+                        u'description':[description],
                         u'type':[type]}
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
 
@@ -551,7 +573,11 @@ def execute(pagename, request):
             _exit_page(request, pagename)
     elif request.form.has_key('edit') and request.form.has_key('task'):
         _enter_page(request, pagename)
-        task = encode(request.form["task"][0])
+        try:
+            task = encode(request.form["task"][0])
+        except:
+            request.write("Missing task.")
+            return None
         taskform(request, task)
         _exit_page(request, pagename)
     else:

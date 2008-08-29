@@ -63,8 +63,11 @@ select tasks:
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
         try:
-            metas = getmetas(request, request.globaldata, encode(page), ["description"])
-            description = metas["description"][0][0]
+            metas = getmetas(request, request.globaldata, encode(page), ["title","description"])
+            if metas["title"]:
+                description = metas["title"][0][0]
+            else:
+                description = metas["description"][0][0]
             pagehtml += u'''
     <div class="dragItem"><input type="hidden" name="%s" value="%s">%s</div>\n''' % (description, page, description)
         except:
@@ -86,8 +89,10 @@ select tasks:
             nextlist = flow.get(point, [])
             for next in nextlist:
                 if next != "end":
-                    metas = getmetas(request, request.globaldata, encode(tasks[next]), ["description"])
-                    if metas["description"]:
+                    metas = getmetas(request, request.globaldata, encode(tasks[next]), ["title","description"])
+                    if metas["title"]:
+                        description = metas["title"][0][0]
+                    elif metas["description"]:
                         description = metas["description"][0][0]
                     else:
                         description = tasks[next]
@@ -117,8 +122,10 @@ select tasks:
     startlist = flow.get("start", None)
     if startlist:
         for point in startlist:
-            metas = getmetas(request, request.globaldata, encode(tasks[point]), ["description"])
-            if metas["description"]:
+            metas = getmetas(request, request.globaldata, encode(tasks[point]), ["title", "description"])
+            if metas["title"]:
+                description = metas["title"][0][0]
+            elif metas["description"]:
                 description = metas["description"][0][0]
             else:
                 description = tasks[next]
