@@ -366,7 +366,7 @@ def execute(pagename, request):
             request.write(msg)
             _exit_page(request, pagename)
         else:
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
     elif request.form.has_key("delete") and request.form.has_key("course"):
         try:
@@ -375,7 +375,7 @@ def execute(pagename, request):
         except:
             msg = "Failed to delete page."
         if msg == "Success":
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
         else:
             _enter_page(request, pagename)

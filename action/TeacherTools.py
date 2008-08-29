@@ -77,7 +77,7 @@ def coursesform(request):
         html += u'''
 Stats:
 <form method="POST">
-    <input type="hidden" name="action" value="TeacherTools">
+    <input type="hidden" name="action" value="teacherTools">
     <select name="course">'''
         for page in courselist:
             listtext = unicode()
@@ -150,7 +150,7 @@ Questions:
 def getcoursegraph(request, courseobj):
     html = u'''
 <form method="POST">
-    <input type="hidden" name="action" value="TeacherTools">
+    <input type="hidden" name="action" value="teacherTools">
     <input type="hidden" name="course" value="%s">
     <select name="user">''' % courseobj.pagename
     
@@ -275,7 +275,7 @@ def execute(pagename, request):
         start = 22
         maphtml = '<map id="studentchart" name="studentchart">'
         for bar in bars:
-            maphtml += '<area shape="rect" coords="%i,266,%i,289" href="%s?action=TeacherTools&question=%s&user=%s&course=%s&selectquestion"/>' % (start, start+barsize, pagename, bar, user.id, course.pagename)
+            maphtml += '<area shape="rect" coords="%i,266,%i,289" href="%s?action=teacherTools&question=%s&user=%s&course=%s&selectquestion"/>' % (start, start+barsize, pagename, bar, user.id, course.pagename)
             bargroups += "Q%s," % bar.split("/")[1]
             start += barsize
         maphtml += '</map>'
