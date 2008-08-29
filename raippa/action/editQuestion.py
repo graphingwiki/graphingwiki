@@ -609,18 +609,18 @@ def execute(pagename, request):
     request.globaldata = getgraphdata(request)
     if request.form.has_key("save"):
         if request.form.has_key("questionpage"):
-            #try:
-            questionpage = request.form["questionpage"][0]
-            savequestion(request, questionpage)
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
-            request.http_redirect(url)
-            #except:
-            #    _enter_page(request, pagename)
-            #    request.write("Failed to save the question.")
-            #    _exit_page(request, pagename)
+            try:
+                questionpage = request.form["questionpage"][0]
+                savequestion(request, questionpage)
+                url = u'%s/%s' % (request.getBaseURL(), pagename)
+                request.http_redirect(url)
+            except:
+                _enter_page(request, pagename)
+                request.write("Failed to save the question.")
+                _exit_page(request, pagename)
         else:
             savequestion(request)
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
     elif request.form.has_key("type"):
         _enter_page(request, pagename)
@@ -630,13 +630,13 @@ def execute(pagename, request):
             show_basicform(request)
         _exit_page(request, pagename)
     elif request.form.has_key("delete") and request.form.has_key("question"):
-        #try:
-        page = request.form["question"][0]
-        msg = delete(request, page)
-        #except:
-        #    msg = "Failed to delete the question."
+        try:
+            page = request.form["question"][0]
+            msg = delete(request, page)
+        except:
+            msg = "Failed to delete the question."
         if msg == "Success":
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
         else:
             _enter_page(request, pagename)

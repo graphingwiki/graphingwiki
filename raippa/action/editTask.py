@@ -534,16 +534,16 @@ def execute(pagename, request):
             request.write(msg)
             _exit_page(request, pagename)
         else:
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
     elif request.form.has_key("delete") and request.form.has_key("task"):
-        #try:
-        page = request.form["task"][0]
-        msg = delete(request, page)
-        #except:
-        #    msg = "Failed to delete the Task."
+        try:
+            page = request.form["task"][0]
+            msg = delete(request, page)
+        except:
+            msg = "Failed to delete the Task."
         if msg == "Success":
-            url = u'%s/%s?action=TeacherTools' % (request.getBaseURL(), pagename)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
             request.http_redirect(url)
         else:
             _enter_page(request, pagename)
