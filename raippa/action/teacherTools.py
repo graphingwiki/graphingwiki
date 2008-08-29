@@ -119,9 +119,13 @@ Tasks:
     <select size="1" name="task">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
-        metas = getmetas(request, request.globaldata, page, ["description"])
-        for description, type in metas["description"]:
-            break
+        metas = getmetas(request, request.globaldata, page, ["title","description"])
+        if metas["title"]:
+            for description, type in metas["title"]:
+                break
+        else:
+            for description, type in metas["description"]:
+                break
         html += u'<option name="task" value="%s">%s\n' % (page, description)
     html += '''
     </select>
