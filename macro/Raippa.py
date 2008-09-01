@@ -7,8 +7,10 @@ from base64 import b64encode
 
 from MoinMoin import config
 from MoinMoin.action.AttachFile import getAttachDir
+from MoinMoin.Page import Page
 
 from graphingwiki.editing import getmetas
+from graphingwiki.editing import edit_meta
 from graphingwiki.patterns import GraphData, encode
 from graphingwiki.patterns import getgraphdata
 
@@ -294,6 +296,9 @@ def execute(macro, text):
     
     #request.write(request.cfg.page_front_page)
     if pagename == "RAIPPA":
+        userpage = Page(request, request.raippauser.id)
+        if request.user.name and not userpage.exists():
+            msg = edit_meta(request, request.raippauser.id, {"":""}, {"name":[request.raippauser.name]}, True, [usercategory])
         return courselisthtml(request) 
     else:
         metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start"], checkAccess=False)
