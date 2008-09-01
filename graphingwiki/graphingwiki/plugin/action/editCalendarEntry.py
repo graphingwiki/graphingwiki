@@ -77,7 +77,8 @@ def savedata(request):
         if not Page(request, pagename).exists():
             break
 
-    pagename = edit
+    if edit:
+        pagename = edit
 
     content = u'''%s
 ----
@@ -95,7 +96,10 @@ def show_entryform(request):
     time_now -= datetime.timedelta(minutes=int(time_now.strftime("%M"))%30)
     def_date = time_now.strftime("%Y-%m-%d")
     def_time = time_now.strftime("%H:%M")
+    type = u'Once'
     duration = u'00:00'
+    edit_page = u''
+    title = u''
     until = ''
     time_opts = unicode()
     categories = categories = request.form.get('categories',
@@ -106,10 +110,12 @@ def show_entryform(request):
     
     elif request.form.has_key('edit'):
         edit =  request.form.get('edit')[0].encode()
+        edit_page = u'<input type="hidden" name="edit" value="%s">' % edit
         def_date = edit.split('_')[0]
         #categories = ','.join(categories)
         globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
         meta = getmetas(request, globaldata, edit, metakeys, display=False, checkAccess=True)
+
         if meta[u'Date']:
             if meta.has_key(u'Duration'):
                 try:
@@ -293,7 +299,8 @@ function formcheck(){
 <input type="hidden" name="action" value="%s">
 <input type="hidden" name="backto" value="%s">
 <input type="hidden" name="categories" value="%s">
-<input type="hidden" name="edit" value="%s">
+<!--- edit? --!>
+%s
 <table>
 <tr>
   <td>Description:</td>
@@ -336,7 +343,7 @@ function formcheck(){
 </table>
 <input type="submit" name="save" value="save">
 ''' % (type, action_name, request.form.get('backto',[u''])[0],request.form.get('categories',[u''])[0],
-edit, title, def_date, time_opts, def_date, time_opts, duration, until)
+edit_page, title, def_date, time_opts, def_date, time_opts, duration, until)
     request.write(html)
 
 
