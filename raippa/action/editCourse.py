@@ -17,10 +17,10 @@ from raippa import FlowPage
 taskcategory = u'CategoryTask'
 coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
-statuscategory = 'CategoryStatus'
-historycategory = 'CategoryHistory'
+statuscategory = u'CategoryStatus'
+historycategory = u'CategoryHistory'
 
-def taskform(request, course=None):
+def courseform(request, course=None):
     if course:
         metas = getmetas(request, request.globaldata, course, ["id", "name", "description"])
         id = metas[u'id'][0][0]
@@ -153,7 +153,8 @@ select tasks:
 	}//loadData
     </script>\n'''
     if id:
-        pagehtml += '<input id="courseid" type="hidden" name="courseid" value="%s">' % id 
+        #pagehtml += '<input id="courseid" type="hidden" name="courseid" value="%s">' % id 
+        pagehtml += 'id: <input id="courseid" type="text" name="courseid" value="%s"><br>' % id
     else:
         pagehtml += 'id: <input id="courseid" type="text" name="courseid"><br>'
     pagehtml += '''
@@ -194,12 +195,6 @@ def editcourse(request, coursepage=None):
                 taskdict[key.split("_")[0]] = request.form.get(key, [u''])[0]
             elif key.endswith("_require"):
                 values = request.form.get(key, [u''])[0].split(",")
-                #QUICK HACK. remove when dragui.js returns tasklist
-                temp = list()
-                for value in values:
-                    temp.append(taskdict[value]) 
-                values = temp
-                #########
                 if values:
                     prerequisites[key.split("_")[0]] = values
             elif key.endswith("_type"):
@@ -292,11 +287,13 @@ def editcourse(request, coursepage=None):
                     if not nextcp:
                         if next in oldtasks:
                             nextcp = oldtasks[next]
-                        else: 
+                        else:
                             nextcp = randompage(request, coursepage)
                         coursepointdict[next] = nextcp
                 else:
                     nextcp = next
+                if nextcp != "end" and nextcp.split("/")[1] != courseid:
+                    nextcp = nextcp.split("/")[0] +"/"+ courseid +"/"+ nextcp.split("/")[2]
                 if not pointdata.get(u'next', None):
                     pointdata[u'next'] = [addlink(nextcp)]
                 else:
@@ -306,6 +303,10 @@ def editcourse(request, coursepage=None):
             pointdata[u'split'] = splittypes.get(number, [u''])
             input = order_meta_input(request, coursepoint, pointdata, "repl")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})
+            if coursepoint.split("/")[1] != courseid:
+                editpage = PageEditor(request, coursepoint)
+                newname = coursepoint.split("/")[0] +"/"+ courseid +"/"+ coursepoint.split("/")[2]
+                success, msgs = editpage.renamePage(newname)
         coursedata = {u'id':[courseid],
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
@@ -314,11 +315,17 @@ def editcourse(request, coursepage=None):
         startlist = nodedict["start"]
         for node in startlist:
             cp = coursepointdict[node]
+            if cp.split("/")[1] != courseid:
+                cp = cp.split("/")[0] +"/"+ courseid +"/"+ cp.split("/")[2]
             coursedata[u'start'].append(addlink(cp))
 
         coursedata[u'split'] = splittypes.get("start", [u''])
         input = order_meta_input(request, coursepage, coursedata, "repl")
         process_edit(request, input, True, {coursepage:[coursecategory]})
+        if coursepage.split("/")[1] != courseid:
+            editpage = PageEditor(request, coursepage)
+            newcoursename = coursepage.split("/")[0] +"/"+ courseid
+            success, msgs = editpage.renamePage(newcoursename)
 
     return None 
 
@@ -391,9 +398,9 @@ def execute(pagename, request):
     elif request.form.has_key('edit') and request.form.has_key('course'):
         _enter_page(request, pagename)
         course = encode(request.form["course"][0])
-        taskform(request, course)
+        courseform(request, course)
         _exit_page(request, pagename)
     else:
         _enter_page(request, pagename)
-        taskform(request)
+        courseform(request)
         _exit_page(request, pagename)
