@@ -23,7 +23,6 @@ function sel_stats(){
     'value' : 'stats'
     }));
   form.submit();
-  console.debug('trying to submit');
   }
 </script>'''  % request.cfg.url_prefix_static
     html += u'''
