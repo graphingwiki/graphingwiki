@@ -117,7 +117,7 @@ def execute(macro, args):
 
             until = None
             if 'Until' in entry:
-                until = datetime.datetime.strptime(entry['Until'], '%Y-%m-%d')
+                until = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Until'], '%Y-%m-%d')))
                 
             #FIXME tähän niitä weekly ym
 
@@ -126,7 +126,7 @@ def execute(macro, args):
             except ValueError:
                 continue
             
-            curdate = datetime.datetime.strptime(entry['Date'], '%Y-%m-%d')
+            curdate = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Date'], '%Y-%m-%d')))
 
             delta = datetime.timedelta(days = type)
 
@@ -159,9 +159,9 @@ window.addEvent('domready', function(){
         html += u'dates.set("%s","' % date
         for cont in d:
             try:
-                time = cont['Time']
+                start_time = cont['Time']
             except:
-                time = "?"
+                start_time = "?"
 
             try:
                 desc = cont['Content'].replace('\n','')
@@ -170,7 +170,7 @@ window.addEvent('domready', function(){
             except:
                 desc = "?"
 
-            html += u'<b>%s :</b> %s<br>' % (time,desc)
+            html += u'<b>%s :</b> %s<br>' % (start_time,desc)
 
         html += u'");\n'
     html += u'''
