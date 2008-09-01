@@ -69,9 +69,15 @@ def show_basicform(request, questionpage=None):
 /*	Using mootools javascript framework */
 window.addEvent('domready', function(){
   /* Hide tip-fields, regexp and casesensitive checkboxes on pageload */
-
   typeCheck();
   $('ansRow').getElements('span').set('style', 'visibility:hidden');
+
+  /* Making tip-fields visible for loaded wrong answers*/
+ $('ansRow').getElements('input[type=radio]').each(function(el){
+   if(el.value == 'false' && el.checked){
+     show(el);
+     }
+   });
 });
 
 /* Set object given in parameters visible */
@@ -360,7 +366,7 @@ return true;
 <td><input type="radio" name="value%s" value="false" onClick="show(this);"></td>''' % (number, number, number)
                 else:
                     html += u'''
-<td><input type="radio" id="value%s" name="value%s" value="true" onClick="(this);"></td>
+<td><input type="radio" id="value%s" name="value%s" value="true" onClick=""></td>
 <td><input type="radio" name="value%s" value="false" onClick="show(this);" checked></td>''' % (number, number, number)
                 tip = answeroptions[1]
                 if tip:
