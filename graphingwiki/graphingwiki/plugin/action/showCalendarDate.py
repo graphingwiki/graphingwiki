@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import datetime
+import datetime, time
 
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
@@ -66,7 +66,7 @@ def printEntries(entries, date, pagename, request):
             startTime = None
 
             if 'Time' in entry:
-                startTime = datetime.datetime.strptime(entry['Date'] + ' ' + entry['Time'], '%Y-%m-%d %H:%M')
+                startTime = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Date'] + ' ' + entry['Time'], '%Y-%m-%d %H:%M')))
             endTime = None
             if 'Duration' in entry:
                 hours = int(entry['Duration'].split(':')[0])
@@ -134,7 +134,7 @@ def execute(pagename, request):
     globaldata.closedb()
 
     #Getting current month
-    now = datetime.datetime.strptime(thisdate, '%Y-%m-%d')
+    now = datetime.datetime.fromtimestamp(time.mktime(time.strptime(thisdate, '%Y-%m-%d')))
     now = now.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
     year = now.year
     month = now.month
@@ -161,7 +161,7 @@ def execute(pagename, request):
 
             until = None
             if 'Until' in entry:
-                until = datetime.datetime.strptime(entry['Until'], '%Y-%m-%d')
+                until = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Until'], '%Y-%m-%d')))
                 
             #FIXME tähän niitä weekly ym
 
@@ -170,7 +170,7 @@ def execute(pagename, request):
             except ValueError:
                 continue
             
-            curdate = datetime.datetime.strptime(entry['Date'], '%Y-%m-%d')
+            curdate = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Date'], '%Y-%m-%d')))
 
             delta = datetime.timedelta(days = type)
 
