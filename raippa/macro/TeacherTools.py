@@ -12,27 +12,24 @@ def coursesform(request):
     globaldata, courselist, metakeys, styles = metatable_parseargs(request, coursecategory)
     if courselist:
         html += u'''
-Stats: 
-<form method="POST">
-    <input type="hidden" name="action" value="teacherTools">
-    <select name="course">'''
-        for page in courselist:
-            listtext = unicode()
-            metas = getmetas(request, request.globaldata, page, ["id", "name"])
-            for id, type in metas["id"]:
-                listtext += id
-                break
-            for name, type in metas["name"]:
-                listtext += u' - ' + name
-                break 
-            html += u'<option value="%s">%s\n' % (page, listtext)
-        html += u'''</select>
-    <input type='submit' name='selectcourse' value='stats'>
-</form>'''
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript">
+function sel_stats(){
+  $('course_action').set('value', 'teacherTools');
+  var form = $('course_form');
+  form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'selectcourse',
+    'value' : 'stats'
+    }));
+  form.submit();
+  console.debug('trying to submit');
+  }
+</script>'''  % request.cfg.url_prefix_static
     html += u'''
 Courses:
-<form method="POST" action="%s">
-    <input type="hidden" name="action" value="editCourse">
+<form method="post" id="course_form"> <!---  action="%s"> --!>
+    <input type="hidden"id="course_action" name="action" value="editCourse">
     <select size="1" name="course">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
@@ -49,6 +46,7 @@ Courses:
     <input type='submit' name='delete' value='delete'>
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
+    <input type="button" value="stats" onclick="sel_stats();">
 </form>
 Tasks:
 <form method="POST" action="%s">
