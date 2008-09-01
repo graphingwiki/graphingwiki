@@ -26,6 +26,7 @@ historycategory = u'CategoryHistory'
 def drawGraph(request, page, raippauser):
     G = gv.digraph(page.pagename)
     gv.setv(G, 'rankdir', 'LR')
+    gv.setv(G, 'bgcolor', 'transparent')
     nodes = dict()
     flow = page.getflow()
     for node, nextlist in flow.iteritems():
