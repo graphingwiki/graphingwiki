@@ -25,7 +25,7 @@ taskcategory = u'CategoryTask'
 taskpointcategory = u'CategoryTaskpoint'
 historycategory = u'CategoryHistory'
 
-def drawGraph(request, page, raippauser):
+def graphmap(request, page, raippauser):
     G = gv.digraph(page.pagename)
     gv.setv(G, 'rankdir', 'LR')
     gv.setv(G, 'bgcolor', 'transparent')
@@ -62,14 +62,6 @@ def drawGraph(request, page, raippauser):
             gv.setv(nodeobject, 'label', "")
     gv.layout(G, 'dot')
 
-    #img
-    tmp_fileno, tmp_name = mkstemp()
-    gv.render(G, 'png', tmp_name)
-    f = file(tmp_name)
-    img = f.read()
-    os.close(tmp_fileno)
-    os.remove(tmp_name)
-
     #map
     tmp_fileno, tmp_name = mkstemp()
     gv.render(G, 'cmapx', tmp_name)
@@ -78,8 +70,8 @@ def drawGraph(request, page, raippauser):
     os.close(tmp_fileno)
     os.remove(tmp_name)
 
-    html = '<img src="data:image/png;base64,%s" usemap="#%s">\n' % (b64encode(img), page.pagename)
-    html += map+"\n"
+    #html = '<img src="data:image/png;base64,%s" usemap="#%s">\n' % (b64encode(img), page.pagename)
+    html = map+"\n"
     return html
 
 def getanswers(request, questionpage):
@@ -305,7 +297,8 @@ def execute(macro, text):
         for category, type in metas["WikiCategory"]:
             if category == coursecategory:
                 coursepage = FlowPage(request, pagename)
-                html =  drawGraph(request, coursepage, request.raippauser)
+                html =  graphmap(request, coursepage, request.raippauser)
+                html += "<img src='%s/%s?action=drawgraphui' usemap='#%s'><br>\n" % (request.getBaseURL(), pagename, pagename)
                 timetracklist = request.raippauser.gettimetrack(coursepage.pagename)
                 if timetracklist:
                     html += u'''
