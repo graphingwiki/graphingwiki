@@ -34,7 +34,6 @@ def execute(pagename, request):
         coursename = request.form.get("course", [u''])[0]
         if coursename:
             currentpage = FlowPage(request, pagename, request.raippauser)
-            #globaldata = GraphData(request)
             metakeys = getkeys(request.globaldata, request.raippauser.statuspage)
             if metakeys.has_key("current"):
                 edit_meta(request, request.raippauser.statuspage, {"current": [addlink(request.raippauser.currentcourse)]}, {"current": [addlink(coursename)]})
@@ -50,9 +49,9 @@ def execute(pagename, request):
         if fp == "end" and task == "end":
             redirect(request, pagename)
         else:
-            statusdata = {request.raippauser.currentcourse: [addlink(fp)]}
-            input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
-            process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
+            #statusdata = {request.raippauser.currentcourse: [addlink(fp)]}
+            #input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
+            #process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
             redirect(request, task)
     elif request.form.has_key(u'send'):
         currentpage = FlowPage(request, pagename, request.raippauser)
@@ -77,7 +76,7 @@ def execute(pagename, request):
                         else:
                             overallvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
                             questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], overallvalue, successdict)
-                    if nextflowpoint != "end" and nexttask != "end" and nextflowpoint == request.raippauser.currentcoursepoint:
+                    if len(taskflow) > 1 and nextflowpoint != "end" and nexttask != "end" and nextflowpoint == request.raippauser.currentcoursepoint:
                         taskpage = FlowPage(request, page_tuple[0], request.raippauser)
                         nextflowpoint, nexttask = taskpage.setnextpage()
                 if nextflowpoint == "end" and nexttask == "end":
