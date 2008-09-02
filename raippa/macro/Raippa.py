@@ -293,26 +293,30 @@ def execute(macro, text):
             msg = edit_meta(request, request.raippauser.id, {"":""}, {"name":[request.raippauser.name]}, True, [usercategory])
         return courselisthtml(request) 
     else:
-        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start"], checkAccess=False)
+        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start", "option"], checkAccess=False)
         for category, type in metas["WikiCategory"]:
             if category == coursecategory:
                 coursepage = FlowPage(request, pagename)
                 html =  graphmap(request, coursepage, request.raippauser)
                 html += "<img src='%s/%s?action=drawgraphui' usemap='#%s'><br>\n" % (request.getBaseURL(), pagename, pagename)
-                timetracklist = request.raippauser.gettimetrack(coursepage.pagename)
-                if timetracklist:
-                    html += u'''
+                print metas
+                for option, type in metas["option"]:
+                    if option == "timetrack":
+                        print pagename, option
+                        timetracklist = request.raippauser.gettimetrack(coursepage.pagename)
+                        if timetracklist:
+                            html += u'''
 <hr><b>TimeTrack</b><br>
 <table>\n'''
-                    total = int()
-                    for time in timetracklist:
-                        total += int(timetracklist[time][0])
-                        html += u'<tr><td>%s</td><td>%sh</td><td>%s</td></tr>\n' % (time, timetracklist[time][0], timetracklist[time][1])
+                            total = int()
+                            for time in timetracklist:
+                                total += int(timetracklist[time][0])
+                                html += u'<tr><td>%s</td><td>%sh</td><td>%s</td></tr>\n' % (time, timetracklist[time][0], timetracklist[time][1])
 
-                    html += u'''
+                            html += u'''
 <tr><td>total:</td><td>%ih</td></tr>
 </table>''' % total
-                html += u'''
+                        html += u'''
 <form method="POST">
     <input type="hidden" name="action" value="timetrack"><br>
     time in hours:

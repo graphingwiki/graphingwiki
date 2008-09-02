@@ -22,13 +22,16 @@ historycategory = u'CategoryHistory'
 
 def courseform(request, course=None):
     if course:
-        metas = getmetas(request, request.globaldata, course, ["id", "name", "description"])
+        metas = getmetas(request, request.globaldata, course, ["id", "name", "description", "option"])
         id = metas[u'id'][0][0]
         name = metas[u'name'][0][0]
         try:
             coursedescription = metas[u'description'][0][0]
         except:
             coursedescription = u''
+        options = list()
+        for option, type in metas["option"]:
+            options.append(option)
         coursepage = FlowPage(request, course)
         flow = coursepage.getflow() 
         tasks = dict()
@@ -42,6 +45,7 @@ def courseform(request, course=None):
         id = u''
         name = u''
         coursedescription = u''
+        options = list()
         flow = dict()
         tasks = dict()
     pagehtml = '''
@@ -157,13 +161,18 @@ select tasks:
         pagehtml += 'id: <input id="courseid" type="text" name="courseid" value="%s"><br>' % id
     else:
         pagehtml += 'id: <input id="courseid" type="text" name="courseid"><br>'
+    if "timetrack" in options:
+        timetrack = 'checked'
+    else:
+        timetrack = ''
     pagehtml += '''
 name: <input type="text" id="coursename" name="coursename" value="%s"><br> 
+timetrack: <input type="checkbox" name="option" value="timetrack" %s><br>
 description:<br> 
 <textarea name="coursedescription" rows="10" cols="40">%s</textarea><br>
 <input type="submit" name="save" value="Save">
 </form>
-''' % (name, coursedescription)
+''' % (name, timetrack, coursedescription)
 
     request.write(u'%s' % pagehtml)
 
@@ -171,6 +180,7 @@ def editcourse(request, coursepage=None):
     courseid = unicode()
     coursename = unicode()
     coursedescription = unicode()
+    options = list()
 
     nodedict = dict()
     taskdict = dict()
@@ -184,6 +194,9 @@ def editcourse(request, coursepage=None):
             coursename = request.form.get("coursename", [None])[0]
         elif key == "coursedescription":
             coursedescription = request.form.get("coursedescription", [u''])[0]
+        elif key == "option":
+            for key in request.form.get("option", []):
+                options.append(key)
         elif key != "save" and key != "action":
             if key.endswith("_next"):
                 values = request.form.get(key, [u''])[0]
@@ -246,7 +259,8 @@ def editcourse(request, coursepage=None):
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
                       u'description':[coursedescription],
-                      u'start':[]}
+                      u'start':[],
+                      u'option':options}
         startlist = nodedict["start"]
         for node in startlist:
             cp = coursepointdict[node]
@@ -311,7 +325,8 @@ def editcourse(request, coursepage=None):
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
                       u'description':[coursedescription],
-                      u'start':[]}
+                      u'start':[],
+                      u'option':options}
         startlist = nodedict["start"]
         for node in startlist:
             cp = coursepointdict[node]
