@@ -242,9 +242,7 @@ class FlowPage:
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                 return nextcoursepoint, nexttask
             else:
-                #globaldata = GraphData(self.request)
                 metas = getmetas(self.request, self.globaldata, self.pagename, ["start"], checkAccess=False)
-                #globaldata.closedb()
 
                 if metas["start"]:
                     courseflowpoint = FlowPage(self.request, metas["start"][0][0], self.user)
@@ -262,6 +260,14 @@ class FlowPage:
                 if temp:
                     if temp == "end":
                         if not "end" in self.nextlist:
+                            metas = getmetas(self.request, self.globaldata, self.pagename, ["split"], checkAccess=False)
+                            #let's go to coursepage if coursepoint has many selectable next pages
+                            if len(self.nextlist) > 1:
+                                for split, type in metas["split"]:
+                                    if split == u'select':
+                                        return "end", "end"
+
+                            #else, let se system decide where to go
                             next = random.choice(self.nextlist)
                             for key in self.user.statusdict:
                                 if key in self.nextlist:
@@ -276,15 +282,11 @@ class FlowPage:
                         self.user.editstatus(self.pagename, temp, 2)
                         return self.pagename, temp
                 else:
-                    #globaldata = GraphData(self.request)
                     metas = getmetas(self.request, self.globaldata, self.pagename, ["task"], checkAccess=False)
-                    #globaldata.closedb()
                     self.user.editstatus(self.pagename, metas["task"][0][0], 3)
                     return self.pagename, metas["task"][0][0]
         elif taskcategory in self.categories:
-            #globaldata = GraphData(self.request)
             metas = getmetas(self.request, self.globaldata, self.pagename, ["start"], checkAccess=False)
-            #globaldata.closedb()
             if metas["start"]:
                 start = random.choice(metas["start"])[0]
                 self.user.editstatus(self.user.currentcoursepoint, start, 4)
