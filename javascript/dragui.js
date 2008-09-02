@@ -33,8 +33,8 @@ $$('#start').each(function(drag){
 		'background-color' :'#6495ED',
 		'cursor' : 'move',
 		'text-align' : 'center',
-		'left' : '550px',
-		'top': '150px',
+		'left' : '800px',
+		'top': '175px',
 		'width': '150px',
 		'height': '50px'
 		});
