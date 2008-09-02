@@ -235,6 +235,10 @@ class FlowPage:
                 courseflowpoint = FlowPage(self.request, userselection, self.user)
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                 return nextcoursepoint, nexttask
+            elif userselection and self.user.canDo(userselection, self.pagename):
+                courseflowpoint = FlowPage(self.request, userselection, self.user)
+                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
+                return nextcoursepoint, nexttask
             elif self.user.currenttask and self.user.currenttask != "end":
                 return self.user.currentcoursepoint, self.user.currenttask
             elif self.user.currentcoursepoint and self.user.currentcoursepoint != "end":
@@ -242,14 +246,9 @@ class FlowPage:
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                 return nextcoursepoint, nexttask
             else:
-                metas = getmetas(self.request, self.globaldata, self.pagename, ["start"], checkAccess=False)
-
-                if metas["start"]:
-                    courseflowpoint = FlowPage(self.request, metas["start"][0][0], self.user)
-                    nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                    return nextcoursepoint, nexttask
-                else:
-                    return False, False
+                courseflowpoint = FlowPage(self.request, self.startlist[0], self.user)
+                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
+                return nextcoursepoint, nexttask
         elif coursepointcategory in self.categories:
             penaltykey = self.pagename+"/penalty"
             if self.user.statusdict.has_key(penaltykey):
@@ -294,9 +293,7 @@ class FlowPage:
             else:
                 return False, False
         elif taskpointcategory in self.categories:
-            #globaldata = GraphData(self.request)
             metas = getmetas(self.request, self.globaldata, self.pagename, ["next"], checkAccess=False)
-            #globaldata.closedb()
             if metas["next"]:
                 nextpage = random.choice(metas["next"])[0]
                 if nextpage != "end":
@@ -310,8 +307,6 @@ class FlowPage:
                                       self.user.currentcourse: [addlink(returncp)]}
                         input = order_meta_input(self.request, self.user.statuspage, statusdata, "repl")
                         process_edit(self.request, input, True, {self.user.statuspage:[statuscategory]})
-                        #coursepage = FlowPage(self.request, self.course, self.user)
-                        print returncp, returntask
                         return returncp, returntask
                     else:
                         self.user.editstatus(self.user.currentcoursepoint, "end", 6)
