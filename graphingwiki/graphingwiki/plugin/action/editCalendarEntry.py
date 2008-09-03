@@ -19,7 +19,7 @@ def _enter_page(request, pagename):
 
     request.theme.send_title(title, pagename=pagename, 
     html_head=u'''<link rel="stylesheet" type="text/css" charset="utf-8"
-    media="all" href="%s/modern/css/calendar.css">
+    media="all" href="%s/raippa/css/calendar.css">
     <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
     <script type="text/javascript" src="%s/common/js/calendar.js"></script>
     ''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static))
