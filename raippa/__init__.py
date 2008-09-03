@@ -112,12 +112,9 @@ class RaippaUser:
             if metas["deadline"]:
                 deadline = time.strptime(metas["deadline"][0][0], "%Y-%m-%d")
                 currentdate = time.gmtime()
-                print deadline, currentdate
-                if deadline[0] < currentdate[0]:
-                    return False
-                elif deadline[0] <= currentdate[0] and deadline[1] < currentdate[1]:
-                    return False
-                elif deadline[0] <= currentdate[0] and deadline[1] <= currentdate[1] and deadline[2] < currentdate[2]:
+                if (deadline[0] < currentdate[0]) or \
+                   (deadline[0] <= currentdate[0] and deadline[1] < currentdate[1]) or \
+                   (deadline[0] <= currentdate[0] and deadline[1] <= currentdate[1] and deadline[2] < currentdate[2]):
                     return False
             prerequisites = page.getprerequisite()
             for prequisite in prerequisites:
