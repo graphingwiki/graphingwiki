@@ -24,10 +24,23 @@ function sel_stats(){
     }));
   form.submit();
   }
+function del_confirm(form){
+  var form = $(form);
+  var value = form.getElement('select').value;
+  if(confirm('Do you really want to delete '+ value+'?')){
+ form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'delete',
+    'value' : 'delete'
+    }));
+
+  form.submit();
+  }
+}
 </script>'''  % request.cfg.url_prefix_static
     html += u'''
 Courses:
-<form method="post" id="course_form"> <!---  action="%s"> --!>
+<form method="post" id="course_form"  action="%s">
     <input type="hidden"id="course_action" name="action" value="editCourse">
     <select size="1" name="course">''' % request.request_uri.split("?")[0]
     for page in courselist:
@@ -42,13 +55,14 @@ Courses:
         html += u'<option name="course" value="%s">%s\n' % (page, listtext)
     html += '''
     </select>
-    <input type='submit' name='delete' value='delete'>
+    <input type='button' name='delete' value='delete'
+    onclick="del_confirm('course_form');">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
     <input type="button" value="stats" onclick="sel_stats();">
 </form>
 Tasks:
-<form method="POST" action="%s">
+<form method="post" id="task_form" action="%s">
     <input type="hidden" name="action" value="editTask">
     <select size="1" name="task">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
@@ -63,13 +77,14 @@ Tasks:
         html += u'<option name="task" value="%s">%s\n' % (page, description)
     html += '''
     </select>
-    <input type='submit' name='delete' value='delete'>
+    <input type='button' name='delete' value='delete'
+    onclick="del_confirm('task_form');">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
 </form>'''
     html += u'''
 Questions:
-<form method="POST" action="%s">
+<form method="post" id="question_form" action="%s">
     <input type="hidden" name="action" value="editQuestion">
     <select name="question">''' % request.request_uri.split("?")[0]
     globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
@@ -79,7 +94,8 @@ Questions:
             break
         html += u'<option value="%s">%s\n' % (page, question)
     html += u'''</select>
-    <input type='submit' name='delete' value='delete'>
+    <input type='button' name='delete' value='delete'
+    onclick="del_confirm('question_form')">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
 </form>'''
