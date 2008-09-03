@@ -9,6 +9,8 @@ import os
 import sys
 import string
 import md5
+import optparse
+import ConfigParser
 
 from xml.dom import minidom
 
@@ -31,14 +33,14 @@ def getText(nodelist):
             rc = rc + node.data
     return rc
 
-def uploadFile(wiki, page, filename, path):
+def uploadFile(wiki, testrun_page, filename, path):
     try:
        file = open(path, "rb")
     except IOError:
        print path + " does not exist." 
        return
 
-    for current, total in wiki.putAttachmentChunked(page, filename, file):
+    for current, total in wiki.putAttachmentChunked(testrun_page, filename, file):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
 
@@ -50,14 +52,14 @@ def uploadFile(wiki, page, filename, path):
 
     file.close()
 
-def handledir( collab, page, path ):
+def handledir( collab, testplan_page, path ):
     print "Handling directory: " + path
     metas = Meta()
     metas["category"].add("CategoryTestRun")
-    page = hashfile(os.path.join(path,'summary.xml'))
+    testrun_page = hashfile(os.path.join(path,'summary.xml'))
     template = "TestRunTemplate"
     xmldoc = minidom.parse(os.path.join(path,'summary.xml'))
-    metas["Test plan"].add( '["%s"]' % page )
+    metas["Test plan"].add( '["%s"]' % testplan_page )
 
     for fact in xmldoc.getElementsByTagName("fact"):
         label = fact.getAttribute("label")
@@ -71,26 +73,26 @@ def handledir( collab, page, path ):
     for label, file in [['Log', 'main.log.gz'], ['Settings', 'run.set'], ['Settings', 'runinfo'], ['Statistics', 'statistics.csv'], ['Summary', 'summary.txt'], ['Summary', 'summary.xml']]:
         if label:
             metas[label].add("See attachment:" + file)
-            uploadFile(collab, page, file, os.path.join(path,file))
+            uploadFile(collab, testrun_page, file, os.path.join(path,file))
 
     for collection in xmldoc.getElementsByTagName("collection"):
         label = collection.getAttribute("label")
         for fact in collection.getElementsByTagName("fact"):
             metas[label].add(getText(fact.childNodes))
 
-    collab.setMeta(page, metas, template=template, replace=True)
+    collab.setMeta(testrun_page, metas, template=template, replace=True)
 
 def parse_config(cpath, args):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
     uris = dict( configparser.items("testrun") )
     if len(args) == 0:
-        page = uris.pop("page")
+        testplan_page = uris.pop("page")
         path = uris.pop("path")
-        return page, path
+        return testplan_page, path
     else:
-        page = uris.pop("page")
-        return page
+        testplan_page = uris.pop("page")
+        return testplan_page
 
 def main():
     parser = optparse.OptionParser()
@@ -106,24 +108,24 @@ def main():
     options, args = parser.parse_args()
     if options.cpath:
         if len(args) == 0:
-            page, path = parse_config(options.cpath, args)
+            testplan_page, path = parse_config(options.cpath, args)
         elif len(args) == 1:
-            page = parse_config(options.cpath, args)
+            testplan_page = parse_config(options.cpath, args)
             path = args.pop()
         elif len(args) == 2:
-            page, path = args
+            testplan_page, path = args
         elif len(args) == 3:
-            url, page, path = args
+            url, testplan_page, path = args
             collab = CLIWiki(url, config=options.cpath)
         if len(args) < 3:
             collab = CLIWiki(config=options.cpath)
     elif len(args) != 3:
-        parser.error("collab url, page name and directory name have to be defined")
+        parser.error("Collab url, testplan page name and directory name have to be defined.")
     else:
-        url, page, path = args
+        url, testplan_page, path = args
         collab = CLIWiki(url)
 
-    handledir( collab, page, path )
+    handledir( collab, testplan_page, path )
 
 if __name__ == "__main__":
     try:
