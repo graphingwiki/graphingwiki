@@ -52,6 +52,18 @@ def taskform(request, task=None):
 <script type="text/javascript">
 window.addEvent('domready', function(){
   addOpts();
+  $$('select[id^=type_]').setStyle('display' , 'none');
+  var val = $($('typeSelect').value) ? $('typeSelect').value : 'type_None';
+  
+  $(val).setStyle('display','');
+  
+  $('typeSelect').addEvent('change',function(){
+    var val = this.value;
+    if($(val)){
+      $$('select[id^=type_]').setStyle('display' , 'none');
+      $(val).setStyle('display','');
+      }
+    });
   });
 
 function createPenaltySel(el, defVal){
@@ -147,6 +159,7 @@ function addOption(theSel, theText, theValue, penalty)
 {
 	var newOpt = new Element('option', {
 	  'text' : theText,
+	  'title' : theText,
 	  'value' : theValue
 });
     $(theSel).grab(newOpt);
@@ -263,33 +276,32 @@ select questions:<br>
             except:
                 pass
     #typelist
-    pagehtml += u'question type: <select name="type">\n'
+    pagehtml += u'question type: <select id="typeSelect" name="type">\n'
     for type in typedict:
-        pagehtml += '<option value="%s">%s\n' % (type, type)
-    pagehtml += u'</select>'
+        pagehtml += '<option value="type_%s">%s\n' % (type, type)
+    pagehtml += u'</select><tr><td id="qlist_td">'
 
     #questionlists
     for type, questionlist in typedict.iteritems():
-        pagehtml += u'<select size="10" id="%s" name="questionList" multiple="multiple">\n' % type
+        pagehtml += u'''<select size="10" style="width:200px;" id="type_%s" name="questionList"
+        multiple="multiple">\n''' % type
         for questionpagename, questiontext in questionlist:
-            pagehtml += u'<option name="question" value="%s">%s</option>\n' % (questionpagename, questiontext)
+            pagehtml += u'<option name="question" title="%s" value="%s">%s</option>\n' % (questiontext, questionpagename, questiontext)
         pagehtml += u'</select>\n'
     pagehtml += u'''
-    <tr>
-    <td>
     </td>
     <td align="center" valign="middle">
         <input type="button" value="--&gt;"
-         onclick="moveOptions($('qlist'), taskForm.flowlist);"><br>
+         onclick="moveOptions($($('typeSelect').value), taskForm.flowlist);"><br>
         <input type="button" value="&lt;--"
-         onclick="moveOptions(taskForm.flowlist, $('qlist'));">
+         onclick="moveOptions(taskForm.flowlist, $($('typeSelect').value));">
     </td>
     <input type="hidden" name="action" value="%s">\n''' % action_name
     if task:
         pagehtml += u'<input type="hidden" name="task" value="%s">\n' % task
     pagehtml += '''
     <td id="flowtd">
-        <select name="flowlist" id="flist" size="10"
+        <select name="flowlist" style="width:200px;" id="flist" size="10"
 		multiple="multiple"></select><script type="text/javascript">
 		function addOpts(){
 		\n'''
