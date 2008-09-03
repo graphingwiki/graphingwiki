@@ -80,6 +80,18 @@ def handledir( collab, page, path ):
 
     collab.setMeta(page, metas, template=template, replace=True)
 
+def parse_config(cpath, args):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    uris = dict( configparser.items("testrun") )
+    if len(args) == 0:
+        page = uris.pop("page")
+        path = uris.pop("path")
+        return page, path
+    else:
+        page = uris.pop("page")
+        return page
+
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
