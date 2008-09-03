@@ -10,7 +10,7 @@ from MoinMoin.action.AttachFile import getAttachDir
 
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import encode
 from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
@@ -303,6 +303,29 @@ return true;
 </td>
 <tr>
 <tr style="border-style:hidden">
+<td style="border-style:hidden">type:</td>
+<td colspan="2"style="border-style:hidden">
+<select name="type">\n'''
+    globaldata, questions, metakeys, styles = metatable_parseargs(request, questioncategory)
+    questiontypes = list()
+    for question_in_list in questions:
+        metas = getmetas(request, request.globaldata, question_in_list, ["type"])
+        for type, metatype in metas["type"]:
+            questiontypes.append(type)
+    for type in list(set(questiontypes)):
+        if questionpage:
+            if type in question.types:
+                html += u'<option value="%s" selected="selected">%s</option>\n' % (type, type)
+            else:
+                html += u'<option value="%s">%s</option>\n' % (type, type)
+        else:
+            html += u'<option value="%s">%s</option>\n' % (type, type)
+    html += u'''
+</select> &nbsp; 
+<input size="30" type="text" name="type">
+</td>
+<tr>
+<tr style="border-style:hidden">
 <td style="border-style:hidden">image:</td>
 <td colspan="2"style="border-style:hidden">\n'''
     if questionpage:
@@ -458,7 +481,8 @@ def savequestion(request,  oldquestion=None):
     #edit questionpage
     questiondata = {"question": [request.form["question"][0]],
                     "note": [request.form["note"][0]],
-                    "answertype": [request.form["answertype"][0]]}
+                    "answertype": [request.form["answertype"][0]],
+                    "type": request.form["type"]}
 
     if oldquestion:
         questionpage = oldquestion
@@ -495,7 +519,6 @@ def savequestion(request,  oldquestion=None):
                 answerpage = oldanswers[answer][3] 
                 input = order_meta_input(request, answerpage, answerdata, "repl")
                 process_edit(request, input)
-                #print "editold", input
 
                 #edit tippage
                 tipid = oldanswers[answer][1]
@@ -508,19 +531,16 @@ def savequestion(request,  oldquestion=None):
                         tippage = randompage(request, "Tip")
                     input = order_meta_input(request, tippage, tipdata, "repl")
                     process_edit(request, input, True, {tippage:[tipcategory]})
-                    #print "editoldtip", input
                 elif tipid:
                     tippage = "Tip/"+tipid
                     tippage = PageEditor(request, tippage, do_editor_backup=0)
                     if tippage.exists():
-                        #print "deletetip", tippage.page_name
                         tippage.deletePage()
                 del oldanswers[answer]
             else:
                 answerpage = randompage(request, "Answer")
                 input = order_meta_input(request, answerpage, answerdata, "add")
                 process_edit(request, input, True, {answerpage:[answercategory]})
-                #print "editnew", input
 
                 #edit tippage
                 if value != u'true' and tip != u'':
@@ -529,13 +549,11 @@ def savequestion(request,  oldquestion=None):
                     tippage = randompage(request, "Tip")
                     input = order_meta_input(request, tippage, tipdata, "add")
                     process_edit(request, input, True, {tippage:[tipcategory]})
-                    #print "editnewtip", input
 
     if oldquestion:
         for answer, answerdata in oldanswers.iteritems():
             deletepage = PageEditor(request, answerdata[3], do_editor_backup=0)
             if deletepage.exists():
-                #print "delete", deletepage.page_name
                 deletepage.deletePage()
 
     try:
@@ -576,15 +594,12 @@ def delete(request, pagename):
                                     if category == tipcategory:
                                         tippage = PageEditor(request, tippage, do_editor_backup=0)
                                         if tippage.exists():
-                                            #print "delete", tippage.page_name
                                             tippage.deletePage()
                                         break
                             answerpage = PageEditor(request, answerpage, do_editor_backup=0)
                             if answerpage.exists():
-                                #print "delete", answerpage.page_name
                                 answerpage.deletePage()
                             break
-                #print "delete", page.page_name
                 page.deletePage()
                 break
         return "Success"

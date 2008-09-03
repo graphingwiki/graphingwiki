@@ -245,21 +245,38 @@ select questions:<br>
     <input type='submit' name='new' value='NewQuestion'>
 </form>
 <table border="0">
-<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">
-    <tr>
-    <td>
-        <select size="10" id="qlist" name="questionList" multiple="multiple">\n''' % request.request_uri.split("?")[0]
+<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
+    typedict = {None:list()}
     for page in pagelist:
         if page not in questions:
             try:
-                metas = getmetas(request, request.globaldata, encode(page), ["question"])
+                metas = getmetas(request, request.globaldata, encode(page), ["type", "question"])
                 question = metas["question"][0][0]
-                pagehtml += u'<option name="question" value="%s">%s</option>\n' % (page, question)
+                if metas["type"]:
+                    for type, metatype in metas["type"]:
+                        if not typedict.has_key(type):
+                            typedict[type] = list()
+                        typedict[type].append((page, question))
+                else:
+                    typedict[None].append((page, question))
             except:
                 pass
-    pagehtml += '''
-        </select>
+    #typelist
+    pagehtml += u'question type: <select name="type">\n'
+    for type in typedict:
+        pagehtml += '<option value="%s">%s\n' % (type, type)
+    pagehtml += u'</select>'
+
+    #questionlists
+    for type, questionlist in typedict.iteritems():
+        pagehtml += u'<select size="10" id="%s" name="questionList" multiple="multiple">\n' % type
+        for questionpagename, questiontext in questionlist:
+            pagehtml += u'<option name="question" value="%s">%s</option>\n' % (questionpagename, questiontext)
+        pagehtml += u'</select>\n'
+    pagehtml += u'''
+    <tr>
+    <td>
     </td>
     <td align="center" valign="middle">
         <input type="button" value="--&gt;"
