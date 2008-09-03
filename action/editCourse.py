@@ -2,6 +2,7 @@
 action_name = 'editCourse'
 
 from MoinMoin.Page import Page
+from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import getmetas
@@ -19,6 +20,8 @@ coursecategory = u'CategoryCourse'
 coursepointcategory = u'CategoryCoursepoint'
 statuscategory = u'CategoryStatus'
 historycategory = u'CategoryHistory'
+
+
 
 def courseform(request, course=None):
     if course:
@@ -318,7 +321,13 @@ def editcourse(request, coursepage=None):
             input = order_meta_input(request, coursepoint, pointdata, "repl")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})
             if coursepoint.split("/")[1] != courseid:
+                savegraphdata = wikiutil.importPlugin(request.cfg,
+                                                      'action',
+                                                      'savegraphdata')
                 editpage = PageEditor(request, coursepoint)
+                path = editpage.getPagePath()
+                savegraphdata(coursepoint, request, "", path, editpage)
+
                 newname = coursepoint.split("/")[0] +"/"+ courseid +"/"+ coursepoint.split("/")[2]
                 success, msgs = editpage.renamePage(newname)
         coursedata = {u'id':[courseid],
@@ -338,7 +347,13 @@ def editcourse(request, coursepage=None):
         input = order_meta_input(request, coursepage, coursedata, "repl")
         process_edit(request, input, True, {coursepage:[coursecategory]})
         if coursepage.split("/")[1] != courseid:
+            savegraphdata = wikiutil.importPlugin(request.cfg,
+                                                  'action',
+                                                  'savegraphdata')
             editpage = PageEditor(request, coursepage)
+            path = editpage.getPagePath()
+            savegraphdata(coursepage, request, "", path, editpage)
+
             newcoursename = coursepage.split("/")[0] +"/"+ courseid
             success, msgs = editpage.renamePage(newcoursename)
 

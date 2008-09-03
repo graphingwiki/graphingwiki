@@ -296,9 +296,9 @@ return true;
 <td  style="border-style:hidden">note:</td>
 <td colspan="2"style="border-style:hidden">'''
     if questionpage:
-        html += u'<textarea name="note" rows="5" cols="40">%s</textarea>' % question.note
+        html += u'<textarea name="note" rows="7" cols="70">%s</textarea>' % question.note
     else:
-        html += u'<textarea name="note" rows="5" cols="40"></textarea>'
+        html += u'<textarea name="note" rows="7" cols="70"></textarea>'
     html += u'''
 </td>
 <tr>
