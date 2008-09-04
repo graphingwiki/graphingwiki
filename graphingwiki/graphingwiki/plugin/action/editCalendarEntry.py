@@ -178,10 +178,11 @@ window.addEvent('domready', function(){
         setDuration(this.id);
       }
       });
+  
   $('duration').addEvent('change',function(){
     setDuration('start_time', true);
-    });
-  
+  });
+
   $('type').addEvent('change', function(){
     repeatcheck();
  });
@@ -299,7 +300,7 @@ function formcheck(){
 <input type="hidden" name="action" value="%s">
 <input type="hidden" name="backto" value="%s">
 <input type="hidden" name="categories" value="%s">
-<!--- edit? --!>
+<!-- edit? -->
 %s
 <table>
 <tr>
