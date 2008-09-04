@@ -38,11 +38,11 @@ this.setOptions(C.options||null);this.tip=new Element("div").inject(document.bod
 this.tip.setStyles({position:"absolute",top:0,left:0,visibility:"hidden"});if(C.elements){this.attach(C.elements);}},attach:function(A){$$(A).each(function(D){
 if(D.title){
 var AB=D.get('title').split('::');
-if(AB.length > 1){
+if(AB[1]){
 var G=D.retrieve("tip:title",AB[0].trim());
 var F=D.retrieve("tip:text",AB[1].trim());
 }else{
-var F=D.retrieve("tip:text",AB.trim());
+var F=D.retrieve("tip:title",AB[0].trim());
 }
 }
 var E=D.retrieve("tip:enter",this.elementEnter.bindWithEvent(this,D));var C=D.retrieve("tip:leave",this.elementLeave.bindWithEvent(this,D));
