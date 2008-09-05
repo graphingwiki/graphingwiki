@@ -11,7 +11,7 @@ from MoinMoin.Page import Page
 
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import edit_meta
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import encode
 from graphingwiki.patterns import getgraphdata
 
 from raippa import RaippaUser
@@ -75,14 +75,14 @@ def graphmap(request, page, raippauser):
     return html
 
 def getanswers(request, questionpage):
-    page = request.globaldata.getpage(questionpage)
+    page = request.graphdata.getpage(questionpage)
     linking_in = page.get('in', {})
     pagelist = linking_in.get("question", [])
 
     answerlist = list()
 
     for page in pagelist:
-        metas = getmetas(request, request.globaldata, page, ["WikiCategory", "true", "false"], checkAccess=False)
+        metas = getmetas(request, request.graphdata, page, ["WikiCategory", "true", "false"], checkAccess=False)
         for category, type in metas["WikiCategory"]:
             if category == answercategory:
                 if metas["true"]:
@@ -106,7 +106,7 @@ def questionhtml(request, questionpage, number=""):
     note = unicode()
     social = False
 
-    meta = getmetas(request, request.globaldata, encode(questionpage), [u'question', u'answertype', u'note'], checkAccess=False)
+    meta = getmetas(request, request.graphdata, encode(questionpage), [u'question', u'answertype', u'note'], checkAccess=False)
 
     question = meta[u'question'][0][0]
     answertype = meta[u'answertype'][0][0]
@@ -115,7 +115,7 @@ def questionhtml(request, questionpage, number=""):
         html += note + u'<br>\n'
 
     try:
-        meta = getmetas(request, request.globaldata, encode(question), [u'WikiCategory', u'name'], checkAccess=False)
+        meta = getmetas(request, request.graphdata, encode(question), [u'WikiCategory', u'name'], checkAccess=False)
         for metatuple in meta[u'WikiCategory']:
             category = metatuple[0]
             if category == usercategory:
@@ -175,19 +175,19 @@ def questionhtml(request, questionpage, number=""):
 
 def questionform(request):
     try:
-        meta = getmetas(request, request.globaldata, encode(request.page.page_name), ["question"], checkAccess=False)
+        meta = getmetas(request, request.graphdata, encode(request.page.page_name), ["question"], checkAccess=False)
         questionpage = encode(meta["question"][0][0])
-        meta = getmetas(request, request.globaldata, questionpage, ["answertype"], checkAccess=False)
+        meta = getmetas(request, request.graphdata, questionpage, ["answertype"], checkAccess=False)
         answertype = meta["answertype"][0][0]
     except:
         return u'Failed to generate question form.'
 
     if answertype == "file":
-        page = request.globaldata.getpage(questionpage)
+        page = request.graphdata.getpage(questionpage)
         linking_in = page.get('in', {})
         pagelist = linking_in["question"]
         for page in pagelist:
-            meta = getmetas(request, request.globaldata, page, ["WikiCategory", "user", "overallvalue"], checkAccess=False)
+            meta = getmetas(request, request.graphdata, page, ["WikiCategory", "user", "overallvalue"], checkAccess=False)
             for category, type in meta["WikiCategory"]:
                 if category == historycategory:
                     for user, type in meta["user"]:
@@ -257,8 +257,8 @@ def taskform(request):
     return html
 
 def courselisthtml(request):
-    request.globaldata.reverse_meta()
-    vals_on_pages = request.globaldata.vals_on_pages
+    request.graphdata.reverse_meta()
+    vals_on_pages = request.graphdata.vals_on_pages
 
     courselist = set([])
     for page in vals_on_pages:
@@ -272,7 +272,7 @@ def courselisthtml(request):
     <input type="hidden" name="action" value="flowRider">
     <select name="course">'''
             for page in courselist:
-                metas = getmetas(request, request.globaldata, encode(page), [u'id', u'name'], checkAccess=False)
+                metas = getmetas(request, request.graphdata, encode(page), [u'id', u'name'], checkAccess=False)
                 id = metas[u'id'][0][0]
                 name = metas[u'name'][0][0]
                 html += u'<option value="%s">%s - %s\n' % (page, id, name)
@@ -291,7 +291,8 @@ def courselisthtml(request):
 
 def execute(macro, text):
     request = macro.request
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
     request.raippauser = RaippaUser(request)
     pagename = encode(request.page.page_name)
     html = str()
@@ -302,12 +303,12 @@ def execute(macro, text):
         if request.user.name and not userpage.exists():
             msg = edit_meta(request, request.user.name, {"":""}, {"name":[request.user.aliasname]}, True, [usercategory])
         elif request.user.name and userpage.exists():
-            metas = getmetas(request, request.globaldata, encode(request.user.name), ["name"], checkAccess=False)
+            metas = getmetas(request, request.graphdata, encode(request.user.name), ["name"], checkAccess=False)
             if not metas["name"]:
                 msg = edit_meta(request, encode(request.user.name), {"":""}, {"name":[request.user.aliasname]})
         return courselisthtml(request) 
     else:
-        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start", "option"], checkAccess=False)
+        metas = getmetas(request, request.graphdata, pagename, ["WikiCategory", "start", "option"], checkAccess=False)
         for category, type in metas["WikiCategory"]:
             if category == coursecategory:
                 coursepage = FlowPage(request, pagename)
