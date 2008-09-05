@@ -276,8 +276,11 @@ var type = $('typeSelect').value;
 	}
 return true;
   }
-</script>
+</script>'''
+    if questionpage:
+        html += u'Pagename: %s\n' % questionpage
 
+    html += u'''
 <form id="dataform" method="POST" enctype="multipart/form-data" onsubmit="return submitCheck();">
 <input type="hidden" name="action" value="%s">
 <table style="border-style:hidden">
@@ -309,7 +312,7 @@ return true;
     globaldata, questions, metakeys, styles = metatable_parseargs(request, questioncategory)
     questiontypes = list()
     for question_in_list in questions:
-        metas = getmetas(request, request.globaldata, question_in_list, ["type"])
+        metas = getmetas(request, request.graphdata, question_in_list, ["type"])
         for type, metatype in metas["type"]:
             questiontypes.append(type)
     for type in list(set(questiontypes)):
@@ -394,7 +397,7 @@ return true;
                 tip = answeroptions[1]
                 if tip:
                     tippage = "Tip/%s" % tip
-                    meta = getmetas(request, request.globaldata, tippage, ["tip"])
+                    meta = getmetas(request, request.graphdata, tippage, ["tip"])
                     for tipnote, type in meta["tip"]:
                         break
                     html += u'''
@@ -431,7 +434,7 @@ def show_socialform(request):
     globaldata, userlist, metakeys, styles = metatable_parseargs(request, usercategory)
     users = dict()
     for user in userlist:
-        metas = getmetas(request, request.globaldata, encode(user), ["name"], checkAccess=False)
+        metas = getmetas(request, request.graphdata, encode(user), ["name"], checkAccess=False)
         if metas["name"]:
             users[user] = metas["name"][0][0]
 
@@ -567,29 +570,29 @@ def delete(request, pagename):
     page = PageEditor(request, pagename, do_editor_backup=0)
     if page.exists():
         categories = list()
-        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        metas = getmetas(request, request.graphdata, pagename, ["WikiCategory"])
         for category, type in metas["WikiCategory"]:
             if category == questioncategory:
-                linkedpage = request.globaldata.getpage(pagename)
+                linkedpage = request.graphdata.getpage(pagename)
                 linking_in = linkedpage.get('in', {})
                 linkinglist = linking_in.get("question", [])
                 for linkingpage in linkinglist:
-                    meta = getmetas(request, request.globaldata, linkingpage, ["WikiCategory"])
+                    meta = getmetas(request, request.graphdata, linkingpage, ["WikiCategory"])
                     for category, type in meta["WikiCategory"]:
                         if category == taskpointcategory:
                             return "Question is in use."
-                questionpage = request.globaldata.getpage(pagename)
+                questionpage = request.graphdata.getpage(pagename)
                 linking_in = questionpage.get('in', {})
                 pagelist = linking_in.get("question", [])
                 for answerpage in pagelist:
-                    meta = getmetas(request, request.globaldata, answerpage, ["WikiCategory"])
+                    meta = getmetas(request, request.graphdata, answerpage, ["WikiCategory"])
                     for category, type in meta["WikiCategory"]:
                         if category == answercategory:
-                            linkedpage = request.globaldata.getpage(answerpage)
+                            linkedpage = request.graphdata.getpage(answerpage)
                             linking = linkedpage.get('in', {})
                             tiplist = linking.get("answer", [])
                             for tippage in tiplist:
-                                tipmeta = getmetas(request, request.globaldata, tippage, ["WikiCategory"])
+                                tipmeta = getmetas(request, request.graphdata, tippage, ["WikiCategory"])
                                 for category, type in tipmeta["WikiCategory"]:
                                     if category == tipcategory:
                                         tippage = PageEditor(request, tippage, do_editor_backup=0)
@@ -627,7 +630,8 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
     if request.form.has_key("save"):
         if request.form.has_key("questionpage"):
             try:
