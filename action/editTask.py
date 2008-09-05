@@ -64,6 +64,10 @@ window.addEvent('domready', function(){
       $(val).setStyle('display','');
       }
     });
+  var links = $$('option').filter(function(el){
+    return el.title.match("::") ? true : false;
+    });
+  var tips = new Tips(links);
   });
 
 function createPenaltySel(el, defVal){
@@ -159,7 +163,7 @@ function addOption(theSel, theText, theValue, penalty)
 {
 	var newOpt = new Element('option', {
 	  'text' : theText,
-	  'title' : theText,
+	  'title' : theText +'::',
 	  'value' : theValue
 });
     $(theSel).grab(newOpt);
@@ -276,7 +280,7 @@ select questions:<br>
             except:
                 pass
     #typelist
-    pagehtml += u'question type: <select id="typeSelect" name="type">\n'
+    pagehtml += u'question type: <select id="typeSelect" name="question_type">\n'
     for type in typedict:
         pagehtml += '<option value="type_%s">%s\n' % (type, type)
     pagehtml += u'</select><tr><td id="qlist_td">'
@@ -286,7 +290,7 @@ select questions:<br>
         pagehtml += u'''<select size="10" style="width:200px;" id="type_%s" name="questionList"
         multiple="multiple">\n''' % type
         for questionpagename, questiontext in questionlist:
-            pagehtml += u'<option name="question" title="%s" value="%s">%s</option>\n' % (questiontext, questionpagename, questiontext)
+            pagehtml += u'<option name="question" title="%s:: " value="%s">%s</option>\n' % (questiontext, questionpagename, questiontext)
         pagehtml += u'</select>\n'
     pagehtml += u'''
     </td>
@@ -556,7 +560,9 @@ def _enter_page(request, pagename):
     _ = request.getText
     
     request.theme.send_title(_('Teacher Tools'), formatted=False,
-    html_head='<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>' % request.cfg.url_prefix_static)
+    html_head='''<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+   <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script> ''' %
+    (request.cfg.url_prefix_static,request.cfg.url_prefix_static))
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:
