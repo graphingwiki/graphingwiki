@@ -26,15 +26,15 @@ def redirect(request, pagename, tip=None):
     request.http_redirect(url)
 
 def execute(pagename, request):
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
     request.raippauser = RaippaUser(request)
-    #request.globaldata = GraphData(request)
-    request.globaldata = getgraphdata(request)
 
     if request.form.has_key("selectcourse"):
         coursename = request.form.get("course", [u''])[0]
         if coursename:
             currentpage = FlowPage(request, pagename, request.raippauser)
-            metakeys = getkeys(request.globaldata, request.raippauser.statuspage)
+            metakeys = getkeys(request.graphdata, request.raippauser.statuspage)
             if metakeys.has_key("current"):
                 edit_meta(request, request.raippauser.statuspage, {"current": [addlink(request.raippauser.currentcourse)]}, {"current": [addlink(coursename)]})
             else:
@@ -104,9 +104,7 @@ def execute(pagename, request):
                                 redirect(request, nexttask)
                         else:
                             try:
-                                #globaldata = GraphData(request)
-                                metas = getmetas(request, request.globaldata, currentpage.pagename, ["penalty"], checkAccess=False)
-                                #globaldata.closedb()
+                                metas = getmetas(request, request.graphdata, currentpage.pagename, ["penalty"], checkAccess=False)
                                 failurepage = metas["penalty"][0][0]
                                 failurekey = request.raippauser.currentcoursepoint + "/penalty"
                                 statusdata = {request.raippauser.currentcourse:[addlink(failurekey)],
