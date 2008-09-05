@@ -3,7 +3,7 @@ from graphingwiki.editing import getmetas
 from graphingwiki.patterns import getgraphdata
 
 tipcategory = "CategoryTip"
-generictip = u'This is generic tip. Et vaan osaa!'
+generictip = u'Your answer was incorrect.'
 noanswer = u'You should answer all the questions.'
 penalty = u'Your answer was incorrect and now you have do extra penalty task.'
 
