@@ -577,8 +577,6 @@ def execute(pagename, request, text, pagedir, page):
     request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
     request.lock.acquire()
     
-    # The global graph data contains all the links, even those that
-    # are not immediately available in the page's graphdata pickle
     quotedname = url_quote(encode(pagename))
 
     # Page graph file to save detailed data in
