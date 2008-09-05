@@ -400,8 +400,7 @@ class Question:
         except:         
             self.globaldata = getgraphdata(self.request)
         
-        #globaldata = GraphData(self.request)
-        metas = getmetas(request, self.globaldata, self.pagename, ["question", "answertype", "note", "type"])                  
+        metas = getmetas(request, self.globaldata, self.pagename, ["question", "answertype", "note", "type"], checkAccess=False)                  
         self.question = unicode()
         self.answertype = unicode()
         self.note = unicode()
@@ -416,11 +415,8 @@ class Question:
         for type, metatype in metas["type"]:
             self.types.append(type)
 
-        #globaldata.closedb()
-
     def gethistories(self):
         histories = list()
-        #globaldata = GraphData(self.request)
         page = self.globaldata.getpage(self.pagename)
         linking_in = page.get('in', {})
         pagelist = linking_in.get("question", [])
