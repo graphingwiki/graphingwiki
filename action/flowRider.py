@@ -115,7 +115,10 @@ def execute(pagename, request):
                                 process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
                                 redirect(request, failurepage, "penalty")
                             except:
-                                redirect(request, currentpage.pagename, tips[0])
+                                if len(tips) > 0:
+                                    redirect(request, currentpage.pagename, tips[0])
+                                else:
+                                    redirect(request, currentpage.pagename, "generic")
                 else:
                     request.write(u'Cannot find questionpage.')
             else:
