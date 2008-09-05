@@ -5,6 +5,7 @@ import os
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
+from MoinMoin.user import User
 from MoinMoin.action.AttachFile import getAttachDir
 
 from graphingwiki.editing import getmetas
@@ -28,7 +29,7 @@ timetrackcategory = u'CategoryTimetrack'
 usercategory = u'CategoryUser'
 
 class RaippaUser:
-    def __init__(self, request, id=None):
+    def __init__(self, request, name=None):
         self.request = request
 
         try:
@@ -36,16 +37,17 @@ class RaippaUser:
         except:
             self.globaldata = getgraphdata(self.request)
 
-        if id:
-            self.id = encode(id)
+        if name:
+            self.id = encode(name)
+            self.name = unicode() 
         else:
             self.id = encode(self.request.user.name)
+            self.name = self.request.user.aliasname
 
-        self.name = self.request.user.aliasname
         self.categories = list()
         page = Page(request, self.id)
         if page.exists():
-            meta = getmetas(request, self.globaldata, encode(self.id), ["name", "WikiCategory"], checkAccess=False)
+            meta = getmetas(request, self.globaldata, encode(self.id), ["WikiCategory", "name"], checkAccess=False)
             for name, type in meta["name"]:
                 self.name = name
                 break
@@ -399,10 +401,11 @@ class Question:
             self.globaldata = getgraphdata(self.request)
         
         #globaldata = GraphData(self.request)
-        metas = getmetas(request, self.globaldata, self.pagename, ["question", "answertype", "note"])                  
+        metas = getmetas(request, self.globaldata, self.pagename, ["question", "answertype", "note", "type"])                  
         self.question = unicode()
         self.answertype = unicode()
         self.note = unicode()
+        self.types = list()
 
         if metas["question"]:
             self.question = metas["question"][0][0]
@@ -410,6 +413,8 @@ class Question:
             self.answertype = metas["answertype"][0][0]
         if metas["note"]:
             self.note = metas["note"][0][0]
+        for type, metatype in metas["type"]:
+            self.types.append(type)
 
         #globaldata.closedb()
 
