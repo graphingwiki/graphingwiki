@@ -10,7 +10,8 @@
  * <id>_desc	: value description
  * <id>_type    : random | select
  * <id>_wrong   : where to go after a wrong answer
- * <id>_require : boxes that need to be completed before continuing
+ * <id>_required : boxes that need to be completed before continuing
+ * <id>_expires : expiration date of task
  * lkm          : count of boxes created
  * endPoints    : list of boxes without child
  */
@@ -329,8 +330,31 @@ var cancel = new Element('a', {
                 menu.destroy();
                 }
     }
+});
 
-        });
+cancel.inject(menu);
+createMenuButtons(menu,pDiv);
+
+var reqMenu  = new Element('input', {
+'type' : 'button',
+'value' : 'Prerequisites',
+'events' : { 'click' : function(){
+dropMenu(pDiv);
+menu.destroy();
+        }
+    }
+});
+
+if(getParentBox(pDiv.id).length > 1){
+reqMenu.inject(menu);
+}
+
+menu.inject(document.body);
+}
+
+function createMenuButtons(menu,pDiv){
+var menu = $(menu);
+var pDiv = $(pDiv);
 
 var detach = new Element('input', {
         'type' : 'button',
@@ -366,7 +390,14 @@ var delep = new Element('input', {
         }}
 });
 
-
+var setExp = new Element('input', {
+		'type' : 'button',
+		'value' : 'Expiration date',
+		'events' : { 'click' : function(){
+				setExpiration(pDiv);
+				menu.destroy();
+		}}
+});
 
 var type = new Element('input');
 var del = new Element('input', {
@@ -381,25 +412,13 @@ menu.destroy();
     }
 });
 
-var reqMenu  = new Element('input', {
-'type' : 'button',
-'value' : 'Prerequisites',
-'events' : { 'click' : function(){
-dropMenu(pDiv);
-menu.destroy();
-        }
-    }
-});
-
-cancel.inject(menu);
 menu.grab(new Element('br'));
 del.inject(menu);
-if(getParentBox(pDiv.id).length > 1){
-reqMenu.inject(menu);
-}
 if(boxData.get('endPoints').contains(pDiv.id) == false){
+menu.grab(new Element('br'));
 newep.inject(menu);
 }else if(childBoxes.get(pDiv.id).length > 0){
+menu.grab(new Element('br'));
 delep.inject(menu);
 }
 var childs  = childBoxes.get(pDiv.id);
@@ -407,9 +426,104 @@ if(childs.length == 1){
     if(childs.filter(function(c){
 		return getParentBox(c).length > 1;
 		}).length >0){
+		menu.grab(new Element('br'));
         detach.inject(menu);
     }
 }
+menu.grab(setExp);
+}
+
+
+/* Creates selector with caledar to set expiration date */
+function setExpiration(pDiv){
+var pDiv = $(pDiv);
+var menu = new Element('div', {
+'styles' : {
+		'background-color' : '#caffee',
+		'position' : 'absolute',
+		'text-align' : 'center',
+        'border' : '1px solid black',
+		'padding' : '2px',
+		'z-index' : 5,
+        'top' : pDiv.getPosition().y,
+        'left' : pDiv.getPosition().x + 25
+}
+});
+
+var cancel = new Element('a', {
+    'text': 'X',
+    'title': 'Cancel',
+    'href':'javascript:  ;',
+    'styles' : {
+            'color': '#FF0000',
+            'position': 'absolute',
+            'right' : 0,
+            'text-decoration': 'none'
+    },
+    'events' : {'click' : function(){
+                menu.destroy();
+                }
+    }
+});
+
+
+var cur_date = new Date();
+cur_date = cur_date.getFullYear() + '-' + (cur_date.getMonth() +1 ) + '-' + cur_date.getDay();
+
+var def_value = boxData.get(pDiv.id +'_expires');
+def_value = def_value ? def_value : cur_date;
+
+var expdate = new Element('input',{
+		'type' : 'textfield',
+		'id' : 'expdate',
+		'name' : 'expdate',
+		'value' : def_value,
+		'styles':{
+			'width' : '75px'
+		}
+});
+menu.grab(new Element('b',{
+'text' : 'Expires:'
+}));
+menu.grab(cancel);
+menu.grab(new Element('br'));
+menu.grab(expdate);
+
+var calendar = new Calendar({
+	expdate : 'Y-m-d'
+	},
+	{
+	draggable : false,
+	direction : 1,
+	}
+);
+
+var save = new Element('input', {
+		'type' : 'button',
+		'value' : 'Save',
+		'events' : {
+			'click' : function(){
+			boxData.set(pDiv.id + '_expires', expdate.value);
+			//calendar.destroy()
+			menu.destroy();
+			}
+		}
+});
+var remove = new Element('input',{
+		'type' : 'button',
+		'value' : 'Unset',
+		'events' : {'click': function(){
+			boxData.set(pDiv.id + '_expires', '');
+			//calendar.destroy()
+			menu.destroy();
+		}
+	}
+});
+
+menu.grab(new Element('br'));
+menu.grab(save);
+menu.grab(remove);
+menu.grab(new Element('br'));
 menu.inject(document.body);
 }
 
@@ -749,11 +863,13 @@ $(document.body).grab(menu);
 * posx			: x-coordinate
 * posy			: y-coordinate
 **/
-function newBox(to, value, description, type, required , posx, posy){
+function newBox(to, value, description, type, required, expires,  posx, posy){
 if(to === null){
 to = 'start';
 }
 var pDiv = $(to);
+
+expires = expires ? expires.toString() : "";
 
 if(pDiv === null){
 pid = boxData.keyOf(to);
@@ -769,6 +885,7 @@ cid = boxData.keyOf(value);
 			boxData.get('endPoints').erase(pid);
 			$('ep_'+pid).destroy();
 			boxData.get(pid+'_required').combine(required);
+			boxData.set(pid+'_expires', expires);
 		}
 		drawline();
 		return;
@@ -840,6 +957,7 @@ ctx.bezierCurveTo(175,0,175,50 + hfix,75,50 + hfix);
 ctx.bezierCurveTo(-25,50 + hfix,-25,0,75,0);
 ctx.fill();
 
+//div for text and buttons
 var content = new Element('div',{
 'id' : 'content',
 'styles' : {
@@ -850,7 +968,7 @@ var content = new Element('div',{
 	'margin-left' : '3px',
 	'z-index' : '2'
 }});
-var descText = document.createTextNode(description);
+var descText = document.createTextNode(description.substring(0,30));
 content.appendChild(descText);
 content.grab(new Element('br'));
 
@@ -863,17 +981,23 @@ but.inject(content);
 but.addEvent('click', function(){ editMenu(this);});
 box.grab(content);
 box.inject(document.body);
+
+//trying to move box to free space
 bX =  $(pDiv).getPosition().x + Math.ceil(cLkm/2) * 200 * Math.pow( -1, cLkm); 
 bY =  $(pDiv).getPosition().y+75;
 if(bX < 100){
-bX = Math.abs(bX - 100)  + 100 ;
-bY += 25;
+	bX = Math.abs(bX - 100)  + 100 ;
+	bY += 25;
 }
 if(posx){ bX = posx; }
 if(posy){ bY = posy;}
 box.setStyle('left', bX);
 box.setStyle('top',bY);
-var k = 0;
+
+box.addEvent('mouseenter',function(){
+	showInfo(id);
+});
+
 box.makeDraggable({
 onDrag: function(){
         if(boxData.get('endPoints').contains(box.id)){
@@ -891,11 +1015,7 @@ onDrag: function(){
         }
     }
 });
-/*
-content.morph({
-                    'height' : (50+hfix) + 'px',
-                    'width' : '150px'
-                });*/
+//IE hack 
 canv.morph({
                     'height' : (50+hfix) + 'px',
                     'width' : '150px'
@@ -905,6 +1025,61 @@ if(type != "after"){
 newEndPoint(box);
 }
 drawline();
+}
+
+/*function to show an info div about specified element*/
+function showInfo(id){
+
+if($('infodiv')){
+	$('infodiv').destroy();
+}
+
+var required = boxData.get(id + '_required');
+var expires = boxData.get(id + '_expires');
+var type = boxData.get(id + '_type');
+var childs = childBoxes.get(id);
+
+var infodiv = new Element('div', {
+'id' : 'infodiv',
+'styles' : {
+	'width' : '200px',
+	'left' : '450px',
+	'top' : '180px',
+	'position' : 'absolute',
+	'border' : 'solid black 1px',
+	'span' : '1em',
+	'background-color' : '#ffffee'
+	}
+});
+infodiv.grab(new Element('b',{
+	'html': 'Info:<br>'
+}));
+infodiv.grab(document.createTextNode('Id: ' + boxData.get(id)));
+infodiv.grab(new Element('br'));
+infodiv.grab(document.createTextNode('Name: ' + boxData.get(id+'_desc')));
+
+if(required.length > 0){
+	infodiv.grab(new Element('br'));
+	infodiv.grab(document.createTextNode('Prerequisites: ' + required));
+}
+
+if(expires){
+	infodiv.grab(new Element('br'));
+	infodiv.grab(document.createTextNode('Expires: ' + expires));
+}
+if(type){
+	infodiv.grab(new Element('br'));
+	infodiv.grab(document.createTextNode('Select type: ' + type));
+}
+
+/*
+infodiv.grab(new Element('hr'));
+infodiv.grab(new Element('b',{
+	'html': 'Actions:'
+}));
+createMenuButtons(infodiv,id);
+*/
+$('content').grab(infodiv);
 }
 
 /* Turns box tree into form with hidden inputs*/
@@ -943,7 +1118,12 @@ form.adopt(new Element('input', {
             'name' : id_strip+'_type',
             'value' : boxData.get(id+'_type')
             }),
-        new Element('input',{
+		new Element('input',{
+            'type' : 'hidden',
+            'name' : id_strip+'_expires',
+            'value' : boxData.get(id+'_expires')
+            }),
+		new Element('input',{
             'type': 'hidden',
             'name': id_strip+'_wrong',
             'value' : wrong
