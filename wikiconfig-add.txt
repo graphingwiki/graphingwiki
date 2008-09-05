@@ -1,40 +1,77 @@
-    user_form_fields = [ 
+    user_form_fields = [
             ('name', 'Id', "text", "36", "(Studentnumber)"),
             ('aliasname', 'Name', "text", "36", ''),
             ('password', 'Password', "password", "36", ''),
-            ('password2', 'Password repeat', "password", "36", '(Only for password change or new account)'),      
+            ('password2', 'Password repeat', "password", "36", '(Only for password change or new account)'),
             ('email', 'Email', "text", "36", ''),
             ('css_url', 'User CSS URL', "text", "40", '(Leave it empty for disabling user CSS)'),
             ('edit_rows', 'Editor size', "text", "3", ''),
             ]
-                
+
     from graphingwiki.securitypolicy import SecurityPolicy as GraphingWiki
     class SecurityPolicy(GraphingWiki):
         def read(self, page_name):
-            print "read", page_name, self.request.user.name
+            category_blocklist = [u'CategoryStatus',
+                                  u'CategoryCourse',
+                                  u'CategoryCoursepoint',
+                                  u'CategoryTask',
+                                  u'CategoryTaskpoint',
+                                  u'CategoryHistory',
+                                  u'CategoryQuestion',
+                                  u'CategoryAnswer',
+                                  u'CategoryTip',
+                                  u'CategoryTimetrack',
+                                  u'CategoryUser',
+                                  u'CategoryAdmin',
+                                  u'CategoryTeacher']
             if self.request.user.name:
                 from raippa import RaippaUser
+                from graphingwiki.patterns import getgraphdata
+                from graphingwiki.editing import getmetas
+                from graphingwiki.patterns import getgraphdata
+                from graphingwiki.patterns import encode
+                if not hasattr(self.request, 'graphdata'):
+                    getgraphdata(self.request)
                 raippauser = RaippaUser(self.request, self.request.user.name)
                 if "CategoryAdmin" in raippauser.categories or \
                    "CategoryTeacher" in raippauser.categories:
                    return True
                 else:
-                    pagelist = ["RAIPPA", "UserPreferences", raippauser.currentcourse, raippauser.currenttask, "RecentChanges", "ecode/status"]
-                    if page_name in pagelist:
+                    allowlist = [u'RAIPPA',
+                                 u'UserPreferences',
+                                 raippauser.currentcourse,
+                                 raippauser.currenttask]
+
+                    if page_name in allowlist:
                         return True
                     else:
-                        return False
+                        meta = getmetas(self.request, self.request.graphdata, encode(page_name), ["WikiCategory"], checkAccess=False)
+                        for category, type in meta["WikiCategory"]:
+                            if category in category_blocklist:
+                                return False
+                        return True
             else:
-                if page_name == "UserPreferences" \
-                  or page_name == "RAIPPA":
+                from graphingwiki.patterns import getgraphdata
+                from graphingwiki.editing import getmetas
+                from graphingwiki.patterns import getgraphdata
+                from graphingwiki.patterns import encode
+                if not hasattr(self.request, 'graphdata'):
+                    getgraphdata(self.request)
+                if page_name == "UserPreferences" or page_name == "RAIPPA":
                     return True
                 else:
-                    return False
+                    meta = getmetas(self.request, self.request.graphdata, encode(page_name), ["WikiCategory"], checkAccess=False)
+                    for category, type in meta["WikiCategory"]:
+                        if category in category_blocklist:
+                            return False
+                    return True
 
         def write(self, page_name):
-            print "write", page_name, self.request.user.name
             if self.request.user.name:
                 from raippa import RaippaUser
+                from graphingwiki.patterns import getgraphdata
+                if not hasattr(self.request, 'graphdata'):
+                    getgraphdata(self.request)
                 raippauser = RaippaUser(self.request, self.request.user.name)
                 if "CategoryAdmin" in raippauser.categories or \
                    "CategoryTeacher" in raippauser.categories:
