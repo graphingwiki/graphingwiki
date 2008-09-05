@@ -136,24 +136,33 @@ def questionhtml(request, questionpage, number=""):
             if request.user.name != question:
                 answerlist.sort()
                 html += name + u'<br>\n'
+                i = 0
                 for answer in answerlist:
-                    html += u'<input type="radio" name="answer%s" value="%s"> %s\n' % (str(number), answer, answer)
+                    i += 0
+                    html += u'''<input type="radio" name="answer%s" id="ans%s"
+                    value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), i, answer, i, answer)
                 html += u'<br><hr>\n'
             else:
                 html += u'<input type="hidden" name="answer%s" value="%s">\n' % (str(number), answerlist[0])
         else:
             random.shuffle(answerlist)
             html += question + u'<br>\n'
+            i = 0
             for answer in answerlist:
-                html += u'<input type="radio" name="answer%s" value="%s"> %s<br>\n' % (str(number), answer, answer)
+                i += 1
+                html += u'''<input type="radio" name="answer%s" id="ans%s"
+                value="%s"><label for="ans%s"> %s</label><br>\n''' % (str(number), i, answer, i, answer)
             html += u'<br><hr>\n'
 
     elif answertype == u'checkbox':
         answerlist = getanswers(request, questionpage)
         random.shuffle(answerlist)
         html += question + u'<br>\n'
+        i = 0
         for answer in answerlist:
-            html += u'<input type="checkbox" name="answer%s" value="%s"> %s<br>\n' % (str(number), answer, answer)
+            i += 1
+            html += u'''<input type="checkbox" id="ans%s" name="answer%s" value="%s"><label
+            for="ans%s"%s</label><br>\n''' % (i, str(number), answer, i,  answer)
         html += u'<br><hr>\n'
     elif answertype ==u'file':
         html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
