@@ -130,15 +130,15 @@ def questionhtml(request, questionpage, number=""):
         html += u'<img src="%s"><br>\n' % image_url
 
     
+    i = 0
     if answertype == u'radio':
         answerlist = getanswers(request, questionpage)
         if social: 
             if request.user.name != question:
                 answerlist.sort()
                 html += name + u'<br>\n'
-                i = 0
                 for answer in answerlist:
-                    i += 0
+                    i += 1
                     html += u'''<input type="radio" name="answer%s" id="ans%s"
                     value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), i, answer, i, answer)
                 html += u'<br><hr>\n'
@@ -147,7 +147,6 @@ def questionhtml(request, questionpage, number=""):
         else:
             random.shuffle(answerlist)
             html += question + u'<br>\n'
-            i = 0
             for answer in answerlist:
                 i += 1
                 html += u'''<input type="radio" name="answer%s" id="ans%s"
@@ -158,11 +157,10 @@ def questionhtml(request, questionpage, number=""):
         answerlist = getanswers(request, questionpage)
         random.shuffle(answerlist)
         html += question + u'<br>\n'
-        i = 0
         for answer in answerlist:
             i += 1
             html += u'''<input type="checkbox" id="ans%s" name="answer%s" value="%s"><label
-            for="ans%s"%s</label><br>\n''' % (i, str(number), answer, i,  answer)
+            for="ans%s">%s</label><br>\n''' % (i, str(number), answer, i,  answer)
         html += u'<br><hr>\n'
     elif answertype ==u'file':
         html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
