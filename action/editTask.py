@@ -26,7 +26,7 @@ def taskform(request, task=None):
         title = unicode()
         description = unicode()
         type = u'basic'
-        metas = getmetas(request, request.globaldata, task, ["title","description", "type"])
+        metas = getmetas(request, request.graphdata, task, ["title","description", "type"])
         if metas["title"]:
             title = metas["title"][0][0]
         if metas["description"]:
@@ -36,7 +36,7 @@ def taskform(request, task=None):
         questions, taskpoints = getflow(request, task)
         penaltydict = dict()
         for taskpoint in taskpoints:
-            metas = getmetas(request, request.globaldata, taskpoint, ["question","penalty"])
+            metas = getmetas(request, request.graphdata, taskpoint, ["question","penalty"])
             if metas["penalty"] and metas["question"]:
                 penaltydict[metas["question"][0][0]] = metas["penalty"][0][0]
     else:
@@ -123,7 +123,7 @@ function createPenaltySel(el, defVal){
     globaldata, tasklist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for ti in tasklist:
         try:
-            data = getmetas(request, request.globaldata, encode(ti),["title","description"])
+            data = getmetas(request, request.graphdata, encode(ti),["title","description"])
             if data["title"]:
                 desc = data["title"][0][0]
             else:
@@ -268,7 +268,7 @@ select questions:<br>
     for page in pagelist:
         if page not in questions:
             try:
-                metas = getmetas(request, request.globaldata, encode(page), ["type", "question"])
+                metas = getmetas(request, request.graphdata, encode(page), ["type", "question"])
                 question = metas["question"][0][0]
                 if metas["type"]:
                     for type, metatype in metas["type"]:
@@ -311,7 +311,7 @@ select questions:<br>
 		\n'''
     for page in questions:
         try:
-            metas = getmetas(request, request.globaldata, encode(page), ["question"])
+            metas = getmetas(request, request.graphdata, encode(page), ["question"])
             question = metas["question"][0][0]
             pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question,page,penaltydict.get(page,""))
         except:
@@ -418,7 +418,7 @@ def writemeta(request, taskpage=None):
                 if question not in flowlist:
                     taskpoint = copyoftaskpoints[index]
 
-                    taskpointpage = request.globaldata.getpage(taskpoint)
+                    taskpointpage = request.graphdata.getpage(taskpoint)
                     linking_in = taskpointpage.get('in', {})
                     taskpointpage = PageEditor(request, taskpoint, do_editor_backup=0)
                     if taskpointpage.exists():
@@ -428,7 +428,7 @@ def writemeta(request, taskpage=None):
                         for value in valuelist:
                             if value.endswith("/status"):
                                 try:
-                                    meta = getmetas(request, request.globaldata, value, ["WikiCategory"])
+                                    meta = getmetas(request, request.graphdata, value, ["WikiCategory"])
                                     if meta["WikiCategory"][0][0] == statuscategory:
                                         user = value.split("/")[0]
                                         userstatus.append([user, metakey, index]) 
@@ -477,12 +477,12 @@ def writemeta(request, taskpage=None):
                     if index > startindex:
                         taskpoint = point[1]
 
-                        taskpointpage = request.globaldata.getpage(taskpoint)
+                        taskpointpage = request.graphdata.getpage(taskpoint)
                         linking_in = taskpointpage.get('in', {})
                         pagelist = linking_in.get('task', [])
                         for page in pagelist:
                             try:
-                                meta = getmetas(request, request.globaldata, page, ["WikiCategory", "course", "user"])
+                                meta = getmetas(request, request.graphdata, page, ["WikiCategory", "course", "user"])
                                 category = meta["WikiCategory"][0][0]
                                 answerer = meta["user"][0][0]
                                 course = meta["course"][0][0]
@@ -516,13 +516,13 @@ def writemeta(request, taskpage=None):
     return None
 
 def getflow(request, task):
-    meta = getmetas(request, request.globaldata, task, ["start"])
+    meta = getmetas(request, request.graphdata, task, ["start"])
     taskpoint = encode(meta["start"][0][0])
     questions = list()
     taskpoints = list()
                         
     while taskpoint != "end":
-        meta = getmetas(request, request.globaldata, taskpoint, ["question", "next"])
+        meta = getmetas(request, request.graphdata, taskpoint, ["question", "next"])
         questionpage = meta["question"][0][0]
         questions.append(questionpage)
         taskpoints.append(taskpoint)
@@ -534,10 +534,10 @@ def delete(request, pagename):
     page = PageEditor(request, pagename, do_editor_backup=0)
     if page.exists():
         categories = list()
-        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        metas = getmetas(request, request.graphdata, pagename, ["WikiCategory"])
         for category, type in metas["WikiCategory"]:
             if category == taskcategory:
-                linkedpage = request.globaldata.getpage(pagename)
+                linkedpage = request.graphdata.getpage(pagename)
                 linking_in = linkedpage.get('in', {})
                 linkinglist = linking_in.get("task", [])
                 if linkinglist:
@@ -578,7 +578,8 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
     if request.form.has_key('save'):
         if request.form.has_key('task'):
             task = encode(request.form["task"][0])

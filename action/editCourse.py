@@ -7,7 +7,7 @@ from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import getmetas
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import encode
 from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import order_meta_input
@@ -25,7 +25,7 @@ historycategory = u'CategoryHistory'
 
 def courseform(request, course=None):
     if course:
-        metas = getmetas(request, request.globaldata, course, ["id", "name", "description", "option"])
+        metas = getmetas(request, request.graphdata, course, ["id", "name", "description", "option"])
         id = metas[u'id'][0][0]
         name = metas[u'name'][0][0]
         try:
@@ -40,7 +40,7 @@ def courseform(request, course=None):
         tasks = dict()
         for cp in flow:
             if cp != "start":
-                metas = getmetas(request, request.globaldata, encode(cp), ["task"])
+                metas = getmetas(request, request.graphdata, encode(cp), ["task"])
                 if metas["task"]:
                     task = metas["task"][0][0]
                     tasks[cp] = task
@@ -73,7 +73,7 @@ select tasks:
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
         try:
-            metas = getmetas(request, request.globaldata, encode(page), ["title","description"])
+            metas = getmetas(request, request.graphdata, encode(page), ["title","description"])
             if metas["title"]:
                 description = metas["title"][0][0]
             else:
@@ -99,14 +99,14 @@ select tasks:
             nextlist = flow.get(point, [])
             for next in nextlist:
                 if next != "end":
-                    metas = getmetas(request, request.globaldata, encode(tasks[next]), ["title","description"])
+                    metas = getmetas(request, request.graphdata, encode(tasks[next]), ["title","description"])
                     if metas["title"]:
                         description = metas["title"][0][0]
                     elif metas["description"]:
                         description = metas["description"][0][0]
                     else:
                         description = tasks[next]
-                    metas = getmetas(request, request.globaldata, encode(next), ["prerequisite", "split"])
+                    metas = getmetas(request, request.graphdata, encode(next), ["prerequisite", "split"])
                     if metas["split"]:
                         split = metas["split"][0][0]
                     else:
@@ -132,14 +132,14 @@ select tasks:
     startlist = flow.get("start", None)
     if startlist:
         for point in startlist:
-            metas = getmetas(request, request.globaldata, encode(tasks[point]), ["title", "description"])
+            metas = getmetas(request, request.graphdata, encode(tasks[point]), ["title", "description"])
             if metas["title"]:
                 description = metas["title"][0][0]
             elif metas["description"]:
                 description = metas["description"][0][0]
             else:
                 description = tasks[next]
-            metas = getmetas(request, request.globaldata, encode(point), ["prerequisite", "split"])
+            metas = getmetas(request, request.graphdata, encode(point), ["prerequisite", "split"])
             if metas["split"]:
                 split = metas["split"][0][0]
             else:
@@ -279,10 +279,9 @@ def editcourse(request, coursepage=None):
         course = FlowPage(request, coursepage)
         oldflow = course.getflow()
         oldtasks = dict()
-        globaldata = GraphData(request)
         for cp in oldflow:
             if cp != "start":
-                metas = getmetas(request, globaldata, encode(cp), ["task"])
+                metas = getmetas(request, request.graphdata, encode(cp), ["task"])
                 if metas["task"]:
                     task = metas["task"][0][0]
                     if task not in taskdict.values():
@@ -367,7 +366,7 @@ def delete(request, pagename):
     page = PageEditor(request, pagename, do_editor_backup=0)
     if page.exists():
         categories = list()
-        metas = getmetas(request, request.globaldata, pagename, ["WikiCategory"])
+        metas = getmetas(request, request.graphdata, pagename, ["WikiCategory"])
         for category, type in metas["WikiCategory"]:
             if category == coursecategory:
                 coursepage = FlowPage(request, pagename)
@@ -403,7 +402,8 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
     if request.form.has_key('save'):
         if request.form.has_key('course'):
             course = encode(request.form["course"][0])

@@ -36,7 +36,7 @@ class RaippaPage:
             self.pagename = encode(pagename)
 
         self.categories = list()
-        metas = getmetas(request, self.request.globaldata, self.pagename, [u'WikiCategory'])
+        metas = getmetas(request, self.request.graphdata, self.pagename, [u'WikiCategory'])
         for category, type in metas[u'WikiCategory']:
             self.categories.append(category)
 
@@ -50,7 +50,7 @@ class RaippaPage:
             metakey = "question"
             flow = [("start", self.pagename)]
 
-        meta = getmetas(self.request, self.request.globaldata, self.pagename, ["start"])
+        meta = getmetas(self.request, self.request.graphdata, self.pagename, ["start"])
         flowpoint = encode(meta["start"][0][0])
         if metakey == "question":
             flow = [("start", self.pagename)]
@@ -58,7 +58,7 @@ class RaippaPage:
             flow = list()
 
         while flowpoint != "end":
-            meta = getmetas(self.request, self.request.globaldata, encode(flowpoint), [metakey, "next"])
+            meta = getmetas(self.request, self.request.graphdata, encode(flowpoint), [metakey, "next"])
             if metakey == "task":
                 metakeypage = RaippaPage(self.request, self.course, meta[metakey][0][0])
             else:
@@ -111,7 +111,7 @@ Courses:
     <select size="1" name="course">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
-        metas = getmetas(request, request.globaldata, page, ["id", "name"]) 
+        metas = getmetas(request, request.graphdata, page, ["id", "name"]) 
         for id, type in metas["id"]:
             listtext += id
             break
@@ -133,7 +133,7 @@ Tasks:
     <select size="1" name="task">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
-        metas = getmetas(request, request.globaldata, page, ["title","description"])
+        metas = getmetas(request, request.graphdata, page, ["title","description"])
         if metas["title"]:
             for description, type in metas["title"]:
                 break
@@ -155,7 +155,7 @@ Questions:
     <select name="question">''' % request.request_uri.split("?")[0]
     globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
     for page in questionlist:
-        metas = getmetas(request, request.globaldata, page, ["question"])
+        metas = getmetas(request, request.graphdata, page, ["question"])
         for question, type in metas["question"]:
             break
         html += u'<option value="%s">%s\n' % (page, question)
@@ -236,7 +236,8 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
 
     if request.form.has_key('selectcourse'):
         _enter_page(request, pagename)
