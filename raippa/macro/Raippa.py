@@ -288,9 +288,13 @@ def execute(macro, text):
     
     #request.write(request.cfg.page_front_page)
     if pagename == "RAIPPA":
-        userpage = Page(request, request.raippauser.id)
+        userpage = Page(request, request.user.name)
         if request.user.name and not userpage.exists():
-            msg = edit_meta(request, request.raippauser.id, {"":""}, {"name":[request.raippauser.name]}, True, [usercategory])
+            msg = edit_meta(request, request.user.name, {"":""}, {"name":[request.user.aliasname]}, True, [usercategory])
+        elif request.user.name and userpage.exists():
+            metas = getmetas(request, request.globaldata, encode(request.user.name), ["name"], checkAccess=False)
+            if not metas["name"]:
+                msg = edit_meta(request, encode(request.user.name), {"":""}, {"name":[request.user.aliasname]})
         return courselisthtml(request) 
     else:
         metas = getmetas(request, request.globaldata, pagename, ["WikiCategory", "start", "option"], checkAccess=False)
@@ -299,10 +303,8 @@ def execute(macro, text):
                 coursepage = FlowPage(request, pagename)
                 html =  graphmap(request, coursepage, request.raippauser)
                 html += "<img src='%s/%s?action=drawgraphui' usemap='#%s'><br>\n" % (request.getBaseURL(), pagename, pagename)
-                print metas
                 for option, type in metas["option"]:
                     if option == "timetrack":
-                        print pagename, option
                         timetracklist = request.raippauser.gettimetrack(coursepage.pagename)
                         if timetracklist:
                             html += u'''
