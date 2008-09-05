@@ -1,7 +1,7 @@
 import time
 
 from graphingwiki.editing import edit_meta
-from graphingwiki.patterns import GraphData, encode
+from graphingwiki.patterns import encode
 from graphingwiki.patterns import getgraphdata
 
 from raippa import randompage, addlink
@@ -19,11 +19,9 @@ def execute(pagename, request):
                 "time":[time.strftime("%Y-%m-%d %H:%M:%S")],
                 "hours":[hours],
                 "description":[request.form.get("description", [""])[0]]}
-#        globaldata = GraphData(request)
-        request.globaldata = getgraphdata(request)
+        getgraphdata(request)
         timetrackpage = randompage(request, "TimeTrack")
         msg = edit_meta(request, timetrackpage, {u'': [u'']}, data, True, [timetrackcategory])
-#        globaldata.closedb()
 
     page = Page(request, pagename)
     page.send_page(msg)

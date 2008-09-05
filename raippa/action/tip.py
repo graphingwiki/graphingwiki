@@ -22,8 +22,8 @@ def execute(pagename, request):
         tippagename = "Tip/" + tip
         tippage = Page(request, tippagename)
         if tippage.exists():
-            globaldata = getgraphdata(request)
-            metas = getmetas(request, globaldata, tippagename, ["WikiCategory", "tip"], checkAccess=False)
+            getgraphdata(request)
+            metas = getmetas(request, request.graphdata, tippagename, ["WikiCategory", "tip"], checkAccess=False)
             try:
                 category = metas["WikiCategory"][0][0]
                 if category == tipcategory:
