@@ -139,8 +139,9 @@ def questionhtml(request, questionpage, number=""):
                 html += name + u'<br>\n'
                 for answer in answerlist:
                     i += 1
+                    id = "%s_%s" % (number, i)
                     html += u'''<input type="radio" name="answer%s" id="ans%s"
-                    value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), i, answer, i, answer)
+                    value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), id, answer, id, answer)
                 html += u'<br><hr>\n'
             else:
                 html += u'<input type="hidden" name="answer%s" value="%s">\n' % (str(number), answerlist[0])
@@ -149,8 +150,9 @@ def questionhtml(request, questionpage, number=""):
             html += question + u'<br>\n'
             for answer in answerlist:
                 i += 1
+                id = "%s_%s" % (number, i)
                 html += u'''<input type="radio" name="answer%s" id="ans%s"
-                value="%s"><label for="ans%s"> %s</label><br>\n''' % (str(number), i, answer, i, answer)
+                value="%s"><label for="ans%s"> %s</label><br>\n''' % (str(number), id, answer, id, answer)
             html += u'<br><hr>\n'
 
     elif answertype == u'checkbox':
@@ -159,8 +161,9 @@ def questionhtml(request, questionpage, number=""):
         html += question + u'<br>\n'
         for answer in answerlist:
             i += 1
+            id = "%s_%s" % (number, i)
             html += u'''<input type="checkbox" id="ans%s" name="answer%s" value="%s"><label
-            for="ans%s">%s</label><br>\n''' % (i, str(number), answer, i,  answer)
+            for="ans%s">%s</label><br>\n''' % (id, str(number), answer, id,  answer)
         html += u'<br><hr>\n'
     elif answertype ==u'file':
         html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
