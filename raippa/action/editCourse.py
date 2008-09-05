@@ -59,7 +59,10 @@ src="%s/common/js/mootools-1.2-more.js"></script>
 <script type="text/javascript"
 src="%s/common/js/moocanvas.js"></script>
 <script type="text/javascript"
-src="%s/common/js/dragui.js"></script>\n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static)
+src="%s/common/js/calendar.js"></script>
+<script type="text/javascript"
+src="%s/common/js/dragui.js"></script>\n''' % (request.cfg.url_prefix_static,
+request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static,request.cfg.url_prefix_static)
     pagehtml += u'''
 select tasks:
 <form method="POST" action="%s">
@@ -384,7 +387,10 @@ def delete(request, pagename):
 
 def _enter_page(request, pagename):
     request.http_headers()
-    request.theme.send_title("Teacher Tools", formatted=False)
+    request.theme.send_title("Teacher Tools", formatted=False,
+    html_head='''<link rel="stylesheet" type="text/css" charset="utf-8"
+    media="all" href="%s/raippa/css/calendar.css">
+    ''' % (request.cfg.url_prefix_static))
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:
