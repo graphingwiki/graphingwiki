@@ -15,8 +15,16 @@ CATEGORY_KEY = "category"
 
 def setMetas(request, cleared, discarded, added):
     globaldata = getgraphdata(request)
-
     pages = set(cleared) | set(discarded) | set(added)
+
+    # We don't have to check whether the user is allowed to read
+    # the page, as we don't send any info on the pages out. Only
+    # check that we can write to the requested pages.
+    for page in pages:
+        if not request.user.may.write(page):
+            message = "You are not allowed to edit page '%s'" % page
+            return xmlrpclib.Fault(2, request.getText(message))
+
     for page in pages:
         pageCleared = cleared.get(page, set())
         pageDiscarded = discarded.get(page, dict())
@@ -69,5 +77,11 @@ def setMetas(request, cleared, discarded, added):
 def execute(xmlrpcobj, cleared, discarded, added, query="", handle=None):
     request = xmlrpcobj.request
     request.formatter = TextFormatter(request)
+
+    # Using the same access controls as in MoinMoin's xmlrpc_putPage
+    # as defined in MoinMoin/wikirpc.py
+    if request.cfg.xmlrpc_putpage_trusted_only and not request.user.trusted:
+        message = "You are not allowed to edit pages by XML-RPC"
+        return xmlrpclib.Fault(1, request.getText(message))
 
     return setMetas(request, cleared, discarded, added)

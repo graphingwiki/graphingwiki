@@ -38,11 +38,17 @@ def diff(previous, current):
             
     return removedPages, updates
 
+def createNewHandle(db):
+    number = db.get("", 0)
+    db[""] = number + 1
+    return base64.b64encode(struct.pack("!Q", number))
+
 def getMetas(request, args, handle=None):
     data, pages, keys, _ = metatable_parseargs(request, args, get_all_keys=True)
 
     current = dict()
     for page in pages:
+        # metatable_parseargs checks read permissions, no need to do it again
         metas = getmetas(request, data, page, keys, 
                          display=False, checkAccess=False)
         current[page] = dict()
@@ -55,11 +61,8 @@ def getMetas(request, args, handle=None):
     incremental = True
     try:
         if not handle or handle not in db:
-            number = db.get("", 0)
-            db[""] = number + 1
-            handle = base64.b64encode(struct.pack("!Q", number))
             incremental = False
-
+            handle = createNewHandle(db)
         previous = db.get(handle, dict())
         db[handle] = current
     finally:
