@@ -27,7 +27,7 @@ def main():
                       dest="output",
                       default=None,
                       metavar="OUTPUT",
-                      help="save the file to name OUTPUT in the wiki")
+                      help="Save the downloaded files under PATH instead of CWD.")
     parser.add_option( "-c", "--config",
                       action="store",
                       type="string", dest="cpath",
