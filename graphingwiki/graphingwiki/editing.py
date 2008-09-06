@@ -66,7 +66,7 @@ def get_revisions(request, page):
     revisions = dict()
 
     pagename = page.page_name
-    quotedname = url_quote(encode(pagename))
+    quotedname = encoded_page(pagename)
 
     for rev in page.getRevList():
         revpage = Page(request, pagename, rev=rev)
@@ -283,7 +283,7 @@ def getkeys(globaldata, name):
 
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
-        target = url_quote(encode(target))
+        target = encoded_page(target)
     
     try:
         targetPage = globaldata.getpage(target)
@@ -418,7 +418,7 @@ def get_pages(request):
     for page in request.rootpage.getPageList(filter=filter):
         if not request.user.may.read(page):
             continue
-        pages.add(url_quote(encode(page)))
+        pages.add(encoded_page(page))
 
     return pages
 
@@ -948,14 +948,14 @@ def metatable_parseargs(request, args,
                     if style:
                         styles[key] = style[0]
 
-                keyspec.append(url_quote(encode(key.strip())))
+                keyspec.append(encoded_page(key.strip()))
 
             continue
 
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
-            key = url_quote(encode(data[0]))
+            key = encoded_page(data[0])
             val = '='.join(data[1:])
 
             # Assume that value limits are regexps, if
@@ -1018,8 +1018,7 @@ def metatable_parseargs(request, args,
     # Otherwise check out the wanted pages
     else:
         # Filter pages the user may not read
-        argset = set(url_quote(encode(x)) for x in
-                     filter(request.user.may.read, argset))
+        argset = set(map(encoded_page, filter(request.user.may.read, argset)))
 
         pages = set()
 
@@ -1128,7 +1127,7 @@ def metatable_parseargs(request, args,
                                      sorted(getvalues(request,
                                                       globaldata,
                                                       page,
-                                                      url_quote(encode(key))))]
+                                                      encoded_page(key)))]
         ordvals = dict()
         byval = dict()
         ord = [x for _, x in orderspec]
