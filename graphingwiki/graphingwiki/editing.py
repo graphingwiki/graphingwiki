@@ -168,25 +168,39 @@ def ordervalue(value):
 
     return value
 
+def filter_categories(request, candidates):
+    # Let through only the candidates that are both valid category
+    # names and WikiWords
+    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
+
+    candidates = wikiutil.filterCategoryPages(request, candidates)
+    candidates = filter(wordRex.match, candidates)
+
+    return candidates
+
+def parse_categories(request, text):
+    # We want to parse only the last non-empty line of the text
+    lines = text.rstrip().splitlines()
+    if not lines:
+        return lines, list()
+
+    # TODO: this code is broken, will not work for extended links
+    # categories, e.g ["category hebrew"]
+    candidates = lines[-1].split()
+    confirmed = filter_categories(request, candidates)
+
+    if len(confirmed) < len(candidates):
+        # The line was not a category line
+        return lines, list()
+
+    # Remove the category line
+    lines.pop()
+    return lines, confirmed
+
 def edit_categories(request, savetext, action, catlist):
     # Filter out anything that is not a category
-    catlist = wikiutil.filterCategoryPages(request, catlist)
-    confirmed = list()
-
-    # Check whether the last non-empty line contains only categories
-    lines = savetext.rstrip().splitlines()
-    if lines:
-        # TODO: this code is broken, will not work for extended links
-        # categories, e.g ["category hebrew"]
-        candidates = lines[-1].split()
-        confirmed = wikiutil.filterCategoryPages(request, candidates)
-
-        if len(confirmed) < len(candidates):
-            # The last line was not a category line
-            confirmed = list()
-        else:
-            # Remove the categories, temporarily
-            lines.pop()
+    catlist = filter_categories(request, catlist)
+    lines, confirmed = parse_categories(request, savetext)
 
     # Remove the empty lines from the end
     while lines and not lines[-1].strip():
@@ -1088,17 +1102,11 @@ def metatable_parseargs(request, args,
             # MetaEdit wants all keys by default
             if get_all_keys:
                 for key in getkeys(globaldata, name):
-                    # One further check, we probably do not want
-                    # to see categories in our table by default
-                    if key != 'WikiCategory':
-                        metakeys.add(key)
+                    metakeys.add(key)
             else:
                 # For MetaTable etc
                 for key in nonguaranteeds_p(getkeys(globaldata, name)):
-                    # One further check, we probably do not want
-                    # to see categories in our table by default
-                    if key != 'WikiCategory':
-                        metakeys.add(key)
+                    metakeys.add(key)
 
         metakeys = sorted(metakeys, key=str.lower)
     else:

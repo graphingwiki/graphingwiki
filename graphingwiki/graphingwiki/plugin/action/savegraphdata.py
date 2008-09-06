@@ -45,6 +45,7 @@ from MoinMoin.util.lock import WriteLock
 # graphlib imports
 from graphingwiki import graph
 from graphingwiki.patterns import special_attrs
+from graphingwiki.editing import parse_categories
 
 # Page names cannot contain '//'
 url_re = re.compile(u'^(%s)%%3A//' % (Parser.url_pattern))
@@ -335,14 +336,8 @@ def parse_link(wikiparse, hit, type):
 
     return nodename, nodeurl, linktype
 
-def add_link(globaldata, quotedname, pagegraph, cat_re,
+def add_link(globaldata, quotedname, pagegraph,
              nodename, nodeurl, linktype, hit):
-    if cat_re.search(nodename):
-        pagenode = pagegraph.nodes.get(quotedname)
-        node_set_attribute(pagenode, 'WikiCategory', nodename)
-        shelve_set_attribute(globaldata, quotedname,
-                             'WikiCategory', nodename)
-
     # Add node if not already added
     if not pagegraph.nodes.get(nodename):
         n = pagegraph.nodes.add(nodename)
@@ -391,9 +386,6 @@ def parse_text(request, globaldata, page, text):
     wikiparse = Parser(text, request)
     wikiparse.formatter = urlformatter
     urlformatter.setPage(page)
-
-    # Category matching regexp
-    cat_re = re.compile(request.cfg.page_category_regex)
 
     rules = wikiparse.formatting_rules.replace('\n', '|')
 
@@ -496,7 +488,7 @@ def parse_text(request, globaldata, page, text):
                     name, url, linktype = parse_link(wikiparse, hit, type)
 
                     if name:
-                        add_link(globaldata, quotedname, pagegraph, cat_re,
+                        add_link(globaldata, quotedname, pagegraph,
                                  name, url, linktype, hit)
 
                 # Links and metadata defined in a definition list
@@ -535,7 +527,7 @@ def parse_text(request, globaldata, page, text):
 
                                 if name:
                                     add_link(globaldata, quotedname,
-                                             pagegraph, cat_re,
+                                             pagegraph,
                                              name, url, linktype, hit)
 
                                     # The val will also be parsed by
@@ -551,8 +543,13 @@ def parse_text(request, globaldata, page, text):
                     add_meta(globaldata, pagenode, quotedname,
                              "[[MetaData(%s,%s)]]" % (key, val))
 
-    return globaldata, pagegraph
+    # Add the page categories as metas too
+    _, categories = parse_categories(request, text)
+    for category in categories:
+        add_meta(globaldata, pagenode, quotedname, 
+                 "[[MetaData(gwikicategory,%s)]]" % category)
 
+    return globaldata, pagegraph
 
 def execute(pagename, request, text, pagedir, page):
     # Skip MoinEditorBackups

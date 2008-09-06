@@ -6,12 +6,11 @@
 """
 import xmlrpclib
 
-from MoinMoin import wikiutil
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from graphingwiki.editing import getmetas, edit_meta
+from graphingwiki.editing import getmetas, edit_meta, filter_categories
 from graphingwiki.patterns import getgraphdata
 
-CATEGORY_KEY = "category"
+CATEGORY_KEY = "gwikicategory"
 
 def setMetas(request, cleared, discarded, added):
     globaldata = getgraphdata(request)
@@ -42,7 +41,7 @@ def setMetas(request, cleared, discarded, added):
             edit_meta(request, page, dict(), dict(), "del", categories)
         if CATEGORY_KEY in pageAdded:
             categories = set(pageAdded[CATEGORY_KEY])
-            filtered = wikiutil.filterCategoryPages(request, categories)
+            filtered = filter_categories(request, categories)
             filtered = set(filtered) - set(old.get(CATEGORY_KEY, set()))
             edit_meta(request, page, dict(), dict(), "add", list(filtered))
             pageAdded[CATEGORY_KEY] = list(categories - filtered)
