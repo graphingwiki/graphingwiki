@@ -543,11 +543,13 @@ def parse_text(request, globaldata, page, text):
                     add_meta(globaldata, pagenode, quotedname,
                              "[[MetaData(%s,%s)]]" % (key, val))
 
-    # Add the page categories as metas too
+    # Add the page categories as links too
     _, categories = parse_categories(request, text)
     for category in categories:
-        add_meta(globaldata, pagenode, quotedname, 
-                 "[[MetaData(gwikicategory,%s)]]" % category)
+        name, url, linktype = parse_link(wikiparse, category, "word")
+        if name:
+            add_link(globaldata, quotedname, pagegraph,
+                     name, url, "gwikicategory", category)
 
     return globaldata, pagegraph
 

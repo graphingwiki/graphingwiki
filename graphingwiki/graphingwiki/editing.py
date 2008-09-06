@@ -1006,7 +1006,7 @@ def metatable_parseargs(request, args,
 
     def can_be_read(name):
         return request.user.may.read(unquote_name(name))
-    
+
     # If there were no page args, default to all pages
     if not pageargs and not argset:
         # Filter nonexisting pages and the pages the user may not read
@@ -1018,44 +1018,40 @@ def metatable_parseargs(request, args,
         argset = set(url_quote(encode(x)) for x in
                      filter(request.user.may.read, argset))
 
-        pages = set([])
+        pages = set()
 
-        for arg in argset:
-            if cat_re.search(arg):
-                # Nonexisting categories
-                try:
-                    page = globaldata.getpage(arg)
-                except KeyError:
-                    continue
+        categories = set(filter_categories(request, argset))
+        other = argset - categories
 
-                if not page.has_key('in'):
-                    # no such category
-                    continue
-                for type in page['in']:
-                    for newpage in page['in'][type]:
-                        # If page already added
-                        if newpage in argset:
-                            continue
-
-                        if not (cat_re.search(newpage) or
-                                temp_re.search(newpage)):
-                            unqname = unquote_name(newpage)
-                            # Check that user may view any added pages
-                            if request.user.may.read(unqname):
-                                pages.add(newpage)
-            elif arg:
-                # Filter out nonexisting pages
-                try:
-                    page = globaldata.getpage(arg)
-                except KeyError:
-                    continue
-
-                # Added filtering of nonexisting and non-local pages
-                if not page.has_key('saved'):
-                    continue
-                
-                pages.add(arg)
+        for arg in categories:
+            # Nonexisting categories
+            try:
+                page = globaldata.getpage(arg)
+            except KeyError:
+                continue
             
+            newpages = page.get("in", dict()).get("gwikicategory", list())
+            for newpage in newpages:
+                # Check that the page is not a category or template page
+                if cat_re.match(newpage) or temp_re.search(newpage):
+                    continue
+                # Check that user may view any the page
+                if request.user.may.read(unquote_name(newpage)):
+                    pages.add(newpage)
+
+        for name in other:
+            # Filter out nonexisting pages
+            try:
+                page = globaldata.getpage(name)
+            except KeyError:
+                continue
+
+            # Added filtering of nonexisting and non-local pages
+            if not page.has_key('saved'):
+                continue
+                
+            pages.add(name)
+
     pagelist = set([])
 
     for page in pages:
