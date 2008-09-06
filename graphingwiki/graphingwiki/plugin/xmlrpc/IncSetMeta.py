@@ -6,11 +6,12 @@
 """
 import xmlrpclib
 
-from MoinMoin.util import lock
+from MoinMoin import wikiutil
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-
-from graphingwiki.patterns import getgraphdata
 from graphingwiki.editing import getmetas, edit_meta
+from graphingwiki.patterns import getgraphdata
+
+CATEGORY_KEY = "category"
 
 def setMetas(request, cleared, discarded, added):
     globaldata = getgraphdata(request)
@@ -21,16 +22,22 @@ def setMetas(request, cleared, discarded, added):
         pageDiscarded = discarded.get(page, dict())
         pageAdded = added.get(page, dict())
         
-        if "category" in pageCleared:
-            pageCleared.remove("category")
-            edit_meta(request, page, dict(), dict(), "set", list())
-        deletedCategories = pageDiscarded.pop("category", list())
-        edit_meta(request, page, dict(), dict(), "del", deletedCategories)
-        addedCategories = pageAdded.pop("category", list())
-        edit_meta(request, page, dict(), dict(), "add", addedCategories)
-
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         old = getmetas(request, globaldata, page, metakeys, checkAccess=False)
+
+        # Handle the magic duality between normal categories (CategoryBah)
+        # and meta style categories
+        if CATEGORY_KEY in pageCleared:
+            edit_meta(request, page, dict(), dict(), "set", list())
+        if CATEGORY_KEY in pageDiscarded:
+            categories = pageDiscarded[CATEGORY_KEY]
+            edit_meta(request, page, dict(), dict(), "del", categories)
+        if CATEGORY_KEY in pageAdded:
+            categories = set(pageAdded[CATEGORY_KEY])
+            filtered = wikiutil.filterCategoryPages(request, categories)
+            filtered = set(filtered) - set(old.get(CATEGORY_KEY, set()))
+            edit_meta(request, page, dict(), dict(), "add", list(filtered))
+            pageAdded[CATEGORY_KEY] = list(categories - filtered)
 
         new = dict()
         for key, values in old.iteritems():
@@ -61,16 +68,6 @@ def setMetas(request, cleared, discarded, added):
 
 def execute(xmlrpcobj, cleared, discarded, added, query="", handle=None):
     request = xmlrpcobj.request
-    _ = request.getText
     request.formatter = TextFormatter(request)
 
-    # FIXME: Appropriate locking for the whole duration of this
-    # operation.
-    #request.lock = lock.WriteLock(request.cfg.data_dir, timeout=10.0)
-    #request.lock.acquire()
-
-    try:
-        return setMetas(request, cleared, discarded, added)
-    finally:
-        #request.lock.release()
-        pass
+    return setMetas(request, cleared, discarded, added)

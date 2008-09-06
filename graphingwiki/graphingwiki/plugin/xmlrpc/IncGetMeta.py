@@ -11,9 +11,7 @@ import base64
 import shelve
 import xmlrpclib
 
-from MoinMoin.util import lock
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-
 from graphingwiki.editing import getmetas, metatable_parseargs
 
 def diff(previous, current):
@@ -71,16 +69,6 @@ def getMetas(request, args, handle=None):
 
 def execute(xmlrpcobj, query, handle=None):
     request = xmlrpcobj.request
-    _ = request.getText
     request.formatter = TextFormatter(request)
 
-    # FIXME: Appropriate locking for the whole duration of this
-    # operation.
-    #request.lock = lock.WriteLock(request.cfg.data_dir, timeout=10.0)
-    #request.lock.acquire()
-
-    try:
-        return getMetas(request, query, handle)
-    finally:
-        #request.lock.release()
-        pass
+    return getMetas(request, query, handle)
