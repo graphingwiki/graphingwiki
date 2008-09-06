@@ -14,5 +14,6 @@ setup(name='opencollab', version='627',
         'scripts/opencollab-downloader',
         'scripts/opencollab-import-mresolved',
         'scripts/opencollab-push-tickets',
+        'scripts/opencollab-defensics-uploader',
         'scripts/opencollab-uploader'])
 
