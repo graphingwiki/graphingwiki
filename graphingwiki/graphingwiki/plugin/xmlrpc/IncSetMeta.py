@@ -7,7 +7,8 @@
 import xmlrpclib
 
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from graphingwiki.editing import getmetas, edit_meta, filter_categories
+from graphingwiki.editing import getmetas, edit_meta
+from graphingwiki.editing import filter_categories, encoded_page
 from graphingwiki.patterns import getgraphdata
 
 CATEGORY_KEY = "gwikicategory"
@@ -30,7 +31,8 @@ def setMetas(request, cleared, discarded, added):
         pageAdded = added.get(page, dict())
         
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
-        old = getmetas(request, globaldata, page, metakeys, checkAccess=False)
+        old = getmetas(request, globaldata, encoded_page(page), metakeys, 
+                       checkAccess=False)
 
         # Handle the magic duality between normal categories (CategoryBah)
         # and meta style categories

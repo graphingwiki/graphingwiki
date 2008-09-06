@@ -53,6 +53,9 @@ default_meta_before = '^----'
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
+def encoded_page(pagename):
+    return url_quote(encode(pagename))    
+
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
                               'action',
@@ -1227,6 +1230,8 @@ def metatable_parseargs(request, args,
         if pages:
             #print "extending with %s" % (pages)
             pagelist.extend(sorted(pages))
+
+    print pagelist
 
     return globaldata, pagelist, metakeys, styles
 
