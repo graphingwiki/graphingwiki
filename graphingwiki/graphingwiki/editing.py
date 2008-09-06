@@ -168,67 +168,59 @@ def ordervalue(value):
 
     return value
 
-def edit_categories(request, savetext, category_edit, catlist):
-    # Original code copied from PageEditor
-
+def edit_categories(request, savetext, action, catlist):
     # Filter out anything that is not a category
-    newcategories = wikiutil.filterCategoryPages(request, catlist)
-    # If no categories to set or add, bail out now
-    if not newcategories and not category_edit == 'del':
-        return savetext
-        
-    # strip trailing whitespace
-    savetext = savetext.rstrip()
+    catlist = wikiutil.filterCategoryPages(request, catlist)
+    confirmed = list()
 
-    confirmed = []
-
-    # Add category separator if last non-empty line contains
-    # non-categories.
-    lines = filter(None, savetext.splitlines())
+    # Check whether the last non-empty line contains only categories
+    lines = savetext.rstrip().splitlines()
     if lines:
-        #TODO: this code is broken, will not work for extended links
-        #categories, e.g ["category hebrew"]
-        categories = lines[-1].split()
+        # TODO: this code is broken, will not work for extended links
+        # categories, e.g ["category hebrew"]
+        candidates = lines[-1].split()
+        confirmed = wikiutil.filterCategoryPages(request, candidates)
 
-        if categories:
-            confirmed = wikiutil.filterCategoryPages(request, categories)
+        if len(confirmed) < len(candidates):
+            # The last line was not a category line
+            confirmed = list()
+        else:
+            # Remove the categories, temporarily
+            lines.pop()
 
-        if len(confirmed) < len(categories):
-            # This was not a categories line, if deleting, our job is done
-            if category_edit == 'del':
-                return savetext + u'\n'
-            
-            # otherwise add separator
-            savetext += u'\n----\n'
-        elif category_edit == 'set':
-            # Delete existing when setting categories
-            savetext = '\n'.join(savetext.split('\n')[:-1]) + u'\n'
-        elif category_edit == 'del':
-            # Delete existing and separator when deleting categories
-            savetext = '\n'.join(savetext.split('\n')[:-2])
+    # Remove the empty lines from the end
+    while lines and not lines[-1].strip():
+        lines.pop()
 
-    # Add is default
-    if category_edit == 'set':
-        # Delete existing categories
-        confirmed = []
-    elif category_edit == 'del':
-        # Just in case, do not add anything
-        newcategories = []
+    # Check out which categories we are going to write back
+    if action == "set":
+        categories = list(catlist)
+    elif action == "del":
+        categories = list(confirmed)
+        for category in catlist:
+            if category in categories:
+                categories.remove(category)
+    else:
+        categories = list(confirmed)
+        for category in catlist:
+            if category not in categories:
+                categories.append(category)
 
+    # Check whether the last line is a separator; add and remove it if needed
     if not lines:
-        # add separator
-        savetext += u'\n----\n'
+        if categories:
+            lines.append(u"----")
+    elif not (len(lines[-1]) >= 4 and set(lines[-1].strip()) == set("-")):
+        if categories:
+            lines.append(u"----")
+    else:
+        if not categories:
+            lines.pop()
+        
+    if categories:
+        lines.append(" ".join(categories))
 
-    # Add categories
-    for category in newcategories:
-        if category in confirmed:
-            continue
-        if savetext and savetext[-1] != u'\n':
-            savetext += ' '
-        savetext += category
-    savetext += u'\n' # Should end with newline!
-
-    return savetext
+    return u"\n".join(lines) + u"\n"
 
 def formatting_rules(request, parser):
     rules = parser.formatting_rules.replace('\n', '|')
@@ -437,8 +429,9 @@ def edit(pagename, editfun, request=None,
         if request.lock.isLocked():
             request.lock.release()
 
+    # PageEditor.saveText doesn't allow empty texts
     if not newtext:
-        return u'No data', p
+        newtext = u" "
 
     try:
         msg = p.saveText(newtext, 0)
