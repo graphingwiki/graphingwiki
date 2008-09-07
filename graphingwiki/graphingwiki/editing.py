@@ -54,7 +54,10 @@ linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
 def encoded_page(pagename):
-    return url_quote(encode(pagename))    
+    return url_quote(encode(pagename))
+
+def decode_page(pagename):
+    return unicode(url_unquote(pagename), config.charset)
 
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
@@ -902,10 +905,11 @@ def metatable_parseargs(request, args,
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
-        if not get_all_pages and request.page.page_name is not None:
-            args = request.page.page_name
-        else:
+        req_page = request.page
+        if get_all_pages or req_page is None or req_page.page_name is None:
             args = ""
+        else:
+            args = req_page.page_name
 
     # Category, Template matching regexps
     cat_re = re.compile(request.cfg.page_category_regex)
@@ -1229,8 +1233,6 @@ def metatable_parseargs(request, args,
         if pages:
             #print "extending with %s" % (pages)
             pagelist.extend(sorted(pages))
-
-    print pagelist
 
     return globaldata, pagelist, metakeys, styles
 
