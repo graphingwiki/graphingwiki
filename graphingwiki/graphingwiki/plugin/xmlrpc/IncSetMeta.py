@@ -52,7 +52,7 @@ def setMetas(request, cleared, discarded, added):
         new = dict()
         for key in list(old):
             values = [value for (value, _) in old.pop(key)]
-            key = decode_value(key)
+            key = decode_page(key)
             old[key] = list(values)
             new[key] = set(values)
         for key in pageCleared:
