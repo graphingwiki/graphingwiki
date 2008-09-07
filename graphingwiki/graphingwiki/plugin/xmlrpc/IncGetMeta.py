@@ -22,9 +22,15 @@ def diff(previous, current):
         currentPage = current.get(page, dict())
         prevPage = previous.get(page, dict())
 
+        # The page has been removed
         if page not in current:
             removedPages.append(page)
             continue
+
+        # Signal that a page has been added to the result set even if
+        # it contains no meta
+        if page not in previous:
+            updates[page] = dict()
 
         for key in set(currentPage) | set(prevPage):
             currentValues = currentPage.get(key, set())
@@ -33,8 +39,8 @@ def diff(previous, current):
             added = list(currentValues - prevValues)
             discarded = list(prevValues - currentValues)
 
-            if added or discarded:
-                updates.setdefault(page, dict())[key] = added, discarded
+            if discarded or added:
+                updates.setdefault(page, dict())[key] = discarded, added
             
     return removedPages, updates
 
