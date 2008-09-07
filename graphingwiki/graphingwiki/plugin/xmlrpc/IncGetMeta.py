@@ -55,7 +55,8 @@ def getMetas(request, args, handle=None):
         page = decode_page(page)
         current[page] = dict()
         for key in keys:
-            current[page][key] = set([value for (value, type) in metas[key]])
+            values = set([value for (value, type) in metas[key]])
+            current[page][decode_page(key)] = values
 
     path = os.path.join(request.cfg.data_dir, "getmetas.shelve")
     db = shelve.open(path)
