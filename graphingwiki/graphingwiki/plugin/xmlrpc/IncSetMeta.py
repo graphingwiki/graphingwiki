@@ -8,7 +8,7 @@ import xmlrpclib
 
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from graphingwiki.editing import getmetas, edit_meta
-from graphingwiki.editing import filter_categories, encoded_page
+from graphingwiki.editing import filter_categories, decode_page, encoded_page
 from graphingwiki.patterns import getgraphdata
 
 CATEGORY_KEY = "gwikicategory"
@@ -31,6 +31,7 @@ def setMetas(request, cleared, discarded, added):
         pageAdded = added.get(page, dict())
         
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
+        metakeys = map(encoded_page, metakeys)
         old = getmetas(request, globaldata, encoded_page(page), metakeys, 
                        checkAccess=False)
 
@@ -49,8 +50,9 @@ def setMetas(request, cleared, discarded, added):
             pageAdded[CATEGORY_KEY] = list(categories - filtered)
 
         new = dict()
-        for key, values in old.iteritems():
-            values = [value for (value, _) in values]
+        for key in list(old):
+            values = [value for (value, _) in old.pop(key)]
+            key = decode_value(key)
             old[key] = list(values)
             new[key] = set(values)
         for key in pageCleared:
