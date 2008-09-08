@@ -285,7 +285,7 @@ def courselisthtml(request):
         else:
             html = u'No courses in system.'
     else:
-        html = u'Login or create user.'
+        html = u'<a href="?action=login"Login</a> or <a href="User Preferences">create user account</a>.'
 
     return html
 
