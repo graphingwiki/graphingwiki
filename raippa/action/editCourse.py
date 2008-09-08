@@ -120,9 +120,14 @@ select tasks:
                         prerequisites += ",".join(temp)
                         prerequisites += u'"'
                     else:
-                        prerequisites = unicode()
+                        prerequisites = u',""' 
 
-                    html += u'newBox("%s","%s","%s","%s"%s);\n' % (tasks[point], tasks[next], description, split, prerequisites)
+                    deadline = unicode()
+                    if metas["deadline"]:
+                        for deadline, type in metas["deadline"]:
+                            break
+
+                    html += u'newBox("%s","%s","%s","%s"%s,"%s");\n' % (tasks[point], tasks[next], description, split, prerequisites, deadline)
                     #html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], description)
                     donelist.append(point)
                     if next not in donelist:
@@ -139,7 +144,7 @@ select tasks:
                 description = metas["description"][0][0]
             else:
                 description = tasks[next]
-            metas = getmetas(request, request.graphdata, encode(point), ["prerequisite", "split"])
+            metas = getmetas(request, request.graphdata, encode(point), ["prerequisite", "split", "deadline"])
             if metas["split"]:
                 split = metas["split"][0][0]
             else:
@@ -153,9 +158,14 @@ select tasks:
                 prerequisites += ",".join(temp)
                 prerequisites += u'"'
             else:
-                prerequisites = unicode()
+                prerequisites = u',""'
 
-            pagehtml += u'newBox("start","%s","%s","%s"%s);\n' % (tasks[point], description, split, prerequisites)
+            deadline = unicode()
+            if metas["deadline"]:
+                for deadline, type in metas["deadline"]:
+                    break
+
+            pagehtml += u'newBox("start","%s","%s","%s"%s,"%s");\n' % (tasks[point], description, split, prerequisites, deadline)
             #pagehtml += u'newBox("start","%s","%s");\n' % (task, description)
             pagehtml += addNode(point)
 
@@ -211,13 +221,19 @@ def editcourse(request, coursepage=None):
                     nodedict[key] = list()
                 nodedict[key].extend(values.split(","))
             elif key.endswith("_value"):
-                taskdict[key.split("_")[0]] = request.form.get(key, [u''])[0]
+                if not taskdict.has_key(key.split("_")[0]):
+                    taskdict[key.split("_")[0]] = [unicode(), unicode()]
+                taskdict[key.split("_")[0]][0] = request.form.get(key, [u''])[0]
             elif key.endswith("_require"):
                 values = request.form.get(key, [u''])[0].split(",")
                 if values:
                     prerequisites[key.split("_")[0]] = values
             elif key.endswith("_type"):
                 splittypes[key.split("_")[0]] = [request.form.get(key, u'')[0]]
+            elif key.endswith("_deadline"):
+                if not taskdict.has_key(key.split("_")[0]):
+                    taskdict[key.split("_")[0]] = [unicode(), unicode()]
+                taskdict[key.split("_")[0]][1] = request.form.get(key, [u''])[0]
 
     if not courseid:
         return "Missing course id."
@@ -233,7 +249,9 @@ def editcourse(request, coursepage=None):
             return "Course already exists."
 
         coursepointdict = dict()
-        for number, taskpage in taskdict.iteritems():
+        for number, taskdata in taskdict.iteritems():
+            taskpage = taskdata[0]
+            deadline = taskdata[1]
             coursepoint = coursepointdict.get(number, None)
             if not coursepoint:
                 coursepoint = randompage(request, coursepage)
@@ -255,6 +273,7 @@ def editcourse(request, coursepage=None):
 
             pointdata[u'prerequisite'] = prerequisites.get(number, [])
             pointdata[u'split'] = splittypes.get(number, [u''])
+            pointdata[u'deadline'] = [deadline]
             input = order_meta_input(request, coursepoint, pointdata, "add")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})             
 
@@ -290,7 +309,9 @@ def editcourse(request, coursepage=None):
                             deletablepage.deletePage()
                     oldtasks[task] = cp
         coursepointdict = dict()
-        for number, taskpage in taskdict.iteritems():
+        for number, taskdata in taskdict.iteritems():
+            taskpage = taskdata[0]
+            deadline = taskdata[1]
             coursepoint = coursepointdict.get(number, None)
             if not coursepoint:
                 if taskpage in oldtasks:
@@ -320,6 +341,7 @@ def editcourse(request, coursepage=None):
 
             pointdata[u'prerequisite'] = prerequisites.get(number, [u''])
             pointdata[u'split'] = splittypes.get(number, [u''])
+            pointdata[u'deadline'] = [deadline]
             input = order_meta_input(request, coursepoint, pointdata, "repl")
             process_edit(request, input, True, {coursepoint:[coursepointcategory]})
             if coursepoint.split("/")[1] != courseid:
