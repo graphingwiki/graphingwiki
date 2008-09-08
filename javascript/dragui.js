@@ -11,7 +11,7 @@
  * <id>_type    : random | select
  * <id>_wrong   : where to go after a wrong answer
  * <id>_required : boxes that need to be completed before continuing
- * <id>_expires : expiration date of task
+ * <id>_expires : expiration date/deadline of task
  * lkm          : count of boxes created
  * endPoints    : list of boxes without child
  */
@@ -300,22 +300,6 @@ try{
         'opacity' : 0.7
             }
     });
-menu.addEvents({
-    mouseenter: function(){
-        this.morph({
-                'opacity': 1,
-                'height': 100,
-                'width' : 100
-            });
-        },
-    mouseleave : function(){
-        this.morph({
-                'height' : 80,
-                'width' : 100,
-                'opacity' : 0.9
-            });
-        }
-    });
 var cancel = new Element('a', {
     'text': 'X',
     'title': 'Cancel',
@@ -392,7 +376,7 @@ var delep = new Element('input', {
 
 var setExp = new Element('input', {
 		'type' : 'button',
-		'value' : 'Expiration date',
+		'value' : 'Deadline',
 		'events' : { 'click' : function(){
 				setExpiration(pDiv);
 				menu.destroy();
@@ -430,6 +414,25 @@ if(childs.length == 1){
         detach.inject(menu);
     }
 }
+var button_count = menu.getElements('input').length;
+menu.addEvents({
+    mouseenter: function(){
+        this.morph({
+                'opacity': 1,
+                'height': 65 + button_count * 20,
+                'width' : 100
+            });
+        },
+    mouseleave : function(){
+        this.morph({
+                'height' : 60 + button_count * 20,
+                'width' : 100,
+                'opacity' : 0.9
+            });
+        }
+    });
+
+
 menu.grab(setExp);
 }
 
@@ -468,7 +471,10 @@ var cancel = new Element('a', {
 
 
 var cur_date = new Date();
-cur_date = cur_date.getFullYear() + '-' + (cur_date.getMonth() +1 ) + '-' + cur_date.getDay();
+month = cur_date.getMonth() +1;
+month = month < 10 ? '0' + month : month;
+day = cur_date.getDate() < 10 ? '0' + cur_date.getDate(): cur_date.getDate();
+cur_date = cur_date.getFullYear() + '-' + month + '-' + day;
 
 var def_value = boxData.get(pDiv.id +'_expires');
 def_value = def_value ? def_value : cur_date;
@@ -483,7 +489,7 @@ var expdate = new Element('input',{
 		}
 });
 menu.grab(new Element('b',{
-'text' : 'Expires:'
+'text' : 'Deadline:'
 }));
 menu.grab(cancel);
 menu.grab(new Element('br'));
@@ -869,8 +875,6 @@ to = 'start';
 }
 var pDiv = $(to);
 
-expires = expires ? expires.toString() : "";
-
 if(pDiv === null){
 pid = boxData.keyOf(to);
 if(to.toString() == value.toString()) return;
@@ -885,7 +889,6 @@ cid = boxData.keyOf(value);
 			boxData.get('endPoints').erase(pid);
 			$('ep_'+pid).destroy();
 			boxData.get(pid+'_required').combine(required);
-			boxData.set(pid+'_expires', expires);
 		}
 		drawline();
 		return;
@@ -899,6 +902,10 @@ var id = 'item'+ lkm;
 boxData.set('lkm', lkm);
 boxData.set(id, value);
 boxData.set(id+'_desc', description);
+
+expires = expires ? expires.toString() : "";
+boxData.set(id+'_expires', expires);
+
 var req = required ? required : new Array();
 boxData.set(id+'_required', req);
 if(boxData.get('endPoints').contains(pDiv.id) == true){
@@ -968,7 +975,7 @@ var content = new Element('div',{
 	'margin-left' : '3px',
 	'z-index' : '2'
 }});
-var descText = document.createTextNode(description.substring(0,30));
+var descText = document.createTextNode(description.toString().substring(0,30));
 content.appendChild(descText);
 content.grab(new Element('br'));
 
@@ -1065,7 +1072,7 @@ if(required.length > 0){
 
 if(expires){
 	infodiv.grab(new Element('br'));
-	infodiv.grab(document.createTextNode('Expires: ' + expires));
+	infodiv.grab(document.createTextNode('Deadline: ' + expires));
 }
 if(type){
 	infodiv.grab(new Element('br'));
@@ -1120,7 +1127,7 @@ form.adopt(new Element('input', {
             }),
 		new Element('input',{
             'type' : 'hidden',
-            'name' : id_strip+'_expires',
+            'name' : id_strip+'_deadline',
             'value' : boxData.get(id+'_expires')
             }),
 		new Element('input',{
