@@ -71,8 +71,8 @@ def execute(pagename, request):
                     if useranswers.get(index, None):
                         questionpage = Question(request, page_tuple[1])
                         if questionpage.answertype == "file":
-                            historypage = questionpage.writefile()
-                            questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], "pending", {}, historypage)
+                            questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], "pending", {}, file=True)
+                            print "wut"
                         else:
                             overallvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
                             questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], overallvalue, successdict)
@@ -90,8 +90,8 @@ def execute(pagename, request):
                 if questionpage:
                     questionpage = Question(request, questionpage)
                     if questionpage.answertype == "file":
-                        historypage = questionpage.writefile()
-                        questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, request.raippauser.currenttask, "pending", {}, historypage)
+                        print "w00t"
+                        questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, request.raippauser.currenttask, "pending", {}, file=True)
                         redirect(request, currentpage.pagename)
                     else:
                         overallvalue, successdict, tips = questionpage.checkanswers(useranswers)
