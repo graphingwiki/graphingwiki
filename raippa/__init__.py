@@ -1,10 +1,12 @@
 import random
+from tempfile import mkstemp
 import time
 import os
 
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User
 from MoinMoin.action.AttachFile import getAttachDir
 
@@ -483,9 +485,10 @@ class Question:
 
         return overallvalue, successdict, tips
 
-    def writehistory(self, user, course, task, overallvalue, successdict, historypage=None):
+    def writehistory(self, user, course, task, overallvalue, successdict, historypage=None, file=False):
         if not historypage:
             historypage = randompage(self.request, "History")
+
         historydata = {u'user':[addlink(user)],
                        u'course':[addlink(course)],
                        u'task':[addlink(task)],
@@ -493,40 +496,26 @@ class Question:
                        u'overallvalue':[unicode(overallvalue)],
                        u'time':[time.strftime("%Y-%m-%d %H:%M:%S")]}
 
+        if file:
+            filename = unicode()
+            if self.request.form.has_key('answer__filename__'):
+                filename = self.request.form['answer__filename__']
+            filecontent = self.request.form["answer"][0]
+            if filename.endswith(".py"):
+                filecontent = "{{{#!python\n"+filecontent+"}}}\n"
+            else:
+                filecontent = "{{{\n"+filecontent+"}}}\n"
+
+            filepage = PageEditor(self.request, historypage+"/file")
+            filepage.saveText(filecontent, filepage.get_real_rev())
+            historydata[u'file'] = [addlink(historypage+"/file")]
+
         for useranswer, value in successdict.iteritems():
             if not historydata.has_key(value):
                 historydata[value] = list()
             historydata[value].append(useranswer)
 
         edit_meta(self.request, historypage, {u'': [u'']}, historydata, True, [historycategory])
-
-    def writefile(self, historypage=None):
-        if not historypage:
-            historypage = randompage(self.request, "History")
-        filename = self.request.form['answer__filename__']
-        target = filename
-        filecontent = self.request.form['answer'][0]
-        if len(target) > 1 and (target[1] == ':' or target[0] == '\\'):
-            bsindex = target.rfind('\\')
-            if bsindex >= 0:
-                target = target[bsindex+1:]
-        target = wikiutil.taintfilename(target)
-        attach_dir = getAttachDir(self.request, historypage, create=1)
-        fpath = os.path.join(attach_dir, target).encode(config.charset)
-        exists = os.path.exists(fpath)
-        if exists:
-            try:
-                os.remove(fpath)
-            except:
-                pass
-        stream = open(fpath, 'wb')
-        try:
-            stream.write(filecontent)
-        finally:
-            stream.close()
-
-        return pagename
-
 
     def getaverage(self, coursename, taskpoint):
         histories = self.gethistories()
