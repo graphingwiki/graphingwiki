@@ -105,10 +105,15 @@ function del_confirm(form){
 </script>'''  % request.cfg.url_prefix_static
 
         html += u'''
+<table class="no_border">
+<tr><td colspan="2">
 Courses:
+</td></tr>
+<tr>
 <form method="post"  id="course_form" action="%s">
     <input type="hidden" id="course_action" name="action" value="editCourse">
-    <select size="1" name="course">''' % request.request_uri.split("?")[0]
+<td width="300px">    
+<select size="1" name="course" class="maxwidth">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
         metas = getmetas(request, request.graphdata, page, ["id", "name"]) 
@@ -120,17 +125,24 @@ Courses:
             break
         html += u'<option name="course" value="%s">%s\n' % (page, listtext)
     html += '''
-    </select>
+    </select></td>
+<td>
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('course_form');">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
     <input type="button" value="stats" onclick="sel_stats();">
+</td>
 </form>
+</tr>
+<tr><td colspan="2">
 Tasks:
+</td></tr>
+<tr>
 <form method="post" id="task_form" action="%s">
-    <input type="hidden" name="action" value="editTask">
-    <select size="1" name="task">''' % request.request_uri.split("?")[0]
+<td>    
+<input type="hidden" name="action" value="editTask">
+    <select size="1" name="task" class="maxwidth">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
         metas = getmetas(request, request.graphdata, page, ["title","description"])
@@ -143,16 +155,23 @@ Tasks:
         html += u'<option name="task" value="%s">%s\n' % (page, description)
     html += '''
     </select>
+    </td>
+    <td>
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('task_form');">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
-</form>'''
+    </td>
+</form>
+</tr>'''
     html += u'''
+<tr><td colspan="2">
 Questions:
+</td></tr>
+<tr>
 <form method="post" id="question_form" action="%s">
-    <input type="hidden" name="action" value="editQuestion">
-    <select name="question">''' % request.request_uri.split("?")[0]
+    <td><input type="hidden" name="action" value="editQuestion">
+    <select name="question" class="maxwidth">''' % request.request_uri.split("?")[0]
     globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
     for page in questionlist:
         metas = getmetas(request, request.graphdata, page, ["question"])
@@ -160,11 +179,15 @@ Questions:
             break
         html += u'<option value="%s">%s\n' % (page, question)
     html += u'''</select>
+    </td><td>
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('question_form');">
     <input type='submit' name='edit' value='edit'>
     <input type='submit' name='new' value='new'>
-</form>'''
+    </td>
+</form>
+</tr></table>
+'''
     request.write(html)
 
 def getcoursegraph(request, courseobj):
