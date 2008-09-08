@@ -489,15 +489,6 @@ menu.grab(cancel);
 menu.grab(new Element('br'));
 menu.grab(expdate);
 
-var calendar = new Calendar({
-	expdate : 'Y-m-d'
-	},
-	{
-	draggable : false,
-	direction : 1,
-	}
-);
-
 var save = new Element('input', {
 		'type' : 'button',
 		'value' : 'Save',
@@ -525,6 +516,15 @@ menu.grab(save);
 menu.grab(remove);
 menu.grab(new Element('br'));
 menu.inject(document.body);
+
+var calendar = new Calendar({
+	expdate : 'Y-m-d'
+	},
+	{
+	draggable : false,
+	direction : 1,
+	}
+);
 }
 
 
