@@ -47,6 +47,20 @@ def graphmap(request, page, raippauser):
                 url = "../%s?action=flowRider&userselection=%s&start" % (page.pagename, node)
                 gv.setv(nodeobject, 'URL', url)
                 gv.setv(nodeobject, 'label', "do now")
+                metas = getmetas(request, request.graphdata, node, ["task"], checkAccess=False)
+                if metas["task"]:
+                    task = encode(metas["task"][0][0])
+                    metas = getmetas(request, request.graphdata, task, ["description", "title"], checkAccess=False)
+                    if metas["description"]:
+                        node_description = metas["description"][0][0]
+                    else:
+                        node_description = unicode()
+                    if metas["title"]:
+                        node_title = metas["title"][0][0]
+                    else:
+                        node_title = unicode()
+                tooltip = str(node_title)+"::"+str(node_description)
+                gv.setv(nodeobject, 'tooltip', tooltip)
             elif "[[end]]" in status or "end" in status:
                 gv.setv(nodeobject, 'label', "done")
                 gv.setv(nodeobject, 'fillcolor', "green")
@@ -70,8 +84,17 @@ def graphmap(request, page, raippauser):
     os.close(tmp_fileno)
     os.remove(tmp_name)
 
-    #html = '<img src="data:image/png;base64,%s" usemap="#%s">\n' % (b64encode(img), page.pagename)
-    html = map+"\n"
+    html = u'''
+<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
+<script type="text/javascript">
+window.addEvent('domready', function(){
+var links = $$('area');
+var tips = new Tips(links);
+});
+</script>
+''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
+    html += map+"\n"
     return html
 
 def getanswers(request, questionpage):
