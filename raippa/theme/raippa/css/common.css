@@ -423,4 +423,11 @@ td.calendar-empty {
     background-color: #DEDEDE;
 }
 
+/* table without borders*/
+table.no_border, table.no_border td, table.no_border tr {
+border: none;
+}
 
+.maxwidth {
+width: 100%;
+}
