@@ -106,7 +106,7 @@ select tasks:
                         description = metas["description"][0][0]
                     else:
                         description = tasks[next]
-                    metas = getmetas(request, request.graphdata, encode(next), ["prerequisite", "split"])
+                    metas = getmetas(request, request.graphdata, encode(next), ["deadline", "prerequisite", "split"])
                     if metas["split"]:
                         split = metas["split"][0][0]
                     else:
