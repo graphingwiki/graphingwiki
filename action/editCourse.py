@@ -123,7 +123,7 @@ select tasks:
                         prerequisites = u',""' 
 
                     deadline = unicode()
-                    if metas["deadline"]:
+                    if metas.has_key("deadline"):
                         for deadline, type in metas["deadline"]:
                             break
 
@@ -161,7 +161,7 @@ select tasks:
                 prerequisites = u',""'
 
             deadline = unicode()
-            if metas["deadline"]:
+            if metas.has_key("deadline"):
                 for deadline, type in metas["deadline"]:
                     break
 
