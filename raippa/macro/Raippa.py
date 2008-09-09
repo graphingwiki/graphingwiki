@@ -59,7 +59,7 @@ def graphmap(request, page, raippauser):
                         node_title = metas["title"][0][0]
                     else:
                         node_title = unicode()
-                tooltip = str(node_title)+"::"+str(node_description)
+                tooltip = node_title.encode("ascii", "replace")+"::"+node_description.encode("ascii", "replace")
                 gv.setv(nodeobject, 'tooltip', tooltip)
             elif "[[end]]" in status or "end" in status:
                 gv.setv(nodeobject, 'label', "done")
