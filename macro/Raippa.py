@@ -222,11 +222,11 @@ def questionform(request):
                     break
         
     html = u'''
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" action="%s">
     <input type="hidden" name="action" value="flowRider">
     %s
     <input type='submit' name='send' value='Submit'>
-</form>''' % questionhtml(request, questionpage)
+</form>''' % (request.page.page_name.split("/")[-1], questionhtml(request, questionpage))
 
     return html
 
@@ -261,8 +261,8 @@ def taskform(request):
     if currentpage.type == u'exam' or currentpage.type == 'questionary':
         flow = currentpage.getflow()
         html += u'''
-<form method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="action" value="flowRider">'''
+<form method="POST" enctype="multipart/form-data" action="%s">
+    <input type="hidden" name="action" value="flowRider">''' % request.page.page_name.split("/")[-1] 
         questionnumber = 0
         for taskpoint, question in flow:
             html += questionhtml(request, question, questionnumber)
@@ -272,10 +272,10 @@ def taskform(request):
 </form>'''
     else:
         html += u'''
-<form method="POST">
+<form method="POST" action="%s">
     <input type="hidden" name="action" value="flowRider"><br>
     <input %s type='submit' name='start' value=Start><br>
-</form>''' % disabled
+</form>''' % (request.page.page_name.split("/")[-1], disabled)
 
     return html
 
@@ -291,9 +291,9 @@ def courselisthtml(request):
     if request.user.name:
         if courselist:
             html = u'''
-<form method="POST">
+<form method="POST" action="%s">
     <input type="hidden" name="action" value="flowRider">
-    <select name="course">'''
+    <select name="course">''' % request.page.page_name.split("/")[-1]
             for page in courselist:
                 metas = getmetas(request, request.graphdata, encode(page), [u'id', u'name'], checkAccess=False)
                 id = metas[u'id'][0][0]
