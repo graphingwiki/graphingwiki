@@ -289,9 +289,9 @@ return true;
 <td style="border-style:hidden"colspan="2">''' % action_name
     if questionpage:
         html += u'<input type="hidden" name="questionpage" value="%s">' % questionpage
-        html += u'<input id="questionfield" size="40" ype="text" name="question" value="%s">' % question.question
+        html += u'<textarea id="questionfield" name="question" rows="3" cols="70">%s</textarea>' % question.question
     else:
-        html += u'<input id="questionfield" size="40" type="text" name="question">'
+        html += u'<textarea id="questionfield" name="question" rows="3" cols="70"></textarea>'
     html += u'''
 </td>
 <tr>
@@ -308,7 +308,8 @@ return true;
 <tr style="border-style:hidden">
 <td style="border-style:hidden">type:</td>
 <td colspan="2"style="border-style:hidden">
-<select name="type">\n'''
+<select name="type">
+<option value=""> </option>\n'''
     globaldata, questions, metakeys, styles = metatable_parseargs(request, questioncategory)
     questiontypes = list()
     for question_in_list in questions:
