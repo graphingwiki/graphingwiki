@@ -104,14 +104,14 @@ def execute(pagename, request):
                                 redirect(request, nexttask)
                         else:
                             try:
-                                metas = getmetas(request, request.graphdata, currentpage.pagename, ["penalty"], checkAccess=False)
-                                failurepage = metas["penalty"][0][0]
-                                failurekey = request.raippauser.currentcoursepoint + "/penalty"
+                                metas = getmetas(request, request.graphdata, currentpage.pagename, ["recap"], checkAccess=False)
+                                failurepage = metas["recap"][0][0]
+                                failurekey = request.raippauser.currentcoursepoint + "/recap"
                                 statusdata = {request.raippauser.currentcourse:[addlink(failurekey)],
                                               failurekey:[addlink(failurepage)]}
                                 input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
                                 process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
-                                redirect(request, failurepage, "penalty")
+                                redirect(request, failurepage, "recap")
                             except:
                                 if len(tips) > 0:
                                     redirect(request, currentpage.pagename, tips[0])

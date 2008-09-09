@@ -245,10 +245,10 @@ class FlowPage:
                 nextcoursepoint, nexttask = courseflowpoint.setnextpage()
                 return nextcoursepoint, nexttask
         elif coursepointcategory in self.categories:
-            penaltykey = self.pagename+"/penalty"
-            if self.user.statusdict.has_key(penaltykey):
-                penaltytask = removelink(self.user.statusdict[penaltykey][0])
-                return penaltykey, penaltytask
+            recapkey = self.pagename+"/recap"
+            if self.user.statusdict.has_key(recapkey):
+                recaptask = removelink(self.user.statusdict[recapkey][0])
+                return recapkey, recaptask
             else:
                 temp = removelink(self.user.statusdict.get(self.pagename, [""])[0])
                 if temp:
@@ -295,7 +295,7 @@ class FlowPage:
                     self.user.editstatus(self.user.currentcoursepoint, nextpage, 5)
                     return self.user.currentcoursepoint, nextpage
                 else:
-                    if self.user.currentcoursepoint.endswith("/penalty"):
+                    if self.user.currentcoursepoint.endswith("/recap"):
                         returncp = "/".join(self.user.currentcoursepoint.split("/")[:-1])
                         returntask = removelink(self.user.statusdict[returncp][0])
                         statusdata = {self.user.currentcoursepoint: [" "],

@@ -34,18 +34,18 @@ def taskform(request, task=None):
         if metas["type"]:
             type = metas["type"][0][0]
         questions, taskpoints = getflow(request, task)
-        penaltydict = dict()
+        recapdict = dict()
         for taskpoint in taskpoints:
-            metas = getmetas(request, request.graphdata, taskpoint, ["question","penalty"])
-            if metas["penalty"] and metas["question"]:
-                penaltydict[metas["question"][0][0]] = metas["penalty"][0][0]
+            metas = getmetas(request, request.graphdata, taskpoint, ["question","recap"])
+            if metas["recap"] and metas["question"]:
+                recapdict[metas["question"][0][0]] = metas["recap"][0][0]
     else:
         title = unicode()
         description = unicode()
         type = u'basic'
         questions = list()
         taskpoints = list()
-        penaltydict = dict()
+        recapdict = dict()
 
     _ = request.getText
     pagehtml = '''
@@ -81,8 +81,8 @@ function createPenaltySel(el, defVal){
 	noPenalty = '';
 	}
   var form = $('taskForm');
-  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
-  var select = $(opt.value+'_penalty');
+  document.getElements('select[id$=_recap]').setStyle('display', 'none');
+  var select = $(opt.value+'_recap');
 
   if(select != null){
 	select.setStyles({
@@ -92,8 +92,8 @@ function createPenaltySel(el, defVal){
 	});
   }else{
 	var select = new Element('select', {
-	'id' : opt.value+'_penalty',
-	'name' : opt.value+'_penalty',
+	'id' : opt.value+'_recap',
+	'name' : opt.value+'_recap',
 	'size' : 1,
 	'styles': {
 		'position' : 'absolute',
@@ -117,7 +117,7 @@ function createPenaltySel(el, defVal){
 	});
   select.grab(new Element('option',{
 	  'value' : '',
-	  'text' : 'no penalty',
+	  'text' : 'no recap',
 	  'selected': noPenalty
 	}));\n'''
     globaldata, tasklist, metakeys, styles = metatable_parseargs(request, taskcategory)
@@ -159,7 +159,7 @@ function moveSel(theSel, dir){
  
 }
 
-function addOption(theSel, theText, theValue, penalty)
+function addOption(theSel, theText, theValue, recap)
 {
 	var newOpt = new Element('option', {
 	  'text' : theText,
@@ -168,14 +168,14 @@ function addOption(theSel, theText, theValue, penalty)
 });
     $(theSel).grab(newOpt);
 	
-	if(penalty){
+	if(recap){
 	  newOpt.setStyle('background-color', 'red');
-	  createPenaltySel(newOpt, penalty);
+	  createPenaltySel(newOpt, recap);
 	}else{
 	  createPenaltySel(newOpt, '');
 	}
 	  newOpt.setStyle('width', 'auto');
-  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
+  document.getElements('select[id$=_recap]').setStyle('display', 'none');
 	$(theSel).addEvent('keyup', function(event){
 			  if(theSel.id == 'flist'){
 				sel = $(theSel).getChildren('option').filter(function(el){
@@ -203,13 +203,13 @@ function deleteOption(theSel, theIndex)
     var selLength = theSel.length;
     if(selLength > 0)
     {
-		var penSel = $(theSel.options[theIndex].value +'_penalty');
+		var penSel = $(theSel.options[theIndex].value +'_recap');
 		if(penSel != null){
 			penSel.destroy();
 		  }
         theSel.options[theIndex] = null;
     }
-  document.getElements('select[id$=_penalty]').setStyle('display', 'none');
+  document.getElements('select[id$=_recap]').setStyle('display', 'none');
 }
 
 function moveOptions(theSelFrom, theSelTo)
@@ -242,12 +242,12 @@ function selectAllOptions(selStr)
 {
     $(selStr).getChildren('option').each(function(el){
 	  el.selected = true;
-	  var sel = $(el.value +'_penalty');
+	  var sel = $(el.value +'_recap');
 	  var val = sel != null ? sel.value : false;
 	  if(val != ""){
 		$('taskForm').grab(new Element('input', {
 		  'type' : 'hidden',
-		  'name' : el.value +'_penalty',
+		  'name' : el.value +'_recap',
 		  'value' : val
 		  }));
 		}
@@ -313,7 +313,7 @@ select questions:<br>
         try:
             metas = getmetas(request, request.graphdata, encode(page), ["question"])
             question = metas["question"][0][0]
-            pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question,page,penaltydict.get(page,""))
+            pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question,page,recapdict.get(page,""))
         except:
             pass
     pagehtml += '''
@@ -351,7 +351,7 @@ def writemeta(request, taskpage=None):
     description = unicode() 
     type = unicode()
     flowlist = list() 
-    penaltydict = dict()
+    recapdict = dict()
 
     for key in request.form:
         if key == "title":
@@ -362,11 +362,11 @@ def writemeta(request, taskpage=None):
             type = request.form.get('type', [u''])[0]
         elif key == "flowlist":
             flowlist = request.form.get("flowlist", [])
-        elif key.endswith("_penalty"):
+        elif key.endswith("_recap"):
             question = key.split("_")[0]
-            penaltytask = request.form.get(key, [None])[0]
-            if penaltytask:
-                penaltydict[question] = penaltytask
+            recaptask = request.form.get(key, [None])[0]
+            if recaptask:
+                recapdict[question] = recaptask
 
     if not title:
         return "Missing task title."
@@ -397,9 +397,9 @@ def writemeta(request, taskpage=None):
             page.saveText("<<Raippa>>", page.get_real_rev())
             nexttaskpoint = randompage(request, taskpage)
             pointdata = {"question":[addlink(questionpage)]}
-            penalty = penaltydict.get(questionpage, None)
-            if penalty:
-                pointdata["penalty"] = addlink(penalty)
+            recap = recapdict.get(questionpage, None)
+            if recap:
+                pointdata["recap"] = addlink(recap)
             if index >= len(flowlist)-1:
                 pointdata["next"] = ["end"]
             else:
@@ -409,7 +409,7 @@ def writemeta(request, taskpage=None):
             taskpoint = nexttaskpoint
     else:
         questions, taskpoints = getflow(request, taskpage)
-        if questions != flowlist or penaltydict:
+        if questions != flowlist or recapdict:
             newflow = list()
             userstatus = list()
             copyoftaskpoints = taskpoints[:]
@@ -454,9 +454,9 @@ def writemeta(request, taskpage=None):
                     next = addlink(newflow[index+1][1])
                 taskpointdata = {"question":[question],
                                  "next":[next]}
-                penalty = penaltydict.get(questiontuple[0], None)
-                if penalty:
-                    taskpointdata["penalty"] = [addlink(penalty)]
+                recap = recapdict.get(questiontuple[0], None)
+                if recap:
+                    taskpointdata["recap"] = [addlink(recap)]
                 input = order_meta_input(request, taskpoint, taskpointdata, "repl")
                 process_edit(request, input, True, {taskpoint:[taskpointcategory]})
 
