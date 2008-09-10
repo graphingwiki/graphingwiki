@@ -639,7 +639,10 @@ def _exit_page(request, pagename):
 def execute(pagename, request):
     if not hasattr(request, 'graphdata'):
         getgraphdata(request)
-    if request.form.has_key("save"):
+    if request.form.has_key('cancel'):
+        url = u'%s/%s' % (request.getBaseURL(), pagename)
+        request.http_redirect(url)
+    elif request.form.has_key("save"):
         if request.form.has_key("questionpage"):
             try:
                 questionpage = request.form["questionpage"][0]
@@ -679,9 +682,6 @@ def execute(pagename, request):
         _enter_page(request, pagename)
         show_basicform(request, questionpage)
         _exit_page(request, pagename)
-    elif request.form.has_key('cancel'):
-        url = u'%s/%s' % (request.getBaseURL(), pagename)
-        request.http_redirect(url)
     else:
         _enter_page(request, pagename)
         show_typeselector(request)

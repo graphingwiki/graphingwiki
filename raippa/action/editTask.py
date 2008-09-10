@@ -26,13 +26,16 @@ def taskform(request, task=None):
         title = unicode()
         description = unicode()
         type = u'basic'
-        metas = getmetas(request, request.graphdata, task, ["title","description", "type"])
+        subjects = list()
+        metas = getmetas(request, request.graphdata, task, ["title","description", "type", "subject"])
         if metas["title"]:
             title = metas["title"][0][0]
         if metas["description"]:
             description = metas["description"][0][0]
         if metas["type"]:
             type = metas["type"][0][0]
+        for subject, type in metas["subject"]:
+            subjects.append(subject)
         questions, taskpoints = getflow(request, task)
         recapdict = dict()
         for taskpoint in taskpoints:
@@ -41,6 +44,7 @@ def taskform(request, task=None):
                 recapdict[metas["question"][0][0]] = metas["recap"][0][0]
     else:
         title = unicode()
+        subjects = list()
         description = unicode()
         type = u'basic'
         questions = list()
@@ -333,6 +337,27 @@ select task type: <select name="type">\n'''
             pagehtml += '<option value="%s">%s\n' % (item, item)
     pagehtml += '''
 </select>
+<br>
+subject:
+<select name="subject">
+<option value=""> </option>\n'''
+    globaldata, tasklist, metakeys, styles = metatable_parseargs(request, taskcategory)
+    tasktypes = list()
+    for task_in_list in tasklist:
+        metas = getmetas(request, request.graphdata, task_in_list, ["subject"])
+        for type, metatype in metas["subject"]:
+            tasktypes.append(type)
+    for type in list(set(tasktypes)):
+        if task:
+            if type in subjects:
+                pagehtml += u'<option value="%s" selected="selected">%s</option>\n' % (type, type)
+            else:
+                pagehtml += u'<option value="%s">%s</option>\n' % (type, type)
+        else:
+            pagehtml += u'<option value="%s">%s</option>\n' % (type, type)
+    pagehtml += u'''
+</select> &nbsp;
+<input size="30" type="text" name="subject">
 <br>title:
 <br>
 <input type="text" size="40" name="title" value="%s">
@@ -350,6 +375,7 @@ select task type: <select name="type">\n'''
 def writemeta(request, taskpage=None):
     title = unicode()
     description = unicode() 
+    subjects = list()
     type = unicode()
     flowlist = list() 
     recapdict = dict()
@@ -363,6 +389,8 @@ def writemeta(request, taskpage=None):
             type = request.form.get('type', [u''])[0]
         elif key == "flowlist":
             flowlist = request.form.get("flowlist", [])
+        elif key == "subject":
+            subjects = request.form.get("subject", [])
         elif key.endswith("_recap"):
             question = key.split("_")[0]
             recaptask = request.form.get(key, [None])[0]
@@ -388,7 +416,8 @@ def writemeta(request, taskpage=None):
         taskdata = {"title":[title],
                     "description":[description],
                     "type":[type],
-                    "start":[addlink(taskpoint)]}
+                    "start":[addlink(taskpoint)],
+                    "subject":subjects}
 
         input = order_meta_input(request, taskpage, taskdata, "add")
         process_edit(request, input, True, {taskpage:[taskcategory]})
@@ -506,12 +535,14 @@ def writemeta(request, taskpage=None):
             taskdata = {u'title':[title],
                         u'description':[description],
                         u'type':[type],
+                        u'subject': subjects,
                         u'start':[addlink(newflow[0][1])]}
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
         else:
             taskdata = {u'title':[title],
                         u'description':[description],
-                        u'type':[type]}
+                        u'type':[type],
+                        u'subject': subjects}
             process_edit(request, order_meta_input(request, taskpage, taskdata, "repl"))
 
     return None
