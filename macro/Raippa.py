@@ -2,6 +2,8 @@
 import random
 import os
 import gv
+import datetime
+
 from tempfile import mkstemp
 from base64 import b64encode
 
@@ -85,13 +87,23 @@ def graphmap(request, page, raippauser):
     html = u'''
 <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
+<script type="text/javascript" src="%s/common/js/calendar.js"></script>
 <script type="text/javascript">
 window.addEvent('domready', function(){
 var links = $$('area');
 var tips = new Tips(links);
+if($('ttDate')){
+  var calCss = new Asset.css("%s/raippa/css/calendar.css");
+  var cal = new Calendar({
+    ttDate : 'Y-m-d'
+    },{
+      direction : -1,
+      draggable : false
+      });
+}
 });
 </script>
-''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
+''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static)
     html += map+"\n"
     return html
 
@@ -349,16 +361,20 @@ def execute(macro, text):
 
                             html += u'''
 <tr><td>total:</td><td>%ih</td></tr>
-</table>''' % total
+</table>''' % total    
+                        now = datetime.datetime.now()
+                        tt_date = now.strftime("%Y-%m-%d")
                         html += u'''
 <form method="POST">
     <input type="hidden" name="action" value="timetrack"><br>
+    Date:
+    <input type="text" id="ttDate" name="date" value="%s"><br>
     time in hours:
     <input type="text" size="4" name="hours"><br>
     description:<br>
     <input type="text" size="50" name="description"><br>
     <input type='submit' name='submit' value=Submit><br>
-</form>''' 
+</form>'''  % tt_date
                 return html
             elif category == taskcategory:
                 return taskform(request)
