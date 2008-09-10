@@ -26,7 +26,7 @@ function sel_stats(){
   }
 function del_confirm(form){
   var form = $(form);
-  var value = form.getElement('select').value;
+  var value = form.getChildren('select')[0].value;
   if(confirm('Do you really want to delete '+ value+'?')){
  form.grab(new Element('input', {
     'type' : 'hidden',
@@ -44,9 +44,9 @@ function del_confirm(form){
 Courses:
 </td></tr>
 <tr>
+<td width="300px">
 <form method="post" id="course_form"  action="%s">
     <input type="hidden"id="course_action" name="action" value="editCourse">
-<td width="300px">
     <select size="1" name="course" class="maxwidth">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
@@ -73,8 +73,8 @@ Courses:
 Tasks:
 </td></tr>
 <tr>
-<form method="post" id="task_form" action="%s">
 <td>
+<form method="post" id="task_form" action="%s">
 <input type="hidden" name="action" value="editTask">
     <select size="1" name="task" class="maxwidth">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
@@ -104,8 +104,8 @@ Tasks:
 Questions:
 </td></tr>
 <tr>
-<form method="post" id="question_form" action="%s">
     <td>
+<form method="post" id="question_form" action="%s">
     <input type="hidden" name="action" value="editQuestion">
     <select name="question" class="maxwidth">''' % request.request_uri.split("?")[0]
     globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
