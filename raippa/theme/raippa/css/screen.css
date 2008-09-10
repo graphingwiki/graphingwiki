@@ -408,6 +408,7 @@ hr#pageline {
 	background-image: url(../img2/raippa-kuva.jpg);
 	background-repeat: no-repeat;
 	padding: 30px 40px 20px 230px;
+	min-height: 250px;
 }
 
 #page #content #content {
@@ -466,7 +467,14 @@ input.button {
     */
 }
 
-#footer {
+
+a#footer {
+	font-size: 90%;
+	color: #444;
+	margin-left: 5px;
+}
+
+div#footer {
     clear: both;
     margin: 0;
     padding: 0;
