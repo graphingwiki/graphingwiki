@@ -48,6 +48,7 @@ def graphmap(request, page, raippauser):
                 gv.setv(nodeobject, 'URL', url)
                 gv.setv(nodeobject, 'label', "do now")
                 metas = getmetas(request, request.graphdata, node, ["task"], checkAccess=False)
+                node_title = unicode()
                 if metas["task"]:
                     task = encode(metas["task"][0][0])
                     metas = getmetas(request, request.graphdata, task, ["description", "title"], checkAccess=False)
@@ -57,8 +58,6 @@ def graphmap(request, page, raippauser):
                         node_description = unicode()
                     if metas["title"]:
                         node_title = metas["title"][0][0]
-                    else:
-                        node_title = unicode()
                 tooltip = node_title.encode("ascii", "replace")+"::"+node_description.encode("ascii", "replace")
                 gv.setv(nodeobject, 'tooltip', tooltip)
             elif "[[end]]" in status or "end" in status:
