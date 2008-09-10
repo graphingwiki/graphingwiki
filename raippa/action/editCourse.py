@@ -85,7 +85,7 @@ select tasks:
     pagehtml += u'''
 </div>
 <div id="start">Start by dragging here!<br></div>
-<form method="post" id="submitform" name="courseForm" onsubmit="return submitTree()">
+<form method="post" id="submitform" name="courseForm">
 <input type="hidden" name="action" value="editCourse">\n'''
     if course:
         pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course
@@ -186,8 +186,8 @@ name: <input type="text" id="coursename" name="coursename" value="%s"><br>
 timetrack: <input type="checkbox" name="option" value="timetrack" %s><br>
 description:<br> 
 <textarea name="coursedescription" rows="10" cols="40">%s</textarea><br>
-<input type="submit" name="save" value="Save">
-<input type="submit" name="cancel" value="Cancel">
+<input type="submit" name="save" value="Save" onclick="return submitTree(this);">
+<input type="submit" name="cancel" value="Cancel" onclick="return submitTree(this);">
 </form>
 ''' % (name, timetrack, coursedescription)
 
