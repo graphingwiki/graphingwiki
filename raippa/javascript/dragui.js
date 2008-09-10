@@ -1090,7 +1090,10 @@ $('content').grab(infodiv);
 }
 
 /* Turns box tree into form with hidden inputs*/
-function submitTree(){
+function submitTree(button){
+if(button.value == "Cancel"){
+	return true;
+}
 var form = $('submitform');
 childBoxes.each(function(value,id){
         id_strip = id.replace('item','');
