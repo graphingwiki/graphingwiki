@@ -187,6 +187,7 @@ timetrack: <input type="checkbox" name="option" value="timetrack" %s><br>
 description:<br> 
 <textarea name="coursedescription" rows="10" cols="40">%s</textarea><br>
 <input type="submit" name="save" value="Save">
+<input type="submit" name="cancel" value="Cancel">
 </form>
 ''' % (name, timetrack, coursedescription)
 
@@ -397,9 +398,7 @@ def delete(request, pagename):
                     if coursepoint != "start":
                         pointpage = PageEditor(request, coursepoint, do_editor_backup=0)
                         if pointpage.exists():
-                            #print "delete", pointpage.page_name
                             pointpage.deletePage()
-                #print "delete", page.page_name
                 page.deletePage()
                 break
         return "Success"
@@ -458,6 +457,9 @@ def execute(pagename, request):
         course = encode(request.form["course"][0])
         courseform(request, course)
         _exit_page(request, pagename)
+    elif request.form.has_key('cancel'):
+        url = u'%s/%s' % (request.getBaseURL(), pagename)
+        request.http_redirect(url)
     else:
         _enter_page(request, pagename)
         courseform(request)
