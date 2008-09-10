@@ -426,6 +426,7 @@ return true;
   </table>
     <hr>
      <input type="submit" name="save" value="Save">
+     <input type="submit" name="cancel" value="Cancel">
     </form>
 '''
 
@@ -461,6 +462,7 @@ def show_socialform(request):
 '''
     html += u'''
     <input type="submit" name="save" value="Save">
+    <input type="submit" name="cancel" value="Cancel">
 </form>'''
 
     request.write(html)
@@ -673,6 +675,9 @@ def execute(pagename, request):
         _enter_page(request, pagename)
         show_basicform(request, questionpage)
         _exit_page(request, pagename)
+    elif request.form.has_key('cancel'):
+        url = u'%s/%s' % (request.getBaseURL(), pagename)
+        request.http_redirect(url)
     else:
         _enter_page(request, pagename)
         show_typeselector(request)

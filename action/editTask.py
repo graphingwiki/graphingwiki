@@ -342,6 +342,7 @@ select task type: <select name="type">\n'''
 ''' % (title, description)
     pagehtml += '''
 <input type="submit" name="save" value="Save">
+<input type="submit" name="cancel" value="Cancel">
 </form>
 '''
     request.write(u'%s' % pagehtml)
@@ -616,6 +617,10 @@ def execute(pagename, request):
             return None
         taskform(request, task)
         _exit_page(request, pagename)
+    elif request.form.has_key('cancel'):
+        url = u'%s/%s' % (request.getBaseURL(), pagename)
+        request.http_redirect(url)
+
     else:
         _enter_page(request, pagename)
         taskform(request)
