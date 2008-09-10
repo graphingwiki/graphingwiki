@@ -255,7 +255,11 @@ for(var i in tds){
 }
 }
 
-function submitCheck(){
+function submitCheck(button){
+  /* Checking if cancel button was pressed*/
+  if(button.value == "Cancel"){
+    return true;
+    }
   var form = $('dataform');
   if($('questionfield').value == ''){
 	alert('Please insert question before saving!');
@@ -281,7 +285,7 @@ return true;
         html += u'Pagename: %s\n' % questionpage
 
     html += u'''
-<form id="dataform" method="POST" enctype="multipart/form-data" onsubmit="return submitCheck();">
+<form id="dataform" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="action" value="%s">
 <table style="border-style:hidden">
 <tr style="border-style:hidden">
@@ -425,8 +429,8 @@ return true;
     html += u'''
   </table>
     <hr>
-     <input type="submit" name="save" value="Save">
-     <input type="submit" name="cancel" value="Cancel">
+     <input type="submit" name="save" value="Save" onclick="return submitCheck(this);">
+     <input type="submit" name="cancel" value="Cancel" onclick="return submitCheck(this);">
     </form>
 '''
 
@@ -461,8 +465,8 @@ def show_socialform(request):
     <input type="hidden" name="value3" value="true">
 '''
     html += u'''
-    <input type="submit" name="save" value="Save">
-    <input type="submit" name="cancel" value="Cancel">
+    <input type="submit" name="save" value="Save" >
+    <input type="submit" name="cancel" value="Cancel" >
 </form>'''
 
     request.write(html)
