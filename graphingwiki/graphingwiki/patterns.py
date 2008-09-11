@@ -33,6 +33,9 @@ import re
 import cPickle
 import os
 import shelve
+import itertools
+import UserDict
+
 from codecs import getencoder
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
@@ -55,7 +58,7 @@ def encode(str):
 # Default node attributes that should not be shown
 special_attrs = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',
-                 'gwikiURL', 'gwikishapefile', "gwikishape", "gwikistyle",
+                 'gwikishapefile', "gwikishape", "gwikistyle",
                  'belongs_to_patterns']
 
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
@@ -84,11 +87,8 @@ def getgraphdata(request):
 
     return request.graphdata
 
-import itertools
-import UserDict
-
 def encode_page(page):
-    return page.encode("utf-8")
+    return encode(page)
 
 def decode_page(page):
     return unicode(page, "utf-8")
@@ -127,13 +127,12 @@ class GraphData(UserDict.DictMixin):
 
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
-    # NB: You must use closedb() before exiting to avoid littering
-    #     read locks around!
+    # Do not use directly
     def opendb(self):
         # The timeout parameter in ReadLock is most probably moot...
         self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
         self.request.lock.acquire()
-        
+
         self.opened = True
         self.db = shelve.open(self.graphshelve)
 
@@ -148,7 +147,6 @@ class GraphData(UserDict.DictMixin):
         # they're handled in load_graph. This way the cache avoids
         # tough decisions on whether to cache content for a
         # certain user or not
-
         return self.db.get(encode_page(pagename), dict())
 
     def reverse_meta(self):
@@ -194,7 +192,7 @@ class GraphData(UserDict.DictMixin):
 
         # Shapefile is an extra special case
         for shape in page.get('lit', {}).get('gwikishapefile', []):
-            node.gwikishapefile = encode(shape)
+            node.gwikishapefile = shape
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'gwikiURL'):

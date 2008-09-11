@@ -127,7 +127,7 @@ def construct_table(macro, pagelist, metakeys,
         t_cell(macro, [legend])
 
     for key in metakeys:
-        key = unicode(url_unquote(key), config.charset)
+        key = url_unquote(key)
         style = styles.get(key, {})
         
         # Styles can modify key naming
@@ -167,7 +167,7 @@ def construct_table(macro, pagelist, metakeys,
 
         for key in metakeys:
             values = [x for x,y in metas[key]]
-            key = unicode(url_unquote(key), config.charset)
+            key = url_unquote(key)
             style = styles.get(key, {})
             t_cell(macro, values, style=style)
 
@@ -190,9 +190,8 @@ def execute(macro, args):
         args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
-    _, pagelist, metakeys, styles = \
-                metatable_parseargs(macro.request, args,
-                                    get_all_keys=True)
+    pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
+                                                     get_all_keys=True)
 
     request = macro.request
     _ = request.getText

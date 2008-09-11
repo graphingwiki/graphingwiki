@@ -3,6 +3,7 @@ from MoinMoin.security import Permissions
 from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
 
 from graphingwiki.editing import underlay_to_pages
+from graphingwiki.patterns import getgraphdata
 
 class SecurityPolicy(AntiSpam):
     def save(self, editor, newtext, rev, **kw):
@@ -24,6 +25,10 @@ class SecurityPolicy(AntiSpam):
                 return True
             else:
                 path = underlay_to_pages(self.request, editor)
+
+                if not hasattr(self.request, 'graphdata'):
+                    getgraphdata(self.request)
+                    self.request.lock.release()
 
                 graphsaver(editor.page_name, self.request,
                            newtext, path, editor)

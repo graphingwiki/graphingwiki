@@ -284,33 +284,6 @@ def getkeys(request, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
-def link_to_attachment(request, target):
-    if isinstance(target, unicode):
-        target = encoded_page(target)
-    
-    try:
-        targetPage = request.graphdata.getpage(target)
-    except KeyError:
-        pass
-    else:
-        targetMeta = targetPage.get("meta", dict())
-        url = targetMeta.get("gwikiURL", set([""]))
-        if url:
-            url = url.pop()
-            # If the URL attribute of the target looks like the
-            # target is a local attachment, correct the link
-            if 'AttachFile' in url and url.startswith('".'):
-                target = 'attachment:' + target.replace(' ', '_')
-
-    target = target.strip('"')
-    if not target.startswith('attachment:'):
-        target = unicode(url_unquote(target), config.charset)
-    else:
-        target = unicode(target, config.charset)
-    target = target.replace('\\"', '"')
-
-    return target
-
 def absolute_attach_name(quoted, target):
     abs_method = target.split(':')[0]
 
@@ -342,8 +315,6 @@ def getmetas(request, name, metakeys,
     # Add values and their sources
     for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
-            value = unicode(value, config.charset).strip('"')
-            value = value.replace('\\"', '"')
             pageMeta[key].append((value, "meta"))
 
     # Link values are in a list as there can be more than one edge
@@ -353,8 +324,6 @@ def getmetas(request, name, metakeys,
         loadedOuts = loadedPage.get("out", dict())
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
-                if abs_attach:
-                    target = link_to_attachment(request, target)
 
                 pageMeta[key].append((target, "link"))
     else:
@@ -373,20 +342,19 @@ def getmetas(request, name, metakeys,
 # considered additive in case of a possible overlap.
 # Let's see how it turns out.
 def getvalues(request, name, key,
-              display=True, abs_attach=True):
+              display=True, abs_attach=True, checkAccess=True):
     getgraphdata(request)
 
     quoted = unicode(url_unquote(name), config.charset)
-    if not request.user.may.read(quoted):
-        return set([])
+    if checkAccess:
+        if not request.user.may.read(quoted):
+            return set([])
 
     page = request.graphdata.getpage(name)
     vals = set()
     # Add values and their sources
     if key in page.get('meta', {}):
         for val in page['meta'][key]:
-            val = unicode(val, config.charset).strip('"')
-            val = val.replace('\\"', '"')
             vals.add((val, 'meta'))
 
     # Link values are in a list as there can be more than one
@@ -396,9 +364,6 @@ def getvalues(request, name, key,
         if key in page.get('out', {}):
             # Add values and their sources
             for target in page['out'][key]:
-                if abs_attach:
-                    target = link_to_attachment(request, target)
-
                 vals.add((target, 'link'))
     else:
         # Showing things as they are
@@ -935,7 +900,7 @@ def metatable_parseargs(request, args,
     # Flag: were there page arguments?
     pageargs = False
 
-    if not hasattr(request, 'graphdata':
+    if not hasattr(request, 'graphdata'):
         getgraphdata(request)
 
     # Regex preprocessing
@@ -1108,14 +1073,14 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in getkeys(request.graphdata, name):
+                for key in getkeys(request, name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(getkeys(request.graphdata, name)):
+                for key in nonguaranteeds_p(getkeys(request, name)):
                     metakeys.add(key)
 
-        metakeys = sorted(metakeys, key=str.lower)
+        metakeys = sorted(metakeys, key=unicode.lower)
     else:
         metakeys = keyspec
 
