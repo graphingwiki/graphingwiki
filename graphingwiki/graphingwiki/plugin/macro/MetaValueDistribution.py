@@ -69,7 +69,7 @@ def t_cell(macro, value):
 
     out.write(value.getvalue().strip())
 
-def construct_table(macro, globaldata, pagelist, key, sort_order):
+def construct_table(macro, pagelist, key, sort_order):
     request = macro.request
     request.page.formatter = request.formatter
 
@@ -85,7 +85,7 @@ def construct_table(macro, globaldata, pagelist, key, sort_order):
         # WARNING: Skipping access check because we know that metatable_parseargs
         #          already  checked  them. If you plan to use this code elsewhere
         #          you should make sure that you check for access.
-        metas = getmetas(request, globaldata, page, [key], display=False,
+        metas = getmetas(request, page, [key], display=False,
                          checkAccess=False)
 
         values = [x for x,y in metas[key]]
@@ -163,8 +163,8 @@ def execute(macro, args):
     query = "%s,||%s||" % tuple(args[:2])
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, _ = \
-                metatable_parseargs(request, query, get_all_keys=True)
+    pagelist, metakeys, _ = \
+        metatable_parseargs(request, query, get_all_keys=True)
 
     if not pagelist:
         show_error(macro, args, "No content")
@@ -186,6 +186,6 @@ def execute(macro, args):
         return ""
 
     # We're sure the user has the access to the page, so don't check
-    construct_table(macro, globaldata, pagelist, key, sort_order)
+    construct_table(macro, pagelist, key, sort_order)
 
     return ""

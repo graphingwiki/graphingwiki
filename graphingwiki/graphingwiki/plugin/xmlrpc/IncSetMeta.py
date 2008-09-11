@@ -14,7 +14,6 @@ from graphingwiki.patterns import getgraphdata
 CATEGORY_KEY = "gwikicategory"
 
 def setMetas(request, cleared, discarded, added):
-    globaldata = getgraphdata(request)
     pages = set(cleared) | set(discarded) | set(added)
 
     # We don't have to check whether the user is allowed to read
@@ -32,7 +31,7 @@ def setMetas(request, cleared, discarded, added):
         
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         metakeys = map(encoded_page, metakeys)
-        old = getmetas(request, globaldata, encoded_page(page), metakeys, 
+        old = getmetas(request, encoded_page(page), metakeys, 
                        checkAccess=False)
 
         # Handle the magic duality between normal categories (CategoryBah)

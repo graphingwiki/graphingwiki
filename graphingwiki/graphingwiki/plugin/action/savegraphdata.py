@@ -207,7 +207,9 @@ def getlinktype(augdata):
         linktype = augdata[0]
     return linktype
 
-def add_meta(globaldata, pagenode, pagename, hit):
+def add_meta(request, pagenode, quotedname, hit):
+    # decode to target charset, grab comma-separated key,val
+    hit = encode(hit[11:-3])
     hit = hit[11:-3]
     args = hit.split(',')
 
@@ -227,18 +229,20 @@ def add_meta(globaldata, pagenode, pagename, hit):
     # Values to be handed to dot
     if key in special_attrs:
         setattr(pagenode, key, val)
-        shelve_set_attribute(globaldata, pagename, key, val)
+        shelve_set_attribute(request, pagename, key, val)
         # If color defined¸ set page as filled
         if key == 'fillcolor':
             setattr(pagenode, 'style', 'filled')
-            shelve_set_attribute(globaldata, pagename, 'style', 'filled')
+            shelve_set_attribute(request, pagename, 'style', 'filled')
         return
 
     # Save to pagegraph and shelve's metadata list
     node_set_attribute(pagenode, key, val)
-    shelve_set_attribute(globaldata, pagename, key, val)
+    shelve_set_attribute(request, pagename, key, val)
 
-def add_include(globaldata, pagenode, pagename, hit):
+def add_include(request, pagenode, quotedname, hit):
+    globaldata = request.graphdata.db
+
     hit = hit[11:-3]
     pagearg = hit.split(',')[0]
 
@@ -301,7 +305,7 @@ def parse_link(wikiparse, hit, type):
 
     return nodename, nodeurl, linktype
 
-def add_link(globaldata, pagename, pagegraph,
+def add_link(request, pagename, pagegraph,
              nodename, nodeurl, linktype, hit):
     # Add node if not already added
     if not pagegraph.nodes.get(nodename):
@@ -315,8 +319,8 @@ def add_link(globaldata, pagename, pagegraph,
         linktype = linktype[:-4]
         edge.reverse()
 
-    shelve_add_in(globaldata, edge, linktype, nodeurl)
-    shelve_add_out(globaldata, edge, linktype, hit)
+    shelve_add_in(request, edge, linktype, nodeurl)
+    shelve_add_out(request, edge, linktype, hit)
 
     # Add edge if not already added
     e = pagegraph.edges.get(*edge)
@@ -332,7 +336,8 @@ def add_link(globaldata, pagename, pagegraph,
         e.linktype = set([linktype])
 
 
-def parse_text(request, globaldata, page, text):
+def parse_text(request, page, text):
+    globaldata = request.graphdata.db
     pagename = page.page_name
 
     # import text_url -formatter
@@ -436,10 +441,10 @@ def parse_text(request, globaldata, page, text):
                 # Handling of MetaData- and Include-macros
                 elif type == 'macro' and not inpre:
                     if hit.startswith('[[MetaData'):
-                        add_meta(globaldata, pagenode, pagename, hit)
+                        add_meta(request, pagenode, pagename, hit)
 
                     if hit.startswith('[[Include'):
-                        add_include(globaldata, pagenode, pagename, hit)
+                        add_include(request, pagenode, pagename, hit)
 
                 # Handling of links
                 elif type in linktypes and not inpre:
@@ -452,7 +457,7 @@ def parse_text(request, globaldata, page, text):
                     name, url, linktype = parse_link(wikiparse, hit, type)
 
                     if name:
-                        add_link(globaldata, pagename, pagegraph,
+                        add_link(request, pagename, pagegraph,
                                  name, url, linktype, hit)
 
                 # Links and metadata defined in a definition list
@@ -489,8 +494,7 @@ def parse_text(request, globaldata, page, text):
                                 linktype = getlinktype([x for x in key, val])
 
                                 if name:
-                                    add_link(globaldata, pagename,
-                                             pagegraph,
+                                    add_link(request, pagename, pagegraph,
                                              name, url, linktype, hit)
 
                                     # The val will also be parsed by
@@ -503,7 +507,7 @@ def parse_text(request, globaldata, page, text):
                         continue
 
                     # If it was not link, save as metadata. 
-                    add_meta(globaldata, pagenode, pagename,
+                    add_meta(request, pagenode, pagename,
                              "[[MetaData(%s,%s)]]" % (key, val))
 
     # Add the page categories as links too
@@ -511,10 +515,10 @@ def parse_text(request, globaldata, page, text):
     for category in categories:
         name, url, linktype = parse_link(wikiparse, category, "word")
         if name:
-            add_link(globaldata, pagename, pagegraph,
+            add_link(request, pagename, pagegraph,
                      name, url, "gwikicategory", category)
 
-    return globaldata, pagegraph
+    return pagegraph
 
 def execute(pagename, request, text, pagedir, page):
     # Skip MoinEditorBackups
@@ -542,7 +546,7 @@ def execute(pagename, request, text, pagedir, page):
         pagegraphfile.close()
 
     # Get new data from parsing the page
-    newdata, pagegraph = parse_text(request, dict(), page, text)
+    pagegraph = parse_text(request, dict(), page, text)
 
     # Find out which links need to be saved again
     oldedges = set()
@@ -568,25 +572,25 @@ def execute(pagename, request, text, pagedir, page):
     for edge, linktype in remove_edges:
 #        print "Removed", edge, linktype
 #        print edge, linktype
-        shelve_remove_in(globaldata, edge, [linktype])
-        shelve_remove_out(globaldata, edge, [linktype])
+        shelve_remove_in(request, edge, [linktype])
+        shelve_remove_out(request, edge, [linktype])
     for edge, linktype in add_edges:
 #        print "Added", edge, linktype
         frm, to = edge
-        data = [(x,y) for x,y in enumerate(newdata[frm]['out'][linktype])
+        data = [(x,y) for x,y in enumerate(globaldata[frm]['out'][linktype])
                 if y == to]
 
         # Temporary hack: add gwikiurl:s to some edges
-        nodeurl = newdata.get(to, '')
+        nodeurl = globaldata.get(to, '')
         if nodeurl:
             nodeurl = nodeurl.get('meta', {}).get('gwikiURL', set(['']))
             nodeurl = list(nodeurl)[0]
 
         # Save both the parsed and unparsed versions
         for idx, item in data:
-            hit = newdata[frm]['lit'][linktype][idx]
-            shelve_add_in(globaldata, edge, linktype, nodeurl)
-            shelve_add_out(globaldata, edge, linktype, hit)
+            hit = globaldata[frm]['lit'][linktype][idx]
+            shelve_add_in(request, edge, linktype, nodeurl)
+            shelve_add_out(request, edge, linktype, hit)
 
     # Insert metas and other stuff from parsed content
     temp = globaldata.get(pagename, {'time': time(), 'saved': True})

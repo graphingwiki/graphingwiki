@@ -50,9 +50,8 @@ def execute(macro, args):
     else:
         page = request.page
 
-    globaldata, pagelist, metakeys = get_revisions(request, page)
+    pagelist, metakeys = get_revisions(request, page)
 
-    construct_table(macro, globaldata, pagelist,
-                    metakeys, 'Meta by Revision')
+    construct_table(macro, pagelist, metakeys, 'Meta by Revision')
 
     return ''

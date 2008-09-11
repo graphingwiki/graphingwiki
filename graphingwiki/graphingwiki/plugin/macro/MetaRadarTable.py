@@ -96,12 +96,12 @@ def execute(macro, args):
         amount = 1
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
-                                                            get_all_keys=True)
+    pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                get_all_keys=True)
 
     values = set()
     for page in pagelist:
-        metas = getmetas(request, globaldata, page, metakeys)
+        metas = getmetas(request, page, metakeys)
         for key in metas:
             values.update(x[0] for x in metas[key])
     for val in values:

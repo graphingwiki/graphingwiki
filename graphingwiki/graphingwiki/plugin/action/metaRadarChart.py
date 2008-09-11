@@ -134,8 +134,8 @@ def execute(pagename, request):
     ctx.set_source_rgb(0.0, 0.0, 0.0)
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
-                                                            get_all_keys=True)
+    pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                get_all_keys=True)
 
     # If no keys, print nothing
     if not pagelist:
@@ -147,7 +147,7 @@ def execute(pagename, request):
     for page in pagelist:
         for key in metakeys:
             data[key] = set(x for x, y in
-                            getvalues(request, globaldata, page, key))
+                            getvalues(request, page, key))
 
     # Get values for the chart axes
     data_per_axis = dict()

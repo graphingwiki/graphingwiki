@@ -275,8 +275,8 @@ def getpage(name, request=None):
 
     return request, page
 
-def getkeys(globaldata, name):
-    page = globaldata.getpage(name)
+def getkeys(request, name):
+    page = request.graphdata.getpage(name)
     keys = set(page.get('meta', {}).keys())
     # Non-typed links are not included
     keys.update(set(x for x in page.get('out', {}).keys()
@@ -284,12 +284,12 @@ def getkeys(globaldata, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
-def link_to_attachment(globaldata, target):
+def link_to_attachment(request, target):
     if isinstance(target, unicode):
         target = encoded_page(target)
     
     try:
-        targetPage = globaldata.getpage(target)
+        targetPage = request.graphdata.getpage(target)
     except KeyError:
         pass
     else:
@@ -324,8 +324,10 @@ def absolute_attach_name(quoted, target):
     return target
 
 # Fetch requested metakey value for the given page.
-def getmetas(request, globaldata, name, metakeys, 
+def getmetas(request, name, metakeys, 
              display=True, abs_attach=True, checkAccess=True):
+    getgraphdata(request)
+
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
@@ -334,7 +336,7 @@ def getmetas(request, globaldata, name, metakeys,
         if not request.user.may.read(quoted):
             return pageMeta
 
-    loadedPage = globaldata.getpage(name)
+    loadedPage = request.graphdata.getpage(name)
     loadedMeta = loadedPage.get("meta", dict())
 
     # Add values and their sources
@@ -352,7 +354,7 @@ def getmetas(request, globaldata, name, metakeys,
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
                 if abs_attach:
-                    target = link_to_attachment(globaldata, target)
+                    target = link_to_attachment(request, target)
 
                 pageMeta[key].append((target, "link"))
     else:
@@ -370,14 +372,15 @@ def getmetas(request, globaldata, name, metakeys,
 # Currently, the values of metadata and link keys are
 # considered additive in case of a possible overlap.
 # Let's see how it turns out.
-def getvalues(request, globaldata, name, key,
+def getvalues(request, name, key,
               display=True, abs_attach=True):
+    getgraphdata(request)
 
     quoted = unicode(url_unquote(name), config.charset)
     if not request.user.may.read(quoted):
         return set([])
 
-    page = globaldata.getpage(name)
+    page = request.graphdata.getpage(name)
     vals = set()
     # Add values and their sources
     if key in page.get('meta', {}):
@@ -385,6 +388,7 @@ def getvalues(request, globaldata, name, key,
             val = unicode(val, config.charset).strip('"')
             val = val.replace('\\"', '"')
             vals.add((val, 'meta'))
+
     # Link values are in a list as there can be more than one
     # edge between two pages
     if display:
@@ -393,7 +397,7 @@ def getvalues(request, globaldata, name, key,
             # Add values and their sources
             for target in page['out'][key]:
                 if abs_attach:
-                    target = link_to_attachment(globaldata, target)
+                    target = link_to_attachment(request, target)
 
                 vals.add((target, 'link'))
     else:
@@ -490,6 +494,10 @@ def _fix_key(key):
 
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
+
+    # Some functions might call this directly
+    getgraphdata(request)
+
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -688,7 +696,7 @@ def process_edit(request, input,
             s = unicode(s, config.charset)
         return s
 
-    globaldata = getgraphdata(request)
+    getgraphdata(request)
 
     changes = dict()
     keychanges = dict()
@@ -726,7 +734,7 @@ def process_edit(request, input,
         keypage, key = map(urlquote, [keypage, key])
 
         oldvals = list()
-        for val, typ in getvalues(request, globaldata, keypage,
+        for val, typ in getvalues(request, keypage,
                                   key, display=False, abs_attach=False):
             # Skip default labels
             if key == 'label' and val == url_unquote(keypage):
@@ -812,9 +820,9 @@ def order_meta_input(request, page, input, action):
         return urllib.quote(s)
 
     # Expects MetaTable arguments
-    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page)
+    pagelist, metakeys, _ = metatable_parseargs(request, page)
 
-    globaldata.getpage(urlquote(page))
+    request.graphdata.getpage(urlquote(page))
 
     output = {}
     # Add existing metadata so that values would be added
@@ -829,8 +837,7 @@ def order_meta_input(request, page, input, action):
                 # Add similar, purge rest
                 # Do not add a meta value twice
                 old = list()
-                for val, typ in getvalues(request, globaldata,
-                                          urlquote(page),
+                for val, typ in getvalues(request, urlquote(page),
                                           key, display=False):
                     old.append(val)
                 src = set(output[pair])
@@ -868,8 +875,7 @@ def order_meta_input(request, page, input, action):
             else:
                 # Do not add a meta value twice
                 src = list()
-                for val, typ in getvalues(request, globaldata,
-                                          urlquote(page),
+                for val, typ in getvalues(request, urlquote(page),
                                           key, display=False):
                     src.append(val)
                 for val in src:
@@ -899,7 +905,6 @@ def savetext(pagename, newtext):
     return msg
 
 def metatable_parseargs(request, args,
-                        globaldata=None,
                         get_all_keys=False,
                         get_all_pages=False):
     if not args:
@@ -930,8 +935,8 @@ def metatable_parseargs(request, args,
     # Flag: were there page arguments?
     pageargs = False
 
-    if not globaldata:
-        globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata':
+        getgraphdata(request)
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
@@ -1000,7 +1005,7 @@ def metatable_parseargs(request, args,
 
         # Get all pages, check which of them match to the supplied regexp
         all_pages = [unicode(url_unquote(x), config.charset)
-                     for x in globaldata]
+                     for x in request.graphdata]
         for page in all_pages:
             if page_re.match(page):
                 argset.add(page)
@@ -1009,7 +1014,7 @@ def metatable_parseargs(request, args,
         return unicode(url_unquote(name), config.charset)        
 
     def is_saved(name):
-        return globaldata.getpage(name).has_key('saved')
+        return request.graphdata.getpage(name).has_key('saved')
 
     def can_be_read(name):
         return request.user.may.read(unquote_name(name))
@@ -1017,7 +1022,7 @@ def metatable_parseargs(request, args,
     # If there were no page args, default to all pages
     if not pageargs and not argset:
         # Filter nonexisting pages and the pages the user may not read
-        pages = set(filter(can_be_read, filter(is_saved, globaldata)))
+        pages = set(filter(can_be_read, filter(is_saved, request.graphdata)))
 
     # Otherwise check out the wanted pages
     else:
@@ -1032,7 +1037,7 @@ def metatable_parseargs(request, args,
         for arg in categories:
             # Nonexisting categories
             try:
-                page = globaldata.getpage(arg)
+                page = request.graphdata.getpage(arg)
             except KeyError:
                 continue
             
@@ -1048,7 +1053,7 @@ def metatable_parseargs(request, args,
         for name in other:
             # Filter out nonexisting pages
             try:
-                page = globaldata.getpage(name)
+                page = request.graphdata.getpage(name)
             except KeyError:
                 continue
 
@@ -1065,7 +1070,7 @@ def metatable_parseargs(request, args,
         # Filter by regexps (if any)
         if limitregexps:
             # We're sure we have access to read the page, don't check again
-            metas = getmetas(request, globaldata, page, limitregexps,
+            metas = getmetas(request, page, limitregexps,
                              checkAccess=False)
 
             for key, re_limits in limitregexps.iteritems():
@@ -1103,11 +1108,11 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in getkeys(globaldata, name):
+                for key in getkeys(request.graphdata, name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(getkeys(globaldata, name)):
+                for key in nonguaranteeds_p(getkeys(request.graphdata, name)):
                     metakeys.add(key)
 
         metakeys = sorted(metakeys, key=str.lower)
@@ -1128,9 +1133,7 @@ def metatable_parseargs(request, args,
             for page in pagelist:
                 # get all vals of a key in order
                 s_list[key][page] = [x for x, y in
-                                     sorted(getvalues(request,
-                                                      globaldata,
-                                                      page,
+                                     sorted(getvalues(request, page,
                                                       encoded_page(key)))]
         ordvals = dict()
         byval = dict()
@@ -1234,7 +1237,7 @@ def metatable_parseargs(request, args,
             #print "extending with %s" % (pages)
             pagelist.extend(sorted(pages))
 
-    return globaldata, pagelist, metakeys, styles
+    return pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
     # Check that the attach dir exists

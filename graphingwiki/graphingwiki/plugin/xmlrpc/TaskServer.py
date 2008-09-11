@@ -21,13 +21,11 @@ from graphingwiki.editing import metatable_parseargs, getmetas, getvalues
 from AttachFile import save as save_attachment
 from SetMeta import execute as save_meta
 
-def get_pagelist(request, status, globaldata=None):
-    globaldata, pagelist, metakeys, _ = \
-                metatable_parseargs(request,
-                                    'CategoryTask, status=%s' % (status),
-                                    globaldata)
+def get_pagelist(request, status):
+    pagelist, metakeys, _ = \
+        metatable_parseargs(request, 'CategoryTask, status=%s' % (status))
 
-    return globaldata, pagelist, metakeys
+    return pagelist, metakeys
 
 def execute(xmlrpcobj, agentid, oper='get',
             page='', status=('', ''), result={}):
@@ -42,11 +40,9 @@ def execute(xmlrpcobj, agentid, oper='get',
 
         if not pagelist:
             # Then, get from pending tasks with overdue heartbeat
-            globaldata, pages, metakeys = \
-                        get_pagelist(request, 'pending')
+            pages, metakeys = get_pagelist(request, 'pending')
             for page in pages:
-                for val, typ in getvalues(request, globaldata,
-                                          page, 'heartbeat'):
+                for val, typ in getvalues(request, page, 'heartbeat'):
                     try:
                         val = float(val) + (10 * 60)
                         if val < curtime:
@@ -56,8 +52,7 @@ def execute(xmlrpcobj, agentid, oper='get',
 
         if not pagelist:
             # Finally, get from open tasks
-            globaldata, pagelist, metakeys = \
-                        get_pagelist(request, 'open', globaldata)
+            pagelist, metakeys = get_pagelist(request, 'open')
 
         # Nothing to do...
         if not pagelist:
@@ -65,8 +60,7 @@ def execute(xmlrpcobj, agentid, oper='get',
         
         random.shuffle(pagelist)
         for page in pagelist:
-            stuff = getmetas(request, globaldata, page,
-                             metakeys, display=False)
+            stuff = getmetas(request, page, metakeys, display=False)
             metas = dict()
             for key in stuff:
                 metas[key] = [x for x, y in stuff[key]]

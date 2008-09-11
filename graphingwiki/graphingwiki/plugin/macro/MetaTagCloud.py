@@ -61,14 +61,14 @@ def execute(macro, args):
    else:
       args = ','.join(args)
 
-   globaldata, pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
-                                                           get_all_pages = True)
+   pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
+                                               get_all_pages = True)
     
-   if not hasattr(globaldata, 'keys_on_pages'):
-      globaldata.reverse_meta()
+   if not hasattr(request.graphdata, 'keys_on_pages'):
+      request.graphdata.reverse_meta()
 
    for name in pagelist:
-      page = globaldata.getpage(name)
+      page = request.graphdata.getpage(name)
       if mode == 'keys':
          tags.extend(x for x in page.get('meta', {}).keys())
          tags.extend(x for x in page.get('out', {}).keys() if x != '_notype')
@@ -108,15 +108,15 @@ def execute(macro, args):
    for tag in show:
       title = ""
       if mode == 'keys':
-         data = globaldata.keys_on_pages.get(tag[2])
+         data = request.graphdata.keys_on_pages.get(tag[2])
          if data:
             title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(globaldata.keys_on_pages.get(tag[2])))
+                             sorted(request.graphdata.keys_on_pages.get(tag[2])))
       else:
-         data = globaldata.vals_on_pages.get(tag[2])
+         data = request.graphdata.vals_on_pages.get(tag[2])
          if data:
             title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(globaldata.vals_on_pages.get(tag[2])))
+                             sorted(request.graphdata.vals_on_pages.get(tag[2])))
 
       pagename = tag[0]
       hits = tag[1]

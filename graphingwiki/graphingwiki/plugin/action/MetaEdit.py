@@ -45,7 +45,7 @@ def show_queryform(request, pagename):
     wr(u'<form method="GET" action="%s">\n',
        actionname(request, pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
-    wr(u'<input type="text" name="args">\n')
+    wr(u'<textarea name="args" rows=15 cols=80>\n')
 
     wr(u'</table>\n')
     wr(u'<input type="submit" name="show" value="%s">\n', _("Edit table"))
@@ -68,9 +68,8 @@ def show_editform(request, pagename, args):
     wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
     # Note that metatable_parseargs handles permission issues
-    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, args,
-                                                            globaldata=None,
-                                                            get_all_keys=True)
+    pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                get_all_keys=True)
     _ = request.getText
 
     for key in metakeys + ['']:
@@ -92,8 +91,7 @@ def show_editform(request, pagename, args):
             if not valnos.has_key(frompage):
                 valnos[frompage] = 1
 
-            for i, (val, typ) in enumerate(getvalues(request, globaldata,
-                                                     frompage, key,
+            for i, (val, typ) in enumerate(getvalues(request, frompage, key,
                                                      display=False,
                                                      abs_attach=False)):
                 values[frompage][key].append(val)

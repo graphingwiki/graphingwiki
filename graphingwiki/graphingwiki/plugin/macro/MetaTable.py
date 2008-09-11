@@ -106,7 +106,7 @@ def t_cell(macro, vals, head=0, style={}):
     if cellstyle == 'list':
         out.write(macro.formatter.bullet_list(1))
 
-def construct_table(macro, globaldata, pagelist, metakeys, 
+def construct_table(macro, pagelist, metakeys, 
                     legend='', checkAccess=True, styles={}):
     request = macro.request
     request.page.formatter = request.formatter
@@ -154,9 +154,8 @@ def construct_table(macro, globaldata, pagelist, metakeys,
         request.formatter.page = pageobj
 
         row = row + 1
-        metas = getmetas(request, globaldata, page,
-                         metakeys, display=False,
-                         checkAccess=checkAccess)
+        metas = getmetas(request, page, metakeys, 
+                         display=False, checkAccess=checkAccess)
 
         if row % 2:
             request.write(macro.formatter.table_row(1, {'rowclass':
@@ -191,7 +190,7 @@ def execute(macro, args):
         args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, styles = \
+    _, pagelist, metakeys, styles = \
                 metatable_parseargs(macro.request, args,
                                     get_all_keys=True)
 
@@ -210,7 +209,7 @@ def execute(macro, args):
         return ""
 
     # We're sure the user has the access to the page, so don't check
-    construct_table(macro, globaldata, pagelist, metakeys,
+    construct_table(macro, pagelist, metakeys,
                     checkAccess=False, styles=styles)
 
     def action_link(action, linktext, args):
