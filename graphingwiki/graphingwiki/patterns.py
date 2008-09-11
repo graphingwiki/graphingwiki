@@ -84,7 +84,16 @@ def getgraphdata(request):
 
     return request.graphdata
 
-class GraphData(object):
+import itertools
+import UserDict
+
+def encode_page(page):
+    return page.encode("utf-8")
+
+def decode_page(page):
+    return unicode(page, "utf-8")
+
+class GraphData(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request
 
@@ -98,8 +107,23 @@ class GraphData(object):
         self.opened = False
         self.opendb()
 
+    def __getitem__(self, item):
+        return self.db[encode_page(item)]
+
+    def __setitem__(self, item, value):
+        self.db[encode_page(item)] = value
+
+    def __delitem__(self, item, value):
+        del self.db[encode_page(item)]
+
+    def keys(self):
+        return map(decode_page, self.db.keys())
+
     def __iter__(self):
-        return iter(self.db)
+        return itertools.imap(decode_page, self.db)
+
+    def __contains__(self, item):
+        return encode_page(item) in self.db
 
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
@@ -125,29 +149,30 @@ class GraphData(object):
         # tough decisions on whether to cache content for a
         # certain user or not
 
-        return self.db.get(pagename, dict())
+        return self.db.get(encode_page(pagename), dict())
 
     def reverse_meta(self):
         self.keys_on_pages = {}
         self.vals_on_pages = {}
         self.vals_on_keys = {}
 
-        globaldata = dict(self.db)
-
-        for page in globaldata:
+        for page in self:
             if page.endswith('Template'):
                 continue
-            for key in globaldata[page].get('meta', {}):
+
+            value = self[page]
+
+            for key in value.get('meta', {}):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in globaldata[page]['meta'][key]:
+                for val in value['meta'][key]:
                     val = unicode(val, config.charset).strip('"')
                     val = val.replace('\\"', '"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in globaldata[page].get('lit', {}):
+            for key in value.get('lit', {}):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in globaldata[page]['lit'][key]:
+                for val in value['lit'][key]:
                     val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
@@ -192,8 +217,7 @@ class GraphData(object):
         return adata
 
     def load_graph(self, pagename, urladd):
-        if not self.request.user.may.read(unicode(url_unquote(pagename),
-                                                  config.charset)):
+        if not self.request.user.may.read(pagename):
             return None
 
         page = self.getpage(pagename)
@@ -232,9 +256,6 @@ class GraphData(object):
         return adata
 
     def load_with_links(self, pagename):
-        if isinstance(pagename, unicode):
-            pagename = url_quote(encode(pagename))
-        # No urladd
         return self.load_graph(pagename, '')
 
 class LazyItem(object):

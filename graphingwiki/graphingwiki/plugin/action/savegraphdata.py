@@ -31,9 +31,6 @@ import re
 import os
 import cPickle
 import shelve
-from codecs import getencoder
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 from time import time
 
 # MoinMoin imports
@@ -50,13 +47,13 @@ from graphingwiki.editing import parse_categories
 # Page names cannot contain '//'
 url_re = re.compile(u'^(%s)%%3A//' % (Parser.url_pattern))
 
-# We only want to save linkage data releted to pages in this wiki
-# Interwiki links will have ':' in their names (this will not affect
-# pages as their names are url quoted at this stage)
+# We only want to save linkage data releted to pages in this wiki,
+# Is this still relevant: "Interwiki links will have ':' in their
+# names (this will not affect pages as their names are url quoted at
+# this stage)"
 def local_page(pagename):
     if url_re.search(pagename) or ':' in pagename:
         return False
-
     return True
 
 # Add in-links from current node to local nodes
@@ -159,18 +156,14 @@ def shelve_remove_out(shelve, (frm, to), linktype):
 
         shelve[frm] = temp
 
-def quotemeta(key, val):
-    # Keys may be pages -> url-quoted
-    key = url_quote(key.strip())
+def strip_meta(key, val):
+    key = key.strip()
     if key != 'gwikilabel':
         val = val.strip()
-
-    # Values are just quoted strings
-    val = quotedstring(val)
     return key, val
 
 def node_set_attribute(pagenode, key, val):
-    key, val = quotemeta(key, val)
+    key, val = strip_meta(key, val)
     vars = getattr(pagenode, key, None)
     if not vars:
         setattr(pagenode, key, set([val]))
@@ -192,7 +185,7 @@ def shelve_unset_attributes(shelve, node):
         shelve[node] = temp
 
 def shelve_set_attribute(shelve, node, key, val):
-    key, val = quotemeta(key, val)
+    key, val = strip_meta(key, val)
 
     temp = shelve.get(node, {})
 
@@ -208,39 +201,14 @@ def shelve_set_attribute(shelve, node, key, val):
 
     shelve[node] = temp
 
-## Different encoding/quoting functions
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
-def wiki_unquote(str):
-    return url_unquote(str).replace('_', ' ')
-
-# Escape quotes in str, remove existing quotes, add outer quotes.
-def quotedstring(str):
-    escq = re.compile(r'(?<!\\)"')
-    str = str.strip("\"'")
-    str = escq.subn('\\"', str)[0]
-    return '"' + str + '"'
-
-# Quote names with namespace/interwiki (for rdf/n3 use)
-def quotens(str):
-    return ':'.join([url_quote(encode(x)) for x in str.split(':')])
-
 def getlinktype(augdata):
     linktype = ''
     if len(augdata) > 1:
-        if ':' in augdata[0]:
-            # links with namespace!
-            linktype = quotens(augdata[0])
-        else:
-            # quote all link types
-            linktype = url_quote(augdata[0])
+        linktype = augdata[0]
     return linktype
 
-def add_meta(globaldata, pagenode, quotedname, hit):
-    # decode to target charset, grab comma-separated key,val
-    hit = encode(hit[11:-3])
+def add_meta(globaldata, pagenode, pagename, hit):
+    hit = hit[11:-3]
     args = hit.split(',')
 
     # If no data, continue
@@ -259,30 +227,28 @@ def add_meta(globaldata, pagenode, quotedname, hit):
     # Values to be handed to dot
     if key in special_attrs:
         setattr(pagenode, key, val)
-        shelve_set_attribute(globaldata, quotedname, key, val)
+        shelve_set_attribute(globaldata, pagename, key, val)
         # If color defined¸ set page as filled
         if key == 'fillcolor':
             setattr(pagenode, 'style', 'filled')
-            shelve_set_attribute(globaldata, quotedname,
-                                 'style', 'filled')
+            shelve_set_attribute(globaldata, pagename, 'style', 'filled')
         return
 
     # Save to pagegraph and shelve's metadata list
     node_set_attribute(pagenode, key, val)
-    shelve_set_attribute(globaldata, quotedname, key, val)
+    shelve_set_attribute(globaldata, pagename, key, val)
 
-def add_include(globaldata, pagenode, quotedname, hit):
-    # decode to target charset, grab comma-separated key,val
-    hit = encode(hit[11:-3])
+def add_include(globaldata, pagenode, pagename, hit):
+    hit = hit[11:-3]
     pagearg = hit.split(',')[0]
 
     # If no data, continue
     if not pagearg:
         return
 
-    temp = globaldata.get(quotedname, {})
-    temp.setdefault('include', set()).add(quotedstring(pagearg))
-    globaldata[quotedname] = temp
+    temp = globaldata.get(pagename, {})
+    temp.setdefault('include', set()).add(pagearg)
+    globaldata[pagename] = temp
 
 def parse_link(wikiparse, hit, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
@@ -291,25 +257,25 @@ def parse_link(wikiparse, hit, type):
     if len(attrs) == 4:
         # Attachments, eg:
         # URL   = Page?action=AttachFile&do=get&target=k.txt
-        # name  = Page/k.txt
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
+        # name  = Page/k.txt        
+        nodename = attrs[1]
+        nodeurl = attrs[0]
     elif len(attrs) == 3:
         # Local pages
         # Name of node for local nodes = pagename
-        nodename = url_quote(encode(attrs[1]))
-        nodeurl = encode(attrs[0])
+        nodename = attrs[1]
+        nodeurl = attrs[0]
         # To prevent subpagenames from sucking
         if nodeurl.startswith('/'):
             nodeurl = './' + nodename
     elif len(attrs) == 2:
         # Name of other nodes = url
-        nodeurl = encode(attrs[0])
-        nodename = url_quote(nodeurl)
+        nodeurl = attrs[0]
+        nodename = nodeurl
 
         # Change name for different type of interwikilinks
         if type == 'interwiki':
-            nodename = quotens(hit)
+            nodename = hit
         elif type == 'url_bracket':
             # Interwikilink in brackets?
             iw = re.search(r'\[(?P<iw>.+?)[\] ]',
@@ -318,32 +284,31 @@ def parse_link(wikiparse, hit, type):
             if iw.split(":")[0] == 'wiki':
                 iw = iw.split(None, 1)[0]
                 iw = iw[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
+                nodename = iw
         # Interwikilink turned url?
         elif type == 'url':
             if hit.split(":")[0] == 'wiki':
                 iw = hit[5:].replace('/', ':', 1)
-                nodename = quotens(iw)
+                nodename = iw
     else:
         # Catch-all
         return "", "", ""
 
     # augmented links, eg. [:PaGe:Ooh: PaGe]
-    augdata = [x.strip() for x in
-               encode(attrs[-1]).split(': ')]
+    augdata = [x.strip() for x in attrs[-1].split(': ')]
 
     linktype = getlinktype(augdata)
 
     return nodename, nodeurl, linktype
 
-def add_link(globaldata, quotedname, pagegraph,
+def add_link(globaldata, pagename, pagegraph,
              nodename, nodeurl, linktype, hit):
     # Add node if not already added
     if not pagegraph.nodes.get(nodename):
         n = pagegraph.nodes.add(nodename)
         n.gwikiURL = nodeurl
 
-    edge = [quotedname, nodename]
+    edge = [pagename, nodename]
 
     # in-links
     if linktype.endswith('From'):
@@ -369,7 +334,6 @@ def add_link(globaldata, quotedname, pagegraph,
 
 def parse_text(request, globaldata, page, text):
     pagename = page.page_name
-    quotedname = url_quote(encode(pagename))
 
     # import text_url -formatter
     try:
@@ -425,7 +389,7 @@ def parse_text(request, globaldata, page, text):
     pagegraph.charset = config.charset
 
     # add a node for current page
-    pagenode = pagegraph.nodes.add(quotedname)
+    pagenode = pagegraph.nodes.add(pagename)
     in_processing_instructions = True
 
     for line in lines:
@@ -439,9 +403,9 @@ def parse_text(request, globaldata, page, text):
                 if line.lower().startswith(pi):
                     found = True
                     if pi == '#acl':
-                        temp = globaldata.get(quotedname, {})
+                        temp = globaldata.get(pagename, {})
                         temp['acl'] = line[5:]
-                        globaldata[quotedname] = temp
+                        globaldata[pagename] = temp
 
             if not found:
                 in_processing_instructions = False
@@ -472,10 +436,10 @@ def parse_text(request, globaldata, page, text):
                 # Handling of MetaData- and Include-macros
                 elif type == 'macro' and not inpre:
                     if hit.startswith('[[MetaData'):
-                        add_meta(globaldata, pagenode, quotedname, hit)
+                        add_meta(globaldata, pagenode, pagename, hit)
 
                     if hit.startswith('[[Include'):
-                        add_include(globaldata, pagenode, quotedname, hit)
+                        add_include(globaldata, pagenode, pagename, hit)
 
                 # Handling of links
                 elif type in linktypes and not inpre:
@@ -488,7 +452,7 @@ def parse_text(request, globaldata, page, text):
                     name, url, linktype = parse_link(wikiparse, hit, type)
 
                     if name:
-                        add_link(globaldata, quotedname, pagegraph,
+                        add_link(globaldata, pagename, pagegraph,
                                  name, url, linktype, hit)
 
                 # Links and metadata defined in a definition list
@@ -522,11 +486,10 @@ def parse_text(request, globaldata, page, text):
                                                                  hit, type)
 
                                 # Take linktype from the dict key
-                                linktype = getlinktype([encode(x)
-                                                        for x in key, val])
+                                linktype = getlinktype([x for x in key, val])
 
                                 if name:
-                                    add_link(globaldata, quotedname,
+                                    add_link(globaldata, pagename,
                                              pagegraph,
                                              name, url, linktype, hit)
 
@@ -540,7 +503,7 @@ def parse_text(request, globaldata, page, text):
                         continue
 
                     # If it was not link, save as metadata. 
-                    add_meta(globaldata, pagenode, quotedname,
+                    add_meta(globaldata, pagenode, pagename,
                              "[[MetaData(%s,%s)]]" % (key, val))
 
     # Add the page categories as links too
@@ -548,7 +511,7 @@ def parse_text(request, globaldata, page, text):
     for category in categories:
         name, url, linktype = parse_link(wikiparse, category, "word")
         if name:
-            add_link(globaldata, quotedname, pagegraph,
+            add_link(globaldata, pagename, pagegraph,
                      name, url, "gwikicategory", category)
 
     return globaldata, pagegraph
@@ -558,16 +521,7 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    shelve_present = False
-    if hasattr(request, 'graphdata'):
-        shelve_present = True
-        globaldata = request.graphdata.db
-    else:
-        graphshelve = os.path.join(request.cfg.data_dir,
-                                   'graphdata.shelve')
-
-        # Open file db for global graph data, creating it if needed
-        globaldata = shelve.open(graphshelve, flag='c')
+    globaldata = request.graphdata
 
     # Expires old locks left by crashes etc.
     # Page locking mechanisms should prevent this code being
@@ -576,8 +530,6 @@ def execute(pagename, request, text, pagedir, page):
     request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
     request.lock.acquire()
     
-    quotedname = url_quote(encode(pagename))
-
     # Page graph file to save detailed data in
     gfn = os.path.join(pagedir,'graphdata.pickle')
 
@@ -637,23 +589,17 @@ def execute(pagename, request, text, pagedir, page):
             shelve_add_out(globaldata, edge, linktype, hit)
 
     # Insert metas and other stuff from parsed content
-    temp = globaldata.get(quotedname, {'time': time(), 'saved': True})
-    temp['meta'] = newdata.get(quotedname, {}).get('meta', {})
-    temp['acl'] = newdata.get(quotedname, {}).get('acl', '')
-    temp['include'] = newdata.get(quotedname, {}).get('include', set())
+    temp = globaldata.get(pagename, {'time': time(), 'saved': True})
+    temp['meta'] = newdata.get(pagename, {}).get('meta', {})
+    temp['acl'] = newdata.get(pagename, {}).get('acl', '')
+    temp['include'] = newdata.get(pagename, {}).get('include', set())
     temp['mtime'] = time()
     temp['saved'] = True
-    globaldata[quotedname] = temp
+    globaldata[pagename] = temp
 
     # Save graph as pickle, close
     pagegraphfile = file(gfn, 'wb')
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
-
-    if shelve_present:
-        pass
-    else:
-        # Remove locks, close shelves
-        globaldata.close()
 
     request.lock.release()
