@@ -258,6 +258,25 @@ function selectAllOptions(selStr)
 	  });
 }
 
+function submitCheck(button){
+  if(button.value == "Cancel"){
+    return true;
+    }
+
+ if($('title').value == ''){
+    alert('Missing title!');
+    return false;
+    }
+
+ if($('description').value == ''){
+    alert('Missing description!');
+    return false;
+    }
+
+  selectAllOptions('flist');
+  return true;
+}
+
 </script>
 
 select questions:<br>
@@ -266,7 +285,7 @@ select questions:<br>
     <input type='submit' name='new' value='NewQuestion'>
 </form>
 <table border="0">
-<form id="taskForm" method="POST" name="taskForm" onsubmit="selectAllOptions('flist');">\n''' % request.request_uri.split("?")[0]
+<form id="taskForm" method="POST" name="taskForm">\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
     typedict = {None:list()}
     for page in pagelist:
@@ -360,14 +379,14 @@ subject:
 <input size="30" type="text" name="subject">
 <br>title:
 <br>
-<input type="text" size="40" name="title" value="%s">
+<input type="text" id="title" size="40" name="title" value="%s">
 <br>description:
 <br>
-<textarea name="description" rows="10" cols="40">%s</textarea><br>
+<textarea id="description" name="description" rows="10" cols="40">%s</textarea><br>
 ''' % (title, description)
     pagehtml += '''
-<input type="submit" name="save" value="Save">
-<input type="submit" name="cancel" value="Cancel">
+<input type="submit" name="save" value="Save" onclick="return submitCheck(this);">
+<input type="submit" name="cancel" value="Cancel" onclick="return submitCheck(this);">
 </form>
 '''
     request.write(u'%s' % pagehtml)
