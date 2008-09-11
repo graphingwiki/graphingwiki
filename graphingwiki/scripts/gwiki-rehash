@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/System/Library/Frameworks/Python.framework/Versions/2.5/Resources/Python.app/Contents/MacOS/Python
 # -*- coding: utf-8 -*-
 """
     gwiki-rehash
@@ -100,10 +100,15 @@ if not pages:
         if 'current' in os.listdir(dir):
             pages.append(unquoteWikiname(dir))
 
+total = len(pages)
+padding = len(str(total))
+count = 1
+
 for pagename in pages:
     if pagename.endswith('/MoinEditorBackup'):
         continue
-    print "Rehashing " + _e(pagename)
+    print "Rehashing %s (%*d/%*d)" % (_e(pagename), padding, count, padding, count)
+    count += 1
     page_enc = _e(pagename)
     # Make a new request for the page, get raw text
     req = RequestCLI(pagename=page_enc)
