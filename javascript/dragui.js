@@ -528,7 +528,7 @@ var calendar = new Calendar({
 	},
 	{
 	draggable : false,
-	direction : 1,
+	direction : 1
 	}
 );
 }
