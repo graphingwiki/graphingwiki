@@ -6,7 +6,9 @@ from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
 from graphingwiki.editing import underlay_to_pages
 from graphingwiki.patterns import GraphData
 
-# Monkey patching is bad, so let's do it
+# Monkey patching request objects (that are instances of subclasses of 
+# RequestBase) to have automatically opened and closed property
+# "graphdata".
 
 orig_finish = RequestBase.finish
 
@@ -15,16 +17,14 @@ def graphdata_getter(self):
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
 
-print "PLOP"
-
 def patched_finish(self, *args, **keys):
     try:
         return orig_finish(self, *args, **keys)
     finally:
-        graphdata = self.__dict__.get("_graphdata", None)
+        graphdata = self.__dict__.pop("_graphdata", None)
         if graphdata is not None and graphdata.opened:
             graphdata.closedb()
-
+            
 RequestBase.graphdata = property(graphdata_getter)
 RequestBase.finish = patched_finish
 
