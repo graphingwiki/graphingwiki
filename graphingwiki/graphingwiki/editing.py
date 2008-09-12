@@ -16,14 +16,10 @@ import socket
 import urllib
 import getpass
 
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
-
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
-from MoinMoin.request import RequestCLI
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
@@ -31,7 +27,7 @@ from MoinMoin import caching
 from MoinMoin.util.lock import ReadLock
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode, nonguaranteeds_p
+from graphingwiki.patterns import nonguaranteeds_p
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -53,12 +49,6 @@ default_meta_before = '^----'
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
-def encoded_page(pagename):
-    return url_quote(encode(pagename))
-
-def decode_page(pagename):
-    return unicode(url_unquote(pagename), config.charset)
-
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
                               'action',
@@ -69,17 +59,15 @@ def get_revisions(request, page):
     revisions = dict()
 
     pagename = page.page_name
-    quotedname = encoded_page(pagename)
-
     for rev in page.getRevList():
         revpage = Page(request, pagename, rev=rev)
         text = revpage.get_raw_body()
         alldata, pagegraph = parse_text(request, alldata, revpage, text)
-        revlink = '%s?action=recall&rev=%d' % (encode(pagename), rev)
-        if alldata.has_key(quotedname):
-            alldata[revlink] = alldata[quotedname]
+        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
+        if alldata.has_key(pagename):
+            alldata[revlink] = alldata[pagename]
             # So that new values are appended rather than overwritten
-            del alldata[quotedname]
+            del alldata[pagename]
             # Add revision as meta so that it is shown in the table
             alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
             revisions[rev] = revlink
@@ -135,14 +123,13 @@ def getmeta_to_table(input):
     table_keys = ['Page name']
 
     for key in input[0]:
-        table_keys.extend([url_unquote(encode(key))] * keyoccur[key])
+        table_keys.extend([key] * keyoccur[key])
 
     table = [table_keys]
 
     for vals in input[1:]:
-        row = [url_unquote(encode(vals[0]))]
+        row = [vals[0]]
         for i, val in enumerate(vals[1:]):
-            val = [encode(x) for x in val]
             val.extend([''] * (keyoccur[keys[i]] - len(val)))
             row.extend(val)
         table.append(row)
@@ -257,24 +244,6 @@ def formatting_rules(request, parser):
 
     return re.compile(rules, re.UNICODE)
 
-def getpage(name, request=None):
-    if not request:
-        # RequestCLI does not like unicode input
-        if isinstance(name, unicode):
-            pagename = encode(name)
-        else:
-            pagename = name
-
-        request = RequestCLI(pagename=pagename)
-
-        formatter = TextFormatter(request)
-        formatter.setPage(request.page)
-        request.formatter = formatter
-
-    page = PageEditor(request, name)
-
-    return request, page
-
 def getkeys(request, name):
     page = request.graphdata.getpage(name)
     keys = set(page.get('meta', {}).keys())
@@ -284,15 +253,15 @@ def getkeys(request, name):
     keys = {}.fromkeys(keys, '')
     return keys
 
-def absolute_attach_name(quoted, target):
+def absolute_attach_name(name, target):
     abs_method = target.split(':')[0]
 
     # Pages from MetaRevisions may have ?action=recall, breaking attach links
-    if '?' in quoted:
-        quoted = quoted.split('?', 1)[0]
+    if '?' in name:
+        name = name.split('?', 1)[0]
 
     if abs_method in Parser.attachment_schemas and not '/' in target:
-        target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
+        target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
 
     return target
 
@@ -302,9 +271,8 @@ def getmetas(request, name, metakeys,
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
-    quoted = unicode(url_unquote(name), config.charset)
     if checkAccess:
-        if not request.user.may.read(quoted):
+        if not request.user.may.read(name):
             return pageMeta
 
     loadedPage = request.graphdata.getpage(name)
@@ -330,7 +298,7 @@ def getmetas(request, name, metakeys,
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
                 if abs_attach:
-                    target = absolute_attach_name(quoted, target)
+                    target = absolute_attach_name(name, target)
 
                 pageMeta[key].append((target, "link"))
             
@@ -341,9 +309,8 @@ def getmetas(request, name, metakeys,
 # Let's see how it turns out.
 def getvalues(request, name, key,
               display=True, abs_attach=True, checkAccess=True):
-    quoted = unicode(url_unquote(name), config.charset)
     if checkAccess:
-        if not request.user.may.read(quoted):
+        if not request.user.may.read(name):
             return set([])
 
     page = request.graphdata.getpage(name)
@@ -367,7 +334,7 @@ def getvalues(request, name, key,
             # Add values and their sources
             for target in page['lit'][key]:
                 if abs_attach:
-                    target = absolute_attach_name(quoted, target)
+                    target = absolute_attach_name(name, target)
 
                 vals.add((target, 'link'))
             
@@ -378,21 +345,15 @@ def get_pages(request):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
             return False
-        return not wikiutil.isSystemPage(request, name)
+        if wikiutil.isSystemPage(request, name):
+            return False
+        return request.user.may.read(name)
 
-    pages = set([])
-    # It seems to help avoiding problems that the query
-    # is made by request.rootpage instead of request.page
-    for page in request.rootpage.getPageList(filter=filter):
-        if not request.user.may.read(page):
-            continue
-        pages.add(encoded_page(page))
-
-    return pages
+    return request.rootpage.getPageList(filter=filter)
 
 def edit(pagename, editfun, request=None,
          category_edit='', catlist=[], lock=None):
-    request, p = getpage(pagename, request)
+    p = PageEditor(request, pagename)
 
     oldtext = p.get_raw_body()
     newtext = editfun(pagename, oldtext)
@@ -405,9 +366,7 @@ def edit(pagename, editfun, request=None,
     if category_edit:
         newtext = edit_categories(request, newtext, category_edit, catlist)
 
-    graphsaver = wikiutil.importPlugin(request.cfg,
-                              'action',
-                              'savegraphdata')
+    graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
 
     # Release the possible readlock that template-savers may have acquired
     if hasattr(request, 'lock'):
@@ -447,11 +406,6 @@ def edit(pagename, editfun, request=None,
     request.lock.acquire()
 
     return msg, p
-
-def _fix_key(key):
-    if not isinstance(key, unicode):
-        return unicode(url_unquote(key), config.charset)
-    return key
 
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
@@ -515,7 +469,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
         for key in newmeta:
             # print repr(key)
-            oldkey = _fix_key(key)
+            oldkey = key
             dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
             dl_add_re = re.compile(dl_add % (oldkey), re.M)
 
@@ -574,7 +528,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     if not newval.strip():
                         continue
 
-                    oldkey = _fix_key(key)
+                    oldkey = key
 
                     oldtext = dl_proto_re.sub('\\1 %s' % (newval),
                                               oldtext + '\n', 1)
@@ -622,7 +576,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     oldval = oldmeta[key][i]
                     # print "Replace", repr(oldval), repr(newval)
                     # print "# ", repr(oldval)
-                    oldkey = _fix_key(key)
+                    oldkey = key
                     # First try to replace the dict variable
                     oldtext = dl_re.sub(dl_subfun, oldtext)
                     # Then try to replace the MetaData macro on page
@@ -642,17 +596,6 @@ def process_edit(request, input,
     # request.write(repr(request.form) + '<br>')
     # print repr(input) + '<br>'
 
-    def urlquote(s):
-        if isinstance(s, unicode):
-            s = s.encode(config.charset)
-        return urllib.quote(s)
-
-    def url_unquote(s):
-        s = urllib.unquote(s)
-        if not isinstance(s, unicode):
-            s = unicode(s, config.charset)
-        return s
-
     changes = dict()
     keychanges = dict()
     keypage = ''
@@ -662,7 +605,7 @@ def process_edit(request, input,
         if not key.startswith(':: '):
             continue
 
-        newkey = encode(input[key][0])
+        newkey = input[key][0]
         key = key[3:]
         if key == newkey:
             continue
@@ -671,7 +614,7 @@ def process_edit(request, input,
         if not newkey.strip():
             newkey = ''
 
-        keychanges[urlquote(key)] = urlquote(newkey)
+        keychanges[key] = newkey
         # print repr(keychanges)
 
     for val in input:
@@ -683,16 +626,14 @@ def process_edit(request, input,
 
         keypage, key = val.split('!')
 
-        if not request.user.may.write(url_unquote(keypage)):
+        if not request.user.may.write(keypage):
             continue
-
-        keypage, key = map(urlquote, [keypage, key])
 
         oldvals = list()
         for val, typ in getvalues(request, keypage,
                                   key, display=False, abs_attach=False):
             # Skip default labels
-            if key == 'label' and val == url_unquote(keypage):
+            if key == 'label' and val == keypage:
                 pass
             else:
                 oldvals.append(val)
@@ -725,22 +666,22 @@ def process_edit(request, input,
     # For category-only changes
     if not changes and category_edit:
         for keypage in categories:
-            msg.append('%s: ' % url_unquote(keypage) + \
-                       edit_meta(request, url_unquote(keypage),
+            msg.append('%s: ' % keypage + \
+                       edit_meta(request, keypage,
                                  {}, {},
                                  category_edit, categories[keypage]))
                                  
     elif changes:
         for keypage in changes:
             catlist = categories.get(keypage, [])
-            msg.append('%s: ' % url_unquote(keypage) + \
-                       edit_meta(request, url_unquote(keypage),
+            msg.append('%s: ' % keypage + \
+                       edit_meta(request, keypage,
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
                                  category_edit, catlist))
     else:
         if keypage:
-            msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
+            msg.append('%s: %s' % (keypage, _("Unchanged")))
         else:
             msg.append(_('No pages changed'))
 
@@ -769,15 +710,10 @@ def save_template(request, page, template):
     return msg
 
 def order_meta_input(request, page, input, action):
-    def urlquote(s):
-        if isinstance(s, unicode):
-            s = s.encode(config.charset)
-        return urllib.quote(s)
-
     # Expects MetaTable arguments
     pagelist, metakeys, _ = metatable_parseargs(request, page)
 
-    request.graphdata.getpage(urlquote(page))
+    request.graphdata.getpage(page)
 
     output = {}
     # Add existing metadata so that values would be added
@@ -792,8 +728,7 @@ def order_meta_input(request, page, input, action):
                 # Add similar, purge rest
                 # Do not add a meta value twice
                 old = list()
-                for val, typ in getvalues(request, urlquote(page),
-                                          key, display=False):
+                for val, typ in getvalues(request, page, key, display=False):
                     old.append(val)
                 src = set(output[pair])
                 tmp = set(src).intersection(set(old))
@@ -830,8 +765,7 @@ def order_meta_input(request, page, input, action):
             else:
                 # Do not add a meta value twice
                 src = list()
-                for val, typ in getvalues(request, urlquote(page),
-                                          key, display=False):
+                for val, typ in getvalues(request, page, key, display=False):
                     src.append(val)
                 for val in src:
                     if val in output[pair]:
@@ -875,9 +809,6 @@ def metatable_parseargs(request, args,
     cat_re = re.compile(request.cfg.page_category_regex)
     temp_re = re.compile(request.cfg.page_template_regex)
 
-    # Placeholder for list of all pages
-    all_pages = []
-
     # Arg placeholders
     argset = set([])
     keyspec = []
@@ -903,20 +834,20 @@ def metatable_parseargs(request, args,
                 # Grab styles
                 if key.startswith('<') and '>' in key:
                     style = wikiutil.parseAttributes(request,
-                                                     encode(key[1:]), '>')
+                                                     key[1:], '>')
                     key = key[key.index('>') + 1:].strip()
 
                     if style:
                         styles[key] = style[0]
 
-                keyspec.append(encoded_page(key.strip()))
+                keyspec.append(key.strip())
 
             continue
 
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
-            key = encoded_page(data[0])
+            key = data[0]
             val = '='.join(data[1:])
 
             # Assume that value limits are regexps, if
@@ -956,20 +887,15 @@ def metatable_parseargs(request, args,
             continue
 
         # Get all pages, check which of them match to the supplied regexp
-        all_pages = [unicode(url_unquote(x), config.charset)
-                     for x in request.graphdata]
-        for page in all_pages:
+        for page in request.graphdata:
             if page_re.match(page):
                 argset.add(page)
-
-    def unquote_name(name):
-        return unicode(url_unquote(name), config.charset)        
 
     def is_saved(name):
         return request.graphdata.getpage(name).has_key('saved')
 
     def can_be_read(name):
-        return request.user.may.read(unquote_name(name))
+        return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
@@ -979,7 +905,7 @@ def metatable_parseargs(request, args,
     # Otherwise check out the wanted pages
     else:
         # Filter pages the user may not read
-        argset = set(map(encoded_page, filter(request.user.may.read, argset)))
+        argset = set(filter(request.user.may.read, argset))
 
         pages = set()
 
@@ -999,7 +925,7 @@ def metatable_parseargs(request, args,
                 if cat_re.match(newpage) or temp_re.search(newpage):
                     continue
                 # Check that user may view any the page
-                if request.user.may.read(unquote_name(newpage)):
+                if request.user.may.read(newpage):
                     pages.add(newpage)
 
         for name in other:
@@ -1085,8 +1011,7 @@ def metatable_parseargs(request, args,
             for page in pagelist:
                 # get all vals of a key in order
                 s_list[key][page] = [x for x, y in
-                                     sorted(getvalues(request, page,
-                                                      encoded_page(key)))]
+                                     sorted(getvalues(request, page, key))]
         ordvals = dict()
         byval = dict()
         ord = [x for _, x in orderspec]

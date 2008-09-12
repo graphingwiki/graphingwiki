@@ -15,6 +15,8 @@ def graphdata_getter(self):
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
 
+print "PLOP"
+
 def patched_finish(self, *args, **keys):
     try:
         return orig_finish(self, *args, **keys)

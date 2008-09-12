@@ -68,9 +68,6 @@ def t_cell(macro, vals, head=0, style={}):
             out.write(macro.formatter.text(',') + \
                       macro.formatter.linebreak())
 
-        if not isinstance(data, unicode):
-            data = unicode(data, config.charset)
-
         if head:
             kw = {}
             if '?' in data:
@@ -127,7 +124,6 @@ def construct_table(macro, pagelist, metakeys,
         t_cell(macro, [legend])
 
     for key in metakeys:
-        key = url_unquote(key)
         style = styles.get(key, {})
         
         # Styles can modify key naming
@@ -149,7 +145,7 @@ def construct_table(macro, pagelist, metakeys,
     tmp_page = request.page
 
     for page in pagelist:
-        pageobj = Page(request, unicode(url_unquote(page), config.charset))
+        pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
 
@@ -163,11 +159,10 @@ def construct_table(macro, pagelist, metakeys,
         else:
             request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-even-row'}))
-        t_cell(macro, [url_unquote(page)], head=1)
+        t_cell(macro, [page], head=1)
 
         for key in metakeys:
             values = [x for x,y in metas[key]]
-            key = url_unquote(key)
             style = styles.get(key, {})
             t_cell(macro, values, style=style)
 
@@ -218,7 +213,6 @@ def execute(macro, args):
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 
-    args = url_quote(encode(args))
     # If the user has no write access to this page, omit editlink
     if editlink:
         request.write(action_link('MetaEdit', 'edit', args))
