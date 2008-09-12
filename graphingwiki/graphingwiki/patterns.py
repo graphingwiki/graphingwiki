@@ -30,17 +30,13 @@
 """
 
 import re
-import cPickle
 import os
 import shelve
 import itertools
 import UserDict
 
 from codecs import getencoder
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
-from MoinMoin.Page import Page
 from MoinMoin import config
 from MoinMoin.util.lock import ReadLock
 
@@ -61,13 +57,6 @@ special_attrs = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  'gwikishapefile', "gwikishape", "gwikistyle"]
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        special_attrs, dict(node))
-
-# For stripping lists of quoted strings
-qstrip_p = lambda lst: ('"' +
-                        ', '.join([x.strip('"') for x in lst]) +
-                        '"')
-qpirts_p = lambda txt: ['"' + x + '"' for x in
-                        txt.strip('"').split(', ')]
 
 def encode_page(page):
     return encode(page)
@@ -151,7 +140,7 @@ class GraphData(UserDict.DictMixin):
             for key in value.get('meta', {}):
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in value['meta'][key]:
-                    val = unicode(val, config.charset).strip('"')
+                    val = val.strip('"')
                     val = val.replace('\\"', '"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
@@ -366,40 +355,6 @@ class Sequence:
             for tobj, tail, newdata, newbindings in seq.match(data, bindings):
                 yield head+tail, head+tail, newdata, newbindings
 
-class Epsilon:
-    def __init__(self):
-        pass
-
-    def match(self, data, bindings):
-        yield (), (), data, bindings
-
-class Kleene:
-    def __init__(self, obj):
-        self.obj = obj
-        self.eps = Epsilon()
-
-    def match(self, data, bindings):
-        def recurse(data, bindings, visited):
-            for hobj, head, data, bindings in self.obj.match(data, bindings):
-                if head in visited:
-                    continue
-                newvisited = visited.copy()
-                newvisited.add(head)
-                for tobj, tail, newdata, newbindings in recurse(data, bindings, newvisited):
-                    yield head+tail, head+tail, newdata, newbindings
-            for result in self.eps.match(data, bindings):
-                yield result
-        for result in recurse(data, bindings, set()):
-            yield result
-
-class Union:
-    def __init__(self, *objs):
-        self.objs = objs
-
-    def match(self, data, bindings):
-        for obj in self.objs:
-            return obj.match(data, bindings)
-
 class Node:
     def match(self, data, bindings):
         nodes, graph = data
@@ -540,21 +495,3 @@ def match(pattern, data):
     empty = {}
     for obj, result, data, bindings in pattern.match(data, empty):
         yield obj
-
-if __name__ == '__main__':
-    import graph
-
-    g = graph.Graph()
-    g.nodes.add(1)
-    g.nodes.add(2)
-    g.nodes.add(3)
-    g.edges.add(1, 2)
-    g.edges.add(2, 3)
-    g.edges.add(3, 1)
-
-    nodes = set(node for node, in g.nodes.getall())
-
-    pattern = Kleene(Node())
-
-    for result in match(pattern, (nodes, g)):
-        print result
