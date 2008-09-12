@@ -69,9 +69,6 @@ qstrip_p = lambda lst: ('"' +
 qpirts_p = lambda txt: ['"' + x + '"' for x in
                         txt.strip('"').split(', ')]
 
-def getgraphdata(request):
-    pass
-
 def encode_page(page):
     return encode(page)
 
@@ -114,6 +111,9 @@ class GraphData(UserDict.DictMixin):
     # current thread, creating and removing locks at the same.
     # Do not use directly
     def opendb(self):
+        if self.opened:
+            return
+        
         # The timeout parameter in ReadLock is most probably moot...
         self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
         self.request.lock.acquire()
@@ -122,6 +122,9 @@ class GraphData(UserDict.DictMixin):
         self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
+        if not self.opened:
+            return
+
         self.opened = False
         if self.request.lock.isLocked():
             self.request.lock.release()

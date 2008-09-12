@@ -22,7 +22,7 @@ def patched_finish(self, *args, **keys):
         return orig_finish(self, *args, **keys)
     finally:
         graphdata = self.__dict__.pop("_graphdata", None)
-        if graphdata is not None and graphdata.opened:
+        if graphdata is not None:
             graphdata.closedb()
             
 RequestBase.graphdata = property(graphdata_getter)
