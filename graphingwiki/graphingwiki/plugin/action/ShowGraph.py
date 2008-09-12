@@ -666,16 +666,14 @@ class GraphShower(object):
 
         cl.start('traverseparent')
         # This traverses 1 to parents
-        pattern = Sequence(Fixed(TailNode()),
-                           Fixed(TailNode()))
+        pattern = Sequence(TailNode(), TailNode())
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
             outgraph, ret = addFunc(graphdata, outgraph, obj2, obj1)
         cl.stop('traverseparent')
 
         cl.start('traversechild')
         # This traverses 1 to children
-        pattern = Sequence(Fixed(HeadNode()),
-                           Fixed(HeadNode()))
+        pattern = Sequence(HeadNode(), HeadNode())
         for obj1, obj2 in match(pattern, (nodes, graphdata)):
             outgraph, ret = addFunc(graphdata, outgraph, obj1, obj2)
         cl.stop('traversechild')
@@ -714,28 +712,18 @@ class GraphShower(object):
                 obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
                 obj.gwikistyle = 'filled'
 
-        lazyhas = LazyConstant(lambda x, y: hasattr(x, y))
-
-        nodes = outgraph.nodes.getall()
-        node = Fixed(Node())
-        cond = Cond(node, lazyhas(node, colorby))
-        for obj in match(cond, (nodes, outgraph)):
+        nodes = filter(lambda x: hasattr(x, colorby), outgraph.nodes.getall())
+        for obj in nodes:
             getcolors(obj)
-
-        nodes = outgraph.nodes.getall()
-        node = Fixed(Node())
-        cond = Cond(node, lazyhas(node, colorby))
-        for obj in match(cond, (nodes, outgraph)):
             updatecolors(obj)
 
         return outgraph
 
     def colorEdges(self, outgraph):
         # Add color to edges with linktype, gather legend data
-        edges = outgraph.edges.getall()
-        edge = Fixed(Edge())
-        pattern = Cond(edge, edge.linktype)
-        for obj in match(pattern, (edges, outgraph)):
+        edges = filter(lambda x: getattr(x, "linktype", None), 
+                       outgraph.edges.getall())
+        for obj in edges:
             self.coloredges.update(filter(self.oftype_p, obj.linktype))
             obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) for x in obj.linktype)
             if self.edgelabels:
@@ -1578,12 +1566,6 @@ class GraphShower(object):
         # First, get a sequence, add it to outgraph
         # Then, match from outgraph, add graphviz attrs
 #        self.request.write('execute' + repr(self.request.user).replace('<', ' ').replace('>', ' ') + '<br>')
-
-        # Init WikiNode-pattern
-        #print "Starting to init WikiNode"
-        self.globaldata = WikiNode(request=self.request,
-                                   urladd=self.urladd,
-                                   startpages=self.startpages).graphdata
 
         cl.start('build')
         # First, let's get do the desired traversal, get outgraph
