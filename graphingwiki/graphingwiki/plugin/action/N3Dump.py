@@ -35,8 +35,6 @@ from urllib import unquote as url_unquote
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.patterns import getgraphdata
-
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
@@ -86,9 +84,7 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
             yield data
 
 def get_page_n3(request, pagename):
-    graphdata = getgraphdata(request)
-    
-    pagegraph = graphdata.load_with_links(pagename)
+    pagegraph = request.graphdata.load_with_links(pagename)
     selfname = get_selfname(request)
 
     return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)

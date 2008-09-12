@@ -36,7 +36,6 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.patterns import encode
-from graphingwiki.patterns import getgraphdata
 
 Dependencies = ['metadata']
 
@@ -107,7 +106,6 @@ def execute(macro, args):
     pagename = uri
 
     # Check out if the start page exists, if not, we'll just bail out
-    getgraphdata(request)
     try:
         if not request.user.may.read(pagename):
             return _("InlineGraph: User may  not read page") + \

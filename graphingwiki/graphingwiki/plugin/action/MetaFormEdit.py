@@ -19,7 +19,7 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import getgraphdata, encode, actionname
+from graphingwiki.patterns import encode, actionname
 
 from savegraphdata import parse_text
 
@@ -134,7 +134,7 @@ def execute(pagename, request):
     newreq.page.send_page(newreq)
     newreq.redirect()
 
-    graphdata = getgraphdata(newreq)
+    graphdata = request.graphdata
     graphdata.reverse_meta()
     vals_on_keys = graphdata.vals_on_keys
 

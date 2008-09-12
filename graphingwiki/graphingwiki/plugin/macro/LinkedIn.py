@@ -33,7 +33,7 @@ from codecs import getencoder
 
 from MoinMoin import config
 
-from graphingwiki.patterns import encode, getgraphdata
+from graphingwiki.patterns import encode
 
 Dependencies = ['pagelinks']
 
@@ -48,7 +48,6 @@ def execute(macro, args):
 
     out = []
     nodes = set()
-    getgraphdata(macro.request)
     # User rights are not checked here as the page will not be
     # displayed at all if user does not have rights
     pdata = request.graphdata.getpage(pagename)

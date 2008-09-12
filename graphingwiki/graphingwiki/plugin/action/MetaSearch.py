@@ -36,7 +36,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import encode, getgraphdata, actionname
+from graphingwiki.patterns import encode, actionname
 from ShowGraph import quoteformstr
 
 regexp_re = re.compile('^/.+/$')
@@ -114,7 +114,7 @@ def execute(pagename, request):
                 # Footer
                 wikiutil.send_footer(request, pagename)
                 
-        graphdata = getgraphdata(request)
+        graphdata = request.graphdata
         graphdata.reverse_meta()
         keys_on_pages = graphdata.keys_on_pages
         vals_on_pages = graphdata.vals_on_pages

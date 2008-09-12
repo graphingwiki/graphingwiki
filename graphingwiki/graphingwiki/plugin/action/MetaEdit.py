@@ -19,7 +19,7 @@ from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.editing import process_edit, getvalues, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
-from graphingwiki.patterns import actionname, getgraphdata
+from graphingwiki.patterns import actionname
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -185,8 +185,6 @@ def execute(pagename, request):
         template = request.form.get('template', [None])[0]
         if template:
             save_template(request, pagename, template)
-            # Graphdata locked at once in hopes of reducing race conditions
-            getgraphdata(request)
 
         # process_edit requires a certain order to meta input
         if request.form.has_key('saveform'):

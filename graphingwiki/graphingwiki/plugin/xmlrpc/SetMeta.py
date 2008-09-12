@@ -12,7 +12,7 @@ import xmlrpclib
 from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
-from graphingwiki.patterns import encode, getgraphdata
+from graphingwiki.patterns import encode
 from graphingwiki.editing import process_edit, order_meta_input, save_template
 
 def urlquote(s):
@@ -46,8 +46,6 @@ def execute(xmlrpcobj, page, input, action='add',
     # Pre-create page if it does not exist, using the template specified
     if createpage:
         save_template(request, page, template)
-        # Graphdata locked at once in hopes of reducing race conditions
-        getgraphdata(request)
 
     # process_edit requires a certain order to meta input
     output = order_meta_input(request, page, input, action)

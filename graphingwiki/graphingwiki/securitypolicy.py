@@ -49,10 +49,6 @@ class SecurityPolicy(AntiSpam):
             else:
                 path = underlay_to_pages(self.request, editor)
 
-                if not hasattr(self.request, 'graphdata'):
-                    getgraphdata(self.request)
-                    self.request.lock.release()
-
                 graphsaver(editor.page_name, self.request,
                            newtext, path, editor)
                 

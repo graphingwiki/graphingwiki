@@ -42,7 +42,7 @@ from MoinMoin.util.lock import WriteLock
 
 # graphlib imports
 from graphingwiki import graph
-from graphingwiki.patterns import special_attrs, getgraphdata
+from graphingwiki.patterns import special_attrs
 from graphingwiki.editing import parse_categories
 
 # Page names cannot contain '//'
