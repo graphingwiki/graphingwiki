@@ -71,8 +71,109 @@ window.addEvent('domready', function(){
   var links = $$('option').filter(function(el){
     return el.title.match("::") ? true : false;
     });
-  var tips = new Tips(links);
-  });
+   //var tips = new Tips(links);
+   
+   var sels = $('selstr').getElements('select');
+    sels.addEvent('change',function(){
+      var opt = $$('option[value='+this.value+']');
+      if(opt && opt[0].title){
+        drawInfo(opt[0]);
+        }
+      });
+    
+    links.addEvent('mouseenter', function(){
+      //drawInfo(this);
+      });
+   });
+
+function drawInfo(el){
+       var div = $('infodiv');
+      if(div){
+        div.destroy();
+      }
+      $('info').setStyle('background-color','#caffee');
+      var div = new Element('div', {
+        'id' : 'infodiv',
+        'styles' : {
+            'width' : '100%'
+          }
+        });
+      
+      div.grab(new Element('b', {
+        'text' : el.title,
+        'styles' : {
+              'margin-right' : '50px',
+              'float' :'left'
+          }
+        }));
+      div.grab(new Element('input', {
+        'type' : 'button',
+        'value' : 'Edit',
+        'styles' : {
+            'float' : 'right'
+          },
+        'events' : {
+            'click' : function(){
+              saveTaskData(el);
+            }
+          }
+        }));
+    $('info').grab(div);
+  }
+function saveTaskData(el){
+ 
+ $('info').addClass('ajax_loading');
+ selectAllOptions('flist');
+ var form = $('taskForm');
+ var cancel = form.getElement('input[name=cancel]');
+ if(cancel){
+ cancel.destroy();
+ }
+ form.set('send',{
+    method : 'post',
+    onSuccess : function(response){
+      if(el){
+        toQuestionEditor(el.value);
+      }
+    $('info').removeClass('ajax_loading');
+  }
+ });
+ url = location.href;
+ form.send(url);
+}
+
+
+function toQuestionEditor(question){
+  var form = new Element('form', {
+    'method' : 'post'
+    });
+  form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'action',
+    'value' : 'editQuestion'
+    }));
+if(question){
+form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'question',
+    'value' : question
+    }));
+
+form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'edit',
+    'value' : 'edit'
+    }));
+}else{
+  form.grab(new Element('input', {
+    'type' : 'hidden',
+    'name' : 'new',
+    'value' : 'new'
+    }));
+  }
+ form.inject(document.body);
+ form.submit();
+}
 
 function createPenaltySel(el, defVal){
   var opt = $(el);
@@ -280,12 +381,15 @@ function submitCheck(button){
 </script>
 
 select questions:<br>
-<form method="POST" action="%s">
+<form method="POST" action="%s" onsubmit="saveTaskData();">
     <input type="hidden" name="action" value="editQuestion">
     <input type='submit' name='new' value='NewQuestion'>
 </form>
+<form id="taskForm" method="post" name="taskForm" action="">
 <table border="0">
-<form id="taskForm" method="POST" name="taskForm">\n''' % request.request_uri.split("?")[0]
+<tr><td colspan="4" id="info">
+</td></tr>
+\n''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
     typedict = {None:list()}
     for page in pagelist:
@@ -306,7 +410,7 @@ select questions:<br>
     pagehtml += u'question type: <select id="typeSelect" name="question_type">\n'
     for type in typedict:
         pagehtml += '<option value="type_%s">%s\n' % (type, type)
-    pagehtml += u'</select><tr><td id="qlist_td">'
+    pagehtml += u'</select><tr id="selstr"><td id="qlist_td">'
 
     #questionlists
     for type, questionlist in typedict.iteritems():
@@ -323,7 +427,7 @@ select questions:<br>
         <input type="button" value="&lt;--"
          onclick="moveOptions(taskForm.flowlist, $($('typeSelect').value));">
     </td>
-    <input type="hidden" name="action" value="%s">\n''' % action_name
+    <input id="action" type="hidden" name="action" value="%s">\n''' % action_name
     if task:
         pagehtml += u'<input type="hidden" name="task" value="%s">\n' % task
     pagehtml += '''
