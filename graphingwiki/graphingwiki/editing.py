@@ -31,7 +31,7 @@ from MoinMoin import caching
 from MoinMoin.util.lock import ReadLock
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode, nonguaranteeds_p, getgraphdata
+from graphingwiki.patterns import encode, nonguaranteeds_p
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -299,8 +299,6 @@ def absolute_attach_name(quoted, target):
 # Fetch requested metakey value for the given page.
 def getmetas(request, name, metakeys, 
              display=True, abs_attach=True, checkAccess=True):
-    getgraphdata(request)
-
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
@@ -343,8 +341,6 @@ def getmetas(request, name, metakeys,
 # Let's see how it turns out.
 def getvalues(request, name, key,
               display=True, abs_attach=True, checkAccess=True):
-    getgraphdata(request)
-
     quoted = unicode(url_unquote(name), config.charset)
     if checkAccess:
         if not request.user.may.read(quoted):
@@ -459,10 +455,6 @@ def _fix_key(key):
 
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
-
-    # Some functions might call this directly
-    getgraphdata(request)
-
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -660,8 +652,6 @@ def process_edit(request, input,
         if not isinstance(s, unicode):
             s = unicode(s, config.charset)
         return s
-
-    getgraphdata(request)
 
     changes = dict()
     keychanges = dict()
@@ -899,9 +889,6 @@ def metatable_parseargs(request, args,
 
     # Flag: were there page arguments?
     pageargs = False
-
-    if not hasattr(request, 'graphdata'):
-        getgraphdata(request)
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
