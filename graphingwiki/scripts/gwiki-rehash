@@ -42,7 +42,7 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
-from graphingwiki.patterns import getgraphdata
+import graphingwiki.securitypolicy
 
 usage = "usage: %prog <path-to-wiki> [pagename]\n"
 parser = OptionParser(usage=usage)
@@ -108,8 +108,6 @@ for pagename in pages:
     page_enc = _e(pagename)
     # Make a new request for the page, initiate graphdata
     req = request.RequestCLI(pagename=page_enc)
-    getgraphdata(req)
-    req.lock.release()
 
     pagedir = os.path.join(req.cfg.data_dir, 'pages')
 

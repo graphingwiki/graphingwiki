@@ -461,107 +461,124 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    # Expires old locks left by crashes etc.
-    # Page locking mechanisms should prevent this code being
-    # executed prematurely - thus expiring both read and
-    # write locks
-    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
-
-    # Get a copy of current data
-    old_data = request.graphdata.get(pagename, {})
-
     # Get new data from parsing the page
     new_data = parse_text(request, page, text)
 
+    add_out = dict()
+    lit_out = dict()
+    del_out = dict()
+
+    add_in = dict()
+    del_in = dict()
+
     # Code for making our which edges have changed.
     # We only want to save changes, not all the data,
-    # as edges have a larger footprint in the graph
-    old_keys = set(old_data.get(pagename, {}).get('out', {}).keys())
-    new_keys = set(new_data.get(pagename, {}).get('out', {}).keys())
-    changed_keys = old_keys.intersection(new_keys)
+    # as edges have a larger time footprint while saving.
+    for page in new_data:
+        # Get a copy of current data
+        old_data = request.graphdata.get(page, {})
 
-    add_out = list()
-    lit_out = list()
-    del_out = list()
+        add_out.setdefault(page, list())
+        lit_out.setdefault(page, list())
+        del_out.setdefault(page, list())
 
-    # Changed edges (destinations changed, or order changed)
-    for key in changed_keys:
-        for i, val in enumerate(old_data[pagename]['out'][key]):
-            if len(new_data[page]['out'][key]) <= i:
-                del_out.append((key, val))
-            elif val != new_dataold_data[pagename]['out'][key][i]:
-                add_out.append((key, new_data[pagename]['out'][key][i]))
-                lit_out.append(new_data[pagename]['lit'][key][i])
-                del_out.append((key, val))
+        add_in.setdefault(page, list())
+        del_in.setdefault(page, list())
 
-    # Added edges
-    for key in new_keys.difference(old_keys):
-        for i, val in enumerate(new_data[pagename]['out'][key]):
-            add_out.append((key, val))
-            lit_out.append(new_data[pagename]['lit'][key][i])
+        old_keys = set(old_data.get('out', {}).keys())
+        new_keys = set(new_data.get(page, {}).get('out', {}).keys())
+        changed_keys = old_keys.intersection(new_keys)
 
-    # Deleted edges
-    for key in old_keys.difference(new_keys):
-        for val in old_data[pagename]['out'][key]:
-            del_out.append((key, val))
+        # Changed edges (destinations changed, or order changed)
+        for key in changed_keys:
+            for i, val in enumerate(old_data['out'][key]):
 
-    add_in = copy(add_out)
-    del_in = copy(del_out)
-    changes = set(add_in + del_in)
+                if len(new_data[page]['out'][key]) <= i:
+                    del_out[page].append((key, val))
 
-    # Adding and removing in-links are the most expensive operation in a
-    # shelve, so we'll try to minimise them. This is possible as we do not
-    # have to care about preserving order of in-links (not defined).
-    for key in changed_keys:
-        for val in changes:
-            add_count = add_in.count(val)
-            del_count = del_in.count(val)
+                elif val != new_data[pagename]['out'][key][i]:
+                    add_out[page].append((key, 
+                                          new_data[pagename]['out'][key][i]))
+                    lit_out[page].append(new_data[pagename]['lit'][key][i])
+                    del_out[page].append((key, val))
 
-            if not add_count or not del_count:
-                continue
+        # Added edges
+        for key in new_keys.difference(old_keys):
+            for i, val in enumerate(new_data[pagename]['out'][key]):
+                add_out[page].append((key, val))
+                lit_out[page].append(new_data[pagename]['lit'][key][i])
 
-            change_count = add_count - del_count
+        # Deleted edges
+        for key in old_keys.difference(new_keys):
+            for val in old_data['out'][key]:
+                del_out[page].append((key, val))
 
-            # If in-links added and deleted as many times, 
-            # there are effectively no changes to be saved
-            if change_count == 0:
-                for x in range(add_count):
-                    del_in.remove(val)
-                    add_in.remove(val)
+        add_in[page] = copy(add_out[page])
+        del_in[page] = copy(del_out[page])
+        changes = set(add_in[page] + del_in[page])
 
-            elif change_count < 0:
-                for x in range(abs(change_count)):
-                    del_in.remove(val)
+        # Adding and removing in-links are the most expensive operation in a
+        # shelve, so we'll try to minimise them. This is possible as we do not
+        # have to care about preserving order of in-links (not defined).
+        for key in changed_keys:
+            for val in changes:
+                add_count = add_in[page].count(val)
+                del_count = del_in[page].count(val)
 
-            else:
-                for x in range(abs(change_count)):
-                    add_in.remove(val)
+                if not add_count or not del_count:
+                    continue
 
-    for i, edge in enumerate(add_out):
-        linktype, dst = edge
-        hit = lit_out[i]
-        shelve_add_out(request.graphdata, [pagename, dst], linktype, hit)
-    for edge in add_in:
-        linktype, dst = edge
-        shelve_add_in(request.graphdata, [dst, pagename], linktype)
+                change_count = add_count - del_count
 
-    for edge in del_out:
-        linktype, dst = edge
-        shelve_remove_out(request.graphdata, [dst, pagename], [linktype])
-    for edge in del_in:
-        linktype, dst = edge
-        shelve_remove_in(request.graphdata, [pagename, dst], [linktype])
+                # If in-links added and deleted as many times, 
+                # there are effectively no changes to be saved
+                if change_count == 0:
+                    for x in range(add_count):
+                        del_in[page].remove(val)
+                        add_in[page].remove(val)
+
+                elif change_count < 0:
+                    for x in range(abs(change_count)):
+                        del_in[page].remove(val)
+
+                else:
+                    for x in range(abs(change_count)):
+                        add_in[page].remove(val)
 
     # Insert metas and other stuff from parsed content
     cur_time = time()
 
     temp = request.graphdata.get(pagename, {'time': cur_time, 'saved': True})
-    temp['meta'] = new_data.get(pagename, {}).get('meta', {})
-    temp['acl'] = new_data.get(pagename, {}).get('acl', '')
-    temp['include'] = new_data.get(pagename, {}).get('include', list())
+    temp['meta'] = new_data.get(pagename, dict()).get('meta', dict())
+    temp['acl'] = new_data.get(pagename, dict()).get('acl', '')
+    temp['include'] = new_data.get(pagename, dict()).get('include', list())
     temp['mtime'] = cur_time
     temp['saved'] = True
     request.graphdata[pagename] = temp
+
+    # Release ReadLock (from the previous reads), make WriteLock
+    request.lock.release()
+    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
+    request.lock.acquire()
+
+    # Save the links that need to be saved
+    for page in add_out:
+        for i, edge in enumerate(add_out[page]):
+            linktype, dst = edge
+            hit = lit_out[page][i]
+            shelve_add_out(request.graphdata, [pagename, dst], linktype, hit)
+    for page in add_in:
+        for edge in add_in[page]:
+            linktype, dst = edge
+            shelve_add_in(request.graphdata, [dst, pagename], linktype)
+
+    for page in del_out:
+        for edge in del_out[page]:
+            linktype, dst = edge
+            shelve_remove_out(request.graphdata, [dst, pagename], [linktype])
+    for page in del_in:
+        for edge in del_in[page]:
+            linktype, dst = edge
+            shelve_remove_in(request.graphdata, [pagename, dst], [linktype])
 
     request.lock.release()
