@@ -664,18 +664,24 @@ class GraphShower(object):
         # addFunc is the function to be called for each graph addition
         # graphdata is the 'in' graph extended and traversed
 
+        request = self.request
+        urladd = self.urladd
+        starts = self.startpages
+
         cl.start('traverseparent')
         # This traverses 1 to parents
-        pattern = Sequence(TailNode(), TailNode())
-        for obj1, obj2 in match(pattern, (nodes, graphdata)):
-            outgraph, ret = addFunc(graphdata, outgraph, obj2, obj1)
+        for node in nodes:
+            parents = load_parents(request, graphdata, node, urladd, starts)
+            for parent in parents:
+                outgraph, ret = addFunc(graphdata, outgraph, parent, node)
         cl.stop('traverseparent')
 
         cl.start('traversechild')
         # This traverses 1 to children
-        pattern = Sequence(HeadNode(), HeadNode())
-        for obj1, obj2 in match(pattern, (nodes, graphdata)):
-            outgraph, ret = addFunc(graphdata, outgraph, obj1, obj2)
+        for node in nodes:
+            children = load_children(request, graphdata, node, urladd)
+            for child in children:
+                outgraph, ret = addFunc(graphdata, outgraph, node, child)
         cl.stop('traversechild')
 
         return outgraph

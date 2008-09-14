@@ -233,142 +233,65 @@ class GraphData(UserDict.DictMixin):
     def load_with_links(self, pagename):
         return self.load_graph(pagename, '')
 
-class Sequence:
-    def __init__(self, *objs):
-        self.objs = objs
+def load_children(request, graph, node, urladd):
+    # Get new data for current node
+    adata = request.graphdata.load_graph(node, urladd)
+    if not adata:
+        return
+    if not adata.nodes.get(node):
+        return
+    nodeitem = graph.nodes.get(node)
+    nodeitem.update(adata.nodes.get(node))
 
-    def match(self, data, bindings):
-        objs = self.objs
-        if not objs:
-            yield (), (), data, bindings
-            return
+    children = set()
 
-        for hobj, head, data, bindings in objs[0].match(data, bindings):
-            seq = Sequence(*objs[1:])
-            for tobj, tail, newdata, newbindings in seq.match(data, bindings):
-                yield head+tail, head+tail, newdata, newbindings
+    # Add new nodes, edges that link to/from the current node
+    for parent, child in adata.edges.getall():
+        # Only add links from amongst nodes already traversed
+        if not graph.nodes.get(parent):
+            continue
 
-class WikiNode(object):
-    # List of startpages -> pages to which gather in-links from global
-    startpages = []
-    # request associated with the page
-    request = None
-    # url addition from action
-    urladd = ""
-    # globaldata
-    graphdata = None
+        newnode = graph.nodes.get(child)
+        if not newnode:
+            newnode = graph.nodes.add(child)
+        newnode.update(adata.nodes.get(child))
 
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Wiki"
-        if request is not None: 
-            WikiNode.request = request
-        if urladd is not None:
-            WikiNode.urladd = urladd
-        if startpages is not None:
-            WikiNode.startpages = startpages
+        newedge = graph.edges.add(parent, child)
+        edgedata = adata.edges.get(parent, child)
+        newedge.update(edgedata)
 
-        if request:
-            WikiNode.graphdata = WikiNode.request.graphdata
+        children.add(child)
 
-    def _load(self, graph, node):
-        nodeitem = graph.nodes.get(node)
-        k = getattr(nodeitem, 'gwikiURL', '')
+    return children
 
-        if isinstance(k, set):
-            k = ''.join(k)
-            if k[0] in ['.', '/']:
-                k += WikiNode.urladd
-            nodeitem.gwikiURL = k
+def load_parents(request, graph, node, urladd, startpages):
+    adata = request.graphdata.load_graph(node, urladd)
+    if not adata:
+        return
+    if not adata.nodes.get(node):
+        return
+    nodeitem = graph.nodes.get(node)
+    nodeitem.update(adata.nodes.get(node))
 
-        adata = WikiNode.graphdata.load_graph(node, WikiNode.urladd)
+    parents = set()
 
-        return adata
+    # Add new nodes, edges that are the parents of either the
+    # current node, or the start nodes
+    for parent, child in adata.edges.getall():
+        if child not in [node] + startpages:
+            continue
 
-class HeadNode(WikiNode):
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Head"
-        super(HeadNode, self).__init__(request, urladd, startpages)
+        newnode = graph.nodes.get(parent)
+        if not newnode:
+            newnode = graph.nodes.add(parent)
+        newnode.update(adata.nodes.get(parent))
 
-    def loadpage(self, graph, node):
-        # Get new data for current node
-        adata = self._load(graph, node)
-        if not adata:
-#            print "No adata head", node
-            return
-        if not adata.nodes.get(node):
-#            print "Wrong adata head", node
-            return
-        nodeitem = graph.nodes.get(node)
-        nodeitem.update(adata.nodes.get(node))
-
-        # Add new nodes, edges that link to/from the current node
-        for parent, child in adata.edges.getall():
-            # Only add links from amongst nodes already traversed
-            if not graph.nodes.get(parent):
-                continue
-
-            newnode = graph.nodes.get(child)
-            if not newnode:
-                newnode = graph.nodes.add(child)
-            newnode.update(adata.nodes.get(child))
-
+        newedge = graph.edges.get(parent, child)
+        if not newedge:
             newedge = graph.edges.add(parent, child)
-            edgedata = adata.edges.get(parent, child)
-            newedge.update(edgedata)
-            
-    def match(self, data, bindings):
-        nodes, graph = data
-        for node in nodes:
-            self.loadpage(graph, node)
-            children = set(child for parent, child
-                           in graph.edges.getall(parent=node))
-            node = graph.nodes.get(node)
-            yield node, (node,), (children, graph), bindings
+        edgedata = adata.edges.get(parent, child)
+        newedge.update(edgedata)
 
-class TailNode(WikiNode):
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Tail"
-        super(TailNode, self).__init__(request, urladd, startpages)
+        parents.add(parent)
 
-    def loadpage(self, graph, node):
-        # Get new data for current node
-        adata = self._load(graph, node)
-        if not adata:
-#            print "No adata tail", node
-            return
-        if not adata.nodes.get(node):
-#            print "Wrong adata tail", node
-            return
-        nodeitem = graph.nodes.get(node)
-        nodeitem.update(adata.nodes.get(node))
-
-        # Add new nodes, edges that are the parents of either the
-        # current node, or the start nodes
-        for parent, child in adata.edges.getall():
-            if child not in [node] + WikiNode.startpages:
-                continue
-
-            newnode = graph.nodes.get(parent)
-            if not newnode:
-                newnode = graph.nodes.add(parent)
-            newnode.update(adata.nodes.get(parent))
-
-            newedge = graph.edges.get(parent, child)
-            if not newedge:
-                newedge = graph.edges.add(parent, child)
-            edgedata = adata.edges.get(parent, child)
-            newedge.update(edgedata)
-    
-    def match(self, data, bindings):
-        nodes, graph = data
-        for node in nodes:
-            self.loadpage(graph, node)
-            parents = set(parent for parent, child
-                          in graph.edges.getall(child=node))
-            node = graph.nodes.get(node)
-            yield node, (node,), (parents, graph), bindings
-
-def match(pattern, data):
-    empty = {}
-    for obj, result, data, bindings in pattern.match(data, empty):
-        yield obj
+    return parents
