@@ -429,7 +429,7 @@ class GraphShower(object):
         self.pagename = pagename
 
         def get_categories(nodename):
-            pagedata = self.globaldata.getpage(nodename)
+            pagedata = self.request.graphdata.getpage(nodename)
             return pagedata.get('metas', {}).get('WikiCategory', set())
 
         for nodename in self.otherpages:
@@ -452,7 +452,7 @@ class GraphShower(object):
             if not self.request.user.may.read(unicode(url_unquote(cat),
                                                       config.charset)):
                 continue
-            catpage = self.globaldata.getpage(cat)
+            catpage = self.request.graphdata.getpage(cat)
             if not catpage.has_key('in'):
                 # graphdata not in sync on disk -> malicious input 
                 # or something has gone very, very wrong
@@ -572,7 +572,7 @@ class GraphShower(object):
 
             # User rights have been checked before, as traverse
             # uses GraphData.load_graph, which handles them
-            pagedata = self.globaldata.getpage(obj.node)
+            pagedata = self.request.graphdata.getpage(obj.node)
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip
             if (pagedata.has_key('meta') and
@@ -671,17 +671,23 @@ class GraphShower(object):
         cl.start('traverseparent')
         # This traverses 1 to parents
         for node in nodes:
+            nodeitem = graphdata.nodes.get(node)
             parents = load_parents(request, graphdata, node, urladd, starts)
             for parent in parents:
-                outgraph, ret = addFunc(graphdata, outgraph, parent, node)
+                parentitem = graphdata.nodes.get(parent)
+                outgraph, ret = addFunc(graphdata, outgraph, 
+                                        parentitem, nodeitem)
         cl.stop('traverseparent')
 
         cl.start('traversechild')
         # This traverses 1 to children
         for node in nodes:
+            nodeitem = graphdata.nodes.get(node)
             children = load_children(request, graphdata, node, urladd)
             for child in children:
-                outgraph, ret = addFunc(graphdata, outgraph, node, child)
+                childitem = graphdata.nodes.get(child)
+                outgraph, ret = addFunc(graphdata, outgraph, 
+                                        nodeitem, childitem)
         cl.stop('traversechild')
 
         return outgraph
