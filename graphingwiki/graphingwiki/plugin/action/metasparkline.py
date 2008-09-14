@@ -44,7 +44,6 @@ except ImportError:
 
 from tempfile import mkstemp
 
-from MoinMoin import config
 from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
@@ -297,7 +296,7 @@ def execute(pagename, request):
         metas = getmetas(request, globaldata, page,
                          metakeys, display=False,
                          checkAccess=False)
-        val = ''.join([x for x, y in metas.get(key, ('', ''))])
+        val = ''.join(metas.get(key, str()))])
         try:
             val = float(val)
             data.append(val)

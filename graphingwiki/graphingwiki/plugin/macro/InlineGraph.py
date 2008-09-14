@@ -33,7 +33,6 @@ from copy import copy
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin import config
 
 from graphingwiki.patterns import encode
 

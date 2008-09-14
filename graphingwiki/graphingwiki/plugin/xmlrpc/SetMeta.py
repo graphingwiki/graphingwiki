@@ -6,7 +6,6 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import urllib
 import xmlrpclib
 
 from MoinMoin import config
@@ -14,11 +13,6 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 from graphingwiki.patterns import encode
 from graphingwiki.editing import process_edit, order_meta_input, save_template
-
-def urlquote(s):
-    if isinstance(s, unicode):
-        s = s.encode(config.charset)
-    return urllib.quote(s)
 
 # Gets data in the same format as process_edit
 # i.e. input is a hash that has page!key as keys

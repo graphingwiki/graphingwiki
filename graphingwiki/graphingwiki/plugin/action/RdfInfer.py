@@ -30,10 +30,8 @@
 
 import os
 import re
-from urllib import quote as url_quote
 from savegraphdata import encode
 
-from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter

@@ -27,12 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
-from codecs import getencoder
-
-from MoinMoin import config
-from MoinMoin.logfile import editlog
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import get_revisions

@@ -49,9 +49,9 @@ def setMetas(request, cleared, discarded, added):
 
         new = dict()
         for key in list(old):
-            values = [value for (value, _) in old.pop(key)]
+            values = old.pop(key)
             key = decode_page(key)
-            old[key] = list(values)
+            old[key] = values
             new[key] = set(values)
         for key in pageCleared:
             new[key] = set()
@@ -61,7 +61,7 @@ def setMetas(request, cleared, discarded, added):
             new[key].update(values)
 
         for key, values in new.iteritems():
-            ordered = list(old[key])
+            ordered = old[key]
 
             for index, value in enumerate(ordered):
                 if value not in values:

@@ -6,8 +6,6 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import urllib
- 
 from graphingwiki.editing import metatable_parseargs, getmetas
 
 def execute(xmlrpcobj, args, keysonly=True):
@@ -36,7 +34,7 @@ def execute(xmlrpcobj, args, keysonly=True):
                          display=False, checkAccess=False)
         row = [page]
         for key in metakeys:
-            row.append([value for (value, type) in metas[key]])
+            row.append(metas[key])
         out.append(row)
 
     return out

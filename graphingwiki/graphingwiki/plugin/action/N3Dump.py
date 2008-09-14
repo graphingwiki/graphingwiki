@@ -29,11 +29,11 @@
 """
 
 import shelve
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
+
+from graphingwiki.patterns import decode_page
 
 from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
 
@@ -43,22 +43,13 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
 
     for prop in nonguaranteeds_p(nodegraph):
         for value in getattr(nodegraph, prop):
-            if not isinstance(prop, unicode):
-                prop = unicode(prop, config.charset)
-            if not isinstance(value, unicode):
-                value = unicode(value, config.charset)
             out = out + formatfunc(selfname,
                                    (pagename, prop, value))
 
     for edge in pagegraph.edges.getall():
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
-        if not isinstance(prop, unicode):
-            linktype = unicode(prop, config.charset)
-        if not isinstance(edge[1], unicode):
-            dst = unicode(edge[1], config.charset)
-        else:
-            dst = edge[1]
+        dst = edge[1]
         out = out + formatfunc(selfname,
                                (edge[0], linktype, dst))
 
@@ -91,8 +82,8 @@ def get_page_n3(request, pagename):
 
 def get_page_fact(request, pagename, graphdata):
     pagegraph = graphdata.load_with_links(pagename)
-    if isinstance(pagename, unicode):
-        pagename = unicode(url_quote(pagename), config.charset)
+    if not isinstance(pagename, unicode):
+        pagename = decode_page(pagename)
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data, pagename
@@ -105,8 +96,8 @@ def get_all_facts(request, graphdata):
 
     for pagename in request.rootpage.getPageList():
         pagegraph = graphdata.load_with_links(pagename)
-        if isinstance(pagename, unicode):
-            pagename = unicode(url_quote(pagename), config.charset)
+        if not isinstance(pagename, unicode):
+            pagename = decode_page(pagename)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
             yield data, pagename

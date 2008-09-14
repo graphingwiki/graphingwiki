@@ -38,13 +38,12 @@ except ImportError:
 
 from urllib import unquote as url_unquote
 
-from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
 
-from graphingwiki.editing import metatable_parseargs, getvalues, ordervalue
+from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
 from graphingwiki.patterns import encode
 
 from metasparkline import draw_path, cairo_not_found, \
@@ -146,8 +145,7 @@ def execute(pagename, request):
     data = dict()
     for page in pagelist:
         for key in metakeys:
-            data[key] = set(x for x, y in
-                            getvalues(request, page, key))
+            data[key] = set(getmetas(request, page, [key]))
 
     # Get values for the chart axes
     data_per_axis = dict()

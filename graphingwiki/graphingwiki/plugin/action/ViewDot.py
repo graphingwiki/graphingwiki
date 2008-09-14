@@ -30,10 +30,8 @@ import os
 from tempfile import mkstemp
 from base64 import b64encode
 from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
 from MoinMoin.request import RequestModPy, RequestStandAlone

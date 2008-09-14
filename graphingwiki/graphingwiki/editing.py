@@ -281,7 +281,7 @@ def getmetas(request, name, metakeys,
     # Add values and their sources
     for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
-            pageMeta[key].append((value, "meta"))
+            pageMeta[key].append(value)
 
     # Link values are in a list as there can be more than one edge
     # between two pages.
@@ -291,7 +291,7 @@ def getmetas(request, name, metakeys,
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
 
-                pageMeta[key].append((target, "link"))
+                pageMeta[key].append(target)
     else:
         # Showing things as they are
         loadedLits = loadedPage.get("lit", dict())
@@ -300,45 +300,14 @@ def getmetas(request, name, metakeys,
                 if abs_attach:
                     target = absolute_attach_name(name, target)
 
-                pageMeta[key].append((target, "link"))
+                pageMeta[key].append(target)
             
     return pageMeta
 
-# Currently, the values of metadata and link keys are
-# considered additive in case of a possible overlap.
-# Let's see how it turns out.
+# Deprecated, remains for backwards compability for now
 def getvalues(request, name, key,
               display=True, abs_attach=True, checkAccess=True):
-    if checkAccess:
-        if not request.user.may.read(name):
-            return set([])
-
-    page = request.graphdata.getpage(name)
-    vals = set()
-    # Add values and their sources
-    if key in page.get('meta', {}):
-        for val in page['meta'][key]:
-            vals.add((val, 'meta'))
-
-    # Link values are in a list as there can be more than one
-    # edge between two pages
-    if display:
-        # Making things nice to look at
-        if key in page.get('out', {}):
-            # Add values and their sources
-            for target in page['out'][key]:
-                vals.add((target, 'link'))
-    else:
-        # Showing things as they are
-        if key in page.get('lit', {}):
-            # Add values and their sources
-            for target in page['lit'][key]:
-                if abs_attach:
-                    target = absolute_attach_name(name, target)
-
-                vals.add((target, 'link'))
-            
-    return vals
+    return getmetas(request, name, [key], display, abs_attach, checkAccess)
 
 def get_pages(request):
     def filter(name):
@@ -630,8 +599,8 @@ def process_edit(request, input,
             continue
 
         oldvals = list()
-        for val, typ in getvalues(request, keypage,
-                                  key, display=False, abs_attach=False):
+        for val in getmetas(request, keypage, [key], 
+                            display=False, abs_attach=False):
             # Skip default labels
             if key == 'label' and val == keypage:
                 pass
@@ -727,9 +696,7 @@ def order_meta_input(request, page, input, action):
 
                 # Add similar, purge rest
                 # Do not add a meta value twice
-                old = list()
-                for val, typ in getvalues(request, page, key, display=False):
-                    old.append(val)
+                old = getmetas(request, page, [key], display=False)
                 src = set(output[pair])
                 tmp = set(src).intersection(set(old))
 
@@ -764,10 +731,7 @@ def order_meta_input(request, page, input, action):
                 output[pair] = dst
             else:
                 # Do not add a meta value twice
-                src = list()
-                for val, typ in getvalues(request, page, key, display=False):
-                    src.append(val)
-                for val in src:
+                for val in getmetas(request, page, [key], display=False):
                     if val in output[pair]:
                         output[pair].remove(val)
                 output[pair].extend(src)
@@ -948,8 +912,8 @@ def metatable_parseargs(request, args,
         # Filter by regexps (if any)
         if limitregexps:
             # We're sure we have access to read the page, don't check again
-            metas = getmetas(request, page, limitregexps,
-                             checkAccess=False)
+            metas = getmetas(request, page, limitregexps, checkAccess=False)
+                             
 
             for key, re_limits in limitregexps.iteritems():
 
@@ -1010,8 +974,7 @@ def metatable_parseargs(request, args,
             s_list[key] = dict()
             for page in pagelist:
                 # get all vals of a key in order
-                s_list[key][page] = [x for x, y in
-                                     sorted(getvalues(request, page, key))]
+                s_list[key][page] = sorted(getmetas(request, page, [key]))
         ordvals = dict()
         byval = dict()
         ord = [x for _, x in orderspec]

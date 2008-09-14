@@ -11,13 +11,7 @@
 """
 import re
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
-
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import encode
 
 Dependencies = ["namespace"]
 
@@ -91,11 +85,8 @@ def execute(macro, args):
 
    show = []
    for tag in taglist:
-      enc_tag = unicode(url_unquote(tag), config.charset)
-      # Replace quotes from link keys
-      enc_tag = enc_tag.replace('"', '&#x22;')
-      cnt = tags.count(enc_tag)
-      show.append((enc_tag, cnt, tag))
+      cnt = tags.count(tag)
+      show.append((tag, cnt, tag))
    show.sort(key=sort, reverse=True)
    show = show[0:maxTags]
    show.sort()
@@ -110,13 +101,13 @@ def execute(macro, args):
       if mode == 'keys':
          data = request.graphdata.keys_on_pages.get(tag[2])
          if data:
-            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(request.graphdata.keys_on_pages.get(tag[2])))
+            title = '\n'.join(x for x in 
+                              sorted(request.graphdata.keys_on_pages.get(tag[2])))
       else:
          data = request.graphdata.vals_on_pages.get(tag[2])
          if data:
-            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(request.graphdata.vals_on_pages.get(tag[2])))
+            title = '\n'.join(x for x in
+                              sorted(request.graphdata.vals_on_pages.get(tag[2])))
 
       pagename = tag[0]
       hits = tag[1]

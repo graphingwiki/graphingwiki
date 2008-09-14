@@ -62,7 +62,7 @@ def encode_page(page):
     return encode(page)
 
 def decode_page(page):
-    return unicode(page, "utf-8")
+    return unicode(page, config.charset)
 
 class GraphData(UserDict.DictMixin):
     def __init__(self, request):

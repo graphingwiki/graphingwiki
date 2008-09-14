@@ -29,18 +29,15 @@
 
 """
 import os
+import cgi
 import StringIO
 
 from math import pi
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 from tempfile import mkstemp
-from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.action import AttachFile
 
-from graphingwiki.editing import metatable_parseargs, getvalues
-from graphingwiki.patterns import encode
+from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.patterns import encode_page
 
 cairo_found = True
 try:
@@ -58,7 +55,7 @@ def execute(macro, args):
     _ = request.getText
 
     if not args:
-        args = url_quote(encode(request.page.page_name))
+        args = encode_page(request.page.page_name))
 
     topology = args
 
@@ -76,7 +73,7 @@ def execute(macro, args):
     aliases = dict()
 
     for page in pagelist:
-        crds = [x.split(',') for x,y in getvalues(request, page, topology)]
+        crds = [x.split(',') for x in getmetas(request, page, [topology])]
 
         if not crds:
             continue
@@ -91,16 +88,14 @@ def execute(macro, args):
 
         coords[page] = crds
 
-        img = getvalues(request, page, 'gwikishapefile')
+        img = getmetas(request, page, ['gwikishapefile'])
         if img:
-            img = [x[0] for x in img][0]
-            img = img.split('/')[-1]
-
+            img = img[0].split('/')[-1]
             images[page] = AttachFile.getFilename(request, page, img)
 
-        alias = getvalues(request, page, 'tia-name')
+        alias = getmetas(request, page, ['tia-name'])
         if alias:
-            aliases[page] = [x for x,y in getvalues(request, page, 'tia-name')][0]
+            aliases[page] = alias[0]
 
     allcoords = coords.values()
     max_x = max([int(x[0]) for x in allcoords])
@@ -129,7 +124,7 @@ def execute(macro, args):
             continue
 
         x, y = [int(x) for x in coords[page]]
-#         request.write('<br>' + repr(getvalues(request, page, 'tia-name')) + '<br>')
+#         request.write('<br>' + repr(getmetas(request, page, ['tia-name'])) + '<br>')
 #         request.write(repr(coords[page]) + '<br>')
 #         request.write(str(x-min_x) + '<br>')
 #         request.write(str(y-min_y) + '<br>')
@@ -203,4 +198,4 @@ def execute(macro, args):
     os.close(tmp_fileno)
     os.remove(tmp_name)
 
-    return '<img src="data:image/png,%s">' % (url_quote(data))
+    return '<img src="data:image/png,%s">' % (cgi.escape(data))

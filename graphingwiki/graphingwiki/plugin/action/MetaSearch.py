@@ -29,14 +29,10 @@
 """
 import re
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
 from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import encode, actionname
+from graphingwiki.patterns import encode, actionname, decode_page
 from ShowGraph import quoteformstr
 
 regexp_re = re.compile('^/.+/$')
@@ -123,13 +119,13 @@ def execute(pagename, request):
         keys = set([])
         for key in keys_on_pages:
             if q:
-                if key == url_quote(encode(q)):
+                if key == q:
                     keyhits.update(keys_on_pages[key])
-                    keys.add(unicode(url_unquote(key), config.charset))
+                    keys.add(key)
             else:
-                if page_re.match(unicode(url_unquote(key), config.charset)):
+                if page_re.match(key):
                     keyhits.update(keys_on_pages[key])
-                    keys.add(unicode(url_unquote(key), config.charset))
+                    keys.add(key)
 
         valhits = set([])
         vals = set([])
@@ -153,7 +149,7 @@ def execute(pagename, request):
 
         request.write(formatter.bullet_list(1))
         for page in sorted(keyhits):
-            page = unicode(url_unquote(page), config.charset)
+            page = decode_page(page)
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))
@@ -167,7 +163,7 @@ def execute(pagename, request):
         request.write(formatter.paragraph(0))
         request.write(formatter.bullet_list(1))
         for page in sorted(valhits):
-            page = unicode(url_unquote(page), config.charset)
+            page = decode_page(page)
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))

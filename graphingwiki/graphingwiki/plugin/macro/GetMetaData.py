@@ -9,18 +9,12 @@
 
 Dependencies = ['metadata']
 
-import urllib
 import StringIO
 
-from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
 
-from graphingwiki.editing import getvalues, metatable_parseargs
-
-def urlquote(s):
-    if isinstance(s, unicode):
-        s = s.encode(config.charset)
-    return urllib.quote(s)
+from graphingwiki.patterns import encode_page
+from graphingwiki.editing import getmetas, metatable_parseargs
 
 def execute(macro, args):
     request = macro.request
@@ -29,13 +23,11 @@ def execute(macro, args):
         return ''
 
     try:
-        page, key = [urlquote(x.strip()) for x in args.split(',')]
+        args = args.split(',')
+        page = encode_page(args[0].strip())
+        key = args[1]
 
-        vals = list()
-        for val, typ in getvalues(request, page, key,
-                                  display=False):
-            vals.append(val)
-
+        vals = getmetas(request, page, [key], display=False)
     except:
         return ''
 

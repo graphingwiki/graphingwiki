@@ -11,12 +11,11 @@ import xmlrpclib
 import random
 
 from time import time
-from urllib import unquote as url_unquote
 
-from MoinMoin import config
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas, getvalues
+from graphingwiki.patterns import decode_page
+from graphingwiki.editing import metatable_parseargs, getmetas
 
 from AttachFile import save as save_attachment
 from SetMeta import execute as save_meta
@@ -42,7 +41,7 @@ def execute(xmlrpcobj, agentid, oper='get',
             # Then, get from pending tasks with overdue heartbeat
             pages, metakeys = get_pagelist(request, 'pending')
             for page in pages:
-                for val, typ in getvalues(request, page, 'heartbeat'):
+                for val in getmetas(request, page, ['heartbeat']):
                     try:
                         val = float(val) + (10 * 60)
                         if val < curtime:
@@ -60,12 +59,9 @@ def execute(xmlrpcobj, agentid, oper='get',
         
         random.shuffle(pagelist)
         for page in pagelist:
-            stuff = getmetas(request, page, metakeys, display=False)
-            metas = dict()
-            for key in stuff:
-                metas[key] = [x for x, y in stuff[key]]
+            metas = getmetas(request, page, metakeys, display=False)
 
-            page = unicode(url_unquote(page), config.charset)
+            page = decode_page(page)
             code = Page(request, page).get_raw_body()
 
             code = code.split('}}}', 1)[0]

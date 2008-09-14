@@ -29,13 +29,11 @@
 """
 import StringIO
 from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
-from MoinMoin import config
 
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode, decode_page
 
 cairo_found = True
 try:
@@ -103,7 +101,7 @@ def execute(macro, args):
     for page in pagelist:
         metas = getmetas(request, page, metakeys)
         for key in metas:
-            values.update(x[0] for x in metas[key])
+            values.update(metas[key])
     for val in values:
         if val.startswith('attachment'):
             # A bit ugly fix for a weird corner case
@@ -125,7 +123,7 @@ def execute(macro, args):
 
         # First enter page names to first row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = unicode(url_unquote(page), config.charset)
+            pagerepr = decode_page(page)
             out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
             out.write(macro.formatter.pagelink(1, pagerepr))
             out.write(macro.formatter.text(pagerepr))
@@ -136,7 +134,7 @@ def execute(macro, args):
 
         # Chart images to the other row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = unicode(url_unquote(page), config.charset)
+            pagerepr = decode_page(page)
             url = req_url + '&arg=' + page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
             out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))

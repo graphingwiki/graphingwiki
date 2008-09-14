@@ -30,14 +30,11 @@
 """
 import StringIO
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.patterns import decode_page
 
 Dependencies = ['metadata']
 
@@ -48,9 +45,6 @@ def t_cell(macro, value):
     style['class'] = 'meta_cell'
 
     out.write(macro.formatter.table_cell(1, attrs=style))
-
-    if not isinstance(value, unicode):
-        value = unicode(value, config.charset)
 
     value = value.strip()
 
@@ -78,7 +72,7 @@ def construct_table(macro, pagelist, key, sort_order):
     orginalPage = request.page
 
     for page in pagelist:
-        pageobj = Page(request, unicode(url_unquote(page), config.charset))
+        pageobj = Page(request, decode_page(page))
         request.page = pageobj
         request.formatter.page = pageobj
 
@@ -88,8 +82,7 @@ def construct_table(macro, pagelist, key, sort_order):
         metas = getmetas(request, page, [key], display=False,
                          checkAccess=False)
 
-        values = [x for x,y in metas[key]]
-        for value in values:
+        for value in metas[key]:
             current = count.get(value, 0)
             count[value] = current + 1
 

@@ -27,19 +27,13 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
-from codecs import getencoder
-
-from MoinMoin import config
-
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import decode_page
 
 Dependencies = ['pagelinks']
 
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
-    pagename = url_quote(encode(pagename))
+    pagename = decode_page(pagename)
     _ = macro.request.getText
 
     meta = False
@@ -56,7 +50,7 @@ def execute(macro, args):
             typeinfo = ''
             if meta and type != '_notype':
                 typeinfo = " (%s)" % (type)
-            page = unicode(url_unquote(page), config.charset)
+            page = decode_page(page)
             if not page in nodes:
                 out.append(macro.formatter.pagelink(1, page) +
                            macro.formatter.text(page + typeinfo) +

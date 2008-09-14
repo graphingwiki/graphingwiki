@@ -17,7 +17,7 @@ from MoinMoin import config
 from MoinMoin.Page import Page
 from MoinMoin.util.lock import ReadLock
 
-from graphingwiki.editing import process_edit, getvalues, save_template
+from graphingwiki.editing import process_edit, getmetas, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input
 from graphingwiki.patterns import actionname
 
@@ -91,9 +91,8 @@ def show_editform(request, pagename, args):
             if not valnos.has_key(frompage):
                 valnos[frompage] = 1
 
-            for i, (val, typ) in enumerate(getvalues(request, frompage, key,
-                                                     display=False,
-                                                     abs_attach=False)):
+            for i, val in enumerate(getmetas(request, frompage, [key],
+                                             display=False, abs_attach=False)):
                 values[frompage][key].append(val)
                 # Enumerate starts from 0: #values++ 
                 # One to add a value: #values++ 

@@ -30,10 +30,6 @@
 import re
 import StringIO
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
@@ -44,7 +40,7 @@ from graphingwiki.patterns import encode
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style={}):
+def t_cell(macro, vals, head=0, style=dict()):
     out = macro.request
 
     if not style.has_key('class'):
@@ -69,7 +65,7 @@ def t_cell(macro, vals, head=0, style={}):
                       macro.formatter.linebreak())
 
         if head:
-            kw = {}
+            kw = dict()
             if '?' in data:
                 data, query = data.split('?')
                 kw['querystr'] = query
@@ -104,7 +100,7 @@ def t_cell(macro, vals, head=0, style={}):
         out.write(macro.formatter.bullet_list(1))
 
 def construct_table(macro, pagelist, metakeys, 
-                    legend='', checkAccess=True, styles={}):
+                    legend='', checkAccess=True, styles=dict()):
     request = macro.request
     request.page.formatter = request.formatter
     _ = request.getText
@@ -124,7 +120,7 @@ def construct_table(macro, pagelist, metakeys,
         t_cell(macro, [legend])
 
     for key in metakeys:
-        style = styles.get(key, {})
+        style = styles.get(key, dict())
         
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
@@ -162,9 +158,8 @@ def construct_table(macro, pagelist, metakeys,
         t_cell(macro, [page], head=1)
 
         for key in metakeys:
-            values = [x for x,y in metas[key]]
-            style = styles.get(key, {})
-            t_cell(macro, values, style=style)
+            style = styles.get(key, dict())
+            t_cell(macro, metas[key], style=style)
 
         request.write(macro.formatter.table_row(0))
 

@@ -35,7 +35,6 @@ from time import time
 from copy import copy
 
 # MoinMoin imports
-from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.wikiutil import importPlugin
 from MoinMoin.util.lock import WriteLock
