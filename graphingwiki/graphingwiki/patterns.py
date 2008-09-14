@@ -196,7 +196,6 @@ class GraphData(UserDict.DictMixin):
             return None
 
         page = self.getpage(pagename)
-
         if not page:
             return None
 
@@ -246,17 +245,15 @@ def load_children(request, graph, node, urladd):
     children = set()
 
     # Add new nodes, edges that link to/from the current node
-    for parent, child in adata.edges.getall():
-        # Only add links from amongst nodes already traversed
-        if not graph.nodes.get(parent):
-            continue
-
+    for parent, child in adata.edges.getall(parent=node):
         newnode = graph.nodes.get(child)
         if not newnode:
             newnode = graph.nodes.add(child)
         newnode.update(adata.nodes.get(child))
 
-        newedge = graph.edges.add(parent, child)
+        newedge = graph.edges.get(parent, child)
+        if not newedge:
+            newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)
         newedge.update(edgedata)
 
@@ -264,7 +261,7 @@ def load_children(request, graph, node, urladd):
 
     return children
 
-def load_parents(request, graph, node, urladd, startpages):
+def load_parents(request, graph, node, urladd):
     adata = request.graphdata.load_graph(node, urladd)
     if not adata:
         return
@@ -277,10 +274,7 @@ def load_parents(request, graph, node, urladd, startpages):
 
     # Add new nodes, edges that are the parents of either the
     # current node, or the start nodes
-    for parent, child in adata.edges.getall():
-        if child not in [node] + startpages:
-            continue
-
+    for parent, child in adata.edges.getall(child=node):
         newnode = graph.nodes.get(parent)
         if not newnode:
             newnode = graph.nodes.add(parent)

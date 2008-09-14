@@ -144,7 +144,6 @@ class GraphShower(object):
         self.graphengine = graphengine
         self.available_formats = ['png', 'svg', 'dot']
         self.format = 'png'
-        self.traverse = self.traverseParentChild
         self.limit = ''
         self.unscale = 0
         self.hidedges = 0
@@ -496,11 +495,8 @@ class GraphShower(object):
         for type in types:
             if type in self.filteredges:
                 olde.linktype.remove(type)
-        if olde.linktype == set([]):
-            return outgraph, False
-
-#         if getattr(olde, 'linktype', '_notype') in self.filteredges:
-#             return outgraph, False
+        if olde.linktype == set():
+            return
 
         # Add nodes, data for ordering
         for obj in [obj1, obj2]:
@@ -526,7 +522,7 @@ class GraphShower(object):
 
                 # Filter notypes away if asked
                 if not hasattr(obj, doby) and '_notype' in filt:
-                    return outgraph, False
+                    return
                 elif not hasattr(obj, doby):
                     continue
                 
@@ -538,7 +534,7 @@ class GraphShower(object):
                         if left:
                             setattr(obj, doby, left)
                         else:
-                            return outgraph, False
+                            return
 
                 # Filtering by single values
                 target = getattr(obj, doby)
@@ -548,7 +544,7 @@ class GraphShower(object):
                     if left:
                         setattr(obj, doby, left)
                     else:
-                        return outgraph, False
+                        return
 
             # Add page categories to selection choices in the form
             # (for local pages only)
@@ -563,7 +559,7 @@ class GraphShower(object):
                 filt = '"%s"' % filt
                 cats = getattr(obj, 'WikiCategory', set([]))
                 if filt in cats:
-                    return outgraph, False
+                    return
 
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(nonguaranteeds_p(obj))
@@ -651,32 +647,30 @@ class GraphShower(object):
         if self.limit:
             if not (outgraph.nodes.get(obj1.node) and
                     outgraph.nodes.get(obj2.node)):
-                return outgraph, True
+                return
 
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
         if self.hidedges:
             e.style = "invis"
 
-        return outgraph, True
+        return
 
-    def traverseParentChild(self, addFunc, graphdata, outgraph, nodes):
-        # addFunc is the function to be called for each graph addition
+    def traverseParentChild(self, graphdata, outgraph, nodes):
         # graphdata is the 'in' graph extended and traversed
 
         request = self.request
         urladd = self.urladd
-        starts = self.startpages
 
         cl.start('traverseparent')
         # This traverses 1 to parents
         for node in nodes:
             nodeitem = graphdata.nodes.get(node)
-            parents = load_parents(request, graphdata, node, urladd, starts)
+            parents = load_parents(request, graphdata, node, urladd)
             for parent in parents:
                 parentitem = graphdata.nodes.get(parent)
-                outgraph, ret = addFunc(graphdata, outgraph, 
-                                        parentitem, nodeitem)
+                self.addToGraphWithFilter(graphdata, outgraph, 
+                                          parentitem, nodeitem)
         cl.stop('traverseparent')
 
         cl.start('traversechild')
@@ -686,8 +680,8 @@ class GraphShower(object):
             children = load_children(request, graphdata, node, urladd)
             for child in children:
                 childitem = graphdata.nodes.get(child)
-                outgraph, ret = addFunc(graphdata, outgraph, 
-                                        nodeitem, childitem)
+                self.addToGraphWithFilter(graphdata, outgraph, 
+                                          nodeitem, childitem)
         cl.stop('traversechild')
 
         return outgraph
@@ -1505,8 +1499,7 @@ class GraphShower(object):
         newnodes = nodes
     
         for n in range(1, self.depth+1):
-            outgraph = self.traverse(self.addToGraphWithFilter,
-                                     graphdata, outgraph, newnodes)
+            outgraph = self.traverseParentChild(graphdata, outgraph, newnodes)
             newnodes = set([x for x, in outgraph.nodes.getall()])
             # continue only if new pages were found
             newnodes = newnodes.difference(nodes)
