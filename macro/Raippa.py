@@ -174,10 +174,10 @@ def questionhtml(request, questionpage, number=""):
                     i += 1
                     id = "%s_%s" % (number, i)
                     html += u'''<input type="radio" name="answer%s" id="ans%s"
-                    value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), id, answer, id, answer)
+                    value="%s"><label for="ans%s"> %s</label>\n''' % (str(number), id, answer.replace('"','&quot;'), id, answer)
                 html += u'<br><hr>\n'
             else:
-                html += u'<input type="hidden" name="answer%s" value="%s">\n' % (str(number), answerlist[0])
+                html += u'<input type="hidden" name="answer%s" value="%s">\n' % (str(number), answerlist[0].replace('"','&quot;'))
         else:
             random.shuffle(answerlist)
             html += question + u'<br>\n'
@@ -185,7 +185,7 @@ def questionhtml(request, questionpage, number=""):
                 i += 1
                 id = "%s_%s" % (number, i)
                 html += u'''<input type="radio" name="answer%s" id="ans%s"
-                value="%s"><label for="ans%s"> %s</label><br>\n''' % (str(number), id, answer, id, answer)
+                value="%s"><label for="ans%s"> %s</label><br>\n''' % (str(number), id, answer.replace('"','&quot;'), id, answer)
             html += u'<br><hr>\n'
 
     elif answertype == u'checkbox':
@@ -196,7 +196,7 @@ def questionhtml(request, questionpage, number=""):
             i += 1
             id = "%s_%s" % (number, i)
             html += u'''<input type="checkbox" id="ans%s" name="answer%s" value="%s"><label
-            for="ans%s">%s</label><br>\n''' % (id, str(number), answer, id,  answer)
+            for="ans%s">%s</label><br>\n''' % (id, str(number), answer.replace('"','&quot;'), id,  answer)
         html += u'<br><hr>\n'
     elif answertype ==u'file':
         html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
@@ -308,7 +308,7 @@ def courselisthtml(request):
                 metas = getmetas(request, request.graphdata, encode(page), [u'id', u'name'], checkAccess=False)
                 id = metas[u'id'][0][0]
                 name = metas[u'name'][0][0]
-                html += u'<option value="%s">%s - %s\n' % (page, id, name)
+                html += u'<option value="%s">%s - %s</option>\n' % (page.replace('"','&quot;'), id, name)
             html += u'''
     </select>
     <br>
