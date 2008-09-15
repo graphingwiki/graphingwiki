@@ -14,6 +14,49 @@ def coursesform(request):
         html += u'''
   <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
+window.addEvent('domready', function(){
+  var typesel = $('qtypesel');
+  typesel.addEvent('change', function(){
+      checkQtype();
+    });
+
+    checkQtype();
+  });
+
+
+function checkQtype(){
+  var typesel = $('qtypesel');
+  var qlist = $$('select[id^=q_type]');
+  qlist.setStyle('display', 'none');
+  qlist.value = '';
+  var selected = $(typesel.value);
+  if(selected){
+    selected.setStyle('display','');
+  }
+}
+
+function submitQuestion(){
+  var typesel = $('qtypesel');
+  var selected = $(typesel.value);
+  var form = $('question_form');
+  if(selected){
+    var question = new Element('input', {
+      'type' : 'hidden',
+      'value':  selected.value,
+      'name' : 'question'
+      });
+    var edit = new Element('input', {
+      'type': 'hidden',
+      'name' : 'edit',
+      'value' : 'edit'
+      });
+  edit.inject(form);
+  question.inject(form);
+  form.submit();
+  }
+}
+
+
 function sel_stats(){
   $('course_action').set('value', 'teacherTools');
   var form = $('course_form');
@@ -101,24 +144,53 @@ Tasks:
 '''
     html += u'''
 <tr><td colspan="2">
-Questions:
+Question type:
 </td></tr>
 <tr>
-    <td>
+<td>
 <form method="post" id="question_form" action="%s">
-    <input type="hidden" name="action" value="editQuestion">
-    <select name="question" class="maxwidth">''' % request.request_uri.split("?")[0]
-    globaldata, questionlist, metakeys, styles = metatable_parseargs(request, questioncategory)
-    for page in questionlist:
-        metas = getmetas(request, request.globaldata, page, ["question"])
-        for question, type in metas["question"]:
-            break
-        html += u'<option value="%s">%s\n' % (page, question)
-    html += u'''</select>
+    <input type="hidden" name="action" value="editQuestion">''' % request.request_uri.split("?")[0]
+    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
+   
+    typedict = {None:list()}    
+    for page in pagelist:
+            try:
+                metas = getmetas(request, request.graphdata, encode(page), ["type", "question"])
+                question = metas["question"][0][0]
+                if metas["type"]:
+                    for type, metatype in metas["type"]:
+                        if not typedict.has_key(type):
+                            typedict[type] = list()
+                        typedict[type].append((page, question))
+                else:
+                    typedict[None].append((page, question))
+            except:
+                pass
+    #typelist
+    html += u'<select id="qtypesel" class="maxwidth" name="question_type">\n'
+    for type in typedict:
+        html += '<option value="q_type_%s">%s\n' % (type, type)
+    html += u'''</select></td><td>
+</td></tr>
+<tr><td colspan="2">
+Questions:
+</td></tr>
+<tr><td>
+'''
+
+    #questionlists
+    for type, questionlist in typedict.iteritems():
+        html += u'''
+<select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % type
+        for questionpagename, questiontext in questionlist:
+            html += u'<option name="question" value="%s">%s</option>\n' % (questionpagename, questiontext)
+        html += u'</select>\n'
+
+    html += u'''
     </td><td>
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('question_form')">
-    <input type='submit' name='edit' value='edit'>
+    <input type='button' name='edit' value='edit' onclick="submitQuestion();">
     <input type='submit' name='new' value='new'>
     </td>
 </form>
