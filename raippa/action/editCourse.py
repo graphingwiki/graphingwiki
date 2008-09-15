@@ -79,7 +79,7 @@ select tasks:
             else:
                 description = metas["description"][0][0]
             pagehtml += u'''
-    <div class="dragItem"><input type="hidden" name="%s" value="%s">%s</div>\n''' % (description, page, description)
+    <div class="dragItem"><input type="hidden" name="%s" value="%s">%s</div>\n''' % (description, page.replace('"', '&quot;'), description.replace('"', '&quot;'))
         except:
             pass
     pagehtml += u'''
@@ -88,7 +88,7 @@ select tasks:
 <form method="post" id="submitform" name="courseForm">
 <input type="hidden" name="action" value="editCourse">\n'''
     if course:
-        pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course
+        pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course.replace('"', '&quot;')
     pagehtml += u'''
     <script type="text/javascript">
 	function loadData(){\n'''
@@ -127,7 +127,7 @@ select tasks:
                         for deadline, type in metas["deadline"]:
                             break
 
-                    html += u'newBox("%s","%s","%s","%s"%s,"%s");\n' % (tasks[point], tasks[next], description, split, prerequisites, deadline)
+                    html += u'newBox("%s","%s","%s","%s"%s,"%s");\n' % (tasks[point].replace('"', '&quot;'), tasks[next].replace('"', '&quot;'), description.replace('"', '&quot;'), split.replace('"', '&quot;'), prerequisites.replace('"', '&quot;'), deadline.replace('"', '&quot;'))
                     #html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], description)
                     donelist.append(point)
                     if next not in donelist:
