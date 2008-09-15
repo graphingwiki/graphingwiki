@@ -417,7 +417,7 @@ select questions:<br>
         pagehtml += u'''<select size="10" style="width:200px;" id="type_%s" name="questionList"
         multiple="multiple">\n''' % type
         for questionpagename, questiontext in questionlist:
-            pagehtml += u'<option name="question" title="%s:: " value="%s">%s</option>\n' % (questiontext, questionpagename, questiontext)
+            pagehtml += u'<option name="question" title="%s:: " value="%s">%s</option>\n' % (questiontext.replace('"','&quot;'), questionpagename, questiontext)
         pagehtml += u'</select>\n'
     pagehtml += u'''
     </td>
@@ -440,7 +440,7 @@ select questions:<br>
         try:
             metas = getmetas(request, request.graphdata, encode(page), ["question"])
             question = metas["question"][0][0]
-            pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question,page,recapdict.get(page,""))
+            pagehtml +=u'addOption(document.getElementById("flist"),"%s","%s","%s");\n' %(question.replace('"','&quot;'),page,recapdict.get(page,""))
         except:
             pass
     pagehtml += '''
