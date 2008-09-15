@@ -100,7 +100,7 @@ Courses:
         for name, type in metas["name"]:
             listtext += u' - ' + name
             break 
-        html += u'<option name="course" value="%s">%s\n' % (page, listtext)
+        html += u'<option name="course" value="%s">%s</option>\n' % (page.replace('"', '&quot;'), listtext)
     html += '''
     </select></td>
     <td>
@@ -129,7 +129,7 @@ Tasks:
         else:
             for description, type in metas["description"]:
                 break
-        html += u'<option name="task" value="%s">%s\n' % (page, description)
+        html += u'<option name="task" value="%s">%s</option>\n' % (page.replace('"', '&quot;'), description)
     html += '''
     </select>
     </td>
@@ -169,7 +169,7 @@ Question type:
     #typelist
     html += u'<select id="qtypesel" class="maxwidth" name="question_type">\n'
     for type in typedict:
-        html += '<option value="q_type_%s">%s\n' % (type, type)
+        html += '<option value="q_type_%s">%s</option>\n' % (str(type).replace('"', '&quot;'), type)
     html += u'''</select></td><td>
 </td></tr>
 <tr><td colspan="2">
@@ -181,9 +181,9 @@ Questions:
     #questionlists
     for type, questionlist in typedict.iteritems():
         html += u'''
-<select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % type
+<select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % str(type).replace('"', '&quot;')
         for questionpagename, questiontext in questionlist:
-            html += u'<option name="question" value="%s">%s</option>\n' % (questionpagename, questiontext)
+            html += u'<option name="question" value="%s">%s</option>\n' % (questionpagename.replace('"', '&quot;'), questiontext)
         html += u'</select>\n'
 
     html += u'''
