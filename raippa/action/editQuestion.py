@@ -323,11 +323,11 @@ return true;
     for type in list(set(questiontypes)):
         if questionpage:
             if type in question.types:
-                html += u'<option value="%s" selected="selected">%s</option>\n' % (type, type)
+                html += u'<option value="%s" selected="selected">%s</option>\n' % (type.replace('"','&quot;'), type)
             else:
-                html += u'<option value="%s">%s</option>\n' % (type, type)
+                html += u'<option value="%s">%s</option>\n' % (type.replace('"','&quot;'), type)
         else:
-            html += u'<option value="%s">%s</option>\n' % (type, type)
+            html += u'<option value="%s">%s</option>\n' % (type.replace('"','&quot;'), type)
     html += u'''
 </select> &nbsp; 
 <input size="30" type="text" name="type">
@@ -388,7 +388,7 @@ return true;
                 html += u'''
 <tr id="ansTr%s">
 <td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this answer to be deleted"></td>
-<td><input type="text" name="answer%s" value="%s"></td>''' % (number, number, number, answer)
+<td><input type="text" name="answer%s" value="%s"></td>''' % (number, number, number, answer.replace('"','&quot;'))
                 #regexp and CaseSens goes here
                 value = answeroptions[0]
                 if value == "true":
@@ -397,7 +397,7 @@ return true;
 <td><input type="radio" name="value%s" value="false" onClick="show(this);"></td>''' % (number, number, number)
                 else:
                     html += u'''
-<td><input type="radio" id="value%s" name="value%s" value="true" onClick=""></td>
+<td><input type="radio" id="value%s" name="value%s" value="true" onClick="hide(this);"></td>
 <td><input type="radio" name="value%s" value="false" onClick="show(this);" checked></td>''' % (number, number, number)
                 tip = answeroptions[1]
                 if tip:
@@ -407,7 +407,7 @@ return true;
                         break
                     html += u'''
 <td><span class="tip">Tip: <input type="text" name="tip%s" value="%s"></span></td>
-</tr>''' % (number, tipnote)
+</tr>''' % (number, tipnote.replace('"','&quot;'))
                 else:
                     html += u'''
 <td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
