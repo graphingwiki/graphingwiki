@@ -111,7 +111,61 @@ Courses:
     <input type="button" value="stats" onclick="sel_stats();">
     </td>
 </form>
-</tr>
+</tr>'''
+
+
+
+###TASK SUBJECTS####
+####################
+    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
+    subjectdict = {None:list()}
+    for page in pagelist:
+        try:
+            metas = getmetas(request, request.graphdata, encode(page), ["title", "description", "subject"])
+            if metas["title"]:
+                for description, type in metas["title"]:
+                    break
+            else:
+                for description, type in metas["description"]:
+                    break
+            if metas["subject"]:
+                for subject, metatype in metas["subject"]:
+                    if not subjectdict.has_key(subject):
+                        subjectdict[subject] = list()
+                    subjectdict[subject].append((page, description))
+            else:
+                subjectdict[None].append((page, description))
+        except:
+            pass
+    #subjectlist
+    html += u'''
+</td></tr>
+<tr><td colspan="2">
+Tasks subjects:
+</td></tr>
+<tr><td>'''
+    html += u'<select name="tasksubject">\n'
+    for subject in subjectdict:
+        html+=u'<option value="%s">%s</option>\n' % (subject, subject)
+    html += u'''</select></td><td>
+</td></tr>
+<tr><td colspan="2">
+Tasks:
+</td></tr>
+<tr><td>
+'''
+    #tasklists
+    for subject, tasklist in subjectdict.iteritems():
+        html += u'''
+<select  name="taskList">\n''' 
+        for taskpagename, taskdescription in tasklist:
+            html += u'<option name="question" value="%s">%s</option>\n' % (taskpagename, taskdescription)
+        html += u'</select>\n'
+
+#################
+#################
+
+    html += u'''
 <tr><td colspan="2">
 Tasks:
 </td></tr>
