@@ -33,9 +33,8 @@ import shelve
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.patterns import decode_page
-
-from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
+from graphingwiki.patterns import decode_page, nonguaranteeds_p
+from graphingwiki.patterns import get_interwikilist, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''
@@ -145,8 +144,9 @@ def n3dump(request, pages):
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
 """
+    get_interwikilist(request)
 
-    for iw, iw_url in get_interwikilist(request).items():
+    for iw, iw_url in request.iwlist.items():
         outstr = (outstr + '@prefix '+ iw + ': <' + 
                   iw_url + '> .' + "\n")
 

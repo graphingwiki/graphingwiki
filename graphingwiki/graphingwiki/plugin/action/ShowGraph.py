@@ -44,7 +44,6 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.util import MoinMoinNoFooter
-from MoinMoin.action import AttachFile
 
 from MoinMoin.request import Clock
 cl = Clock()
@@ -56,9 +55,6 @@ from graphingwiki.editing import ordervalue
 
 import math
 import colorsys
-
-# imports from other actions
-from savegraphdata import local_page
 
 # Header stuff for IE
 msie_header = """Content-type: message/rfc822
@@ -91,34 +87,6 @@ Content-Transfer-Encoding: base64
 
 msie_end = "\n--partboundary--\n\n"
 
-def get_interwikilist(request):
-    # request.cfg._interwiki_list is gathered by wikiutil
-    # the first time resolve_wiki is called
-    wikiutil.resolve_wiki(request, 'Dummy:Testing')
-
-    iwlist = {}
-    selfname = get_selfname(request)
-
-    # Add interwikinames to namespaces
-    for iw in request.cfg._interwiki_list:
-        iw_url = request.cfg._interwiki_list[iw]
-        if iw_url.startswith('/'):
-            if iw != selfname:
-                continue
-            iw_url = get_wikiurl(request)
-        iwlist[iw] = iw_url
-
-    return iwlist
-
-def get_selfname(request):
-    if request.cfg.interwikiname:
-        return request.cfg.interwikiname
-    else:
-        return 'Self'
-
-def get_wikiurl(request):
-    return request.getBaseURL() + '/'
-
 # Escape quotes to numeric char references, remove outer quotes.
 def quoteformstr(text):
     text = text.strip("\"'")
@@ -150,7 +118,6 @@ class GraphShower(object):
         self.edgelabels = 0
 
         self.isstandard = False
-        self.interwikilist = []
         
         self.categories = []
         self.otherpages = []
@@ -206,7 +173,7 @@ class GraphShower(object):
         self.size = ''
 
         # Node filter of an existing type
-        self.oftype_p = lambda x: x != '_notype'
+        self.oftype_p = lambda x: x != NO_TYPE
  
         # Category, Template matching regexps
         self.cat_re = re.compile(request.cfg.page_category_regex)
@@ -215,7 +182,7 @@ class GraphShower(object):
     def wrapColorFunc(self, func):
         def colorFunc(string, darknessFactor=1.0):
             # Black edges must be black                  
-            if string == '_notype':
+            if string == NO_TYPE:
                 return "black"        
         
             color = self.used_colors.get(string, None)
@@ -429,7 +396,7 @@ class GraphShower(object):
 
         def get_categories(nodename):
             pagedata = self.request.graphdata.getpage(nodename)
-            return pagedata.get('metas', {}).get('WikiCategory', set())
+            return pagedata.get('metas', {}).get('gwikicategory', set())
 
         for nodename in self.otherpages:
             graphdata = self.addToStartPages(graphdata, nodename)
@@ -525,7 +492,7 @@ class GraphShower(object):
                     continue
 
                 # Filter notypes away if asked
-                if not hasattr(obj, doby) and '_notype' in filt:
+                if not hasattr(obj, doby) and NO_TYPE in filt:
                     return
                 elif not hasattr(obj, doby):
                     continue
@@ -554,14 +521,14 @@ class GraphShower(object):
             # (for local pages only)
 #            print obj.node
             if obj.gwikiURL[0] in ['.', '/']:
-                cats = getattr(obj, 'WikiCategory', set())
+                cats = getattr(obj, 'gwikicategory', set())
                 cats = [x.strip('"') for x in cats]
                 self.addToAllCats(cats)
 
             # Category filter
             for filt in self.filtercats:
                 filt = '"%s"' % filt
-                cats = getattr(obj, 'WikiCategory', set([]))
+                cats = getattr(obj, 'gwikicategory', set([]))
                 if filt in cats:
                     return
 
@@ -587,7 +554,6 @@ class GraphShower(object):
 
             # Shapefiles
             if getattr(obj, 'gwikishapefile', None):
-
                 # Enter file path for attachment shapefiles
                 value = obj.gwikishapefile[11:]
                 components = value.split('/')
@@ -598,11 +564,11 @@ class GraphShower(object):
                 file = unicode(url_unquote(components[-1]), config.charset)
 
                 page = unicode(url_unquote(page), config.charset)
-                shapefile = AttachFile.getFilename(self.request,
-                                                   page, file)
+
+                shapefile, exists = attachment_file(self.request, page, file)
 
                 # get attach file path, empty label
-                if os.path.isfile(shapefile):
+                if exists:
                     n.gwikishapefile = shapefile
                     
                     # Stylistic stuff: label, borders
@@ -738,7 +704,7 @@ class GraphShower(object):
             if self.edgelabels:
                 obj.decorate = 'true'
                 obj.label = ','.join(url_unquote(x) for x in obj.linktype
-                                     if x != '_notype')
+                                     if x != NO_TYPE)
         return outgraph
 
     def fixNodeUrls(self, outgraph):
@@ -761,16 +727,15 @@ class GraphShower(object):
         for name, in outgraph.nodes.getall():
             node = outgraph.nodes.get(name)
             if not node.gwikilabel:
-                node.gwikilabel = url_unquote(name)
-            # If local link:
-            if node.gwikiURL[0] in ['.', '/']:
+                node.gwikilabel = name
+
+            # local full-path relative links
+            if node.gwikiURL[0] == '/':
+                continue
+            # local relative links
+            elif node.gwikiURL[0] == '.':
                 node.gwikiURL = self.request.getScriptname() + \
                                 node.gwikiURL.lstrip('.')
-                # If attachment
-                if 'action=AttachFile' in node.gwikiURL:
-                    node.gwikilabel = "%s:\n%s" % (encode(_("Attachment")),
-                                                   node.gwikilabel)
-
             elif len(node.gwikilabel) == 0 and len(node.gwikiURL) > 50:
                 node.gwikilabel = node.gwikiURL[:47] + '...'
             elif len(node.gwikilabel) > 50:
@@ -797,18 +762,18 @@ class GraphShower(object):
     def getURLns(self, link):
         # Find out subpage level to adjust URL:s accordingly
         subrank = self.request.page.page_name.count('/')
-        if not self.interwikilist:
-            self.interwikilist = get_interwikilist(self.request)
+        if not hasattr(self.request, 'iwlist'):
+            get_interwikilist(self.request)
         # Namespaced names
         if ':' in link:
             iwname = link.split(':')
-            if self.interwikilist.has_key(iwname[0]):
-                return self.interwikilist[iwname[0]] + iwname[1]
+            if self.request.iwlist.has_key(iwname[0]):
+                return self.request.iwlist[iwname[0]] + iwname[1]
             else:
                 return '../' * subrank + './InterWiki'
         # handle categories differently as ordernodes:
         # they will just direct to the category page
-        if link == 'WikiCategory':
+        if link == 'gwikicategory':
             return ''
         return '../' * subrank + './Property' + link
 
@@ -1088,9 +1053,9 @@ class GraphShower(object):
 
         def sortShuffle(types):
             types = sorted(types)
-            if 'WikiCategory' in types:
-                types.remove('WikiCategory')
-                types.insert(0, 'WikiCategory')
+            if 'gwikicategory' in types:
+                types.remove('gwikicategory')
+                types.insert(0, 'gwikicategory')
             return types
 
         request.write(u'<div class="showgraph-panel2">\n')
@@ -1237,15 +1202,15 @@ class GraphShower(object):
 
         if len(alledges) > 5:
             request.write(u'<option value="%s"%s%s</option><br>\n' %
-                      ("_notype",
-                      "_notype" in self.filteredges and " selected>" or ">",
+                      (NO_TYPE,
+                      NO_TYPE in self.filteredges and " selected>" or ">",
                       _("No type")))
             request.write(u'</select><br>\n')
         else:
             request.write(u'<input type="checkbox" name="filteredges" ' +
                       u'value="%s"%s%s<br>\n' %
-                      ("_notype",
-                      "_notype" in self.filteredges and
+                      (NO_TYPE,
+                      NO_TYPE in self.filteredges and
                       " checked>"
                       or ">",
                       _("No type")))
@@ -1299,15 +1264,15 @@ class GraphShower(object):
 
             if len(allcolor) > 5:
 		request.write(u'<option value="%s"%s%s</option><br>\n' %
-		  	  ("_notype",
-		  	  "_notype" in self.filtercolor and " selected>" or ">",
+		  	  (NO_TYPE,
+		  	  NO_TYPE in self.filtercolor and " selected>" or ">",
 		          _("No type")))
 		request.write(u'</select><br>\n')
     	    else:
 		request.write(u'<input type="checkbox" name="filtercolor" ' +
 		          u'value="%s"%s%s<br>\n' %
-		          ("_notype",
-		          "_notype" in self.filtercolor and
+		          (NO_TYPE,
+		          NO_TYPE in self.filtercolor and
 		          " checked>"
 		          or ">",
 		          _("No type")))
@@ -1340,15 +1305,15 @@ class GraphShower(object):
 
             if len(allorder) > 5:
                 request.write(u'<option value="%s"%s%s</option><br>\n' %
-                          ("_notype",
-                          "_notype" in self.filterorder and " selected>" or ">",
+                          (NO_TYPE,
+                          NO_TYPE in self.filterorder and " selected>" or ">",
                           _("No type")))
                 request.write(u'</select><br>\n')
             else:
                 request.write(u'<input type="checkbox" name="filterorder" ' +
                           u'value="%s"%s%s<br>\n' %
-                          ("_notype",
-                           "_notype" in self.filterorder
+                          (NO_TYPE,
+                           NO_TYPE in self.filterorder
                            and " checked>"
                            or ">",
                            _("No type")))
@@ -1529,7 +1494,7 @@ class GraphShower(object):
         for edge in outgraph.edges.getall():
             e = outgraph.edges.get(*edge)
             # Fix linktypes to strings
-            linktypes = getattr(e, 'linktype', ['_notype'])
+            linktypes = getattr(e, 'linktype', [NO_TYPE])
             lt = ', '.join(linktypes)
 
             e.linktype = lt
@@ -1542,7 +1507,7 @@ class GraphShower(object):
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
-            ltdisp = ', '.join(x for x in linktypes if x != '_notype')
+            ltdisp = ', '.join(x for x in linktypes if x != NO_TYPE)
             val = '%s>%s>%s' % (url_unquote(edge[0]),
                                 url_unquote(ltdisp),
                                 url_unquote(edge[1]))

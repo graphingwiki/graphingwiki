@@ -27,7 +27,8 @@ from MoinMoin import caching
 from MoinMoin.util.lock import ReadLock
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import nonguaranteeds_p
+from graphingwiki.patterns import nonguaranteeds_p, NO_TYPE
+from graphingwiki.patterns import absolute_attach_name
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -60,14 +61,23 @@ def get_revisions(request, page):
 
     pagename = page.page_name
     for rev in page.getRevList():
+        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
+
+        # Data about revisions is now saved to the graphdata
+        # at the same time this is used.
+        if request.graphdata.has_key(revlink):
+            revisions[rev] = revlink
+            continue
+
+        # If not cached, parse the text for the page
         revpage = Page(request, pagename, rev=rev)
         text = revpage.get_raw_body()
         alldata = parse_text(request, revpage, text)
-        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
         if alldata.has_key(pagename):
             request.graphdata[revlink] = alldata[pagename]
             # So that new values are appended rather than overwritten
             del alldata[pagename]
+
             # Add revision as meta so that it is shown in the table
             request.graphdata[revlink].setdefault('meta', 
                                                   dict())['#rev'] = [str(rev)]
@@ -241,21 +251,9 @@ def getkeys(request, name):
     keys = set(page.get('meta', {}).keys())
     # Non-typed links are not included
     keys.update(set(x for x in page.get('out', {}).keys()
-                    if x != '_notype'))
+                    if x != NO_TYPE))
     keys = {}.fromkeys(keys, '')
     return keys
-
-def absolute_attach_name(name, target):
-    abs_method = target.split(':')[0]
-
-    # Pages from MetaRevisions may have ?action=recall, breaking attach links
-    if '?' in name:
-        name = name.split('?', 1)[0]
-
-    if abs_method in Parser.attachment_schemas and not '/' in target:
-        target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
-
-    return target
 
 # Fetch requested metakey value for the given page.
 def getmetas(request, name, metakeys, 
@@ -290,7 +288,9 @@ def getmetas(request, name, metakeys,
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
                 if abs_attach:
+                    request.write(target + '<br>')
                     target = absolute_attach_name(name, target)
+                    request.write(target + '<br>')
 
                 pageMeta[key].append(target)
             

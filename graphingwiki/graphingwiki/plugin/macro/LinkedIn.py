@@ -27,14 +27,14 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from graphingwiki.patterns import decode_page
+from graphingwiki.patterns import NO_TYPE
 
 Dependencies = ['pagelinks']
 
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
-    pagename = decode_page(pagename)
-    _ = macro.request.getText
+    request = macro.request
+    _ = request.getText
 
     meta = False
     if args and 'meta' in args:
@@ -48,9 +48,8 @@ def execute(macro, args):
     for type in pdata.get('in', {}):
         for page in pdata['in'][type]:
             typeinfo = ''
-            if meta and type != '_notype':
+            if meta and type != NO_TYPE:
                 typeinfo = " (%s)" % (type)
-            page = decode_page(page)
             if not page in nodes:
                 out.append(macro.formatter.pagelink(1, page) +
                            macro.formatter.text(page + typeinfo) +

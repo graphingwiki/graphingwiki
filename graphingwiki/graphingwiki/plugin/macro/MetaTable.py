@@ -28,15 +28,12 @@
 
 """
 import re
-import StringIO
 
 from MoinMoin import wikiutil
-from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.editing import formatting_rules
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode, format_wikitext
 
 Dependencies = ['metadata']
 
@@ -76,20 +73,7 @@ def t_cell(macro, vals, head=0, style=dict()):
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(1))
 
-            out.page.formatter = out.formatter
-            parser = Parser(data, out)
-            # No line anchors of any type to table cells
-            out.page.formatter.in_p = 1
-            parser._line_anchordef = lambda: ''
-
-            # Using StringIO in order to strip the output
-            data = StringIO.StringIO()
-            out.redirect(data)
-            # Produces output on a single table cell
-            out.page.format(parser)
-            out.redirect()
-
-            out.write(data.getvalue().strip())
+            out.write(format_wikitext(out, data))
 
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(0))

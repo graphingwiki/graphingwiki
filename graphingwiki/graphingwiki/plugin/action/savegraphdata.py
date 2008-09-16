@@ -40,111 +40,106 @@ from MoinMoin.wikiutil import importPlugin
 from MoinMoin.util.lock import WriteLock
 
 # graphlib imports
-from graphingwiki import graph
-from graphingwiki.patterns import special_attrs
+from graphingwiki.patterns import node_type, special_attrs, NO_TYPE
 from graphingwiki.editing import parse_categories
-
-# Page names cannot contain '//'
-url_re = re.compile(u'^(%s)://' % (Parser.url_pattern))
-
-# We only want to save linkage data releted to pages in this wiki
-def local_page(pagename):
-    if url_re.search(pagename):
-        return False
-    return True
 
 # Add in-links from current node to local nodes
 def shelve_add_in(new_data, (frm, to), linktype):
     if not linktype:
-        linktype = '_notype'
-    if local_page(to):
-         temp = new_data.get(to, {})
+        linktype = NO_TYPE
 
-         if not temp.has_key('in'):
-             temp['in'] = {linktype: [frm]}
-         elif not temp['in'].has_key(linktype):
-             temp['in'][linktype] = [frm]
-         else:
-             temp['in'][linktype].append(frm)
+    temp = new_data.get(to, {})
 
-         # Notification that the destination has changed
-         temp['mtime'] = time()
-         
-         new_data[to] = temp
+    if not temp.has_key(u'in'):
+        temp[u'in'] = {linktype: [frm]}
+    elif not temp[u'in'].has_key(linktype):
+        temp[u'in'][linktype] = [frm]
+    else:
+        temp[u'in'][linktype].append(frm)
+        
+    # Notification that the destination has changed
+    temp[u'mtime'] = time()
+
+    new_data[to] = temp
 
 # Add out-links from local nodes to current node
 def shelve_add_out(new_data, (frm, to), linktype, hit):
     if not linktype:
-        linktype = '_notype'
-    if local_page(frm):
-         temp = new_data.get(frm, {})
+        linktype = NO_TYPE
 
-         # Also add literal text (hit) for each link
-         # eg, if out it SomePage, lit can be ["SomePage"]
-         if not temp.has_key('out'):
-             temp['out'] = {linktype: [to]}
-             temp['lit'] = {linktype: [hit]}
-         elif not temp['out'].has_key(linktype):
-             temp['out'][linktype] = [to]
-             temp['lit'][linktype] = [hit]
-         else:
-             temp['out'][linktype].append(to)
-             temp['lit'][linktype].append(hit)
+    temp = new_data.get(frm, {})
 
-         new_data[frm] = temp
+    # Also add literal text (hit) for each link
+    # eg, if out it SomePage, lit can be ["SomePage"]
+    if not temp.has_key(u'out'):
+        temp[u'out'] = {linktype: [to]}
+        temp[u'lit'] = {linktype: [hit]}
+    elif not temp[u'out'].has_key(linktype):
+        temp[u'out'][linktype] = [to]
+        temp[u'lit'][linktype] = [hit]
+    else:
+        temp[u'out'][linktype].append(to)
+        temp[u'lit'][linktype].append(hit)
+
+    new_data[frm] = temp
 
 # Respectively, remove in-links
 def shelve_remove_in(new_data, (frm, to), linktype):
     import sys
-#    sys.stderr.write('Starting to remove in\n')
+    # sys.stderr.write('Starting to remove in\n')
     temp = new_data.get(to, {})
-    if local_page(to) and temp.has_key('in'):
-        for type in linktype:
-#            sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
-            # eg. when the shelve is just started, it's empty
-            if not temp['in'].has_key(type):
-#                sys.stderr.write("No such type: %s\n" % type)
-                continue
-            while frm in temp['in'][type]:
-                temp['in'][type].remove(frm)
+    if not temp.has_key(u'in'):
+        return
 
-                # Notification that the destination has changed
-                temp['mtime'] = time()
+    for type in linktype:
+        # sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
+        # eg. when the shelve is just started, it's empty
+        if not temp[u'in'].has_key(type):
+            # sys.stderr.write("No such type: %s\n" % type)
+            continue
+        while frm in temp[u'in'][type]:
+            temp[u'in'][type].remove(frm)
 
-            if not temp['in'][type]:
-                del temp['in'][type]
-                
-#                sys.stderr.write("Hey man, I think I did it!\n")
-        new_data[to] = temp
+            # Notification that the destination has changed
+            temp[u'mtime'] = time()
+
+        if not temp[u'in'][type]:
+            del temp[u'in'][type]
+
+    # sys.stderr.write("Hey man, I think I did it!\n")
+    new_data[to] = temp
 
 # Respectively, remove out-links
 def shelve_remove_out(new_data, (frm, to), linktype):
-#    print 'Starting to remove out'
+    # print 'Starting to remove out'
     temp = new_data.get(frm, {})
-    if local_page(frm) and temp.has_key('out'):
-        for type in linktype:
-#            print "Removing %s %s %s" % (frm, to, linktype)
-            # eg. when the shelve is just started, it's empty
-            if not temp['out'].has_key(type):
-#                print "No such type: %s" % type
-                continue
-            while to in temp['out'][type]:
-                # As the literal text values for the links
-                # are added at the same time, they have the
-                # same index value
-                i = temp['out'][type].index(to)
-                temp['out'][type].remove(to)
-                del temp['lit'][type][i]
 
-#                print "removed %s" % (repr(to))
+    if not temp.has_key(u'out'):
+        return 
 
-            if not temp['out'][type]:
-                del temp['out'][type]
-                del temp['lit'][type]
-#                print "%s empty" % (type)
-#            print "Hey man, I think I did it!"
+    for type in linktype:
+        # print "Removing %s %s %s" % (frm, to, linktype)
+        # eg. when the shelve is just started, it's empty
+        if not temp[u'out'].has_key(type):
+            # print "No such type: %s" % type
+            continue
+        while to in temp[u'out'][type]:
+            # As the literal text values for the links
+            # are added at the same time, they have the
+            # same index value
+            i = temp[u'out'][type].index(to)
+            temp[u'out'][type].remove(to)
+            del temp[u'lit'][type][i]
 
-        new_data[frm] = temp
+            # print "removed %s" % (repr(to))
+
+        if not temp[u'out'][type]:
+            del temp[u'out'][type]
+            del temp[u'lit'][type]
+            # print "%s empty" % (type)
+            # print "Hey man, I think I did it!"
+
+    new_data[frm] = temp
 
 def strip_meta(key, val):
     key = key.strip()
@@ -157,35 +152,19 @@ def shelve_set_attribute(new_data, node, key, val):
 
     temp = new_data.get(node, {})
 
-    if not temp.has_key('meta'):
-        temp['meta'] = {key: [val]}
-    elif not temp['meta'].has_key(key):
-        temp['meta'][key] = [val]
+    if not temp.has_key(u'meta'):
+        temp[u'meta'] = {key: [val]}
+    elif not temp[u'meta'].has_key(key):
+        temp[u'meta'][key] = [val]
     # a page can not have more than one label, shapefile etc
     elif key in special_attrs:
-        temp['meta'][key] = [val]
+        temp[u'meta'][key] = [val]
     else:
-        temp['meta'][key].append(val)
+        temp[u'meta'][key].append(val)
 
     new_data[node] = temp
 
-def getlinktype(augdata):
-    linktype = ''
-    if len(augdata) > 1:
-        linktype = augdata[0]
-    return linktype
-
-def add_meta(new_data, pagename, hit):
-    # decode to target charset, grab comma-separated key,val
-    hit = hit[11:-3]
-    args = hit.split(',')
-
-    # If no data, continue
-    if len(args) < 2:
-        return
-
-    key = args[0]
-    val = ','.join(args[1:])
+def add_meta(new_data, pagename, (key, val)):
 
     # Do not handle empty metadata, except empty labels
     if key != 'gwikilabel':
@@ -213,67 +192,54 @@ def add_include(new_data, pagename, hit):
         return
 
     temp = new_data.get(pagename, {})
-    temp.setdefault('include', list()).append(pagearg)
+    temp.setdefault(u'include', list()).append(pagearg)
     new_data[pagename] = temp
 
 def parse_link(wikiparse, hit, type):
     replace = getattr(wikiparse, '_' + type + '_repl')
     attrs = replace(hit)
 
-    if len(attrs) == 4:
-        # Attachments, eg:
-        # URL   = Page?action=AttachFile&do=get&target=k.txt
-        # name  = Page/k.txt        
-        nodename = attrs[1]
-        nodeurl = attrs[0]
-    elif len(attrs) == 3:
-        # Local pages
-        # Name of node for local nodes = pagename
-        nodename = attrs[1]
-        nodeurl = attrs[0]
-        # To prevent subpagenames from sucking
-        if nodeurl.startswith('/'):
-            nodeurl = './' + nodename
-    elif len(attrs) == 2:
-        # Name of other nodes = url
-        nodeurl = attrs[0]
-        nodename = nodeurl
+    nodename = attrs[0]
+    linktype = ''
 
-        # Change name for different type of interwikilinks
-        if type == 'interwiki':
-            nodename = hit
-        elif type == 'url_bracket':
-            # Interwikilink in brackets?
-            iw = re.search(r'\[(?P<iw>.+?)[\] ]',
-                           hit).group('iw')
+    # Bracketed links and attachments may return extra data 
+    # (funnily enough, both with linktype url_bracket),
+    # which may include linktype [:Page:LinkType: text].
+    # This method of specifying linktype is considered quite 
+    # deprecated, and support for it may later be removed.
+    if type == 'url_bracket' and len(attrs) > 1:
+        linktype = attrs[1]
 
-            if iw.split(":")[0] == 'wiki':
-                iw = iw.split(None, 1)[0]
-                iw = iw[5:].replace('/', ':', 1)
-                nodename = iw
-        # Interwikilink turned url?
-        elif type == 'url':
-            if hit.split(":")[0] == 'wiki':
-                iw = hit[5:].replace('/', ':', 1)
-                nodename = iw
-    else:
-        # Catch-all
-        return "", "", ""
+    # Change name for different type of interwikilinks
+    if type == 'interwiki':
+        nodename = hit
+    elif type == 'url_bracket':
+        # Interwikilink in brackets?
+        iw = re.search(r'\[(?P<iw>.+?)[\] ]',
+                       hit).group('iw')
 
-    # augmented links, eg. [:PaGe:Ooh: PaGe]
-    augdata = [x.strip() for x in attrs[-1].split(': ')]
+        if iw.split(":")[0] == 'wiki':
+            iw = iw.split(None, 1)[0]
+            iw = iw[5:].replace('/', ':', 1)
+            nodename = iw
 
-    linktype = getlinktype(augdata)
+        # Bracket URL:s with linktype [:PaGe:Ooh: PaGe]
+        linktype = [x.strip() for x in linktype.split(': ')]
+        if len(linktype) > 1:
+            linktype = linktype[0]
+        else:
+            linktype = ''
 
-    return nodename, nodeurl, linktype
+    # Interwikilink turned url?
+    elif type == 'url':
+        if hit.split(":")[0] == 'wiki':
+            iw = hit[5:].replace('/', ':', 1)
+            nodename = iw
 
-def add_link(new_data, pagename, nodename, nodeurl, linktype, hit):
+    return nodename, linktype
+
+def add_link(new_data, pagename, nodename, linktype, hit):
     edge = [pagename, nodename]
-
-# in-links were here, but as they were never used, YAGNI
-#    if linktype.endswith('From'):
-#        linktype = linktype[:-4]
-#        edge.reverse()
 
     shelve_add_in(new_data, edge, linktype)
     shelve_add_out(new_data, edge, linktype, hit)
@@ -345,7 +311,7 @@ def parse_text(request, page, text):
                     found = True
                     if pi == '#acl':
                         temp = new_data.get(pagename, {})
-                        temp['acl'] = line[5:]
+                        temp[u'acl'] = line[5:]
                         new_data[pagename] = temp
 
             if not found:
@@ -376,9 +342,6 @@ def parse_text(request, page, text):
 
                 # Handling of MetaData- and Include-macros
                 elif type == 'macro' and not inpre:
-                    if hit.startswith('[[MetaData'):
-                        add_meta(new_data, pagename, hit)
-
                     if hit.startswith('[[Include'):
                         add_include(new_data, pagename, hit)
 
@@ -390,10 +353,10 @@ def parse_text(request, page, text):
                         dicturl = False
                         continue
 
-                    name, url, linktype = parse_link(wikiparse, hit, type)
+                    name, linktype = parse_link(wikiparse, hit, type)
 
                     if name:
-                        add_link(new_data, pagename, name, url, linktype, hit)
+                        add_link(new_data, pagename, name, linktype, hit)
 
                 # Links and metadata defined in a definition list
                 elif type == 'dl' and not inpre:
@@ -421,16 +384,12 @@ def parse_text(request, page, text):
                             # and nothing but link, save as link
                             if hit == val.strip():
 
-                                val = val.strip()
-                                name, url, linktype = parse_link(wikiparse,\
-                                                                 hit, type)
-
-                                # Take linktype from the dict key
-                                linktype = getlinktype([x for x in key, val])
+                                name, _ = parse_link(wikiparse,
+                                                     hit, type)
 
                                 if name:
                                     add_link(new_data, pagename, 
-                                             name, url, linktype, hit)
+                                             name, key, hit)
 
                                     # The val will also be parsed by
                                     # Moin's link parser -> need to
@@ -442,16 +401,14 @@ def parse_text(request, page, text):
                         continue
 
                     # If it was not link, save as metadata. 
-                    add_meta(new_data, pagename,
-                             "[[MetaData(%s,%s)]]" % (key, val))
+                    add_meta(new_data, pagename, (key, val))
 
     # Add the page categories as links too
     _, categories = parse_categories(request, text)
     for category in categories:
-        name, url, linktype = parse_link(wikiparse, category, "word")
+        name, linktype = parse_link(wikiparse, category, "word")
         if name:
-            add_link(new_data, pagename, 
-                     name, url, "gwikicategory", category)
+            add_link(new_data, pagename, name, "gwikicategory", category)
 
     return new_data
 
@@ -485,70 +442,85 @@ def execute(pagename, request, text, pagedir, page):
     lit_out.setdefault(pagename, list())
     del_out.setdefault(pagename, list())
 
-    old_keys = set(old_data.get('out', {}).keys())
-    new_keys = set(new_data.get(pagename, {}).get('out', {}).keys())
+    old_keys = set(old_data.get(u'out', {}).keys())
+    new_keys = set(new_data.get(pagename, {}).get(u'out', {}).keys())
     changed_keys = old_keys.intersection(new_keys)
 
-    # Changed edges
+    # Changed edges == keys whose values have experienced changes
     for key in changed_keys:
-        new_edges = len(new_data[pagename]['out'][key])
-        old_edges = len(old_data['out'][key])
+        new_edges = len(new_data[pagename][u'out'][key])
+        old_edges = len(old_data[u'out'][key])
 
         for i in range(max(new_edges, old_edges)):
 
             # old data had more links, delete old
             if new_edges <= i:
-                val = old_data['out'][key][i]
+                val = old_data[u'out'][key][i]
+                lit = old_data[u'lit'][key][i]
 
                 del_out[pagename].append((key, val))
 
-                del_in.setdefault(val, list()).append((key, pagename))
+                # Only local pages will have edges and metadata
+                if node_type(request, val) == 'page':
+                    del_in.setdefault(val, list()).append((key, pagename))
 
             # new data has more links, add new
             elif old_edges <= i:
-                val = new_data[pagename]['out'][key][i]
+                val = new_data[pagename][u'out'][key][i]
+                lit = new_data[pagename][u'lit'][key][i]
 
                 add_out[pagename].append((key, val))
-                lit_out[pagename].append(new_data[pagename]['lit'][key][i])
+                lit_out[pagename].append(lit)
 
-                add_in.setdefault(val, list()).append((key, pagename))
+                # Only save in-links to local pages, not eg. url or interwiki
+                if node_type(request, val) == 'page':
+                    add_in.setdefault(val, list()).append((key, pagename))
 
             # check if the link i has changed
             else:
-                val = old_data['out'][key][i]
+                val = old_data[u'out'][key][i]
+                new_val = new_data[pagename][u'out'][key][i]
 
-                if val == new_data[pagename]['out'][key][i]:
+                if val == new_val:
                     continue
-                
+
                 # link changed, replace old link with new
+                lit = new_data[pagename][u'lit'][key][i]                
 
-                new_page = new_data[pagename]['out'][key][i]
+                # add and del out-links
+                add_out[pagename].append((key, new_val))
+                lit_out[pagename].append(lit)
 
-                # add new link to out, in
-                add_out[pagename].append((key, new_page))
-                lit_out[pagename].append(new_data[pagename]['lit'][key][i])
-
-                add_in.setdefault(new_page, list()).append((key, pagename))
-
-                # del old link from out, in
                 del_out[pagename].append((key, val))
 
-                del_in.setdefault(val, list()).append((key, pagename))
+                # Only save in-links to local pages, not eg. url or interwiki
+                if node_type(request, new_val) == 'page':
+                    add_in.setdefault(new_val, list()).append((key, pagename))
+                # Only save in-links to local pages, not eg. url or interwiki
+                if node_type(request, val) == 'page':
+                    del_in.setdefault(val, list()).append((key, pagename))
 
     # Added edges of a new linktype
     for key in new_keys.difference(old_keys):
-        for i, val in enumerate(new_data[pagename]['out'][key]):
+        for i, val in enumerate(new_data[pagename][u'out'][key]):
+            lit = new_data[pagename][u'lit'][key][i]
+
             add_out[pagename].append((key, val))
-            lit_out[pagename].append(new_data[pagename]['lit'][key][i])
+            lit_out[pagename].append(lit)
 
-            add_in.setdefault(val, list()).append((key, pagename))
+            # Only save in-links to local pages, not eg. url or interwiki
+            if node_type(request, val) == 'page':
+                add_in.setdefault(val, list()).append((key, pagename))
 
-    # Deleted edges of a new linktype
+    # Deleted edges
     for key in old_keys.difference(new_keys):
-        for val in old_data['out'][key]:
+        for val in old_data[u'out'][key]:
+
             del_out[pagename].append((key, val))
 
-            del_in.setdefault(val, list()).append((key, pagename))
+            # Only local pages will have edges and metadata
+            if node_type(request, val) == 'page':
+                del_in.setdefault(val, list()).append((key, pagename))
 
     # Adding and removing in-links are the most expensive operation in a
     # shelve, so we'll try to minimise them. Eg. if page TestPage is
@@ -604,19 +576,19 @@ def execute(pagename, request, text, pagedir, page):
     cur_time = time()
 
     temp = request.graphdata.get(pagename, {})
-    temp['meta'] = new_data.get(pagename, dict()).get('meta', dict())
-    temp['acl'] = new_data.get(pagename, dict()).get('acl', '')
-    temp['include'] = new_data.get(pagename, dict()).get('include', list())
-    temp['mtime'] = cur_time
-    temp['saved'] = True
-    request.graphdata[pagename] = temp
+    temp[u'meta'] = new_data.get(pagename, dict()).get(u'meta', dict())
+    temp[u'acl'] = new_data.get(pagename, dict()).get(u'acl', '')
+    temp[u'include'] = new_data.get(pagename, dict()).get(u'include', list())
+    temp[u'mtime'] = cur_time
+    temp[u'saved'] = True
 
     # Release ReadLock (from the previous reads), make WriteLock
     request.lock.release()
     request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
     request.lock.acquire()
 
-    # Save the links that need to be saved
+    request.graphdata[pagename] = temp
+    # Save the links that have truly changed
     for page in del_out:
         for edge in del_out[page]:
             #print 'delout', repr(page), edge

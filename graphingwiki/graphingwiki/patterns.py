@@ -34,11 +34,15 @@ import os
 import shelve
 import itertools
 import UserDict
+import StringIO
 
 from codecs import getencoder
 
 from MoinMoin import config
+from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock
+from MoinMoin.parser.wiki import Parser
+from MoinMoin.action import AttachFile
 
 from graphingwiki.graph import Graph
 
@@ -57,12 +61,91 @@ special_attrs = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  'gwikishapefile', "gwikishape", "gwikistyle"]
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        special_attrs, dict(node))
+NO_TYPE = u'_notype'
 
 def encode_page(page):
     return encode(page)
 
 def decode_page(page):
     return unicode(page, config.charset)
+
+url_re = re.compile(u'^(%s)://' % (Parser.url_pattern))
+
+def node_type(request, nodename):
+    if ':' in nodename:
+        if url_re.search(nodename):
+            return 'url'
+
+        start = nodename.split(':')[0]
+        if start in Parser.attachment_schemas:
+            return 'attachment'
+
+        get_interwikilist(request)
+        if request.iwlist.has_key(start):
+            return 'interwiki'
+
+    return 'page'
+
+def format_wikitext(request, data):
+    request.page.formatter = request.formatter
+    parser = Parser(data, request)
+    # No line anchors of any type to table cells
+    request.page.formatter.in_p = 1
+    parser._line_anchordef = lambda: ''
+
+    # Using StringIO in order to strip the output
+    data = StringIO.StringIO()
+    request.redirect(data)
+    # Produces output on a single table cell
+    request.page.format(parser)
+    request.redirect()
+
+    return data.getvalue().strip()
+
+def absolute_attach_name(name, target):
+    abs_method = target.split(':')[0]
+
+    # Pages from MetaRevisions may have ?action=recall, breaking attach links
+    if '?' in name:
+        name = name.split('?', 1)[0]
+
+    if abs_method in Parser.attachment_schemas and not '/' in target:
+        target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
+
+    return target 
+
+def get_interwikilist(request):
+    # request.cfg._interwiki_list is gathered by wikiutil
+    # the first time resolve_wiki is called
+    wikiutil.resolve_wiki(request, 'Dummy:Testing')
+
+    iwlist = {}
+    selfname = get_selfname(request)
+
+    # Add interwikinames to namespaces
+    for iw in request.cfg._interwiki_list:
+        iw_url = request.cfg._interwiki_list[iw]
+        if iw_url.startswith('/'):
+            if iw != selfname:
+                continue
+            iw_url = get_wikiurl(request)
+        iwlist[iw] = iw_url
+
+    request.iwlist = iwlist
+
+def get_selfname(request):
+    if request.cfg.interwikiname:
+        return request.cfg.interwikiname
+    else:
+        return 'Self'
+
+def get_wikiurl(request):
+    return request.getBaseURL() + '/'
+
+def attachment_file(request, page, file):
+    att_file = AttachFile.getFilename(request, page, file)
+                                                   
+    return att_file, os.path.isfile(att_file)
 
 class GraphData(UserDict.DictMixin):
     def __init__(self, request):
@@ -217,15 +300,54 @@ class GraphData(UserDict.DictMixin):
 
         # Add links from page
         links = page.get('out', {})
+        lit_links = page.get('lit', {})
         for type in links:
-            for dst in links[type]:
+            for i, dst in enumerate(links[type]):
                 # Filter Category, Template pages
                 if self.cat_re.search(dst) or \
                        self.temp_re.search(dst):
                     continue
+
+                # Fix links to everything but pages
+                label = ''
+                gwikiurl = ''
+                nodetype = node_type(self.request, dst)
+
+                if nodetype == 'attachment':
+                    gwikiurl = absolute_attach_name(pagename, dst)
+                    att_page, att_file = gwikiurl.split(':')[1].split('/')
+
+                    if pagename == att_page:
+                        label = "Attachment: %s" % (att_file)
+                    else:
+                        label = "Attachment: %s/%s" % (att_page, att_file)
+
+                    _, exists = attachment_file(self.request, 
+                                                att_page, att_file)
+
+                    if exists:
+                        gwikiurl = "./%s?action=AttachFile&do=get&target=%s" % \
+                            (att_page, att_file)
+                    else:
+                        gwikiurl = "./%s?action=AttachFile&rename=%s" % \
+                            (att_page, att_file)
+
+                elif nodetype == 'interwiki':
+                    iwname = dst.split(':')
+                    gwikiurl = self.request.iwlist[iwname[0]] + iwname[1]
+
+                elif nodetype == 'url':
+                    gwikiurl = dst
+
                 # Add page and its metadata
                 adata = self._add_node(dst, adata, urladd)
                 adata = self._add_link(adata, (pagename, dst), type)
+
+                # Labels for attachments
+                if label:
+                    adata.nodes.get(dst).gwikilabel = label
+                if gwikiurl:
+                    adata.nodes.get(dst).gwikiURL = gwikiurl
 
         return adata
 

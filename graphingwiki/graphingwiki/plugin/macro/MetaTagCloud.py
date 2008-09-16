@@ -12,6 +12,7 @@
 import re
 
 from graphingwiki.editing import metatable_parseargs
+from graphingwiki.patterns import NO_TYPE
 
 Dependencies = ["namespace"]
 
@@ -65,7 +66,7 @@ def execute(macro, args):
       page = request.graphdata.getpage(name)
       if mode == 'keys':
          tags.extend(x for x in page.get('meta', {}).keys())
-         tags.extend(x for x in page.get('out', {}).keys() if x != '_notype')
+         tags.extend(x for x in page.get('out', {}).keys() if x != NO_TYPE)
       else:
          for key in page.get('meta', {}).keys():
             if key in ['label', 'URL']:
@@ -73,7 +74,7 @@ def execute(macro, args):
 #            print key, repr(page['meta'][key])
             tags.extend(x.strip('"') for x in page['meta'][key])
          for key in page.get('out', {}).keys():
-            if key == '_notype':
+            if key == NO_TYPE:
                continue
 #            print repr(page['out'][key])
             tags.extend(page['out'][key])
