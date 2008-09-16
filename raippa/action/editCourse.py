@@ -127,7 +127,7 @@ select tasks:
                         for deadline, type in metas["deadline"]:
                             break
 
-                    html += u'newBox("%s","%s","%s","%s"%s,"%s");\n' % (tasks[point].replace('"', '&quot;'), tasks[next].replace('"', '&quot;'), description.replace('"', '&quot;'), split.replace('"', '&quot;'), prerequisites.replace('"', '&quot;'), deadline.replace('"', '&quot;'))
+                    html += u'newBox("%s","%s","%s","%s"%s,"%s");\n' % (tasks[point].replace('"', '&quot;'), tasks[next], description.replace('"', '&quot;'), split, prerequisites, deadline)
                     #html += u'newBox("%s","%s","%s");\n' % (task, tasks[next], description)
                     donelist.append(point)
                     if next not in donelist:
@@ -165,7 +165,7 @@ select tasks:
                 for deadline, type in metas["deadline"]:
                     break
 
-            pagehtml += u'newBox("start","%s","%s","%s"%s,"%s");\n' % (tasks[point], description, split, prerequisites, deadline)
+            pagehtml += u'newBox("start","%s","%s","%s"%s,"%s");\n' % (tasks[point], description.replace('"', '&quot;'), split, prerequisites, deadline)
             #pagehtml += u'newBox("start","%s","%s");\n' % (task, description)
             pagehtml += addNode(point)
 
