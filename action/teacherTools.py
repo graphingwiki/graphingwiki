@@ -267,7 +267,7 @@ def execute(pagename, request):
         _enter_page(request, pagename)
         import MoinMoin.wikiutil as wikiutil
         raippamacro = wikiutil.importPlugin(request.cfg, "macro", 'TeacherTools', "coursesform")
-        request.write(raippamacro(request)
+        request.write(raippamacro(request))
         course = RaippaPage(request, encode(request.form["course"][0]))
         request.write(getcoursegraph(request, course))
         _exit_page(request, pagename)
