@@ -62,34 +62,26 @@ def get_revisions(request, page):
     for rev in page.getRevList():
         revpage = Page(request, pagename, rev=rev)
         text = revpage.get_raw_body()
-        alldata, pagegraph = parse_text(request, alldata, revpage, text)
+        alldata = parse_text(request, revpage, text)
         revlink = '%s?action=recall&rev=%d' % (pagename, rev)
         if alldata.has_key(pagename):
-            alldata[revlink] = alldata[pagename]
+            request.graphdata[revlink] = alldata[pagename]
             # So that new values are appended rather than overwritten
             del alldata[pagename]
             # Add revision as meta so that it is shown in the table
-            alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
+            request.graphdata[revlink].setdefault('meta', 
+                                                  dict())['#rev'] = [str(rev)]
             revisions[rev] = revlink
-
-    class getgraphdata(object):
-        def __init__(self, globaldata):
-            self.globaldata = globaldata
-
-        def getpage(self, pagename):
-            return self.globaldata.get(pagename, {})
-
-    globaldata = getgraphdata(alldata)
 
     pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
 
     metakeys = set()
     for page in pagelist:
-        for key in getkeys(globaldata, page):
+        for key in getkeys(request, page):
             metakeys.add(key)
-    metakeys = sorted(metakeys, key=str.lower)
+    metakeys = sorted(metakeys, key=unicode.lower)
 
-    return globaldata, pagelist, metakeys
+    return pagelist, metakeys
 
 def underlay_to_pages(req, p):
     underlaydir = req.cfg.data_underlay_dir

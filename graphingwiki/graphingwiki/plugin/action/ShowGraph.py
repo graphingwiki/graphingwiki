@@ -489,6 +489,10 @@ class GraphShower(object):
         return outgraph
     
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
+        self.request.write(repr(obj1.node))
+        self.request.write(repr(obj2.node))
+        self.request.write('<br>')
+
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
         types = olde.linktype.copy()
@@ -576,8 +580,7 @@ class GraphShower(object):
                 pagemeta = nonguaranteeds_p(pagedata['meta'])
                 tooldata = '\n'.join([url_unquote("-%s: %s" %
                                       (x,
-                                       qstrip_p(
-                    pagedata['meta'][x]).strip('"')
+                                       pagedata['meta'][x]
                                        ))
                                       for x in pagemeta])
                 n.tooltip = '%s\n%s' % (url_unquote(obj.node), tooldata)

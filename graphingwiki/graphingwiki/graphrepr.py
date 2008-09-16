@@ -36,6 +36,8 @@ import select
 import os
 import time
 
+from graphingwiki.patterns import encode, encode_page
+
 gv_found = True
 
 # 32bit and 64bit versions
@@ -352,6 +354,7 @@ class Graphviz:
         else:
             raise "No graph element or element type specified"
         for key, elem in attrs.iteritems():
+            key, elem = encode(key), encode(elem)
             gv.setv(item, key, elem)
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
@@ -380,6 +383,9 @@ class Graphviz:
             # print "gv.edge(g, '" + "', '".join(edge) + "')"
             graphvizitem = GraphvizEdge(self, item)
         elif node:
+            if isinstance(node, unicode):
+                node = encode_page(node)
+                
             item = gv.node(handle, node)
             # print "gv.node(g, '" + node + "')"
             graphvizitem = GraphvizNode(self, item)
@@ -399,11 +405,17 @@ class Graphviz:
         graphvizitem = None
         if edge:
             head, tail = edge
+            if isinstance(head, unicode):
+                head = encode_page(head)
+            if isinstance(tail, unicode):
+                tail = encode_page(tail)
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
             if item:
                 graphvizitem = GraphvizEdge(self, item)
         elif node:
+            if isinstance(node, unicode):
+                node = encode_page(node)
             item = gv.findnode(handle, node)
             if item:
                 graphvizitem = GraphvizNode(self, item)
@@ -424,6 +436,11 @@ class Graphviz:
         self.changed = 1
         if edge:
             head, tail = edge
+            if isinstance(head, unicode):
+                head = encode_page(head)
+            if isinstance(tail, unicode):
+                tail = encode_page(tail)
+
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
         elif node:
@@ -488,41 +505,41 @@ class GraphRepr:
             addednodes = dummy.nodes.added
 
         for node, in addednodes:
-            self.graphviz.nodes.add(str(node))
-            # print "g.nodes.add('" + str(node[0]) + "')"
+            self.graphviz.nodes.add(encode(node))
+            # print "g.nodes.add('" + encode(node[0]) + "')"
         for edge in dummy.edges.added:
-            self.graphviz.edges.add(tuple(str(x) for x in edge))
-            # print "g.edges.add(" + str(tuple(str(x) for x in edge)) + ")"
+            self.graphviz.edges.add(tuple(encode(x) for x in edge))
+            # print "g.edges.add(" + encode(tuple(encode(x) for x in edge)) + ")"
 
         for node in dummy.nodes.set:
             attrs = self._filterattrs(dummy.nodes.set[node])
             if not attrs:
                 continue
-            self.graphviz.nodes.set(str(node[0]), **attrs)
-            # print "g.nodes.set('" + str(node[0]) + "', **" + str(attrs) + ")"
+            self.graphviz.nodes.set(encode(node[0]), **attrs)
+            # print "g.nodes.set('" + encode(node[0]) + "', **" + encode(attrs) + ")"
         for edge in dummy.edges.set:
-            self.graphviz.edges.set(tuple(str(x) for x in edge),
+            self.graphviz.edges.set(tuple(encode(x) for x in edge),
                                **dummy.edges.set[edge])
-            # print "g.edges.set(" + str(tuple(str(x) for x in edge)) + \
-            #       ", **" + str(dummy.edges.set[edge]) + ")"
+            # print "g.edges.set(" + encode(tuple(encode(x) for x in edge)) + \
+            #       ", **" + encode(dummy.edges.set[edge]) + ")"
 
         for node in dummy.nodes.unset:
-            self.graphviz.nodes.unset(str(node[0]),
+            self.graphviz.nodes.unset(encode(node[0]),
                                  *dummy.nodes.unset[node])
-            # print "g.nodes.unset('" + str(node[0]) + "', *" + \
-            #                      str(dummy.nodes.unset[node]) + ")"
+            # print "g.nodes.unset('" + encode(node[0]) + "', *" + \
+            #                      encode(dummy.nodes.unset[node]) + ")"
         for edge in dummy.edges.unset:
-            self.graphviz.edges.unset(tuple(str(x) for x in edge),
+            self.graphviz.edges.unset(tuple(encode(x) for x in edge),
                                  *dummy.edges.unset[edge])
-            # print "g.edges.unset(" + str(tuple(str(x) for x in edge)) + \
-            #       ", *" + str(dummy.edges.unset[edge]) + ")"
+            # print "g.edges.unset(" + encode(tuple(encode(x) for x in edge)) + \
+            #       ", *" + encode(dummy.edges.unset[edge]) + ")"
 
         for node in dummy.nodes.deleted:
-            self.graphviz.nodes.delete(str(node[0]))
-            # print "g.nodes.delete('" + str(node[0]) + "')"
+            self.graphviz.nodes.delete(encode(node[0]))
+            # print "g.nodes.delete('" + encode(node[0]) + "')"
         for edge in dummy.edges.deleted:
-            self.graphviz.edges.delete(tuple(str(x) for x in edge))
-            # print "g.edges.delete(" + str(tuple(str(x) for x in edge)) + ")"
+            self.graphviz.edges.delete(tuple(encode(x) for x in edge))
+            # print "g.edges.delete(" + encode(tuple(encode(x) for x in edge)) + ")"
 
     def dynagraph(self, error=None, msg=None, debug=None):
         # Initialise graphviz string in case something weird happens

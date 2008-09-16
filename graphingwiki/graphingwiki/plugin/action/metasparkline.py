@@ -277,7 +277,7 @@ def execute(pagename, request):
 
     # Get revision data
     page = Page(request, params['page'])
-    globaldata, pagelist, metakeys = get_revisions(request, page)
+    pagelist, metakeys = get_revisions(request, page)
 
     # Show error if no data on key
     if not params['key'] in metakeys:
@@ -293,10 +293,9 @@ def execute(pagename, request):
     data = []
     key = params["key"]
     for page in pagelist[-1:end_pts:-1]:
-        metas = getmetas(request, globaldata, page,
-                         metakeys, display=False,
+        metas = getmetas(request, page, metakeys, display=False,
                          checkAccess=False)
-        val = ''.join(metas.get(key, str()))])
+        val = ''.join(metas.get(key, str()))
         try:
             val = float(val)
             data.append(val)

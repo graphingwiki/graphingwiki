@@ -470,84 +470,140 @@ def execute(pagename, request, text, pagedir, page):
     add_in = dict()
     del_in = dict()
 
-    # Code for making our which edges have changed.
-    # We only want to save changes, not all the data,
-    # as edges have a larger time footprint while saving.
     for page in new_data:
-        # Get a copy of current data
-        old_data = request.graphdata.get(page, {})
-
-        add_out.setdefault(page, list())
-        lit_out.setdefault(page, list())
-        del_out.setdefault(page, list())
-
         add_in.setdefault(page, list())
         del_in.setdefault(page, list())
 
-        old_keys = set(old_data.get('out', {}).keys())
-        new_keys = set(new_data.get(page, {}).get('out', {}).keys())
-        changed_keys = old_keys.intersection(new_keys)
+    # Code for making our which edges have changed.
+    # We only want to save changes, not all the data,
+    # as edges have a larger time footprint while saving.
 
-        # Changed edges (destinations changed, or order changed)
-        for key in changed_keys:
-            for i, val in enumerate(old_data['out'][key]):
+    # Get a copy of current data
+    old_data = request.graphdata.get(pagename, {})
 
-                if len(new_data[page]['out'][key]) <= i:
-                    del_out[page].append((key, val))
+    add_out.setdefault(pagename, list())
+    lit_out.setdefault(pagename, list())
+    del_out.setdefault(pagename, list())
 
-                elif val != new_data[pagename]['out'][key][i]:
-                    add_out[page].append((key, 
-                                          new_data[pagename]['out'][key][i]))
-                    lit_out[page].append(new_data[pagename]['lit'][key][i])
-                    del_out[page].append((key, val))
+    old_keys = set(old_data.get('out', {}).keys())
+    new_keys = set(new_data.get(pagename, {}).get('out', {}).keys())
+    changed_keys = old_keys.intersection(new_keys)
 
-        # Added edges
-        for key in new_keys.difference(old_keys):
-            for i, val in enumerate(new_data[pagename]['out'][key]):
-                add_out[page].append((key, val))
-                lit_out[page].append(new_data[pagename]['lit'][key][i])
+    # Changed edges
+    for key in changed_keys:
+        new_edges = len(new_data[pagename]['out'][key])
+        old_edges = len(old_data['out'][key])
 
-        # Deleted edges
-        for key in old_keys.difference(new_keys):
-            for val in old_data['out'][key]:
-                del_out[page].append((key, val))
+        for i in range(max(new_edges, old_edges)):
 
-        add_in[page] = copy(add_out[page])
-        del_in[page] = copy(del_out[page])
+            # old data had more links, delete old
+            if new_edges <= i:
+                val = old_data['out'][key][i]
+
+                del_out[pagename].append((key, val))
+
+                del_in.setdefault(val, list()).append((key, pagename))
+
+            # new data has more links, add new
+            elif old_edges <= i:
+                val = new_data[pagename]['out'][key][i]
+
+                add_out[pagename].append((key, val))
+                lit_out[pagename].append(new_data[pagename]['lit'][key][i])
+
+                add_in.setdefault(val, list()).append((key, pagename))
+
+            # check if the link i has changed
+            else:
+                val = old_data['out'][key][i]
+
+                if val == new_data[pagename]['out'][key][i]:
+                    continue
+                
+                # link changed, replace old link with new
+
+                new_page = new_data[pagename]['out'][key][i]
+
+                # add new link to out, in
+                add_out[pagename].append((key, new_page))
+                lit_out[pagename].append(new_data[pagename]['lit'][key][i])
+
+                add_in.setdefault(new_page, list()).append((key, pagename))
+
+                # del old link from out, in
+                del_out[pagename].append((key, val))
+
+                del_in.setdefault(val, list()).append((key, pagename))
+
+    # Added edges of a new linktype
+    for key in new_keys.difference(old_keys):
+        for i, val in enumerate(new_data[pagename]['out'][key]):
+            add_out[pagename].append((key, val))
+            lit_out[pagename].append(new_data[pagename]['lit'][key][i])
+
+            add_in.setdefault(val, list()).append((key, pagename))
+
+    # Deleted edges of a new linktype
+    for key in old_keys.difference(new_keys):
+        for val in old_data['out'][key]:
+            del_out[pagename].append((key, val))
+
+            del_in.setdefault(val, list()).append((key, pagename))
+
+    # Adding and removing in-links are the most expensive operation in a
+    # shelve, so we'll try to minimise them. Eg. if page TestPage is
+    #  a:: ["b"]\n a:: ["a"] 
+    # and it is resaved as
+    #  a:: ["a"]\n a:: ["b"]
+    # the ordering of out-links in TestPage changes, but we do not have
+    # to touch the in-links in pages a and b. This is possible because
+    # in-links do not have any sensible order.
+    for page in new_data:
+        #print repr(page), add_in[page], del_in[page]
+
         changes = set(add_in[page] + del_in[page])
 
-        # Adding and removing in-links are the most expensive operation in a
-        # shelve, so we'll try to minimise them. This is possible as we do not
-        # have to care about preserving order of in-links (not defined).
-        for key in changed_keys:
-            for val in changes:
-                add_count = add_in[page].count(val)
-                del_count = del_in[page].count(val)
+        #print changes
 
-                if not add_count or not del_count:
-                    continue
+        for key, val in changes:
+            #print 'change', repr(key), repr(val)
 
-                change_count = add_count - del_count
+            add_count = add_in[page].count((key, val))
+            del_count = del_in[page].count((key, val))
 
-                # If in-links added and deleted as many times, 
-                # there are effectively no changes to be saved
-                if change_count == 0:
-                    for x in range(add_count):
-                        del_in[page].remove(val)
-                        add_in[page].remove(val)
+            if not add_count or not del_count:
+                #print "No changes"
+                #print
+                continue
 
-                elif change_count < 0:
-                    for x in range(abs(change_count)):
-                        del_in[page].remove(val)
+            change_count = add_count - del_count
 
-                else:
-                    for x in range(abs(change_count)):
-                        add_in[page].remove(val)
+            # If in-links added and deleted as many times, 
+            # there are effectively no changes to be saved
+            if change_count == 0:
+                for x in range(add_count):
+                    add_in[page].remove((key, val))
+                    del_in[page].remove((key, val))
+                    #print "No changes"
+
+            elif change_count < 0:
+                for x in range(abs(change_count)):
+                    del_in[page].remove((key, val))
+                    #print "No need to delete %s from %s" % (val, page)
+
+            else:
+                for x in range(abs(change_count)):
+                    #print "No need to add %s to %s" % (val, page)
+                    add_in[page].remove((key, val))
+
+            #print
+
+    #print
 
     # Insert metas and other stuff from parsed content
     cur_time = time()
 
-    temp = request.graphdata.get(pagename, {'time': cur_time, 'saved': True})
+    temp = request.graphdata.get(pagename, {})
     temp['meta'] = new_data.get(pagename, dict()).get('meta', dict())
     temp['acl'] = new_data.get(pagename, dict()).get('acl', '')
     temp['include'] = new_data.get(pagename, dict()).get('include', list())
@@ -561,23 +617,27 @@ def execute(pagename, request, text, pagedir, page):
     request.lock.acquire()
 
     # Save the links that need to be saved
+    for page in del_out:
+        for edge in del_out[page]:
+            #print 'delout', repr(page), edge
+            linktype, dst = edge
+            shelve_remove_out(request.graphdata, [page, dst], [linktype])
+    for page in del_in:
+        for edge in del_in[page]:
+            #print 'delin', repr(page), edge
+            linktype, src = edge
+            shelve_remove_in(request.graphdata, [src, page], [linktype])
+
     for page in add_out:
         for i, edge in enumerate(add_out[page]):
             linktype, dst = edge
+            #print 'addout', repr(page), edge
             hit = lit_out[page][i]
-            shelve_add_out(request.graphdata, [pagename, dst], linktype, hit)
+            shelve_add_out(request.graphdata, [page, dst], linktype, hit)
     for page in add_in:
         for edge in add_in[page]:
-            linktype, dst = edge
-            shelve_add_in(request.graphdata, [dst, pagename], linktype)
-
-    for page in del_out:
-        for edge in del_out[page]:
-            linktype, dst = edge
-            shelve_remove_out(request.graphdata, [dst, pagename], [linktype])
-    for page in del_in:
-        for edge in del_in[page]:
-            linktype, dst = edge
-            shelve_remove_in(request.graphdata, [pagename, dst], [linktype])
+            #print 'addin', repr(page), edge
+            linktype, src = edge
+            shelve_add_in(request.graphdata, [src, page], linktype)
 
     request.lock.release()

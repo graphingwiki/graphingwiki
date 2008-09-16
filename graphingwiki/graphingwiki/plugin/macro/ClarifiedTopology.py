@@ -55,7 +55,7 @@ def execute(macro, args):
     _ = request.getText
 
     if not args:
-        args = encode_page(request.page.page_name))
+        args = encode_page(request.page.page_name)
 
     topology = args
 
