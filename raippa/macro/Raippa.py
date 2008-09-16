@@ -153,7 +153,7 @@ def questionhtml(request, questionpage, number=""):
     answertype = meta[u'answertype'][0][0]
     if meta[u'note']:
         note = meta[u'note'][0][0]
-        html += note + u'<br>\n'
+        html += u'<i>%s</i><br>\n' % note
 
     try:
         meta = getmetas(request, request.graphdata, encode(question), [u'WikiCategory', u'name'], checkAccess=False)
@@ -188,7 +188,7 @@ def questionhtml(request, questionpage, number=""):
                 html += u'<input type="hidden" name="answer%s" value="%s">\n' % (str(number), answerlist[0].replace('"','&quot;'))
         else:
             random.shuffle(answerlist)
-            html += question + u'<br>\n'
+            html += u'<strong>%s</strong><br>\n' % question
             for answer in answerlist:
                 i += 1
                 id = "%s_%s" % (number, i)
@@ -199,7 +199,7 @@ def questionhtml(request, questionpage, number=""):
     elif answertype == u'checkbox':
         answerlist = getanswers(request, questionpage)
         random.shuffle(answerlist)
-        html += question + u'<br>\n'
+        html += u'<strong>%s</strong><br>\n' % question
         for answer in answerlist:
             i += 1
             id = "%s_%s" % (number, i)
@@ -207,9 +207,9 @@ def questionhtml(request, questionpage, number=""):
             for="ans%s">%s</label><br>\n''' % (id, str(number), answer.replace('"','&quot;'), id,  answer)
         html += u'<br><hr>\n'
     elif answertype ==u'file':
-        html += u'%s<br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
+        html += u'<strong>%s</strong><br><input type="file" name="answer%s"><br><hr>\n' % (question, number)
     else:
-        html += u'%s<br><input type="text" name="answer%s" size="50"><br><hr>\n' % (question, number)
+        html += u'<strong>%s</strong><br><input type="text" name="answer%s" size="50"><br><hr>\n' % (question, number)
 
     html += u'<br>'
     return html
