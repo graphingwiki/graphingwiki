@@ -15,18 +15,30 @@ def coursesform(request):
   <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
 window.addEvent('domready', function(){
-  var typesel = $('qtypesel');
-  typesel.addEvent('change', function(){
-      checkQtype();
+  var qtypesel = $('qtypesel');
+  qtypesel.addEvent('change', function(){
+      checkType(qtypesel);
     });
 
-    checkQtype();
+    checkType(qtypesel);
+
+   var ttypesel = $('ttypesel');
+   ttypesel.addEvent('change', function(){
+      checkType(ttypesel);
+    });
+
+    checkType(ttypesel);
+
   });
 
 
-function checkQtype(){
-  var typesel = $('qtypesel');
-  var qlist = $$('select[id^=q_type]');
+function checkType(sel){
+  var typesel = $(sel);
+  if(sel.id == 'qtypesel'){
+    var qlist = $$('select[id^=q_type]');
+  }else if(sel.id == 'ttypesel'){
+    var qlist = $$('select[id^=t_type]');
+  }
   qlist.setStyle('display', 'none');
   qlist.value = '';
   var selected = $(typesel.value);
@@ -34,6 +46,29 @@ function checkQtype(){
     selected.setStyle('display','');
   }
 }
+
+
+function submitTasks(){
+  var typesel = $('ttypesel');
+  var selected = $(typesel.value);
+  var form = $('task_form');
+  if(selected){
+    var question = new Element('input', {
+      'type' : 'hidden',
+      'value':  selected.value,
+      'name' : 'task'
+      });
+    var edit = new Element('input', {
+      'type': 'hidden',
+      'name' : 'edit',
+      'value' : 'edit'
+      });
+  edit.inject(form);
+  question.inject(form);
+  form.submit();
+  }
+}
+
 
 function submitQuestion(){
   var typesel = $('qtypesel');
@@ -67,19 +102,37 @@ function sel_stats(){
     }));
   form.submit();
   }
+
 function del_confirm(form){
   var form = $(form);
-  var value = form.getChildren('select')[0].value;
-  if(confirm('Do you really want to delete '+ value+'?')){
+  var sel = $(form.getChildren('select')[0].value);
+  if(sel){
+    var value = sel.value;
+    var desc = $$('option[value='+value+']')[0].text;
+    }else{
+      return false;
+      }
+  if(confirm('Do you really want to delete "'+ desc+'"?')){
  form.grab(new Element('input', {
     'type' : 'hidden',
     'name' : 'delete',
     'value' : 'delete'
     }));
+if(form.id == 'task_form'){
+  var name = 'task';
+  }else{
+  var name = 'question';
+    }
 
+form.grab(new Element('input', {
+  'type' : 'hidden',
+  'name' : name,
+  'value' : value
+  }));
   form.submit();
   }
 }
+
 </script>'''  % request.cfg.url_prefix_static
     html += u'''
 <table class="no_border">
@@ -143,10 +196,12 @@ Courses:
 <tr><td colspan="2">
 Tasks subjects:
 </td></tr>
-<tr><td>'''
-    html += u'<select name="tasksubject">\n'
+<tr><td>
+<form method="post" id="task_form" action="%s">
+''' % request.request_uri.split("?")[0]
+    html += u'<select class="maxwidth" id="ttypesel" name="tasksubject">\n'
     for subject in subjectdict:
-        html+=u'<option value="%s">%s</option>\n' % (subject, subject)
+        html+=u'<option value="t_type_%s">%s</option>\n' % (subject, subject)
     html += u'''</select></td><td>
 </td></tr>
 <tr><td colspan="2">
@@ -156,8 +211,7 @@ Tasks:
 '''
     #tasklists
     for subject, tasklist in subjectdict.iteritems():
-        html += u'''
-<select  name="taskList">\n''' 
+        html += u'''<select  name="taskList" id="t_type_%s" class="maxwidth">\n''' % str(subject).replace('"','&quot;')
         for taskpagename, taskdescription in tasklist:
             html += u'<option name="question" value="%s">%s</option>\n' % (taskpagename, taskdescription)
         html += u'</select>\n'
@@ -166,31 +220,11 @@ Tasks:
 #################
 
     html += u'''
-<tr><td colspan="2">
-Tasks:
-</td></tr>
-<tr>
-<td>
-<form method="post" id="task_form" action="%s">
 <input type="hidden" name="action" value="editTask">
-    <select size="1" name="task" class="maxwidth">''' % request.request_uri.split("?")[0]
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
-    for page in pagelist:
-        metas = getmetas(request, request.graphdata, page, ["title", "description"])
-        if metas["title"]:
-            for description, type in metas["title"]:
-                break
-        else:
-            for description, type in metas["description"]:
-                break
-        html += u'<option name="task" value="%s">%s</option>\n' % (page.replace('"', '&quot;'), description)
-    html += '''
-    </select>
-    </td>
     <td>
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('task_form');">
-    <input type='submit' name='edit' value='edit'>
+    <input type='button' name='edit' value='edit' onclick="submitTasks();">
     <input type='submit' name='new' value='new'>
     </td>
 </form>
