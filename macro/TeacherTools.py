@@ -93,7 +93,7 @@ Courses:
     <select size="1" name="course" class="maxwidth">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
-        metas = getmetas(request, request.globaldata, page, ["id", "name"])
+        metas = getmetas(request, request.graphdata, page, ["id", "name"])
         for id, type in metas["id"]:
             listtext += id
             break
@@ -176,7 +176,7 @@ Tasks:
     <select size="1" name="task" class="maxwidth">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     for page in pagelist:
-        metas = getmetas(request, request.globaldata, page, ["title", "description"])
+        metas = getmetas(request, request.graphdata, page, ["title", "description"])
         if metas["title"]:
             for description, type in metas["title"]:
                 break
@@ -255,6 +255,7 @@ Questions:
 
 def execute(macro, text):
     request = macro.request
-    request.globaldata = getgraphdata(request)
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
 
     return coursesform(request)
