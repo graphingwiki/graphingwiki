@@ -430,10 +430,16 @@ class Question:
                     options = list()
                     if metas["true"]:
                         value = u'true'
-                        answer = metas["true"][0][0]
+                        for answer, type in metas["true"]:
+                            if type == "link" and answer.startswith("mailto:"):
+                                answer = answer[7:]
+                            break
                     elif metas["false"]:
                         value = u'false'
-                        answer = metas["false"][0][0]
+                        for answer, type in metas["false"]:
+                            if type == "link" and answer.startswith("mailto:"):
+                                answer = answer[7:]
+                            break
                         answerpage = self.request.graphdata.getpage(page)
                         try:
                             linking_in_answer = answerpage.get('in', {})

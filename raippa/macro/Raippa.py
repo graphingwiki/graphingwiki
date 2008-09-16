@@ -119,9 +119,17 @@ def getanswers(request, questionpage):
         for category, type in metas["WikiCategory"]:
             if category == answercategory:
                 if metas["true"]:
-                    answerlist.append(metas["true"][0][0])
+                    for answer, type in metas["true"]:
+                        if type == "link" and answer.startswith("mailto:"):
+                            answer = answer[7:]
+                        break
+                    answerlist.append(answer)
                 elif metas["false"]:
-                    answerlist.append(metas["false"][0][0])
+                    for answer, type in metas["false"]:
+                        if type == "link" and answer.startswith("mailto:"):
+                            answer = answer[7:]
+                        break
+                    answerlist.append(answer)
                 break
 
     return answerlist
