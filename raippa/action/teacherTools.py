@@ -265,7 +265,9 @@ def execute(pagename, request):
 
     if request.form.has_key('selectcourse'):
         _enter_page(request, pagename)
-        coursesform(request)
+        import MoinMoin.wikiutil as wikiutil
+        raippamacro = wikiutil.importPlugin(request.cfg, "macro", 'TeacherTools', "coursesform")
+        request.write(raippamacro(request)
         course = RaippaPage(request, encode(request.form["course"][0]))
         request.write(getcoursegraph(request, course))
         _exit_page(request, pagename)
@@ -375,5 +377,8 @@ def execute(pagename, request):
         _exit_page(request, pagename)
     else:
         _enter_page(request, pagename)
-        coursesform(request)
+        import MoinMoin.wikiutil as wikiutil
+        raippamacro = wikiutil.importPlugin(request.cfg, "macro", 'TeacherTools', "coursesform")
+        request.write(raippamacro(request))
         _exit_page(request, pagename)
+
