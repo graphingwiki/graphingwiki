@@ -53,6 +53,7 @@ def savedata(request):
     type = request.form.get('type', [u''])[0]
     until = request.form.get('until', [u''])[0]
     edit = request.form.get('edit', [u''])[0]
+    category = request.form.get('categories', [u'CategoryCalendarEntry'])[0]
 
     daterexp = re.compile('\d{4}-\d\d-\d\d')
     timerexp = re.compile('([0-1][0-9]|2[0-3]):([0-5]\d|60)')
@@ -89,7 +90,7 @@ def savedata(request):
   Type:: %s
   Until:: %s
 
-CategoryCalendarEntry''' % (title, date,time,duration,type, until)
+%s''' % (title, date,time,duration,type, until, category)
     savetext(pagename, content)
 
 def show_entryform(request):
