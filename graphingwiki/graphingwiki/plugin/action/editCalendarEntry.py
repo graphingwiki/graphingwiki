@@ -10,6 +10,7 @@ from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import order_meta_input, savetext
 from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.patterns import getgraphdata
 
 def _enter_page(request, pagename):
     request.http_headers()
@@ -100,6 +101,8 @@ def show_entryform(request):
     duration = u'00:00'
     edit_page = u''
     title = u''
+    capacity = unicode()
+    location = unicode()
     until = ''
     time_opts = unicode()
     categories = categories = request.form.get('categories',
@@ -114,12 +117,26 @@ def show_entryform(request):
         def_date = edit.split('_')[0]
         #categories = ','.join(categories)
         globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
-        meta = getmetas(request, globaldata, edit, metakeys, display=False, checkAccess=True)
+        if not hasattr(request, 'graphdata'):
+            getgraphdata(request)
+        meta = getmetas(request, request.graphdata, edit, metakeys, display=False, checkAccess=True)
 
         if meta[u'Date']:
             if meta.has_key(u'Duration'):
                 try:
                     duration = meta[u'Duration'][0][0]
+                except:
+                    None
+
+            if meta.has_key(u'Capacity'):
+                try:
+                    capacity = meta[u'Capacity'][0][0]
+                except:
+                    None
+
+            if meta.has_key(u'Location'):
+                try:
+                    location = meta[u'Location'][0][0]
                 except:
                     None
 
@@ -327,6 +344,14 @@ function formcheck(){
   <td colspan="2"><input id="duration" type="text" name="duration" value="%s"></td>
 </tr>
 <tr>
+  <td>Location</td>
+  <td colspan="2"><input id="location" type="text" name="location" value="%s"></td>
+</tr>
+<tr>
+  <td>Capacity</td>
+  <td colspan="2"><input id="capacity" type="text" name="capacity" size="4" value="%s"></td>
+</tr>
+<tr>
   <td>Repeat:</td>
   <td colspan="2"><select id="type" name="type">
     <option value="Once" selected>Does not repeat</option>
@@ -344,7 +369,7 @@ function formcheck(){
 </table>
 <input type="submit" name="save" value="save">
 ''' % (type, action_name, request.form.get('backto',[u''])[0],request.form.get('categories',[u''])[0],
-edit_page, title, def_date, time_opts, def_date, time_opts, duration, until)
+edit_page, title, def_date, time_opts, def_date, time_opts, duration, location, capacity, until)
     request.write(html)
 
 

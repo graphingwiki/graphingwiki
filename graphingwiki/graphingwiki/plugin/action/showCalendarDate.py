@@ -7,6 +7,7 @@ from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.patterns import getgraphdata
 
 def _enter_page(request, pagename):
     _ = request.getText
@@ -78,8 +79,17 @@ def printEntries(entries, date, pagename, request):
                 writeCell(startTime.strftime('%H:%M'))
             else:
                 writeCell('?')
+            if 'Location' in entry:
+                writeCell(entry['Location'])
+            else:
+                writeCell('?')
 
             writeCell(request.formatter.text(entry['Content'], width="40%"))
+
+            if 'Capacity' in entry:
+                writeCell(entry['Capacity'])
+            else:
+                writeCell('?')
             #edit link
             writeCell('<a href="?action=editCalendarEntry&edit=%s&backto=%s&categories=%s">edit</a>' % (entry['Page'],
             backto, request.form.get('categories',[u''])[0].encode())) #request.request_uri[1:]))
@@ -107,8 +117,11 @@ def execute(pagename, request):
 
     entries = dict()
 
+    if not hasattr(request, 'graphdata'):
+        getgraphdata(request)
+
     for page in pagelist:
-        metas = getmetas(request, globaldata, page, metakeys, display=False, checkAccess=True)
+        metas = getmetas(request, request.graphdata, page, metakeys, display=False, checkAccess=True)
 
         if u'Date' not in metas.keys():
             continue
@@ -130,8 +143,6 @@ def execute(pagename, request):
                 entrycontent[meta] = metas[meta][0][0]
             datedata.append(entrycontent)
 
-
-    globaldata.closedb()
 
     #Getting current month
     now = datetime.datetime.fromtimestamp(time.mktime(time.strptime(thisdate, '%Y-%m-%d')))
