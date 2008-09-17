@@ -42,27 +42,30 @@ from MoinMoin.parser.text_moin_wiki import Parser
 from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.editing import formatting_rules
 from graphingwiki.patterns import encode
+from graphingwiki.patterns import  getgraphdata
 
 Dependencies = ['metadata', 'time']
 
 def execute(macro, args):
     if args is None:
         args = ''
-    pageTemplate = args.split(',')[-1].strip()
-    if pageTemplate:
-        args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, args, get_all_keys=True)
     request = macro.request
     _ = request.getText
 
+    if not hasattr(macro.request, 'graphdata'):
+        getgraphdata(macro.request)
+
+
+
     out = macro.request
 
     entries = dict()
 
     for page in pagelist:
-        metas = getmetas(request, globaldata, page, metakeys, display=False, checkAccess=True)
+        metas = getmetas(request, request.graphdata, page, metakeys, display=False, checkAccess=True)
         if u'Date' not in metas.keys():
             continue
 
@@ -144,8 +147,6 @@ def execute(macro, args):
         entries.setdefault(entry, list())
         entries[entry].extend(new_entries[entry])
 
-    globaldata.closedb()
-    
     html = u'''
   <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
   <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
