@@ -146,7 +146,26 @@ try{
 loadData();
 }catch(E){}
 drawline();
+
+var typesel = $('ttypesel');
+typesel.addEvent('change',function(){
+	selectTaskType();
+});
+selectTaskType();
+
 });//domready
+
+function selectTaskType(){
+var typesel = $('ttypesel');
+var value = typesel.value;
+var lists = $$('div[id^=t_type_]');
+lists.setStyle('display', 'none');
+var selected = $(value);
+if(selected){
+	selected.setStyle('display', '');
+}
+
+}
 
 
 /* Draws lines between all boxes and endpoints */
