@@ -64,26 +64,50 @@ src="%s/common/js/calendar.js"></script>
 src="%s/common/js/dragui.js"></script>\n''' % (request.cfg.url_prefix_static,
 request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static,request.cfg.url_prefix_static)
     pagehtml += u'''
-select tasks:
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="editTask">
     <input type='submit' name='new' value='NewTask'>
-</form><br>
-<div style="width:200px;height:250px;overflow:scroll;">\n''' % request.request_uri.split("?")[0]
+</form><br>\n''' % request.request_uri.split("?")[0]
+   
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
+    subjectdict = {None:list()}
     for page in pagelist:
         try:
-            metas = getmetas(request, request.graphdata, encode(page), ["title","description"])
+            metas = getmetas(request, request.graphdata, encode(page), ["title", "description", "subject"])
             if metas["title"]:
-                description = metas["title"][0][0]
+                for description, type in metas["title"]:
+                    break
             else:
-                description = metas["description"][0][0]
-            pagehtml += u'''
-    <div class="dragItem"><input type="hidden" name="%s" value="%s">%s</div>\n''' % (description, page.replace('"', '&quot;'), description.replace('"', '&quot;'))
+                for description, type in metas["description"]:
+                    break
+            if metas["subject"]:
+                for subject, metatype in metas["subject"]:
+                    if not subjectdict.has_key(subject):
+                        subjectdict[subject] = list()
+                    subjectdict[subject].append((page, description))
+            else:
+                subjectdict[None].append((page, description))
         except:
             pass
+    #subjectlist
+    pagehtml += u'Tasks subjects: <br>'
+    pagehtml += u'<select style="width:190px" id="ttypesel" name="tasksubject">\n'
+    for subject in subjectdict:
+        pagehtml+=u'<option value="t_type_%s">%s</option>\n' % (subject, subject)
+    pagehtml += u'''</select>
+<br>
+<br>
+Tasks:
+'''
+    #tasklists
+    for subject, tasklist in subjectdict.iteritems():
+		pagehtml +=  u'''<div class="tasklist" id="t_type_%s">\n''' % unicode(subject).replace('"','&quot;')
+		for taskpagename, taskdescription in tasklist:
+			pagehtml += u'''<div class="dragItem"><input type="hidden" name="%s"
+	value="%s">%s</div>\n''' % (taskdescription.replace('"', '&quot;'), taskpagename, taskdescription)
+		pagehtml += u'</div>\n'
+
     pagehtml += u'''
-</div>
 <div id="start">Start by dragging here!<br></div>
 <form method="post" id="submitform" name="courseForm">
 <input type="hidden" name="action" value="editCourse">\n'''
