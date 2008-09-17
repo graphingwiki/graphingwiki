@@ -507,14 +507,14 @@ class Question:
             if self.request.form.has_key('answer__filename__'):
                 filename = self.request.form['answer__filename__']
             filecontent = self.request.form["answer"][0]
-            if isinstance(filecontent, file):
+            if not isinstance(filecontent, str):
                 temp = filecontent.read()
                 filecontent = temp
+            
+            if filename.endswith(".py"):
+                filecontent = "{{{#!python\n"+filecontent+"}}}\n"
             else:
-                if filename.endswith(".py"):
-                    filecontent = "{{{#!python\n"+filecontent+"}}}\n"
-                else:
-                    filecontent = "{{{\n"+filecontent+"}}}\n"
+                filecontent = "{{{\n"+filecontent+"}}}\n"
 
             filepage = PageEditor(self.request, historypage+"/file")
             filepage.saveText(filecontent, filepage.get_real_rev())
