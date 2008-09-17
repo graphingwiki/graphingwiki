@@ -83,20 +83,20 @@ class RaippaUser:
         pagelist = linking_in.get("user", [])
         timetracklist = dict()
         for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, page, ["course", "WikiCategory", "hours", "description", "time"], checkAccess=False)
+            metas = getmetas(self.request, self.request.graphdata, page, ["course", "WikiCategory", "hours", "description", "date"], checkAccess=False)
             if metas["course"]:
                 if course == metas["course"][0][0]:
                     for category, type in metas["WikiCategory"]:
                         if category == timetrackcategory:
-                            if metas["time"] and metas["hours"]:
-                                time = metas["time"][0][0]
+                            if metas["date"] and metas["hours"]:
+                                date = metas["date"][0][0]
                                 hours = metas["hours"][0][0]
                                 if metas["description"]:
                                     description = metas["description"][0][0]
                                 else:
                                     description = unicode()
                     
-                                timetracklist[time] = [hours, description]
+                                timetracklist[description] = [date, hours]
                             break
         return timetracklist
 

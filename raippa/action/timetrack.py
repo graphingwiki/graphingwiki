@@ -11,12 +11,13 @@ from MoinMoin.Page import Page
 timetrackcategory = u'CategoryTimetrack'
 
 def execute(pagename, request):
+    date = request.form.get("date", [None])[0]
     hours = request.form.get("hours", [None])[0]
     msg = None
-    if hours:
+    if date and hours:
         data = {"user":[addlink(request.user.name)],
                 "course":[addlink(pagename)],
-                "time":[time.strftime("%Y-%m-%d %H:%M:%S")],
+                "date": [date],
                 "hours":[hours],
                 "description":[request.form.get("description", [""])[0]]}
         getgraphdata(request)

@@ -363,9 +363,9 @@ def execute(macro, text):
 <hr><b>TimeTrack</b><br>
 <table>\n'''
                             total = int()
-                            for time in timetracklist:
-                                total += int(timetracklist[time][0])
-                                html += u'<tr><td>%s</td><td>%sh</td><td>%s</td></tr>\n' % (time, timetracklist[time][0], timetracklist[time][1])
+                            for tt_description in timetracklist:
+                                total += int(timetracklist[tt_description][1])
+                                html += u'<tr><td>%s</td><td>%sh</td><td>%s</td></tr>\n' % (timetracklist[tt_description][0], timetracklist[tt_description][1], tt_description)
 
                             html += u'''
 <tr><td>total:</td><td>%ih</td></tr>
