@@ -490,7 +490,7 @@ class GraphRepr(object):
         # make graph with attrs
         self.graphviz = Graphviz(**self.graphattrs)
 
-        nodes = map(lambda x: x[0], self.graph.nodes.getall())
+        nodes = list(self.graph.nodes)
         if self.order:
             # Graphviz likes to have nodes added to graph in hierarchy order
             ordered = dict()
@@ -519,8 +519,6 @@ class GraphRepr(object):
             item = self.graph.edges.get(*edge)
             self.graphviz.edges.add(edge)
             self.graphviz.edges.set(edge, **dict(item))
-
-        print self
 
     def _fixattrs(self, item):
         # return attrs with empty values filtered and style attrs renamed

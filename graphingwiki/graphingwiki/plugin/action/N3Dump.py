@@ -45,7 +45,7 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
             out = out + formatfunc(selfname,
                                    (pagename, prop, value))
 
-    for edge in pagegraph.edges.getall():
+    for edge in pagegraph.edges:
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
         dst = edge[1]
@@ -67,7 +67,7 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
             for data in formatfunc((pagename, prop, value)):
                 yield data
 
-    for edge in pagegraph.edges.getall():
+    for edge in pagegraph.edges:
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
         for data in formatfunc((edge[0], linktype, edge[1])):

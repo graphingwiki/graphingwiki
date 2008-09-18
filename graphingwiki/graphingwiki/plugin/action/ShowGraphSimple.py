@@ -125,13 +125,11 @@ class GraphShowerSimple(GraphShower):
             formatter = self.request.formatter
             self.request.write(formatter.paragraph(1))
             self.request.write(formatter.text(_("Nodes in graph") + ": " +
-                                                str(len(
-                outgraph.nodes.getall()))))
+                                              str(len(outgraph.nodes)))
             self.request.write(formatter.paragraph(0))
             self.request.write(formatter.paragraph(1))
             self.request.write(formatter.text(_("Edges in graph") + ": " +
-                                              str(len(
-                outgraph.edges.getall()))))
+                                              str(len(outgraph.edges)))
             self.request.write(formatter.paragraph(0))
             if getattr(self, 'orderby', '_hier') != '_hier':
                 self.request.write(formatter.paragraph(1))
@@ -220,7 +218,7 @@ class GraphShowerSimple(GraphShower):
         # To fix links with zgrviewer
         if hasattr(self, 'origformat'):
             src = self.request.getQualifiedURL() + '/'
-            for node, in outgraph.nodes.getall():
+            for node in outgraph.nodes:
                 node = outgraph.nodes.get(node)
 
                 # To fix some weird problems with transparency
@@ -256,7 +254,7 @@ class GraphShowerSimple(GraphShower):
                 node.gwikiURL = node.gwikiURL.replace('&image=1', '')
 
             src = self.request.getQualifiedURL()
-            for edge in outgraph.edges.getall():
+            for edge in outgraph.edges:
                 edge = outgraph.edges.get(*edge)
 
                 # Quoting fix

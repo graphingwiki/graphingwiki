@@ -658,10 +658,8 @@ class GraphShower(object):
                 obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
                 obj.gwikistyle = 'filled'
 
-        nodes = filter(lambda x: hasattr(x, colorby),
-                       [outgraph.nodes.get(*x) for x in 
-                        outgraph.nodes.getall()])
-
+        nodes = filter(lambda x: hasattr(x, colorby), 
+                       map(outgraph.nodes.get, outgraph.nodes))
         for obj in nodes:
             getcolors(obj)
             updatecolors(obj)
@@ -671,8 +669,7 @@ class GraphShower(object):
     def colorEdges(self, outgraph):
         # Add color to edges with linktype, gather legend data
         edges = filter(lambda x: getattr(x, "linktype", None), 
-                       [outgraph.edges.get(*x) for x in 
-                        outgraph.edges.getall()])
+                       [outgraph.edges.get(*x) for x in outgraph.edges])
         for obj in edges:
             self.coloredges.update(filter(self.oftype_p, obj.linktype))
             obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) 
@@ -694,13 +691,13 @@ class GraphShower(object):
                 node.gwikiURL = './\N'
 
         # You managed to filter out all your pages, dude!
-        if not outgraph.nodes.getall():
+        if not outgraph.nodes:
             outgraph.label = _("No data")
             outgraph.bgcolor = 'white'
 
         # Make the attachment node labels look nicer
         # Also fix overlong labels
-        for name, in outgraph.nodes.getall():
+        for name in outgraph.nodes:
             node = outgraph.nodes.get(name)
             if not node.gwikilabel:
                 node.gwikilabel = name
@@ -812,7 +809,7 @@ class GraphShower(object):
                                   minlen='1', weight='10')
 
         # Edge minimum lengths
-        for edge in outgraph.edges.getall():
+        for edge in outgraph.edges:
             tail, head = edge
             edge = gr.graphviz.edges.get(edge)
             taily = getattr(gr.graphviz.nodes.get(head), '_order', '')
@@ -1444,7 +1441,7 @@ class GraphShower(object):
     
         for n in range(1, self.depth+1):
             outgraph = self.traverseParentChild(graphdata, outgraph, newnodes)
-            newnodes = set([x for x, in outgraph.nodes.getall()])
+            newnodes = set(outgraph.nodes)
             # continue only if new pages were found
             newnodes = newnodes.difference(nodes)
             if not newnodes:
@@ -1467,7 +1464,7 @@ class GraphShower(object):
         wikiutil.send_footer(self.request, self.pagename)
 
     def edgeTooltips(self, outgraph):
-        for edge in outgraph.edges.getall():
+        for edge in outgraph.edges:
             e = outgraph.edges.get(*edge)
             # Fix linktypes to strings
             linktypes = getattr(e, 'linktype', [NO_TYPE])
@@ -1544,8 +1541,6 @@ class GraphShower(object):
             # Fix URL:s
             outgraph = self.fixNodeUrls(outgraph)
 
-            # self.request.write("Da nodes:" + repr(outgraph.nodes.getall()))
-
             # Do the layout
             gr = self.generateLayout(outgraph)
             cl.stop('layout')
@@ -1579,14 +1574,12 @@ class GraphShower(object):
             self.sendForm()
             self.request.write(formatter.paragraph(1))
             self.request.write(formatter.text("%s: " % _("Nodes in graph") +
-                                              str(len(
-                outgraph.nodes.getall()))))
+                                              str(len(outgraph.nodes))))
             self.request.write(formatter.paragraph(0))
             
             self.request.write(formatter.paragraph(1))
             self.request.write(formatter.text("%s: " % _("Edges in graph") +
-                                              str(len(
-                outgraph.edges.getall()))))
+                                              str(len(outgraph.edges))))
             self.request.write(formatter.paragraph(0))
 
             if getattr(self, 'orderby', '_hier') != '_hier':
@@ -1598,8 +1591,8 @@ class GraphShower(object):
 
             self.request.write(formatter.paragraph(1))
             self.request.write("%s: " % _('Density'))
-            nroedges = float(len(outgraph.edges.getall()))
-            nronodes = float(len(outgraph.nodes.getall()))
+            nroedges = float(len(outgraph.edges))
+            nronodes = float(len(outgraph.nodes))
             self.request.write(str(nroedges / (nronodes*nronodes-1)))
             self.request.write(formatter.paragraph(0))
 

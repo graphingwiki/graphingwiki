@@ -71,11 +71,11 @@ class Nodes(object):
     def get(self, identity):
         return self.nodes.get(identity, None)
 
-    def getall(self):
-        # FIXME: Should be "return list(self.nodes)", but we want
-        # misfeature-to-misfeature compatibility with the old graph
-        # class
-        return map(lambda x: (x,), self.nodes)
+    def __iter__(self):
+        return iter(self.nodes)
+
+    def __len__(self):
+        return len(self.nodes)
 
 class Edges(object):
     def __init__(self):
@@ -118,9 +118,18 @@ class Edges(object):
             identity = parent, node
             del self.edges[identity]
 
+    def __iter__(self):
+        return iter(self.edges)
+
+    def __len__(self):
+        return len(self.edges)
+
 class Graph(AttrBag):
     def __init__(self):
         self.nodes = Nodes(self)
         self.edges = Edges()
 
         AttrBag.__init__(self)
+
+    def __nonzero__(self):
+        return len(self.nodes) > 0
