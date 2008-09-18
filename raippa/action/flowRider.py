@@ -53,6 +53,14 @@ def execute(pagename, request):
             #input = order_meta_input(request, request.raippauser.statuspage, statusdata, "repl")
             #process_edit(request, input, True, {request.raippauser.statuspage:[statuscategory]})
             redirect(request, task)
+    elif request.form.has_key(u'next'):
+        currentpage = FlowPage(request, pagename, request.raippauser)
+        if request.raippauser.hasDone(pagename):
+            nextflowpoint, nexttask = currentpage.setnextpage()
+            if nextflowpoint == "end" and nexttask == "end":
+                redirect(request, request.raippauser.currentcourse)
+            else:
+                redirect(request, nexttask)
     elif request.form.has_key(u'send'):
         currentpage = FlowPage(request, pagename, request.raippauser)
         if taskcategory in currentpage.categories and (currentpage.type == u'exam' or currentpage.type == u'questionary'):
@@ -72,7 +80,6 @@ def execute(pagename, request):
                         questionpage = Question(request, page_tuple[1])
                         if questionpage.answertype == "file":
                             questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], "pending", {}, file=True)
-                            print "wut"
                         else:
                             overallvalue, successdict, tips = questionpage.checkanswers(useranswers[index])
                             questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, page_tuple[0], overallvalue, successdict)
@@ -90,7 +97,6 @@ def execute(pagename, request):
                 if questionpage:
                     questionpage = Question(request, questionpage)
                     if questionpage.answertype == "file":
-                        print "w00t"
                         questionpage.writehistory(request.raippauser.id, request.raippauser.currentcourse, request.raippauser.currenttask, "pending", {}, file=True)
                         redirect(request, currentpage.pagename)
                     else:
@@ -122,6 +128,6 @@ def execute(pagename, request):
             else:
                 redirect(request, currentpage.pagename, "noanswer")
         else:
-            request.write(u'Invalid input.')
+            request.write(u'Invalid input. 1')
     else:
-        request.write(u'Invalid input.')
+        request.write(u'Invalid input. 2')

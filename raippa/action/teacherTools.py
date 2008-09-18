@@ -358,7 +358,7 @@ def execute(pagename, request):
                     html += "<br>\n"
             html += "<br>TOP 10 failures:<br>\n"
             top5dict = dict()
-            for user, overallvalue, valuedict, course, task in question.gethistories():
+            for user, overallvalue, valuedict, course, task, historypage in question.gethistories():
                 if overallvalue == "False":
                     for answer, value in valuedict.iteritems():
                         if value == "false":
