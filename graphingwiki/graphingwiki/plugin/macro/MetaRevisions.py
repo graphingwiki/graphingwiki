@@ -44,7 +44,6 @@ def execute(macro, args):
     else:
         page = request.page
 
-
     pagelist, metakeys = get_revisions(request, page)
 
     construct_table(macro, pagelist, metakeys, 'Meta by Revision')

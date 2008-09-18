@@ -15,7 +15,6 @@ import urllib
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
-from MoinMoin.util.lock import ReadLock
 
 from graphingwiki.editing import process_edit, getmetas, save_template
 from graphingwiki.editing import metatable_parseargs, order_meta_input

@@ -37,7 +37,6 @@ from tempfile import mkstemp
 from MoinMoin.action import AttachFile
 
 from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import encode_page
 
 cairo_found = True
 try:
@@ -55,7 +54,7 @@ def execute(macro, args):
     _ = request.getText
 
     if not args:
-        args = encode_page(request.page.page_name)
+        args = request.page.page_name
 
     topology = args
 

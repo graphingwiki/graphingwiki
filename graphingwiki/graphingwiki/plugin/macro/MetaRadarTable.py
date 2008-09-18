@@ -33,7 +33,7 @@ from urllib import quote as url_quote
 from MoinMoin import wikiutil
 
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
-from graphingwiki.patterns import encode, decode_page
+from graphingwiki.patterns import encode
 
 cairo_found = True
 try:
@@ -123,7 +123,7 @@ def execute(macro, args):
 
         # First enter page names to first row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = decode_page(page)
+            pagerepr = page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
             out.write(macro.formatter.pagelink(1, pagerepr))
             out.write(macro.formatter.text(pagerepr))
@@ -134,7 +134,7 @@ def execute(macro, args):
 
         # Chart images to the other row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = decode_page(page)
+            pagerepr = page
             url = req_url + '&arg=' + page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
             out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))

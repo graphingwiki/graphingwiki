@@ -87,14 +87,9 @@ Content-Transfer-Encoding: base64
 
 msie_end = "\n--partboundary--\n\n"
 
-# Escape quotes to numeric char references, remove outer quotes.
+# Escape quotes to numeric char references
 def quoteformstr(text):
-    text = text.strip("\"'")
-    text = text.replace('"', '&#x22;')
-    return unicode('&#x22;' + text + '&#x22;', config.charset)
-
-def quotetoshow(text):
-    return unicode(url_unquote(text), config.charset)
+    return text.replace('"', '&#x22;')
 
 class GraphShower(object):
     EDGE_DARKNESS = 0.85
@@ -119,9 +114,9 @@ class GraphShower(object):
 
         self.isstandard = False
         
-        self.categories = []
-        self.otherpages = []
-        self.startpages = []
+        self.categories = list()
+        self.otherpages = list()
+        self.startpages = list()
 
         self.depth = 1
         self.orderby = ''
@@ -162,7 +157,7 @@ class GraphShower(object):
         # node attributes
         self.nodeattrs = set()
         # nodes that do and do not have the attribute designated with orderby
-        self.ordernodes = {}
+        self.ordernodes = dict()
         self.unordernodes = set()
 
         # For test, inline
@@ -217,7 +212,8 @@ class GraphShower(object):
             return blueHSV
 
         factor = float(clrnodes.index(string)) / (len(clrnodes) - 1)
-        h, s, v = map(lambda blue, red: blue + (red-blue)*factor, blueHSV, redHSV)
+        h, s, v = map(lambda blue, red: blue + 
+                      (red-blue)*factor, blueHSV, redHSV)
         return h, s, v
             
     def formargs(self):
@@ -235,7 +231,7 @@ class GraphShower(object):
 
         # depth
         if request.form.has_key('depth'):
-            depth = [encode(x) for x in request.form['depth']][0]
+            depth = request.form['depth'][0]
             try:
                 depth = int(depth)
                 if depth >= 1:
@@ -245,28 +241,25 @@ class GraphShower(object):
 
         # format
         if request.form.has_key('format'):
-            format = [encode(x) for x in request.form['format']][0]
+            format = request.form['format'][0]
             if format in self.available_formats:
                 self.format = format
 
         # Categories
         if request.form.has_key('categories'):
-            self.categories = [encode(x) for x in request.form['categories']]
+            self.categories = request.form['categories']
 
         # Other pages
         if request.form.has_key('otherpages'):
-            otherpages = ''.join([x for x in request.form['otherpages']])
-            if otherpages:
-                self.otherpages = [url_quote(encode(x.strip()))
-                                   for x in otherpages.split(',')]
+            self.otherpages = ','.join(request.form["otherpages"]).split(',')
             
         # Limit
         if request.form.has_key('limit'):
-            self.limit = ''.join([x for x in request.form['limit']])
+            self.limit = ''.join(request.form['limit'])
             
         # Rankdir
         if request.form.has_key('dir'):
-            self.rankdir = encode(''.join([x for x in request.form['dir']]))
+            self.rankdir = ''.join(request.form['dir'])
 
         # Unscale
         if request.form.has_key('unscale'):
@@ -282,24 +275,24 @@ class GraphShower(object):
 
         # Orderings
         if request.form.has_key('orderby'):
-            self.orderby = encode(''.join(request.form['orderby']))
+            self.orderby = ''.join(request.form['orderby'])
             # Checked due to weirdo problems with ShowGraphSimple
             if self.orderby:
-                self.graphengine = 'dot'            
+                self.graphengine = 'dot'
         if request.form.has_key('colorby'):
-            self.colorby = encode(''.join(request.form['colorby']))
+            self.colorby = ''.join(request.form['colorby'])
 
         # Color schema
         if request.form.has_key('colorscheme'):
-            self.colorscheme = encode(''.join(request.form['colorscheme']))
+            self.colorscheme = ''.join(request.form['colorscheme'])
             if self.colorscheme == 'gradient':
                 self.colorfunc = self.gradientcolor
 
         # Regexps
         if request.form.has_key('orderreg'):
-            self.orderreg = encode(''.join(request.form['orderreg']))
+            self.orderreg = ''.join(request.form['orderreg'])
         if request.form.has_key('ordersub'):
-            self.ordersub = encode(''.join(request.form['ordersub']))
+            self.ordersub = ''.join(request.form['ordersub'])
         if self.ordersub and self.orderreg:
             try:
                 self.re_order = re.compile(self.orderreg)
@@ -307,9 +300,9 @@ class GraphShower(object):
                 error = "Erroneus regexp: s/%s/%s/" % (self.orderreg,
                                                        self.ordersub)
         if request.form.has_key('colorreg'):
-            self.colorreg = encode(''.join(request.form['colorreg']))
+            self.colorreg = ''.join(request.form['colorreg'])
         if request.form.has_key('colorsub'):
-            self.colorsub = encode(''.join(request.form['colorsub']))
+            self.colorsub = ''.join(request.form['colorsub'])
         if self.colorsub and self.colorreg:
             try:
                 self.re_color = re.compile(self.colorreg)
@@ -319,24 +312,19 @@ class GraphShower(object):
 
         # Filters
         if request.form.has_key('filteredges'):
-            self.filteredges.update(
-                [encode(attr) for attr in request.form['filteredges']])
+            self.filteredges.update(request.form['filteredges'])
         if request.form.has_key('filterorder'):
-            self.filterorder.update(
-                [encode(attr) for attr in request.form['filterorder']])
+            self.filterorder.update(request.form['filterorder'])
         if request.form.has_key('filtercolor'):
-            self.filtercolor.update(
-                [encode(attr) for attr in request.form['filtercolor']])
+            self.filtercolor.update(request.form['filtercolor'])
         if request.form.has_key('filtercats'):
-            self.filtercats.update(
-                [encode(attr) for attr in request.form['filtercats']])
+            self.filtercats.update(request.form['filtercats'])
 
         # This is the URL addition to the nodes that have graph data
         self.urladd = '?'
         for key in request.form:
             for val in request.form[key]:
-                self.urladd = (self.urladd + url_quote(encode(key)) +
-                               '=' + url_quote(encode(val)) + '&')
+                self.urladd = (self.urladd + key + '=' + val + '&')
         self.urladd = self.urladd[:-1]
 
         # Disable output if testing graph
@@ -391,12 +379,11 @@ class GraphShower(object):
         graphdata = Graph()
 
         pagedir = self.request.page.getPagePath()
-        pagename = url_quote(encode(self.pagename))
-        self.pagename = pagename
+        pagename = self.pagename
 
         def get_categories(nodename):
             pagedata = self.request.graphdata.getpage(nodename)
-            return pagedata.get('metas', {}).get('gwikicategory', set())
+            return pagedata.get('out', dict()).get('gwikicategory', list())
 
         for nodename in self.otherpages:
             graphdata = self.addToStartPages(graphdata, nodename)
@@ -411,19 +398,12 @@ class GraphShower(object):
                   self.temp_re.search(pagename)):
             graphdata = self.addToStartPages(graphdata, pagename)
 
-
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
             # Permissions
-            if not self.request.user.may.read(unicode(url_unquote(cat),
-                                                      config.charset)):
+            if not self.request.user.may.read(cat):
                 continue
             catpage = self.request.graphdata.getpage(cat)
-            if not catpage.has_key('in'):
-                # graphdata not in sync on disk -> malicious input 
-                # or something has gone very, very wrong
-                # FIXME: Should raise an exception here and end the misery?
-                break
             for type in catpage['in']:
                 for newpage in catpage['in'][type]:
                     if not (self.cat_re.search(newpage) or
@@ -451,14 +431,12 @@ class GraphShower(object):
         outgraph.bgcolor = "transparent"
 
         if self.size:
-            outgraph.size = encode(self.size)
+            outgraph.size = self.size
 
         return outgraph
     
     def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
-        self.request.write(repr(obj1.node))
-        self.request.write(repr(obj2.node))
-        self.request.write('<br>')
+        _ = self.request.getText
 
         # Get edge from match, skip if filtered
         olde = graphdata.edges.get(obj1.node, obj2.node)
@@ -477,7 +455,7 @@ class GraphShower(object):
                     continue
             # or to pages within the wiki
             elif self.limit == 'wiki':
-                if not obj.gwikiURL[0] in ['.', '/']:
+                if not obj.gwikiURL[0] == '.':
                     continue
 
             # If node already added, nothing to do
@@ -499,7 +477,7 @@ class GraphShower(object):
                 
                 # Filtering by multiple metadata values
                 target = getattr(obj, doby)
-                for rule in [set(qpirts_p(x)) for x in filt if ',' in x]:
+                for rule in [set(x) for x in filt if ',' in x]:
                     if rule == rule.intersection(target):
                         left = target.difference(rule)
                         if left:
@@ -517,40 +495,39 @@ class GraphShower(object):
                     else:
                         return
 
-            # Add page categories to selection choices in the form
-            # (for local pages only)
-#            print obj.node
-            if obj.gwikiURL[0] in ['.', '/']:
-                cats = getattr(obj, 'gwikicategory', set())
-                cats = [x.strip('"') for x in cats]
-                self.addToAllCats(cats)
+            # User rights have been checked before, as traverse
+            # uses GraphData.load_graph, which handles them
+            pagedata = self.request.graphdata.getpage(obj.node)
 
-            # Category filter
+            cats = obj.gwikicategory
+
+            # Filter pages by category
             for filt in self.filtercats:
                 filt = '"%s"' % filt
-                cats = getattr(obj, 'gwikicategory', set([]))
                 if filt in cats:
                     return
+
+            # Add page categories to selection choices in the form
+            # (for local pages only, ie. existing and saved)
+            if pagedata.get('saved', False):
+                self.addToAllCats(cats)
 
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(nonguaranteeds_p(obj))
             n = outgraph.nodes.add(obj.node)
             n.update(obj)
 
-            # User rights have been checked before, as traverse
-            # uses GraphData.load_graph, which handles them
-            pagedata = self.request.graphdata.getpage(obj.node)
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip
-            if (pagedata.has_key('meta') and
-                not hasattr(obj, 'tooltip')):
-                pagemeta = nonguaranteeds_p(pagedata['meta'])
-                tooldata = '\n'.join([url_unquote("-%s: %s" %
-                                      (x,
-                                       pagedata['meta'][x]
-                                       ))
-                                      for x in pagemeta])
-                n.tooltip = '%s\n%s' % (url_unquote(obj.node), tooldata)
+            pagemeta = pagedata.get('meta', dict())
+            pagemeta.update(pagedata.get('out', dict()))
+            if (pagemeta and not hasattr(obj, 'gwikitooltip')):
+                pagekeys = nonguaranteeds_p(pagemeta)
+                tooldata = '\n'.join("-%s: %s" % 
+                                     (x == '_notype' and _('Links') or x,
+                                      ', '.join(pagemeta[x]))
+                                     for x in pagekeys)
+                n.gwikitooltip = '%s\n%s' % (obj.node, tooldata)
 
             # Shapefiles
             if getattr(obj, 'gwikishapefile', None):
@@ -561,9 +538,7 @@ class GraphShower(object):
                     page = obj.node
                 else:
                     page = '/'.join(components[:-1])
-                file = unicode(url_unquote(components[-1]), config.charset)
-
-                page = unicode(url_unquote(page), config.charset)
+                file = components[-1]
 
                 shapefile, exists = attachment_file(self.request, page, file)
 
@@ -593,15 +568,12 @@ class GraphShower(object):
                 value = getattr(obj, self.orderby, None)
                 if value:
                     # Add to self.ordernodes by combined value of metadata
-                    value = qstrip_p(value)
+                    value = ''.join(value)
                     # Add to filterordervalues in the nonmodified form
                     self.orderfiltervalues.add(value)
                     re_order = getattr(self, 're_order', None)
                     if re_order:
-                        # Don't remember the reason for quotes right now,
-                        # so just keeping them
-                        value = value.strip('"')
-                        value = '"' + re_order.sub(self.ordersub, value) + '"'
+                        value = re_order.sub(self.ordersub, value)
 
                     # Graphviz attributes must be strings
                     n._order = value
@@ -612,7 +584,7 @@ class GraphShower(object):
                 else:
                     self.unordernodes.add(obj.node)
 
-        # Add edge
+        # Add edge if not limited
         if self.limit:
             if not (outgraph.nodes.get(obj1.node) and
                     outgraph.nodes.get(obj2.node)):
@@ -620,6 +592,8 @@ class GraphShower(object):
 
         e = outgraph.edges.add(obj1.node, obj2.node)
         e.update(olde)
+
+        # Hide edges if applicable
         if self.hidedges:
             e.style = "invis"
 
@@ -665,29 +639,30 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = qstrip_p(rule)
+                rule = ''.join(rule)
                 re_color = getattr(self, 're_color', None)
                 # Add to filterordervalues in the nonmodified form
                 self.colorfiltervalues.add(rule)
                 if re_color:
-                    rule = rule.strip('"')
-                    rule = '"' + re_color.sub(self.colorsub, rule) + '"'
+                    rule = re_color.sub(self.colorsub, rule)
                 self.colornodes.add(rule)
 
         def updatecolors(obj):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = qstrip_p(rule)
+                rule = ''.join(rule)
                 re_color = getattr(self, 're_color', None)
                 if re_color:
-                    rule = rule.strip('"')
-                    rule = '"' + re_color.sub(self.colorsub, rule) + '"'
+                    rule = re_color.sub(self.colorsub, rule)
                 obj.gwikifillcolor = self.colorfunc(rule)
                 obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
                 obj.gwikistyle = 'filled'
 
-        nodes = filter(lambda x: hasattr(x, colorby), outgraph.nodes.getall())
+        nodes = filter(lambda x: hasattr(x, colorby),
+                       [outgraph.nodes.get(*x) for x in 
+                        outgraph.nodes.getall()])
+
         for obj in nodes:
             getcolors(obj)
             updatecolors(obj)
@@ -697,14 +672,16 @@ class GraphShower(object):
     def colorEdges(self, outgraph):
         # Add color to edges with linktype, gather legend data
         edges = filter(lambda x: getattr(x, "linktype", None), 
-                       outgraph.edges.getall())
+                       [outgraph.edges.get(*x) for x in 
+                        outgraph.edges.getall()])
         for obj in edges:
             self.coloredges.update(filter(self.oftype_p, obj.linktype))
-            obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) for x in obj.linktype)
+            obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) 
+                                 for x in obj.linktype)
             if self.edgelabels:
                 obj.decorate = 'true'
-                obj.label = ','.join(url_unquote(x) for x in obj.linktype
-                                     if x != NO_TYPE)
+                obj.label = ','.join(x for x in obj.linktype if x != NO_TYPE)
+                                     
         return outgraph
 
     def fixNodeUrls(self, outgraph):
@@ -719,7 +696,7 @@ class GraphShower(object):
 
         # You managed to filter out all your pages, dude!
         if not outgraph.nodes.getall():
-            outgraph.label = encode(_("No data"))
+            outgraph.label = _("No data")
             outgraph.bgcolor = 'white'
 
         # Make the attachment node labels look nicer
@@ -878,12 +855,12 @@ class GraphShower(object):
         # Make legend
         if self.size:
             legendgraph = Graphviz('legend', rankdir='LR', constraint='false',
-                                   **{'size': encode(self.size)})
+                                   **{'size': self.size})
 
         else:
             legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
         legend = legendgraph.subg.add("clusterLegend",
-                                      label=encode(_('Legend')))
+                                      label=_('Legend'))
         subrank = self.pagename.count('/')
         colorURL = self.getURLns(self.colorby)
         per_row = 0
@@ -910,7 +887,7 @@ class GraphShower(object):
                 legend.edges.add((ln1, ln2),
                                  color=self.hashcolor(linktype,
                                                       self.EDGE_DARKNESS),
-                                 label=url_unquote(linktype),
+                                 label=linktype,
                                  URL=self.getURLns(linktype))
                 per_row = per_row + 1
 
@@ -1000,7 +977,8 @@ class GraphShower(object):
 	request.write(u"<td valign=top>\n")
 
         # categories
-        request.write(u"<u>" + _("Categories:") + u"</u><br>\n")
+        if self.allcategories:
+            request.write(u"<u>" + _("Categories:") + u"</u><br>\n")
         if len(self.allcategories) > 5:
 	    request.write(u'<select name="categories" multiple size=6><br>\n')
 
@@ -1017,7 +995,7 @@ class GraphShower(object):
                            type in self.categories and " checked>" or ">",
                            type))
 
-        if len(self.allcategories) > 5: 
+        if len(self.categories) > 5: 
 	    request.write(u'</select><br>\n')
 
 
@@ -1028,8 +1006,9 @@ class GraphShower(object):
 
 
         # otherpages
-        otherpages = quotetoshow(', '.join(self.otherpages))
-        request.write(u"<td valign=top>\n<u>" + _("Other pages:") + u"</u><br>\n")
+        otherpages = ', '.join(self.otherpages)
+        request.write(u"<td valign=top>\n<u>" + 
+                      _("Other pages:") + u"</u><br>\n")
         request.write(u'<input type="text" name="otherpages" ' +
                       u'size=20 value="%s"><br>\n' % otherpages)
 
@@ -1055,7 +1034,7 @@ class GraphShower(object):
             types = sorted(types)
             if 'gwikicategory' in types:
                 types.remove('gwikicategory')
-                types.insert(0, 'gwikicategory')
+            types.insert(0, 'gwikicategory')
             return types
 
         request.write(u'<div class="showgraph-panel2">\n')
@@ -1076,13 +1055,13 @@ class GraphShower(object):
                 request.write(u'<option value="%s"%s%s</option><br>\n' %
                           (type,
                           type == self.colorby and " selected>" or ">",
-                          quotetoshow(type)))
+                          type))
             else:
                 request.write(u'<input type="radio" name="colorby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type == self.colorby and " checked>" or ">",
-                           quotetoshow(type)))
+                           type))
         if len(types) > 5:
             request.write(u'<option value=""%s%s</option><br>\n' %
                           (self.colorby == '' and " selected>" or ">",
@@ -1123,13 +1102,13 @@ class GraphShower(object):
                 request.write(u'<option value="%s"%s%s</option><br>\n' %
                           (type,
                           type == self.orderby and " selected>" or ">",
-                          quotetoshow(type)))
+                          type))
             else:
                 request.write(u'<input type="radio" name="orderby" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                            type == self.orderby and " checked>" or ">",
-                           quotetoshow(type)))
+                           type))
         if len(types) > 5:
             request.write(u'<option value=""%s%s</option><br>\n' %
                           (self.orderby == '' and " selected>" or ">",
@@ -1192,13 +1171,13 @@ class GraphShower(object):
                 request.write(u'<option value="%s"%s%s</option><br>\n' %
                           (type,
                           type in self.filteredges and " selected>" or ">",
-                          quotetoshow(type)))
+                          type))
             else:
                 request.write(u'<input type="checkbox" name="filteredges" ' +
                           u'value="%s"%s%s<br>\n' %
                           (type,
                           type in self.filteredges and " checked>" or ">",
-                          quotetoshow(type)))
+                          type))
 
         if len(alledges) > 5:
             request.write(u'<option value="%s"%s%s</option><br>\n' %
@@ -1242,7 +1221,7 @@ class GraphShower(object):
             allcolor = set(filter(self.oftype_p, self.filtercolor))
             allcolor.update(self.colorfiltervalues)
             for txt in [x for x in self.colorfiltervalues if ',' in x]:
-                allcolor.update(qpirts_p(txt))
+                allcolor.update(txt)
             allcolor = list(allcolor)
             allcolor.sort()
   
@@ -1254,13 +1233,13 @@ class GraphShower(object):
                     request.write(u'<option value="%s"%s%s</option><br>\n' % 
 		              (quoteformstr(type), 
 			      type in self.filtercolor and " selected>" or ">",
-			      quotetoshow(type[1:-1])))
+			      type[1:-1]))
                 else:
                     request.write(u'<input type="checkbox" name="filtercolor" ' +
                               u'value="%s"%s%s<br>\n' %
                               (quoteformstr(type),
                                type in self.filtercolor and " checked>" or ">",
-                               quotetoshow(type[1:-1])))
+                               type[1:-1]))
 
             if len(allcolor) > 5:
 		request.write(u'<option value="%s"%s%s</option><br>\n' %
@@ -1283,7 +1262,7 @@ class GraphShower(object):
             allorder = set(filter(self.oftype_p, self.filterorder))
             allorder.update(self.orderfiltervalues)
             for txt in [x for x in self.orderfiltervalues if ',' in x]:
-                allorder.update(qpirts_p(txt))
+                allorder.update(txt)
             allorder = list(allorder)
             allorder.sort()
 
@@ -1295,13 +1274,13 @@ class GraphShower(object):
                     request.write(u'<option value="%s"%s%s</option><br>\n' %
                               (quoteformstr(type),
                               type in self.filterorder and " selected>" or ">",
-                              quotetoshow(type[1:-1])))
+                              type[1:-1]))
                 else:
                     request.write(u'<input type="checkbox" name="filterorder" ' +
                               u'value="%s"%s%s<br>\n' %
                               (quoteformstr(type),
                                type in self.filterorder and " checked>" or ">",
-                               quotetoshow(type[1:-1])))
+                               type[1:-1]))
 
             if len(allorder) > 5:
                 request.write(u'<option value="%s"%s%s</option><br>\n' %
@@ -1387,6 +1366,7 @@ class GraphShower(object):
     def sendMap(self, graphviz):
         mappi = self.getLayoutInFormat(graphviz, 'cmapx')
 
+        # Dot output is utf-8
         self.request.write(unicode(mappi, config.charset) + '\n')
 
     def sendGv(self, gr):
@@ -1479,7 +1459,7 @@ class GraphShower(object):
 
     def browserDetect(self):
         if 'MSIE' in self.request.getUserAgent():
-            self.parts = []
+            self.parts = list()
             self.sendGraph = self.sendGraphIE
             self.sendLegend = self.sendLegendIE
             self.sendHeaders = self.sendHeadersIE
@@ -1502,15 +1482,13 @@ class GraphShower(object):
             # Double URL quoting? I have created a monster!
             filtstr = str()
             for lt in linktypes:
-                filtstr += '&filteredges=%s' % url_quote(lt)
+                filtstr += '&filteredges=%s' % lt
             e.URL = self.request.request_uri + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
             ltdisp = ', '.join(x for x in linktypes if x != NO_TYPE)
-            val = '%s>%s>%s' % (url_unquote(edge[0]),
-                                url_unquote(ltdisp),
-                                url_unquote(edge[1]))
+            val = '%s>%s>%s' % (edge[0], ltdisp, edge[1])
 
             e.tooltip = val
             
@@ -1527,7 +1505,7 @@ class GraphShower(object):
         formatter = self.sendHeaders()
 
         if error:
-            self.pagename = url_quote(encode(self.pagename))
+            self.pagename = self.pagename
             self.fail_page(error)
             return
 

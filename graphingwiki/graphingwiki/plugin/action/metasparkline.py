@@ -313,4 +313,5 @@ def execute(pagename, request):
         request.write(plot_sparkline(data, text=False))
     else:
         request.write(plot_sparkline(data))
+
     raise MoinMoinNoFooter

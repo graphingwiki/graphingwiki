@@ -9,37 +9,38 @@
 
 Dependencies = ['metadata']
 
-import StringIO
+from MoinMoin.macro.Include import _sysmsg
 
-from MoinMoin.parser.wiki import Parser
-
-from graphingwiki.patterns import encode_page
-from graphingwiki.editing import getmetas, metatable_parseargs
+from graphingwiki.editing import getmetas
+from graphingwiki.patterns import format_wikitext
 
 def execute(macro, args):
     request = macro.request
+    _ = request.getText
 
-    if not request.user.may.read(args.split(',')[0]):
-        return ''
+    args = [x.strip() for x in args.split(',')]
+    # Wrong number of arguments
+    if len(args) not in [1, 2]:
+        return _sysmsg % ('error', 
+                          _("GetMetaData: Need to specify page, or page and key"))
 
-    try:
-        args = args.split(',')
-        page = encode_page(args[0].strip())
+    # Get all non-empty args
+    args = [x for x in args if x]
+
+    # If not page specified, defaulting to current page
+    if len(args) == 1:
+        page = request.page.page_name
+        key = args[0]
+    elif len(args) == 2:
+        page = args[0]
         key = args[1]
+    # Faulty args
+    else:
+        return _sysmsg % ('error', 
+                          _("GetMetaData: Need to specify page, or page and key"))
 
-        vals = getmetas(request, page, [key], display=False)
-    except:
-        return ''
+    vals = getmetas(request, page, [key], display=False)
 
-    request.page.formatter = request.formatter
-    parser = Parser(', '.join(vals), request)
-    # No line anchors of any type to table cells
-    request.page.formatter.in_p = 1
-    parser._line_anchordef = lambda: ''
+    val = ', '.join(vals[key])
 
-    data = StringIO.StringIO()
-    request.redirect(data)
-    request.page.format(parser)
-    request.redirect()
-
-    return data.getvalue().strip()
+    return format_wikitext(request, val)

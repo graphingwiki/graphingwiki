@@ -24,7 +24,6 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
-from MoinMoin.util.lock import ReadLock
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import nonguaranteeds_p, NO_TYPE
@@ -63,7 +62,7 @@ def get_revisions(request, page):
     for rev in page.getRevList():
         revlink = '%s?action=recall&rev=%d' % (pagename, rev)
 
-        # Data about revisions is now saved to the graphdata
+        # Data about revisions is now cached to the graphdata
         # at the same time this is used.
         if request.graphdata.has_key(revlink):
             revisions[rev] = revlink
@@ -74,7 +73,9 @@ def get_revisions(request, page):
         text = revpage.get_raw_body()
         alldata = parse_text(request, revpage, text)
         if alldata.has_key(pagename):
+
             request.graphdata[revlink] = alldata[pagename]
+
             # So that new values are appended rather than overwritten
             del alldata[pagename]
 
@@ -285,12 +286,11 @@ def getmetas(request, name, metakeys,
     else:
         # Showing things as they are
         loadedLits = loadedPage.get("lit", dict())
+
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
                 if abs_attach:
-                    request.write(target + '<br>')
                     target = absolute_attach_name(name, target)
-                    request.write(target + '<br>')
 
                 pageMeta[key].append(target)
             
@@ -363,8 +363,7 @@ def edit(pagename, editfun, request=None,
     except p.Unchanged:
         msg = u'Unchanged'
 
-    request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
+    request.graphdata.readlock()
 
     return msg, p
 

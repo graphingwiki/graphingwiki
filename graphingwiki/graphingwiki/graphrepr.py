@@ -36,7 +36,7 @@ import select
 import os
 import time
 
-from graphingwiki.patterns import encode, encode_page
+from graphingwiki.patterns import encode_page, decode_page
 
 gv_found = True
 
@@ -103,7 +103,7 @@ class GraphvizItemGroup(object):
 
         Well, really only sets them to "".
         """
-        attrs = {}.fromkeys(list, "")
+        attrs = dict().fromkeys(list, "")
         attrs[self.type] = item
         self.graph._setattrs(self.parent.handle, **attrs)
 
@@ -141,9 +141,9 @@ class GraphvizEdges(GraphvizItemGroup):
     def __iter__(self):
         cur = gv.firstedge(self.parent.handle)
         while gv.ok(cur):
-            yield (gv.nameof(gv.tailof(cur)), \
-                  gv.nameof(gv.headof(cur))) , \
-                  dict(self.graph._iterattrs(cur))
+            yield (decode_page(gv.nameof(gv.tailof(cur))), 
+                   decode_page(gv.nameof(gv.headof(cur)))), \
+                   dict(self.graph._iterattrs(cur))
             cur = gv.nextedge(self.parent.handle, cur)
 
 class GraphvizSubgraphs(GraphvizItemGroup):
@@ -171,7 +171,7 @@ class GraphvizItem(object):
         Well, really only sets them to "". Calls Graphviz_setattrs by
         item handle.
         """
-        attrs = {}.fromkeys(list, "")
+        attrs = dict().fromkeys(list, "")
         self.graph._setattrs(handle=self.handle, **attrs)
 
     def delete(self):
@@ -185,19 +185,20 @@ class GraphvizItem(object):
         """ Iterates over item attributes. """
         attr = gv.firstattr(self.handle)
         while gv.ok(attr):
-            yield gv.nameof(attr), gv.getv(self.handle, attr)
+            yield decode_page(gv.nameof(attr)), \
+                decode_page(gv.getv(self.handle, attr))
             attr = gv.nextattr(self.handle, attr)
 
     def __str__(self):
         """ Returns item name. """
-        return gv.nameof(self.handle)
+        return "u'" + decode_page(gv.nameof(self.handle)) + "'"
 
     def __repr__(self):
         """ Returns item name and attributes.
 
         The output is directly usable by graph.<type>.add().
         """
-        return "('" + str(self) + "', " + str(dict(self)) + ')'
+        return u"(" + str(self) + ", " + str(dict(self)) + u')'
 
     def __setattr__(self, name, value):
         """ Sets the attribute to item using self.set """
@@ -210,14 +211,16 @@ class GraphvizItem(object):
     def __getattr__(self, name):
         """ Finds the named attribute, returns its value """
         handle = self.__dict__['handle']
+
+        name = encode_page(name)
+
         retval = gv.getv(handle, gv.findattr(handle, name))
         # Needed mainly for dict() for work, getattribute excepts
         # and so __iter__ is called. Non-gv attrs are not returned.
         if not retval:
             object.__getattribute__(self, name)
-            return retval
-        else:
-            return retval
+
+        return decode_page(retval)        
 
 # Subclasses, some overloading
 class GraphvizNode(GraphvizItem):
@@ -229,8 +232,8 @@ class GraphvizEdge(GraphvizItem):
         super(GraphvizEdge, self).__init__(graph, handle)
 
     def __str__(self):
-        return "('" + gv.nameof(gv.tailof(self.handle)) + \
-               "', '" + gv.nameof(gv.headof(self.handle)) + "')"
+        return "(u'" + decode_page(gv.nameof(gv.tailof(self.handle))) + \
+               "', u'" + decode_page(gv.nameof(gv.headof(self.handle))) + "')"
 
     def __repr__(self):
         return "(" + str(self) + ", " + str(dict(self)) + ')'
@@ -256,7 +259,7 @@ class Graphviz:
             self._read(string=string)
         elif name:
             if strict in ["", "strict"] and type in ["graph", "digraph"]:
-                self.name = name
+                self.name = encode_page(name)
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
                 # print "g = gv.%s%s('%s')" % (strict, type, name)
             else:
@@ -286,6 +289,8 @@ class Graphviz:
     def layout(self, format="", file=""):
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
+        format, file = map(encode_page, [format, file])
+
         if self.changed:
             # print "gv.layout(g, '%s')" % (self.engine)
             gv.layout(self.handle, self.engine)
@@ -329,7 +334,14 @@ class Graphviz:
         Finds the item handle by type, if necessary, and sets given
         attributes.
         """
+        head, tail = '', ''
+        if edge:
+            head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
         self.changed = 1
+
         if proto in ["node", "edge"]:
             # Gets handle when called from Subraphs.set()
             if subg:
@@ -337,8 +349,7 @@ class Graphviz:
             # Called by self.set() and GraphvizSubgraph.set(), handle known
             item = getattr(gv, "proto%s" % proto)(handle)
             # print "item = gv.proto" + proto + "(g)"
-        elif edge:
-            head, tail = edge
+        elif head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
             # print "item = gv.findedge(gv.findnode(g, '" + head + "')," + \
@@ -353,8 +364,9 @@ class Graphviz:
             item = handle
         else:
             raise "No graph element or element type specified"
+
         for key, elem in attrs.iteritems():
-            key, elem = encode(key), encode(elem)
+            key, elem = map(encode_page, [key, elem])
             gv.setv(item, key, elem)
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
@@ -368,7 +380,7 @@ class Graphviz:
             handle = self.handle
         attr = gv.firstattr(handle)
         while gv.ok(attr):
-            yield gv.nameof(attr), gv.getv(handle, attr)
+            yield map(decode_page, [gv.nameof(attr), gv.getv(handle, attr)])
             attr = gv.nextattr(handle, attr)
 
     def _add(self, handle, node="", edge="", subg="", **attrs):
@@ -377,15 +389,18 @@ class Graphviz:
         Adds the item to parent Graphviz-item graph handle, sets item
         attributes as necessary and returns a Graphviz.<Type> instance.
         """
+        head, tail = '', ''
+        if edge:
+            head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
         self.changed = 1
-        if edge: 
-            item = gv.edge(handle, *edge)
+        if head and tail:
+            item = gv.edge(handle, *(head, tail))
             # print "gv.edge(g, '" + "', '".join(edge) + "')"
             graphvizitem = GraphvizEdge(self, item)
         elif node:
-            if isinstance(node, unicode):
-                node = encode_page(node)
-                
             item = gv.node(handle, node)
             # print "gv.node(g, '" + node + "')"
             graphvizitem = GraphvizNode(self, item)
@@ -402,20 +417,19 @@ class Graphviz:
         """ Gets Graphviz.<Type> items from parent graph (given by handle).
         """
         # Default return value if item is not found
-        graphvizitem = None
+        head, tail = '', ''
         if edge:
             head, tail = edge
-            if isinstance(head, unicode):
-                head = encode_page(head)
-            if isinstance(tail, unicode):
-                tail = encode_page(tail)
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
+        graphvizitem = None
+        if head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
             if item:
                 graphvizitem = GraphvizEdge(self, item)
         elif node:
-            if isinstance(node, unicode):
-                node = encode_page(node)
             item = gv.findnode(handle, node)
             if item:
                 graphvizitem = GraphvizNode(self, item)
@@ -433,14 +447,14 @@ class Graphviz:
         Finds the item handle by type, if necessary, and removes the
         item from graph
         """
-        self.changed = 1
+        head, tail = '', ''
         if edge:
             head, tail = edge
-            if isinstance(head, unicode):
-                head = encode_page(head)
-            if isinstance(tail, unicode):
-                tail = encode_page(tail)
 
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
+        self.changed = 1
+        if head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
         elif node:
@@ -505,41 +519,38 @@ class GraphRepr:
             addednodes = dummy.nodes.added
 
         for node, in addednodes:
-            self.graphviz.nodes.add(encode(node))
-            # print "g.nodes.add('" + encode(node[0]) + "')"
+            self.graphviz.nodes.add(node)
+            # print "g.nodes.add('" + node[0]) + "')"
         for edge in dummy.edges.added:
-            self.graphviz.edges.add(tuple(encode(x) for x in edge))
-            # print "g.edges.add(" + encode(tuple(encode(x) for x in edge)) + ")"
+            self.graphviz.edges.add(edge)
+            # print "g.edges.add(" + edge + ")"
 
         for node in dummy.nodes.set:
             attrs = self._filterattrs(dummy.nodes.set[node])
             if not attrs:
                 continue
-            self.graphviz.nodes.set(encode(node[0]), **attrs)
-            # print "g.nodes.set('" + encode(node[0]) + "', **" + encode(attrs) + ")"
+            self.graphviz.nodes.set(node[0], **attrs)
+            # print "g.nodes.set('" + node[0] + "', **" + attrs + ")"
         for edge in dummy.edges.set:
-            self.graphviz.edges.set(tuple(encode(x) for x in edge),
-                               **dummy.edges.set[edge])
-            # print "g.edges.set(" + encode(tuple(encode(x) for x in edge)) + \
-            #       ", **" + encode(dummy.edges.set[edge]) + ")"
+            self.graphviz.edges.set(edge, **dummy.edges.set[edge])
+            # print "g.edges.set(" + edge + \
+            #       ", **" + dummy.edges.set[edge] + ")"
 
         for node in dummy.nodes.unset:
-            self.graphviz.nodes.unset(encode(node[0]),
-                                 *dummy.nodes.unset[node])
-            # print "g.nodes.unset('" + encode(node[0]) + "', *" + \
-            #                      encode(dummy.nodes.unset[node]) + ")"
+            self.graphviz.nodes.unset(node[0], *dummy.nodes.unset[node])
+            # print "g.nodes.unset('" + node[0] + "', *" + \
+            #                      dummy.nodes.unset[node] + ")"
         for edge in dummy.edges.unset:
-            self.graphviz.edges.unset(tuple(encode(x) for x in edge),
-                                 *dummy.edges.unset[edge])
-            # print "g.edges.unset(" + encode(tuple(encode(x) for x in edge)) + \
-            #       ", *" + encode(dummy.edges.unset[edge]) + ")"
+            self.graphviz.edges.unset(edge, *dummy.edges.unset[edge])
+            # print "g.edges.unset(" + edge + \
+            #       ", *" + dummy.edges.unset[edge] + ")"
 
         for node in dummy.nodes.deleted:
-            self.graphviz.nodes.delete(encode(node[0]))
-            # print "g.nodes.delete('" + encode(node[0]) + "')"
+            self.graphviz.nodes.delete(node[0])
+            # print "g.nodes.delete('" + node[0] + "')"
         for edge in dummy.edges.deleted:
-            self.graphviz.edges.delete(tuple(encode(x) for x in edge))
-            # print "g.edges.delete(" + encode(tuple(encode(x) for x in edge)) + ")"
+            self.graphviz.edges.delete(edge)
+            # print "g.edges.delete(" + edge + ")"
 
     def dynagraph(self, error=None, msg=None, debug=None):
         # Initialise graphviz string in case something weird happens
@@ -589,12 +600,12 @@ class GraphRepr:
         # Add by node/edge name. Adding edges requires specifying an
         # id, here edge object id, as well as src/dst nodes.
         for node in dummy.nodes.added:
-            msg = "insert node " + name + str(node[0]) + "\n"
+            msg = "insert node " + name + encode_page(node[0]) + "\n"
             self._communicate(msg)
         for edge in dummy.edges.added:
             msg = "insert edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
-                  " ".join((str(x) for x in edge)) + "\n"
+                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
+                  " ".join((encode_page(x) for x in edge)) + "\n"
             self._communicate(msg)
 
         # set and unset follow same logic: get the attrs to set/unset,
@@ -608,36 +619,36 @@ class GraphRepr:
                 continue
             label = self._graphvizattrs(attrs)
             msg = "modify node " + name + \
-                  str(node[0]) + " " + label + "\n"
+                  encode_page(node[0]) + " " + label + "\n"
             self._communicate(msg)
         for edge in dummy.edges.set:
             label = self._graphvizattrs(dummy.edges.set[edge])
             msg = "modify edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
+                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
                   label + "\n"
             self._communicate(msg)
 
         for node in dummy.nodes.unset:
             label = self._graphvizattrs(
-                {}.fromkeys(dummy.nodes.unset[node], ""))
+                dict().fromkeys(dummy.nodes.unset[node], ""))
             msg = "modify node " + name + \
-                  str(node[0]) + " " + label + "\n"
+                  encode_page(node[0]) + " " + label + "\n"
             self._communicate(msg)
         for edge in dummy.edges.unset:
             label = self._graphvizattrs(
-                {}.fromkeys(dummy.edges.unset[edge], ""))
+                dict().fromkeys(dummy.edges.unset[edge], ""))
             msg = "modify edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
+                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
                   label + "\n"
             self._communicate(msg)
 
         # Delete by name, even simpler than add
         for node in dummy.nodes.deleted:
-            msg = "delete node " + name + str(node[0]) + "\n"
+            msg = "delete node " + name + encode_page(node[0]) + "\n"
             self._communicate(msg)
         for edge in dummy.edges.deleted:
             msg = "delete edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + "\n"
+                  encode_page(id(self.graph.edges.get(*edge))) + "\n"
             self._communicate(msg)
 
         msg = "unlock graph " + name + "\n"
@@ -784,13 +795,13 @@ if __name__ == '__main__':
     g = graph.Graph()
     g.label = "A new graph!"
     g.rankdir = "LR"
-    g.nodes.add(1).label = "y"
-    g.nodes.add(2).comment = "prkl"
-    g.nodes.get(2).shape = "egg"
-    g.nodes.add(3).shape = "box"
-    g.nodes.add(4).shape = "diamond"
-    g.edges.add(1, 2).style = "invis"
-    g.edges.add(2, 3).dir = "none"
+    g.nodes.add(u"1").label = "y"
+    g.nodes.add(u"2").comment = "prkl"
+    g.nodes.get(u"2").shape = "egg"
+    g.nodes.add(u"3").shape = "box"
+    g.nodes.add(u"4").shape = "diamond"
+    g.edges.add(u"1", u"2").style = "invis"
+    g.edges.add(u"2", u"3").dir = "none"
 
 #    print "Dynagraph init:"
 #    k = GraphRepr(g, "dynagraph")
@@ -806,28 +817,39 @@ if __name__ == '__main__':
 #    g.commit()
     
     print "changes and commit:"
-    g.nodes.add(5).label="jeah"
-    n = g.nodes.get(2)
+    g.nodes.add(u"5").label="jeah"
+    n = g.nodes.get(u"2")
     del n.comment
     del n.shape
-    g.nodes.delete(4)
-    e = g.edges.get(1, 2)
+    g.nodes.delete(u"4")
+    e = g.edges.get(u"1", u"2")
     del e.style
     e.dir = "both"
 #    g.commit()
 
     print "megacommit:"
     for i in range(10, 50):
-        g.nodes.add(i)
+        g.nodes.add(unicode(i))
 #    g.commit()
 
-    prev = 50
+    prev = u"49"
     for i in range(50, 250):
-        g.nodes.add(i)
-        g.edges.add(i, prev)
-        prev = i
+        cur = unicode(i)
+        g.nodes.add(cur)
+        g.edges.add(cur, prev)
+        prev = cur
     g.commit()
-    
+
+    print repr(v.graphviz.nodes.get(u'5'))
+    print repr(str(v.graphviz.nodes.get(u'5')))
+    print repr(v.graphviz.edges.get((u'1', u'2')))
+    print repr(str(v.graphviz.edges.get((u'1', u'2'))))
+#    print type(v.graphviz.nodes.get(u'5'))
+#    print repr([x for x in v.graphviz.nodes])
+#    print repr([x for x in v.graphviz.nodes])
+#    print repr([x for x in v.graphviz.edges])
+#    print v.graphviz
+
 #    v.graphviz.layout()
 #    print str(k)
 #    str(v)

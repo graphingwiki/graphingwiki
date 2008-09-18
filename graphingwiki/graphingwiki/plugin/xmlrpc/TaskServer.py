@@ -61,7 +61,6 @@ def execute(xmlrpcobj, agentid, oper='get',
         for page in pagelist:
             metas = getmetas(request, page, metakeys, display=False)
 
-            page = decode_page(page)
             code = Page(request, page).get_raw_body()
 
             code = code.split('}}}', 1)[0]

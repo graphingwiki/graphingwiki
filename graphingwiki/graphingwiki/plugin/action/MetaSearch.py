@@ -29,11 +29,12 @@
 """
 import re
 
+from MoinMoin.macro.Include import _sysmsg
+
 from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import encode, actionname, decode_page
-from ShowGraph import quoteformstr
+from graphingwiki.patterns import actionname
 
 regexp_re = re.compile('^/.+/$')
 
@@ -101,14 +102,7 @@ def execute(pagename, request):
                 page_re = re.compile("%s" % q[1:-1])
                 q = ''
             except:
-                request.write(formatter.paragraph(1))
-                request.write(formatter.text(_("Bad regexp!")))
-                request.write(formatter.paragraph(0))
-
-                # End content
-                request.write(formatter.endContent()) # end content div
-                # Footer
-                wikiutil.send_footer(request, pagename)
+                request.write(_sysmsg % ('error', _("Bad regexp!")))
                 
         graphdata = request.graphdata
         graphdata.reverse_meta()
@@ -149,7 +143,10 @@ def execute(pagename, request):
 
         request.write(formatter.bullet_list(1))
         for page in sorted(keyhits):
-            page = decode_page(page)
+            # Do not include revisions etc so far, enabling this as per request
+            if not graphdata[page].has_key(u'saved'):
+                continue
+
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))
@@ -163,7 +160,10 @@ def execute(pagename, request):
         request.write(formatter.paragraph(0))
         request.write(formatter.bullet_list(1))
         for page in sorted(valhits):
-            page = decode_page(page)
+            # Do not include revisions etc so far, enabling this as per request
+            if not graphdata[page].has_key(u'saved'):
+                continue
+
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))

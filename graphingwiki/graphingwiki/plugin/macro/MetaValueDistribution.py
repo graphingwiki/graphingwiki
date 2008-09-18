@@ -34,7 +34,6 @@ from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import decode_page
 
 Dependencies = ['metadata']
 
@@ -72,7 +71,7 @@ def construct_table(macro, pagelist, key, sort_order):
     orginalPage = request.page
 
     for page in pagelist:
-        pageobj = Page(request, decode_page(page))
+        pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
 

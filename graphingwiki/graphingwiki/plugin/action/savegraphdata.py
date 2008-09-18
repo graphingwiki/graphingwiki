@@ -37,10 +37,9 @@ from copy import copy
 # MoinMoin imports
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.wikiutil import importPlugin
-from MoinMoin.util.lock import WriteLock
 
 # graphlib imports
-from graphingwiki.patterns import node_type, special_attrs, NO_TYPE
+from graphingwiki.patterns import node_type, SPECIAL_ATTRS, NO_TYPE
 from graphingwiki.editing import parse_categories
 
 # Add in-links from current node to local nodes
@@ -157,7 +156,7 @@ def shelve_set_attribute(new_data, node, key, val):
     elif not temp[u'meta'].has_key(key):
         temp[u'meta'][key] = [val]
     # a page can not have more than one label, shapefile etc
-    elif key in special_attrs:
+    elif key in SPECIAL_ATTRS:
         temp[u'meta'][key] = [val]
     else:
         temp[u'meta'][key].append(val)
@@ -173,7 +172,7 @@ def add_meta(new_data, pagename, (key, val)):
         return
 
     # Values to be handled in graphs
-    if key in special_attrs:
+    if key in SPECIAL_ATTRS:
         shelve_set_attribute(new_data, pagename, key, val)
         # If color defined, set page as filled
         if key == 'fillcolor':
@@ -212,7 +211,8 @@ def parse_link(wikiparse, hit, type):
 
     # Change name for different type of interwikilinks
     if type == 'interwiki':
-        nodename = hit
+        if not hit.startswith('Self'):
+            nodename = hit
     elif type == 'url_bracket':
         # Interwikilink in brackets?
         iw = re.search(r'\[(?P<iw>.+?)[\] ]',
@@ -408,7 +408,7 @@ def parse_text(request, page, text):
     for category in categories:
         name, linktype = parse_link(wikiparse, category, "word")
         if name:
-            add_link(new_data, pagename, name, "gwikicategory", category)
+            add_link(new_data, pagename, name, u"gwikicategory", category)
 
     return new_data
 
@@ -583,9 +583,7 @@ def execute(pagename, request, text, pagedir, page):
     temp[u'saved'] = True
 
     # Release ReadLock (from the previous reads), make WriteLock
-    request.lock.release()
-    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
+    request.graphdata.writelock()
 
     request.graphdata[pagename] = temp
     # Save the links that have truly changed

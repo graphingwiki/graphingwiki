@@ -33,7 +33,7 @@ import shelve
 from MoinMoin import config
 from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.patterns import decode_page, nonguaranteeds_p
+from graphingwiki.patterns import nonguaranteeds_p
 from graphingwiki.patterns import get_interwikilist, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
@@ -81,8 +81,6 @@ def get_page_n3(request, pagename):
 
 def get_page_fact(request, pagename, graphdata):
     pagegraph = graphdata.load_with_links(pagename)
-    if not isinstance(pagename, unicode):
-        pagename = decode_page(pagename)
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data, pagename
@@ -95,8 +93,6 @@ def get_all_facts(request, graphdata):
 
     for pagename in request.rootpage.getPageList():
         pagegraph = graphdata.load_with_links(pagename)
-        if not isinstance(pagename, unicode):
-            pagename = decode_page(pagename)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
             yield data, pagename
