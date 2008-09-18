@@ -108,7 +108,17 @@ class Edges(object):
 
     def delete(self, parent, child):
         identity = parent, child
-        self.edges.pop(identity, None)
+        
+        if identity in self.edges:
+            del self.edges[identity]
+
+            self.childDict[parent].discard(child)
+            if not self.childDict[parent]:
+                del self.childDict[parent]
+
+            self.parentDict[child].discard(parent)
+            if not self.childDict[child]:
+                del self.childDict[child]
 
     def _delete(self, node):
         for child in self.childDict.pop(node, set()):
