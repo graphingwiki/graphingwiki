@@ -61,42 +61,6 @@ class Graph(Sync):
                           self.__dict__.keys()):
             yield key, self.__dict__[key]
 
-    def __getstate__(self):
-        vars = dict(self)
-
-        items = dict()
-
-        # save nodes and edges
-        for type in ["nodes", "edges"]:
-            items[type] = dict()
-            group = getattr(self, type)
-            for item in group.getall():
-                # get item attributes
-                items[type][item] = dict(group.get(*item))
-
-        return vars, items
-
-    # Set state after pickling. Gets items from getstate, initialises
-    # nodes, edges and their attributes.
-    def __setstate__(self, state):
-        vars, items = state
-
-        # First, local variables
-        self.__dict__ = vars
-
-        # Then, init graph + sync
-        self.__init__()
-
-        # Finally, nodes and edges. 
-        for type in ["nodes", "edges"]:
-            group = getattr(self, type)
-            for item, attributes in items[type].iteritems():
-                # add items
-                row = group.add(*item)
-                # set item attributes, if any
-                for attr, val in attributes.iteritems():
-                    row.__setattr__(attr, val)
-
     def __disconnect(self, node1, node2):
  	if node1 not in self.connections:
  	    return
