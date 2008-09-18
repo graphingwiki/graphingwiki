@@ -30,11 +30,8 @@
 #! /usr/bin/env python
 # -*- coding: latin-1 -*-
 
-from subprocess import *
 import sys
-import select
 import os
-import time
 
 from graphingwiki.patterns import encode_page, decode_page
 
@@ -552,122 +549,6 @@ class GraphRepr:
             self.graphviz.edges.delete(edge)
             # print "g.edges.delete(" + edge + ")"
 
-    def dynagraph(self, error=None, msg=None, debug=None):
-        # Initialise graphviz string in case something weird happens
-        self.graphviz = ""
-
-        # Responses from dynagraph
-        self._dyna_stdout = []
-
-        # Callback functions
-        if not error:
-            self._dynaerror = self._dummy_dynaerror
-        else:
-            self._dynaeror = error
-
-        if not msg:
-            self._dynamsg = self._dummy_dynamsg
-        else:
-            self._dynamsg = msg
-
-        self._dynadebug = debug
-
-        # Process communication params
-        self._bufsize = 4096
-        self._timeout = 0.1
-
-        # open pipes to dynagraph, err to out
-        p = Popen('dynagraph',  bufsize=self._bufsize, shell=True,
-                  stdin=PIPE, stdout=PIPE, stderr=STDOUT,
-                  close_fds=True)
-        (self.w, self.r) = (p.stdin, p.stdout)
-
-        # Get graph attributes, open graph
-        label = self._graphvizattrs(self.graphattrs)
-        msg = "open graph " + self.graphattrs['name'] + \
-            " " + label + "\n"
-        self._communicate(msg)
-
-        # make graph dynamic. Oh yeah!
-        self.graph.listeners.add(self._dynachange).group = self
-
-    def _dynachange(self, graph, dummy):
-        name = self.graphattrs['name'] + " "
-
-        msg = "lock graph " + name + "\n"
-        self._communicate(msg)
-
-        # Add by node/edge name. Adding edges requires specifying an
-        # id, here edge object id, as well as src/dst nodes.
-        for node in dummy.nodes.added:
-            msg = "insert node " + name + encode_page(node[0]) + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.added:
-            msg = "insert edge " + name + \
-                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
-                  " ".join((encode_page(x) for x in edge)) + "\n"
-            self._communicate(msg)
-
-        # set and unset follow same logic: get the attrs to set/unset,
-        # make them into a graphviz-format string and feed the commands to
-        # dynagraph
-        for node in dummy.nodes.set:
-            # filter out "bad" attrs
-            attrs = self._filterattrs(dummy.nodes.set[node])
-            # If all attrs filtered
-            if not attrs:
-                continue
-            label = self._graphvizattrs(attrs)
-            msg = "modify node " + name + \
-                  encode_page(node[0]) + " " + label + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.set:
-            label = self._graphvizattrs(dummy.edges.set[edge])
-            msg = "modify edge " + name + \
-                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
-                  label + "\n"
-            self._communicate(msg)
-
-        for node in dummy.nodes.unset:
-            label = self._graphvizattrs(
-                dict().fromkeys(dummy.nodes.unset[node], ""))
-            msg = "modify node " + name + \
-                  encode_page(node[0]) + " " + label + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.unset:
-            label = self._graphvizattrs(
-                dict().fromkeys(dummy.edges.unset[edge], ""))
-            msg = "modify edge " + name + \
-                  encode_page(id(self.graph.edges.get(*edge))) + " " +\
-                  label + "\n"
-            self._communicate(msg)
-
-        # Delete by name, even simpler than add
-        for node in dummy.nodes.deleted:
-            msg = "delete node " + name + encode_page(node[0]) + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.deleted:
-            msg = "delete edge " + name + \
-                  encode_page(id(self.graph.edges.get(*edge))) + "\n"
-            self._communicate(msg)
-
-        msg = "unlock graph " + name + "\n"
-        self._communicate(msg)
-
-        # Grab and save results
-        self.graphviz = self._getgraph()
-
-    def _graphvizattrs(self, attrs):
-        # Make a graphviz-accepted string from attributes
-        label = ["["]
-        for key, val in attrs.iteritems():
-            # node attributes will be ''.joined twice, should do no harm
-            label.append('%s = "%s"' % (key, val))
-            label.append(', ')
-        label[-1] = "]"
-        
-        return ''.join(label)
-
     def _filterattrs(self, attrs):
         # return attrs with empty values filtered and style attrs renamed
         out = dict()
@@ -680,113 +561,6 @@ class GraphRepr:
                 out[key] = val
 
         return out
-
-    # Dummy callback functions
-    def _dummy_dynaerror(self, line):
-        raise "Dynagraph error " + line
-
-    def _dummy_dynamsg(self, line):
-        print "Dynagraph " + line
-
-    def _dummy_dynadebug(self, line):
-        print "Dynagraph --> " + line
-        
-    def _handledata(self):
-        input = ''.join(self._dyna_stdout).split("\n")
-        graphviz = ""
-        in_graphviz = 0
-        input_len = 0
-
-        # Try to find the graph from the data
-        for line in input:
-            if self._dynadebug:
-                self._dynadebug(line)
-
-            # Raise exception on dynagraph errors
-            if 'error in line' in line:
-                self._dynaerror(line)
-            # log messages to stdout
-            elif line.startswith('message "'):
-                self._dynamsg(line)
-            # The graph starts after '^fulfil graph <name>$'
-            elif line.startswith('fulfil graph'):
-                # Scrap input before this line, don't need to handle
-                # it again in any situation
-                # print "Scrapping input to line " + str(input_len)
-                self._dyna_stdout = [x + "\n" for x in input[input_len:]]
-                in_graphviz = 1
-            elif in_graphviz:
-                graphviz = graphviz + line + "\n"
-                # and the graph ends with '^}\n$'x
-                if line.startswith("}"):
-                    in_graphviz = 0
-            input_len = input_len + 1
-
-        if in_graphviz == 1:
-            graphviz = ""
-        return graphviz
-
-    def _getgraph(self):
-        # First, ask for da graph
-        msg = "request graph " + self.graphattrs['name'] + "\n"
-        self._communicate(msg)
-
-        # print "Start req", time.strftime("%M:%S", time.localtime())
-
-        graphviz = self._handledata()
-        while not graphviz:
-            # A bit time to respond
-            time.sleep(self._timeout)
-            # print "didn't get it!"
-            self._communicate()
-            # If we got data, try to handle it
-            if self._dyna_stdout:
-                graphviz = self._handledata()
-
-        # print "End req", time.strftime("%M:%S", time.localtime())
-
-        self._dyna_stdout = []
-        return graphviz
-
-    def _communicate(self, input=None):
-        message = "Dynagraph Says: broken pipe. Eject, eject!"        
-
-        if self.w and input:
-            # if we cannot write, select says []
-            if select.select([], [self.w], [], 0)[1]:
-                try:
-                    bytes_written = os.write(self.w.fileno(),
-                                             input[:self._bufsize])
-                    # print "Written: " + str(bytes_written)
-                    # print 'sent: ' + input[:10]
-                except OSError, why:
-                    import errno
-                    if why[0] == errno.EPIPE: #broken pipe
-                        self.w.close()
-                        self.w = None
-                        raise message
-                    raise
-                input = input[bytes_written:]
-
-        while select.select([self.r], [], [], 0)[0]:
-            try:
-                rec = os.read(self.r.fileno(), self._bufsize)
-                # print "Received: " + str(len(rec))
-            except OSError, why:
-                import errno
-                if why[0] == errno.EPIPE: #broken pipe
-                    self.r.close()
-                    self.r = None
-                    raise message
-                raise
-            if rec:
-                self._dyna_stdout.append(rec)
-                # print "data > " + repr(rec[-20:])
-            # dyna's in the process of writing stuff out,
-            # let's wait a bit and grab a bigger chunk
-            if len(rec) < 100:
-                time.sleep(self._timeout)
-        # print 'last data: ' + self._dyna_stdout[-1][:20]
 
     def __str__(self):
         return str(self.graphviz)
@@ -802,11 +576,6 @@ if __name__ == '__main__':
     g.nodes.add(u"4").shape = "diamond"
     g.edges.add(u"1", u"2").style = "invis"
     g.edges.add(u"2", u"3").dir = "none"
-
-#    print "Dynagraph init:"
-#    k = GraphRepr(g, "dynagraph")
-#    print str(k)
-#    print "Graphviz:"
 
     v = GraphRepr(g)
 #    import layout
@@ -840,22 +609,6 @@ if __name__ == '__main__':
         prev = cur
     g.commit()
 
-    print repr(v.graphviz.nodes.get(u'5'))
-    print repr(str(v.graphviz.nodes.get(u'5')))
-    print repr(v.graphviz.edges.get((u'1', u'2')))
-    print repr(str(v.graphviz.edges.get((u'1', u'2'))))
-#    print type(v.graphviz.nodes.get(u'5'))
-#    print repr([x for x in v.graphviz.nodes])
-#    print repr([x for x in v.graphviz.nodes])
-#    print repr([x for x in v.graphviz.edges])
-#    print v.graphviz
-
-#    v.graphviz.layout()
-#    print str(k)
-#    str(v)
-
-
-#    print "Graphviz again:"
 #    g = Graphviz(string=out)
 #    str(g)
     

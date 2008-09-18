@@ -29,7 +29,6 @@
 
 """
 from sync import Sync
-import pdb
 
 class Graph(Sync):
     def __init__(self):
@@ -98,9 +97,6 @@ class Graph(Sync):
                 for attr, val in attributes.iteritems():
                     row.__setattr__(attr, val)
 
-    def nodelist(self):
-        return [x[0] for x in self.nodes.getall()]    
-
     def __disconnect(self, node1, node2):
  	if node1 not in self.connections:
  	    return
@@ -160,81 +156,6 @@ class Graph(Sync):
     def __deledge(self, table, attributes, parent, child):
         self.__disconnect(parent, child)
 
-    def getrecursivenodes(self):
-        nodes = set()
-        for node, in self.nodes.getall():
-            if isinstance(node, Graph):
-                nodes.update(node.getrecursivenodes())
-            else:
-                nodes.add(node)
-	return nodes
-
-    def getconnected(self, node, maxdist = None):
-        if node not in self.connections:
-            return None
-        
-        if maxdist == None:        
-            return self.connections[node]
-
-        current = set()
-        current.add(node)
-
-        distance = 0
-        total = set()
-
-        while current and distance <= maxdist:
-            next = set()
-            for node in current:
-                for parent, child in self.edges.getall(parent = node):
-                    next.add(child)
-                for parent, child in self.edges.getall(child = node):
-                    next.add(parent)                
-            total.update(current)
-            current = next - total
-            distance += 1
-        return total
-
-    def getdistance(self, node1, node2):
-        if node2 not in self.connections:
-            return None
-        
-        if node1 not in self.connections[node2]:
-            return None
-        
-        current = set()
-        current.add(node1)
-
-        distance = 0
-        total = set()
-
-        while current:
-            if node2 in current:
-                return distance
-            
-            next = set()
-            for node in current:
-                for parent, child in self.edges.getall(parent = node):
-                    next.add(child)
-                for parent, child in self.edges.getall(child = node):
-                    next.add(parent)                
-            total.update(current)
-            current = next - total
-            distance += 1
-        return None
-
-    def isconnected(self, node1, node2, maxdist = None):
-        if maxdist == None:
-            if node1 not in self.connections or node2 in self.connections:
-                return False
-            if self.connections[node2] is self.connections[node1]:
-                return True
-            return False
-        
-        distance = self.getdistance(node1, node2)
-        return distance != None and (maxdist == None or distance <= maxdist)                
-
-
-
 if __name__ == '__main__':
     g = Graph()
     g.nodes.add(1).label = "blah"
@@ -244,12 +165,9 @@ if __name__ == '__main__':
     g.edges.add(1, 2)
     g.edges.add(3, 4)
 
-    print g.getconnected(1)
     g.edges.add(2, 3)
 
-    print g.getconnected(1)
     g.edges.delete(3, 4)
-    
-    print g.getconnected(1, 0)
+
     print "X"
     print g.nodes.getall(label = "blah")
