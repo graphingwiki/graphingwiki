@@ -1628,7 +1628,7 @@ class GraphShower(object):
                      self.urladd.replace('&inline=Inline', '')
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
-            self.request.write('<<InlineGraph(%s)>>' % urladd)
+            self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
         elif self.format in ['svg', 'dot', 'png']:
             if not gv_found:
                 self.sendForm()
