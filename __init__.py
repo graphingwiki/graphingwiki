@@ -134,10 +134,13 @@ class RaippaUser:
 
     def hasDone(self, pagename, course=None):
         page = FlowPage(self.request, pagename)
-        flow = page.getflow()
-        lasttaskpoint = encode(flow.pop()[0])
-        lasttaskpoint = self.request.graphdata.getpage(lasttaskpoint)
-        linking_in = lasttaskpoint.get('in', {})
+        if coursepointcategory in page.categories:
+            flow = page.getflow()
+            taskpoint = encode(flow.pop()[0])
+        elif taskpointcategory in page.categories:
+            taskpoint = encode(pagename)
+        taskpoint = self.request.graphdata.getpage(taskpoint)
+        linking_in = taskpoint.get('in', {})
         pagelist = linking_in.get("task", [])
         for page in pagelist:
             metas = getmetas(self.request, self.request.graphdata, encode(page), ["WikiCategory", "user", "overallvalue"], checkAccess=False)
@@ -413,7 +416,7 @@ class Question:
                             useranswers[true[0]] = "true"
                         for false in metas["false"]:
                             useranswers[false[0]] = "false"
-                        histories.append([user, overallvalue, useranswers, course, task])
+                        histories.append([user, overallvalue, useranswers, course, task, page])
                     break
         return histories
 
@@ -491,9 +494,23 @@ class Question:
 
         return overallvalue, successdict, tips
 
-    def writehistory(self, user, course, task, overallvalue, successdict, historypage=None, file=False):
+    def writehistory(self, user, course, task, overallvalue, successdict, file=False):
+        historypage = None
+        histories = self.gethistories()
+        for historyuser, ovalue, answers, historycourse, historytask, page in histories:
+            if historyuser == user and historycourse == course:
+                historypage = page
+                oldkeys = getkeys(self.request.graphdata, historypage).keys()
+                metas = getmetas(self.request, self.request.graphdata, historypage, oldkeys) 
+                oldmetas = dict()
+                for metakey in oldkeys:
+                    oldmetas[metakey] = list()
+                    for meta, type in metas[metakey]:
+                        oldmetas[metakey].append(meta)
+                break
         if not historypage:
             historypage = randompage(self.request, "History")
+            oldmetas = {}
 
         historydata = {u'user':[addlink(user)],
                        u'course':[addlink(course)],
@@ -512,9 +529,9 @@ class Question:
                 filecontent = temp
             
             if filename.endswith(".py"):
-                filecontent = "{{{#!python\n"+filecontent+"}}}\n"
+                filecontent = "#FORMAT python\n"+filecontent
             else:
-                filecontent = "{{{\n"+filecontent+"}}}\n"
+                filecontent = "#FORMAT plain\n"+filecontent
 
             filepage = PageEditor(self.request, historypage+"/file")
             filepage.saveText(filecontent, filepage.get_real_rev())
@@ -524,8 +541,13 @@ class Question:
             if not historydata.has_key(value):
                 historydata[value] = list()
             historydata[value].append(useranswer)
+        if not historydata.has_key("true"):
+            historydata["true"] = [u'']
+        if not historydata.has_key("false"):
+            historydata["false"] = [u'']
 
-        edit_meta(self.request, historypage, {u'': [u'']}, historydata, True, [historycategory])
+        print oldmetas, historydata
+        edit_meta(self.request, historypage, oldmetas, historydata, True, [historycategory])
 
     def getaverage(self, coursename, taskpoint):
         histories = self.gethistories()

@@ -214,7 +214,8 @@ def questionhtml(request, questionpage, number=""):
     html += u'<br>'
     return html
 
-def questionform(request):
+def questionform(macro):
+    request = macro.request
     try:
         meta = getmetas(request, request.graphdata, encode(request.page.page_name), ["question"], checkAccess=False)
         questionpage = encode(meta["question"][0][0])
@@ -222,6 +223,24 @@ def questionform(request):
         answertype = meta["answertype"][0][0]
     except:
         return u'Failed to generate question form.'
+
+    def submitform():
+        return u'''
+<form method="POST" enctype="multipart/form-data" action="%s">
+    <input type="hidden" name="action" value="flowRider">
+    %s
+    <input type='submit' name='send' value='Submit'>
+</form>''' % (request.page.page_name.split("/")[-1], questionhtml(request, questionpage))
+
+    def includecomment(historypage):
+        commentpage = historypage+"/comment"
+        if Page(request, commentpage).exists():
+            import MoinMoin.wikiutil as wikiutil
+            includemacro = wikiutil.importPlugin(request.cfg, "macro", 'Include')
+
+            return u'Comments:%s' % includemacro(macro, commentpage)
+        else:
+            return unicode()
 
     if answertype == "file":
         page = request.graphdata.getpage(questionpage)
@@ -234,19 +253,27 @@ def questionform(request):
                     for user, type in meta["user"]:
                         if user == request.user.name:
                             for value, type in meta["overallvalue"]:
+                                #print meta, page
                                 if value == "pending":
-                                    return u'You have already answered this question. Waiting for your answer to be checked.'
+                                    return u'You have already answered this question. Waiting for your answer to be checked.\n' 
+                                elif value and value != "pending" and value != "False":
+                                    return u'''
+You got %s right! Click Continue or submit new file.
+<form method="POST" enctype="multipart/form-data" action="%s">
+<input type="hidden" name="action" value="flowRider">
+<input type='submit' name='next' value='Continue'>
+</form>
+%s
+%s''' % (value, request.page.page_name.split("/")[-1], includecomment(page), submitform())
+                                elif value == "False":
+                                    return u'''
+Your answer was incorrect! Try again.
+%s
+%s''' % (includecomment(page), submitform())
                             break
                     break
         
-    html = u'''
-<form method="POST" enctype="multipart/form-data" action="%s">
-    <input type="hidden" name="action" value="flowRider">
-    %s
-    <input type='submit' name='send' value='Submit'>
-</form>''' % (request.page.page_name.split("/")[-1], questionhtml(request, questionpage))
-
-    return html
+    return submitform() 
 
 def taskform(request):
     currentpage = FlowPage(request, request.page.page_name)
@@ -387,6 +414,6 @@ def execute(macro, text):
             elif category == taskcategory:
                 return taskform(request)
             elif category == taskpointcategory:
-                return questionform(request)
+                return questionform(macro)
 
         return u'Invalid page or category.'
