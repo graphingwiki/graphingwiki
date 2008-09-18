@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-    graph class
-     - a data structure to represent graphs
+    Graph class - a data structure to represent graphs
+    * 2008-09-19 Written to emulate the old weird sync.py based contraption
+                 with 10^5 times less code.
 
     @copyright: 2006 by Joachim Viide and
                         Juhani Eronen <exec@iki.fi>
@@ -26,112 +27,100 @@
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
-
 """
-from sync import Sync
 
-class Graph(Sync):
-    def __init__(self):
-        Sync.__init__(self,
-                      (
-                         ("edges",
-                          ("parent", "child"),
-                          ()
-                         ),
-                         ("nodes",
-                          ("node",),
-                          ((("gwikilabel", ""),))
-                         ) # nodes
-                      ) #tables
-                     ) #self
+class AttrBag(object):
+    def __init__(self, **keys):
+        object.__init__(self)
 
-        self.connections = {}
-        self.edges.addhandler += self.__addedge
-        self.edges.delhandler += self.__deledge
-        self.nodes.addhandler += self.__addnode
-        self.nodes.delhandler += self.__delnode
+        self._ignore = None
+        self._ignore = set(self.__dict__)
+
+        self.__dict__.update(keys)
 
     def __iter__(self):
-        import re
-        # grab local variables not from sync or __init__
-        for key in filter(lambda x: not
-                          re.match(r'addhandler|delhandler|commithandler|' + \
-                                   r'listeners|listened|tablenames|order|' + \
-                                   r'connections|nodes|edges|_Sync.+', x),
-                          self.__dict__.keys()):
+        variables = set(self.__dict__)
+        variables.difference_update(self._ignore)
+        
+        for key in variables:
             yield key, self.__dict__[key]
 
-    def __disconnect(self, node1, node2):
- 	if node1 not in self.connections:
- 	    return
- 	if node2 not in self.connections:
- 	    return        
+    def update(self, other):
+        for name, value in other:
+            setattr(self, name, value)
 
- 	current = set()
- 	current.add(node1)
+class Nodes(object):
+    def __init__(self, graph):
+        object.__init__(self)
 
-        total = set()
- 	while current:
- 	    next = set()
- 	    for node in current:
-                for parent, child in self.edges.getall(parent = node):
- 		    next.add(child)
- 		for parent, child in self.edges.getall(child = node):
- 		    next.add(parent)
-            total.update(current)
-            current = next - total
+        self.graph = graph
+        self.nodes = dict()
 
-        if len(total) == len(self.connections[node1]):
-            return
+    def add(self, identity, **keys):
+        if identity not in self.nodes:
+            self.nodes[identity] = AttrBag(**keys)
+            # FIXME: get rid of these
+            self.nodes[identity].node = identity
+            self.nodes[identity].gwikilabel = ""
+        return self.nodes[identity]
 
-        for node in total:
-            self.connections[node] = total
+    def delete(self, identity):
+        self.nodes.pop(identity, None)
+        self.graph.edges._delete(identity)
 
-        total = self.connections[node2] - total
-        for node in total:
-            self.connections[node] = total
+    def get(self, identity):
+        return self.nodes.get(identity, None)
 
-    def __connect(self, parent, child):
-        children = self.connections[child]
-        parents = self.connections[parent]
+    def getall(self):
+        # FIXME: Should be "return list(self.nodes)", but we want
+        # misfeature-to-misfeature compatibility with the old graph
+        # class
+        return map(lambda x: (x,), self.nodes)
 
-        if children is parents:
-            return
+class Edges(object):
+    def __init__(self):
+        object.__init__(self)
 
-        children.update(parents)
-        for node in parents:
-            self.connections[node] = children
+        self.edges = dict()
+        self.childDict = dict()
+        self.parentDict = dict()
 
-    def __addnode(self, table, attributes, node):
-        self.connections[node] = set()
-        self.connections[node].add(node)
-        
-    def __delnode(self, table, attributes, node):
-        self.edges.deleteall(parent = node)
-        self.edges.deleteall(child = node)	
-        del self.connections[node]
+    def add(self, parent, child, **keys):
+        identity = parent, child
+        if identity not in self.edges:
+            self.edges[identity] = AttrBag(**keys)
+            self.childDict.setdefault(parent, set()).add(child)
+            self.parentDict.setdefault(child, set()).add(parent)
+        return self.edges[identity]
 
-    def __addedge(self, table, attributes, parent, child):
-        if not self.nodes.has(parent) or not self.nodes.has(child):
-            self.edges.delete(parent, child)
-            raise Exception, "Can't add an edge for a node not in the graph"
-        self.__connect(parent, child)
+    def get(self, parent, child):
+        identity = parent, child
+        return self.edges.get(identity, None)
 
-    def __deledge(self, table, attributes, parent, child):
-        self.__disconnect(parent, child)
+    def getall(self):
+        return list(self.edges)
 
-if __name__ == '__main__':
-    g = Graph()
-    g.nodes.add(1).label = "blah"
-    g.nodes.add(2)
-    g.nodes.add(3)
-    g.nodes.add(4)    
-    g.edges.add(1, 2)
-    g.edges.add(3, 4)
+    def children(self, parent):
+        return self.childDict.get(parent, set())
 
-    g.edges.add(2, 3)
+    def parents(self, child):
+        return self.parentDict.get(child, set())
 
-    g.edges.delete(3, 4)
+    def delete(self, parent, child):
+        identity = parent, child
+        self.edges.pop(identity, None)
 
-    print "X"
-    print g.nodes.getall(label = "blah")
+    def _delete(self, node):
+        for child in self.childDict.pop(node, set()):
+            identity = node, child
+            del self.edges[identity]
+        for parent in self.parentDict.pop(node, set()):
+            identity = parent, node
+            del self.edges[identity]
+
+class Graph(AttrBag):
+    def __init__(self):
+        self.nodes = Nodes(self)
+        self.edges = Edges()
+
+        AttrBag.__init__(self)

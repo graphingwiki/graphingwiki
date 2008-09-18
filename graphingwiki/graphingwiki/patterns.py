@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
     patterns class
-     - a forwards chaining inference engine for finding graph patterns
 
     @copyright: 2006 by Joachim Viide and
                         Juhani Eronen <exec@iki.fi>
@@ -407,28 +406,24 @@ class GraphData(UserDict.DictMixin):
     def load_with_links(self, pagename):
         return self.load_graph(pagename, '')
 
-def load_children(request, graph, node, urladd):
+def load_children(request, graph, parent, urladd):
     # Get new data for current node
-    adata = request.graphdata.load_graph(node, urladd)
+    adata = request.graphdata.load_graph(parent, urladd)
     if not adata:
         return list()
-    if not adata.nodes.get(node):
+    if not adata.nodes.get(parent):
         return list()
-    nodeitem = graph.nodes.get(node)
-    nodeitem.update(adata.nodes.get(node))
+    nodeitem = graph.nodes.get(parent)
+    nodeitem.update(adata.nodes.get(parent))
 
     children = set()
 
     # Add new nodes, edges that link to/from the current node
-    for parent, child in adata.edges.getall(parent=node):
-        newnode = graph.nodes.get(child)
-        if not newnode:
-            newnode = graph.nodes.add(child)
+    for child in adata.edges.children(parent):
+        newnode = graph.nodes.add(child)
         newnode.update(adata.nodes.get(child))
 
-        newedge = graph.edges.get(parent, child)
-        if not newedge:
-            newedge = graph.edges.add(parent, child)
+        newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)
         newedge.update(edgedata)
 
@@ -436,28 +431,23 @@ def load_children(request, graph, node, urladd):
 
     return children
 
-def load_parents(request, graph, node, urladd):
-    adata = request.graphdata.load_graph(node, urladd)
+def load_parents(request, graph, child, urladd):
+    adata = request.graphdata.load_graph(child, urladd)
     if not adata:
         return list()
-    if not adata.nodes.get(node):
+    if not adata.nodes.get(child):
         return list()
-    nodeitem = graph.nodes.get(node)
-    nodeitem.update(adata.nodes.get(node))
+    nodeitem = graph.nodes.get(child)
+    nodeitem.update(adata.nodes.get(child))
 
     parents = set()
 
-    # Add new nodes, edges that are the parents of either the
-    # current node, or the start nodes
-    for parent, child in adata.edges.getall(child=node):
-        newnode = graph.nodes.get(parent)
-        if not newnode:
-            newnode = graph.nodes.add(parent)
+    # Add new nodes, edges that are the parents of the current node
+    for parent in adata.edges.parents(child):
+        newnode = graph.nodes.add(parent)
         newnode.update(adata.nodes.get(parent))
 
-        newedge = graph.edges.get(parent, child)
-        if not newedge:
-            newedge = graph.edges.add(parent, child)
+        newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)
         newedge.update(edgedata)
 

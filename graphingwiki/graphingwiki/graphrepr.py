@@ -40,6 +40,7 @@ gv_found = True
 # 32bit and 64bit versions
 try:
     sys.path.append('/usr/lib/graphviz/python')
+    sys.path.append('/usr/local/lib/graphviz/python') # OSX
     import gv
 except ImportError:
     sys.path[-1] = '/usr/lib64/graphviz/python'
@@ -465,214 +466,71 @@ class Graphviz:
         if item:
             gv.rm(item)
 
-class GraphRepr:
-    def __init__(self, graph, format='graphviz', engine='', order=''):
-        self.format = format
-        self.graph  = graph
-        self.order = order
+class GraphRepr(object):
+    def __init__(self, graph, engine='', order=''):
+        object.__init__(self)
 
+        self.graph = graph
+        self.order = order
+        self.engine = engine
+
+        self.build()
+
+    def build(self):
         # get graph attributes
         self.graphattrs = dict(self.graph)
+
         # if graph has no name, make one 
-        if not self.graphattrs.has_key('name'):
-            self.graphattrs['name'] = str(id(self))
+        self.graphattrs.setdefault("name", str(id(self)))
+
         # add layout engine to graphattrs
-        if engine:
-            self.graphattrs['engine'] = engine
+        if self.engine:
+            self.graphattrs["engine"] = self.engine
 
-        # Call appropriate format function
-        getattr(self, self.format)()
-
-    def graphviz(self):
         # make graph with attrs
         self.graphviz = Graphviz(**self.graphattrs)
-        # print "g = Graphviz(**" + str(self.graphattrs) + ")"
 
-        # make graph dynamic. Oh yeah!
-        self.graph.listeners.add(self._graphvizchange).group = self
-
-    def _graphvizchange(self, graph, dummy):       
+        nodes = map(lambda x: x[0], self.graph.nodes.getall())
         if self.order:
             # Graphviz likes to have nodes added to graph in hierarchy order
-            nodes = dummy.nodes.added
-            attrs = dummy.nodes.set
-            ordered = {}
-            unordered = []
-            for node in attrs:
-                if attrs[node].has_key(self.order):
-                    value = attrs[node][self.order]
-                    if ordered.has_key(value):
-                        ordered[value].append(node)
-                    else:
-                        ordered[value] = [node]
-                else:
+            ordered = dict()
+            unordered = list()
+
+            for node in nodes:
+                item = self.graph.nodes.get(node)
+                if not hasattr(item, self.order):
                     unordered.append(node)
-            
-            addednodes = []
-            for key in sorted(ordered.keys()):
-                addednodes.extend(ordered[key])
-            addednodes.extend(unordered)
-        else:
-            addednodes = dummy.nodes.added
+                    continue
 
-        for node, in addednodes:
+                value = getattr(item, self.order)
+                ordered.setdefault(value, list()).append(node)
+
+            nodes = list()
+            for key in sorted(ordered):
+                nodes.extend(ordered[key])
+            nodes.extend(unordered)
+
+        for node in nodes:
+            item = self.graph.nodes.get(node)
             self.graphviz.nodes.add(node)
-            # print "g.nodes.add('" + node[0]) + "')"
-        for edge in dummy.edges.added:
+            self.graphviz.nodes.set(node, **self._fixattrs(item))
+
+        for edge in self.graph.edges.getall():
+            item = self.graph.edges.get(*edge)
             self.graphviz.edges.add(edge)
-            # print "g.edges.add(" + edge + ")"
+            self.graphviz.edges.set(edge, **dict(item))
 
-        for node in dummy.nodes.set:
-            attrs = self._filterattrs(dummy.nodes.set[node])
-            if not attrs:
-                continue
-            self.graphviz.nodes.set(node[0], **attrs)
-            # print "g.nodes.set('" + node[0] + "', **" + attrs + ")"
-        for edge in dummy.edges.set:
-            self.graphviz.edges.set(edge, **dummy.edges.set[edge])
-            # print "g.edges.set(" + edge + \
-            #       ", **" + dummy.edges.set[edge] + ")"
+        print self
 
-        for node in dummy.nodes.unset:
-            self.graphviz.nodes.unset(node[0], *dummy.nodes.unset[node])
-            # print "g.nodes.unset('" + node[0] + "', *" + \
-            #                      dummy.nodes.unset[node] + ")"
-        for edge in dummy.edges.unset:
-            self.graphviz.edges.unset(edge, *dummy.edges.unset[edge])
-            # print "g.edges.unset(" + edge + \
-            #       ", *" + dummy.edges.unset[edge] + ")"
-
-        for node in dummy.nodes.deleted:
-            self.graphviz.nodes.delete(node[0])
-            # print "g.nodes.delete('" + node[0] + "')"
-        for edge in dummy.edges.deleted:
-            self.graphviz.edges.delete(edge)
-            # print "g.edges.delete(" + edge + ")"
-
-    def _filterattrs(self, attrs):
+    def _fixattrs(self, item):
         # return attrs with empty values filtered and style attrs renamed
         out = dict()
-        for key, value in attrs.items():
+        for key, value in item:
             if value and isinstance(value, basestring):
-                val = ''.join(attrs[key])
                 if key.startswith('gwiki'):
-                    key = key.replace('gwiki', '', 1)
-                
-                out[key] = val
-
+                    key = key.replace('gwiki', '', 1)                
+                out[key] = value
         return out
 
     def __str__(self):
         return str(self.graphviz)
-
-if __name__ == '__main__':
-    g = graph.Graph()
-    g.label = "A new graph!"
-    g.rankdir = "LR"
-    g.nodes.add(u"1").label = "y"
-    g.nodes.add(u"2").comment = "prkl"
-    g.nodes.get(u"2").shape = "egg"
-    g.nodes.add(u"3").shape = "box"
-    g.nodes.add(u"4").shape = "diamond"
-    g.edges.add(u"1", u"2").style = "invis"
-    g.edges.add(u"2", u"3").dir = "none"
-
-    v = GraphRepr(g)
-#    import layout
-#    l = layout.GraphvizLayout(g)
-#    str(v)
-
-    print "initial commit:"
-#    g.commit()
-    
-    print "changes and commit:"
-    g.nodes.add(u"5").label="jeah"
-    n = g.nodes.get(u"2")
-    del n.comment
-    del n.shape
-    g.nodes.delete(u"4")
-    e = g.edges.get(u"1", u"2")
-    del e.style
-    e.dir = "both"
-#    g.commit()
-
-    print "megacommit:"
-    for i in range(10, 50):
-        g.nodes.add(unicode(i))
-#    g.commit()
-
-    prev = u"49"
-    for i in range(50, 250):
-        cur = unicode(i)
-        g.nodes.add(cur)
-        g.edges.add(cur, prev)
-        prev = cur
-    g.commit()
-
-#    g = Graphviz(string=out)
-#    str(g)
-    
-def testgraphviz():
-    g = Graphviz('hello', comment="It's a new graph")
-
-    # adders to graph and subgraph, setters
-    n = g.nodes.add('1', label='node1', comment='a new node')
-    sg = g.subg.add('h')
-    n2 = sg.nodes.add('2', label='node2', comment='another node')
-    e = g.edges.add(('1', '2'), constraint="false")
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-    
-    # graph normal and proto setters
-    g.set(proto='node', shape="box")
-    g.set(rankdir='LR', label="Graph label!")
-
-    # subgraph setters    sg.set(proto='node', shape="egg")
-    g.subg.set('h', proto='edge', comment="references")
-    sg.color = 'black'
-
-    g.nodes.add('flash', label="Zlabam")
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-
-    # edge setters
-    e.set(label="lightning")
-    g.edges.set(('2', "1"), style="invis")
-    e.color = 'blue'
-
-    # node setters
-    sg.nodes.set('2', label="super", position="center")
-    n2.set(shape="ellipse")
-    n2.style = 'filled'
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-
-    # Some more methods for setting attributes
-    g.edges.add(("3", "4")).dir = 'none'
-    sg.nodes.add("Thule").comment = 'here be dragons'
-    sg.edges.add(("Thule", "ix")).label = 'bridge'
-    sg.nodes.get("ix").comment = 'dark'
-
-    del g.nodes.get('2').position
-    if n2.comment == "another node":
-        n2.comment = "great"
-    g.nodes.delete('flash')
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print "sg.edges", sg.edges
-    print g

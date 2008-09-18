@@ -495,8 +495,7 @@ class GraphShower(object):
                     else:
                         return
 
-            # User rights have been checked before, as traverse
-            # uses GraphData.load_graph, which handles them
+            # User rights have been checked before, at traverse
             pagedata = self.request.graphdata.getpage(obj.node)
 
             cats = obj.gwikicategory
@@ -1325,9 +1324,6 @@ class GraphShower(object):
     def generateLayout(self, outgraph):
         # Add all data to graph
         gr = GraphRepr(outgraph, engine=self.graphengine, order='_order')
-
-        # After this, edit gr.graphviz, not outgraph!
-        outgraph.commit()
 
         if getattr(self, 'orderby', '_hier') != '_hier':
             gr = self.orderGraph(gr, outgraph)
