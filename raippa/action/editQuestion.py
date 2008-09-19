@@ -235,12 +235,17 @@ function typeCheck(){
 var sel = $('typeSelect').value;
 var tds = $$('td.rexp');
 var td = null;
+var filefield = $('filefield');
   if(sel === "file"){
-	document.getElementById('ansRow').style.display = "none";
-	document.getElementById('fieldCreator').style.display = "none";
+	filefield.setStyle('display', '');
+	filefield.set('name', 'answer1');
+	$('ansRow').setStyle('display', 'none');
+	$('fieldCreator').setStyle('display', 'none');
  }else{
-	document.getElementById('ansRow').style.display = "";
-  	document.getElementById('fieldCreator').style.display = "";
+	filefield.setStyle('display', 'none');
+	filefield.set('name', '');
+	$('ansRow').setStyle('display', '');
+  	$('fieldCreator').setStyle('display', '');
   }
 
 for(var i in tds){
@@ -287,10 +292,10 @@ return true;
     html += u'''
 <form id="dataform" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="action" value="%s">
-<table style="border-style:hidden">
-<tr style="border-style:hidden">
-<td style="border-style:hidden">question:</td>
-<td style="border-style:hidden"colspan="2">''' % action_name
+<table class="no_border" >
+<tr >
+<td >question:</td>
+<td colspan="2">''' % action_name
     if questionpage:
         html += u'<input type="hidden" name="questionpage" value="%s">' % questionpage
         html += u'<textarea id="questionfield" name="question" rows="3" cols="70">%s</textarea>' % question.question
@@ -299,9 +304,9 @@ return true;
     html += u'''
 </td>
 <tr>
-<tr style="border-style:hidden">
-<td  style="border-style:hidden">note:</td>
-<td colspan="2"style="border-style:hidden">'''
+<tr >
+<td  >note:</td>
+<td colspan="2">'''
     if questionpage:
         html += u'<textarea name="note" rows="7" cols="70">%s</textarea>' % question.note
     else:
@@ -309,9 +314,9 @@ return true;
     html += u'''
 </td>
 <tr>
-<tr style="border-style:hidden">
-<td style="border-style:hidden">type:</td>
-<td colspan="2"style="border-style:hidden">
+<tr >
+<td >type:</td>
+<td colspan="2">
 <select name="type">
 <option value=""> </option>\n'''
     globaldata, questions, metakeys, styles = metatable_parseargs(request, questioncategory)
@@ -333,9 +338,9 @@ return true;
 <input size="30" type="text" name="type">
 </td>
 <tr>
-<tr style="border-style:hidden">
-<td style="border-style:hidden">image:</td>
-<td colspan="2"style="border-style:hidden">\n'''
+<tr>
+<td>image:</td>
+<td colspan="2">\n'''
     if questionpage:
         files = getattachments(request, questionpage)
         if files:
@@ -364,6 +369,7 @@ return true;
     <input id="fieldCreator" type="button" name="addButton" title="Add more answer fields"
     value="Add new field" onClick="addField();">
 <br>
+<textarea id="filefield" cols="80" rows="15" name="" ></textarea>
  <table id="ansRow">
 <tr>
     <td style="text-align:center"><a title="Remove selected answers"
