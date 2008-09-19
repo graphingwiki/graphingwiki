@@ -86,6 +86,21 @@ class Edges(object):
         self.parentDict = dict()
 
     def add(self, parent, child, **keys):
+        """
+        >>> edges = Edges()
+        >>> e1 = edges.add(1, 2)
+        >>> e2 = edges.add(1, 3)
+        >>> sorted(edges)
+        [(1, 2), (1, 3)]
+
+        Adding an already existing edge just returns the already existing
+        edge item:
+
+        >>> edges.add(1, 2) is e1
+        True
+        >>> sorted(edges)
+        [(1, 2), (1, 3)]
+        """
         identity = parent, child
         if identity not in self.edges:
             self.edges[identity] = AttrBag(**keys)
@@ -93,20 +108,22 @@ class Edges(object):
             self.parentDict.setdefault(child, set()).add(parent)
         return self.edges[identity]
 
-    def get(self, parent, child):
-        identity = parent, child
-        return self.edges.get(identity, None)
-
-    def getall(self):
-        return list(self.edges)
-
-    def children(self, parent):
-        return self.childDict.get(parent, set())
-
-    def parents(self, child):
-        return self.parentDict.get(child, set())
-
     def delete(self, parent, child):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
+
+        >>> edges.delete(1, 2)
+        >>> sorted(edges)
+        [(1, 3)]
+
+        Deleting a non-existing edge does nothing:
+
+        >>> edges.delete(7, 8)
+        >>> sorted(edges)
+        [(1, 3)]
+        """
         identity = parent, child
         
         if identity in self.edges:
@@ -117,8 +134,65 @@ class Edges(object):
                 del self.childDict[parent]
 
             self.parentDict[child].discard(parent)
-            if not self.childDict[child]:
-                del self.childDict[child]
+            if not self.parentDict[child]:
+                del self.parentDict[child]
+
+    def get(self, parent, child):
+        """
+        >>> edges = Edges()
+
+        Getting a non-existing edge returns None:
+
+        >>> edges.get(1, 2)
+     
+        Getting an edge naturally returns the same edge item as when adding:
+
+        >>> e1 = edges.add(1, 2)
+        >>> edges.get(1, 2) is e1
+        True
+
+        Deleting an edge also deletes the edge item. Re-adding the edge
+        creates a new edge item:
+
+        >>> edges.delete(1, 2)
+        >>> _ = edges.add(1, 2)
+        >>> edges.get(1, 2) is e1
+        False
+        """
+
+        identity = parent, child
+        return self.edges.get(identity, None)
+
+    def children(self, parent):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
+        >>> sorted(edges.children(1))
+        [2, 3]
+
+        >>> edges.delete(1, 2)
+        >>> sorted(edges.children(1))
+        [3]
+        """
+
+        return self.childDict.get(parent, set())
+
+    def parents(self, child):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
+
+        >>> sorted(edges.parents(2))
+        [1]
+
+        >>> edges.delete(1, 2)
+        >>> sorted(edges.parents(2))
+        []
+        """
+
+        return self.parentDict.get(child, set())
 
     def _delete(self, node):
         for child in self.childDict.pop(node, set()):
@@ -135,6 +209,26 @@ class Edges(object):
         return len(self.edges)
 
 class Graph(AttrBag):
+    """
+    >>> graph = Graph()
+
+    >>> _ = graph.nodes.add(1)
+    >>> _ = graph.nodes.add(2)
+    >>> sorted(graph.nodes)
+    [1, 2]
+    >>> _ = graph.edges.add(1, 2)
+    >>> sorted(graph.edges)
+    [(1, 2)]
+
+    Deleting a node also deletes the related edges:
+
+    >>> graph.nodes.delete(2)
+    >>> sorted(graph.nodes)
+    [1]
+    >>> sorted(graph.edges)
+    []
+    """
+
     def __init__(self):
         self.nodes = Nodes(self)
         self.edges = Edges()
@@ -143,3 +237,10 @@ class Graph(AttrBag):
 
     def __nonzero__(self):
         return len(self.nodes) > 0
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()
