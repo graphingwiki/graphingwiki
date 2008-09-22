@@ -165,13 +165,23 @@ window.addEvent('domready', function(){
                 start_time = "?"
 
             try:
+                location = '&nbsp;*&nbsp;Location:&nbsp;&nbsp;%s <br> ' % cont['Location']
+            except:
+				location = ""
+
+            try:
+                cap = '&nbsp;*&nbsp;Capacity:&nbsp;&nbsp;%s <br>' % cont['Capacity']
+            except:
+				cap = ""
+
+            try:
                 desc = cont['Content'].replace('\n','')
                 if len(desc) > 35:
                     desc = desc[0:35] + " ..."
             except:
                 desc = "?"
 
-            html += u'<b>%s :</b> %s<br>' % (start_time,desc)
+            html += u'<b>%s :</b> %s<br>%s%s' % (start_time,desc,location,cap)
 
         html += u'");\n'
     html += u'''
