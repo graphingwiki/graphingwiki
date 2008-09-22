@@ -31,9 +31,12 @@ import StringIO
 from urllib import quote as url_quote
 
 from MoinMoin import wikiutil
+from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import url_construct
+
+from MetaRadarChart import radarchart_args
 
 cairo_found = True
 try:
@@ -44,6 +47,8 @@ except ImportError:
 
 Dependencies = ['metadata']
 
+MAX_WIDTH = 1000
+
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
@@ -51,45 +56,22 @@ def execute(macro, args):
     _ = request.getText
 
     if not cairo_found:
-        return formatter.text(_(\
-                        "ERROR: Cairo Python extensions not installed. " +\
-                        "Not performing layout.")) + formatter.linebreak()
+        return _sysmsg % ('error', _(\
+                "ERROR: Cairo Python extensions not installed. " +\
+                    "Not performing layout."))
 
-    req_url = request.getScriptname() + '/' + request.page.page_name
-    req_url += '?action=metaRadarChart'
-
-    height, width = (1000, 1000)
-
-    if args:
-        arglist = list()
-        for arg in [x.strip() for x in args.split(',') if x]:
-            if arg.startswith('chartheight='):
-                height = arg.split('=')[1]
-                req_url += '&height=%s' % \
-                       (url_quote(height))
-                continue
-            if arg.startswith('chartwidth='):
-                width = arg.split('=')[1]
-                req_url += '&width=%s' % \
-                       (url_quote(width))
-                continue
-
-            if arg.startswith('||') and arg.endswith('||'):
-                req_url += '&arg=%s' % (url_quote(encode(arg)))
-
-            arglist.append(arg)
-            
-        args = ', '.join(arglist)
+    url_args, args = radarchart_args(args)
 
     # For multiple radar charts per table row
     try:
-        height = int(height)
-        width = int(width)
+        height = url_args.get('height', MAX_WIDTH)
+        width = url_args.get('height', MAX_WIDTH)
+        height, width = int(height[0]), int(width[0])
     except ValueError:
         pass
 
-    # 1000 is the assumed max_width here
-    amount = 1000 / min(height, width)
+    # MAX_WIDTH is the assumed max_width here
+    amount = MAX_WIDTH / min(height, width)
     if amount < 1:
         amount = 1
 
@@ -101,15 +83,21 @@ def execute(macro, args):
     for page in pagelist:
         metas = getmetas(request, page, metakeys)
         for key in metas:
-            values.update(metas[key])
+            # Get the maximum value of each key on a page
+            if metas[key]:
+                numberedvals = dict()
+                for i, val in enumerate(map(ordervalue, metas[key])):
+                    numberedvals[val] = i
+                maxval = max(numberedvals.keys())
+                i = numberedvals[maxval]
+                # This contraption is here because we need to deliver
+                # unparsed (textual) values in urls
+                values.add(metas[key][i])
     for val in values:
         if val.startswith('attachment'):
             # A bit ugly fix for a weird corner case
-            val = val[11:]
-            req_url += '&value=attachment:%s' % \
-                       (url_quote(url_quote(encode(val))))
-        else:
-            req_url += '&value=%s' % (url_quote(encode(val)))
+            val = "attachment:%s" % (val[11:])
+        url_args.setdefault('value', list()).append(val)
 
     out = StringIO.StringIO()
     out.write(macro.formatter.linebreak() +
@@ -123,10 +111,9 @@ def execute(macro, args):
 
         # First enter page names to first row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
-            out.write(macro.formatter.pagelink(1, pagerepr))
-            out.write(macro.formatter.text(pagerepr))
+            out.write(macro.formatter.pagelink(1, page))
+            out.write(macro.formatter.text(page))
             out.write(macro.formatter.pagelink(0))
             out.write(macro.formatter.linebreak())
 
@@ -134,10 +121,8 @@ def execute(macro, args):
 
         # Chart images to the other row
         for page in pagelist[i*amount:(i+1)*amount]:
-            pagerepr = page
-            url = req_url + '&arg=' + page
             out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
-            out.write(u'<img src="%s">' % (request.getQualifiedURL(url)))
+            out.write(u'<img src="%s">' % (url_construct(request, url_args)))
             out.write(macro.formatter.linebreak())
 
     out.write(macro.formatter.table(0) + u'</div>')

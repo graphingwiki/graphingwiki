@@ -145,6 +145,9 @@ def show_error(macro, args, error):
 def execute(macro, args):
     request = macro.request
 
+    if not args:
+        return u''
+
     args = args.split(",")
     args = map(lambda x: x.strip(), args)
 
@@ -180,4 +183,4 @@ def execute(macro, args):
     # We're sure the user has the access to the page, so don't check
     construct_table(macro, pagelist, key, sort_order)
 
-    return ""
+    return ''

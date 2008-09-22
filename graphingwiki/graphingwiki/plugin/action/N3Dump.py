@@ -74,13 +74,13 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
             yield data
 
 def get_page_n3(request, pagename):
-    pagegraph = request.graphdata.load_with_links(pagename)
+    pagegraph = request.graphdata.load_graph(pagename, '')
     selfname = get_selfname(request)
 
     return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)
 
 def get_page_fact(request, pagename, graphdata):
-    pagegraph = graphdata.load_with_links(pagename)
+    pagegraph = graphdata.load_graph(pagename, '')
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data, pagename

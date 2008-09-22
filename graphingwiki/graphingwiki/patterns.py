@@ -42,6 +42,7 @@ from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.action import AttachFile
+from MoinMoin.Page import Page
 
 from graphingwiki.graph import Graph
 
@@ -54,12 +55,39 @@ encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
 
+def url_escape(text):
+    # Escape characters that break html values fields, 
+    # macros and urls with parameters
+    return re.sub('[\]"\?#&]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
+def url_parameters(args):
+    req_url = u'?'
+
+    url_args = list()
+    for key in args:
+        for val in args[key]:
+            url_args.append(u'='.join(map(url_escape, [key, val])))
+
+    req_url += u'&'.join(url_args)
+
+    return req_url
+
+def url_construct(request, args):
+    req_url = request.getScriptname() + u'/' + request.page.page_name 
+
+    if args:
+        req_url += url_parameters(args)
+
+    return request.getQualifiedURL(req_url)
+
 # Default node attributes that should not be shown
 SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',
-                 'gwikishapefile', "gwikishape", "gwikistyle", 'gwikiURL']
+                 'gwikishapefile', "gwikishape", "gwikistyle", 
+                 'gwikicategory', 'gwikiURL']
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        SPECIAL_ATTRS, dict(node))
+
 NO_TYPE = u'_notype'
 
 # Ripped off from Parser
@@ -251,19 +279,16 @@ class GraphData(UserDict.DictMixin):
             for key in value.get('meta', dict()):
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in value['meta'][key]:
-                    val = val.strip('"')
-                    val = val.replace('\\"', '"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
             for key in value.get('lit', dict()):
                 self.keys_on_pages.setdefault(key, set()).add(page)
                 for val in value['lit'][key]:
-                    val = val.strip('"')
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-    def _add_node(self, pagename, graph, urladd=""):
+    def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
         if graph.nodes.get(pagename):
             return graph
@@ -274,7 +299,7 @@ class GraphData(UserDict.DictMixin):
         # Add metadata
         for key, val in page.get('meta', dict()).iteritems():
             if key in SPECIAL_ATTRS:
-                setattr(node, key, ''.join(x.strip('"') for x in val))
+                setattr(node, key, ''.join(val))
             else:
                 setattr(node, key, val)
 
@@ -282,19 +307,21 @@ class GraphData(UserDict.DictMixin):
         for shape in page.get('lit', dict()).get('gwikishapefile', list()):
             node.gwikishapefile = shape
         # so is category
-        node.gwikicategory = page.get('out', dict()).get('gwikicategory', list())
+        node.gwikicategory = \
+            page.get('out', dict()).get('gwikicategory', list())
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'gwikiURL'):
             node.gwikiURL = './' + pagename
 
         # Nodes representing existing local nodes may be traversed
-        if page.has_key('saved'):
-            node.gwikiURL += urladd
-        # Try to be helpful and add editlinks
-        else:
-            node.gwikiURL += u"?action=edit"
-            node.gwikitooltip = self.request.getText('Add page')
+        if nodetype == 'page':
+            if page.has_key('saved'):
+                node.gwikiURL += urladd
+            # try to be helpful and add editlinks to non-underlay pages
+            elif Page(self.request, pagename).isStandardPage():
+                node.gwikiURL += u"?action=edit"
+                node.gwikitooltip = self.request.getText('Add page')
 
         return graph
 
@@ -387,7 +414,7 @@ class GraphData(UserDict.DictMixin):
                     tooltip = dst
 
                 # Add page and its metadata
-                adata = self._add_node(dst, adata, urladd)
+                adata = self._add_node(dst, adata, urladd, nodetype)
                 adata = self._add_link(adata, (pagename, dst), type)
 
                 if label or gwikiurl or tooltip:
@@ -402,9 +429,6 @@ class GraphData(UserDict.DictMixin):
                     node.gwikitooltip = tooltip
 
         return adata
-
-    def load_with_links(self, pagename):
-        return self.load_graph(pagename, '')
 
 def load_children(request, graph, parent, urladd):
     # Get new data for current node

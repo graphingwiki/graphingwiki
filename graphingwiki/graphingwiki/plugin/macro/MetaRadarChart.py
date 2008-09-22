@@ -27,11 +27,10 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
 
 from MoinMoin import wikiutil
 
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import url_construct
 
 Dependencies = ['metadata']
 
@@ -41,6 +40,28 @@ try:
 except ImportError:
     cairo_found = False
     pass
+
+def radarchart_args(args):
+    urlargs = {u'action': [u'metaRadarChart']}
+
+    if not args:
+        return urlargs, args
+
+    arglist = [x.strip() for x in args.split(',') if x]
+    macro_args = list()
+
+    for arg in arglist:
+        if arg.startswith('chartheight='):
+            urlargs[u'height'] = [arg.split('=')[1]]
+        elif arg.startswith('chartwidth='):
+            urlargs[u'width'] = [arg.split('=')[1]]
+        elif arg.startswith('chartscale='):
+            urlargs.setdefault('scale', list()).append(arg.split('=')[1])
+        else:
+            urlargs.setdefault(u'arg', list()).append(arg)
+            macro_args.append(arg)
+
+    return urlargs, u','.join(macro_args)
 
 def execute(macro, args):
     formatter = macro.formatter
@@ -52,22 +73,9 @@ def execute(macro, args):
         return formatter.text(_(\
             "ERROR: Cairo Python extensions not installed. " +\
             "Not performing layout.")) + formatter.linebreak()
-    
-    req_url = request.getScriptname() + '/' + request.page.page_name
-    req_url += '?action=metaRadarChart'
 
-    if args:
-        arglist = [x.strip() for x in args.split(',') if x]
-        for arg in arglist:
-            if arg.startswith('chartheight='):
-                req_url += '&height=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-            elif arg.startswith('chartwidth='):
-                req_url += '&width=%s' % \
-                           (url_quote(encode(arg.split('=')[1])))
-            else:
-                req_url += '&arg=%s' % (url_quote(encode(arg)))
+    urlargs, _ = radarchart_args(args)
 
     return u'<div class="metaradarchart">' + \
-           u'<img src="%s">' % (request.getQualifiedURL(req_url)) + \
+           u'<img src="%s">' % url_construct(request, urlargs) + \
            u'</div>'

@@ -34,6 +34,7 @@ import sys
 import os
 
 from graphingwiki.patterns import encode_page, decode_page
+from graphingwiki.editing import ordervalue
 
 gv_found = True
 
@@ -183,7 +184,7 @@ class GraphvizItem(object):
         """ Iterates over item attributes. """
         attr = gv.firstattr(self.handle)
         while gv.ok(attr):
-            yield decode_page(gv.nameof(attr)), \
+            yield gv.nameof(attr), \
                 decode_page(gv.getv(self.handle, attr))
             attr = gv.nextattr(self.handle, attr)
 
@@ -378,7 +379,7 @@ class Graphviz:
             handle = self.handle
         attr = gv.firstattr(handle)
         while gv.ok(attr):
-            yield map(decode_page, [gv.nameof(attr), gv.getv(handle, attr)])
+            yield gv.nameof(attr), decode_page(gv.getv(handle, attr))
             attr = gv.nextattr(handle, attr)
 
     def _add(self, handle, node="", edge="", subg="", **attrs):
@@ -467,12 +468,12 @@ class Graphviz:
             gv.rm(item)
 
 class GraphRepr(object):
-    def __init__(self, graph, engine='', order=''):
+    def __init__(self, graph, engine):
         object.__init__(self)
 
         self.graph = graph
-        self.order = order
         self.engine = engine
+        self.order = 'gwikiorder'
 
         self.build()
 
@@ -491,31 +492,31 @@ class GraphRepr(object):
         self.graphviz = Graphviz(**self.graphattrs)
 
         nodes = list(self.graph.nodes)
-        if self.order:
-            # Graphviz likes to have nodes added to graph in hierarchy order
-            ordered = dict()
-            unordered = list()
 
-            for node in nodes:
-                item = self.graph.nodes.get(node)
-                if not hasattr(item, self.order):
-                    unordered.append(node)
-                    continue
+        # Graphviz likes to have nodes added to graph in hierarchy order
+        ordered = dict()
+        unordered = list()
 
-                value = getattr(item, self.order)
-                ordered.setdefault(value, list()).append(node)
+        for node in nodes:
+            item = self.graph.nodes.get(node)
+            if not hasattr(item, self.order):
+                unordered.append(node)
+                continue
 
-            nodes = list()
-            for key in sorted(ordered):
-                nodes.extend(ordered[key])
-            nodes.extend(unordered)
+            value = getattr(item, self.order)
+            ordered.setdefault(value, list()).append(node)
+
+        nodes = list()
+        for key in sorted(ordered):
+            nodes.extend(ordered[key])
+        nodes.extend(unordered)
 
         for node in nodes:
             item = self.graph.nodes.get(node)
             self.graphviz.nodes.add(node)
             self.graphviz.nodes.set(node, **self._fixattrs(item))
 
-        for edge in self.graph.edges.getall():
+        for edge in self.graph.edges:
             item = self.graph.edges.get(*edge)
             self.graphviz.edges.add(edge)
             self.graphviz.edges.set(edge, **dict(item))
@@ -529,6 +530,83 @@ class GraphRepr(object):
                     key = key.replace('gwiki', '', 1)                
                 out[key] = value
         return out
+
+    def orderGraph(self, ordernodes, unordernodes, orderURL):
+        # Ordering the nodes into ranks. 
+        orderkeys = ordernodes.keys()
+        orderkeys.sort()
+
+        prev_ordernode = ''
+        # New subgraphs, nodes to help ranking
+        for key in orderkeys:
+            # Get accurate representation of the key
+            label = unicode(ordervalue(key))
+
+            cur_ordernode = 'orderkey: ' + label
+            sg = self.graphviz.subg.add(cur_ordernode, rank='same')
+
+            # handle categories as ordernodes different
+            # so that they would point to the corresponding categories
+            if not orderURL:
+                sg.nodes.add(cur_ordernode, label=label, URL=label)
+            else:
+                sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+            for node in ordernodes[key]:
+                sg.nodes.add(node)
+
+            if prev_ordernode:
+                self.graphviz.edges.add((prev_ordernode, cur_ordernode),
+                                 dir='none', style='invis',
+                                 minlen='1', weight='10')
+            prev_ordernode = cur_ordernode
+
+        # Unordered nodes to their own rank
+        sg = self.graphviz.subg.add('unordered nodes', rank='same')
+        sg.nodes.add('unordered nodes', style='invis')
+        for node in unordernodes:
+            sg.nodes.add(node)
+        if prev_ordernode:
+            self.graphviz.edges.add((prev_ordernode, 'unordered nodes'),
+                                  dir='none', style='invis',
+                                  minlen='1', weight='10')
+
+        # Edge minimum lengths
+        for edge in self.graph.edges:
+            tail, head = edge
+            edge = self.graphviz.edges.get(edge)
+            taily = getattr(self.graphviz.nodes.get(head), 'gwikiorder', '')
+            heady = getattr(self.graphviz.nodes.get(tail), 'gwikiorder', '')
+
+            # Some values get special treatment
+            heady = ordervalue(heady)
+            taily = ordervalue(taily)
+
+            # The order attribute is owned by neither, one or
+            # both of the end nodes of the edge
+            if heady == '' and taily == '':
+                minlen = 0
+            elif heady == '':
+                minlen = orderkeys.index(taily) - len(orderkeys)
+            elif taily == '':
+                minlen = len(orderkeys) - orderkeys.index(heady)
+            else:
+                minlen = orderkeys.index(taily) - orderkeys.index(heady)
+
+            # Redraw edge if it goes reverse wrt hierarcy
+            if minlen >= 0:
+                edge.set(minlen=str(minlen))
+            else:
+                # If there already is an edge going reverse direction,
+                # update it instead of drawing a new edge.
+                backedge = self.graphviz.edges.get((head, tail))
+                if backedge:
+                    backedge.set(minlen=str(-minlen))
+                    edge.set(constraint='false')
+                else:
+                    backedge = self.graphviz.edges.add((head, tail))
+                    backedge.set(**dict(edge.__iter__()))
+                    backedge.set(**{'dir': 'back', 'minlen': str(-minlen)})
+                    edge.delete()
 
     def __str__(self):
         return str(self.graphviz)

@@ -142,10 +142,10 @@ def getmeta_to_table(input):
 def ordervalue(value):
     # IP addresses and numeric values get special treatment
     try:
-        value = int(value.strip('"'))
+        value = int(value)
     except ValueError:
         try:
-            value = float(value.strip('"'))
+            value = float(value)
         except ValueError:
             tmpval = value.lstrip('[').rstrip(']').strip('"')
             if value.replace('.', '').isdigit():

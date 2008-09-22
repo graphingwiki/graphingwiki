@@ -36,15 +36,13 @@ except ImportError:
     cairo_found = False
     pass
 
-from urllib import unquote as url_unquote
-
 from MoinMoin import wikiutil
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import SPECIAL_ATTRS
 
 from metasparkline import draw_path, cairo_not_found, \
     write_surface, image_headers, plot_error
@@ -95,15 +93,21 @@ def execute(pagename, request):
     # Height and Width
     for attr in ['height', 'width']:
         if request.form.has_key(attr):
-            val = ''.join([x for x in request.form[attr]])
+            val = ''.join(request.form[attr])
             try:
                 params[attr] = int(val)
             except ValueError:
                 pass
 
-    values = list()
+    # Aggregate set of included values of a page
+    values = set()
     if request.form.has_key('value'):
-        values = [url_unquote(x) for x in request.form['value']]
+        values.update(map(ordervalue, request.form['value']))
+
+    # Values that need to be included to form a complete scale, say 1-10
+    scale = list()
+    if request.form.has_key('scale'):
+        scale = request.form['scale']
 
     if not params['height'] and params['width']:
         params['height'] = params['width']
@@ -135,47 +139,51 @@ def execute(pagename, request):
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                 get_all_keys=True)
+    metakeys = filter(lambda x: x not in SPECIAL_ATTRS, metakeys)
 
     # If no keys, print nothing
     if not pagelist:
-        request.write(plot_error())
+        request.write(plot_error(request))
         raise MoinMoinNoFooter
 
     # Populate data to the radar chart
     data = dict()
     for page in pagelist:
+        metas = getmetas(request, page, metakeys)
+        # Get the maximum value of each key on a page
         for key in metakeys:
-            data[key] = set(getmetas(request, page, [key]))
-
+            data.setdefault(key, list())
+            if metas[key]:
+                data[key].append(max(map(ordervalue, metas[key])))
+            
     # Get values for the chart axes
     data_per_axis = dict()
     for axis, key in enumerate(metakeys):
         data_per_axis[axis] = key
-    
+
     if not values:
-        values = set()
-        for key in metakeys:
-            for val in data[key]:
-                # Opportunistic parsing of values
-                values.add(ordervalue(val))
-    else:
-        values = [ordervalue(x) for x in values]
+        for x in data.values():
+            values.update(x)
+
+    if scale:
+        values.update(map(ordervalue, scale))
 
     values = sorted(values)
 
-    # No use in having tables with 
-    if len(values) < 2:
-        request.write(plot_error())
+    # Refuse to draw if no values for any key
+    if not len(values):
+        request.write(plot_error(request))
         raise MoinMoinNoFooter
 
-    per_value = radius / len(values)
+    no_values = len(values) + 1
+    per_value = radius / no_values
 
     sectors = len(data)
     angle = 2*math.pi/sectors
 
     cur_radius = per_value
     # Make the base grid
-    for x in range(1, len(values)):
+    for x in range(1, no_values):
         ctx, gridpoints = spider_radius(ctx, center, cur_radius, sectors)
         cur_radius += per_value
 
@@ -191,11 +199,9 @@ def execute(pagename, request):
     # Find coords for each value
     for i in range(sectors):
         val = data[data_per_axis[i]]
-        if val != set([]):
+        if val:
             val = val.pop()
-            # Opportunistic parsing of values
-            val = ordervalue(val)
-            radius = values.index(val)
+            radius = values.index(val) + 1
         else:
             # If no values exist, it's in the bottom
             radius = 0
@@ -212,7 +218,7 @@ def execute(pagename, request):
 
     # Write axis names on top of it all
     for point, axis in zip(gridpoints, data_per_axis.keys()):
-        text = url_unquote(data_per_axis[axis])
+        text = data_per_axis[axis]
 
         ctx.set_source_rgba(1, 1, 1, 0.9)
         width, height = ctx.text_extents(text)[2:4]

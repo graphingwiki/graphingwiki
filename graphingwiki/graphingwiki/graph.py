@@ -33,14 +33,15 @@ class AttrBag(object):
     def __init__(self, **keys):
         object.__init__(self)
 
-        self._ignore = None
-        self._ignore = set(self.__dict__)
-
         self.__dict__.update(keys)
+
+    def __getattr__(self, name):
+        if not name in self.__dict__.keys():
+            raise AttributeError, name
+        return self.__dict__[name]
 
     def __iter__(self):
         variables = set(self.__dict__)
-        variables.difference_update(self._ignore)
         
         for key in variables:
             yield key, self.__dict__[key]
@@ -48,6 +49,26 @@ class AttrBag(object):
     def update(self, other):
         for name, value in other:
             setattr(self, name, value)
+
+class Node(object):
+    def __init__(self, identity, **keys):
+        self.__dict__['node'] = AttrBag(**keys)
+        self.__dict__['identity'] = identity
+
+    def __unicode__(self):
+        return self.__dict__['identity']
+
+    def __getattr__(self, name):
+        return self.__dict__['node'].__getattr__(name)
+
+    def __setattr__(self, name, value):
+        return self.__dict__['node'].__setattr__(name, value)
+
+    def __iter__(self):
+        return self.__dict__['node'].__iter__()
+
+    def update(self, other):
+        return self.__dict__['node'].update(other)
 
 class Nodes(object):
     def __init__(self, graph):
@@ -58,10 +79,7 @@ class Nodes(object):
 
     def add(self, identity, **keys):
         if identity not in self.nodes:
-            self.nodes[identity] = AttrBag(**keys)
-            # FIXME: get rid of these
-            self.nodes[identity].node = identity
-            self.nodes[identity].gwikilabel = ""
+            self.nodes[identity] = Node(identity, **keys)
         return self.nodes[identity]
 
     def delete(self, identity):
@@ -208,7 +226,7 @@ class Edges(object):
     def __len__(self):
         return len(self.edges)
 
-class Graph(AttrBag):
+class Graph(Node):
     """
     >>> graph = Graph()
 
@@ -230,13 +248,13 @@ class Graph(AttrBag):
     """
 
     def __init__(self):
-        self.nodes = Nodes(self)
-        self.edges = Edges()
+        Node.__init__(self, '')
 
-        AttrBag.__init__(self)
+        self.__dict__['nodes'] = Nodes(self)
+        self.__dict__['edges'] = Edges()
 
     def __nonzero__(self):
-        return len(self.nodes) > 0
+        return len(self.__dict__['nodes']) > 0
 
 def _test():
     import doctest

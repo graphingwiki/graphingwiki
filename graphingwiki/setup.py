@@ -4,7 +4,8 @@ old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py', 'metaCVS.py',
                           'ShowGraphIE.py', 'MetaTableEdit.py',
                           'ShowLatexSource.py', 'metaRadarDiagram.py',
                           'metaeditform.py'],
-               'macro': ['metaRadarDiagram.py']}
+               'macro': ['metaRadarDiagram.py'],
+               'script': ['scripts/gwiki-debuggraph']}
 
 setup(name='graphingwiki', version='0.1',
       author='Juhani Eronen, Joachim Viide, Aki Helin',
@@ -14,9 +15,8 @@ setup(name='graphingwiki', version='0.1',
       package_dir={'graphingwiki': 'graphingwiki'},
       package_data={'graphingwiki': ['plugin/*/*.py']},
       scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
-               'scripts/gwiki-debuggraph', 'scripts/gwiki-install',
-               'scripts/moin-showpage', 'scripts/gwiki-get-tgz',
+               'scripts/gwiki-install', 'scripts/moin-showpage', 
                'scripts/mm2gwiki.py', 'scripts/moin-editpage',
                'scripts/gwiki-xml-attachfile',
-               'scripts/gwiki-xml-meta'])
+               'scripts/gwiki-get-tgz', 'scripts/gwiki-xml-meta'])
 

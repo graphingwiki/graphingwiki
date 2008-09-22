@@ -230,7 +230,9 @@ def plot_sparkline(results, text=True):
     
     return data
 
-def plot_error():
+def plot_error(request):
+    image_headers(request)
+
     # Just return an error message
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  56, 20)
@@ -244,7 +246,7 @@ def plot_error():
     
     ctx.set_source_rgb(0, 0, 0)
     ctx.move_to(0, 20)
-    ctx.show_text("No data")
+    ctx.show_text(request.getText("No data"))
     data = write_surface(surface)
     
     return data
@@ -272,7 +274,7 @@ def execute(pagename, request):
 
     # Show error if args on page and key are not passed
     if not params['page'] or not params['key']:
-        request.write(plot_error())
+        request.write(plot_error(request))
         raise MoinMoinNoFooter
 
     # Get revision data
@@ -281,7 +283,7 @@ def execute(pagename, request):
 
     # Show error if no data on key
     if not params['key'] in metakeys:
-        request.write(plot_error())
+        request.write(plot_error(request))
         raise MoinMoinNoFooter
 
     # If number of data points to graph are limited
@@ -304,7 +306,7 @@ def execute(pagename, request):
 
     # Show error if no valid data
     if not data:
-        request.write(plot_error())
+        request.write(plot_error(request))
         raise MoinMoinNoFooter
 
     if params['style'] == 'dot':
