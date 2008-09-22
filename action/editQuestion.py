@@ -368,8 +368,21 @@ return true;
     </select> &nbsp; 
     <input id="fieldCreator" type="button" name="addButton" title="Add more answer fields"
     value="Add new field" onClick="addField();">
-<br>
-<textarea id="filefield" cols="80" rows="15" name="" ></textarea>
+<br>'''
+    if questionpage:
+        if question.answertype == "file":
+            answerdict = question.getanswers()
+            for answer, answeroptions in answerdict.iteritems():
+                doctestpage = Page(request, answer)
+                doctest = doctestpage.get_raw_body()
+                doctest = "\n".join(doctest.split("\n")[1:])
+                break
+            html += u'<textarea id="filefield" cols="80" rows="15" name="">%s</textarea>' % doctest
+        else:
+            html += u'<textarea id="filefield" cols="80" rows="15" name=""></textarea>'
+    else:
+        html += u'<textarea id="filefield" cols="80" rows="15" name=""></textarea>'
+    html += u'''
  <table id="ansRow">
 <tr>
     <td style="text-align:center"><a title="Remove selected answers"
@@ -494,10 +507,12 @@ def show_typeselector(request):
     request.write(html)
 
 def savequestion(request,  oldquestion=None):
+    print request.form
     #edit questionpage
+    answertype = request.form["answertype"][0]
     questiondata = {"question": [request.form["question"][0]],
                     "note": [request.form["note"][0]],
-                    "answertype": [request.form["answertype"][0]],
+                    "answertype": [answertype],
                     "type": request.form["type"]}
 
     if oldquestion:
@@ -519,20 +534,35 @@ def savequestion(request,  oldquestion=None):
             if not answer:
                 continue
             answernumber = key[6:]
-            value = request.form["value"+answernumber][0]
+            if answertype == "file":
+                value = "true"
+            else:
+                value = request.form["value"+answernumber][0]
             tip = request.form.get("tip"+answernumber, [u''])[0]
             
             #edit answerpage
+            if oldquestion and oldanswers.has_key(answer):
+                answerpage = oldanswers[answer][3]
+            else:
+                answerpage = randompage(request, "Answer")
+
             answerdata = {u'question': [addlink(questionpage)]} 
             if value == u'true': 
-                answerdata[u'true'] = [answer]
-                answerdata[u'false'] = [u' ']
+                if answertype == "file":
+                    doctestpage = answerpage + "/doctests"
+                    filecontent = "#FORMAT plain\n"+answer
+                    filepage = PageEditor(request, doctestpage)
+                    filepage.saveText(filecontent, filepage.get_real_rev())
+                    answerdata[u'true'] = [addlink(doctestpage)]
+                    answerdata[u'false'] = [u' ']
+                else:
+                    answerdata[u'true'] = [answer]
+                    answerdata[u'false'] = [u' ']
             else:
                 answerdata[u'false'] = [answer]
                 answerdata[u'true'] = [u' ']
 
             if oldquestion and oldanswers.has_key(answer):
-                answerpage = oldanswers[answer][3] 
                 input = order_meta_input(request, answerpage, answerdata, "repl")
                 process_edit(request, input)
 
@@ -554,7 +584,6 @@ def savequestion(request,  oldquestion=None):
                         tippage.deletePage()
                 del oldanswers[answer]
             else:
-                answerpage = randompage(request, "Answer")
                 input = order_meta_input(request, answerpage, answerdata, "add")
                 process_edit(request, input, True, {answerpage:[answercategory]})
 
@@ -650,15 +679,15 @@ def execute(pagename, request):
         request.http_redirect(url)
     elif request.form.has_key("save"):
         if request.form.has_key("questionpage"):
-            try:
-                questionpage = request.form["questionpage"][0]
-                savequestion(request, questionpage)
-                url = u'%s/%s' % (request.getBaseURL(), pagename)
-                request.http_redirect(url)
-            except:
-                _enter_page(request, pagename)
-                request.write("Failed to save the question.")
-                _exit_page(request, pagename)
+#            try:
+            questionpage = request.form["questionpage"][0]
+            savequestion(request, questionpage)
+            url = u'%s/%s' % (request.getBaseURL(), pagename)
+            request.http_redirect(url)
+#            except:
+#                _enter_page(request, pagename)
+#                request.write("Failed to save the question.")
+#                _exit_page(request, pagename)
         else:
             savequestion(request)
             url = u'%s/%s' % (request.getBaseURL(), pagename)
