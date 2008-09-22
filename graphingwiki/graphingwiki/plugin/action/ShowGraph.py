@@ -268,7 +268,7 @@ class GraphShower(object):
         if request.form.has_key('edgelabels'):
             self.edgelabels = 1
 
-        # Edge labels
+        # Filter unconnected nodes?
         if request.form.has_key('noloners'):
             self.noloners = 1
 
@@ -505,10 +505,12 @@ class GraphShower(object):
             # Filter pages by category
             for filt in self.filtercats:
                 if filt in cats:
+                    obj.gwikiremove = True
                     continue
 
-            # Not filtered - add node
-            outgraph.nodes.add(objname)
+            if not hasattr(obj, 'gwikiremove'):
+                # Not filtered - add node
+                outgraph.nodes.add(objname)
 
         # When not to add edge: 
         # if the inclusion of nodes is limited and a node not in the graph
@@ -1445,7 +1447,6 @@ class GraphShower(object):
         self.browser_detect()
 
         # Bail out flag on if underlay page etc.
-        # FIXME: a bit hack, make consistent with other no data cases?
         if not self.request.page.isStandardPage(includeDeleted=False):
             self.fail_page(_("No graph data available."))
             return
@@ -1455,7 +1456,6 @@ class GraphShower(object):
         formatter = self.send_headers()
 
         if error:
-            self.pagename = self.pagename
             self.fail_page(error)
             return
             
