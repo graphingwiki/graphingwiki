@@ -40,7 +40,7 @@ from urllib import unquote as url_unquote
 from MoinMoin.Page import Page
 from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.util.lock import ReadLock
+from MoinMoin.util.lock import ReadLock, WriteLock
 
 from graphingwiki.graph import Graph
 
@@ -108,11 +108,26 @@ class GraphData(object):
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
-        self.graphshelve = os.path.join(request.cfg.data_dir,
-                                        'graphdata.shelve')
+        self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
 
         self.opened = False
         self.opendb()
+
+    def readlock(self):
+        lock = getattr(self.request, "lock", None)
+        if lock is None or not lock.isLocked():
+            lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
+            lock.acquire()
+        self.request.lock = lock
+
+    def writelock(self):
+        lock = getattr(self.request, "lock", None)
+        if lock is not None and lock.isLocked() and isinstance(lock, ReadLock):
+            lock.release()
+        if lock is None or not lock.isLocked():
+            lock = WriteLock(self.request.cfg.data_dir, readlocktimeout=10.0)
+            lock.acquire()
+        self.request.lock = lock
 
     def __iter__(self):
         return iter(self.db)
@@ -120,18 +135,15 @@ class GraphData(object):
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
     # NB: You must use closedb() before exiting to avoid littering
-    #     read locks around!
+    #     locks around!
     def opendb(self):
-        # The timeout parameter in ReadLock is most probably moot...
-        self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        self.request.lock.acquire()
-        
+        self.readlock()
         self.opened = True
         self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
         self.opened = False
-        if self.request.lock.isLocked():
+        if hasattr(self.request, "lock") and self.request.lock.isLocked():
             self.request.lock.release()
         self.db.close()
 
