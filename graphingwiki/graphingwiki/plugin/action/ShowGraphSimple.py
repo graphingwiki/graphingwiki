@@ -144,7 +144,7 @@ class GraphShowerSimple(GraphShower):
             img_url = img_url.replace('&format=zgr', '&format=png')
             if legend:
                 self.request.write('<img src="%s" alt="legend"><br>\n' %
-                                   (url_escape(img_url) + "2"))
+                                   (img_url + "2"))
 
         elif self.format == 'svg':
             self.request.write('<img src="%s" alt="graph">\n' %
