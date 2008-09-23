@@ -40,6 +40,10 @@ class AttrBag(object):
             raise AttributeError, name
         return self.__dict__[name]
 
+    def __delattr__(self, name):
+        self.__getattr__(name)
+        del self.__dict__[name]
+
     def __iter__(self):
         variables = set(self.__dict__)
         
@@ -63,6 +67,9 @@ class Node(object):
 
     def __setattr__(self, name, value):
         return self.__dict__['node'].__setattr__(name, value)
+
+    def __delattr__(self, name):
+        return self.__dict__['node'].__delattr__(name)
 
     def __iter__(self):
         return self.__dict__['node'].__iter__()

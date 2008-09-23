@@ -56,9 +56,13 @@ def encode(str):
     return encoder(str, 'replace')[0]
 
 def url_escape(text):
-    # Escape characters that break html values fields, 
+    # Escape characters that break links in html values fields, 
     # macros and urls with parameters
     return re.sub('[\]"\?#&]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
+def form_escape(text):
+    # Escape characters that break value fields in html forms
+    return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
 
 def url_parameters(args):
     req_url = u'?'
@@ -310,18 +314,21 @@ class GraphData(UserDict.DictMixin):
         node.gwikicategory = \
             page.get('out', dict()).get('gwikicategory', list())
 
+        # Configuration for local pages next, 
+        # return known to be something else
+        if not nodetype == 'page':
+            return graph
+
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'gwikiURL'):
             node.gwikiURL = './' + pagename
 
-        # Nodes representing existing local nodes may be traversed
-        if nodetype == 'page':
-            if page.has_key('saved'):
-                node.gwikiURL += urladd
-            # try to be helpful and add editlinks to non-underlay pages
-            elif Page(self.request, pagename).isStandardPage():
-                node.gwikiURL += u"?action=edit"
-                node.gwikitooltip = self.request.getText('Add page')
+        if page.has_key('saved'):
+            node.gwikiURL += urladd
+        # try to be helpful and add editlinks to non-underlay pages
+        elif Page(self.request, pagename).isStandardPage():
+            node.gwikiURL += u"?action=edit"
+            node.gwikitooltip = self.request.getText('Add page')
 
         return graph
 
@@ -356,7 +363,9 @@ class GraphData(UserDict.DictMixin):
                        self.temp_re.search(src):
                     continue
                 # Add page and its metadata
-                adata = self._add_node(src, adata, urladd)
+                # Currently pages can have links in them only
+                # from local pages, thus nodetype == page
+                adata = self._add_node(src, adata, urladd, 'page')
                 adata = self._add_link(adata, (src, pagename), type)
 
         # Add links from page
