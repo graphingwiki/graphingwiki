@@ -466,74 +466,57 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    shelve_present = False
-    if hasattr(request, 'graphdata'):
-        shelve_present = True
-        globaldata = request.graphdata.db
-    else:
-        graphshelve = os.path.join(request.cfg.data_dir,
-                                   'graphdata.shelve')
+    # Expires old locks left by crashes etc. Page locking mechanisms
+    # should prevent this code being executed prematurely - thus
+    # expiring both read locks (not write locks).
+    writelock = WriteLock(request.cfg.data_dir, readlocktimeout=60.0)
+    writelock.acquire()
 
+    try:
         # Open file db for global graph data, creating it if needed
+        graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
         globaldata = shelve.open(graphshelve, flag='c')
-
-    # Expires old locks left by crashes etc.
-    # Page locking mechanisms should prevent this code being
-    # executed prematurely - thus expiring both read and
-    # write locks
-    request.lock = WriteLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
-
-    quotedname = url_quote(encode(pagename))
-
-    # Page graph file to save detailed data in
-    gfn = os.path.join(pagedir,'graphdata.pickle')
-    # load graphdata if present and not trashed, remove it from index
-    if os.path.isfile(gfn) and os.path.getsize(gfn):
-        pagegraphfile = file(gfn)
-        old_data = cPickle.load(pagegraphfile)
         
-        for edge in old_data.edges.getall(parent=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
+        quotedname = url_quote(encode(pagename))
 
-        for edge in old_data.edges.getall(child=quotedname):
-            e = old_data.edges.get(*edge)
-            linktype = getattr(e, 'linktype', ['_notype'])
-            shelve_remove_in(globaldata, edge, linktype)
-            shelve_remove_out(globaldata, edge, linktype)
+        # Page graph file to save detailed data in
+        gfn = os.path.join(pagedir,'graphdata.pickle')
+        # load graphdata if present and not trashed, remove it from index
+        if os.path.isfile(gfn) and os.path.getsize(gfn):
+            pagegraphfile = file(gfn)
+            old_data = cPickle.load(pagegraphfile)
 
-        shelve_unset_attributes(globaldata, quotedname)
+            for edge in old_data.edges.getall(parent=quotedname):
+                e = old_data.edges.get(*edge)
+                linktype = getattr(e, 'linktype', ['_notype'])
+                shelve_remove_in(globaldata, edge, linktype)
+                shelve_remove_out(globaldata, edge, linktype)
 
-        pagegraphfile.close()
+            for edge in old_data.edges.getall(child=quotedname):
+                e = old_data.edges.get(*edge)
+                linktype = getattr(e, 'linktype', ['_notype'])
+                shelve_remove_in(globaldata, edge, linktype)
+                shelve_remove_out(globaldata, edge, linktype)
 
-    # Include timestamp to current page
-    if not globaldata.has_key(quotedname):
-        globaldata[quotedname] = {'mtime': time(), 'saved': True}
-    else:
-        temp = globaldata[quotedname]
+            shelve_unset_attributes(globaldata, quotedname)
+
+            pagegraphfile.close()
+
+        # Include timestamp to current page
+        temp = globaldata.get(quotedname, dict())
         temp['mtime'] = time()
         temp['saved'] = True
         globaldata[quotedname] = temp
 
-    # Overwrite pagegraphfile with the new data
-    pagegraphfile = file(gfn, 'wb')
-
-    globaldata, pagegraph = parse_text(request, globaldata, page, text)
-
-    # Save graph as pickle, close
-    cPickle.dump(pagegraph, pagegraphfile)
-    pagegraphfile.close()
-
-    if shelve_present:
-        pass
-    else:
-        # Remove locks, close shelves
+        globaldata, pagegraph = parse_text(request, globaldata, page, text)
         globaldata.close()
-
-    request.lock.release()
+        
+        # Overwrite pagegraphfile with the new data
+        pagegraphfile = file(gfn, 'wb')
+        cPickle.dump(pagegraph, pagegraphfile)
+        pagegraphfile.close()
+    finally:
+        writelock.release()
 
 # - code below lifted from MetaFormEdit -
 
