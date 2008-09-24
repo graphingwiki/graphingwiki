@@ -70,6 +70,11 @@ def savedata(request):
     if not title:
         errors += u'Missing title!\n'
 
+    try:
+        capacity = int(capacity)
+    except:
+        errors += u'Capacity must be integer!\n'
+
     if errors:
         return errors
 
@@ -320,7 +325,6 @@ function formcheck(){
 </script>
 <form id="entryform" method="post" onsubmit="return formcheck();">
 <input type="hidden" name="action" value="%s">
-<input type="hidden" name="backto" value="%s">
 <input type="hidden" name="categories" value="%s">
 <!-- edit? -->
 %s
@@ -373,7 +377,7 @@ function formcheck(){
 </tr>
 </table>
 <input type="submit" name="save" value="save">
-''' % (type, action_name, request.form.get('backto',[u''])[0],request.form.get('categories',[u''])[0],
+''' % (type, action_name, request.form.get('categories',[u''])[0],
 edit_page, title, def_date, time_opts, def_date, time_opts, duration, location, capacity, until)
     request.write(html)
 
@@ -381,13 +385,17 @@ edit_page, title, def_date, time_opts, def_date, time_opts, duration, location, 
 def execute(pagename, request):
     
     if request.form.has_key('save'):
-        print request.form
-        savedata(request)
-        url = u'%s?action=showCalendarDate&date=%s&backto=%s&categories=%s' % (request.getBaseURL(),
-        request.form.get('start_date',[None])[0], request.form.get('backto',[None])[0], 
+        errors = savedata(request)
+        if errors:
+            _enter_page(request, pagename)
+            for error in errors:
+               request.write(error)
+            _exit_page(request, pagename)
+            return None
+        url = u'%s/%s?action=showCalendarDate&date=%s&categories=%s' % (
+        request.getBaseURL(), pagename, request.form.get('start_date',[None])[0], 
         request.form.get('categories',[None])[0])
         request.http_redirect(url)
-
     else:
         _enter_page(request, pagename)
         show_entryform(request)

@@ -47,8 +47,13 @@ from graphingwiki.patterns import  getgraphdata
 Dependencies = ['metadata', 'time']
 
 def execute(macro, args):
+    action = 'showCalendarDate'
     if args is None:
         args = ''
+    else:
+        if args.startswith("action="):
+            action = args.split(",")[0].split("=")[1]
+            args = ",".join(args.split(",")[1:])
 
     # Note, metatable_parseargs deals with permissions
     globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, args, get_all_keys=True)
@@ -57,8 +62,6 @@ def execute(macro, args):
 
     if not hasattr(macro.request, 'graphdata'):
         getgraphdata(macro.request)
-
-
 
     out = macro.request
 
@@ -187,7 +190,7 @@ window.addEvent('domready', function(){
     html += u'''
    var links = $$('a');
   var links = links.filter(function(el){
-    return el.href.match("action=showCalendarDate") != null;
+    return el.href.match("action=%s") != null;
     });
   var tips = new Tips(links);
   var content = '';
@@ -219,7 +222,7 @@ window.addEvent('domready', function(){
    });
   });
   </script>
-   \n'''
+   \n''' % action
     out.write(html)
 
     output = ""
@@ -261,8 +264,8 @@ window.addEvent('domready', function(){
                 output += macro.formatter.table_cell(1, {'class': 'calendar-day'})
             timestamp = u'%04d-%02d-%02d' % (year, month, day)
             if day:
-                urldict = dict(date = timestamp, backto = macro.request.page.page_name, categories = categories)
-                url = macro.request.getQualifiedURL() + '/' + '?action=showCalendarDate&date=%(date)s&backto=%(backto)s&categories=%(categories)s' % urldict
+                urldict = dict(pagename = macro.request.page.page_name, action = action, date = timestamp, categories = categories)
+                url = macro.request.getQualifiedURL() + '/' + '%(pagename)s?action=%(action)s&date=%(date)s&categories=%(categories)s' % urldict
                 output += macro.formatter.url(1, url, u'metamonthcalendar_noentry_url')
                 output += macro.formatter.text(u'%d' % day)
                 output += macro.formatter.url(0)

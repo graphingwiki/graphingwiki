@@ -36,9 +36,7 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def addEntry(pagename, date, request):
-    backto = request.form.get('backto', [None])[0].encode()
-    request.write('<br><a href="?action=editCalendarEntry&date=%s&backto=%s&categories=%s">Add entry</a>' % (date,
-    backto, request.form.get('categories',[u''])[0].encode()))
+    request.write('<br><a href="?action=editCalendarEntry&date=%s&categories=%s">Add entry</a>' % (date, request.form.get('categories',[u''])[0].encode()))
 
       
 def printEntries(entries, date, pagename, request):
@@ -50,9 +48,6 @@ def printEntries(entries, date, pagename, request):
             request.write('<td>')
         request.write(stuff)
         request.write('</td>')
-
-    backto = request.form.get('backto', [None])[0].encode()
-
 
     request.write(u'<table>')
     request.write(u'<th colspan=4>%s</th>' % date)
@@ -91,8 +86,7 @@ def printEntries(entries, date, pagename, request):
             else:
                 writeCell('?')
             #edit link
-            writeCell('<a href="?action=editCalendarEntry&edit=%s&backto=%s&categories=%s">edit</a>' % (entry['Page'],
-            backto, request.form.get('categories',[u''])[0].encode())) #request.request_uri[1:]))
+            writeCell('<a href="?action=editCalendarEntry&edit=%s&categories=%s">edit</a>' % (entry['Page'], request.form.get('categories',[u''])[0].encode()))
             #remove link
             writeCell('<a href="%s?action=DeletePage">remove</a>' % entry['Page'])
 
