@@ -4,7 +4,7 @@
     * 2008-09-19 Written to emulate the old weird sync.py based contraption
                  with 10^5 times less code.
 
-    @copyright: 2006 by Joachim Viide and
+    @copyright: 2008 by Joachim Viide and
                         Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 

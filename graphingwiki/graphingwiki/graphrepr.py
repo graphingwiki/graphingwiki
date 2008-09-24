@@ -34,7 +34,7 @@ import sys
 import os
 
 from graphingwiki.patterns import encode_page, decode_page
-from graphingwiki.editing import ordervalue
+from graphingwiki.editing import ordervalue, filter_categories
 
 gv_found = True
 
@@ -531,7 +531,7 @@ class GraphRepr(object):
                 out[key] = value
         return out
 
-    def orderGraph(self, ordernodes, unordernodes, orderURL):
+    def order_graph(self, ordernodes, unordernodes, request, orderby, orderURL):
         # Ordering the nodes into ranks. 
         orderkeys = ordernodes.keys()
         orderkeys.sort()
@@ -547,10 +547,12 @@ class GraphRepr(object):
 
             # handle categories as ordernodes different
             # so that they would point to the corresponding categories
-            if not orderURL:
+            if orderby == 'gwikicategory' and \
+                    filter_categories(request, [label]):
                 sg.nodes.add(cur_ordernode, label=label, URL=label)
             else:
                 sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+
             for node in ordernodes[key]:
                 sg.nodes.add(node)
 
@@ -574,8 +576,8 @@ class GraphRepr(object):
         for edge in self.graph.edges:
             tail, head = edge
             edge = self.graphviz.edges.get(edge)
-            taily = getattr(self.graphviz.nodes.get(head), 'gwikiorder', '')
-            heady = getattr(self.graphviz.nodes.get(tail), 'gwikiorder', '')
+            taily = getattr(self.graphviz.nodes.get(head), 'order', '')
+            heady = getattr(self.graphviz.nodes.get(tail), 'order', '')
 
             # Some values get special treatment
             heady = ordervalue(heady)

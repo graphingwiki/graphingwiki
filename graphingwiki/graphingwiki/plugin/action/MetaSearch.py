@@ -34,7 +34,7 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import actionname
+from graphingwiki.patterns import actionname, form_escape
 
 regexp_re = re.compile('^/.+/$')
 
@@ -43,7 +43,7 @@ def elemlist(request, formatter, elems, text):
     if not elems:
         return
     request.write(formatter.paragraph(1))
-    request.write(formatter.text(_("The following") + " %s " % text
+    request.write(formatter.text(_("The following") + " %s " % form_escape(text)
                                  + _("found")))
     request.write(formatter.paragraph(0))
     request.write(formatter.bullet_list(1))
@@ -92,7 +92,7 @@ def execute(pagename, request):
                   ''.join(request.form['action']))
 
     request.write(u'<input type="text" name="q" size=50 value="%s">' %
-                  q.replace('"', '&#x22;'))
+                  (form_escape(q)))
     request.write(u'<input type=submit value="' + _('Search') +
                   '">' + u'\n</form>\n')
 

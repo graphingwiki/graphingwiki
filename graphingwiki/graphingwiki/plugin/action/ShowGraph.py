@@ -122,7 +122,8 @@ def form_optionlist(request, name, data, comparison,
     input_type = 'checkbox'
 
     if len(data) > 5: 
-        request.write(u'<select name="%s" multiple size=6><br>\n' % (name))
+        request.write(u'<select name="%s" multiple size=6><br>\n' % 
+                      form_escape(name))
         check_type = 'selected'
     elif radio:
         input_type = 'radio'
@@ -131,11 +132,11 @@ def form_optionlist(request, name, data, comparison,
     if radio:
         replvalue = lambda type, name: (form_escape(type),
                 comparison==type and " %s>" % check_type or ">",
-                name)
+                form_escape(name))
     else:
         replvalue = lambda type, name: (form_escape(type),
                 type in comparison and " %s>" % check_type or ">",
-                name)
+                form_escape(name))
 
     for type in data:
         if len(data) > 5:
@@ -162,7 +163,7 @@ def form_optionlist(request, name, data, comparison,
 def form_textbox(request, name, size, value):
     request.write(u'<input type="text" name="%s" ' % (name) +
                   u'size=%s value="%s"><br>\n' % 
-                  (str(size), form_escape(value)))
+                  (form_escape(str(size)), form_escape(value)))
 
 def form_checkbox(request, name, value, test, text):
     # Unscale
@@ -170,7 +171,7 @@ def form_checkbox(request, name, value, test, text):
                   u'value="%s"%s%s\n' % 
                   (form_escape(value),
                    test and ' checked>' or '>',
-                   text))
+                   form_escape(text)))
 
 class GraphShower(object):
     EDGE_DARKNESS = 0.85
@@ -344,7 +345,7 @@ class GraphShower(object):
         for arg in ['filteredges', 'filtercats']:
             if request.form.has_key(arg):
                 data = getattr(self, arg)
-                data.update(request.form['filteredges'])
+                data.update(request.form[arg])
 
         if self.orderby:
             self.graphengine = 'dot'
@@ -388,7 +389,7 @@ class GraphShower(object):
         # Height and Width
         for attr in ['height', 'width']:
             if request.form.has_key(attr):
-                val = ''.join([x for x in request.form[attr]])
+                val = ''.join(request.form[attr])
                 try:
                     setattr(self, attr, float(val))
                 except ValueError:
@@ -408,13 +409,6 @@ class GraphShower(object):
 
         return error
 
-    def startpages_add(self, graphdata, pagename):
-        self.startpages.append(pagename)
-        root = graphdata.nodes.add(pagename)
-        root.gwikiURL = './' + pagename
-
-        return graphdata
-
     def categories_add(self, cats):
         if not cats:
             return
@@ -426,7 +420,7 @@ class GraphShower(object):
         self.allcategories.update(cats)
 
     def build_graph_data(self):
-        graphdata = Graph()
+        self.graphdata = Graph()
 
         pagedir = self.request.page.getPagePath()
         pagename = self.pagename
@@ -436,17 +430,16 @@ class GraphShower(object):
             return pagedata.get('out', dict()).get('gwikicategory', list())
 
         for nodename in self.otherpages:
-            graphdata = self.startpages_add(graphdata, nodename)
-
+            self.startpages.append(pagename)
             self.categories_add(get_categories(nodename))
 
         # Do not add self to graph if self is category or
         # template page and we're looking at categories
         if not self.categories:
-            graphdata = self.startpages_add(graphdata, pagename)
+            self.startpages.append(pagename)
         elif not (self.cat_re.search(pagename) or
                   self.temp_re.search(pagename)):
-            graphdata = self.startpages_add(graphdata, pagename)
+            self.startpages.append(pagename)
 
         # If categories specified in form, add category pages to startpages
         for cat in self.categories:
@@ -458,10 +451,8 @@ class GraphShower(object):
                 for newpage in catpage['in'][type]:
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
-                        graphdata = self.startpages_add(graphdata, newpage)
+                        self.startpages.append(newpage)
                         self.categories_add(get_categories(newpage))
-
-        return graphdata
 
     def build_outgraph(self):
         outgraph = Graph()        
@@ -485,13 +476,13 @@ class GraphShower(object):
 
         return outgraph
     
-    def addToGraphWithFilter(self, graphdata, outgraph, obj1, obj2):
+    def graph_add_filtered(self, outgraph, obj1, obj2):
         _ = self.request.getText
 
         obj1name, obj2name = unicode(obj1), unicode(obj2)
         
         # Filter linktypes
-        olde = graphdata.edges.get(obj1name, obj2name)
+        olde = self.graphdata.edges.get(obj1name, obj2name)
         types = olde.linktype.copy()
         for type in types:
             if type in self.filteredges:
@@ -555,13 +546,19 @@ class GraphShower(object):
             if hasattr(obj, 'gwikiremove'):
                 continue
 
-            cats = obj.gwikicategory
+            cats = set(obj.gwikicategory)
+            filtered = False
 
             # Filter pages by category
             for filt in self.filtercats:
                 if filt in cats:
-                    obj.gwikiremove = True
-                    continue
+                    cats.remove(filt)
+                    obj.gwikicategory = list(cats)
+                    filtered = True
+
+            if filtered and not target:
+                obj.gwikiremove = True
+                continue
 
             if not hasattr(obj, 'gwikiremove'):
                 # Not filtered - add node
@@ -588,13 +585,13 @@ class GraphShower(object):
         if self.hidedges:
             e.style = "invis"
 
-    def gather_layout_data(self, graphdata, outgraph):
+    def gather_layout_data(self, outgraph):
         _ = self.request.getText
 
         delete = set()
 
         for objname in outgraph.nodes:
-            obj = graphdata.nodes.get(objname)
+            obj = self.graphdata.nodes.get(objname)
 
             # List loner pages to be filtered
             if self.noloners:
@@ -663,10 +660,10 @@ class GraphShower(object):
                 value = getattr(obj, self.orderby, None)
 
                 if value:
-                    # Add to self.ordernodes by combined value of metadata
-                    value = ''.join(value)
                     # Add to filterordervalues in the nonmodified form
-                    self.orderfiltervalues.add(value)
+                    self.orderfiltervalues.update(value)
+                    # Add to self.ordernodes by combined value of metadata
+                    value = ', '.join(value)
 
                     re_order = getattr(self, 're_order', None)
                     if re_order:
@@ -688,8 +685,8 @@ class GraphShower(object):
 
         return outgraph
 
-    def traverse_one(self, graphdata, outgraph, nodes):
-        # graphdata is the 'in' graph extended and traversed
+    def traverse_one(self, outgraph, nodes):
+        # self.graphdata is the 'in' graph extended and traversed
 
         request = self.request
         urladd = self.urladd
@@ -697,23 +694,21 @@ class GraphShower(object):
         cl.start('traverseparent')
         # This traverses 1 to parents
         for node in nodes:
-            nodeitem = graphdata.nodes.get(node)
-            parents = load_parents(request, graphdata, node, urladd)
+            parents = load_parents(request, self.graphdata, node, urladd)
+            nodeitem = self.graphdata.nodes.get(node)
             for parent in parents:
-                parentitem = graphdata.nodes.get(parent)
-                self.addToGraphWithFilter(graphdata, outgraph, 
-                                          parentitem, nodeitem)
+                parentitem = self.graphdata.nodes.get(parent)
+                self.graph_add_filtered(outgraph, parentitem, nodeitem)
         cl.stop('traverseparent')
 
         cl.start('traversechild')
         # This traverses 1 to children
         for node in nodes:
-            nodeitem = graphdata.nodes.get(node)
-            children = load_children(request, graphdata, node, urladd)
+            children = load_children(request, self.graphdata, node, urladd)
+            nodeitem = self.graphdata.nodes.get(node)
             for child in children:
-                childitem = graphdata.nodes.get(child)
-                self.addToGraphWithFilter(graphdata, outgraph, 
-                                          nodeitem, childitem)
+                childitem = self.graphdata.nodes.get(child)
+                self.graph_add_filtered(outgraph, nodeitem, childitem)
         cl.stop('traversechild')
 
         return outgraph
@@ -729,7 +724,7 @@ class GraphShower(object):
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
                 self.colorfiltervalues.update(rule)
-                rule = ''.join(rule)
+                rule = ', '.join(rule)
                 re_color = getattr(self, 're_color', None)
                 # Add to filterordervalues in the nonmodified form
                 if re_color:
@@ -740,7 +735,7 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = ''.join(rule)
+                rule = ', '.join(rule)
                 re_color = getattr(self, 're_color', None)
                 if re_color:
                     rule = re_color.sub(self.colorsub, rule)
@@ -825,10 +820,10 @@ class GraphShower(object):
     def get_url_ns(self, link):
         # Find out subpage level to adjust URL:s accordingly
         subrank = self.request.page.page_name.count('/')
-        if not hasattr(self.request, 'iwlist'):
-            get_interwikilist(self.request)
         # Namespaced names
         if ':' in link:
+            if not hasattr(self.request, 'iwlist'):
+                get_interwikilist(self.request)
             iwname = link.split(':')
             if self.request.iwlist.has_key(iwname[0]):
                 return self.request.iwlist[iwname[0]] + iwname[1]
@@ -916,11 +911,12 @@ class GraphShower(object):
         request.write(u'<form method="GET" action="%s">\n' %
                       actionname(request, self.pagename))
         request.write(u'<input type=hidden name=action value="%s">' %
-                      ''.join(request.form['action']))
+                      form_escape(''.join(request.form['action'])))
 
         request.write(u'<div class="showgraph-panel1">\n')
 	# PANEL 1 
-        request.write(u'<a href="javascript:toggle(\'tab0\')">View & Include</a><br>\n')
+        request.write(u'<a href="javascript:toggle(\'tab0\')">'+
+                      u'View & Include</a><br>\n')
         request.write(u'<table border="1" id="tab0"><tr>\n')
 
         # outputformat
@@ -929,9 +925,9 @@ class GraphShower(object):
         request.write(u'<select name="format"><br>\n')
         for type in self.available_formats:
             request.write(u'<option value="%s"%s%s</option><br>\n' %
-                          (type,
+                          (form_escape(type),
                           type == self.format and " selected>" or ">",
-                          type))
+                          form_escape(type)))
         request.write(u'</select><br>\n')
 
         # Height
@@ -987,9 +983,10 @@ class GraphShower(object):
                     ('', _('All links'))]:
             request.write(u'<input type="radio" name="limit" ' +
                           u'value="%s"%s' %
-                          (x, self.limit == x and ' checked>' or '>') 
-                          + y + u'<br>\n')
-
+                          (form_escape(x), 
+                           self.limit == x and ' checked>' or '>') 
+                          + form_escape(y) + u'<br>\n')
+                          
         request.write(u'</table>\n')
         request.write(u'</div>\n')
 
@@ -1022,13 +1019,14 @@ class GraphShower(object):
                                  [_('random'), _('gradient')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.colorscheme == ord and 'selected' or '',
-                               ord, ord, name))
+                               form_escape(ord), form_escape(ord), 
+                               form_escape(name)))
+                          
             request.write(u'</select><br>\n<u>' + _('Color regexp:') + '</u><br>\n')
-            request.write(u'<input type=text name="colorreg" size=10 ' +
-                          u'value="%s"><br>\n' % str(self.colorreg))
+                          
+            form_textbox(request, 'colorreg', 10, str(self.colorreg))
             request.write(u'<u>' + _('substitution:') + '</u><br>\n')
-            request.write(u'<input type=text name="colorsub" size=10 ' +
-                          u'value="%s"><br>\n' % str(self.colorsub))
+            form_textbox(request, 'colorsub', 10, str(self.colorsub))
 	
         # orderby
         request.write(u"<td valign=top>\n")
@@ -1047,15 +1045,15 @@ class GraphShower(object):
                                _('left to right'), _('right to left')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
                               (self.rankdir == ord and 'selected' or '',
-                               ord, ord, name))
+                               form_escape(ord), form_escape(ord), 
+                               form_escape(name)))
             if self.orderby != '_hier':
                 request.write(u'</select><br>\n<u>' + _('Order regexp:') +
                               u'</u><br>\n')
-                request.write(u'<input type=text name="orderreg" size=10 ' +
-                              u'value="%s"><br>\n' % str(self.orderreg))
-                request.write(u'<u>' + _('substitution:') + u'</u><br>\n')
-                request.write(u'<input type=text name="ordersub" size=10 ' +
-                              u'value="%s"><br>\n' % str(self.ordersub))
+
+                form_textbox(request, 'orderreg', 10, str(self.orderreg))
+                request.write(u'<u>' + _('substitution:') + '</u><br>\n')
+                form_textbox(request, 'ordersub', 10, str(self.ordersub))
 
 	request.write(u'</table>\n')
         request.write(u'</div>\n')
@@ -1118,10 +1116,16 @@ class GraphShower(object):
         # Add all data to graph
         gr = GraphRepr(outgraph, self.graphengine)
 
+        self.request.write(repr(self.orderby) + repr(self.get_url_ns(self.orderby)))
+
+
+
         if self.orderby and self.orderby != '_hier':
-            gr.orderGraph(self.ordernodes, 
-                          self.unordernodes,
-                          self.get_url_ns(self.orderby))
+            gr.order_graph(self.ordernodes, 
+                           self.unordernodes,
+                           self.request,
+                           self.orderby,
+                           self.get_url_ns(self.orderby))
 
         return gr
 
@@ -1234,11 +1238,11 @@ class GraphShower(object):
 
         return formatter
 
-    def traverse(self, graphdata, outgraph, nodes):
+    def traverse(self, outgraph, nodes):
         newnodes = nodes
     
         for n in range(1, self.depth+1):
-            outgraph = self.traverse_one(graphdata, outgraph, newnodes)
+            outgraph = self.traverse_one(outgraph, newnodes)
             newnodes = set(outgraph.nodes)
             # continue only if new pages were found
             newnodes = newnodes.difference(nodes)
@@ -1306,16 +1310,16 @@ class GraphShower(object):
             return
             
         cl.start('build')
-        graphdata = self.build_graph_data()
+        self.build_graph_data()
         outgraph = self.build_outgraph()
         cl.stop('build')
 
         cl.start('traverse')
         nodes = set(self.startpages)
         # Traverse from startpages, filter as per args
-        outgraph = self.traverse(graphdata, outgraph, nodes)
+        outgraph = self.traverse(outgraph, nodes)
         # Gather data needed in layout, filter lone pages is needed
-        outgraph = self.gather_layout_data(graphdata, outgraph)
+        outgraph = self.gather_layout_data(outgraph)
         cl.stop('traverse')
         
         if gv_found:

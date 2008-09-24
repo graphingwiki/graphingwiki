@@ -34,6 +34,7 @@ import shelve
 import itertools
 import UserDict
 import StringIO
+import cgi
 
 from codecs import getencoder
 
@@ -62,7 +63,8 @@ def url_escape(text):
 
 def form_escape(text):
     # Escape characters that break value fields in html forms
-    return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
+    #return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
+    return cgi.escape(text, quote=True)
 
 def url_parameters(args):
     req_url = u'?'
@@ -342,7 +344,7 @@ class GraphData(UserDict.DictMixin):
             e.linktype.add(type)
         return adata
 
-    def load_graph(self, pagename, urladd):
+    def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):
             return None
 
@@ -352,7 +354,10 @@ class GraphData(UserDict.DictMixin):
 
         # Make graph, initialise head node
         adata = Graph()
-        adata = self._add_node(pagename, adata, urladd)
+        if load_origin:
+            adata = self._add_node(pagename, adata, urladd)
+        else:
+            adata.nodes.add(pagename)
 
         # Add links to page
         links = page.get('in', dict())
@@ -439,22 +444,34 @@ class GraphData(UserDict.DictMixin):
 
         return adata
 
+# The load_ -functions try to minimise unnecessary reloading and overloading
+
 def load_children(request, graph, parent, urladd):
+    load_origin = False
+
+    nodeitem = graph.nodes.get(parent)
+    if not nodeitem:
+        nodeitem = graph.nodes.add(parent)
+        load_origin = True
+
     # Get new data for current node
-    adata = request.graphdata.load_graph(parent, urladd)
+    adata = request.graphdata.load_graph(parent, urladd, load_origin)
+
+    # If no data
     if not adata:
         return list()
     if not adata.nodes.get(parent):
         return list()
-    nodeitem = graph.nodes.get(parent)
-    nodeitem.update(adata.nodes.get(parent))
 
+    nodeitem.update(adata.nodes.get(parent))
+    
     children = set()
 
     # Add new nodes, edges that link to/from the current node
     for child in adata.edges.children(parent):
-        newnode = graph.nodes.add(child)
-        newnode.update(adata.nodes.get(child))
+        if not graph.nodes.get(child):
+            newnode = graph.nodes.add(child)
+            newnode.update(adata.nodes.get(child))
 
         newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)
@@ -465,20 +482,31 @@ def load_children(request, graph, parent, urladd):
     return children
 
 def load_parents(request, graph, child, urladd):
-    adata = request.graphdata.load_graph(child, urladd)
+    load_origin = False
+
+    nodeitem = graph.nodes.get(child)
+    if not nodeitem:
+        nodeitem = graph.nodes.add(child)
+        load_origin = True
+
+    # Get new data for current node
+    adata = request.graphdata.load_graph(child, urladd, load_origin)
+
+    # If no data
     if not adata:
         return list()
     if not adata.nodes.get(child):
         return list()
-    nodeitem = graph.nodes.get(child)
+
     nodeitem.update(adata.nodes.get(child))
 
     parents = set()
 
     # Add new nodes, edges that are the parents of the current node
     for parent in adata.edges.parents(child):
-        newnode = graph.nodes.add(parent)
-        newnode.update(adata.nodes.get(parent))
+        if not graph.nodes.get(parent):
+            newnode = graph.nodes.add(parent)
+            newnode.update(adata.nodes.get(parent))
 
         newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)

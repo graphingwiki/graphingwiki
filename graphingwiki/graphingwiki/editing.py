@@ -180,17 +180,25 @@ def parse_categories(request, text):
     if not lines:
         return lines, list()
 
-    # TODO: this code is broken, will not work for extended links
-    # categories, e.g ["category hebrew"]
-    candidates = lines[-1].split()
-    confirmed = filter_categories(request, candidates)
+    confirmed = list()
+    # Start looking at lines from the end to the beginning
+    for line in reversed(range(len(lines))):
+        # Skip empty lines, comments
+        if not lines[line].strip() or lines[line].startswith('##'):
+            continue
 
-    if len(confirmed) < len(candidates):
-        # The line was not a category line
-        return lines, list()
+        # TODO: this code is broken, will not work for extended links
+        # categories, e.g ["category hebrew"]
+        candidates = lines[line].split()
+        confirmed.extend(filter_categories(request, candidates))
 
-    # Remove the category line
-    lines.pop()
+        if len(confirmed) < len(candidates):
+            # The line was not a category line
+            return lines, confirmed
+
+        # Remove the category line
+        lines.pop()
+
     return lines, confirmed
 
 def edit_categories(request, savetext, action, catlist):
