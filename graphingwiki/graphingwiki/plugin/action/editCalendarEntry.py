@@ -55,7 +55,7 @@ def savedata(request):
     edit = request.form.get('edit', [u''])[0]
     category = request.form.get('categories', [u'CategoryCalendarEntry'])[0]
     location = request.form.get('location', [u''])[0]
-    capacity = request.form.get('capacity', [u''])[0]
+    capacity = request.form.get('capacity', [0])[0]
 
     daterexp = re.compile('\d{4}-\d\d-\d\d')
     timerexp = re.compile('([0-1][0-9]|2[0-3]):([0-5]\d|60)')
@@ -141,6 +141,8 @@ def show_entryform(request):
             if meta.has_key(u'Capacity'):
                 try:
                     capacity = meta[u'Capacity'][0][0]
+                    if capacity = 0:
+                        capacity = unicode()
                 except:
                     None
 
