@@ -316,10 +316,16 @@ function repeatcheck(no_init){
 function formcheck(){
   //setDuration('start_time');
   var desc = $('description');
+  var cap = $('capacity');
+  
   if(desc.value.length < 1){
     alert('No description!');
     return false;
     }
+  if(cap && !cap.value.match(/^[0-9]+$/)){
+	alert('capacity is not numeric!');
+	return false;
+	}
   return true;
   }
 </script>
