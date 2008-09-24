@@ -54,6 +54,8 @@ def savedata(request):
     until = request.form.get('until', [u''])[0]
     edit = request.form.get('edit', [u''])[0]
     category = request.form.get('categories', [u'CategoryCalendarEntry'])[0]
+    location = request.form.get('location', [u''])[0]
+    capacity = request.form.get('capacity', [u''])[0]
 
     daterexp = re.compile('\d{4}-\d\d-\d\d')
     timerexp = re.compile('([0-1][0-9]|2[0-3]):([0-5]\d|60)')
@@ -89,8 +91,10 @@ def savedata(request):
   Duration:: %s
   Type:: %s
   Until:: %s
+  Location:: %s
+  Capacity:: %s
 
-%s''' % (title, date,time,duration,type, until, category)
+%s''' % (title, date, time, duration, type, until, location, capacity, category)
     savetext(pagename, content)
 
 def show_entryform(request):
@@ -377,6 +381,7 @@ edit_page, title, def_date, time_opts, def_date, time_opts, duration, location, 
 def execute(pagename, request):
     
     if request.form.has_key('save'):
+        print request.form
         savedata(request)
         url = u'%s?action=showCalendarDate&date=%s&backto=%s&categories=%s' % (request.getBaseURL(),
         request.form.get('start_date',[None])[0], request.form.get('backto',[None])[0], 
