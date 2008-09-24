@@ -107,7 +107,7 @@ count = 1
 for pagename in pages:
     if pagename.endswith('/MoinEditorBackup'):
         continue
-    print "Rehashing %s (%*d/%*d)" % (_e(pagename), padding, count, padding, count)
+    print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, _e(pagename))
     count += 1
     page_enc = _e(pagename)
     # Make a new request for the page, get raw text
