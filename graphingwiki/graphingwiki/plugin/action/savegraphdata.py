@@ -39,7 +39,6 @@ from time import time
 from MoinMoin import config
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
-from MoinMoin.util.lock import WriteLock
 from MoinMoin.Page import Page
 
 # graphlib imports
@@ -477,7 +476,7 @@ def execute(pagename, request, text, pagedir, page):
     gfn = os.path.join(pagedir,'graphdata.pickle')
     # load graphdata if present and not trashed, remove it from index
     if os.path.isfile(gfn) and os.path.getsize(gfn):
-        pagegraphfile = file(gfn)
+        pagegraphfile = open(gfn)
         old_data = cPickle.load(pagegraphfile)
         
         for edge in old_data.edges.getall(parent=quotedname):
@@ -504,9 +503,11 @@ def execute(pagename, request, text, pagedir, page):
 
     # Overwrite pagegraphfile with the new data
     globaldata, pagegraph = parse_text(request, globaldata, page, text)    
-    pagegraphfile = file(gfn, 'wb')
+    tmpfn = '%s.%d' % (gfn, os.getpid())
+    pagegraphfile = open(tmpfn, 'wb')
     cPickle.dump(pagegraph, pagegraphfile)
     pagegraphfile.close()
+    os.rename(tmpfn, gfn)
 
 # - code below lifted from MetaFormEdit -
 

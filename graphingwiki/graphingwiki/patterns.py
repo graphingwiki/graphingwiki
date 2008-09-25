@@ -30,7 +30,6 @@
 """
 
 import re
-import cPickle
 import os
 import shelve
 from codecs import getencoder
@@ -109,11 +108,14 @@ class GraphData(object):
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
         self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
-
+        self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         self.opened = False
         self.opendb()
 
     def readlock(self):
+        if self.use_sq_dict:
+            return
+
         lock = getattr(self.request, "lock", None)
         if lock is None or not lock.isLocked():
             lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
@@ -121,6 +123,9 @@ class GraphData(object):
         self.request.lock = lock
 
     def writelock(self):
+        if self.use_sq_dict:
+            return
+
         lock = getattr(self.request, "lock", None)
         if lock is not None and lock.isLocked() and isinstance(lock, ReadLock):
             lock.release()
@@ -137,9 +142,13 @@ class GraphData(object):
     # NB: You must use closedb() before exiting to avoid littering
     #     locks around!
     def opendb(self):
-        self.readlock()
+        if self.use_sq_dict:
+            import sq_dict
+            self.db = sq_dict.shelve(self.graphshelve)
+        else:
+            self.readlock()
+            self.db = shelve.open(self.graphshelve)
         self.opened = True
-        self.db = shelve.open(self.graphshelve)
 
     def closedb(self):
         self.opened = False

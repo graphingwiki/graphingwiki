@@ -468,8 +468,9 @@ def edit(pagename, editfun, request=None,
     except p.Unchanged:
         msg = u'Unchanged'
 
-    request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
-    request.lock.acquire()
+    if not request.cfg.use_sq_dict:
+        request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
+        request.lock.acquire()
 
     return msg, p
 
