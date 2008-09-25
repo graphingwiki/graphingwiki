@@ -130,3 +130,4 @@ for pagename in pages:
     # Apply the graphsaver-action to the page
     graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pagename, req, text, pagepath, p)
+    req.finish()
