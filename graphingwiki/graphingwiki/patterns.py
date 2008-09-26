@@ -108,27 +108,33 @@ class GraphData(DictMixin):
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
+        self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
+
+        self.db = None
+        self.opened = False
+        self.writing = False
+        
+        self.readlock()
+
         self.cache = dict()
 
-        self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
-        self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
-        self.opened = False
-        self.opendb()
-
     def readlock(self):
-        if self.use_sq_dict:
-            return
-
         lock = getattr(self.request, "lock", None)
         if lock is None or not lock.isLocked():
             lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
             lock.acquire()
         self.request.lock = lock
 
-    def writelock(self):
-        if self.use_sq_dict:
-            return
+        if not self.opened:
+            self.db = shelve.open(self.graphshelve, "r")
+            self.opened = True
+            self.writing = False
 
+    def writelock(self):
+        if self.opened and not self.writing:
+            self.db.close()
+            self.opened = False
+        
         lock = getattr(self.request, "lock", None)
         if lock is not None and lock.isLocked() and isinstance(lock, ReadLock):
             lock.release()
@@ -136,6 +142,11 @@ class GraphData(DictMixin):
             lock = WriteLock(self.request.cfg.data_dir, readlocktimeout=10.0)
             lock.acquire()
         self.request.lock = lock
+
+        if not self.opened or not self.writing:
+            self.db = shelve.open(self.graphshelve, "c")
+            self.writing = True
+            self.opened = True
 
     def __getitem__(self, page):
         if page not in self.cache:
@@ -158,19 +169,6 @@ class GraphData(DictMixin):
 
     def __contains__(self, page):
         return page in self.cache or page in self.db
-
-    # Functions to open and close the the graph shelve for
-    # current thread, creating and removing locks at the same.
-    # NB: You must use closedb() before exiting to avoid littering
-    #     locks around!
-    def opendb(self):
-        if self.use_sq_dict:
-            import sq_dict
-            self.db = sq_dict.shelve(self.graphshelve)
-        else:
-            self.readlock()
-            self.db = shelve.open(self.graphshelve)
-        self.opened = True
 
     def closedb(self):
         self.opened = False
