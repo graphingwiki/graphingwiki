@@ -32,8 +32,7 @@ usercategory = u'CategoryUser'
 
 class RaippaUser:
     def __init__(self, request, name=None):
-        if not hasattr(request, 'graphdata'):
-            getgraphdata(request)
+        getgraphdata(request)
         self.request = request
 
         if name:
@@ -44,8 +43,7 @@ class RaippaUser:
             self.name = self.request.user.aliasname
 
         self.categories = list()
-        page = Page(request, self.id)
-        if page.exists():
+        if self.id in request.graphdata:
             meta = getmetas(request, self.request.graphdata, encode(self.id), ["WikiCategory", "name"], checkAccess=False)
             for name, type in meta["name"]:
                 self.name = name
@@ -56,8 +54,7 @@ class RaippaUser:
             self.categories.append(usercategory)
  
         self.statuspage = encode("%s/status" % self.id)
-        page = Page(request, self.statuspage)
-        if page.exists():   
+        if self.statuspage in request.graphdata:
             self.statusdict = self.request.graphdata.getpage(self.statuspage).get('lit', {})
         else:
             self.statusdict = dict()
@@ -587,11 +584,9 @@ def removelink(pagename):
     return encode(pagename)
 
 def randompage(request, type):
-    pagename = "%s/%i" % (type, random.randint(10000,99999))
-    page = Page(request, pagename)
-    while page.exists():
+    getgraphdata(request)
+
+    while True:
         pagename = "%s/%i" % (type, random.randint(10000,99999))
-        page = Page(request, pagename)
-
-    return pagename
-
+        if pagename not in request.graphdata:
+            return pagename
