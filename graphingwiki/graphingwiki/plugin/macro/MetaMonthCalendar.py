@@ -150,13 +150,16 @@ def execute(macro, args):
         entries.setdefault(entry, list())
         entries[entry].extend(new_entries[entry])
 
+    categories = [x.strip() for x in args.split(',') if 'Category' in x]
+    categories = ','.join(categories)
+    
     html = u'''
   <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
   <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
 
 <script type="text/javascript">
-window.addEvent('domready', function(){
-  var dates = new Hash();
+addLoadEvent(function(){
+var dates = new Hash();
     \n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
 
     for date, d in entries.iteritems():
@@ -170,12 +173,12 @@ window.addEvent('domready', function(){
             try:
                 location = '&nbsp;*&nbsp;Location:&nbsp;&nbsp;%s <br> ' % cont['Location']
             except:
-				location = ""
+                location = ""
 
             try:
                 cap = '&nbsp;*&nbsp;Capacity:&nbsp;&nbsp;%s <br>' % cont['Capacity']
             except:
-				cap = ""
+                cap = ""
 
             try:
                 desc = cont['Content'].replace('\n','')
@@ -188,7 +191,7 @@ window.addEvent('domready', function(){
 
         html += u'");\n'
     html += u'''
-   var links = $$('a');
+   var links = $$('table#cat-%s > tbody > tr > td > a');
   var links = links.filter(function(el){
     return el.href.match("action=%s") != null;
     });
@@ -220,16 +223,14 @@ window.addEvent('domready', function(){
    }
    el.store('tip:text',content);
    });
-  });
+});
   </script>
-   \n''' % action
+   \n''' % (categories,action)
     out.write(html)
 
     output = ""
-    output += macro.formatter.table(1, {'class' : 'calendar'})
-
-    categories = [x.strip() for x in args.split(',') if 'Category' in x]
-    categories = ','.join(categories)
+    output += macro.formatter.table(1, {'id' : 'cat-%s' %categories})
+    output += macro.formatter.rawHTML('<table id="cat-%s">' %categories)
 
     output += macro.formatter.table_row(1)
 
