@@ -466,9 +466,8 @@ def execute(pagename, request, text, pagedir, page):
         return
 
     # Open file db for global graph data, creating it if needed
-    graphdata = getgraphdata(request)
-    graphdata.writelock()
-    globaldata = graphdata.db
+    globaldata = getgraphdata(request)
+    globaldata.writelock()
         
     quotedname = url_quote(encode(pagename))
 

@@ -42,6 +42,7 @@ from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
 
 from graphingwiki.graph import Graph
+from UserDict import DictMixin
 
 # Get action name
 def actionname(request, pagename):
@@ -99,13 +100,15 @@ def getgraphdata(request):
 
     return request.graphdata
 
-class GraphData(object):
+class GraphData(DictMixin):
     def __init__(self, request):
         self.request = request
 
         # Category, Template matching regexps
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
+
+        self.cache = dict()
 
         self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
@@ -134,8 +137,27 @@ class GraphData(object):
             lock.acquire()
         self.request.lock = lock
 
+    def __getitem__(self, page):
+        if page not in self.cache:
+            self.cache[page] = self.db[page]
+        return self.cache[page]
+
+    def __setitem__(self, page, value):
+        self.db[page] = value
+        self.cache[page] = value
+
+    def __delitem__(self, page):
+        del self.db[page]
+        self.cache.pop(page, None)
+
+    def keys(self):
+        return self.db.keys()
+
     def __iter__(self):
         return iter(self.db)
+
+    def __contains__(self, page):
+        return page in self.cache or page in self.db
 
     # Functions to open and close the the graph shelve for
     # current thread, creating and removing locks at the same.
@@ -157,19 +179,16 @@ class GraphData(object):
         self.db.close()
 
     def getpage(self, pagename):
-        # Always read data here regardless of user rights -
-        # they're handled in load_graph. This way the cache avoids
-        # tough decisions on whether to cache content for a
-        # certain user or not
-
-        return self.db.get(pagename, dict())
+        # Always read data here regardless of user rights,
+        # they should be handled elsewhere.
+        return self.get(pagename, dict())
 
     def reverse_meta(self):
         self.keys_on_pages = {}
         self.vals_on_pages = {}
         self.vals_on_keys = {}
 
-        globaldata = dict(self.db)
+        globaldata = self
 
         for page in globaldata:
             if page.endswith('Template'):
