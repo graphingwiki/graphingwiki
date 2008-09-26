@@ -36,9 +36,10 @@ from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
 from MoinMoin.request import RequestModPy, RequestStandAlone
 from MoinMoin.util import MoinMoinNoFooter
+from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.graphrepr import Graphviz, gv_found
-from graphingwiki.patterns import actionname
+from graphingwiki.patterns import actionname, form_escape
 
 from ShowGraph import quotetoshow
 from savegraphdata import encode
@@ -73,29 +74,30 @@ class ViewDot(object):
 
         # format
         if request.form.has_key('format'):
-            format = [encode(x) for x in request.form['format']][0]
+            format = request.form['format'][0]
             if format in self.available_formats:
                 self.format = format
 
-        # format
+        # view
         if request.form.has_key('view'):
-            if ''.join([x for x in request.form['view']]).strip():
+            if ''.join(request.form['view']):
                 self.inline = False
 
         # format
         if request.form.has_key('help'):
-            if ''.join([x for x in request.form['help']]).strip():
+            if ''.join(request.form['help']):
+                del request.form['help']
                 self.help = True
 
         # graphengine
         if request.form.has_key('graphengine'):
-            graphengine = [encode(x) for x in request.form['graphengine']][0]
+            graphengine = request.form['graphengine'][0]
             if graphengine in self.available_graphengines:
                 self.graphengine = graphengine
 
         # format
         if request.form.has_key('attachment'):
-            self.attachment = ''.join([x for x in request.form['attachment']])
+            self.attachment = ''.join(request.form['attachment'])
 
     def sendForm(self):
         request = self.request
@@ -116,18 +118,18 @@ class ViewDot(object):
         for type in self.available_formats:
             request.write(u'<input type="radio" name="format" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type,
+                          (form_escape(type),
                            type == self.format and " checked>" or ">",
-                           type))
+                           form_escape(type)))
 
         # graphengine
         request.write(u"<td>\n" + _('Output graphengine') + u"<br>\n")
         for type in self.available_graphengines:
             request.write(u'<input type="radio" name="graphengine" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type,
+                          (form_escape(type),
                            type == self.graphengine and " checked>" or ">",
-                           type))
+                           form_escape(type)))
 
         # dotfile
         dotfile = self.dotfile
@@ -183,14 +185,7 @@ class ViewDot(object):
 
             if self.help:
                 # This is the URL addition to the nodes that have graph data
-                self.urladd = '?'
-                for key in request.form:
-                    if key == 'help':
-                        continue
-                    for val in request.form[key]:
-                        self.urladd = (self.urladd + url_quote(encode(key)) +
-                                       '=' + url_quote(encode(val)) + '&')
-                self.urladd = self.urladd[:-1]
+                self.urladd = url_parameters(request.form)
                 request.write('[[ViewDot(' + self.urladd + ')]]')
 
             # End content
@@ -217,7 +212,8 @@ class ViewDot(object):
         try:
             data = file(fpath, 'r').read()
         except IOError:
-            fault = _('Attachment not found at') + ' %s\n' % repr(fpath)
+            fault = _sysmsg % ('error', _('Attachment not found at') + 
+                               ' %s\n' % repr(fpath))
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
@@ -264,7 +260,8 @@ class ViewDot(object):
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
                 'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
                 (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
-                'width="%s" height="%s">' % (self.width, self.height)+\
+                'width="%s" height="%s">' % (form_escape(self.width), 
+                                             form_escape(self.height))+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
                 '<param name="scriptable" value="false" />' +\
@@ -280,9 +277,9 @@ class ViewDot(object):
 
             params = ""
             if self.height:
-                params += 'height="%s" ' % self.height
+                params += 'height="%s" ' % form_escape(self.height)
             if self.width:
-                params += 'width="%s"' % self.width
+                params += 'width="%s"' % form_escape(self.width)
 
             page = ('<img src="%s" %s alt="%s"><br>\n' %
                     (img_url, _('visualisation'), params))

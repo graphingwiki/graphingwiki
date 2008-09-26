@@ -44,6 +44,7 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.util import MoinMoinNoFooter
+from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin.request import Clock
 cl = Clock()
@@ -185,6 +186,9 @@ class GraphShower(object):
         self.used_colors = dict()
 
         self.pagename = pagename
+        # Page the graph appears in, used in inline graphs
+        self.app_page = pagename
+
         self.request = request
         self.graphengine = graphengine
         self.available_formats = ['png', 'svg', 'dot']
@@ -817,24 +821,6 @@ class GraphShower(object):
 
         return outgraph
 
-    def get_url_ns(self, link):
-        # Find out subpage level to adjust URL:s accordingly
-        subrank = self.request.page.page_name.count('/')
-        # Namespaced names
-        if ':' in link:
-            if not hasattr(self.request, 'iwlist'):
-                get_interwikilist(self.request)
-            iwname = link.split(':')
-            if self.request.iwlist.has_key(iwname[0]):
-                return self.request.iwlist[iwname[0]] + iwname[1]
-            else:
-                return '../' * subrank + './InterWiki'
-        # handle categories differently as ordernodes:
-        # they will just direct to the category page
-        if link == 'gwikicategory':
-            return ''
-        return '../' * subrank + './Property' + link
-
     def make_legend(self):
         _ = self.request.getText
         # Make legend
@@ -847,7 +833,8 @@ class GraphShower(object):
         legend = legendgraph.subg.add("clusterLegend",
                                       label=_('Legend'))
         subrank = self.pagename.count('/')
-        colorURL = self.get_url_ns(self.colorby)
+
+        colorURL = get_url_ns(self.request, self.app_page, self.colorby)
         per_row = 0
 
 	# Formatting features here! 
@@ -873,7 +860,8 @@ class GraphShower(object):
                                  color=self.hashcolor(linktype,
                                                       self.EDGE_DARKNESS),
                                  label=linktype,
-                                 URL=self.get_url_ns(linktype))
+                                 URL=get_url_ns(self.request, self.app_page,
+                                                linktype))
                 per_row = per_row + 1
 
         # Nodes
@@ -1116,16 +1104,12 @@ class GraphShower(object):
         # Add all data to graph
         gr = GraphRepr(outgraph, self.graphengine)
 
-        self.request.write(repr(self.orderby) + repr(self.get_url_ns(self.orderby)))
-
-
-
         if self.orderby and self.orderby != '_hier':
             gr.order_graph(self.ordernodes, 
                            self.unordernodes,
                            self.request,
-                           self.orderby,
-                           self.get_url_ns(self.orderby))
+                           self.app_page,
+                           self.orderby)
 
         return gr
 
@@ -1262,7 +1246,7 @@ class GraphShower(object):
 
     def fail_page(self, reason):
         formatter = self.send_headers()
-        self.request.write(self.request.formatter.text(reason))
+        self.request.write(_sysmsg % ('error', reason))
         self.request.write(self.request.formatter.endContent())
         wikiutil.send_footer(self.request, self.pagename)
 

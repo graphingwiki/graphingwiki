@@ -609,5 +609,3 @@ def execute(pagename, request, text, pagedir, page):
             #print 'addin', repr(page), edge
             linktype, src = edge
             shelve_add_in(request.graphdata, [src, page], linktype)
-
-    request.lock.release()

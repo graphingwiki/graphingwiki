@@ -33,8 +33,8 @@
 import sys
 import os
 
-from graphingwiki.patterns import encode_page, decode_page
-from graphingwiki.editing import ordervalue, filter_categories
+from graphingwiki.patterns import encode_page, decode_page, get_url_ns
+from graphingwiki.editing import ordervalue
 
 gv_found = True
 
@@ -531,10 +531,13 @@ class GraphRepr(object):
                 out[key] = value
         return out
 
-    def order_graph(self, ordernodes, unordernodes, request, orderby, orderURL):
+    def order_graph(self, ordernodes, unordernodes, request, pagename, orderby):
         # Ordering the nodes into ranks. 
         orderkeys = ordernodes.keys()
         orderkeys.sort()
+
+        if orderby != 'gwikicategory':
+            orderURL = get_url_ns(request, pagename, orderby)
 
         prev_ordernode = ''
         # New subgraphs, nodes to help ranking
@@ -545,13 +548,11 @@ class GraphRepr(object):
             cur_ordernode = 'orderkey: ' + label
             sg = self.graphviz.subg.add(cur_ordernode, rank='same')
 
-            # handle categories as ordernodes different
-            # so that they would point to the corresponding categories
-            if orderby == 'gwikicategory' and \
-                    filter_categories(request, [label]):
-                sg.nodes.add(cur_ordernode, label=label, URL=label)
-            else:
+            if orderby != 'gwikicategory':
                 sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+            else:
+                sg.nodes.add(cur_ordernode, label=label, 
+                             URL=get_url_ns(request, pagename, label))
 
             for node in ordernodes[key]:
                 sg.nodes.add(node)

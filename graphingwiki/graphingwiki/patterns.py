@@ -128,6 +128,35 @@ def node_type(request, nodename):
 
     return 'page'
 
+def filter_categories(request, candidates):
+    # Let through only the candidates that are both valid category
+    # names and WikiWords
+    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
+
+    candidates = wikiutil.filterCategoryPages(request, candidates)
+    candidates = filter(wordRex.match, candidates)
+
+    return candidates
+
+def get_url_ns(request, pagename, link):
+    # Find out subpage level to adjust URL:s accordingly
+    subrank = pagename.count('/')
+    # Namespaced names
+    if ':' in link:
+        if not hasattr(request, 'iwlist'):
+            get_interwikilist(request)
+        iwname = link.split(':')
+        if request.iwlist.has_key(iwname[0]):
+            return request.iwlist[iwname[0]] + iwname[1]
+        else:
+            return '../' * subrank + './InterWiki'
+    # handle categories as ordernodes different
+    # so that they would point to the corresponding categories
+    if filter_categories(request, [link]):
+        return '../' * subrank + './' + link
+    else:
+        return '../' * subrank + './Property' + link
+
 def format_wikitext(request, data):
     request.page.formatter = request.formatter
     parser = Parser(data, request)
@@ -208,17 +237,42 @@ class GraphData(UserDict.DictMixin):
         self.graphshelve = os.path.join(request.cfg.data_dir,
                                         'graphdata.shelve')
 
+        if not os.path.exists(self.graphshelve):
+            self.db = shelve.open(self.graphshelve, 'c')
+            self.db.close()
+
+        self.db = None
         self.opened = False
-        self.opendb()
+        self.writing = False
+        self.lock = None
+        
+        self.readlock()
+
+        self.cache = dict()
 
     def __getitem__(self, item):
-        return self.db[encode_page(item)]
+        page = encode_page(item)
+
+        if page not in self.cache:
+            self.cache[page] = self.db[page]
+        return self.cache[page]
 
     def __setitem__(self, item, value):
-        self.db[encode_page(item)] = value
+        page = encode_page(item)
+
+        self.db[page] = value
+        self.cache[page] = value
+
+    def cacheset(self, item, value):
+        page = encode_page(item)
+
+        self.cache[page] = value
 
     def __delitem__(self, item, value):
-        del self.db[encode_page(item)]
+        page = encode_page(item)
+
+        del self.db[page]
+        self.cache.pop(page, None)
 
     def keys(self):
         return map(decode_page, self.db.keys())
@@ -227,48 +281,46 @@ class GraphData(UserDict.DictMixin):
         return itertools.imap(decode_page, self.db)
 
     def __contains__(self, item):
-        return encode_page(item) in self.db
+        page = encode_page(item)
+        return page in self.cache or page in self.db
 
-    # Functions to open and close the the graph shelve for
-    # current thread, creating and removing locks at the same.
-    # Do not use directly
-    def opendb(self):
-        if self.opened:
-            return
-        
-        self.readlock()
-
-        self.opened = True
-        self.db = shelve.open(self.graphshelve)
-
-    # Locking functions centralised from various places
     def readlock(self):
-        if hasattr(self.request, 'lock') and self.request.lock.isLocked():
-            self.request.lock.release()
-        # The timeout parameter in ReadLock is most probably moot...
-        self.request.lock = ReadLock(self.request.cfg.data_dir, timeout=10.0)
-        self.request.lock.acquire()
+        if self.lock is None or not self.lock.isLocked():
+            self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
+            self.lock.acquire()
+
+        if not self.opened:
+            self.db = shelve.open(self.graphshelve, "r")
+            self.opened = True
+            self.writing = False
 
     def writelock(self):
-        if self.request.lock.isLocked():
-            self.request.lock.release()
-        self.request.lock = WriteLock(self.request.cfg.data_dir, timeout=10.0)
-        self.request.lock.acquire()
+        if self.opened and not self.writing:
+            self.db.close()
+            self.opened = False
+        
+        if self.lock is not None and self.lock.isLocked() \
+                and isinstance(self.lock, ReadLock):
+            self.lock.release()
+        if self.lock is None or not self.lock.isLocked():
+            self.lock = WriteLock(self.request.cfg.data_dir, 
+                                  readlocktimeout=10.0)
+            self.lock.acquire()
+
+        if not self.opened or not self.writing:
+            self.db = shelve.open(self.graphshelve, "c")
+            self.writing = True
+            self.opened = True
 
     def closedb(self):
-        if not self.opened:
-            return
-
         self.opened = False
-        if self.request.lock.isLocked():
-            self.request.lock.release()
+        if self.lock and self.lock.isLocked():
+            self.lock.release()
         self.db.close()
 
     def getpage(self, pagename):
-        # Always read data here regardless of user rights - they're
-        # handled in load_graph and other functions using this. This
-        # way the cache avoids tough decisions on whether to cache
-        # content for a certain user or not
+        # Always read data here regardless of user rights,
+        # they should be handled elsewhere.
         return self.get(pagename, dict())
 
     def reverse_meta(self):

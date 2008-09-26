@@ -37,7 +37,7 @@ from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import actionname
+from graphingwiki.patterns import actionname, form_escape
 
 from unifier import Unifier
 
@@ -79,7 +79,7 @@ def execute(pagename, request):
                   ''.join(request.form['action']))
 
     request.write(u'<input type="text" name="infer" size=50 value="%s">' %
-                  infer)
+                  form_escape(infer))
     request.write(u'<input type=submit value="Infer from these pages">' + \
                   u'\n</form>\n')
 
@@ -111,7 +111,7 @@ def execute(pagename, request):
                     for heureka in engine.solve(list(q.groups())):
                         answers.add(' '.join(heureka[0]) + ".")
                     for once in answers:
-                        print once
+                        request.write(form_escape(once))
             elif '->' in line:
                 r = rule_re.match(line)
                 if r:

@@ -7,8 +7,8 @@
 import xmlrpclib
 
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from graphingwiki.editing import getmetas, edit_meta
-from graphingwiki.editing import filter_categories, decode_page, encoded_page
+from graphingwiki.editing import getmetas, edit_meta, decode_page, encoded_page
+from graphingwiki.patterns import filter_categories
 
 CATEGORY_KEY = "gwikicategory"
 

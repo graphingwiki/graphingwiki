@@ -27,7 +27,7 @@ from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import nonguaranteeds_p, NO_TYPE
-from graphingwiki.patterns import absolute_attach_name
+from graphingwiki.patterns import absolute_attach_name, filter_categories
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -73,15 +73,12 @@ def get_revisions(request, page):
         text = revpage.get_raw_body()
         alldata = parse_text(request, revpage, text)
         if alldata.has_key(pagename):
-
-            request.graphdata[revlink] = alldata[pagename]
-
-            # So that new values are appended rather than overwritten
-            del alldata[pagename]
+            alldata[pagename].setdefault('meta', 
+                                         dict())[u'#rev'] = [unicode(rev)]
+            # Do the cache. 
+            request.graphdata.cacheset(revlink, alldata[pagename])
 
             # Add revision as meta so that it is shown in the table
-            request.graphdata[revlink].setdefault('meta', 
-                                                  dict())['#rev'] = [str(rev)]
             revisions[rev] = revlink
 
     pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
@@ -163,16 +160,6 @@ def ordervalue(value):
         pass
 
     return value
-
-def filter_categories(request, candidates):
-    # Let through only the candidates that are both valid category
-    # names and WikiWords
-    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
-
-    candidates = wikiutil.filterCategoryPages(request, candidates)
-    candidates = filter(wordRex.match, candidates)
-
-    return candidates
 
 def parse_categories(request, text):
     # We want to parse only the last non-empty line of the text
@@ -337,11 +324,6 @@ def edit(pagename, editfun, request=None,
 
     graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
 
-    # Release the possible readlock that template-savers may have acquired
-    if hasattr(request, 'lock'):
-        if request.lock.isLocked():
-            request.lock.release()
-
     # PageEditor.saveText doesn't allow empty texts
     if not newtext:
         newtext = u" "
@@ -370,8 +352,6 @@ def edit(pagename, editfun, request=None,
 
     except p.Unchanged:
         msg = u'Unchanged'
-
-    request.graphdata.readlock()
 
     return msg, p
 
@@ -665,6 +645,9 @@ def save_template(request, page, template):
     raw_body = Page(request, page).get_raw_body()
     msg = ''
     if not raw_body:
+        # Start writing
+        request.graphdata.writelock()
+
         raw_body = ' '
         p = PageEditor(request, page)
         template_page = wikiutil.unquoteWikiname(template)
@@ -674,6 +657,9 @@ def save_template(request, page, template):
                 raw_body = temp_body
 
         msg = p.saveText(raw_body, 0)
+
+        # Stop writing
+        request.graphdata.readlock()
 
     return msg
 

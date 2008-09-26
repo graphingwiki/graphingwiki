@@ -46,6 +46,12 @@ class GraphShowerSimple(GraphShower):
 
         super(GraphShowerSimple, self).__init__(pagename, request,
                                                 self.graphengine)
+
+        # If we appear on a subpage, links may be screwed - 
+        # app_page retains knowledge on the page graph appears in
+        if kw.has_key('app_page'):
+            self.app_page = kw['app_page']
+
         # URL addition
         self.image = 0
         self.urladd = ''
@@ -165,7 +171,7 @@ class GraphShowerSimple(GraphShower):
 
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
-        graphdata = self.build_graph_data()
+        self.build_graph_data()
         outgraph = self.build_outgraph()
 
         # Fixes some weird problems with transparency
@@ -173,8 +179,8 @@ class GraphShowerSimple(GraphShower):
             outgraph.bgcolor = 'white'
 
         nodes = set(self.startpages)
-        outgraph = self.traverse(graphdata, outgraph, nodes)
-        outgraph = self.gather_layout_data(graphdata, outgraph)
+        outgraph = self.traverse(outgraph, nodes)
+        outgraph = self.gather_layout_data(outgraph)
 
         # Stylistic stuff: Color nodes, edges, bold startpages
         if self.colorby:
@@ -310,5 +316,5 @@ def execute_graphs(pagename, request, **kw):
     urladd = kw['urladd']
 
     graphshower = GraphShowerSimple(pagename, request, **kw)
-    graphshower.formargs()
+    graphshower.form_args()
     graphshower.execute_graphs(urladd=urladd)
