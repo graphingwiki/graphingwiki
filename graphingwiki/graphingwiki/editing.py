@@ -435,11 +435,6 @@ def edit(pagename, editfun, request=None,
                               'action',
                               'savegraphdata')
 
-    # Release the possible readlock that template-savers may have acquired
-    if hasattr(request, 'lock'):
-        if request.lock.isLocked():
-            request.lock.release()
-
     if not newtext:
         return u'No data', p
 
@@ -467,10 +462,6 @@ def edit(pagename, editfun, request=None,
 
     except p.Unchanged:
         msg = u'Unchanged'
-
-    if not request.cfg.use_sq_dict:
-        request.lock = ReadLock(request.cfg.data_dir, timeout=10.0)
-        request.lock.acquire()
 
     return msg, p
 
@@ -771,11 +762,6 @@ def process_edit(request, input,
             msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
         else:
             msg.append(_('No pages changed'))
-
-        # When pages are unchanged, there might be a lock that needs
-        # to be released at this stage
-        if hasattr(request, 'lock'):
-            request.lock.release()
 
     return msg
 
