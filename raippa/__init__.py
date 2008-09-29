@@ -384,10 +384,16 @@ class Question:
 
         if metas["question"]:
             self.question = metas["question"][0][0]
+
         if metas["answertype"]:
             self.answertype = metas["answertype"][0][0]
-        if metas["note"]:
+
+        notepage = encode(self.pagename+"/note")
+        if notepage in request.graphdata.db:
+            self.note = Page(self.request, notepage).get_raw_body()
+        elif metas["note"]:
             self.note = metas["note"][0][0]
+
         for type, metatype in metas["type"]:
             self.types.append(type)
 

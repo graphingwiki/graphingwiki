@@ -511,9 +511,9 @@ def savequestion(request,  oldquestion=None):
     #edit questionpage
     answertype = request.form["answertype"][0]
     questiondata = {"question": [request.form["question"][0]],
-                    "note": [request.form["note"][0]],
                     "answertype": [answertype],
                     "type": request.form["type"]}
+    note = request.form.get("note", [u''])[0]
 
     if oldquestion:
         questionpage = oldquestion
@@ -525,6 +525,14 @@ def savequestion(request,  oldquestion=None):
         questionpage = randompage(request, "Question")
         input = order_meta_input(request, questionpage, questiondata, "add")
         process_edit(request, input, True, {questionpage:[questioncategory]})
+
+    page = PageEditor(request, questionpage)
+    page.saveText("<<LinkedIn>>", page.get_real_rev())
+
+    if note:
+        notepage = questionpage+"/note"
+        page = PageEditor(request, notepage)
+        page.saveText(note, page.get_real_rev())
 
     #find all the answers
     answerdict = dict()
