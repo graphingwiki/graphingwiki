@@ -175,7 +175,8 @@ def form_checkbox(request, name, value, test, text):
                    form_escape(text)))
 
 class GraphShower(object):
-    EDGE_DARKNESS = 0.85
+    EDGE_WIDTH = 2.0
+    EDGE_DARKNESS = 0.83
     FRINGE_DARKNESS = 0.50
   
     def __init__(self, pagename, request, graphengine = "neato"):
@@ -763,6 +764,10 @@ class GraphShower(object):
             self.coloredges.update(filter(self.oftype_p, obj.linktype))
             obj.color = ':'.join(self.hashcolor(x, self.EDGE_DARKNESS) 
                                  for x in obj.linktype)
+            style = getattr(obj, "style", "")
+            if style:
+                style += ","
+            obj.style = style + "setlinewidth(%.02f)" % self.EDGE_WIDTH
             if self.edgelabels:
                 obj.decorate = 'true'
                 obj.label = ','.join(x for x in obj.linktype if x != NO_TYPE)
