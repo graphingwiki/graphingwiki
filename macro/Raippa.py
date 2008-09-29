@@ -151,7 +151,14 @@ def questionhtml(request, questionpage, number=""):
 
     question = meta[u'question'][0][0]
     answertype = meta[u'answertype'][0][0]
-    if meta[u'note']:
+    
+    notepage = questionpage+"/note"
+    notepage = Page(request, notepage)
+    if notepage.exists():
+        from MoinMoin import wikiutil
+        cid = request.makeUniqueID("note_%s" % wikiutil.quoteWikinameURL(notepage.page_name))
+        notepage.send_page(content_only=1, content_id=cid, omit_footnotes=True) 
+    elif meta[u'note']:
         note = meta[u'note'][0][0]
         html += u'<i>%s</i><br>\n' % note
 
@@ -237,7 +244,6 @@ def questionform(macro):
         if Page(request, commentpage).exists():
             import MoinMoin.wikiutil as wikiutil
             includemacro = wikiutil.importPlugin(request.cfg, "macro", 'Include')
-
             return u'Comments:%s' % includemacro(macro, commentpage)
         else:
             return unicode()

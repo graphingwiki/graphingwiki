@@ -44,6 +44,8 @@
 
                     if page_name in allowlist:
                         return True
+                    elif page_name.endswith("/note"):
+                        return True
                     else:
                         meta = getmetas(self.request, self.request.graphdata, encode(page_name), ["WikiCategory"], checkAccess=False)
                         for category, type in meta["WikiCategory"]:
