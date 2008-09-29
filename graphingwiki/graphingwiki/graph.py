@@ -33,49 +33,33 @@ class AttrBag(object):
     def __init__(self, **keys):
         object.__init__(self)
 
+        self._ignored = set()
+        self._ignored.update(self.__dict__)
+
         self.__dict__.update(keys)
-
-    def __getattr__(self, name):
-        if not name in self.__dict__.keys():
-            raise AttributeError, name
-        return self.__dict__[name]
-
-    def __delattr__(self, name):
-        self.__getattr__(name)
-        del self.__dict__[name]
 
     def __iter__(self):
         variables = set(self.__dict__)
         
         for key in variables:
+            if key in self._ignored:
+                continue
             yield key, self.__dict__[key]
 
     def update(self, other):
         for name, value in other:
             setattr(self, name, value)
 
-class Node(object):
+class Node(AttrBag):
     def __init__(self, identity, **keys):
-        self.__dict__['node'] = AttrBag(**keys)
-        self.__dict__['identity'] = identity
+        # Set the _identity attribute before calling the __init__ of
+        # the super class, because we don't want it returned when
+        # e.g. iterating.
+        self._identity = identity
+        AttrBag.__init__(self, **keys)
 
     def __unicode__(self):
-        return self.__dict__['identity']
-
-    def __getattr__(self, name):
-        return self.__dict__['node'].__getattr__(name)
-
-    def __setattr__(self, name, value):
-        return self.__dict__['node'].__setattr__(name, value)
-
-    def __delattr__(self, name):
-        return self.__dict__['node'].__delattr__(name)
-
-    def __iter__(self):
-        return self.__dict__['node'].__iter__()
-
-    def update(self, other):
-        return self.__dict__['node'].update(other)
+        return self._identity
 
 class Nodes(object):
     def __init__(self, graph):
@@ -255,13 +239,12 @@ class Graph(Node):
     """
 
     def __init__(self):
+        self.nodes = Nodes(self)
+        self.edges = Edges()
         Node.__init__(self, '')
 
-        self.__dict__['nodes'] = Nodes(self)
-        self.__dict__['edges'] = Edges()
-
     def __nonzero__(self):
-        return len(self.__dict__['nodes']) > 0
+        return len(self.nodes) > 0
 
 def _test():
     import doctest
