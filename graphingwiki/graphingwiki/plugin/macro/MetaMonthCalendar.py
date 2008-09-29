@@ -229,8 +229,8 @@ var dates = new Hash();
     out.write(html)
 
     output = ""
-    output += macro.formatter.table(1, {'id' : 'cat-%s' %categories})
-    output += macro.formatter.rawHTML('<table id="cat-%s">' %categories)
+    #output += macro.formatter.table(1, {'id' : 'cat-%s' %categories})
+    output += macro.formatter.rawHTML('<div><table id="cat-%s"><tbody>' %categories)
 
     output += macro.formatter.table_row(1)
 
