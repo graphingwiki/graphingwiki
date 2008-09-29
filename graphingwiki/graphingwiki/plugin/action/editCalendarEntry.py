@@ -141,7 +141,7 @@ def show_entryform(request):
             if meta.has_key(u'Capacity'):
                 try:
                     capacity = meta[u'Capacity'][0][0]
-                    if capacity = 0:
+                    if capacity == 0:
                         capacity = unicode()
                 except:
                     None
