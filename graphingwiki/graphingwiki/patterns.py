@@ -114,6 +114,12 @@ class GraphData(DictMixin):
         self.opened = False
         self.writing = False
         
+        # XXX (falsely) assumes shelve.open creates file with same name;
+        # it happens to work with the bsddb backend.
+        if not os.path.exists(self.graphshelve):
+            self.writelock()
+            self.closedb()
+
         self.readlock()
 
         self.cache = dict()
