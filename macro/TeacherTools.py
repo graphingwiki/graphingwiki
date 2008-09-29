@@ -105,7 +105,13 @@ function sel_stats(){
 
 function del_confirm(form){
   var form = $(form);
-  var sel = $(form.getChildren('select')[0].value);
+
+  if(form.id != 'course_form'){
+	var sel = $(form.getChildren('select')[0].value);
+  }else{
+	var sel = form.getChildren('select')[0];
+  }
+
   if(sel){
     var value = sel.value;
     var desc = $$('option[value='+value+']')[0].text;
@@ -211,7 +217,7 @@ Tasks:
 '''
     #tasklists
     for subject, tasklist in subjectdict.iteritems():
-        html += u'''<select  name="taskList" id="t_type_%s" class="maxwidth">\n''' % str(subject).replace('"','&quot;')
+        html += u'''<select  name="taskList" id="t_type_%s" class="maxwidth">\n''' % unicode(subject).replace('"','&quot;')
         for taskpagename, taskdescription in tasklist:
             html += u'<option name="question" value="%s">%s</option>\n' % (taskpagename, taskdescription)
         html += u'</select>\n'
@@ -257,7 +263,7 @@ Question type:
     #typelist
     html += u'<select id="qtypesel" class="maxwidth" name="question_type">\n'
     for type in typedict:
-        html += '<option value="q_type_%s">%s</option>\n' % (str(type).replace('"', '&quot;'), type)
+        html += '<option value="q_type_%s">%s</option>\n' % (unicode(type).replace('"', '&quot;'), type)
     html += u'''</select></td><td>
 </td></tr>
 <tr><td colspan="2">
@@ -269,7 +275,7 @@ Questions:
     #questionlists
     for type, questionlist in typedict.iteritems():
         html += u'''
-<select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % str(type).replace('"', '&quot;')
+<select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % unicode(type).replace('"', '&quot;')
         for questionpagename, questiontext in questionlist:
             html += u'<option name="question" value="%s">%s</option>\n' % (questionpagename.replace('"', '&quot;'), questiontext)
         html += u'</select>\n'
