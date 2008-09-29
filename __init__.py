@@ -43,7 +43,7 @@ class RaippaUser:
             self.name = self.request.user.aliasname
 
         self.categories = list()
-        if self.id in request.graphdata:
+        if self.id in request.graphdata.db:
             meta = getmetas(request, self.request.graphdata, encode(self.id), ["WikiCategory", "name"], checkAccess=False)
             for name, type in meta["name"]:
                 self.name = name
@@ -54,7 +54,7 @@ class RaippaUser:
             self.categories.append(usercategory)
  
         self.statuspage = encode("%s/status" % self.id)
-        if self.statuspage in request.graphdata:
+        if self.statuspage in request.graphdata.db:
             self.statusdict = self.request.graphdata.getpage(self.statuspage).get('lit', {})
         else:
             self.statusdict = dict()
@@ -588,5 +588,5 @@ def randompage(request, type):
 
     while True:
         pagename = "%s/%i" % (type, random.randint(10000,99999))
-        if pagename not in request.graphdata:
+        if encode(pagename) not in request.graphdata.db:
             return pagename
