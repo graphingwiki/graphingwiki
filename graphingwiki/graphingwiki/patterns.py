@@ -36,6 +36,7 @@ from codecs import getencoder
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
+from MoinMoin.request import RequestBase
 from MoinMoin.Page import Page
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -84,20 +85,20 @@ def resolve_iw_url(request, wiki, page):
         
     return iw_url 
 
+def patched_run(self):
+    try:
+        self.orig_run(self)
+    finally:
+        if hasasttr(self, 'graphdata'):
+            self.graphdata.closedb()
+            
 def getgraphdata(request):
     "utility function to glue GraphData to the request"
+    if not hasattr(RequestBase, 'orig_run'):
+        RequestBase.orig_run = RequestBase.run
+        RequestBase.run = patched_run
     if not hasattr(request, 'graphdata'):
         request.graphdata = GraphData(request)
-        request.origfinish = request.finish
-        def patched_finish():
-            try:
-                return request.origfinish()
-            finally:
-                if request.graphdata.opened:
-                    request.graphdata.closedb()
-
-        request.finish = patched_finish
-
     return request.graphdata
 
 class GraphData(DictMixin):
@@ -113,7 +114,12 @@ class GraphData(DictMixin):
         self.db = None
         self.opened = False
         self.writing = False
-        
+        self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
+        if self.use_sq_dict:
+            import sq_dict
+            self.shelveopen = self.sq_dict.shelve
+        else:
+            self.shelveopen = shelve.open
         # XXX (falsely) assumes shelve.open creates file with same name;
         # it happens to work with the bsddb backend.
         if not os.path.exists(self.graphshelve):
@@ -132,7 +138,7 @@ class GraphData(DictMixin):
         self.request.lock = lock
 
         if not self.opened:
-            self.db = shelve.open(self.graphshelve, "r")
+            self.db = self.shelveopen(self.graphshelve, "r")
             self.opened = True
             self.writing = False
 
@@ -150,7 +156,7 @@ class GraphData(DictMixin):
         self.request.lock = lock
 
         if not self.opened or not self.writing:
-            self.db = shelve.open(self.graphshelve, "c")
+            self.db = self.shelveopen(self.graphshelve, "c")
             self.writing = True
             self.opened = True
 
