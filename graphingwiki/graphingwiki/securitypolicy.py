@@ -7,11 +7,12 @@ from graphingwiki.editing import underlay_to_pages
 
 def patched_run(self):
     try:
-        RequestBase.orig_run(self)
+        r = RequestBase.orig_run(self)
     finally:
         if hasattr(self, 'graphdata') and self.graphdata.opened:
             self.finish()
-            
+    return r
+
 if not hasattr(RequestBase, 'orig_run'):
     RequestBase.orig_run = RequestBase.run
     RequestBase.run = patched_run
