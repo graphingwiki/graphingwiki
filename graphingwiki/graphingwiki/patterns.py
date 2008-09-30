@@ -112,14 +112,18 @@ class GraphData(DictMixin):
         self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
 
         self.db = None
+        self.cache = dict()
+        
         self.opened = False
         self.writing = False
+        
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         if self.use_sq_dict:
             import sq_dict
             self.shelveopen = sq_dict.shelve
         else:
             self.shelveopen = shelve.open
+
         # XXX (falsely) assumes shelve.open creates file with same name;
         # it happens to work with the bsddb backend.
         if not os.path.exists(self.graphshelve):
@@ -128,12 +132,13 @@ class GraphData(DictMixin):
 
         self.readlock()
 
-        self.cache = dict()
-
     def readlock(self):
         lock = getattr(self.request, "lock", None)
         if lock is None or not lock.isLocked():
-            lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
+            # Seems that MoinMoin's locking doesn't work on certain
+            # platforms when using timeouts. Used to be:
+            #  lock = ReadLock(self.request.cfg.data_dir, timeout=600.0)
+            lock = ReadLock(self.request.cfg.data_dir)
             lock.acquire()
         self.request.lock = lock
 
@@ -151,7 +156,10 @@ class GraphData(DictMixin):
         if lock is not None and lock.isLocked() and isinstance(lock, ReadLock):
             lock.release()
         if lock is None or not lock.isLocked():
-            lock = WriteLock(self.request.cfg.data_dir, readlocktimeout=10.0)
+            # Seems that MoinMoin's locking doesn't work on certain
+            # platforms when using timeouts. Used to be:
+            #  lock = WriteLock(self.request.cfg.data_dir, readlocktimeout=60.0)
+            lock = WriteLock(self.request.cfg.data_dir)
             lock.acquire()
         self.request.lock = lock
 
@@ -183,9 +191,12 @@ class GraphData(DictMixin):
         return page in self.cache or page in self.db
 
     def closedb(self):
+        self.db.close()
+        
         if hasattr(self.request, "lock") and self.request.lock.isLocked():
             self.request.lock.release()
-        self.db.close()
+            
+        self.cache.clear()
         self.opened = False
 
     def getpage(self, pagename):
