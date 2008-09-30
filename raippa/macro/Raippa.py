@@ -261,7 +261,7 @@ def questionform(macro):
                             for value, type in meta["overallvalue"]:
                                 #print meta, page
                                 if value == "pending":
-                                    return u'You have already answered this question. Waiting for your answer to be checked.\n' 
+                                    return u'Please wait while your submission is being checked. Reload this page after approx. 10 seconds to see the results.\n' 
                                 elif value and value != "pending" and value != "False":
                                     return u'''
 You got %s right! Click Continue or submit new file.
