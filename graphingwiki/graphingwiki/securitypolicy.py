@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 from MoinMoin.security import Permissions
 from graphingwiki.patterns import debug
+from MoinMoin.request import RequestBase
 
 from graphingwiki.editing import underlay_to_pages
 
 def patched_run(self):
     try:
-        self.orig_run(self)
+        RequestBase.orig_run(self)
     finally:
-        if hasasttr(self, 'graphdata') and self.graphdata.opened:
+        if hasattr(self, 'graphdata') and self.graphdata.opened:
             self.finish()
-
-from MoinMoin.request import RequestBase
             
 if not hasattr(RequestBase, 'orig_run'):
     RequestBase.orig_run = RequestBase.run
