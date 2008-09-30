@@ -527,7 +527,7 @@ def savequestion(request,  oldquestion=None):
         process_edit(request, input, True, {questionpage:[questioncategory]})
 
     page = PageEditor(request, questionpage)
-    page.saveText("<<LinkedIn>>", page.get_real_rev())
+    page.saveText(page.get_raw_body() + "\n<<LinkedIn>>", page.get_real_rev())
 
     if note:
         notepage = questionpage+"/note"
