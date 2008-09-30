@@ -117,7 +117,7 @@ class GraphData(DictMixin):
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         if self.use_sq_dict:
             import sq_dict
-            self.shelveopen = self.sq_dict.shelve
+            self.shelveopen = sq_dict.shelve
         else:
             self.shelveopen = shelve.open
         # XXX (falsely) assumes shelve.open creates file with same name;
