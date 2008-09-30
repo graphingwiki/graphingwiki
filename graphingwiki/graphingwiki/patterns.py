@@ -85,20 +85,20 @@ def resolve_iw_url(request, wiki, page):
         
     return iw_url 
 
-def patched_run(self):
-    try:
-        self.orig_run(self)
-    finally:
-        if hasasttr(self, 'graphdata'):
-            self.graphdata.closedb()
-            
 def getgraphdata(request):
     "utility function to glue GraphData to the request"
-    if not hasattr(RequestBase, 'orig_run'):
-        RequestBase.orig_run = RequestBase.run
-        RequestBase.run = patched_run
     if not hasattr(request, 'graphdata'):
         request.graphdata = GraphData(request)
+        request.origfinish = request.finish 
+        def patched_finish(): 
+            try: 
+                return request.origfinish() 
+            finally: 
+                if request.graphdata.opened: 
+                    request.graphdata.closedb() 
+  
+        request.finish = patched_finish 
+         
     return request.graphdata
 
 class GraphData(DictMixin):
@@ -183,10 +183,10 @@ class GraphData(DictMixin):
         return page in self.cache or page in self.db
 
     def closedb(self):
-        self.opened = False
         if hasattr(self.request, "lock") and self.request.lock.isLocked():
             self.request.lock.release()
         self.db.close()
+        self.opened = False
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights,
