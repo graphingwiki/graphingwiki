@@ -537,7 +537,11 @@ class Question:
                 filecontent = "#FORMAT plain\n"+filecontent
 
             filepage = PageEditor(self.request, historypage+"/file")
-            filepage.saveText(filecontent, filepage.get_real_rev())
+            try:
+                filepage.saveText(filecontent, filepage.get_real_rev())
+            except:
+                pass
+
             historydata[u'file'] = [addlink(historypage+"/file")]
 
         for useranswer, value in successdict.iteritems():
@@ -549,7 +553,6 @@ class Question:
         if not historydata.has_key("false"):
             historydata["false"] = [u'']
 
-        print oldmetas, historydata
         edit_meta(self.request, historypage, oldmetas, historydata, True, [historycategory])
 
     def getaverage(self, coursename, taskpoint):

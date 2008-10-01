@@ -253,16 +253,19 @@ def questionform(macro):
         linking_in = page.get('in', {})
         pagelist = linking_in["question"]
         for page in pagelist:
-            meta = getmetas(request, request.graphdata, page, ["WikiCategory", "user", "overallvalue"], checkAccess=False)
+            meta = getmetas(request, request.graphdata, page, ["WikiCategory", "course", "user", "overallvalue"], checkAccess=False)
             for category, type in meta["WikiCategory"]:
                 if category == historycategory:
                     for user, type in meta["user"]:
-                        if user == request.user.name:
+                        if meta["course"]:
+                            course = meta["course"][0][0]
+                        else:
+                            course = str()
+                        if user == request.raippauser.id and course == request.raippauser.currentcourse:
                             for value, type in meta["overallvalue"]:
-                                #print meta, page
-                                if value == "pending":
+                                if value == "pending" or value == "picked":
                                     return u'Please wait while your submission is being checked. Reload this page after approx. 10 seconds to see the results.\n' 
-                                elif value and value != "pending" and value != "False":
+                                elif value and value != "False":
                                     return u'''
 You got %s right! Click Continue or submit new file.
 <form method="POST" enctype="multipart/form-data" action="%s">
