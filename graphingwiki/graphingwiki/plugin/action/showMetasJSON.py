@@ -41,30 +41,30 @@ def execute(pagename, request):
 
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, args, get_all_keys=True)
     
-    request.write('[ ')
+    request.write('[')
 
     pagecount = 1
     for page in pagelist:
-        request.write('"%s"' % page)
+        request.write('{"%s"' % page)
         request.write(' : ')
-        request.write(' { ')
+        request.write('{')
         metas = getmetas(request, globaldata, page, metakeys, display=False, checkAccess=True)
         metacount = 1
         for meta in metas:
             request.write('"%s"' % meta)
             request.write(' : ')
-            request.write(' [ ')
-            request.write(" , ".join(['"%s"' % x[0] for x in metas[meta]]))
+            request.write('[')
+            request.write(", ".join(['"%s"' % x[0] for x in metas[meta]]))
             if metacount == len(metas):
-                request.write(' ] ')
+                request.write(']')
             else:
-                request.write(' ], ')
+                request.write('], ')
             metacount += 1
             
         if pagecount == len(pagelist):
-            request.write(' } ')
+            request.write('}}')
         else:
-            request.write(' }, ')
+            request.write('}}, ')
         pagecount +=1
 
-    request.write(' ] ')
+    request.write(']')
