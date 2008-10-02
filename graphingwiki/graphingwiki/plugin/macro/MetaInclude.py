@@ -2,6 +2,9 @@
 """
     MetaInclude macro plugin to MoinMoin/Graphingwiki
      - Shows in pages that match give metatable arguments
+     - Uses MoinMoin's include
+     - just add a ",," after metatable arguments and the rest of the
+       arguments will be passed to moin's include
 
     @copyright: 2008 therauli <therauli@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -31,28 +34,37 @@
 from urllib import unquote as url_unquote
 
 from MoinMoin import Page
+from MoinMoin.macro import Include as moinInclude
+
 
 from graphingwiki.editing import metatable_parseargs
 
+def make_pagelist(pagelist):
+    return "^" + "|".join(pagelist)
 
 def execute(macro, args):
-    this_page = macro.request.page.page_name
-    
-    request = macro.request
+    # parse arguments
     if args is None:
         args = ''
         
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, args, get_all_keys=True)
+    args = [x.strip() for x in args.split(',')]
+    metatableargs = ''
+    includeargs = ''
 
-    request = macro.request
-    _ = request.getText
+    split = None
+    try:
+        split = args.index('')
+    except ValueError:
+        metatableargs = ','.join(args)
+        pass
 
-    for page_name in [url_unquote(name) for name in pagelist]:
-        page = Page.Page(request, page_name)
-        request.write('<h1> Page:%s </h1>' % page_name)
-        page.send_page(content_only=1)
-        request.write(macro.formatter.div(1, css_class="include-link"))
-        request.write(page.link_to(request, '[Goto: %s]' % page_name, css_class="include-page-link"))
-        request.write(page.link_to(request, '[%s]' % (_('edit', formatted=False),), css_class="include-edit-link", querystr={'action': 'edit', 'backto': this_page}))
-        request.write(macro.formatter.div(0))
-        request.write(macro.request.formatter.rule())
+    if split:
+        metatableargs = ','.join(args[:split])
+        includeargs = ','.join(args[split + 1:])
+    
+
+    #get pages
+    globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, metatableargs, get_all_keys=True)
+
+    #use MoinMoin's include to print the pages
+    return moinInclude.execute(macro, make_pagelist(pagelist)+includeargs)
