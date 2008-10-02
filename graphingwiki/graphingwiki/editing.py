@@ -51,7 +51,6 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
-
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
                               'action',
@@ -876,9 +875,10 @@ def savetext(pagename, newtext):
     return msg
 
 def metatable_parseargs(request, args,
-                        globaldata=None,
-                        get_all_keys=False,
-                        get_all_pages=False):
+                        globaldata = None,
+                        get_all_keys = False,
+                        get_all_pages = False,
+                        checkAccess = True):
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -990,17 +990,25 @@ def metatable_parseargs(request, args,
     def can_be_read(name):
         return request.user.may.read(unquote_name(name))
     
+    def is_a_existing_page(name):
+        return name in globaldata
+
     # If there were no page args, default to all pages
     if not pageargs and not argset:
         # Filter nonexisting pages and the pages the user may not read
-        pages = set(filter(can_be_read, filter(is_saved, globaldata)))
+        if checkAccess:
+            pages = set(filter(can_be_read, filter(is_saved, globaldata)))
+        else:
+            pages = set(filter(is_a_existing_page, globaldata))
 
+    
     # Otherwise check out the wanted pages
     else:
         # Filter pages the user may not read
-        argset = set(url_quote(encode(x)) for x in
-                     filter(request.user.may.read, argset))
-
+        
+        if checkAccess:
+            argset = set(url_quote(encode(x)) for x in
+                         filter(request.user.may.read, argset))
         pages = set([])
 
         for arg in argset:
@@ -1024,6 +1032,8 @@ def metatable_parseargs(request, args,
                                 temp_re.search(newpage)):
                             unqname = unquote_name(newpage)
                             # Check that user may view any added pages
+                            if not checkAccess:
+                                pages.add(newpage)
                             if request.user.may.read(unqname):
                                 pages.add(newpage)
             elif arg:
@@ -1038,7 +1048,7 @@ def metatable_parseargs(request, args,
                     continue
                 
                 pages.add(arg)
-            
+
     pagelist = set([])
 
     for page in pages:
