@@ -218,6 +218,7 @@ description:<br>
     request.write(u'%s' % pagehtml)
 
 def editcourse(request, coursepage=None):
+    _ = request.getText
     courseid = unicode()
     coursename = unicode()
     coursedescription = unicode()
@@ -254,11 +255,11 @@ def editcourse(request, coursepage=None):
                 if values:
                     prerequisites[key.split("_")[0]] = values
             elif key.endswith("_type"):
-                splittypes[key.split("_")[0]] = [request.form.get(key, u'')[0]]
+                splittypes[key.split("_")[0]] = [request.form.get(key, [u'select'])[0]]
             elif key.endswith("_deadline"):
                 if not taskdict.has_key(key.split("_")[0]):
                     taskdict[key.split("_")[0]] = [unicode(), unicode()]
-                taskdict[key.split("_")[0]][1] = request.form.get(key, [u''])[0]
+                taskdict[key.split("_")[0]][1] = [request.form.get(key, [u''])[0]]
 
     if not courseid:
         return "Missing course id."
@@ -268,10 +269,9 @@ def editcourse(request, coursepage=None):
         return "Missing task list."
 
     if not coursepage:
-        coursepage = u'Course/' + courseid
-        page = Page(request, coursepage)
-        if page.exists():
-            return "Course already exists."
+        newlist = list()
+        coursepage = randompage(request, "Course") 
+        newlist.append(coursepage)
 
         coursepointdict = dict()
         for number, taskdata in taskdict.iteritems():
@@ -280,14 +280,21 @@ def editcourse(request, coursepage=None):
             coursepoint = coursepointdict.get(number, None)
             if not coursepoint:
                 coursepoint = randompage(request, coursepage)
+                newlist.append(coursepoint)
                 coursepointdict[number] = coursepoint
-            pointdata = {u'task':[addlink(taskpage)]}
+
+            pointdata = {u'task': [addlink(taskpage)],
+                         u'prerequisite': prerequisites.get(number, [u'']),
+                         u'split': splittypes.get(number, [u'select']),
+                         u'deadline': deadline}
+
             nextlist = nodedict.get(number, [u'end'])
             for next in nextlist:
                 if next != u'end':
                     nextcp = coursepointdict.get(next, None)
                     if not nextcp:
                         nextcp = randompage(request, coursepage)
+                        newlist.append(nextcp)
                         coursepointdict[next] = nextcp
                 else:
                     nextcp = next
@@ -296,11 +303,16 @@ def editcourse(request, coursepage=None):
                 else:
                     pointdata[u'next'].append(addlink(nextcp))
 
-            pointdata[u'prerequisite'] = prerequisites.get(number, [])
-            pointdata[u'split'] = splittypes.get(number, [u''])
-            pointdata[u'deadline'] = [deadline]
             input = order_meta_input(request, coursepoint, pointdata, "add")
-            process_edit(request, input, True, {coursepoint:[coursepointcategory]})             
+            msg = process_edit(request, input, True, {coursepoint:[coursepointcategory]})             
+            unchanged = _(u'%s: Unchanged') % coursepoint
+            changed = _(u'%s: Thank you for your changes. Your attention to detail is appreciated.' % coursepoint)
+            if not (changed in msg or unchanged in msg):
+                for page in newlist:
+                    deletablepage = PageEditor(request, page, do_editor_backup=0)
+                    if deletablepage.exists():
+                        deletablepage.deletePage()
+                return False
 
         page = PageEditor(request, coursepage)
         page.saveText("<<Raippa>>", page.get_real_rev())
@@ -311,6 +323,7 @@ def editcourse(request, coursepage=None):
                       u'description':[coursedescription],
                       u'start':[],
                       u'option':options}
+
         startlist = nodedict["start"]
         for node in startlist:
             cp = coursepointdict[node]
@@ -318,95 +331,136 @@ def editcourse(request, coursepage=None):
 
         coursedata[u'split'] = splittypes.get("start", [u''])
         input = order_meta_input(request, coursepage, coursedata, "add")
-        process_edit(request, input, True, {coursepage:[coursecategory]})
+        msg = process_edit(request, input, True, {coursepage:[coursecategory]})
+        unchanged = _(u'%s: Unchanged') % coursepage
+        changed = _(u'%s: Thank you for your changes. Your attention to detail is appreciated.' % coursepage)
+        if changed in msg or unchanged in msg:
+            return True
+        else:
+            for page in newlist:
+                deletablepage = PageEditor(request, page, do_editor_backup=0)
+                if deletablepage.exists():
+                    deletablepage.deletePage()
+            return False
     else:
         course = FlowPage(request, coursepage)
-        oldflow = course.getflow()
+        deletelist = list()
+        newlist = list()
         oldtasks = dict()
-        for cp in oldflow:
+        backupdict = {coursepage: Page(request, coursepage).get_real_rev()}
+        
+        tasks = list()
+        for valuelist in taskdict.values():
+            tasks.extend(valuelist)
+
+        for cp in course.getflow():
             if cp != "start":
+                backupdict[cp] = Page(request, cp).get_real_rev() 
                 metas = getmetas(request, request.graphdata, encode(cp), ["task"])
                 if metas["task"]:
                     task = metas["task"][0][0]
-                    if task not in taskdict.values():
-                        deletablepage = PageEditor(request, cp, do_editor_backup=0)
-                        if deletablepage.exists():
-                            deletablepage.deletePage()
-                    oldtasks[task] = cp
+                    if task not in tasks:
+                        deletelist.append(cp)
+                    else:
+                        oldtasks[task] = cp
         coursepointdict = dict()
         for number, taskdata in taskdict.iteritems():
             taskpage = taskdata[0]
             deadline = taskdata[1]
+
             coursepoint = coursepointdict.get(number, None)
             if not coursepoint:
                 if taskpage in oldtasks:
                     coursepoint = oldtasks[taskpage]
+                elif len(deletelist) > 0:
+                    coursepoint = deletelist.pop()
                 else: 
                     coursepoint = randompage(request, coursepage)
+                    newlist.append(coursepoint)
                 coursepointdict[number] = coursepoint
-            pointdata = {u'task':[addlink(taskpage)]}
+
+            pointdata = {u'task': [addlink(taskpage)],
+                         u'prerequisite': prerequisites.get(number, [u'']),
+                         u'split': splittypes.get(number, [u'select']),
+                         u'deadline': deadline,
+                         u'next': []}
+
             nextlist = nodedict.get(number, [u'end'])
             for next in nextlist:
                 if next != u'end':
                     nextcp = coursepointdict.get(next, None)
                     if not nextcp:
-                        if next in oldtasks:
-                            nextcp = oldtasks[next]
+                        task = taskdict.get(next, [u'', u''])[0]
+                        if task and task in oldtasks:
+                            nextcp = oldtasks[task]
+                        elif len(deletelist) > 0:
+                            nextcp = deletelist.pop()
                         else:
                             nextcp = randompage(request, coursepage)
+                            newlist.append(nextcp)
                         coursepointdict[next] = nextcp
                 else:
-                    nextcp = next
-                if nextcp != "end" and nextcp.split("/")[1] != courseid:
-                    nextcp = nextcp.split("/")[0] +"/"+ courseid +"/"+ nextcp.split("/")[2]
-                if not pointdata.get(u'next', None):
-                    pointdata[u'next'] = [addlink(nextcp)]
-                else:
-                    pointdata[u'next'].append(addlink(nextcp))
+                    nextcp = u'end'
+                pointdata[u'next'].append(addlink(nextcp))
 
-            pointdata[u'prerequisite'] = prerequisites.get(number, [u''])
-            pointdata[u'split'] = splittypes.get(number, [u''])
-            pointdata[u'deadline'] = [deadline]
             input = order_meta_input(request, coursepoint, pointdata, "repl")
-            process_edit(request, input, True, {coursepoint:[coursepointcategory]})
-            if coursepoint.split("/")[1] != courseid:
-                savegraphdata = wikiutil.importPlugin(request.cfg,
-                                                      'action',
-                                                      'savegraphdata')
-                editpage = PageEditor(request, coursepoint)
-                path = editpage.getPagePath()
-                savegraphdata(coursepoint, request, "", path, editpage)
+            msg = process_edit(request, input, True, {coursepoint:[coursepointcategory]})
+            unchanged = _(u'%s: Unchanged') % coursepoint
+            changed = _(u'%s: Thank you for your changes. Your attention to detail is appreciated.' % coursepoint)
+            if not (changed in msg or unchanged in msg):
+                for page, rev in backupdict.iteritems():
+                    if Page(request, page).get_real_rev() > rev:
+                        old = Page(request, page, rev=rev)
+                        reverted = PageEditor(request, page)
+                        revstr = '%08d' % rev
+                        try:
+                            msg = reverted.saveText(old.get_raw_body(), 0, extra=revstr, action="SAVE/REVERT")
+                        except:
+                            pass
+                for page in newlist:
+                    deletablepage = PageEditor(request, page, do_editor_backup=0)
+                    if deletablepage.exists():
+                        deletablepage.deletePage()
+                return False
 
-                newname = coursepoint.split("/")[0] +"/"+ courseid +"/"+ coursepoint.split("/")[2]
-                success, msgs = editpage.renamePage(newname)
         coursedata = {u'id':[courseid],
                       u'author':[addlink(request.user.name)],
                       u'name':[coursename],
                       u'description':[coursedescription],
                       u'start':[],
-                      u'option':options}
+                      u'option':options,
+                      u'split':splittypes.get("start", [u''])}
+
         startlist = nodedict["start"]
         for node in startlist:
             cp = coursepointdict[node]
-            if cp.split("/")[1] != courseid:
-                cp = cp.split("/")[0] +"/"+ courseid +"/"+ cp.split("/")[2]
             coursedata[u'start'].append(addlink(cp))
 
-        coursedata[u'split'] = splittypes.get("start", [u''])
         input = order_meta_input(request, coursepage, coursedata, "repl")
-        process_edit(request, input, True, {coursepage:[coursecategory]})
-        if coursepage.split("/")[1] != courseid:
-            savegraphdata = wikiutil.importPlugin(request.cfg,
-                                                  'action',
-                                                  'savegraphdata')
-            editpage = PageEditor(request, coursepage)
-            path = editpage.getPagePath()
-            savegraphdata(coursepage, request, "", path, editpage)
-
-            newcoursename = coursepage.split("/")[0] +"/"+ courseid
-            success, msgs = editpage.renamePage(newcoursename)
-
-    return None 
+        msg = process_edit(request, input, True, {coursepage:[coursecategory]})
+        unchanged = _(u'%s: Unchanged') % coursepage
+        changed = _(u'%s: Thank you for your changes. Your attention to detail is appreciated.' % coursepage)
+        if changed in msg or unchanged in msg:
+            for page in deletelist:
+                deletablepage = PageEditor(request, page, do_editor_backup=0)
+                if deletablepage.exists():
+                    deletablepage.deletePage()
+            return True
+        else:
+            for page, rev in backupdict.iteritems():
+                if Page(request, page).get_real_rev() > rev:
+                    old = Page(request, page, rev=rev)
+                    reverted = PageEditor(request, page)
+                    revstr = '%08d' % rev
+                    try:
+                        msg = reverted.saveText(old.get_raw_body(), 0, extra=revstr, action="SAVE/REVERT")
+                    except:
+                        pass
+            for page in newlist:
+                deletablepage = PageEditor(request, page, do_editor_backup=0)
+                if deletablepage.exists():
+                    deletablepage.deletePage()
+            return False
 
 def delete(request, pagename):
     pagename = encode(pagename)
@@ -452,13 +506,14 @@ def execute(pagename, request):
     if request.form.has_key('save'):
         if request.form.has_key('course'):
             course = encode(request.form["course"][0])
-            msg = editcourse(request, course)
         else:
-            msg = editcourse(request)
-
-        if msg:
+            course = None
+        if not editcourse(request, course):
             _enter_page(request, pagename)
-            request.write(msg)
+            if course:
+                request.write(u'Edit failed. Reverted back to original.')
+            else:
+                request.write(u'Edit failed.')
             _exit_page(request, pagename)
         else:
             url = u'%s/%s' % (request.getBaseURL(), pagename)
