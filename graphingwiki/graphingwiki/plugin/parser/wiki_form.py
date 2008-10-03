@@ -58,7 +58,7 @@ class Parser(wikiParser):
 
         return apply(wikiParser._dl_repl, (self, match)) + \
                '\n<input class="metavalue" type="text" name="' + \
-               htmlquote('%s!%s' % (self.pagename, dt)) + '" value="'
+               htmlquote('%s?%s' % (self.pagename, dt)) + '" value="'
 
     def _url_repl(self, word):
         if self.in_dd:

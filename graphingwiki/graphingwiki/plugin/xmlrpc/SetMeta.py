@@ -8,15 +8,10 @@
 """
 import xmlrpclib
 
-from MoinMoin import config
+from graphingwiki.editing import set_metas, getmetas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
-from graphingwiki.patterns import encode
-from graphingwiki.editing import process_edit, order_meta_input, save_template
-
-# Gets data in the same format as process_edit
-# i.e. input is a hash that has page!key as keys
-# and a list of values. All input is plain unicode.
+# To be deprecated, now mimics the original interface with its quirks
 def execute(xmlrpcobj, page, input, action='add',
             createpage=True, category_edit='', catlist=[],
             template=''):
@@ -28,23 +23,42 @@ def execute(xmlrpcobj, page, input, action='add',
     # as defined in MoinMoin/wikirpc.py
     if (request.cfg.xmlrpc_putpage_trusted_only and
         not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
-
-    if not request.user.may.write(page):
-        return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
+        message = "You are not allowed to edit pages by XML-RPC"
+        return xmlrpclib.Fault(1, _(message))
 
     # Fault at empty pagenames
     if not page.strip():
         return xmlrpclib.Fault(2, _("No page name entered"))
 
-    # Pre-create page if it does not exist, using the template specified
-    if createpage:
-        save_template(request, page, template)
+    if action == 'repl':
+        action = 'set'
+    # Just to be on the safe side, I don't think this was used
+    if category_edit == 'repl':
+        category_edit = 'set'
 
-    # process_edit requires a certain order to meta input
-    output = order_meta_input(request, page, input, action)
+    cleared, added, discarded = {page: dict()}, {page: dict()}, {page: dict()}
 
-    categories = {page: catlist}
+    if action == 'add':
+        added[page] = input
+    elif action == 'set':
+        old = getmetas(request, page, input.keys(), display=False)
+        for key in old:
+            discarded[page][key] = old[key]
+            added[page][key] = input[key]
 
-    return process_edit(request, output, category_edit, categories)
+    if category_edit == 'del':
+        cleared[page].setdefault('gwikicategory', list()).extend(catlist)
+    elif category_edit == 'set':
+        oldcats = getmetas(request, page, ['gwikicategory'], display=False)
+        discarded[page].setdefault('gwikicategory', list()).extend(oldcata)
+        added[page].setdefault('gwikicategory', list()).extend(catlist)
+    # default to add category
+    else:
+        added[page].setdefault('gwikicategory', list()).extend(catlist)
 
+    if template:
+        added[page]['gwikitemplate'] = template
+
+    _, msg = set_metas(request, cleared, discarded, added)
+
+    return msg

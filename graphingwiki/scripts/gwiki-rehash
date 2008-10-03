@@ -101,13 +101,21 @@ if not pages:
         if 'current' in os.listdir(dir):
             pages.append(unquoteWikiname(dir))
 
+total = len(pages)
+padding = len(str(total))
+count = 1
+
+# Just init request
+req = request.RequestCLI()
+
 for pagename in pages:
     if pagename.endswith('/MoinEditorBackup'):
         continue
-    print "Rehashing " + _e(pagename)
+
     page_enc = _e(pagename)
+    print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
+    count += 1
     # Make a new request for the page, initiate graphdata
-    req = request.RequestCLI(pagename=page_enc)
 
     pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
@@ -119,13 +127,13 @@ for pagename in pages:
         os.unlink(picklefile)
 
     p = Page(req, pagename)
-
+    req.page = p
     pagepath = underlay_to_pages(req, p)
-
     text = p.get_raw_body()
-    
+
     # Apply the graphsaver-action to the page
     graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pagename, req, text, pagepath, p)
-    # Must finish the request to ensure that metadata is saved
-    req.finish()
+
+# Must finish the request to ensure that metadata is saved
+req.finish()

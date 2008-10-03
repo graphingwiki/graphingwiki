@@ -452,7 +452,7 @@ class GraphShower(object):
             if not self.request.user.may.read(cat):
                 continue
             catpage = self.request.graphdata.getpage(cat)
-            for type in catpage['in']:
+            for type in catpage.get('in', dict()):
                 for newpage in catpage['in'][type]:
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):

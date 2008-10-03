@@ -6,12 +6,9 @@
     @copyright: 2008 by Juhani Eronen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import cgi
-import urllib
 import re
 import StringIO
 
-from urllib import quote as url_quote
 from copy import copy
 
 from MoinMoin import config
@@ -19,12 +16,12 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import encode, actionname
+from graphingwiki.patterns import encode, actionname, form_escape
 
 from savegraphdata import parse_text
 
 value_re = re.compile('<input class="metavalue" type="text" ' +
-                      'name="(.+?)" value="\s*(.+?)\s*">')
+                      'name="(.+?)" value="\s*(.*?)\s*">')
 
 # Override Page.py to change the parser. This method has the advantage
 # that it works regardless of any processing instructions written on
@@ -46,23 +43,15 @@ class FormPage(Page):
         kw['do_cache'] = 0
         apply(Page.send_page_content, (self, request, parser, body), kw)
 
-def htmlquote(s):
-    return cgi.escape(s, 1)
-
-def urlquote(s):
-    if isinstance(s, unicode):
-        s = s.encode(config.charset)
-    return urllib.quote(s)
-
 def wr(fmt, *args):
-    args = tuple(map(htmlquote, args))
+    args = tuple(map(form_escape, args))
     return fmt % args
 
 def execute(pagename, request):
     request.http_headers()
     _ = request.getText
 
-    formpage = '../' * pagename.count('/') + urlquote(pagename)
+    formpage = '../' * pagename.count('/') + pagename
 
     frm = wr(u'<form method="POST" action="%s">\n',
              actionname(request, pagename))+\
@@ -141,45 +130,40 @@ def execute(pagename, request):
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
-        data, g = parse_text(newreq, {}, newreq.page, newreq.page._raw_body)
+        data = parse_text(newreq, newreq.page, newreq.page._raw_body)
         for page in data:
-            for key in data[page].get('meta', {}):
+            for key in data[page].get('meta', dict()):
                 for val in data[page]['meta'][key]:
-                    val = unicode(val, config.charset).strip('"')
-                    val = val.replace('\\"', '"')
                     vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in data[page].get('lit', {}):
+            for key in data[page].get('lit', dict()):
                 for val in data[page]['lit'][key]:
-                    val = val.strip('"')
                     vals_on_keys.setdefault(key, set()).add(val)
 
     def repl_subfun(mo):
         pagekey, val = mo.groups()
 
         msg = ''
-        key = url_quote(encode(pagekey.split('!')[1]))
+        key = pagekey.split('?')[1]
         # Placeholder key key
         if key in vals_on_keys:
-            msg = '<select name="%s">' % (pagekey)
-            msg += '<option value=" ">%s</option>' % (_("None"))
+            msg = wr('<select name="%s">', pagekey)
+            msg += wr('<option value=" ">%s</option>', _("None"))
 
             for keyval in sorted(vals_on_keys[key]):
                 keyval = keyval.strip()
-                quotedval = htmlquote(keyval)
-                if len(quotedval) > 30:
-                    showval = quotedval[:27] + '...'
+                if len(keyval) > 30:
+                    showval = keyval[:27] + '...'
                 else:
-                    showval = quotedval
-                msg += '<option value="%s"%s>%s</option>' % \
-                       (quotedval,
-                        val == keyval and ' selected' or '',
-                        showval)
+                    showval = keyval
+                msg += wr('<option value="%s"%s>%s</option>',
+                          keyval, val == keyval and ' selected' or '',
+                          showval)
 
             msg += '</select>'
 
-        msg += '<input class="metavalue" type="text" ' + \
-               'name="%s" value="">' % (pagekey)
+        msg += wr('<input class="metavalue" type="text" ' + \
+                      'name="%s" value="">', pagekey)
         return msg
 
     data = out.getvalue()

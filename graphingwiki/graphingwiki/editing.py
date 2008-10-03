@@ -15,6 +15,8 @@ import urlparse
 import socket
 import urllib
 import getpass
+import copy
+import hashlib
 
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
@@ -26,8 +28,12 @@ from MoinMoin import config
 from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import nonguaranteeds_p, NO_TYPE
+from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.patterns import absolute_attach_name, filter_categories
+from graphingwiki.patterns import NO_TYPE
+
+CATEGORY_KEY = "gwikicategory"
+TEMPLATE_KEY = "gwikitemplate"
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -294,7 +300,7 @@ def getmetas(request, name, metakeys,
 # Deprecated, remains for backwards compability for now
 def getvalues(request, name, key,
               display=True, abs_attach=True, checkAccess=True):
-    return getmetas(request, name, [key], display, abs_attach, checkAccess)
+    return getmetas(request, name, [key], display, abs_attach, checkAccess)[key]
 
 def get_pages(request):
     def filter(name):
@@ -312,11 +318,35 @@ def edit(pagename, editfun, request=None,
     p = PageEditor(request, pagename)
 
     oldtext = p.get_raw_body()
+
+    # Before setting metas, remove preformatted areas
+    preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
+    pre_replace = dict()
+    def get_hashkey(val):
+        return hashlib.md5(repr(val)).hexdigest()
+
+    # Enumerate preformatted areas
+    for val in preformatted_re.findall(oldtext):
+        key = get_hashkey(val)
+        pre_replace[key] = val
+
+    # Replace with unique format strings per preformatted area
+    def replace_preformatted(mo):
+        val = mo.group(0)
+        key = get_hashkey(val)
+        return '%s' % (key)
+
+    oldtext = preformatted_re.sub(replace_preformatted, oldtext)
+
+    #request.write(repr(oldtext) + '<br>' + repr(pre_replace))
+    #request.write(repr(oldtext % pre_replace) + '<br>')
+    #return '', p
+
     newtext = editfun(pagename, oldtext)
 
-    # print
-    # print newtext
-    # return '', p
+    # Metas have been set, insert preformatted areas back
+    for key in pre_replace:
+        newtext = newtext.replace(key, pre_replace[key])
 
     # Add categories, if needed
     if category_edit:
@@ -357,6 +387,7 @@ def edit(pagename, editfun, request=None,
 
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
+
     def editfun(pagename, oldtext):
         oldtext = oldtext.rstrip()
         # Annoying corner case with dl:s
@@ -468,6 +499,18 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
                     continue
 
+                # If old meta has the key with i valus of it, 
+                # replace its i:th value with the new key. Preserves order.
+                elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
+                    oldval = oldmeta[key][i]
+                    # print "Replace", repr(oldval), repr(newval)
+                    # print "# ", repr(oldval)
+                    oldkey = key
+                    # First try to replace the dict variable
+                    oldtext = dl_re.sub(dl_subfun, oldtext)
+                    # Then try to replace the MetaData macro on page
+                    oldtext = metadata_re.sub(macro_subfun, oldtext)
+
                 # If prototypes ( key:: ) are present, replace them
                 elif (dl_proto_re.search(oldtext + '\n')):
                 #elif (re.search(dl_proto % (oldkey), oldtext + '\n')):
@@ -487,7 +530,7 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
                     continue
 
-                # If the old text has this key (either in old revision
+                # If the old text has this key (either before this edit
                 # or added by this edit), add them (as dl).
                 # Cluster values of same keys near
                 elif (key in added_keys or
@@ -514,21 +557,10 @@ def edit_meta(request, pagename, oldmeta, newmeta,
                     oldtext = default_add(request, inclusion, newval, oldtext)
 
                 # If the old text does not have this key, add it (as dl)
-                elif not oldmeta.has_key(key):
+                else:
                     # print "Newval"
                     oldtext = default_add(request, inclusion, newval, oldtext)
                     added_keys.add(key)
-
-                # Else, replace old value with new value
-                else:
-                    oldval = oldmeta[key][i]
-                    # print "Replace", repr(oldval), repr(newval)
-                    # print "# ", repr(oldval)
-                    oldkey = key
-                    # First try to replace the dict variable
-                    oldtext = dl_re.sub(dl_subfun, oldtext)
-                    # Then try to replace the MetaData macro on page
-                    oldtext = metadata_re.sub(macro_subfun, oldtext)
 
                 # print
 
@@ -538,6 +570,85 @@ def edit_meta(request, pagename, oldmeta, newmeta,
 
     return msg
 
+def set_metas(request, cleared, discarded, added):
+    pages = set(cleared) | set(discarded) | set(added)
+
+    # Discard empties and junk
+    pages = [x.strip() for x in pages if x.strip()]
+
+    msg = list()
+
+    # We don't have to check whether the user is allowed to read
+    # the page, as we don't send any info on the pages out. Only
+    # check that we can write to the requested pages.
+    for page in pages:
+        if not request.user.may.write(page):
+            message = "You are not allowed to edit page '%s'" % page
+            return xmlrpclib.Fault(2, request.getText(message))
+
+    for page in pages:
+        pageCleared = cleared.get(page, set())
+        pageDiscarded = discarded.get(page, dict())
+        pageAdded = added.get(page, dict())
+        
+        # Template clears might make sense at some point, not implemented
+        if TEMPLATE_KEY in pageCleared:
+            del pageCleared[TEMPLATE_KEY]
+        # Template changes might make sense at some point, not implemented
+        if TEMPLATE_KEY in pageDiscarded:
+            del pageDiscarded[TEMPLATE_KEY]
+        # Save templates for empty pages
+        if TEMPLATE_KEY in pageAdded:
+            save_template(request, page, ''.join(pageAdded[TEMPLATE_KEY]))
+            del pageAdded[TEMPLATE_KEY]
+
+        metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
+        old = getmetas(request, page, metakeys, 
+                       checkAccess=False)
+
+        # Handle the magic duality between normal categories (CategoryBah)
+        # and meta style categories
+        if CATEGORY_KEY in pageCleared:
+            edit_meta(request, page, dict(), dict(), "set", list())
+        if CATEGORY_KEY in pageDiscarded:
+            categories = pageDiscarded[CATEGORY_KEY]
+            edit_meta(request, page, dict(), dict(), "del", categories)
+        if CATEGORY_KEY in pageAdded:
+            categories = set(pageAdded[CATEGORY_KEY])
+            filtered = filter_categories(request, categories)
+            filtered = set(filtered) - set(old.get(CATEGORY_KEY, set()))
+            edit_meta(request, page, dict(), dict(), "add", list(filtered))
+            pageAdded[CATEGORY_KEY] = list(categories - filtered)
+
+        new = dict()
+        for key in old:
+            values = old.pop(key)
+            key = key
+            old[key] = values
+            new[key] = set(values)
+        for key in pageCleared:
+            new[key] = set()
+        for key, values in pageDiscarded.iteritems():
+            new[key].difference_update(values)
+        for key, values in pageAdded.iteritems():
+            new[key].update(values)
+
+        for key, values in new.iteritems():
+            ordered = copy.copy(old[key])
+            
+            for index, value in enumerate(ordered):
+                if value not in values:
+                    ordered[index] = u""
+                values.discard(value)
+
+            ordered.extend(values)
+            new[key] = ordered
+
+        msg.append(edit_meta(request, page, old, new))
+
+    return True, msg
+
+# Handle input from a MetaEdit-form
 def process_edit(request, input,
                  category_edit='', categories={}):
     _ = request.getText
@@ -562,66 +673,68 @@ def process_edit(request, input,
         if not newkey.strip():
             newkey = ''
 
+        # Form keys not autodecoded from utf-8
         keychanges[key] = newkey
         # print repr(keychanges)
 
     for val in input:
         # At least the key 'save' may be there and should be ignored
-        if not '!' in val:
+        if not '?' in val:
             continue
 
         newvals = input[val]
 
-        keypage, key = val.split('!')
+        # Form keys not autodecoded from utf-8
+        keypage, key = map(decode_page, val.split('?'))
 
         if not request.user.may.write(keypage):
             continue
 
-        oldvals = list()
-        for val in getmetas(request, keypage, [key], 
-                            display=False, abs_attach=False):
-            # Skip default labels
-            if key == 'label' and val == keypage:
-                pass
-            else:
-                oldvals.append(val)
+        keymetas = getmetas(request, keypage, [key], 
+                            display=False, abs_attach=False)
+        oldvals = keymetas[key]
 
         if oldvals != newvals or keychanges:
-            changes.setdefault(keypage, {})
+            changes.setdefault(keypage, dict())
             if key in keychanges:
+
                 # In case of new keys there is no old one
                 if key.strip():
                     # print 'deleting key', repr(key)
                     # Otherwise, delete contents of old key
-                    changes[keypage].setdefault('old', {})[key] = oldvals
-                    changes[keypage].setdefault('new',
-                                                {})[key] = [''] * len(oldvals)
+                    changes[keypage].setdefault('old', dict())[key] = oldvals
+                    changes[keypage].setdefault('new', dict())[key] = \
+                        [''] * len(oldvals)
+
                 # If new key is empty, don't add anything
                 if keychanges[key].strip():
                     # print 'adding key', repr(keychanges[key])
                     if not newvals:
                         newvals = ['']
                     # Otherwise, add old values under new key
-                    changes[keypage].setdefault('new',
-                                                {})[keychanges[key]] = newvals
+                    changes[keypage].setdefault('new', dict())[keychanges[key]]\
+                        = newvals
+                                                
             else:
                 if oldvals:
-                    changes[keypage].setdefault('old', {})[key] = oldvals
-                changes[keypage].setdefault('new', {})[key] = newvals
+                    changes[keypage].setdefault('old', dict())[key] = oldvals
+                changes[keypage].setdefault('new', dict())[key] = newvals
 
-    msg = []
-    
+    msg = list()
+
+##    return [repr(x) for x in changes.keys()] + [repr(x) for x in changes.values()]
+
     # For category-only changes
     if not changes and category_edit:
         for keypage in categories:
             msg.append('%s: ' % keypage + \
                        edit_meta(request, keypage,
-                                 {}, {},
+                                 dict(), dict(),
                                  category_edit, categories[keypage]))
                                  
     elif changes:
         for keypage in changes:
-            catlist = categories.get(keypage, [])
+            catlist = categories.get(keypage, list())
             msg.append('%s: ' % keypage + \
                        edit_meta(request, keypage,
                                  changes[keypage].get('old', dict()),
@@ -632,11 +745,6 @@ def process_edit(request, input,
             msg.append('%s: %s' % (keypage, _("Unchanged")))
         else:
             msg.append(_('No pages changed'))
-
-        # When pages are unchanged, there might be a lock that needs
-        # to be released at this stage
-        if hasattr(request, 'lock'):
-            request.lock.release()
 
     return msg
 
@@ -662,66 +770,6 @@ def save_template(request, page, template):
         request.graphdata.readlock()
 
     return msg
-
-def order_meta_input(request, page, input, action):
-    # Expects MetaTable arguments
-    pagelist, metakeys, _ = metatable_parseargs(request, page)
-
-    request.graphdata.getpage(page)
-
-    output = {}
-    # Add existing metadata so that values would be added
-    for key in input:
-        # Strip spaces
-        pair = '%s!%s' % (page, key.strip())
-        output[pair] = [x.strip() for x in input[key]]
-
-        if key in metakeys:
-            if action == 'repl':
-
-                # Add similar, purge rest
-                # Do not add a meta value twice
-                old = getmetas(request, page, [key], display=False)
-                src = set(output[pair])
-                tmp = set(src).intersection(set(old))
-
-                dst = []
-                # Due to the structure of the edit function,
-                # the order of the added values is significant:
-                # We want to have the common keys
-                # in the same 'slot' of the 'form'
-                for val in old:
-                    # If we have the common key, keep it
-                    if val in tmp:
-                        dst.append(val)
-                        tmp.remove(val)
-                        src.discard(val)
-                    # If we don't have the common key,
-                    # but still have keys, add a non-common one
-                    elif src:
-                        added = False
-                        for newval in src:
-                            if not newval in tmp:
-                                dst.append(newval)
-                                src.remove(newval)
-                                added = True
-                                break
-                        # If we only had common keys left, add empty
-                        if not added:
-                            dst.append(u'')
-                    else:
-                        dst.append(u'')
-                if src:
-                    dst.extend(src)
-                output[pair] = dst
-            else:
-                # Do not add a meta value twice
-                for val in getmetas(request, page, [key], display=False):
-                    if val in output[pair]:
-                        output[pair].remove(val)
-                output[pair].extend(src)
-
-    return output
 
 def savetext(pagename, newtext):
     """ Savetext - a function to be used by local CLI scripts that
@@ -868,7 +916,7 @@ def metatable_parseargs(request, args,
             except KeyError:
                 continue
             
-            newpages = page.get("in", dict()).get("gwikicategory", list())
+            newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
             for newpage in newpages:
                 # Check that the page is not a category or template page
                 if cat_re.match(newpage) or temp_re.search(newpage):

@@ -19,7 +19,7 @@ from optparse import OptionParser
 
 from MoinMoin import config
 
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode_page
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, \
      xmlrpc_connect, getmeta_to_table, getuserpass
 
@@ -104,7 +104,7 @@ if options.app_file or options.repl_file:
         method = 'add'
         fname = options.app_file
     else:
-        method = 'repl'
+        method = 'set'
         fname = options.repl_file
 
     reader = csv.reader(open(fname, "rb"), delimiter=';')
@@ -116,7 +116,7 @@ if options.app_file or options.repl_file:
 
     # Data in next rows
     for row in reader:
-        input = {}
+        input = dict()
 
         # First column == page name
         page = unicode(row[0], config.charset)
@@ -125,13 +125,7 @@ if options.app_file or options.repl_file:
 
         # enumerate values, ignore first column
         for i, val in enumerate(row[1:]):
-            input.setdefault(keys[i], set([])).add(val)
-
-        for i in input:
-            # Discard extra empties
-            if len(input) > 1:
-                input[i].discard('')
-            input[i] = list(input[i])
+            input.setdefault(keys[i], list()).append(val)
 
         result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
                                 input, method, True,
@@ -151,16 +145,16 @@ if options.repl_page or options.app_page:
         method = 'add'
     else:
         page = unicode(options.repl_page, config.charset)
-        method = 'repl'
+        method = 'set'
 
-    input = {}
+    input = dict()
     if options.set_args:
         for arg in options.set_args:
             data = arg.split('=')
             if len(data) != 2:
                 raise ArgError("Bad set args: %s\n" % data)
             key, val = [unicode(x, config.charset) for x in data]
-            input.setdefault(key, []).append(val)
+            input.setdefault(key, list()).append(val)
 
     srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 
@@ -181,12 +175,12 @@ else:
     wr = csv.writer(sys.stdout, delimiter=';')
     if isinstance(result, list):
         if options.keysonly:
-            wr.writerow(['Keys'] + [urllib.unquote(x) for x in result[0]])
-            wr.writerow(['Pages'] + [urllib.unquote(x) for x in result[1]])
+            wr.writerow(['Keys'] + [encode_page(x) for x in result[0]])
+            wr.writerow(['Pages'] + [encode_page(x) for x in result[1]])
         else:
             result = getmeta_to_table(result)
             for row in result:
-                wr.writerow(row)
+                wr.writerow([encode_page(x) for x in row])
 
         sys.exit(0)
 
