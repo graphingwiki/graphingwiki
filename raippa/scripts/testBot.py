@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Mika Seppänen 
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
 import os
 import sys
 import xmlrpclib
@@ -7,7 +13,7 @@ import shutil
 import tempfile
 import time
 
-utils = """# -*- coding: latin-1 -*-
+utils = """# -*- coding: utf-8 -*-
 import subprocess
 
 def runProgram(myInput="", myFile='ratkaisu.py', printReturnValue = False, parameters = []):
@@ -35,7 +41,7 @@ def stripFormat(input):
     return input
 
 name = "bot"
-password = "f029hgh="
+password = open("password").read().strip()
 wikiurl = "http://www.raippa.fi/"
 
 course = "Course/521141P_Autumn2008"
