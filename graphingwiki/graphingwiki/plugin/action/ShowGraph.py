@@ -561,7 +561,7 @@ class GraphShower(object):
                     obj.gwikicategory = list(cats)
                     filtered = True
 
-            if filtered and not target:
+            if filtered and not cats:
                 obj.gwikiremove = True
                 continue
 
