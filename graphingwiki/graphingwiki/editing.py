@@ -144,31 +144,6 @@ def getmeta_to_table(input):
 
     return table    
 
-def ordervalue(value):
-    # IP addresses and numeric values get special treatment
-    try:
-        value = int(value)
-    except ValueError:
-        try:
-            value = float(value)
-        except ValueError:
-            tmpval = value.lstrip('[').rstrip(']').strip('"')
-            if value.replace('.', '').isdigit():
-                try:
-                    # 00 is stylistic to avoid this:
-                    # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
-                    #     socket.inet_aton('1.2.3.4')])
-                    # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
-                    value = '00' + socket.inet_aton(value.strip('"'))
-                except socket.error:
-                    pass
-            pass
-    except AttributeError:
-        # If given an int to start with
-        pass
-
-    return value
-
 def parse_categories(request, text):
     # We want to parse only the last non-empty line of the text
     lines = text.rstrip().splitlines()
@@ -792,6 +767,22 @@ def savetext(pagename, newtext):
 
     return msg
 
+ORDER_FUNCS = [
+    # (conversion function, ignored exception type(s))
+    (int, ValueError), # integers
+    (float, ValueError), # floats
+    (lambda x: "00" + socket.inet_aton(x), socket.error), # ipv4 addresses
+    (lambda x: x.lower(), AttributeError) # strings (unicode or otherwise)
+    ]
+
+def ordervalue(value):
+    for func, ignoredExceptionTypes in ORDER_FUNCS:
+        try:
+            value = func(value)
+        except ignoredExceptionTypes:
+            pass
+    return value
+
 def metatable_parseargs(request, args,
                         get_all_keys=False,
                         get_all_pages=False):
@@ -997,11 +988,7 @@ def metatable_parseargs(request, args,
 
     # sorting pagelist
     if not orderspec:
-        orderpages = dict()
-        for page in pagelist:
-            orderpages[ordervalue(page)] = page
-        sortlist = sorted(orderpages.keys())
-        pagelist = [orderpages[x] for x in sortlist]
+        pagelist = sorted(pagelist, key=ordervalue)
     else:
         s_list = dict()
         for dir, key in orderspec:
@@ -1043,8 +1030,7 @@ def metatable_parseargs(request, args,
 
                 ordvals[key].update(vals)
 
-            ordvals[key] = sorted(ordvals[key], key=unicode.lower, 
-                                  reverse=reverse)
+            ordvals[key] = sorted(ordvals[key], reverse=reverse)
 
         # Subfunction to add pages to ordered list and remove
         # them from the pages yet to be sorted
