@@ -86,7 +86,7 @@ def execute(pagename, request):
         cairo_not_found()
 
     # Grab arguments
-    args = ', '.join(x for x in request.form.get('arg', []))
+    args = ', '.join(x for x in request.form.get('arg', list()))
 
     params = {'height': 0, 'width': 0}
     
@@ -146,6 +146,7 @@ def execute(pagename, request):
         request.write(plot_error(request))
         raise MoinMoinNoFooter
 
+
     # Populate data to the radar chart
     data = dict()
     for page in pagelist:
@@ -154,8 +155,10 @@ def execute(pagename, request):
         for key in metakeys:
             data.setdefault(key, list())
             if metas[key]:
-                data[key].append(max(map(ordervalue, metas[key])))
-            
+                scale.extend(map(ordervalue, metas[key]))
+                if page == pagename:
+                    data[key].append(max(map(ordervalue, metas[key])))
+
     # Get values for the chart axes
     data_per_axis = dict()
     for axis, key in enumerate(metakeys):

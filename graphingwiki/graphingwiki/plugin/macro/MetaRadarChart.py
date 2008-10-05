@@ -27,7 +27,9 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+from copy import copy
 
+from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
 from graphingwiki.patterns import url_construct
@@ -76,6 +78,14 @@ def execute(macro, args):
 
     urlargs, _ = radarchart_args(args)
 
+    # Page expected as first argument
+    page = [x.strip() for x in args.split(',') if x][0]
+    if not page:
+        req = request
+    else:
+        req = copy(request)
+        req.page = Page(request, page)
+
     return u'<div class="metaradarchart">' + \
-           u'<img src="%s">' % url_construct(request, urlargs) + \
+           u'<img src="%s">' % url_construct(req, urlargs) + \
            u'</div>'
