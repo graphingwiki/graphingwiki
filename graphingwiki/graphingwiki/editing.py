@@ -777,7 +777,7 @@ ORDER_FUNCS = [
      ValueError),
     # ipv4 addresses
     (lambda x: u"00" + unicode(socket.inet_aton(x), "unicode_escape"), 
-     socket.error),
+     (socket.error, UnicodeEncodeError)),
     # strings (unicode or otherwise)
     (lambda x: x.lower(), AttributeError)
     ]
