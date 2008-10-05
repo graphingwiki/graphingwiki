@@ -76,15 +76,15 @@ def execute(macro, args):
             "ERROR: Cairo Python extensions not installed. " +\
             "Not performing layout.")) + formatter.linebreak()
 
-    urlargs, _ = radarchart_args(args)
+    urlargs, macro_args = radarchart_args(args)
 
-    # Page expected as first argument
-    page = [x.strip() for x in args.split(',') if x][0]
-    if not page:
-        req = request
-    else:
-        req = copy(request)
-        req.page = Page(request, page)
+    # The first page mentioned will be the page of the chart
+    req = copy(request)
+    for arg in macro_args.split(','):
+        page = Page(request, arg)
+        if page.exists():
+            req.page = page
+            break
 
     return u'<div class="metaradarchart">' + \
            u'<img src="%s">' % url_construct(req, urlargs) + \
