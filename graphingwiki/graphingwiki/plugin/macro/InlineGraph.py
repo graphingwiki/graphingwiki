@@ -63,12 +63,10 @@ def execute(macro, args):
                                         'action', 'ShowGraphSimple',
                                         'execute_graphs')
 
-    arglist = [x.strip() for x in args.split(',') if x]
-
-    if not arglist:
+    if not args:
         return ""
 
-    uri, args = uri_params(arglist[0])
+    uri, args = uri_params(args.strip())
 
     if not args:
         return ""
