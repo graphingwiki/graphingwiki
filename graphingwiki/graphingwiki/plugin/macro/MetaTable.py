@@ -33,7 +33,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import encode, format_wikitext
+from graphingwiki.patterns import encode, format_wikitext, form_escape
 
 Dependencies = ['metadata']
 
@@ -64,7 +64,9 @@ def t_cell(macro, vals, head=0, style=dict()):
         if head:
             kw = dict()
             if '?' in data:
-                data, query = data.split('?')
+                data = data.split('?')
+                query = '?'.join(data[1:])
+                data = data[0]
                 kw['querystr'] = query
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
@@ -188,7 +190,7 @@ def execute(macro, args):
     def action_link(action, linktext, args):
         req_url = request.getScriptname() + \
                   '/' + request.page.page_name + \
-                  '?action=' + action + '&args=' + args 
+                  '?action=' + action + '&args=' + form_escape(args)
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 

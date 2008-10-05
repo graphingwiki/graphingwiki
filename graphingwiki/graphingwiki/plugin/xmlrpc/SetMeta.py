@@ -47,7 +47,7 @@ def execute(xmlrpcobj, page, input, action='add',
             added[page][key] = input[key]
 
     if category_edit == 'del':
-        cleared[page].setdefault('gwikicategory', list()).extend(catlist)
+        discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
         oldcats = getmetas(request, page, ['gwikicategory'], display=False)
         discarded[page].setdefault('gwikicategory', list()).extend(oldcata)
