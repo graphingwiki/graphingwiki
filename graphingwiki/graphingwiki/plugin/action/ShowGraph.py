@@ -220,7 +220,7 @@ class GraphShower(object):
         self.filterorder = set()
         self.filtercolor = set()
         self.filtercats = set()
-        self.rankdir = 'LR'
+        self.dir = 'LR'
 
         # Lists for the filter values for the form
         self.orderfiltervalues = set()
@@ -336,7 +336,7 @@ class GraphShower(object):
             self.otherpages = ','.join(request.form["otherpages"]).split(',')
 
         # String arguments, only include non-empty
-        for arg in ['limit', 'rankdir', 'orderby', 'colorby', 'colorscheme',
+        for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
                     'orderreg', 'ordersub', 'colorreg', 'colorsub']:
             if request.form.get(arg):
                 setattr(self, arg, ''.join(request.form[arg]))
@@ -471,7 +471,7 @@ class GraphShower(object):
             outgraph.overlap = 'compress'
             outgraph.splines = 'true'
 
-        outgraph.rankdir = self.rankdir
+        outgraph.rankdir = self.dir
 
         # Formatting features here!
         outgraph.bgcolor = "transparent"
@@ -1032,12 +1032,12 @@ class GraphShower(object):
         if self.orderby:
 	    request.write(u"<td valign=top>\n")
             request.write(u"<u>" + _("Order direction:") + u"</u><br>\n")
-            request.write('<select name="rankdir">')
+            request.write('<select name="dir">')
             for ord, name in zip(['TB', 'BT', 'LR', 'RL'],
                               [_('top to bottom'), _('bottom to top'),
                                _('left to right'), _('right to left')]):
                 request.write('<option %s label="%s" value="%s">%s</option>\n'%
-                              (self.rankdir == ord and 'selected' or '',
+                              (self.dir == ord and 'selected' or '',
                                form_escape(ord), form_escape(ord), 
                                form_escape(name)))
             if self.orderby != '_hier':
