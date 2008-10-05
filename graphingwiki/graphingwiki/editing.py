@@ -767,17 +767,23 @@ def savetext(pagename, newtext):
 
     return msg
 
+def string_aton(value):
+    value = value.lstrip('[').rstrip(']').strip('"')
+
+    # 00 is stylistic to avoid this: 
+    # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
+    #             socket.inet_aton('1.2.3.4')]) 
+    # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
+    return u'00' + unicode(socket.inet_aton(value), "unicode_escape")
+
 ORDER_FUNCS = [
     # (conversion function, ignored exception type(s))
     # integers
-    (int, 
-     ValueError),
+    (int, ValueError),
     # floats
-    (float, 
-     ValueError),
+    (float, ValueError),
     # ipv4 addresses
-    (lambda x: u"00" + unicode(socket.inet_aton(x), "unicode_escape"), 
-     (socket.error, UnicodeEncodeError)),
+    (string_aton, (socket.error, UnicodeEncodeError)),
     # strings (unicode or otherwise)
     (lambda x: x.lower(), AttributeError)
     ]
