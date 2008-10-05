@@ -783,7 +783,7 @@ ORDER_FUNCS = [
     # floats
     (float, ValueError),
     # ipv4 addresses
-    (string_aton, (socket.error, UnicodeEncodeError)),
+    (string_aton, (socket.error, UnicodeEncodeError, TypeError)),
     # strings (unicode or otherwise)
     (lambda x: x.lower(), AttributeError)
     ]
