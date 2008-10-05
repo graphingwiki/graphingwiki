@@ -64,9 +64,13 @@ def execute(macro, args):
 
     # For multiple radar charts per table row
     try:
-        height = url_args.get('height', MAX_WIDTH)
-        width = url_args.get('height', MAX_WIDTH)
-        height, width = int(height[0]), int(width[0])
+        height = ''.join(url_args.get('height', list()))
+        width = ''.join(url_args.get('height', list()))
+        if not height: 
+            height = MAX_WIDTH
+        if not width:
+            width = MAX_WIDTH
+        height, width = int(height), int(width)
     except ValueError:
         pass
 

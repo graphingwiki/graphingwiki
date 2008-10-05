@@ -333,7 +333,8 @@ class GraphShower(object):
 
         # Other pages
         if request.form.has_key('otherpages'):
-            self.otherpages = ','.join(request.form["otherpages"]).split(',')
+            self.otherpages = [x.strip() for x in 
+                               ','.join(request.form["otherpages"]).split(',')]
 
         # String arguments, only include non-empty
         for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
@@ -435,7 +436,7 @@ class GraphShower(object):
             return pagedata.get('out', dict()).get('gwikicategory', list())
 
         for nodename in self.otherpages:
-            self.startpages.append(pagename)
+            self.startpages.append(nodename)
             self.categories_add(get_categories(nodename))
 
         # Do not add self to graph if self is category or
