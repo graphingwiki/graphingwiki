@@ -87,7 +87,9 @@ def get_revisions(request, page):
             # Add revision as meta so that it is shown in the table
             revisions[rev] = revlink
 
-    pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
+    pagelist = [revisions[x] for x in sorted(revisions.keys(), 
+                                             key=unicode.lower, 
+                                             reverse=True)]
 
     metakeys = set()
     for page in pagelist:
@@ -947,7 +949,6 @@ def metatable_parseargs(request, args,
             # We're sure we have access to read the page, don't check again
             metas = getmetas(request, page, limitregexps, checkAccess=False)
                              
-
             for key, re_limits in limitregexps.iteritems():
 
                 values = metas[key]
@@ -959,7 +960,7 @@ def metatable_parseargs(request, args,
                     clear = False
 
                     # Iterate all the keys for the value for a match
-                    for value, _ in values:
+                    for value in values:
                         if re_limit.search(value):
                             clear = True
                             # Single match is enough
@@ -999,7 +1000,7 @@ def metatable_parseargs(request, args,
         orderpages = dict()
         for page in pagelist:
             orderpages[ordervalue(page)] = page
-        sortlist = sorted(orderpages.keys())
+        sortlist = sorted(orderpages.keys(), key=unicode.lower)
         pagelist = [orderpages[x] for x in sortlist]
     else:
         s_list = dict()
@@ -1007,7 +1008,8 @@ def metatable_parseargs(request, args,
             s_list[key] = dict()
             for page in pagelist:
                 # get all vals of a key in order
-                s_list[key][page] = sorted(getmetas(request, page, [key]))
+                s_list[key][page] = sorted(getmetas(request, page, [key]), 
+                                           key=unicode.lower)
         ordvals = dict()
         byval = dict()
         ord = [x for _, x in orderspec]
@@ -1041,7 +1043,8 @@ def metatable_parseargs(request, args,
 
                 ordvals[key].update(vals)
 
-            ordvals[key] = sorted(ordvals[key], reverse=reverse)
+            ordvals[key] = sorted(ordvals[key], key=unicode.lower, 
+                                  reverse=reverse)
 
         # Subfunction to add pages to ordered list and remove
         # them from the pages yet to be sorted
@@ -1073,7 +1076,8 @@ def metatable_parseargs(request, args,
                     elif len(byval[key][val]) > 1:
                         # print byval[key][val], len(ord)
                         if len(ord) < 2:
-                            for page in sorted(byval[key][val]):
+                            for page in sorted(byval[key][val], 
+                                               key=unicode.lower):
                                 # print "Adding unsorted", page
                                 orderlist, pages = olist_add(orderlist, pages,
                                                              page, key, val)
@@ -1093,7 +1097,7 @@ def metatable_parseargs(request, args,
                             orderlist, unord = order(newround, s_list,
                                                      byval, ord[1:], orderlist)
 
-                            for page in sorted(unord):
+                            for page in sorted(unord, key=unicode.lower):
                                 # print "Adding unsorted", page
                                 orderlist, _ = olist_add(orderlist, unord,
                                                          page, key, val)
@@ -1108,7 +1112,7 @@ def metatable_parseargs(request, args,
         # Should not be needed
         if pages:
             #print "extending with %s" % (pages)
-            pagelist.extend(sorted(pages))
+            pagelist.extend(sorted(pages, key=unicode.lower))
 
     return pagelist, metakeys, styles
 

@@ -103,12 +103,12 @@ def execute(macro, args):
          data = request.graphdata.keys_on_pages.get(tag[2])
          if data:
             title = '\n'.join(x for x in 
-                              sorted(request.graphdata.keys_on_pages.get(tag[2])))
+                              sorted(request.graphdata.keys_on_pages.get(tag[2])), key=unicode.lower)
       else:
          data = request.graphdata.vals_on_pages.get(tag[2])
          if data:
             title = '\n'.join(x for x in
-                              sorted(request.graphdata.vals_on_pages.get(tag[2])))
+                              sorted(request.graphdata.vals_on_pages.get(tag[2])), key=unicode.lower)
 
       pagename = tag[0]
       hits = tag[1]
