@@ -16,7 +16,7 @@ import socket
 import urllib
 import getpass
 import copy
-import hashlib
+import md5
 
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
@@ -323,7 +323,7 @@ def edit(pagename, editfun, request=None,
     preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
     pre_replace = dict()
     def get_hashkey(val):
-        return hashlib.md5(repr(val)).hexdigest()
+        return md5.new(repr(val)).hexdigest()
 
     # Enumerate preformatted areas
     for val in preformatted_re.findall(oldtext):
