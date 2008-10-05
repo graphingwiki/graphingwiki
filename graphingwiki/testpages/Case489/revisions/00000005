@@ -1,0 +1,4 @@
+[[MetaRadarChart(Case489/TableTest ää 1, chartheight=200)]][[MetaRadarChart(Case489/TableTest ää 2, chartheight=200)]]
+
+[[MetaRadarTable(CategoryTableTest, ||aa aa||bb bb||öö öö||ää ää||,chartwidth=255, chartheight=255)]]
+[[MetaRadarTable(CategoryTableTest, chartwidth=255, chartheight=255)]]

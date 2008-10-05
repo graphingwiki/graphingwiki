@@ -1,0 +1,20 @@
+The bug is due to rows not having a space after :: do not match regexp
+
+Does not work
+ Fii öö:: !"#¤%&/()Z>ZGHJK:_ ÄÖLK
+Works
+ Fii öö:: 
+{{{
+ Fii öö:: 
+}}}
+These work
+Does not work
+{{{
+ Fii öö:: 
+}}}
+ Fii ää:: mölkö pölkö höö
+Being the final on page has no special status - works
+ Fii ää:: diu däy
+{{{
+ Fii öö:: 
+}}}
