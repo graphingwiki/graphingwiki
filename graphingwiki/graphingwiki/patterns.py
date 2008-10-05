@@ -444,7 +444,9 @@ class GraphData(UserDict.DictMixin):
                 if nodetype == 'attachment':
                     # get the absolute name ie both page and filename
                     gwikiurl = absolute_attach_name(pagename, dst)
-                    att_page, att_file = gwikiurl.split(':')[1].split('/')
+                    att_parts = gwikiurl.split(':')[1].split('/')
+                    att_page = '/'.join(att_parts[:-1])
+                    att_file = att_parts[-1]
 
                     if pagename == att_page:
                         label = "Attachment: %s" % (att_file)

@@ -159,7 +159,7 @@ def ordervalue(value):
                     # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
                     #     socket.inet_aton('1.2.3.4')])
                     # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
-                    value = u'00' + unicode(socket.inet_aton(value.strip('"')))
+                    value = '00' + socket.inet_aton(value.strip('"'))
                 except socket.error:
                     pass
             pass
