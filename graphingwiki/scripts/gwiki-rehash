@@ -101,6 +101,8 @@ if not pages:
         if 'current' in os.listdir(dir):
             pages.append(unquoteWikiname(dir))
 
+pages = filter(lambda x: not x.endswith('/MoinEditorBackup'), pages)
+
 total = len(pages)
 padding = len(str(total))
 count = 1
@@ -109,9 +111,6 @@ count = 1
 req = request.RequestCLI()
 
 for pagename in pages:
-    if pagename.endswith('/MoinEditorBackup'):
-        continue
-
     page_enc = _e(pagename)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
     count += 1
