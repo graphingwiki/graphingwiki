@@ -785,7 +785,7 @@ ORDER_FUNCS = [
 def ordervalue(value):
     for func, ignoredExceptionTypes in ORDER_FUNCS:
         try:
-            value = func(value)
+            return func(value)
         except ignoredExceptionTypes:
             pass
     return value
