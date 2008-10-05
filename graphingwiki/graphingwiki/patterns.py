@@ -407,7 +407,7 @@ class GraphData(UserDict.DictMixin):
         # Make graph, initialise head node
         adata = Graph()
         if load_origin:
-            adata = self._add_node(pagename, adata, urladd)
+            adata = self._add_node(pagename, adata, urladd, 'page')
         else:
             adata.nodes.add(pagename)
 
