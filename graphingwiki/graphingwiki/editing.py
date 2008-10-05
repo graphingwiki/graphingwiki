@@ -769,10 +769,17 @@ def savetext(pagename, newtext):
 
 ORDER_FUNCS = [
     # (conversion function, ignored exception type(s))
-    (int, ValueError), # integers
-    (float, ValueError), # floats
-    (lambda x: "00" + socket.inet_aton(x), socket.error), # ipv4 addresses
-    (lambda x: x.lower(), AttributeError) # strings (unicode or otherwise)
+    # integers
+    (int, 
+     ValueError),
+    # floats
+    (float, 
+     ValueError),
+    # ipv4 addresses
+    (lambda x: u"00" + unicode(socket.inet_aton(x), "unicode_escape"), 
+     socket.error),
+    # strings (unicode or otherwise)
+    (lambda x: x.lower(), AttributeError)
     ]
 
 def ordervalue(value):
