@@ -50,19 +50,18 @@ def createNewHandle(db):
     return base64.b64encode(struct.pack("!Q", number))
 
 def getMetas(request, args, handle=None):
-    data, pages, keys, _ = metatable_parseargs(request, args, get_all_keys=True)
+    pages, keys, _ = metatable_parseargs(request, args, get_all_keys=True)
 
     current = dict()
     for page in pages:
         # metatable_parseargs checks read permissions, no need to do it again
-        metas = getmetas(request, data, page, keys, 
+        metas = getmetas(request, page, keys, 
                          display=False, checkAccess=False)
 
-        page = decode_page(page)
         current[page] = dict()
         for key in keys:
             values = set(metas[key])
-            current[page][decode_page(key)] = values
+            current[page][key] = values
 
     path = os.path.join(request.cfg.data_dir, "getmetas.shelve")
     db = shelve.open(path)
