@@ -50,7 +50,7 @@ def execute(xmlrpcobj, page, input, action='add',
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
         oldcats = getmetas(request, page, ['gwikicategory'], display=False)
-        discarded[page].setdefault('gwikicategory', list()).extend(oldcata)
+        discarded[page].setdefault('gwikicategory', list()).extend(oldcats)
         added[page].setdefault('gwikicategory', list()).extend(catlist)
     # default to add category
     else:
