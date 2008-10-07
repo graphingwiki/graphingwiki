@@ -15,14 +15,33 @@ import time
 
 utils = """# -*- coding: utf-8 -*-
 import subprocess
+import signal
+import os
+
+class Timeout(Exception):
+    pass
+
+def handler(signum, frame):
+    raise Timeout
 
 def runProgram(myInput="", myFile='ratkaisu.py', printReturnValue = False, parameters = []):
+    signal.signal(signal.SIGALRM, handler)
     p = subprocess.Popen(["python", myFile] + parameters, shell=False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, stdin = subprocess.PIPE)
-    result = p.communicate(myInput)
+    signal.alarm(30)
+    try:
+        result = p.communicate(myInput)
+    except Timeout:
+        result = ("Timeout!", "Timeout!")
+        os.kill(p.pid, signal.SIGKILL)
+
+    signal.alarm(0)
+
     if printReturnValue:
         return result + (p.returncode,) 
 
     return result
+
+def writefile(fName, fCont): f = open(fName,"w"); f.write(fCont); f.close()
 """
 
 def error(msg):
@@ -40,39 +59,63 @@ def stripFormat(input):
         return "\n".join(lines[1:])
     return input
 
-name = "bot"
+class GraphingWiki(object):
+    def __init__(self, url, user, password):
+        self.credentials = (user, password)
+        self.authToken = ""
+        self.proxy = xmlrpclib.ServerProxy(url + "?action=xmlrpc2")
+        self.doAuth()
+
+    def doAuth(self):
+        self.authToken = self.proxy.getAuthToken(*self.credentials)
+
+    def request(self, retryCount, name, *args):
+        if retryCount <= 0:
+            return
+
+        mc = xmlrpclib.MultiCall(self.proxy)
+        mc.applyAuthToken(self.authToken)
+        getattr(mc, name)(*args)
+
+        results = iter(mc())
+
+        try:
+            results.next()
+        except xmlrpclib.Fault, fault:
+            if "Expired token." in fault.faultString:
+                self.doAuth()
+                self.request(retryCount - 1, name, *args)
+                return
+
+        return results.next()
+
+def pickHistoryPage(wiki, course):
+    result = wiki.request(3, "GetMeta", "CategoryHistory, overallvalue=pending, course=%s" % course, False)
+
+    header = result[0]
+    pages = result[1:]
+    info("Found %d history pages waiting for checking" % len(pages))
+
+    for page in pages:
+        pagename = page[0]
+        metaList = page[1:]
+        metas = dict()
+
+        for key, values in zip(header, metaList):
+            metas[key] = values
+
+        return (pagename, metas)
+
+    return None 
+
 password = open("password").read().strip()
 wikiurl = "http://www.raippa.fi/"
-
 course = "Course/521141P_Autumn2008"
 
-wiki = xmlrpclib.ServerProxy(wikiurl + "?action=xmlrpc2", allow_none=True)
-authToken = wiki.getAuthToken(name, password)
+wiki = GraphingWiki("http://www.raippa.fi/", "bot", password)
 
 while True:
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-    mc.GetMeta("CategoryHistory, overallvalue=pending, course=%s" % course, False)
-
-    picked = None
-
-    for result in mc():
-        if result == "SUCCESS":
-            continue
-
-        header = result[0]
-        pages = result[1:]
-        info("Found %d history pages waiting for checking" % len(pages))
-
-        for page in pages:
-            pagename = page[0]
-            metaList = page[1:]
-            metas = dict()
-
-            for key, values in zip(header, metaList):
-                metas[key] = values
-
-            picked = (pagename, metas)
+    picked = pickHistoryPage(wiki, course)
 
     if picked is None:
         time.sleep(10)
@@ -80,24 +123,16 @@ while True:
 
     info("Picked %s." % picked[0])
 
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-
-    metas2 = dict()
-    metas2["overallvalue"] = ["picked"]
-    mc.SetMeta(picked[0], metas2, "repl", True)
+    metas = dict()
+    metas["overallvalue"] = ["picked"]
 
     try:
-        results = [r for r in mc()]
+        wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
     except xmlrpclib.Fault, fault:
-        if fault.faultString.find("You did not change") == -1:
+        if "You did not change" in fault.faultString:
             sys.exit(str(fault))
-    
-    for result in results:
-        if result == "SUCCESS":
-            continue
-
-        info(repr(result))
+   
+    metas = picked[1]
 
     files = metas["file"]
     if len(files) != 1:
@@ -114,56 +149,34 @@ while True:
         question = stripLink(questions[0])
 
     info("Fetching solution from %s" % file)
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-    mc.getPage(file)
-
-    for result in mc():
-        if result == "SUCCESS":
-            continue
-
-        solution = stripFormat(result)
+    solution = stripFormat(wiki.request(3, "getPage", file))
 
     info("Fetching right answer from %s" % question)
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-    mc.GetMeta("CategoryAnswer, question=%s" % question, False)
+    result = wiki.request(3, "GetMeta", "CategoryAnswer, question=%s" % question, False)
 
-    for result in mc():
-        if result == "SUCCESS":
-            continue
+    header = result[0]
+    pages = result[1:]
+    if len(pages) != 1:
+        error("Found %d answer pages" % len(pages))
+        sys.exit(1)
 
-        header = result[0]
-        pages = result[1:]
-        if len(pages) != 1:
-            error("Found %d answer pages" % len(pages))
+    for page in pages:
+        pagename = page[0]
+        metaList = page[1:]
+        metas = dict()
+
+        for key, values in zip(header, metaList):
+            metas[key] = values
+
+        trues = metas["true"]
+        if len(trues) != 1:
+            error("Found %d true metakeys from %s" % (len(trues), pagename))
             sys.exit(1)
 
-        for page in pages:
-            pagename = page[0]
-            metaList = page[1:]
-            metas = dict()
-
-            for key, values in zip(header, metaList):
-                metas[key] = values
-
-            trues = metas["true"]
-            if len(trues) != 1:
-                error("Found %d true metakeys from %s" % (len(trues), pagename))
-                sys.exit(1)
-
-            tests = stripLink(trues[0])
+        tests = stripLink(trues[0])
 
     info("Fetching doctests from %s" % file)
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-    mc.getPage(tests)
-
-    for result in mc():
-        if result == "SUCCESS":
-            continue
-
-        tests = stripFormat(result)
+    tests = stripFormat(wiki.request(3, "getPage", tests))
 
     path = tempfile.mkdtemp()
     cwd = os.getcwd()
@@ -180,7 +193,7 @@ while True:
     sys.stdout = open(reportPath, "w")
 
     doctest.master = None
-    result = doctest.testfile("tests.txt")
+    result = doctest.testfile("tests.txt", verbose=True)
     sys.stdout.close()
     sys.stdout = orginal
 
@@ -190,25 +203,15 @@ while True:
     report = open(reportPath).read()
     report = "#FORMAT plain\n" + report
 
-    mc = xmlrpclib.MultiCall(wiki)
-    mc.applyAuthToken(authToken)
-
     metas = dict()
     metas["overallvalue"] = ["%d/%d" % (total-failed, total)]
-    mc.SetMeta(picked[0], metas, "repl", True)
-    mc.putPage(picked[0] + "/comment", report)
 
     try:
-        results = [r for r in mc()]
+        wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
+        wiki.request(3, "putPage", picked[0] + "/comment", report)
     except xmlrpclib.Fault, fault:
-        if fault.faultString.find("You did not change") == -1:
+        if "You did not change" in fault.faultString:
             sys.exit(str(fault))
-
-    for result in results:
-        if result == "SUCCESS":
-            continue
-
-        info(repr(result))
 
     info("Removing tempdir %s" % path)
     os.chdir(cwd)
