@@ -109,7 +109,6 @@ def pickHistoryPage(wiki, course):
     return None 
 
 password = open("password").read().strip()
-wikiurl = "http://www.raippa.fi/"
 course = "Course/521141P_Autumn2008"
 
 wiki = GraphingWiki("http://www.raippa.fi/", "bot", password)
