@@ -15,6 +15,7 @@ import time
 
 utils = """# -*- coding: utf-8 -*-
 import subprocess
+import errno
 import signal
 import os
 
@@ -33,6 +34,11 @@ def runProgram(myInput="", myFile='ratkaisu.py', printReturnValue = False, param
     except Timeout:
         result = ("Timeout!", "Timeout!")
         os.kill(p.pid, signal.SIGKILL)
+    except OSError, e:
+        if e.errno == errno.EPIPE:
+            result = (p.stdout.read(), p.stderr.read())
+        else:
+            raise
 
     signal.alarm(0)
 
