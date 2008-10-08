@@ -66,6 +66,8 @@ def show_basicform(request, questionpage=None):
         question = Question(request, questionpage)
     html += u'''
  <script type="text/javascript">
+var tip_hiding = false;
+
 /*	Using mootools javascript framework */
 window.addEvent('domready', function(){
   /* Hide tip-fields, regexp and casesensitive checkboxes on pageload */
@@ -74,7 +76,7 @@ window.addEvent('domready', function(){
 
   /* Making tip-fields visible for loaded wrong answers*/
  $('questionTable').getElements('input[type=radio]').each(function(el){
-   if(el.value == 'false' && el.checked){
+   if(el.value == 'false' && el.checked || tip_hiding == false ){
      show(el);
      }
    });
@@ -88,7 +90,10 @@ function show(obj){
  /* Hide given object */
 function hide(obj){
     var tr = $(obj).getParent('tr');
-	tr.getElement('span').style.visibility = "hidden";
+    var el = tr.getElement('span');
+	if(el.class != "tip" || tip_hiding != false){
+        el.style.visibility = "hidden";
+    }
 }
 var deleted = 0;
 
@@ -161,7 +166,7 @@ var radioFalse = new Element('input', {
 td6.grab(radioFalse);
 var span = new Element('span', {
 	'class' : 'tip',
-	'style' : 'visibility: hidden;'
+/*	'style' : 'visibility: hidden;'*/
   });
 
 span.set('text', 'Tip: ');
@@ -178,6 +183,7 @@ newRow.adopt(td1, td2);
 newRow.adopt(td5, td6, td7);
 
 /* Add tip-field visibility controlling */
+if(tip_hiding != false){
 td5.getFirst('input').addEvent('click', function(){
 	var tr = this.getParent('tr');
 	tr.getElement('span').style.visibility = "hidden";
@@ -187,7 +193,7 @@ td6.getFirst('input').addEvent('click', function(){
 	var tr = this.getParent('tr');
 	tr.getElement('span').style.visibility = "";
   });
-
+}
 $('questionTable').getFirst('tbody').grab(newRow);
 
 //make rexp classes visible if needed
@@ -280,7 +286,11 @@ var type = $('typeSelect').value;
 	  var msg = "There is no right answer! Do you still want to save the question?";
 	  return confirm(msg);
 	  }
-	}
+	}else{
+        $('questionTable').destroy();
+        
+        }
+
 return true;
   }
 </script>'''
