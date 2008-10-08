@@ -70,10 +70,10 @@ def show_basicform(request, questionpage=None):
 window.addEvent('domready', function(){
   /* Hide tip-fields, regexp and casesensitive checkboxes on pageload */
   typeCheck();
-  $('ansRow').getElements('span').set('style', 'visibility:hidden');
+  $('questionTable').getElements('span').set('style', 'visibility:hidden');
 
   /* Making tip-fields visible for loaded wrong answers*/
- $('ansRow').getElements('input[type=radio]').each(function(el){
+ $('questionTable').getElements('input[type=radio]').each(function(el){
    if(el.value == 'false' && el.checked){
      show(el);
      }
@@ -97,13 +97,13 @@ function addField(){
 
 var sel = document.getElementById('typeSelect').value;
 var lkm = deleted;
-var to = document.getElementById('ansRow').tBodies[0];
+var to = document.getElementById('questionTable').tBodies[0];
     for(var i = 0; i< to.childNodes.length; i++){
        if(to.childNodes[i].tagName){
 	      if(to.childNodes[i].tagName == "TR"){
-		     lkm++;
-		  }
-		}
+         lkm++;
+      }
+    }
 	}
 
 var newRow = new Element('tr',{'id': 'ansTr'+lkm});
@@ -123,8 +123,7 @@ td1.grab(new Element('input', {
   })
 );
 
-td2.grab(new Element('input', {
-	'type' : 'text',
+td2.grab(new Element('textarea', {
 	'name' : 'answer'+lkm
   })
 );
@@ -167,8 +166,7 @@ var span = new Element('span', {
 
 span.set('text', 'Tip: ');
 
-span.grab(new Element('input', {
-	'type' : 'text',
+span.grab(new Element('textarea', {
 	'name' : 'tip' + lkm
   })
 );
@@ -190,7 +188,7 @@ td6.getFirst('input').addEvent('click', function(){
 	tr.getElement('span').style.visibility = "";
   });
 
-$('ansRow').getFirst('tbody').grab(newRow);
+$('questionTable').getFirst('tbody').grab(newRow);
 
 //make rexp classes visible if needed
 typeCheck();
@@ -200,7 +198,7 @@ typeCheck();
 /* Removes selected answer fields */
 function rmField(){
 var input, name, value, type, checked;
-var tab = document.getElementById('ansRow').tBodies[0];
+var tab = document.getElementById('questionTable').tBodies[0];
 var regExp = /rmcheck\d+/;
 var done = 0;
 
@@ -209,13 +207,13 @@ done = 1;
 var checks = document.getElementsByTagName('INPUT');
 for(var i in checks){
     try{
-		input = checks[i];
+    input = checks[i];
         name = input.getAttribute('name');
         value = input.getAttribute('value');
         type = input.getAttribute('type');
         if(type == "checkbox"){
-		  checked = input.checked;
-		  }
+      checked = input.checked;
+      }
 
 	  if(regExp.test(name) == true && checked == true){
 	  tab.removeChild(input.parentNode.parentNode);
@@ -239,12 +237,12 @@ var filefield = $('filefield');
   if(sel === "file"){
 	filefield.setStyle('display', '');
 	filefield.set('name', 'answer1');
-	$('ansRow').setStyle('display', 'none');
+	$('questionTable').setStyle('display', 'none');
 	$('fieldCreator').setStyle('display', 'none');
  }else{
 	filefield.setStyle('display', 'none');
 	filefield.set('name', '');
-	$('ansRow').setStyle('display', '');
+	$('questionTable').setStyle('display', '');
   	$('fieldCreator').setStyle('display', '');
   }
 
@@ -272,7 +270,7 @@ function submitCheck(button){
 	}
 var type = $('typeSelect').value;
   if(type != 'file'){
-	var ans = $$('input[name^=answer]');
+	var ans = $$('textarea[name^=answer]');
 	hasAnswer = ans.some(function(a){
 	  var value = $(a.name.replace(/answer/,'value')).checked;
 	  var pass = a.value.length > 0  && value;
@@ -383,11 +381,11 @@ return true;
     else:
         html += u'<textarea id="filefield" cols="80" rows="15" name=""></textarea>'
     html += u'''
- <table id="ansRow">
+ <table id="questionTable">
 <tr>
     <td style="text-align:center"><a title="Remove selected answers"
 	style="color:red"  href="javascript: rmField();">X</a></td>
-    <td style="width:150px">Answer:</td>'''
+    <td style="width:250px">Answer:</td>'''
     #html += u'''
     #<td title="Case sensitive" class="rexp" style="width:110px; text-align: center">Case sensitive</td>
     #<td title="Regular Expression" class="rexp" style="width:75px; text-align: center">Regexp</td>
@@ -395,7 +393,7 @@ return true;
     html += u'''
     <td style="width:50px">Right</td>
     <td style="width:50px">Wrong</td>
-    <td></td>
+    <td style="width:275px"></td>
 </tr>'''
 
     if questionpage:
@@ -407,7 +405,7 @@ return true;
                 html += u'''
 <tr id="ansTr%s">
 <td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this answer to be deleted"></td>
-<td><input type="text" name="answer%s" value="%s"></td>''' % (number, number, number, answer.replace('"','&quot;'))
+<td><textarea name="answer%s">%s</textarea></td>''' % (number, number, number, answer.replace('"','&quot;'))
                 #regexp and CaseSens goes here
                 value = answeroptions[0]
                 if value == "true":
@@ -425,24 +423,24 @@ return true;
                     for tipnote, type in meta["tip"]:
                         break
                     html += u'''
-<td><span class="tip">Tip: <input type="text" name="tip%s" value="%s"></span></td>
+<td><span class="tip">Tip: <textarea name="tip%s">%s</textarea></span></td>
 </tr>''' % (number, tipnote.replace('"','&quot;'))
                 else:
                     html += u'''
-<td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
+<td><span class="tip">Tip: <textarea name="tip%s"></textarea></span></td>
 </tr>''' % number
     else:
         for answernumber in range(1,5):
             html += '''
 <tr id="ansTr%s">
 <td><input type="checkbox" name="rmcheck%s" value="rm" title="Select this answer to be deleted"></td>
-<td><input type="text" name="answer%s"></td>''' % (answernumber, answernumber, answernumber)
+<td><textarea name="answer%s"></textarea></td>''' % (answernumber, answernumber, answernumber)
     #<td class="rexp"><input type="checkbox" name="cSens%s" value="true" title="Answer is case sensitive"></td>
     #<td class="rexp"><input type="checkbox" name="rexp%s"value="true" title="Answer is regular expression" ></td>
             html += '''
 <td><input type="radio" id="value%s" name="value%s" value="true" onClick="hide(this);" checked ></td>
 <td><input type="radio" name="value%s" value="false" onClick="show(this);"></td>
-<td><span class="tip">Tip: <input type="text" name="tip%s"></span></td>
+<td><span class="tip">Tip: <textarea name="tip%s"></textarea></span></td>
 </tr>''' % (answernumber, answernumber, answernumber, answernumber)
 
     html += u'''
