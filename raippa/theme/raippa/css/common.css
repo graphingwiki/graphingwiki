@@ -444,3 +444,8 @@ background: url(../img2/spinner.gif) no-repeat center;
  height:250px;
  overflow:scroll;
 }
+
+/* Qestion editor answer table*/
+table#questionTable textarea {
+width: 240px;
+}
