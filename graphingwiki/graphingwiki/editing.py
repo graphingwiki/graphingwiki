@@ -88,14 +88,14 @@ def get_revisions(request, page):
             revisions[rev] = revlink
 
     pagelist = [revisions[x] for x in sorted(revisions.keys(), 
-                                             key=unicode.lower, 
+                                             key=ordervalue, 
                                              reverse=True)]
 
     metakeys = set()
     for page in pagelist:
         for key in getkeys(request, page):
             metakeys.add(key)
-    metakeys = sorted(metakeys, key=unicode.lower)
+    metakeys = sorted(metakeys, key=ordervalue)
 
     return pagelist, metakeys
 
@@ -995,7 +995,7 @@ def metatable_parseargs(request, args,
                 for key in nonguaranteeds_p(getkeys(request, name)):
                     metakeys.add(key)
 
-        metakeys = sorted(metakeys, key=unicode.lower)
+        metakeys = sorted(metakeys, key=ordervalue)
     else:
         metakeys = keyspec
 
@@ -1003,115 +1003,36 @@ def metatable_parseargs(request, args,
     if not orderspec:
         pagelist = sorted(pagelist, key=ordervalue)
     else:
-        s_list = dict()
-        for dir, key in orderspec:
-            s_list[key] = dict()
-            for page in pagelist:
-                # get all vals of a key in order
-                s_list[key][page] = sorted(getmetas(request, page, [key]), 
-                                           key=unicode.lower)
-        ordvals = dict()
-        byval = dict()
-        ord = [x for _, x in orderspec]
-        pages = set()
+        orderkeys = [key for (dir, key) in orderspec]
+        orderpages = dict()
 
-        for dir, key in orderspec:
-            byval[key] = dict()
+        for page in pagelist:
+            ordermetas = getmetas(request, page, orderkeys, checkAccess=False)
+            for key, values in ordermetas.iteritems():
+                values = map(ordervalue, values)
+                ordermetas[key] = values
+            orderpages[page] = ordermetas
 
-            if not key in s_list:
-                continue
-            ordvals[key] = set()
-            reverse = dir == '>>' and True or False
+        def comparison(page1, page2):
+            for dir, key in orderspec:
+                values1 = orderpages[page1][key]
+                values2 = orderpages[page2][key]
+            
+                result = cmp(values1, values2)
+                if result == 0:
+                    continue
+            
+                if not values1:
+                    return 1
+                if not values2:
+                    return -1
 
-            for page in s_list[key]:
-                pages.add(page)
+                if dir == ">>":
+                    return -result
+                return result
+            return cmp(ordervalue(page1), ordervalue(page2))
 
-                if not s_list[key][page]:
-                   vals = [None]
-                else:
-                    vals = s_list[key][page]
-
-                # Patch: no value not included in sorting
-                #        break glass if necessary
-                # vals = s_list[key][page]
-                vals = [ordervalue(x) for x in vals]
-                s_list[key][page] = vals
-
-                # Make equivalence classes of key-value pairs
-                for val in vals:
-                    byval[key].setdefault(val, list()).append(page)
-
-                ordvals[key].update(vals)
-
-            ordvals[key] = sorted(ordvals[key], reverse=reverse)
-
-        # Subfunction to add pages to ordered list and remove
-        # them from the pages yet to be sorted
-        def olist_add(orderlist, pages, page, key, val):
-            if page in pages:
-                # print "Adding %s (%s=%s)" % (page, key, val)
-                orderlist.append(page)
-                pages.remove(page)
-            return orderlist, pages
-
-        def order(pages, s_list, byval, ord, orderlist):
-            # print "entering order", pages, ord
-            for key in ord:
-                for val in ordvals[key]:
-                    if not pages:
-                        return orderlist, pages
-
-                    if not byval[key].has_key(val):
-                        # print "Not existing: %s %s" % (key, val)
-                        continue
-
-                    # If equivalence class only has one
-                    # member, it's the next one in order
-                    if len(byval[key][val]) == 1:
-                        page = byval[key][val][0]
-                        # Skip if already added
-                        orderlist, pages = olist_add(orderlist, pages,
-                                                     page, key, val)
-                    elif len(byval[key][val]) > 1:
-                        # print byval[key][val], len(ord)
-                        if len(ord) < 2:
-                            for page in sorted(byval[key][val], 
-                                               key=unicode.lower):
-                                # print "Adding unsorted", page
-                                orderlist, pages = olist_add(orderlist, pages,
-                                                             page, key, val)
-                        else:
-                            newround = list()
-                            for page in byval[key][val]:
-                                if page in pages:
-                                    newround.append(page)
-                            if not newround:
-                                continue
-                        
-                            for page in newround:
-                                # print 'removing', page
-                                pages.remove(page)
-
-                            # print "Next round"
-                            orderlist, unord = order(newround, s_list,
-                                                     byval, ord[1:], orderlist)
-
-                            for page in sorted(unord, key=unicode.lower):
-                                # print "Adding unsorted", page
-                                orderlist, _ = olist_add(orderlist, unord,
-                                                         page, key, val)
-
-                        # print "and out"
-
-            return orderlist, pages
-
-        pagelist, pages = order(pages, s_list, byval, ord, [])
-
-        # Add the rest of the pages in alphabetical order
-        # Should not be needed
-        if pages:
-            #print "extending with %s" % (pages)
-            pagelist.extend(sorted(pages, key=unicode.lower))
+        pagelist = sorted(pagelist, cmp=comparison)
 
     return pagelist, metakeys, styles
 
