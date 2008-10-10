@@ -90,8 +90,7 @@ class GraphingWiki(object):
         except xmlrpclib.Fault, fault:
             if "Expired token." in fault.faultString:
                 self.doAuth()
-                self.request(retryCount - 1, name, *args)
-                return
+                return self.request(retryCount - 1, name, *args)
 
         return results.next()
 
@@ -216,7 +215,7 @@ while True:
         wiki.request(3, "putPage", picked[0] + "/comment", report)
     except xmlrpclib.Fault, fault:
         if "You did not change" in fault.faultString:
-            sys.exit(str(fault))
+            pass
 
     info("Removing tempdir %s" % path)
     os.chdir(cwd)
