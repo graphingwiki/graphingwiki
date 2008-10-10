@@ -188,27 +188,50 @@ while True:
     sys.path.append(path)
     info("Created tempdir %s" % path)
 
-    open(os.path.join(path, "ratkaisu.py"), "w").write(solution)
     open(os.path.join(path, "tests.txt"), "w").write(tests)
     open(os.path.join(path, "tarkistaUtils.py"), "w").write(utils)
+
+
+    open(os.path.join(path, "ratkaisu.py"), "w").write("pass\n")
+
+    reportPath = os.path.join(path, "reportTrivial.txt")
+    orginal = sys.stdout
+    sys.stdout = open(reportPath, "w")
+
+    doctest.master = None
+    result = doctest.testfile("tests.txt")
+    sys.stdout.close()
+    sys.stdout = orginal
+
+    failed, total = result
+    trivialTests = total - failed
+    info("Found %d trivial tests" % (trivialTests))
+
+
+    open(os.path.join(path, "ratkaisu.py"), "w").write(solution)
 
     reportPath = os.path.join(path, "report.txt")
     orginal = sys.stdout
     sys.stdout = open(reportPath, "w")
 
     doctest.master = None
-    result = doctest.testfile("tests.txt", verbose=True)
+    result = doctest.testfile("tests.txt")
     sys.stdout.close()
     sys.stdout = orginal
 
     failed, total = result
-    info("Result %d of %d tests succeeded" % (total-failed, total))
+    succeeded = total - failed
+    succeeded = max(succeeded - trivialTests, 0)
+    total = total - trivialTests
+
+    info("Result %d of %d tests succeeded" % (succeeded, total))
 
     report = open(reportPath).read()
+    report = report.replace("\\n", "\n")
     report = "#FORMAT plain\n" + report
 
     metas = dict()
-    metas["overallvalue"] = ["%d/%d" % (total-failed, total)]
+    metas["overallvalue"] = ["%d/%d" % (succeeded, total)]
 
     try:
         wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
