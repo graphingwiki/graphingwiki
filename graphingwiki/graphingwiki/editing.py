@@ -150,21 +150,28 @@ def parse_categories(request, text):
     if not lines:
         return lines, list()
 
-    confirmed = list()
+    # All the categories on the multiple ending lines of 
+    total_confirmed = list()
     # Start looking at lines from the end to the beginning
-    for line in reversed(range(len(lines))):
+    while lines:
+        confirmed = list()
         # Skip empty lines, comments
-        if not lines[line].strip() or lines[line].startswith('##'):
+        if not lines[-1].strip() or lines[-1].startswith('##'):
+            lines.pop()
             continue
 
         # TODO: this code is broken, will not work for extended links
         # categories, e.g ["category hebrew"]
-        candidates = lines[line].split()
+        candidates = lines[-1].split()
         confirmed.extend(filter_categories(request, candidates))
 
+        # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
             # The line was not a category line
-            return lines, confirmed
+            return lines, total_confirmed
+
+        # It was a category line - add the categories
+        total_confirmed.extend(confirmed)
 
         # Remove the category line
         lines.pop()
@@ -172,6 +179,40 @@ def parse_categories(request, text):
     return lines, confirmed
 
 def edit_categories(request, savetext, action, catlist):
+    """
+    >>> class Request(object):
+    ...     pass
+    ... 
+    >>> class Config(object):
+    ...     pass
+    ... 
+    >>> request = Request()
+    >>> request.cfg = Config()
+    >>> request.cfg.page_category_regex = u'^Category[A-Z]'
+    >>> s = "= @PAGE@ =\\n" + \
+        "[[TableOfContents]]\\n" + \
+        "[[LinkedIn]]\\n" + \
+        "----\\n" + \
+        "CategoryIdentity\\n" +\
+        "##fslsjdfldfj\\n" +\
+        "CategoryBlaa\\n"
+    >>> edit_categories(request, s, 'add', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\nCategoryBlaa CategoryIdentity CategoryEi\\n'
+    >>> edit_categories(request, s, 'set', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\nCategoryEi\\n'
+    >>> s = "= @PAGE@ =\\n" + \
+       "[[TableOfContents]]\\n" + \
+       "[[LinkedIn]]\\n" + \
+       "----\\n" + \
+       "## This is not a category line\\n" +\
+       "CategoryIdentity hlh\\n" +\
+       "CategoryBlaa\\n"
+    >>> 
+    >>> edit_categories(request, s, 'add', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryBlaa CategoryEi\\n'
+    >>> edit_categories(request, s, 'set', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryEi\\n'
+    """
     # Filter out anything that is not a category
     catlist = filter_categories(request, catlist)
     lines, confirmed = parse_categories(request, savetext)
@@ -1166,3 +1207,10 @@ def getuserpass(username=''):
 
     sys.stdout = old_stdout
     return username, password
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()
