@@ -41,6 +41,15 @@ $$('#start').each(function(drag){
 		});
     });
 
+var heightfix = new Element('div', {
+	id : 'heightfix',
+	styles: {
+		'z-index' : '10'
+	}
+});
+
+$('content').grab(heightfix);
+
 /* Making all course items draggable*/
 $$('.dragItem').each(function(item){
     item.addEvent('mousedown', function(e){
@@ -171,14 +180,18 @@ if(selected){
 /* Draws lines between all boxes and endpoints */
 function drawline(id){
 if(id != null){
-var boxes = [$(id)];
+	var boxes = [$(id)];
 }else{
-var boxes = $(document.body).getElements('div[id^=item], #start');
-$$('canvas[id^=canv]').destroy();
+	var boxes = $(document.body).getElements('div[id^=item], #start');
+	$$('canvas[id^=canv]').destroy();
 }
 var coords = new Array();
 var canvHeight = 0;
 var canvWidth = 0;
+var maxheight = 0;
+var hfixdiv = $('heightfix');
+var hfix = hfixdiv.getPosition();
+
 for(var i=0;  i < boxes.length; i++){
 	c1 = boxes[i].getCoordinates();
 	pId = boxes[i].id;
@@ -189,6 +202,8 @@ for(var i=0;  i < boxes.length; i++){
 
 	if(id != null){
 		childs.combine(getParentBox(id));
+	}else{
+		maxheight = Math.max(maxheight, c1.top - hfix.y + 100);
 	}
 
 	if(boxData.get('endPoints').contains(pId)){
@@ -202,16 +217,17 @@ for(var j = 0 ; j < childs.length ; j++){
  c2y = c2a.top + 0.5 * c2a.height;
  c2x = c2a.left + 0.5 * c2a.width;
  fix_pid = getParentBox(pId).contains(childs[j]) ? childs[j] : pId;
+
  if(boxData.get(pId+'_wrong') == $(childs[j]).id){
-color = '#FF0000';
+	color = '#FF0000';
  }else if(boxData.get(fix_pid+'_type') == 'select' &&
- childBoxes.get(fix_pid).length >1){
-color = '#00FF00';
+	childBoxes.get(fix_pid).length >1){
+	color = '#00FF00';
  }else if(boxData.get(fix_pid+'_type') == 'random' &&
- childBoxes.get(fix_pid).length >1){
-color = '#FFFF00';
+	childBoxes.get(fix_pid).length >1){
+	color = '#FFFF00';
  }else{
-color = '#000000';
+	color = '#000000';
  }
 
 
@@ -251,6 +267,9 @@ if($('canv_'+ pId+'_'+childs[j]) != null){
 	ctx.lineTo(xdiff - 2, ydiff * Math.abs(yswap -1) -2 + yswap * 4);
 	ctx.stroke();
 }
+}
+if(!id){
+	hfixdiv.setStyle('height', maxheight);
 }
 
 }
@@ -1052,6 +1071,7 @@ newEndPoint(box);
 }
 drawline();
 }
+
 
 /*function to show an info div about specified element*/
 function showInfo(id){
