@@ -774,7 +774,8 @@ def string_aton(value):
     # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
     #             socket.inet_aton('1.2.3.4')]) 
     # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
-    return u'00' + unicode(socket.inet_aton(value), "unicode_escape")
+    return u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
+                           "unicode_escape")
 
 ORDER_FUNCS = [
     # (conversion function, ignored exception type(s))
