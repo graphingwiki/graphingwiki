@@ -153,7 +153,23 @@ while True:
         question = stripLink(questions[0])
 
     info("Fetching solution from %s" % file)
-    solution = stripFormat(wiki.request(3, "getPage", file))
+    try:
+        solution = stripFormat(wiki.request(3, "getPage", file))
+    except xmlrpclib.Fault, fault:
+        if "No such page was found" in fault.faultString:
+            metas = dict()
+            metas["overallvalue"] = ["False"]
+            report = "You didn't submit a file!\n"
+            try:
+                wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
+                wiki.request(3, "putPage", picked[0] + "/comment", report)
+            except xmlrpclib.Fault, fault:
+                if "You did not change" in fault.faultString:
+                    pass
+                else:
+                    raise
+
+            continue
 
     info("Fetching right answer from %s" % question)
     result = wiki.request(3, "GetMeta", "CategoryAnswer, question=%s" % question, False)
@@ -239,6 +255,8 @@ while True:
     except xmlrpclib.Fault, fault:
         if "You did not change" in fault.faultString:
             pass
+        else:
+            raise
 
     info("Removing tempdir %s" % path)
     os.chdir(cwd)
