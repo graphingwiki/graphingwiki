@@ -91,8 +91,8 @@ function show(obj){
 function hide(obj){
     var tr = $(obj).getParent('tr');
     var el = tr.getElement('span');
-	if(el.class != "tip" || tip_hiding != false){
-        el.style.visibility = "hidden";
+    if(tip_hiding){
+        el.setStyle('visibility', "hidden");
     }
 }
 var deleted = 0;
