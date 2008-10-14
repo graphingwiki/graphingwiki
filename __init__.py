@@ -67,7 +67,7 @@ class RaippaUser:
         courselist = list()
         metakeys = getkeys(self.request.graphdata, self.statuspage)
         for key in metakeys:
-            categorymetas = getmetas(self.request, self.request.graphdata, key, ["WikiCategory"])
+            categorymetas = getmetas(self.request, self.request.graphdata, key, ["WikiCategory"], checkAccess=False)
             for category, type in categorymetas["WikiCategory"]:
                 if category == coursecategory:
                     courselist.append(key)
@@ -403,7 +403,7 @@ class Question:
         linking_in = page.get('in', {})
         pagelist = linking_in.get("question", [])
         for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, page, ["WikiCategory", "user", "overallvalue", "false", "true", "course", "task"])
+            metas = getmetas(self.request, self.request.graphdata, page, ["WikiCategory", "user", "overallvalue", "false", "true", "course", "task"], checkAccess=False)
             for category, type in metas["WikiCategory"]:
                 if category == historycategory:
                     if metas["user"] and metas["overallvalue"] and metas["course"]:
@@ -504,7 +504,7 @@ class Question:
             if historyuser == user and historycourse == course:
                 historypage = page
                 oldkeys = getkeys(self.request.graphdata, historypage).keys()
-                metas = getmetas(self.request, self.request.graphdata, historypage, oldkeys) 
+                metas = getmetas(self.request, self.request.graphdata, historypage, oldkeys, checkAccess=False) 
                 oldmetas = dict()
                 for metakey in oldkeys:
                     oldmetas[metakey] = list()
