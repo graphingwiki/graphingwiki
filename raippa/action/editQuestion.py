@@ -165,8 +165,8 @@ var radioFalse = new Element('input', {
 
 td6.grab(radioFalse);
 var span = new Element('span', {
-	'class' : 'tip',
-/*	'style' : 'visibility: hidden;'*/
+	'class' : 'tip'
+/*	,'style' : 'visibility: hidden;'*/
   });
 
 span.set('text', 'Tip: ');
