@@ -771,6 +771,7 @@ def process_meta_changes(request, input):
                     changes[keypage].setdefault('old', dict())[key] = oldvals
                 changes[keypage].setdefault('new', dict())[key] = newvals
 
+    return changes
 
 # Handle input from a MetaEdit-form
 def process_edit(request, input,
@@ -800,10 +801,7 @@ def process_edit(request, input,
                                  changes[keypage]['new'],
                                  category_edit, catlist))
     else:
-        if keypage:
-            msg.append('%s: %s' % (keypage, _("Unchanged")))
-        else:
-            msg.append(_('No pages changed'))
+        msg.append(_('No pages changed'))
 
     return msg
 

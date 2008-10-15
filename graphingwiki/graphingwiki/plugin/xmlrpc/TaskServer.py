@@ -43,7 +43,7 @@ def execute(xmlrpcobj, agentid, oper='get',
             for page in pages:
                 pagehb = get_metas(request, page, ['heartbeat'])
                 for val in pagehb.get('heartbeat', list()):
-                    try
+                    try:
                         val = float(val) + (10 * 60)
                         if val < curtime:
                             pagelist.append(page)

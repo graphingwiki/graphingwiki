@@ -33,7 +33,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.patterns import encode, format_wikitext, form_escape
+from graphingwiki.patterns import encode, format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
@@ -190,7 +190,7 @@ def execute(macro, args):
     def action_link(action, linktext, args):
         req_url = request.getScriptname() + \
                   '/' + request.page.page_name + \
-                  '?action=' + action + '&args=' + form_escape(args)
+                  '?action=' + action + '&args=' + url_escape(args)
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 

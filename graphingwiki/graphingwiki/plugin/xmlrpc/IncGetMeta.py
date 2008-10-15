@@ -44,12 +44,12 @@ def diff(previous, current):
             
     return removedPages, updates
 
-def createNewHandle(db):
+def create_new_handle(db):
     number = db.get("", 0)
     db[""] = number + 1
     return base64.b64encode(struct.pack("!Q", number))
 
-def getMetas(request, args, handle=None):
+def inc_get_metas(request, args, handle=None):
     pages, keys, _ = metatable_parseargs(request, args, get_all_keys=True)
 
     current = dict()
@@ -70,7 +70,7 @@ def getMetas(request, args, handle=None):
     try:
         if not handle or handle not in db:
             incremental = False
-            handle = createNewHandle(db)
+            handle = create_new_handle(db)
         previous = db.get(handle, dict())
         db[handle] = current
     finally:
@@ -82,4 +82,4 @@ def execute(xmlrpcobj, query, handle=None):
     request = xmlrpcobj.request
     request.formatter = TextFormatter(request)
 
-    return getMetas(request, query, handle)
+    return inc_get_metas(request, query, handle)
