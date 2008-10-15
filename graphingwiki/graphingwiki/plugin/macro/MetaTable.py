@@ -32,7 +32,7 @@ import re
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.patterns import encode, format_wikitext, form_escape
 
 Dependencies = ['metadata']
@@ -132,8 +132,8 @@ def construct_table(macro, pagelist, metakeys,
         request.formatter.page = pageobj
 
         row = row + 1
-        metas = getmetas(request, page, metakeys, 
-                         display=False, checkAccess=checkAccess)
+        metas = get_metas(request, page, metakeys, 
+                          checkAccess=checkAccess)
 
         if row % 2:
             request.write(macro.formatter.table_row(1, {'rowclass':

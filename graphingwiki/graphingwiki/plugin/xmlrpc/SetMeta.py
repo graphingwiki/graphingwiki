@@ -8,7 +8,7 @@
 """
 import xmlrpclib
 
-from graphingwiki.editing import set_metas, getmetas
+from graphingwiki.editing import set_metas, get_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 # To be deprecated, now mimics the original interface with its quirks
@@ -41,7 +41,7 @@ def execute(xmlrpcobj, page, input, action='add',
     if action == 'add':
         added[page] = input
     elif action == 'set':
-        old = getmetas(request, page, input.keys(), display=False)
+        old = get_metas(request, page, input.keys())
         for key in old:
             discarded[page][key] = old[key]
             added[page][key] = input[key]
@@ -49,7 +49,7 @@ def execute(xmlrpcobj, page, input, action='add',
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
-        oldcats = getmetas(request, page, ['gwikicategory'], display=False)
+        oldcats = get_metas(request, page, ['gwikicategory'])
         discarded[page].setdefault('gwikicategory', list()).extend(oldcats)
         added[page].setdefault('gwikicategory', list()).extend(catlist)
     # default to add category

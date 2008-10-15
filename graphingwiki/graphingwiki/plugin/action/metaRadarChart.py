@@ -41,7 +41,7 @@ from MoinMoin.parser.wiki import Parser
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
 
-from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
+from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.patterns import SPECIAL_ATTRS
 
 from metasparkline import draw_path, cairo_not_found, \
@@ -150,7 +150,9 @@ def execute(pagename, request):
     # Populate data to the radar chart
     data = dict()
     for page in pagelist:
-        metas = getmetas(request, page, metakeys)
+        # On links, we want a list of page names, not their markup
+        metas = get_metas(request, page, metakeys,
+                          display=True, checkAccess=False)
         # Get the maximum value of each key on a page
         for key in metakeys:
             data.setdefault(key, list())

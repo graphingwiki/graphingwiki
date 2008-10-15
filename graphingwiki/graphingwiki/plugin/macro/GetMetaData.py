@@ -11,7 +11,7 @@ Dependencies = ['metadata']
 
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki.editing import getmetas
+from graphingwiki.editing import get_metas
 from graphingwiki.patterns import format_wikitext
 
 def execute(macro, args):
@@ -39,7 +39,7 @@ def execute(macro, args):
         return _sysmsg % ('error', 
                           _("GetMetaData: Need to specify page, or page and key"))
 
-    vals = getmetas(request, page, [key], display=False)
+    vals = get_metas(request, page, [key])
 
     val = ', '.join(vals[key])
 

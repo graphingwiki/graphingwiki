@@ -6,7 +6,7 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request
@@ -30,8 +30,8 @@ def execute(xmlrpcobj, args, keysonly=True):
     for page in pagelist:
         # We're pretty sure the user has the read access to the pages,
         # so don't check again
-        metas = getmetas(request, page, metakeys, 
-                         display=False, checkAccess=False)
+        metas = get_metas(request, page, metakeys, 
+                          checkAccess=False)
         row = [page]
         for key in metakeys:
             row.append(metas[key])

@@ -33,7 +33,7 @@ import StringIO
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 Dependencies = ['metadata']
 
@@ -78,8 +78,7 @@ def construct_table(macro, pagelist, key, sort_order):
         # WARNING: Skipping access check because we know that metatable_parseargs
         #          already  checked  them. If you plan to use this code elsewhere
         #          you should make sure that you check for access.
-        metas = getmetas(request, page, [key], display=False,
-                         checkAccess=False)
+        metas = get_metas(request, page, [key], checkAccess=False)
 
         for value in metas[key]:
             current = count.get(value, 0)

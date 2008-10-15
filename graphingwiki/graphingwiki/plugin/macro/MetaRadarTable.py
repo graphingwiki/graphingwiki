@@ -35,7 +35,7 @@ from MoinMoin import wikiutil
 from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas, ordervalue
+from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.patterns import url_construct
 
 from MetaRadarChart import radarchart_args
@@ -87,7 +87,7 @@ def execute(macro, args):
 
     values = set()
     for page in pagelist:
-        metas = getmetas(request, page, metakeys)
+        metas = get_metas(request, page, metakeys, display=True)
         for key in metas:
             # Get the maximum value of each key on a page
             if metas[key]:

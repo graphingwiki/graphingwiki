@@ -48,7 +48,7 @@ from MoinMoin.Page import Page
 from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.request import RequestModPy
 
-from graphingwiki.editing import get_revisions, getmetas
+from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
     if isinstance(request, RequestModPy):
@@ -295,8 +295,8 @@ def execute(pagename, request):
     data = []
     key = params["key"]
     for page in pagelist[-1:end_pts:-1]:
-        metas = getmetas(request, page, metakeys, display=False,
-                         checkAccess=False)
+        metas = get_metas(request, page, metakeys, checkAccess=False)
+                         
         val = ''.join(metas.get(key, str()))
         try:
             val = float(val)

@@ -13,7 +13,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import process_edit, getmetas, save_template
+from graphingwiki.editing import process_edit, get_metas, save_template
 from graphingwiki.editing import metatable_parseargs, set_metas
 from graphingwiki.patterns import actionname, form_escape, decode_page, encode_page
 
@@ -63,8 +63,8 @@ def show_editform(wr, request, pagename, args):
             if not valnos.has_key(frompage):
                 valnos[frompage] = 1
 
-            keydata = getmetas(request, frompage, [key],
-                               display=False, abs_attach=False)
+            keydata = get_metas(request, frompage, [key], abs_attach=False)
+                               
 
             for i, val in enumerate(keydata[key]):
                 values[frompage][key].append(val)
@@ -172,7 +172,7 @@ def execute(pagename, request):
             keys = [decode_page(x.split('?')[1]) 
                     for x in request.form if '?' in x]
 
-            old = getmetas(request, pagename, keys, display=False)
+            old = get_metas(request, pagename, keys)
             for key in keys:
                 oldkey = encode_page(pagename + '?' + key)
                 discarded[pagename][key] = old.get(key, list())

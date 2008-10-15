@@ -12,7 +12,7 @@ import shelve
 import xmlrpclib
 
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from graphingwiki.editing import getmetas, metatable_parseargs, decode_page
+from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
 
 def diff(previous, current):
     removedPages = list()
@@ -55,8 +55,8 @@ def getMetas(request, args, handle=None):
     current = dict()
     for page in pages:
         # metatable_parseargs checks read permissions, no need to do it again
-        metas = getmetas(request, page, keys, 
-                         display=False, checkAccess=False)
+        metas = get_metas(request, page, keys, 
+                          checkAccess=False)
 
         current[page] = dict()
         for key in keys:

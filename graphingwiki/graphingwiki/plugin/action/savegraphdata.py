@@ -412,14 +412,7 @@ def parse_text(request, page, text):
 
     return new_data
 
-def execute(pagename, request, text, pagedir, page):
-    # Skip MoinEditorBackups
-    if pagename.endswith('/MoinEditorBackup'):
-        return
-
-    # Get new data from parsing the page
-    new_data = parse_text(request, page, text)
-
+def changed_meta(request, pagename, old_data, new_data):
     add_out = dict()
     lit_out = dict()
     del_out = dict()
@@ -434,9 +427,6 @@ def execute(pagename, request, text, pagedir, page):
     # Code for making our which edges have changed.
     # We only want to save changes, not all the data,
     # as edges have a larger time footprint while saving.
-
-    # Get a copy of current data
-    old_data = request.graphdata.get(pagename, {})
 
     add_out.setdefault(pagename, list())
     lit_out.setdefault(pagename, list())
@@ -571,6 +561,22 @@ def execute(pagename, request, text, pagedir, page):
             #print
 
     #print
+
+    return add_out, lit_out, del_out, add_in, del_in
+
+def execute(pagename, request, text, pagedir, page):
+    # Skip MoinEditorBackups
+    if pagename.endswith('/MoinEditorBackup'):
+        return
+
+    # Get new data from parsing the page
+    new_data = parse_text(request, page, text)
+
+    # Get a copy of current data
+    old_data = request.graphdata.get(pagename, {})
+
+    add_out, lit_out, del_out, add_in, del_in = \
+        changed_meta(request, pagename, old_data, new_data)
 
     # Insert metas and other stuff from parsed content
     cur_time = time()

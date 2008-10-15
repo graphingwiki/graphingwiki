@@ -180,15 +180,7 @@ def parse_categories(request, text):
 
 def edit_categories(request, savetext, action, catlist):
     """
-    >>> class Request(object):
-    ...     pass
-    ... 
-    >>> class Config(object):
-    ...     pass
-    ... 
-    >>> request = Request()
-    >>> request.cfg = Config()
-    >>> request.cfg.page_category_regex = u'^Category[A-Z]'
+    >>> request = _doctest_request()
     >>> s = "= @PAGE@ =\\n" + \
         "[[TableOfContents]]\\n" + \
         "[[LinkedIn]]\\n" + \
@@ -276,8 +268,8 @@ def getkeys(request, name):
     return keys
 
 # Fetch requested metakey value for the given page.
-def getmetas(request, name, metakeys, 
-             display=True, abs_attach=True, checkAccess=True):
+def get_metas(request, name, metakeys, 
+             display=False, abs_attach=True, checkAccess=True):
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
@@ -316,6 +308,11 @@ def getmetas(request, name, metakeys,
     return pageMeta
 
 # Deprecated, remains for backwards compability for now
+def getmetas(request, name, metakeys, 
+             display=True, abs_attach=True, checkAccess=True):
+    return get_metas(request, name, metakeys, display, abs_attach, checkAccess)
+
+# Deprecated, remains for backwards compability for now
 def getvalues(request, name, key,
               display=True, abs_attach=True, checkAccess=True):
     return getmetas(request, name, [key], display, abs_attach, checkAccess)[key]
@@ -331,12 +328,7 @@ def get_pages(request):
 
     return request.rootpage.getPageList(filter=filter)
 
-def edit(pagename, editfun, request=None,
-         category_edit='', catlist=[], lock=None):
-    p = PageEditor(request, pagename)
-
-    oldtext = p.get_raw_body()
-
+def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
     preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
     pre_replace = dict()
@@ -344,7 +336,7 @@ def edit(pagename, editfun, request=None,
         return md5.new(repr(val)).hexdigest()
 
     # Enumerate preformatted areas
-    for val in preformatted_re.findall(oldtext):
+    for val in preformatted_re.findall(text):
         key = get_hashkey(val)
         pre_replace[key] = val
 
@@ -354,13 +346,23 @@ def edit(pagename, editfun, request=None,
         key = get_hashkey(val)
         return '%s' % (key)
 
-    oldtext = preformatted_re.sub(replace_preformatted, oldtext)
+    text = preformatted_re.sub(replace_preformatted, text)
+
+    return text, pre_replace
+
+def edit(pagename, editfun, oldmeta, newmeta, request,
+         category_edit='', catlist=[], lock=None):
+    p = PageEditor(request, pagename)
+
+    oldtext = p.get_raw_body()
 
     #request.write(repr(oldtext) + '<br>' + repr(pre_replace))
     #request.write(repr(oldtext % pre_replace) + '<br>')
     #return '', p
 
-    newtext = editfun(pagename, oldtext)
+    oldtext, pre_replace = remove_preformatted(oldtext)
+
+    newtext = editfun(request, oldtext, oldmeta, newmeta)
 
     # Metas have been set, insert preformatted areas back
     for key in pre_replace:
@@ -403,188 +405,219 @@ def edit(pagename, editfun, request=None,
 
     return msg, p
 
+def add_meta_regex(request, inclusion, newval, oldtext):
+    """
+    >>> request = _doctest_request()
+    >>> s = "= @PAGE@ =\\n" + \
+        "[[TableOfContents]]\\n" + \
+        "[[LinkedIn]]\\n" + \
+        "----\\n" + \
+        "CategoryIdentity\\n" +\
+        "##fslsjdfldfj\\n" +\
+        "CategoryBlaa\\n"
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n----\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    >>> 
+    >>> request.cfg.gwiki_meta_after = '^----'
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    >>> 
+    >>> s = '\\n'.join(s.split('\\n')[:2])
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n'
+    """
+
+    if not newval:
+        return oldtext
+
+    # print "Add", repr(newval), repr(oldmeta.get(key, ''))
+
+    # patterns after or before of which the metadata
+    # should be included
+    pattern = getattr(request.cfg, 'gwiki_meta_after', '')
+    repl_str = "\\1\n%s" % (inclusion)
+    if not pattern:
+        pattern = getattr(request.cfg, 'gwiki_meta_before', '')
+        repl_str = "%s\n\\1" % (inclusion)
+    if not pattern:
+        pattern = default_meta_before
+
+    # if pattern is not found on page, just append meta
+    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
+    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
+    if not repls:
+        oldtext = oldtext.rstrip('\n')
+        oldtext += '\n%s\n' % (inclusion)
+    else:
+        oldtext = newtext
+
+    return oldtext
+
+def replace_metas(request, oldtext, oldmeta, newmeta):
+    oldtext = oldtext.rstrip()
+    # Annoying corner case with dl:s
+    if oldtext.endswith('::'):
+        oldtext = oldtext + ' '
+
+    #a = file('/tmp/log', 'a')
+    #a.write(repr(oldtext) + '\n')
+    #a.write(repr(oldmeta) + '\n')
+    #a.write(repr(newmeta) + '\n')
+    #a.flush()
+    #a.close()
+
+    # Keeps track on the keys added during this edit
+    added_keys = set()
+
+    def macro_subfun(mo):
+        old_keyval_pair = mo.group(2).split(',')
+
+        # Strip away empty metadatas [[MetaData()]]
+        # and placeholders [[MetaData(%s,)]]
+        # (Placeholders should become obsolete with MetaEdit)
+        if len(old_keyval_pair) < 2:
+            return ''
+
+        # Check if the value has changed
+        key = old_keyval_pair[0]
+        key = key.strip()
+        val = ','.join(old_keyval_pair[1:])
+
+        if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+            val = newval
+
+        # Return dict variable
+        return '\n %s:: %s' % (key, val)
+
+    def dl_subfun(mo):
+        all, key, val = mo.groups()
+
+        # print repr(all), repr(key), repr(val)
+
+        # Don't even start working on it if the key does not match
+        if key.strip() != oldkey.strip():
+            return all
+
+        # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
+
+        # Check if the value has changed
+        key = key.strip()
+        # print repr(oldval), repr(val), repr(newval)
+        # print repr(oldkey), repr(key)
+        if key == oldkey.strip() and val.strip() == oldval.strip():
+            val = newval
+
+        # Do not return placeholders
+        if not val.strip():
+            return ''
+
+        out = ' %s:: %s' % (key, val)
+
+        if all.startswith('\n'):
+            out = '\n' + out
+
+        return out
+
+    for key in newmeta:
+        # print repr(key)
+        oldkey = key
+        dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
+        dl_add_re = re.compile(dl_add % (oldkey), re.M)
+
+        for i, newval in enumerate(newmeta[key]):
+            # print repr(newval)
+            # Remove newlines from input, as they could really wreck havoc.
+            newval = newval.replace('\n', ' ')
+            inclusion = ' %s:: %s' % (oldkey, newval)
+
+            #print repr(inclusion)
+
+            #print "Meta change", repr(key), repr(newval)
+
+            #print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
+
+            # If nothing to do, do nothing
+            if (not oldmeta.has_key(key)
+                and not newval.strip()):
+
+                #print "Nothing to do\n"
+
+                continue
+
+            # If old meta has the key with i valus of it, 
+            # replace its i:th value with the new key. Preserves order.
+            elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
+                oldval = oldmeta[key][i]
+                #print "Replace", repr(oldval), repr(newval)
+                #print "# ", repr(oldval)
+                oldkey = key
+                # First try to replace the dict variable
+                oldtext = dl_re.sub(dl_subfun, oldtext)
+                # Then try to replace the MetaData macro on page
+                oldtext = metadata_re.sub(macro_subfun, oldtext)
+
+            # If prototypes ( key:: ) are present, replace them
+            elif (dl_proto_re.search(oldtext + '\n')):
+
+                # Do not replace with empties, i.e. status quo
+                if not newval.strip():
+                    continue
+
+                oldkey = key
+
+                oldtext = dl_proto_re.sub('\\1 %s' % (newval),
+                                          oldtext + '\n', 1)
+
+                added_keys.add(key)
+
+                #print "Proto", repr(newval), '\n'
+
+                continue
+
+            # If the old text has this key (either before this edit
+            # or added by this edit), add them (as dl).
+            # Cluster values of same keys near
+            elif (key in added_keys or
+                  (oldmeta.has_key(key) and 
+                   len(oldmeta[key]) - 1 < i)):
+
+                #print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
+
+                # Easiest to strip excess line breaks in a function
+                def cluster_metas(mo):
+                    all = mo.group(0)
+                    all = all.lstrip('\n')
+                    return '%s\n%s' % (inclusion, all)
+
+                # DL meta supported only, otherwise
+                # fall back to just adding
+                text, count = dl_add_re.subn(cluster_metas,
+                                             oldtext, 1)
+
+                if count:
+                    oldtext = text
+                    continue
+
+                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
+
+            # If the old text does not have this key, add it (as dl)
+            else:
+                #print "Newval"
+                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
+                added_keys.add(key)
+
+            # print
+
+    return oldtext
+
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
 
-    def editfun(pagename, oldtext):
-        oldtext = oldtext.rstrip()
-        # Annoying corner case with dl:s
-        if oldtext.endswith('::'):
-            oldtext = oldtext + ' '
-
-        # Keeps track on the keys added during this edit
-        added_keys = set()
-
-        def macro_subfun(mo):
-            old_keyval_pair = mo.group(2).split(',')
-
-            # Strip away empty metadatas [[MetaData()]]
-            # and placeholders [[MetaData(%s,)]]
-            # (Placeholders should become obsolete with MetaEdit)
-            if len(old_keyval_pair) < 2:
-                return ''
-                
-            # Check if the value has changed
-            key = old_keyval_pair[0]
-            key = key.strip()
-            val = ','.join(old_keyval_pair[1:])
-            
-            if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
-                val = newval
-
-            # Return dict variable
-            return '\n %s:: %s' % (key, val)
-
-        def dl_subfun(mo):
-            all, key, val = mo.groups()
-
-            # print repr(all), repr(key), repr(val)
-
-            # Don't even start working on it if the key does not match
-            if key.strip() != oldkey.strip():
-                return all
-
-            # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
-
-            # Check if the value has changed
-            key = key.strip()
-            # print repr(oldval), repr(val), repr(newval)
-            # print repr(oldkey), repr(key)
-            if key == oldkey.strip() and val.strip() == oldval.strip():
-                val = newval
-
-            # Do not return placeholders
-            if not val.strip():
-                return ''
-
-            out = ' %s:: %s' % (key, val)
-
-            if all.startswith('\n'):
-                out = '\n' + out
-
-            return out
-
-        for key in newmeta:
-            # print repr(key)
-            oldkey = key
-            dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
-            dl_add_re = re.compile(dl_add % (oldkey), re.M)
-
-            for i, newval in enumerate(newmeta[key]):
-                # print repr(newval)
-                # Remove newlines from input, as they could really wreck havoc.
-                newval = newval.replace('\n', ' ')
-                inclusion = ' %s:: %s' % (oldkey, newval)
-
-                # print repr(inclusion)
-
-                def default_add(request, inclusion, newval, oldtext):
-                    if not newval:
-                        return oldtext
-
-                    # print "Add", repr(newval), repr(oldmeta.get(key, ''))
-                    
-                    # patterns after or before of which the metadata
-                    # should be included
-                    pattern = getattr(request.cfg, 'gwiki_meta_after', '')
-                    repl_str = "\\1\n%s" % (inclusion)
-                    if not pattern:
-                        pattern = getattr(request.cfg, 'gwiki_meta_before', '')
-                        repl_str = "%s\n\\1" % (inclusion)
-                    if not pattern:
-                        pattern = default_meta_before
-
-                    # if pattern is not found on page, just append meta
-                    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
-                    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
-                    if not repls:
-                        oldtext = oldtext.rstrip('\n')
-                        oldtext += '\n%s\n' % (inclusion)
-                    else:
-                        oldtext = newtext
-
-                    return oldtext
-
-                # print "Meta change", repr(key), repr(newval)
-
-                # print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
-
-                # If nothing to do, do nothing
-                if (not oldmeta.has_key(key)
-                    and not newval.strip()):
-
-                    # print "Nothing to do\n"
-
-                    continue
-
-                # If old meta has the key with i valus of it, 
-                # replace its i:th value with the new key. Preserves order.
-                elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
-                    oldval = oldmeta[key][i]
-                    # print "Replace", repr(oldval), repr(newval)
-                    # print "# ", repr(oldval)
-                    oldkey = key
-                    # First try to replace the dict variable
-                    oldtext = dl_re.sub(dl_subfun, oldtext)
-                    # Then try to replace the MetaData macro on page
-                    oldtext = metadata_re.sub(macro_subfun, oldtext)
-
-                # If prototypes ( key:: ) are present, replace them
-                elif (dl_proto_re.search(oldtext + '\n')):
-                #elif (re.search(dl_proto % (oldkey), oldtext + '\n')):
-
-                    # Do not replace with empties, i.e. status quo
-                    if not newval.strip():
-                        continue
-
-                    oldkey = key
-
-                    oldtext = dl_proto_re.sub('\\1 %s' % (newval),
-                                              oldtext + '\n', 1)
-
-                    added_keys.add(key)
-
-                    # print "Proto", repr(newval), '\n'
-
-                    continue
-
-                # If the old text has this key (either before this edit
-                # or added by this edit), add them (as dl).
-                # Cluster values of same keys near
-                elif (key in added_keys or
-                      (oldmeta.has_key(key) and 
-                       len(oldmeta[key]) - 1 < i)):
-
-                    # print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
-
-                    # Easiest to strip excess line breaks in a function
-                    def cluster_metas(mo):
-                        all = mo.group(0)
-                        all = all.lstrip('\n')
-                        return '%s\n%s' % (inclusion, all)
-
-                    # DL meta supported only, otherwise
-                    # fall back to just adding
-                    text, count = dl_add_re.subn(cluster_metas,
-                                                 oldtext, 1)
-
-                    if count:
-                        oldtext = text
-                        continue
-
-                    oldtext = default_add(request, inclusion, newval, oldtext)
-
-                # If the old text does not have this key, add it (as dl)
-                else:
-                    # print "Newval"
-                    oldtext = default_add(request, inclusion, newval, oldtext)
-                    added_keys.add(key)
-
-                # print
-
-        return oldtext
-
-    msg, p = edit(pagename, editfun, request, category_edit, catlist)
+    msg, p = edit(pagename, replace_metas, oldmeta, newmeta, request, 
+                  category_edit, catlist)
 
     return msg
 
@@ -621,8 +654,8 @@ def set_metas(request, cleared, discarded, added):
             del pageAdded[TEMPLATE_KEY]
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
-        old = getmetas(request, page, metakeys, 
-                       checkAccess=False)
+        old = get_metas(request, page, metakeys, checkAccess=False)
+                       
 
         # Handle the magic duality between normal categories (CategoryBah)
         # and meta style categories
@@ -662,17 +695,18 @@ def set_metas(request, cleared, discarded, added):
             ordered.extend(values)
             new[key] = ordered
 
+        #a = file('/tmp/log', 'a')
+        #a.write('\n')
+        #a.write(repr(old) + '\n')
+        #a.write(repr(new) + '\n')
+        #a.flush()
+        #a.close()
+
         msg.append(edit_meta(request, page, old, new))
 
     return True, msg
 
-# Handle input from a MetaEdit-form
-def process_edit(request, input,
-                 category_edit='', categories={}):
-    _ = request.getText
-    # request.write(repr(request.form) + '<br>')
-    # print repr(input) + '<br>'
-
+def process_meta_changes(request, input):
     changes = dict()
     keychanges = dict()
     keypage = ''
@@ -708,8 +742,7 @@ def process_edit(request, input,
         if not request.user.may.write(keypage):
             continue
 
-        keymetas = getmetas(request, keypage, [key], 
-                            display=False, abs_attach=False)
+        keymetas = get_metas(request, keypage, [key], abs_attach=False)
         oldvals = keymetas[key]
 
         if oldvals != newvals or keychanges:
@@ -738,9 +771,17 @@ def process_edit(request, input,
                     changes[keypage].setdefault('old', dict())[key] = oldvals
                 changes[keypage].setdefault('new', dict())[key] = newvals
 
-    msg = list()
 
-##    return [repr(x) for x in changes.keys()] + [repr(x) for x in changes.values()]
+# Handle input from a MetaEdit-form
+def process_edit(request, input,
+                 category_edit='', categories={}):
+    _ = request.getText
+    # request.write(repr(request.form) + '<br>')
+    # print repr(input) + '<br>'
+
+    changes = process_meta_changes(request, input)
+
+    msg = list()
 
     # For category-only changes
     if not changes and category_edit:
@@ -794,13 +835,13 @@ def savetext(pagename, newtext):
     modify page content directly.
 
     """
-    def editfun(pagename, oldtext):
+    def replace_metas(pagename, oldtext):
         return newtext
 
     # For some reason when saving a page with RequestCLI,
     # the pagelinks will present problems with patterns
     # unless explicitly cached
-    msg, p = edit(pagename, editfun)
+    msg, p = edit(pagename, replace_metas, {}, {}, request)
     if msg != u'Unchanged':
         req = p.request
         req.page = p
@@ -840,7 +881,8 @@ def ordervalue(value):
 
 def metatable_parseargs(request, args,
                         get_all_keys=False,
-                        get_all_pages=False):
+                        get_all_pages=False,
+                        checkAccess = True):
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -944,13 +986,18 @@ def metatable_parseargs(request, args,
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        # Filter nonexisting pages and the pages the user may not read
-        pages = set(filter(can_be_read, filter(is_saved, request.graphdata)))
+        pages = filter(is_saved, request.graphdata)
+        if checkAccess:
+            # Filter nonexisting pages and the pages the user may not read
+            pages = filter(can_be_read, pages)
+
+        pages = set(pages)
 
     # Otherwise check out the wanted pages
     else:
-        # Filter pages the user may not read
-        argset = set(filter(request.user.may.read, argset))
+        if checkAccess:
+            # Filter pages the user may not read
+            argset = set(filter(request.user.may.read, argset))
 
         pages = set()
 
@@ -969,8 +1016,10 @@ def metatable_parseargs(request, args,
                 # Check that the page is not a category or template page
                 if cat_re.match(newpage) or temp_re.search(newpage):
                     continue
-                # Check that user may view any the page
-                if request.user.may.read(newpage):
+                if checkAccess and request.user.may.read(newpage):
+                    # Check that user may view any the page
+                    pages.add(newpage)
+                else:
                     pages.add(newpage)
 
         for name in other:
@@ -993,7 +1042,8 @@ def metatable_parseargs(request, args,
         # Filter by regexps (if any)
         if limitregexps:
             # We're sure we have access to read the page, don't check again
-            metas = getmetas(request, page, limitregexps, checkAccess=False)
+            metas = get_metas(request, page, limitregexps, 
+                              display=True, checkAccess=False)
                              
             for key, re_limits in limitregexps.iteritems():
 
@@ -1049,7 +1099,8 @@ def metatable_parseargs(request, args,
         orderpages = dict()
 
         for page in pagelist:
-            ordermetas = getmetas(request, page, orderkeys, checkAccess=False)
+            ordermetas = get_metas(request, page, orderkeys, 
+                                   display=True, checkAccess=False)
             for key, values in ordermetas.iteritems():
                 values = map(ordervalue, values)
                 ordermetas[key] = values
@@ -1207,6 +1258,18 @@ def getuserpass(username=''):
 
     sys.stdout = old_stdout
     return username, password
+
+def _doctest_request():
+    class Request(object):
+        pass
+    class Config(object):
+        pass
+    
+    request = Request()
+    request.cfg = Config()
+    request.cfg.page_category_regex = u'^Category[A-Z]'
+
+    return request
 
 def _test():
     import doctest
