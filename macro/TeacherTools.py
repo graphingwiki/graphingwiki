@@ -141,13 +141,18 @@ form.grab(new Element('input', {
 
 </script>'''  % request.cfg.url_prefix_static
     html += u'''
+<form method="post" id="course_form"  action="%s">
 <table class="no_border">
-<tr><td colspan="2">
+<tr>
+<td style="width:200px">
+</td>
+<td colspan="2">
 Courses:
 </td></tr>
 <tr>
-<td width="300px">
-<form method="post" id="course_form"  action="%s">
+<td style="width:200px">
+</td>
+<td style="width:300px;">
     <input type="hidden"id="course_action" name="action" value="editCourse">
     <select size="1" name="course" class="maxwidth">''' % request.request_uri.split("?")[0]
     for page in courselist:
@@ -159,7 +164,7 @@ Courses:
         for name, type in metas["name"]:
             listtext += u' - ' + name
             break 
-        html += u'<option name="course" value="%s">%s</option>\n' % (page.replace('"', '&quot;'), listtext)
+        html += u'<option value="%s">%s</option>\n' % (page.replace('"', '&quot;'), listtext)
     html += '''
     </select></td>
     <td>
@@ -169,8 +174,10 @@ Courses:
     <input type='submit' name='new' value='new'>
     <input type="button" value="stats" onclick="sel_stats();">
     </td>
+</tr>
+</table>
 </form>
-</tr>'''
+'''
 
 
 
@@ -198,51 +205,56 @@ Courses:
             pass
     #subjectlist
     html += u'''
-</td></tr>
-<tr><td colspan="2">
-Tasks subjects:
-</td></tr>
-<tr><td>
+
 <form method="post" id="task_form" action="%s">
+<table class="no_border">
+<tr><td>
+Tasks subjects:
+</td><td colspan="2">
+Tasks:
+</td></tr>
+<tr><td style="width:200px;">
 ''' % request.request_uri.split("?")[0]
     html += u'<select class="maxwidth" id="ttypesel" name="tasksubject">\n'
     for subject in subjectdict:
         html+=u'<option value="t_type_%s">%s</option>\n' % (subject, subject)
-    html += u'''</select></td><td>
-</td></tr>
-<tr><td colspan="2">
-Tasks:
-</td></tr>
-<tr><td>
+    html += u'''</select>
+</td><td style="width:300px;">
 '''
     #tasklists
     for subject, tasklist in subjectdict.iteritems():
         html += u'''<select  name="taskList" id="t_type_%s" class="maxwidth">\n''' % unicode(subject).replace('"','&quot;')
         for taskpagename, taskdescription in tasklist:
-            html += u'<option name="question" value="%s">%s</option>\n' % (taskpagename, taskdescription)
+            html += u'<option value="%s">%s</option>\n' % (taskpagename, taskdescription)
         html += u'</select>\n'
 
 #################
 #################
 
     html += u'''
-<input type="hidden" name="action" value="editTask">
+    </td>
     <td>
+    <input type="hidden" name="action" value="editTask">
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('task_form');">
     <input type='button' name='edit' value='edit' onclick="submitTasks();">
     <input type='submit' name='new' value='new'>
     </td>
-</form>
 </tr>
+</table>
+</form>
 '''
     html += u'''
-<tr><td colspan="2">
+
+<form method="post" id="question_form" action="%s">
+<table class="no_border">
+<tr><td>
 Question type:
+</td><td colspan="2">
+Questions:
 </td></tr>
 <tr>
-<td>
-<form method="post" id="question_form" action="%s">
+<td style="width:200px;">
     <input type="hidden" name="action" value="editQuestion">''' % request.request_uri.split("?")[0]
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, questioncategory)
    
@@ -264,12 +276,8 @@ Question type:
     html += u'<select id="qtypesel" class="maxwidth" name="question_type">\n'
     for type in typedict:
         html += '<option value="q_type_%s">%s</option>\n' % (unicode(type).replace('"', '&quot;'), type)
-    html += u'''</select></td><td>
-</td></tr>
-<tr><td colspan="2">
-Questions:
-</td></tr>
-<tr><td>
+    html += u'''</select></td>
+    <td style="width:300px">
 '''
 
     #questionlists
@@ -277,7 +285,7 @@ Questions:
         html += u'''
 <select  class="maxwidth" id="q_type_%s" name="questionList">\n''' % unicode(type).replace('"', '&quot;')
         for questionpagename, questiontext in questionlist:
-            html += u'<option name="question" value="%s">%s</option>\n' % (questionpagename.replace('"', '&quot;'), questiontext)
+            html += u'<option value="%s">%s</option>\n' % (questionpagename.replace('"', '&quot;'), questiontext)
         html += u'</select>\n'
 
     html += u'''
@@ -287,9 +295,9 @@ Questions:
     <input type='button' name='edit' value='edit' onclick="submitQuestion();">
     <input type='submit' name='new' value='new'>
     </td>
-</form>
 </tr>
 </table>
+</form>
 '''
     return html
 
