@@ -530,11 +530,13 @@ class Question:
             if not isinstance(filecontent, str):
                 temp = filecontent.read()
                 filecontent = temp
+
+            filecontent = unicode(filecontent, 'iso-8859-15')
             
             if filename.endswith(".py"):
-                filecontent = "#FORMAT python\n"+filecontent
+                filecontent = u'#FORMAT python\n%s' % filecontent
             else:
-                filecontent = "#FORMAT plain\n"+filecontent
+                filecontent = u'#FORMAT plain\n%s' % filecontent
 
             filepage = PageEditor(self.request, historypage+"/file")
             try:
