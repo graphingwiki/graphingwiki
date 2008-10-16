@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
+    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, 
+                        Mika Seppänen, Juhani Eronen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import UserDict
@@ -110,6 +111,31 @@ class Meta(UserDict.DictMixin):
             meta._setCoder(coders.get(key, None))
 
         self.schema = coders
+
+    def __contains__(self, key):
+        value = self.dict.get(key, None)
+        if value:
+            return True
+        return False
+
+    def has_key(self, key):
+        return key in self
+
+# Just a container for many pages of meta
+class Metas(UserDict.DictMixin):
+    def __init__(self):
+        self.dict = dict()
+
+    def __getitem__(self, key):
+        if key not in self.dict:
+            self.dict[key] = Meta()
+        return self.dict[key]
+
+    def __delitem__(self, key):
+        self.dict.pop(key, None)
+        
+    def keys(self):
+        return [key for key, value in self.dict.iteritems() if value]
 
     def __contains__(self, key):
         value = self.dict.get(key, None)

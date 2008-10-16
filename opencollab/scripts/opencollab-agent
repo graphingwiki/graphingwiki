@@ -125,14 +125,15 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
 
                 try:
                     try:
-                        result = pickle.loads(data)
+                        result, attach = pickle.loads(data)
                     except EOFError:
                         print "Task failed"
-                        result = { page : { "metas" : { "status" : ["failed"]}}}
-                        wiki.request("TaskServer", agentId, "change", page, status, result)
+                        result = { page : { "status" : ["failed"]}}
+                        attach = dict()
+                        wiki.request("TaskServer", agentId, "change", page, status, result, attach)
                     else:
                         print "Got result %s" % repr(result)
-                        wiki.request("TaskServer", agentId, "close", page, status, result)
+                        wiki.request("TaskServer", agentId, "close", page, status, result, attach)
                 except WikiFailure, msg:
                     print "Wiki failure:", msg
                 else:
