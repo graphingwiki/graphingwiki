@@ -357,9 +357,9 @@ class GraphData(UserDict.DictMixin):
         # Add metadata
         for key, val in page.get('meta', dict()).iteritems():
             if key in SPECIAL_ATTRS:
-                setattr(node, key, ''.join(val))
+                node.__setattr__(key, ''.join(val))
             else:
-                setattr(node, key, val)
+                node.__setattr__(key, val)
 
         # Shapefile is an extra special case
         for shape in page.get('lit', dict()).get('gwikishapefile', list()):

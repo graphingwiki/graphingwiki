@@ -46,9 +46,12 @@ class AttrBag(object):
                 continue
             yield key, self.__dict__[key]
 
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
     def update(self, other):
         for name, value in other:
-            setattr(self, name, value)
+            self.__setattr__(name, value)
 
 class Node(AttrBag):
     def __init__(self, identity, **keys):

@@ -27,7 +27,7 @@ def get_pagelist(request, status):
     return pagelist, metakeys
 
 def execute(xmlrpcobj, agentid, oper='get',
-            page='', status=('', ''), result={}):
+            page='', status=('', ''), result={}, attach={}):
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -64,8 +64,15 @@ def execute(xmlrpcobj, agentid, oper='get',
 
             code = Page(request, page).get_raw_body()
 
+#            log = file('/tmp/log', 'a')
+#            log.write('\n' + repr(code) + '\n')
+
             code = code.split('}}}', 1)[0]
+#            log.write('\n' + repr(code) + '\n')
             code = code.split('{{#!', 1)
+#            log.write('\n' + repr(code) + '\n')
+#            log.flush()
+#            log.close()
 
             ret = save_meta(xmlrpcobj, page,
                             {'agent': [agentid], 'status': ['pending'],
@@ -85,22 +92,21 @@ def execute(xmlrpcobj, agentid, oper='get',
     if not page:
         return xmlrpclib.Fault(1, _("Error: Page not specified!"))
 
-    result.setdefault(page, {})
+    result.setdefault(page, dict())
     result[page]['heartbeat'] = [str(curtime)]
-    result[page].setdefault('metas', {})
 
     if oper == 'close':
-        result[page]['metas']['status'] = ['closed']
+        result[page]['status'] = ['closed']
 
     stdout, stderr = status
     if stderr or stdout:
         if stderr:
             ret = save_attachment(request, page, 'stderr.txt', stderr, True)
-            result[page]['metas']['stderr'] = ['inline:stderr.txt']
+            result[page]['stderr'] = ['inline:stderr.txt']
 
         if stdout:
             ret = save_attachment(request, page, 'stdout.txt', stdout, True)
-            result[page]['metas']['stdout'] = ['inline:stdout.txt']
+            result[page]['stdout'] = ['inline:stdout.txt']
 
         # If saving attachments fails for some reason or the other, bail out
         if not ret == True:
@@ -108,15 +114,14 @@ def execute(xmlrpcobj, agentid, oper='get',
 
     if oper in ['change', 'close']:
         for page in result:
-            respage = result.get(page, {})
-            template = respage.get('template', '')
-
-            metas = respage.get('metas', {})
+            respage = result[page]
+            attach = result[page].get('gwikiattachment', dict())
+            if attach:
+                del result[page]['gwikiattachment']
 
             ret = save_meta(xmlrpcobj, page, metas,
                             action='repl', template=template)
 
-            attach = result[page].get('attachments', {})
             for name in attach:
                 ret = save_attachment(request, page,
                                       name, attach[name], True)
