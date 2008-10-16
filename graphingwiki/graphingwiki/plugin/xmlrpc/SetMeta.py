@@ -39,12 +39,14 @@ def execute(xmlrpcobj, page, input, action='add',
     cleared, added, discarded = {page: dict()}, {page: dict()}, {page: dict()}
 
     if action == 'add':
-        added[page] = input
+        for key in input:
+            added[page][key] = input[key]
     elif action == 'set':
         old = get_metas(request, page, input.keys())
         for key in old:
             discarded[page][key] = old[key]
-            added[page][key] = input[key]
+            for key in input:
+                added[page][key] = input[key]
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)

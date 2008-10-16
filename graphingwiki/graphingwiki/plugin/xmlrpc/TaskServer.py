@@ -9,6 +9,7 @@
 """
 import xmlrpclib
 import random
+import cPickle
 
 from time import time
 
@@ -27,7 +28,12 @@ def get_pagelist(request, status):
     return pagelist, metakeys
 
 def execute(xmlrpcobj, agentid, oper='get',
-            page='', status=('', ''), result={}, attach={}):
+            page='', status=('', ''), data=''):
+    try:
+        result, attach = cPickle.loads(data)
+    except EOFError:
+        result, attach = dict(), dict()
+
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -64,15 +70,9 @@ def execute(xmlrpcobj, agentid, oper='get',
 
             code = Page(request, page).get_raw_body()
 
-#            log = file('/tmp/log', 'a')
-#            log.write('\n' + repr(code) + '\n')
 
             code = code.split('}}}', 1)[0]
-#            log.write('\n' + repr(code) + '\n')
             code = code.split('{{#!', 1)
-#            log.write('\n' + repr(code) + '\n')
-#            log.flush()
-#            log.close()
 
             ret = save_meta(xmlrpcobj, page,
                             {'agent': [agentid], 'status': ['pending'],
@@ -115,16 +115,13 @@ def execute(xmlrpcobj, agentid, oper='get',
     if oper in ['change', 'close']:
         for page in result:
             respage = result[page]
-            attach = result[page].get('gwikiattachment', dict())
-            if attach:
-                del result[page]['gwikiattachment']
+            att = attach.get(page, dict())
+            
+            ret = save_meta(xmlrpcobj, page, respage, action='repl')
 
-            ret = save_meta(xmlrpcobj, page, metas,
-                            action='repl', template=template)
-
-            for name in attach:
+            for name in att:
                 ret = save_attachment(request, page,
-                                      name, attach[name], True)
+                                      name, att[name], True)
 
     else:
         return xmlrpclib.Fault(2, _("Error: No such operation '%s'!" % (oper)))
