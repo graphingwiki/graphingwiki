@@ -3,7 +3,13 @@
     MetaAjaxCheck
       - gets meta values from showMetaJSON action
 
-    Usage: MetaAjaxCheck([page1,page2,...],key,value,oncomplete)
+    Usage: MetaAjaxCheck(pages,key,value,loadingtext,oncomplete)
+
+    @param pages=page1;page2;   list of pages to search metas separated with ;
+    @param key=string           key from which values shoud be searched from
+    @param value=string         value of the key to search
+    @param loadingtext="string"     text to show while searching
+    @param oncomplete=url/"sring"   page/text to show when match is found
 
     @copyright: 2008  <lauripok@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -37,20 +43,31 @@ def execute(macro, args):
     _ = macro.request.getText
 
     pages = key = value = complete = ''
-    if args is None:
-        pages = ''
-    else:
-        exp = re.compile("^[\[]?([^\[\]]+)[\],$]*([^\]]*)")
-        match = exp.match(args)
-        pages = match.group(1)
-        try:
-            split = match.group(2).split(',')
-            key = split[0]
-            value = split[1]
-            complete = split [2]
+    loadtext = "&nbsp;"
 
-        except:
-            None
+    if args is not None:
+        args = args.split(',')
+        exp = re.compile("^(.+)=(.+)$")
+        for arg in args:
+            match = exp.match(arg)
+            opt = match.group(1)
+            val = match.group(2)
+            if opt == "pages":
+                pages = val.replace(';',',')
+
+            elif opt == "key":
+                key = val
+
+            elif opt == "value":
+                value = val
+
+            elif opt == "loadtext":
+                loadtext = val.replace('"','')
+
+
+            elif opt == "oncomplete":
+                complete = val.replace('"',"'");
+
 
     html = unicode()
     html += u'''
@@ -64,10 +81,11 @@ window.addEvent('domready', function(){
     var search_key = "%s".replace(' ','');
     var search_value = "%s".replace(' ','');
     var complete = "%s";
-''' %(pages, key, value, complete)
+    var loadtext = "%s";
+''' %(pages, key, value, complete, loadtext)
     html += '''
     var ajax_result = $('ajax-result');
-    ajax_result.set('text', 'Checking:');
+    ajax_result.set('html', loadtext);
     var getJSON = (function(){
         ajax_result.addClass('ajax_loading');
         var get = new Request.JSON({
@@ -87,11 +105,13 @@ window.addEvent('domready', function(){
                                 ajax_result.removeClass('ajax_loading');
                                 $clear(loop);
                                 $clear(timeout);
-                                if(complete){
+                                if(/'/.test(complete)){
+                                   result_match = complete.replace(/'/g,"");
+                                }else if(complete != ""){
                                     new Request.HTML({
                                         update : ajax_result
                                         }).post(complete);
-                                return;
+                                    return;
                                 }
                             }
                             result_html += "&nbsp;&nbsp;<b>"+ key + "</b> : " + values[key] + "<br>";
@@ -101,7 +121,7 @@ window.addEvent('domready', function(){
                     });
                 //ajax_result.set('html', result_match + result_html);
                 if(result_match == ""){
-                    result_match = "Searching...";
+                    result_match = loadtext;
                     }
                 ajax_result.set('html', result_match);
                 }
@@ -113,7 +133,7 @@ window.addEvent('domready', function(){
         $clear(loop);
         $('ajax-result').set('html', "<b>Operation timed out, try again later.</b>");
         $('ajax-result').removeClass('ajax_loading');
-        }); 
+        });
     var timeout = stop_loop.delay(5*60*1000);
     });
 </script>
