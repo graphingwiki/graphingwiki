@@ -30,7 +30,6 @@ def get_pagelist(request, status):
 def get_targets(request, metas):
     check_meta = metas.get('gwikitargetmeta', list())
 
-
     if metas.get('gwikitarget', list()):
         targets = list()
         for target in metas['gwikitarget']:
