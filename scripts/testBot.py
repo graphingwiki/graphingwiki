@@ -7,7 +7,8 @@
 import os
 import sys
 import xmlrpclib
-import doctest
+import datetime
+import subprocess
 
 import shutil
 import tempfile
@@ -50,11 +51,22 @@ def runProgram(myInput="", myFile='ratkaisu.py', printReturnValue = False, param
 def writefile(fName, fCont): f = open(fName,"w"); f.write(fCont); f.close()
 """
 
+run = """import os
+import sys
+import doctest
+
+sys.path.append(os.getcwd())
+result = doctest.testfile("tests.txt")
+sys.stderr.write(repr(result) + "\\n")
+"""
+
 def error(msg):
-    print "[error] %s" % msg
+    date = datetime.datetime.now().isoformat()[:19]
+    print "%s [error] %s" % (date, msg)
 
 def info(msg):
-    print "[info] %s" % msg
+    date = datetime.datetime.now().isoformat()[:19]
+    print "%s [info] %s" % (date, msg)
 
 def stripLink(input):
     return input.lstrip("[").rstrip("]")
@@ -201,49 +213,36 @@ while True:
     path = tempfile.mkdtemp()
     cwd = os.getcwd()
     os.chdir(path)
-    sys.path.append(path)
     info("Created tempdir %s" % path)
 
     open(os.path.join(path, "tests.txt"), "w").write(tests)
     open(os.path.join(path, "tarkistaUtils.py"), "w").write(utils)
+    open(os.path.join(path, "run.py"), "w").write(run)
 
 
     open(os.path.join(path, "ratkaisu.py"), "w").write("pass\n")
 
-    reportPath = os.path.join(path, "reportTrivial.txt")
-    orginal = sys.stdout
-    sys.stdout = open(reportPath, "w")
+    p = subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
 
-    doctest.master = None
-    result = doctest.testfile("tests.txt")
-    sys.stdout.close()
-    sys.stdout = orginal
-
-    failed, total = result
+    failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
     trivialTests = total - failed
     info("Found %d trivial tests" % (trivialTests))
 
 
-    open(os.path.join(path, "ratkaisu.py"), "w").write(solution)
+    open(os.path.join(path, "ratkaisu.py"), "w").write(solution.encode('utf-8'))
 
-    reportPath = os.path.join(path, "report.txt")
-    orginal = sys.stdout
-    sys.stdout = open(reportPath, "w")
+    p = subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
 
-    doctest.master = None
-    result = doctest.testfile("tests.txt")
-    sys.stdout.close()
-    sys.stdout = orginal
-
-    failed, total = result
+    failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
     succeeded = total - failed
     succeeded = max(succeeded - trivialTests, 0)
     total = total - trivialTests
 
     info("Result %d of %d tests succeeded" % (succeeded, total))
 
-    report = open(reportPath).read()
-    report = report.replace("\\n", "\n")
+    report = stdout.replace("\\n", "\n")
     report = "#FORMAT plain\n" + report
 
     metas = dict()
