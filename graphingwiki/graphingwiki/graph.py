@@ -59,7 +59,9 @@ class AttrBag(object):
             yield key, self.__dict__[key]
 
     def __setattr__(self, key, value):
-        key = encode_page(key)
+        # HACK
+        if isinstance(key, unicode):
+            key = encode_page(key)
         self.__dict__[key] = value
 
     def update(self, other):
