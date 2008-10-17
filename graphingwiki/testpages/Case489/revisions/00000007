@@ -1,0 +1,9 @@
+Note that MetaRadarChart needs the page as first argument, otherwise there is no idea on the which page the chart should be of.
+
+chart 1
+[[MetaRadarChart(Case489/TableTest ää 1, chartheight=255)]]
+chart 2
+[[MetaRadarChart(Case489/TableTest ää 2, chartheight=255)]]
+
+[[MetaRadarTable(CategoryTableTest, ||aa aa||bb bb||öö öö||ää ää||,chartwidth=255, chartheight=255)]]
+[[MetaRadarTable(CategoryTableTest, chartwidth=255, chartheight=255)]]

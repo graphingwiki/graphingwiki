@@ -1,0 +1,11 @@
+The bug is due to rows not having a space after :: do not match regexp
+
+Does not work
+Works
+ Fii öö:: !&quot;#¤%&amp;/()Z&gt;ZGHJK:_ ÄÖLK
+These work
+ Fii ää:: diu däy
+Does not work
+ Fii ää:: mölkö pölkö höö
+Being the final on page has no special status - works
+ Fii ää:: 

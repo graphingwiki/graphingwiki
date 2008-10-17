@@ -1,0 +1,5 @@
+{{{
+If template page has " Foo::" instead of " Foo:: ", dropdown menu is not shown, because value_re at MetaFormEdit?.py doesn't match. 
+}}}
+
+[[NewPage(Case416Template, Push button to test,Case416,%Y-%m-%d-%H:%M:%S,editmetaform)]]

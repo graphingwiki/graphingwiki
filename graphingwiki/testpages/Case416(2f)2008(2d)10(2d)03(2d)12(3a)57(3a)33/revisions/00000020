@@ -1,0 +1,14 @@
+The bug is due to rows not having a space after :: do not match regexp
+
+Does not work
+Works
+These work
+Does not work
+Being the final on page has no special status - works
+{{{
+ Fii ää:: dii duu
+
+}}}
+ Fii öö:: 
+ Fii ää:: fsdfsf
+ Fii ää:: diu däy
