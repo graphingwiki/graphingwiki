@@ -27,6 +27,32 @@ def get_pagelist(request, status):
 
     return pagelist, metakeys
 
+def get_targets(request, metas):
+    check_meta = metas.get('gwikitargetmeta', list())
+
+
+    if metas.get('gwikitarget', list()):
+        targets = list()
+        for target in metas['gwikitarget']:
+            pagelist, _, _ = \
+                metatable_parseargs(request, target)
+
+            if check_meta:
+                for page in pagelist:
+                    temp_meta = get_metas(request, page, check_meta)
+                    for temp in check_meta:
+                        if not temp_meta.get(temp, list()):
+                            targets.append(page)
+
+            else:
+                targets.extend(pagelist)
+        metas['gwikitarget'] = targets
+
+    log.flush()
+    log.close()
+
+    return metas
+
 def execute(xmlrpcobj, agentid, oper='get',
             page='', status=('', ''), data=''):
     try:
@@ -68,8 +94,9 @@ def execute(xmlrpcobj, agentid, oper='get',
         for page in pagelist:
             metas = get_metas(request, page, metakeys)
 
-            code = Page(request, page).get_raw_body()
+            metas = get_targets(request, metas)
 
+            code = Page(request, page).get_raw_body()
 
             code = code.split('}}}', 1)[0]
             code = code.split('{{#!', 1)
@@ -95,18 +122,18 @@ def execute(xmlrpcobj, agentid, oper='get',
     result.setdefault(page, dict())
     result[page]['heartbeat'] = [str(curtime)]
 
-    if oper == 'close':
+    if oper == 'close' and not result[page].get('status', str()):
         result[page]['status'] = ['closed']
 
     stdout, stderr = status
     if stderr or stdout:
         if stderr:
             ret = save_attachment(request, page, 'stderr.txt', stderr, True)
-            result[page]['stderr'] = ['inline:stderr.txt']
+#            result[page]['stderr'] = ["inline:stderr.txt"]
 
         if stdout:
             ret = save_attachment(request, page, 'stdout.txt', stdout, True)
-            result[page]['stdout'] = ['inline:stdout.txt']
+#            result[page]['stdout'] = ["inline:stdout.txt"]
 
         # If saving attachments fails for some reason or the other, bail out
         if not ret == True:
@@ -116,7 +143,7 @@ def execute(xmlrpcobj, agentid, oper='get',
         for page in result:
             respage = result[page]
             att = attach.get(page, dict())
-            
+
             ret = save_meta(xmlrpcobj, page, respage, action='repl')
 
             for name in att:
