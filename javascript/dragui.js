@@ -436,13 +436,15 @@ menu.destroy();
 
 menu.grab(new Element('br'));
 del.inject(menu);
+
 if(boxData.get('endPoints').contains(pDiv.id) == false){
-menu.grab(new Element('br'));
-newep.inject(menu);
+	menu.grab(new Element('br'));
+	newep.inject(menu);
 }else if(childBoxes.get(pDiv.id).length > 0){
-menu.grab(new Element('br'));
-delep.inject(menu);
+	menu.grab(new Element('br'));
+	delep.inject(menu);
 }
+
 var childs  = childBoxes.get(pDiv.id);
 if(childs.length == 1){
     if(childs.filter(function(c){
@@ -717,6 +719,10 @@ menu.inject(document.body);
  if corrections in end points are needed*/
 function deleteBox(pDiv){
 var pDiv = $(pDiv);
+var value = boxData.get(pDiv.id);
+//show original menuitem
+var menuel = $$('input[value='+value+']').getParent('div');
+menuel.setStyle('display', '');
 getChildBox(pDiv.id).each(function(id){
 if(boxData.get('endPoints').contains(id)){
      ep = $('ep_'+id);
@@ -897,15 +903,15 @@ $(document.body).grab(menu);
 }
 
 /* Creates new box and sets child relations and end points. Parameters:
-* to			: Element which after box should be placed (either html 
+* @to			: Element which after box should be placed (either html 
 *					element id or value it's carrying)
-* value			: calue to carry
-* description	: label visible to user
+* @value			: calue to carry
+* @description	: label visible to user
 * optional parameters:
-* type			: random | select
-* required		: required value (task id)
-* posx			: x-coordinate
-* posy			: y-coordinate
+* @type			: random | select
+* @required		: required value (task id)
+* @posx			: x-coordinate
+* @posy			: y-coordinate
 **/
 function newBox(to, value, description, type, required, expires,  posx, posy){
 if(to === null){
@@ -939,6 +945,11 @@ while($('item'+lkm)!==null){
 var id = 'item'+ lkm;
 boxData.set('lkm', lkm);
 boxData.set(id, value);
+
+//hide original menuitem
+var menuel = $$('input[value='+value+']').getParent('div');
+menuel.setStyle('display', 'none');
+
 boxData.set(id+'_desc', description);
 
 expires = expires ? expires.toString() : "";
