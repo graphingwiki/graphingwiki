@@ -128,7 +128,7 @@ def pickHistoryPage(wiki, course):
 password = open("password").read().strip()
 course = "Course/521141P_Autumn2008"
 
-wiki = GraphingWiki("http://www.raippa.fi/", "bot", password)
+wiki = GraphingWiki("http://vm0021.virtues.local/", "bot", password)
 
 while True:
     picked = pickHistoryPage(wiki, course)
@@ -225,6 +225,10 @@ while True:
     p = subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
 
+    compiled = os.path.join(path, "ratkaisu.pyc")
+    if os.path.exists(compiled):
+        os.remove(compiled)
+
     failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
     trivialTests = total - failed
     info("Found %d trivial tests" % (trivialTests))
@@ -235,7 +239,11 @@ while True:
     p = subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
 
-    failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
+    try:
+        failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
+    except ValueError:
+        failed = total
+
     succeeded = total - failed
     succeeded = max(succeeded - trivialTests, 0)
     total = total - trivialTests
@@ -247,6 +255,7 @@ while True:
 
     metas = dict()
     metas["overallvalue"] = ["%d/%d" % (succeeded, total)]
+    metas["comment"] = ["[[%s]]" % (picked[0] + "/comment")]
 
     try:
         wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
