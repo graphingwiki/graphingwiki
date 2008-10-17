@@ -48,9 +48,6 @@ def get_targets(request, metas):
                 targets.extend(pagelist)
         metas['gwikitarget'] = targets
 
-    log.flush()
-    log.close()
-
     return metas
 
 def execute(xmlrpcobj, agentid, oper='get',
