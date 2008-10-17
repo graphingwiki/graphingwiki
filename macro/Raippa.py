@@ -379,10 +379,25 @@ def execute(macro, text):
         userpage = Page(request, request.user.name)
         if request.user.name and not userpage.exists():
             msg = edit_meta(request, request.user.name, {"":""}, {"name":[request.user.aliasname]}, True, [usercategory])
+            try:
+                page = PageEditor(request, request.user.name)
+                table = u'<<MetaTable(CategoryHistory, user=%s, >>question>>time)>>' % request.us$
+                content = page.getPageText() + table
+                msg = page.saveText(content, page.get_real_rev())
+            except:
+                pass
         elif request.user.name and userpage.exists():
             metas = getmetas(request, request.graphdata, encode(request.user.name), ["name"], checkAccess=False)
             if not metas["name"]:
                 msg = edit_meta(request, encode(request.user.name), {"":""}, {"name":[request.user.aliasname]})
+            table = u'<<MetaTable(CategoryHistory, user=%s, >>question>>time)>>' % request.user.n$
+            if table not in userpage.getPageText():
+                try:
+                    page = PageEditor(request, request.user.name)
+                    content = page.getPageText() + table
+                    msg = page.saveText(content, page.get_real_rev())
+                except:
+                    pass
         return courselisthtml(request) 
     else:
         metas = getmetas(request, request.graphdata, pagename, ["WikiCategory", "start", "option"], checkAccess=False)
