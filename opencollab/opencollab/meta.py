@@ -61,6 +61,13 @@ class MetaKey(object):
         for item in items:
             self.add(item)
 
+    # Methods for pickle
+    def __getstate__(self):
+        return self.set, self.coder
+
+    def __setstate__(self, state):
+        self.set, self.coder = state
+
     def clear(self):
         self.set.clear()
 
@@ -96,8 +103,19 @@ class Meta(UserDict.DictMixin):
 
     def __getitem__(self, key):
         if key not in self.dict:
-            self.dict[key] = MetaKey(self.schema.get(key, None))
+            self.__dict__['dict'][key] = MetaKey(self.schema.get(key, None))
         return self.dict[key]
+
+    # To enable usage of metas interchangeably with dicts
+    def __setitem__(self, key, val):
+        if key not in self.dict:
+            self.dict[key] = MetaKey(self.schema.get(key, None))
+        # If we have something that can iterate, add the items
+        try:
+            self.dict[key].add(val)
+        except TypeError:
+            for x in val:
+                self.dict[key].add(x)
 
     def __delitem__(self, key):
         self.dict.pop(key, None)
@@ -110,7 +128,7 @@ class Meta(UserDict.DictMixin):
         for key, meta in self.dict.iteritems():
             meta._setCoder(coders.get(key, None))
 
-        self.schema = coders
+        self.__dict__['schema'] = coders
 
     def __contains__(self, key):
         value = self.dict.get(key, None)

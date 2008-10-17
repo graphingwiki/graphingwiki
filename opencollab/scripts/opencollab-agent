@@ -130,10 +130,11 @@ def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
                         print "Task failed"
                         result = { page : { "status" : ["failed"]}}
                         attach = dict()
-                        wiki.request("TaskServer", agentId, "change", page, status, result, attach)
+                        data = pickle.dumps(result, attach)
+                        wiki.request("TaskServer", agentId, "change", page, status, data)
                     else:
                         print "Got result %s" % repr(result)
-                        wiki.request("TaskServer", agentId, "close", page, status, result, attach)
+                        wiki.request("TaskServer", agentId, "close", page, status, data)
                 except WikiFailure, msg:
                     print "Wiki failure:", msg
                 else:
