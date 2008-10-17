@@ -80,7 +80,7 @@ for start in p.glinks:
                           p.nameidmap[end])
 
 
-for node, in p.graph.nodes.getall():
+for node, in p.graph.nodes:
     nodedir = os.path.join(basedir, quoteWikinameFS(node))
     curf = os.path.join(nodedir, 'current')
     nro = 1
@@ -96,7 +96,9 @@ for node, in p.graph.nodes.getall():
     file(curf, 'w').write(curver + '\n')
     out = file(os.path.join(revdir, curver), 'w')    
 
-    for par, chi in p.graph.edges.getall(parent = node):
+    for par, chi in p.graph.edges:
+        if not par == node:
+            continue
         out.write('["%s"]\n\n' % encode(chi))
 
     if cat:

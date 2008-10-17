@@ -43,6 +43,9 @@ from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
 
+# securitypolicy does magic monkey-patching of Moin's Request class on import
+import graphingwiki.securitypolicy
+
 usage = "usage: %prog <path-to-wiki> [pagename]\n"
 parser = OptionParser(usage=usage)
 
@@ -100,18 +103,21 @@ if not pages:
         if 'current' in os.listdir(dir):
             pages.append(unquoteWikiname(dir))
 
+pages = filter(lambda x: not x.endswith('/MoinEditorBackup'), pages)
+
 total = len(pages)
 padding = len(str(total))
 count = 1
 
+# Just init one request
+req = request.RequestCLI()
+
 for pagename in pages:
-    if pagename.endswith('/MoinEditorBackup'):
-        continue
-    print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, _e(pagename))
-    count += 1
     page_enc = _e(pagename)
-    # Make a new request for the page, get raw text
-    req = RequestCLI(pagename=page_enc)
+    print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
+    count += 1
+    # Implant relevant bits for this page into our recycleable req
+    
     pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
     picklefile = os.path.join(pagedir, 
@@ -122,12 +128,13 @@ for pagename in pages:
         os.unlink(picklefile)
 
     p = Page(req, pagename)
-
+    req.page = p
     pagepath = underlay_to_pages(req, p)
-
     text = p.get_raw_body()
-    
-    # Apply the graphsaver-action to the page
+
+    # Apply the graphsaver action to the page
     graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pagename, req, text, pagepath, p)
-    req.finish()
+
+# Must finish the request to ensure that metadata is saved
+req.finish()
