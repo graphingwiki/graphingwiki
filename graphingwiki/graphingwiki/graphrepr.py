@@ -30,17 +30,18 @@
 #! /usr/bin/env python
 # -*- coding: latin-1 -*-
 
-from subprocess import *
 import sys
-import select
 import os
-import time
+
+from graphingwiki.patterns import encode_page, decode_page, get_url_ns
+from graphingwiki.editing import ordervalue
 
 gv_found = True
 
 # 32bit and 64bit versions
 try:
     sys.path.append('/usr/lib/graphviz/python')
+    sys.path.append('/usr/local/lib/graphviz/python') # OSX
     import gv
 except ImportError:
     sys.path[-1] = '/usr/lib64/graphviz/python'
@@ -101,7 +102,7 @@ class GraphvizItemGroup(object):
 
         Well, really only sets them to "".
         """
-        attrs = {}.fromkeys(list, "")
+        attrs = dict().fromkeys(list, "")
         attrs[self.type] = item
         self.graph._setattrs(self.parent.handle, **attrs)
 
@@ -139,9 +140,9 @@ class GraphvizEdges(GraphvizItemGroup):
     def __iter__(self):
         cur = gv.firstedge(self.parent.handle)
         while gv.ok(cur):
-            yield (gv.nameof(gv.tailof(cur)), \
-                  gv.nameof(gv.headof(cur))) , \
-                  dict(self.graph._iterattrs(cur))
+            yield (decode_page(gv.nameof(gv.tailof(cur))), 
+                   decode_page(gv.nameof(gv.headof(cur)))), \
+                   dict(self.graph._iterattrs(cur))
             cur = gv.nextedge(self.parent.handle, cur)
 
 class GraphvizSubgraphs(GraphvizItemGroup):
@@ -169,7 +170,7 @@ class GraphvizItem(object):
         Well, really only sets them to "". Calls Graphviz_setattrs by
         item handle.
         """
-        attrs = {}.fromkeys(list, "")
+        attrs = dict().fromkeys(list, "")
         self.graph._setattrs(handle=self.handle, **attrs)
 
     def delete(self):
@@ -183,19 +184,20 @@ class GraphvizItem(object):
         """ Iterates over item attributes. """
         attr = gv.firstattr(self.handle)
         while gv.ok(attr):
-            yield gv.nameof(attr), gv.getv(self.handle, attr)
+            yield gv.nameof(attr), \
+                decode_page(gv.getv(self.handle, attr))
             attr = gv.nextattr(self.handle, attr)
 
     def __str__(self):
         """ Returns item name. """
-        return gv.nameof(self.handle)
+        return "u'" + decode_page(gv.nameof(self.handle)) + "'"
 
     def __repr__(self):
         """ Returns item name and attributes.
 
         The output is directly usable by graph.<type>.add().
         """
-        return "('" + str(self) + "', " + str(dict(self)) + ')'
+        return u"(" + str(self) + ", " + str(dict(self)) + u')'
 
     def __setattr__(self, name, value):
         """ Sets the attribute to item using self.set """
@@ -208,14 +210,16 @@ class GraphvizItem(object):
     def __getattr__(self, name):
         """ Finds the named attribute, returns its value """
         handle = self.__dict__['handle']
+
+        name = encode_page(name)
+
         retval = gv.getv(handle, gv.findattr(handle, name))
         # Needed mainly for dict() for work, getattribute excepts
         # and so __iter__ is called. Non-gv attrs are not returned.
         if not retval:
             object.__getattribute__(self, name)
-            return retval
-        else:
-            return retval
+
+        return decode_page(retval)        
 
 # Subclasses, some overloading
 class GraphvizNode(GraphvizItem):
@@ -227,8 +231,8 @@ class GraphvizEdge(GraphvizItem):
         super(GraphvizEdge, self).__init__(graph, handle)
 
     def __str__(self):
-        return "('" + gv.nameof(gv.tailof(self.handle)) + \
-               "', '" + gv.nameof(gv.headof(self.handle)) + "')"
+        return "(u'" + decode_page(gv.nameof(gv.tailof(self.handle))) + \
+               "', u'" + decode_page(gv.nameof(gv.headof(self.handle))) + "')"
 
     def __repr__(self):
         return "(" + str(self) + ", " + str(dict(self)) + ')'
@@ -254,7 +258,7 @@ class Graphviz:
             self._read(string=string)
         elif name:
             if strict in ["", "strict"] and type in ["graph", "digraph"]:
-                self.name = name
+                self.name = encode_page(name)
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
                 # print "g = gv.%s%s('%s')" % (strict, type, name)
             else:
@@ -284,6 +288,8 @@ class Graphviz:
     def layout(self, format="", file=""):
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
+        format, file = map(encode_page, [format, file])
+
         if self.changed:
             # print "gv.layout(g, '%s')" % (self.engine)
             gv.layout(self.handle, self.engine)
@@ -327,7 +333,14 @@ class Graphviz:
         Finds the item handle by type, if necessary, and sets given
         attributes.
         """
+        head, tail = '', ''
+        if edge:
+            head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
         self.changed = 1
+
         if proto in ["node", "edge"]:
             # Gets handle when called from Subraphs.set()
             if subg:
@@ -335,8 +348,7 @@ class Graphviz:
             # Called by self.set() and GraphvizSubgraph.set(), handle known
             item = getattr(gv, "proto%s" % proto)(handle)
             # print "item = gv.proto" + proto + "(g)"
-        elif edge:
-            head, tail = edge
+        elif head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
             # print "item = gv.findedge(gv.findnode(g, '" + head + "')," + \
@@ -351,13 +363,15 @@ class Graphviz:
             item = handle
         else:
             raise "No graph element or element type specified"
+
         for key, elem in attrs.iteritems():
             if isinstance(elem, set):
-              for e in elem:
-                gv.setv(item, key, e)
+                for e in elem:
+                    key, e = map(encode_page, [key, e])
+                    gv.setv(item, key, e)
             else:
-              gv.setv(item, key, elem)
-              
+                key, elem = map(encode_page, [key, elem])
+                gv.setv(item, key, elem)
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
     def _iterattrs(self, handle=""):
@@ -370,7 +384,7 @@ class Graphviz:
             handle = self.handle
         attr = gv.firstattr(handle)
         while gv.ok(attr):
-            yield gv.nameof(attr), gv.getv(handle, attr)
+            yield gv.nameof(attr), decode_page(gv.getv(handle, attr))
             attr = gv.nextattr(handle, attr)
 
     def _add(self, handle, node="", edge="", subg="", **attrs):
@@ -379,9 +393,15 @@ class Graphviz:
         Adds the item to parent Graphviz-item graph handle, sets item
         attributes as necessary and returns a Graphviz.<Type> instance.
         """
+        head, tail = '', ''
+        if edge:
+            head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
         self.changed = 1
-        if edge: 
-            item = gv.edge(handle, *edge)
+        if head and tail:
+            item = gv.edge(handle, *(head, tail))
             # print "gv.edge(g, '" + "', '".join(edge) + "')"
             graphvizitem = GraphvizEdge(self, item)
         elif node:
@@ -401,9 +421,14 @@ class Graphviz:
         """ Gets Graphviz.<Type> items from parent graph (given by handle).
         """
         # Default return value if item is not found
-        graphvizitem = None
+        head, tail = '', ''
         if edge:
             head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
+        graphvizitem = None
+        if head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
             if item:
@@ -426,9 +451,14 @@ class Graphviz:
         Finds the item handle by type, if necessary, and removes the
         item from graph
         """
-        self.changed = 1
+        head, tail = '', ''
         if edge:
             head, tail = edge
+
+        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+
+        self.changed = 1
+        if head and tail:
             item = gv.findedge(gv.findnode(handle, head),
                                gv.findnode(handle, tail))
         elif node:
@@ -442,450 +472,149 @@ class Graphviz:
         if item:
             gv.rm(item)
 
-class GraphRepr:
-    def __init__(self, graph, format='graphviz', engine='', order=''):
-        self.format = format
-        self.graph  = graph
-        self.order = order
+class GraphRepr(object):
+    def __init__(self, graph, engine):
+        object.__init__(self)
 
+        self.graph = graph
+        self.engine = engine
+        self.order = 'gwikiorder'
+
+        self.build()
+
+    def build(self):
         # get graph attributes
         self.graphattrs = dict(self.graph)
+
         # if graph has no name, make one 
-        if not self.graphattrs.has_key('name'):
-            self.graphattrs['name'] = str(id(self))
+        self.graphattrs.setdefault("name", str(id(self)))
+
         # add layout engine to graphattrs
-        if engine:
-            self.graphattrs['engine'] = engine
+        if self.engine:
+            self.graphattrs["engine"] = self.engine
 
-        # Call appropriate format function
-        getattr(self, self.format)()
-
-    def graphviz(self):
         # make graph with attrs
         self.graphviz = Graphviz(**self.graphattrs)
-        # print "g = Graphviz(**" + str(self.graphattrs) + ")"
 
-        # make graph dynamic. Oh yeah!
-        self.graph.listeners.add(self._graphvizchange).group = self
+        nodes = list(self.graph.nodes)
 
-    def _graphvizchange(self, graph, dummy):       
-        if self.order:
-            # Graphviz likes to have nodes added to graph in hierarchy order
-            nodes = dummy.nodes.added
-            attrs = dummy.nodes.set
-            ordered = {}
-            unordered = []
-            for node in attrs:
-                if attrs[node].has_key(self.order):
-                    value = attrs[node][self.order]
-                    if ordered.has_key(value):
-                        ordered[value].append(node)
-                    else:
-                        ordered[value] = [node]
-                else:
-                    unordered.append(node)
-            
-            addednodes = []
-            for key in sorted(ordered.keys()):
-                addednodes.extend(ordered[key])
-            addednodes.extend(unordered)
-        else:
-            addednodes = dummy.nodes.added
+        # Graphviz likes to have nodes added to graph in hierarchy order
+        ordered = dict()
+        unordered = list()
 
-        for node, in addednodes:
-            self.graphviz.nodes.add(str(node))
-            # print "g.nodes.add('" + str(node[0]) + "')"
-        for edge in dummy.edges.added:
-            self.graphviz.edges.add(tuple(str(x) for x in edge))
-            # print "g.edges.add(" + str(tuple(str(x) for x in edge)) + ")"
-
-        for node in dummy.nodes.set:
-            attrs = self._filterattrs(dummy.nodes.set[node])
-            if not attrs:
+        for node in nodes:
+            item = self.graph.nodes.get(node)
+            if not hasattr(item, self.order):
+                unordered.append(node)
                 continue
-            self.graphviz.nodes.set(str(node[0]), **attrs)
-            # print "g.nodes.set('" + str(node[0]) + "', **" + str(attrs) + ")"
-        for edge in dummy.edges.set:
-            self.graphviz.edges.set(tuple(str(x) for x in edge),
-                               **dummy.edges.set[edge])
-            # print "g.edges.set(" + str(tuple(str(x) for x in edge)) + \
-            #       ", **" + str(dummy.edges.set[edge]) + ")"
 
-        for node in dummy.nodes.unset:
-            self.graphviz.nodes.unset(str(node[0]),
-                                 *dummy.nodes.unset[node])
-            # print "g.nodes.unset('" + str(node[0]) + "', *" + \
-            #                      str(dummy.nodes.unset[node]) + ")"
-        for edge in dummy.edges.unset:
-            self.graphviz.edges.unset(tuple(str(x) for x in edge),
-                                 *dummy.edges.unset[edge])
-            # print "g.edges.unset(" + str(tuple(str(x) for x in edge)) + \
-            #       ", *" + str(dummy.edges.unset[edge]) + ")"
+            value = getattr(item, self.order)
+            ordered.setdefault(value, list()).append(node)
 
-        for node in dummy.nodes.deleted:
-            self.graphviz.nodes.delete(str(node[0]))
-            # print "g.nodes.delete('" + str(node[0]) + "')"
-        for edge in dummy.edges.deleted:
-            self.graphviz.edges.delete(tuple(str(x) for x in edge))
-            # print "g.edges.delete(" + str(tuple(str(x) for x in edge)) + ")"
+        nodes = list()
+        for key in sorted(ordered):
+            nodes.extend(ordered[key])
+        nodes.extend(unordered)
 
-    def dynagraph(self, error=None, msg=None, debug=None):
-        # Initialise graphviz string in case something weird happens
-        self.graphviz = ""
+        for node in nodes:
+            item = self.graph.nodes.get(node)
+            self.graphviz.nodes.add(node)
+            self.graphviz.nodes.set(node, **self._fixattrs(item))
 
-        # Responses from dynagraph
-        self._dyna_stdout = []
+        for edge in self.graph.edges:
+            item = self.graph.edges.get(*edge)
+            self.graphviz.edges.add(edge)
+            self.graphviz.edges.set(edge, **dict(item))
 
-        # Callback functions
-        if not error:
-            self._dynaerror = self._dummy_dynaerror
-        else:
-            self._dynaeror = error
-
-        if not msg:
-            self._dynamsg = self._dummy_dynamsg
-        else:
-            self._dynamsg = msg
-
-        self._dynadebug = debug
-
-        # Process communication params
-        self._bufsize = 4096
-        self._timeout = 0.1
-
-        # open pipes to dynagraph, err to out
-        p = Popen('dynagraph',  bufsize=self._bufsize, shell=True,
-                  stdin=PIPE, stdout=PIPE, stderr=STDOUT,
-                  close_fds=True)
-        (self.w, self.r) = (p.stdin, p.stdout)
-
-        # Get graph attributes, open graph
-        label = self._graphvizattrs(self.graphattrs)
-        msg = "open graph " + self.graphattrs['name'] + \
-            " " + label + "\n"
-        self._communicate(msg)
-
-        # make graph dynamic. Oh yeah!
-        self.graph.listeners.add(self._dynachange).group = self
-
-    def _dynachange(self, graph, dummy):
-        name = self.graphattrs['name'] + " "
-
-        msg = "lock graph " + name + "\n"
-        self._communicate(msg)
-
-        # Add by node/edge name. Adding edges requires specifying an
-        # id, here edge object id, as well as src/dst nodes.
-        for node in dummy.nodes.added:
-            msg = "insert node " + name + str(node[0]) + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.added:
-            msg = "insert edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
-                  " ".join((str(x) for x in edge)) + "\n"
-            self._communicate(msg)
-
-        # set and unset follow same logic: get the attrs to set/unset,
-        # make them into a graphviz-format string and feed the commands to
-        # dynagraph
-        for node in dummy.nodes.set:
-            # filter out "bad" attrs
-            attrs = self._filterattrs(dummy.nodes.set[node])
-            # If all attrs filtered
-            if not attrs:
-                continue
-            label = self._graphvizattrs(attrs)
-            msg = "modify node " + name + \
-                  str(node[0]) + " " + label + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.set:
-            label = self._graphvizattrs(dummy.edges.set[edge])
-            msg = "modify edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
-                  label + "\n"
-            self._communicate(msg)
-
-        for node in dummy.nodes.unset:
-            label = self._graphvizattrs(
-                {}.fromkeys(dummy.nodes.unset[node], ""))
-            msg = "modify node " + name + \
-                  str(node[0]) + " " + label + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.unset:
-            label = self._graphvizattrs(
-                {}.fromkeys(dummy.edges.unset[edge], ""))
-            msg = "modify edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + " " +\
-                  label + "\n"
-            self._communicate(msg)
-
-        # Delete by name, even simpler than add
-        for node in dummy.nodes.deleted:
-            msg = "delete node " + name + str(node[0]) + "\n"
-            self._communicate(msg)
-        for edge in dummy.edges.deleted:
-            msg = "delete edge " + name + \
-                  str(id(self.graph.edges.get(*edge))) + "\n"
-            self._communicate(msg)
-
-        msg = "unlock graph " + name + "\n"
-        self._communicate(msg)
-
-        # Grab and save results
-        self.graphviz = self._getgraph()
-
-    def _graphvizattrs(self, attrs):
-        # Make a graphviz-accepted string from attributes
-        label = ["["]
-        for key, val in attrs.iteritems():
-            # node attributes will be ''.joined twice, should do no harm
-            label.append('%s = "%s"' % (key, val))
-            label.append(', ')
-        label[-1] = "]"
-        
-        return ''.join(label)
-
-    def _filterattrs(self, attrs):
+    def _fixattrs(self, item):
         # return attrs with empty values filtered and style attrs renamed
         out = dict()
-        for key, value in attrs.items():
+        for key, value in item:
             if value and isinstance(value, basestring):
-                val = ''.join(attrs[key])
                 if key.startswith('gwiki'):
-                    key = key.replace('gwiki', '', 1)
-                
-                out[key] = val
-
+                    key = key.replace('gwiki', '', 1)                
+                out[key] = value
         return out
 
-    # Dummy callback functions
-    def _dummy_dynaerror(self, line):
-        raise "Dynagraph error " + line
+    def order_graph(self, ordernodes, unordernodes, request, pagename, orderby):
+        # Ordering the nodes into ranks. 
+        orderkeys = ordernodes.keys()
+        orderkeys.sort()
 
-    def _dummy_dynamsg(self, line):
-        print "Dynagraph " + line
+        if orderby != 'gwikicategory':
+            orderURL = get_url_ns(request, pagename, orderby)
 
-    def _dummy_dynadebug(self, line):
-        print "Dynagraph --> " + line
-        
-    def _handledata(self):
-        input = ''.join(self._dyna_stdout).split("\n")
-        graphviz = ""
-        in_graphviz = 0
-        input_len = 0
+        prev_ordernode = ''
+        # New subgraphs, nodes to help ranking
+        for key in orderkeys:
+            # Get accurate representation of the key
+            label = unicode(ordervalue(key))
 
-        # Try to find the graph from the data
-        for line in input:
-            if self._dynadebug:
-                self._dynadebug(line)
+            cur_ordernode = 'orderkey: ' + label
+            sg = self.graphviz.subg.add(cur_ordernode, rank='same')
 
-            # Raise exception on dynagraph errors
-            if 'error in line' in line:
-                self._dynaerror(line)
-            # log messages to stdout
-            elif line.startswith('message "'):
-                self._dynamsg(line)
-            # The graph starts after '^fulfil graph <name>$'
-            elif line.startswith('fulfil graph'):
-                # Scrap input before this line, don't need to handle
-                # it again in any situation
-                # print "Scrapping input to line " + str(input_len)
-                self._dyna_stdout = [x + "\n" for x in input[input_len:]]
-                in_graphviz = 1
-            elif in_graphviz:
-                graphviz = graphviz + line + "\n"
-                # and the graph ends with '^}\n$'x
-                if line.startswith("}"):
-                    in_graphviz = 0
-            input_len = input_len + 1
+            if orderby != 'gwikicategory':
+                sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+            else:
+                sg.nodes.add(cur_ordernode, label=label, 
+                             URL=get_url_ns(request, pagename, label))
 
-        if in_graphviz == 1:
-            graphviz = ""
-        return graphviz
+            for node in ordernodes[key]:
+                sg.nodes.add(node)
 
-    def _getgraph(self):
-        # First, ask for da graph
-        msg = "request graph " + self.graphattrs['name'] + "\n"
-        self._communicate(msg)
+            if prev_ordernode:
+                self.graphviz.edges.add((prev_ordernode, cur_ordernode),
+                                 dir='none', style='invis',
+                                 minlen='1', weight='10')
+            prev_ordernode = cur_ordernode
 
-        # print "Start req", time.strftime("%M:%S", time.localtime())
+        # Unordered nodes to their own rank
+        sg = self.graphviz.subg.add('unordered nodes', rank='same')
+        sg.nodes.add('unordered nodes', style='invis')
+        for node in unordernodes:
+            sg.nodes.add(node)
+        if prev_ordernode:
+            self.graphviz.edges.add((prev_ordernode, 'unordered nodes'),
+                                  dir='none', style='invis',
+                                  minlen='1', weight='10')
 
-        graphviz = self._handledata()
-        while not graphviz:
-            # A bit time to respond
-            time.sleep(self._timeout)
-            # print "didn't get it!"
-            self._communicate()
-            # If we got data, try to handle it
-            if self._dyna_stdout:
-                graphviz = self._handledata()
+        # Edge minimum lengths
+        for edge in self.graph.edges:
+            tail, head = edge
+            edge = self.graphviz.edges.get(edge)
+            taily = getattr(self.graphviz.nodes.get(head), 'order', '')
+            heady = getattr(self.graphviz.nodes.get(tail), 'order', '')
 
-        # print "End req", time.strftime("%M:%S", time.localtime())
+            # Some values get special treatment
+            heady = ordervalue(heady)
+            taily = ordervalue(taily)
 
-        self._dyna_stdout = []
-        return graphviz
+            # The order attribute is owned by neither, one or
+            # both of the end nodes of the edge
+            if heady == '' and taily == '':
+                minlen = 0
+            elif heady == '':
+                minlen = orderkeys.index(taily) - len(orderkeys)
+            elif taily == '':
+                minlen = len(orderkeys) - orderkeys.index(heady)
+            else:
+                minlen = orderkeys.index(taily) - orderkeys.index(heady)
 
-    def _communicate(self, input=None):
-        message = "Dynagraph Says: broken pipe. Eject, eject!"        
-
-        if self.w and input:
-            # if we cannot write, select says []
-            if select.select([], [self.w], [], 0)[1]:
-                try:
-                    bytes_written = os.write(self.w.fileno(),
-                                             input[:self._bufsize])
-                    # print "Written: " + str(bytes_written)
-                    # print 'sent: ' + input[:10]
-                except OSError, why:
-                    import errno
-                    if why[0] == errno.EPIPE: #broken pipe
-                        self.w.close()
-                        self.w = None
-                        raise message
-                    raise
-                input = input[bytes_written:]
-
-        while select.select([self.r], [], [], 0)[0]:
-            try:
-                rec = os.read(self.r.fileno(), self._bufsize)
-                # print "Received: " + str(len(rec))
-            except OSError, why:
-                import errno
-                if why[0] == errno.EPIPE: #broken pipe
-                    self.r.close()
-                    self.r = None
-                    raise message
-                raise
-            if rec:
-                self._dyna_stdout.append(rec)
-                # print "data > " + repr(rec[-20:])
-            # dyna's in the process of writing stuff out,
-            # let's wait a bit and grab a bigger chunk
-            if len(rec) < 100:
-                time.sleep(self._timeout)
-        # print 'last data: ' + self._dyna_stdout[-1][:20]
+            # Redraw edge if it goes reverse wrt hierarcy
+            if minlen >= 0:
+                edge.set(minlen=str(minlen))
+            else:
+                # If there already is an edge going reverse direction,
+                # update it instead of drawing a new edge.
+                backedge = self.graphviz.edges.get((head, tail))
+                if backedge:
+                    backedge.set(minlen=str(-minlen))
+                    edge.set(constraint='false')
+                else:
+                    backedge = self.graphviz.edges.add((head, tail))
+                    backedge.set(**dict(edge.__iter__()))
+                    backedge.set(**{'dir': 'back', 'minlen': str(-minlen)})
+                    edge.delete()
 
     def __str__(self):
         return str(self.graphviz)
-
-if __name__ == '__main__':
-    g = graph.Graph()
-    g.label = "A new graph!"
-    g.rankdir = "LR"
-    g.nodes.add(1).label = "y"
-    g.nodes.add(2).comment = "prkl"
-    g.nodes.get(2).shape = "egg"
-    g.nodes.add(3).shape = "box"
-    g.nodes.add(4).shape = "diamond"
-    g.edges.add(1, 2).style = "invis"
-    g.edges.add(2, 3).dir = "none"
-
-#    print "Dynagraph init:"
-#    k = GraphRepr(g, "dynagraph")
-#    print str(k)
-#    print "Graphviz:"
-
-    v = GraphRepr(g)
-#    import layout
-#    l = layout.GraphvizLayout(g)
-#    str(v)
-
-    print "initial commit:"
-#    g.commit()
-    
-    print "changes and commit:"
-    g.nodes.add(5).label="jeah"
-    n = g.nodes.get(2)
-    del n.comment
-    del n.shape
-    g.nodes.delete(4)
-    e = g.edges.get(1, 2)
-    del e.style
-    e.dir = "both"
-#    g.commit()
-
-    print "megacommit:"
-    for i in range(10, 50):
-        g.nodes.add(i)
-#    g.commit()
-
-    prev = 50
-    for i in range(50, 250):
-        g.nodes.add(i)
-        g.edges.add(i, prev)
-        prev = i
-    g.commit()
-    
-#    v.graphviz.layout()
-#    print str(k)
-#    str(v)
-
-
-#    print "Graphviz again:"
-#    g = Graphviz(string=out)
-#    str(g)
-    
-def testgraphviz():
-    g = Graphviz('hello', comment="It's a new graph")
-
-    # adders to graph and subgraph, setters
-    n = g.nodes.add('1', label='node1', comment='a new node')
-    sg = g.subg.add('h')
-    n2 = sg.nodes.add('2', label='node2', comment='another node')
-    e = g.edges.add(('1', '2'), constraint="false")
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-    
-    # graph normal and proto setters
-    g.set(proto='node', shape="box")
-    g.set(rankdir='LR', label="Graph label!")
-
-    # subgraph setters    sg.set(proto='node', shape="egg")
-    g.subg.set('h', proto='edge', comment="references")
-    sg.color = 'black'
-
-    g.nodes.add('flash', label="Zlabam")
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-
-    # edge setters
-    e.set(label="lightning")
-    g.edges.set(('2', "1"), style="invis")
-    e.color = 'blue'
-
-    # node setters
-    sg.nodes.set('2', label="super", position="center")
-    n2.set(shape="ellipse")
-    n2.style = 'filled'
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print g
-
-    # Some more methods for setting attributes
-    g.edges.add(("3", "4")).dir = 'none'
-    sg.nodes.add("Thule").comment = 'here be dragons'
-    sg.edges.add(("Thule", "ix")).label = 'bridge'
-    sg.nodes.get("ix").comment = 'dark'
-
-    del g.nodes.get('2').position
-    if n2.comment == "another node":
-        n2.comment = "great"
-    g.nodes.delete('flash')
-
-    print "g.edges", g.edges
-    print "g.nodes", g.nodes
-    print "g.subg", g.subg
-    print "sg.nodes", sg.nodes
-    print "sg.edges", sg.edges
-    print g

@@ -15,9 +15,8 @@ import urlparse
 import socket
 import urllib
 import getpass
-
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
+import copy
+import md5
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
@@ -27,10 +26,14 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
-from MoinMoin.util.lock import ReadLock
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import encode, nonguaranteeds_p, getgraphdata
+from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
+from graphingwiki.patterns import absolute_attach_name, filter_categories
+from graphingwiki.patterns import NO_TYPE
+
+CATEGORY_KEY = "gwikicategory"
+TEMPLATE_KEY = "gwikitemplate"
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -61,39 +64,39 @@ def get_revisions(request, page):
     revisions = dict()
 
     pagename = page.page_name
-    quotedname = url_quote(encode(pagename))
-
     for rev in page.getRevList():
+        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
+
+        # Data about revisions is now cached to the graphdata
+        # at the same time this is used.
+        if request.graphdata.has_key(revlink):
+            revisions[rev] = revlink
+            continue
+
+        # If not cached, parse the text for the page
         revpage = Page(request, pagename, rev=rev)
         text = revpage.get_raw_body()
-        alldata, pagegraph = parse_text(request, alldata, revpage, text)
-        revlink = '%s?action=recall&rev=%d' % (encode(pagename), rev)
-        if alldata.has_key(quotedname):
-            alldata[revlink] = alldata[quotedname]
-            # So that new values are appended rather than overwritten
-            del alldata[quotedname]
+        alldata = parse_text(request, revpage, text)
+        if alldata.has_key(pagename):
+            alldata[pagename].setdefault('meta', 
+                                         dict())[u'#rev'] = [unicode(rev)]
+            # Do the cache. 
+            request.graphdata.cacheset(revlink, alldata[pagename])
+
             # Add revision as meta so that it is shown in the table
-            alldata[revlink].setdefault('meta', {})['#rev'] = [str(rev)]
             revisions[rev] = revlink
 
-    class getgraphdata(object):
-        def __init__(self, globaldata):
-            self.globaldata = globaldata
-
-        def getpage(self, pagename):
-            return self.globaldata.get(pagename, {})
-
-    globaldata = getgraphdata(alldata)
-
-    pagelist = [revisions[x] for x in sorted(revisions.keys(), reverse=True)]
+    pagelist = [revisions[x] for x in sorted(revisions.keys(), 
+                                             key=ordervalue, 
+                                             reverse=True)]
 
     metakeys = set()
     for page in pagelist:
-        for key in getkeys(globaldata, page):
+        for key in getkeys(request, page):
             metakeys.add(key)
-    metakeys = sorted(metakeys, key=str.lower)
+    metakeys = sorted(metakeys, key=ordervalue)
 
-    return globaldata, pagelist, metakeys
+    return pagelist, metakeys
 
 def underlay_to_pages(req, p):
     underlaydir = req.cfg.data_underlay_dir
@@ -127,106 +130,117 @@ def getmeta_to_table(input):
     table_keys = ['Page name']
 
     for key in input[0]:
-        table_keys.extend([url_unquote(encode(key))] * keyoccur[key])
+        table_keys.extend([key] * keyoccur[key])
 
     table = [table_keys]
 
     for vals in input[1:]:
-        row = [url_unquote(encode(vals[0]))]
+        row = [vals[0]]
         for i, val in enumerate(vals[1:]):
-            val = [encode(x) for x in val]
             val.extend([''] * (keyoccur[keys[i]] - len(val)))
             row.extend(val)
         table.append(row)
 
     return table    
 
-def ordervalue(value):
-    # IP addresses and numeric values get special treatment
-    try:
-        value = int(value.strip('"'))
-    except ValueError:
-        try:
-            value = float(value.strip('"'))
-        except ValueError:
-            tmpval = value.lstrip('[').rstrip(']').strip('"')
-            if value.replace('.', '').isdigit():
-                try:
-                    # 00 is stylistic to avoid this:
-                    # >>> sorted(['a', socket.inet_aton('100.2.3.4'),
-                    #     socket.inet_aton('1.2.3.4')])
-                    # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04']
-                    value = '00' + socket.inet_aton(value.strip('"'))
-                except socket.error:
-                    pass
-            pass
-    except AttributeError:
-        # If given an int to start with
-        pass
-
-    return value
-
-def edit_categories(request, savetext, category_edit, catlist):
-    # Original code copied from PageEditor
-
-    # Filter out anything that is not a category
-    newcategories = wikiutil.filterCategoryPages(request, catlist)
-    # If no categories to set or add, bail out now
-    if not newcategories and not category_edit == 'del':
-        return savetext
-        
-    # strip trailing whitespace
-    savetext = savetext.rstrip()
-
-    confirmed = []
-
-    # Add category separator if last non-empty line contains
-    # non-categories.
-    lines = filter(None, savetext.splitlines())
-    if lines:
-        #TODO: this code is broken, will not work for extended links
-        #categories, e.g ["category hebrew"]
-        categories = lines[-1].split()
-
-        if categories:
-            confirmed = wikiutil.filterCategoryPages(request, categories)
-
-        if len(confirmed) < len(categories):
-            # This was not a categories line, if deleting, our job is done
-            if category_edit == 'del':
-                return savetext + u'\n'
-            
-            # otherwise add separator
-            savetext += u'\n----\n'
-        elif category_edit == 'set':
-            # Delete existing when setting categories
-            savetext = '\n'.join(savetext.split('\n')[:-1]) + u'\n'
-        elif category_edit == 'del':
-            # Delete existing and separator when deleting categories
-            savetext = '\n'.join(savetext.split('\n')[:-2])
-
-    # Add is default
-    if category_edit == 'set':
-        # Delete existing categories
-        confirmed = []
-    elif category_edit == 'del':
-        # Just in case, do not add anything
-        newcategories = []
-
+def parse_categories(request, text):
+    # We want to parse only the last non-empty line of the text
+    lines = text.rstrip().splitlines()
     if not lines:
-        # add separator
-        savetext += u'\n----\n'
+        return lines, list()
 
-    # Add categories
-    for category in newcategories:
-        if category in confirmed:
+    # All the categories on the multiple ending lines of 
+    total_confirmed = list()
+    # Start looking at lines from the end to the beginning
+    while lines:
+        confirmed = list()
+        # Skip empty lines, comments
+        if not lines[-1].strip() or lines[-1].startswith('##'):
+            lines.pop()
             continue
-        if savetext and savetext[-1] != u'\n':
-            savetext += ' '
-        savetext += category
-    savetext += u'\n' # Should end with newline!
 
-    return savetext
+        # TODO: this code is broken, will not work for extended links
+        # categories, e.g ["category hebrew"]
+        candidates = lines[-1].split()
+        confirmed.extend(filter_categories(request, candidates))
+
+        # A category line is defined as a line that contains only categories
+        if len(confirmed) < len(candidates):
+            # The line was not a category line
+            return lines, total_confirmed
+
+        # It was a category line - add the categories
+        total_confirmed.extend(confirmed)
+
+        # Remove the category line
+        lines.pop()
+
+    return lines, confirmed
+
+def edit_categories(request, savetext, action, catlist):
+    """
+    >>> request = _doctest_request()
+    >>> s = "= @PAGE@ =\\n" + \
+        "[[TableOfContents]]\\n" + \
+        "[[LinkedIn]]\\n" + \
+        "----\\n" + \
+        "CategoryIdentity\\n" +\
+        "##fslsjdfldfj\\n" +\
+        "CategoryBlaa\\n"
+    >>> edit_categories(request, s, 'add', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\nCategoryBlaa CategoryIdentity CategoryEi\\n'
+    >>> edit_categories(request, s, 'set', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\nCategoryEi\\n'
+    >>> s = "= @PAGE@ =\\n" + \
+       "[[TableOfContents]]\\n" + \
+       "[[LinkedIn]]\\n" + \
+       "----\\n" + \
+       "## This is not a category line\\n" +\
+       "CategoryIdentity hlh\\n" +\
+       "CategoryBlaa\\n"
+    >>> 
+    >>> edit_categories(request, s, 'add', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryBlaa CategoryEi\\n'
+    >>> edit_categories(request, s, 'set', ['CategoryEi'])
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryEi\\n'
+    """
+    # Filter out anything that is not a category
+    catlist = filter_categories(request, catlist)
+    lines, confirmed = parse_categories(request, savetext)
+
+    # Remove the empty lines from the end
+    while lines and not lines[-1].strip():
+        lines.pop()
+
+    # Check out which categories we are going to write back
+    if action == "set":
+        categories = list(catlist)
+    elif action == "del":
+        categories = list(confirmed)
+        for category in catlist:
+            if category in categories:
+                categories.remove(category)
+    else:
+        categories = list(confirmed)
+        for category in catlist:
+            if category not in categories:
+                categories.append(category)
+
+    # Check whether the last line is a separator; add and remove it if needed
+    if not lines:
+        if categories:
+            lines.append(u"----")
+    elif not (len(lines[-1]) >= 4 and set(lines[-1].strip()) == set("-")):
+        if categories:
+            lines.append(u"----")
+    else:
+        if not categories:
+            lines.pop()
+        
+    if categories:
+        lines.append(" ".join(categories))
+
+    return u"\n".join(lines) + u"\n"
 
 def formatting_rules(request, parser):
     from MoinMoin.parser.text_moin_wiki import Parser
@@ -245,30 +259,12 @@ def formatting_rules(request, parser):
 
     return re.compile(rules, re.UNICODE)
 
-def getpage(name, request=None):
-    if not request:
-        # RequestCLI does not like unicode input
-        if isinstance(name, unicode):
-            pagename = encode(name)
-        else:
-            pagename = name
-
-        request = RequestCLI(pagename=pagename)
-
-        formatter = TextFormatter(request)
-        formatter.setPage(request.page)
-        request.formatter = formatter
-
-    page = PageEditor(request, name)
-
-    return request, page
-
-def getkeys(globaldata, name):
-    page = globaldata.getpage(name)
+def getkeys(request, name):
+    page = request.graphdata.getpage(name)
     keys = set(page.get('meta', {}).keys())
     # Non-typed links are not included
     keys.update(set(x for x in page.get('out', {}).keys()
-                    if x != '_notype'))
+                    if x != NO_TYPE))
     keys = {}.fromkeys(keys, '')
     return keys
 
@@ -314,25 +310,22 @@ def absolute_attach_name(quoted, target):
     return target
 
 # Fetch requested metakey value for the given page.
-def getmetas(request, globaldata, name, metakeys, 
-             display=True, abs_attach=True, checkAccess=True):
+def get_metas(request, name, metakeys, 
+             display=False, abs_attach=True, checkAccess=True):
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
-    quoted = unicode(url_unquote(name), config.charset)
     if checkAccess:
-        if not request.user.may.read(quoted):
+        if not request.user.may.read(name):
             return pageMeta
 
-    loadedPage = globaldata.getpage(name)
+    loadedPage = request.graphdata.getpage(name)
     loadedMeta = loadedPage.get("meta", dict())
 
     # Add values and their sources
     for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
-            value = unicode(value, config.charset).strip('"')
-            value = value.replace('\\"', '"')
-            pageMeta[key].append((value, "meta"))
+            pageMeta[key].append(value)
 
     # Link values are in a list as there can be more than one edge
     # between two pages.
@@ -341,101 +334,91 @@ def getmetas(request, globaldata, name, metakeys,
         loadedOuts = loadedPage.get("out", dict())
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
-                if abs_attach:
-                    target = link_to_attachment(globaldata, target)
 
-                pageMeta[key].append((target, "link"))
+                pageMeta[key].append(target)
     else:
         # Showing things as they are
         loadedLits = loadedPage.get("lit", dict())
+
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
                 if abs_attach:
-                    target = absolute_attach_name(quoted, target)
+                    target = absolute_attach_name(name, target)
 
-                pageMeta[key].append((target, "link"))
+                pageMeta[key].append(target)
             
     return pageMeta
 
-# Currently, the values of metadata and link keys are
-# considered additive in case of a possible overlap.
-# Let's see how it turns out.
-def getvalues(request, globaldata, name, key,
-              display=True, abs_attach=True):
+# Deprecated, remains for backwards compability for now
+def getmetas(request, name, metakeys, 
+             display=True, abs_attach=True, checkAccess=True):
+    return get_metas(request, name, metakeys, display, abs_attach, checkAccess)
 
-    quoted = unicode(url_unquote(name), config.charset)
-    if not request.user.may.read(quoted):
-        return set([])
-
-    page = globaldata.getpage(name)
-    vals = set()
-    # Add values and their sources
-    if key in page.get('meta', {}):
-        for val in page['meta'][key]:
-            val = unicode(val, config.charset).strip('"')
-            val = val.replace('\\"', '"')
-            vals.add((val, 'meta'))
-    # Link values are in a list as there can be more than one
-    # edge between two pages
-    if display:
-        # Making things nice to look at
-        if key in page.get('out', {}):
-            # Add values and their sources
-            for target in page['out'][key]:
-                if abs_attach:
-                    target = link_to_attachment(globaldata, target)
-
-                vals.add((target, 'link'))
-    else:
-        # Showing things as they are
-        if key in page.get('lit', {}):
-            # Add values and their sources
-            for target in page['lit'][key]:
-                if abs_attach:
-                    target = absolute_attach_name(quoted, target)
-
-                vals.add((target, 'link'))
-            
-    return vals
+# Deprecated, remains for backwards compability for now
+def getvalues(request, name, key,
+              display=True, abs_attach=True, checkAccess=True):
+    return getmetas(request, name, [key], display, abs_attach, checkAccess)[key]
 
 def get_pages(request):
     def filter(name):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
             return False
-        return not wikiutil.isSystemPage(request, name)
+        if wikiutil.isSystemPage(request, name):
+            return False
+        return request.user.may.read(name)
 
-    pages = set([])
-    # It seems to help avoiding problems that the query
-    # is made by request.rootpage instead of request.page
-    for page in request.rootpage.getPageList(filter=filter):
-        if not request.user.may.read(page):
-            continue
-        pages.add(url_quote(encode(page)))
+    return request.rootpage.getPageList(filter=filter)
 
-    return pages
+def remove_preformatted(text):
+    # Before setting metas, remove preformatted areas
+    preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
+    pre_replace = dict()
+    def get_hashkey(val):
+        return md5.new(repr(val)).hexdigest()
 
-def edit(pagename, editfun, request=None,
+    # Enumerate preformatted areas
+    for val in preformatted_re.findall(text):
+        key = get_hashkey(val)
+        pre_replace[key] = val
+
+    # Replace with unique format strings per preformatted area
+    def replace_preformatted(mo):
+        val = mo.group(0)
+        key = get_hashkey(val)
+        return '%s' % (key)
+
+    text = preformatted_re.sub(replace_preformatted, text)
+
+    return text, pre_replace
+
+def edit(pagename, editfun, oldmeta, newmeta, request,
          category_edit='', catlist=[], lock=None):
-    request, p = getpage(pagename, request)
+    p = PageEditor(request, pagename)
 
     oldtext = p.get_raw_body()
-    newtext = editfun(pagename, oldtext)
 
-    # print
-    # print newtext
-    # return '', p
+    #request.write(repr(oldtext) + '<br>' + repr(pre_replace))
+    #request.write(repr(oldtext % pre_replace) + '<br>')
+    #return '', p
+
+    oldtext, pre_replace = remove_preformatted(oldtext)
+
+    newtext = editfun(request, oldtext, oldmeta, newmeta)
+
+    # Metas have been set, insert preformatted areas back
+    for key in pre_replace:
+        newtext = newtext.replace(key, pre_replace[key])
 
     # Add categories, if needed
     if category_edit:
         newtext = edit_categories(request, newtext, category_edit, catlist)
 
-    graphsaver = wikiutil.importPlugin(request.cfg,
-                              'action',
-                              'savegraphdata')
+    graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
 
+    # PageEditor.saveText doesn't allow empty texts
     if not newtext:
-        return u'No data', p
+        newtext = u" "
 
     try:
         msg = p.saveText(newtext, 0)
@@ -464,213 +447,308 @@ def edit(pagename, editfun, request=None,
 
     return msg, p
 
-def _fix_key(key):
-    if not isinstance(key, unicode):
-        return unicode(url_unquote(key), config.charset)
-    return key
+def add_meta_regex(request, inclusion, newval, oldtext):
+    """
+    >>> request = _doctest_request()
+    >>> s = "= @PAGE@ =\\n" + \
+        "[[TableOfContents]]\\n" + \
+        "[[LinkedIn]]\\n" + \
+        "----\\n" + \
+        "CategoryIdentity\\n" +\
+        "##fslsjdfldfj\\n" +\
+        "CategoryBlaa\\n"
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n----\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    >>> 
+    >>> request.cfg.gwiki_meta_after = '^----'
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    >>> 
+    >>> s = '\\n'.join(s.split('\\n')[:2])
+    >>> 
+    >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n'
+    """
+
+    if not newval:
+        return oldtext
+
+    # print "Add", repr(newval), repr(oldmeta.get(key, ''))
+
+    # patterns after or before of which the metadata
+    # should be included
+    pattern = getattr(request.cfg, 'gwiki_meta_after', '')
+    repl_str = "\\1\n%s" % (inclusion)
+    if not pattern:
+        pattern = getattr(request.cfg, 'gwiki_meta_before', '')
+        repl_str = "%s\n\\1" % (inclusion)
+    if not pattern:
+        pattern = default_meta_before
+
+    # if pattern is not found on page, just append meta
+    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
+    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
+    if not repls:
+        oldtext = oldtext.rstrip('\n')
+        oldtext += '\n%s\n' % (inclusion)
+    else:
+        oldtext = newtext
+
+    return oldtext
+
+def replace_metas(request, oldtext, oldmeta, newmeta):
+    oldtext = oldtext.rstrip()
+    # Annoying corner case with dl:s
+    if oldtext.endswith('::'):
+        oldtext = oldtext + ' '
+
+    #a = file('/tmp/log', 'a')
+    #a.write(repr(oldtext) + '\n')
+    #a.write(repr(oldmeta) + '\n')
+    #a.write(repr(newmeta) + '\n')
+    #a.flush()
+    #a.close()
+
+    # Keeps track on the keys added during this edit
+    added_keys = set()
+
+    def macro_subfun(mo):
+        old_keyval_pair = mo.group(2).split(',')
+
+        # Strip away empty metadatas [[MetaData()]]
+        # and placeholders [[MetaData(%s,)]]
+        # (Placeholders should become obsolete with MetaEdit)
+        if len(old_keyval_pair) < 2:
+            return ''
+
+        # Check if the value has changed
+        key = old_keyval_pair[0]
+        key = key.strip()
+        val = ','.join(old_keyval_pair[1:])
+
+        if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
+            val = newval
+
+        # Return dict variable
+        return '\n %s:: %s' % (key, val)
+
+    def dl_subfun(mo):
+        all, key, val = mo.groups()
+
+        # print repr(all), repr(key), repr(val)
+
+        # Don't even start working on it if the key does not match
+        if key.strip() != oldkey.strip():
+            return all
+
+        # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
+
+        # Check if the value has changed
+        key = key.strip()
+        # print repr(oldval), repr(val), repr(newval)
+        # print repr(oldkey), repr(key)
+        if key == oldkey.strip() and val.strip() == oldval.strip():
+            val = newval
+
+        # Do not return placeholders
+        if not val.strip():
+            return ''
+
+        out = ' %s:: %s' % (key, val)
+
+        if all.startswith('\n'):
+            out = '\n' + out
+
+        return out
+
+    for key in newmeta:
+        # print repr(key)
+        oldkey = key
+        dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
+        dl_add_re = re.compile(dl_add % (oldkey), re.M)
+
+        for i, newval in enumerate(newmeta[key]):
+            # print repr(newval)
+            # Remove newlines from input, as they could really wreck havoc.
+            newval = newval.replace('\n', ' ')
+            inclusion = ' %s:: %s' % (oldkey, newval)
+
+            #print repr(inclusion)
+
+            #print "Meta change", repr(key), repr(newval)
+
+            #print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
+
+            # If nothing to do, do nothing
+            if (not oldmeta.has_key(key)
+                and not newval.strip()):
+
+                #print "Nothing to do\n"
+
+                continue
+
+            # If old meta has the key with i valus of it, 
+            # replace its i:th value with the new key. Preserves order.
+            elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
+                oldval = oldmeta[key][i]
+                #print "Replace", repr(oldval), repr(newval)
+                #print "# ", repr(oldval)
+                oldkey = key
+                # First try to replace the dict variable
+                oldtext = dl_re.sub(dl_subfun, oldtext)
+                # Then try to replace the MetaData macro on page
+                oldtext = metadata_re.sub(macro_subfun, oldtext)
+
+            # If prototypes ( key:: ) are present, replace them
+            elif (dl_proto_re.search(oldtext + '\n')):
+
+                # Do not replace with empties, i.e. status quo
+                if not newval.strip():
+                    continue
+
+                oldkey = key
+
+                oldtext = dl_proto_re.sub('\\1 %s' % (newval),
+                                          oldtext + '\n', 1)
+
+                added_keys.add(key)
+
+                #print "Proto", repr(newval), '\n'
+
+                continue
+
+            # If the old text has this key (either before this edit
+            # or added by this edit), add them (as dl).
+            # Cluster values of same keys near
+            elif (key in added_keys or
+                  (oldmeta.has_key(key) and 
+                   len(oldmeta[key]) - 1 < i)):
+
+                #print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
+
+                # Easiest to strip excess line breaks in a function
+                def cluster_metas(mo):
+                    all = mo.group(0)
+                    all = all.lstrip('\n')
+                    return '%s\n%s' % (inclusion, all)
+
+                # DL meta supported only, otherwise
+                # fall back to just adding
+                text, count = dl_add_re.subn(cluster_metas,
+                                             oldtext, 1)
+
+                if count:
+                    oldtext = text
+                    continue
+
+                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
+
+            # If the old text does not have this key, add it (as dl)
+            else:
+                #print "Newval"
+                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
+                added_keys.add(key)
+
+            # print
+
+    return oldtext
 
 def edit_meta(request, pagename, oldmeta, newmeta,
               category_edit='', catlist=[]):
-    def editfun(pagename, oldtext):
-        oldtext = oldtext.rstrip()
-        # Annoying corner case with dl:s
-        if oldtext.endswith('::'):
-            oldtext = oldtext + ' '
 
-        # Keeps track on the keys added during this edit
-        added_keys = set()
-
-        def macro_subfun(mo):
-            old_keyval_pair = mo.group(2).split(',')
-
-            # Strip away empty metadatas [[MetaData()]]
-            # and placeholders [[MetaData(%s,)]]
-            # (Placeholders should become obsolete with MetaEdit)
-            if len(old_keyval_pair) < 2:
-                return ''
-                
-            # Check if the value has changed
-            key = old_keyval_pair[0]
-            key = key.strip()
-            val = ','.join(old_keyval_pair[1:])
-            
-            if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
-                val = newval
-
-            # Return dict variable
-            return '\n %s:: %s' % (key, val)
-
-        def dl_subfun(mo):
-            all, key, val = mo.groups()
-
-            # print repr(all), repr(key), repr(val)
-
-            # Don't even start working on it if the key does not match
-            if key.strip() != oldkey.strip():
-                return all
-
-            # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
-
-            # Check if the value has changed
-            key = key.strip()
-            # print repr(oldval), repr(val), repr(newval)
-            # print repr(oldkey), repr(key)
-            if key == oldkey.strip() and val.strip() == oldval.strip():
-                val = newval
-
-            # Do not return placeholders
-            if not val.strip():
-                return ''
-
-            out = ' %s:: %s' % (key, val)
-
-            if all.startswith('\n'):
-                out = '\n' + out
-
-            return out
-
-        for key in newmeta:
-            # print repr(key)
-            oldkey = _fix_key(key)
-            dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
-            dl_add_re = re.compile(dl_add % (oldkey), re.M)
-
-            for i, newval in enumerate(newmeta[key]):
-                # print repr(newval)
-                # Remove newlines from input, as they could really wreck havoc.
-                newval = newval.replace('\n', ' ')
-                inclusion = ' %s:: %s' % (oldkey, newval)
-
-                # print repr(inclusion)
-
-                def default_add(request, inclusion, newval, oldtext):
-                    if not newval:
-                        return oldtext
-
-                    # print "Add", repr(newval), repr(oldmeta.get(key, ''))
-                    
-                    # patterns after or before of which the metadata
-                    # should be included
-                    pattern = getattr(request.cfg, 'gwiki_meta_after', '')
-                    repl_str = "\\1\n%s" % (inclusion)
-                    if not pattern:
-                        pattern = getattr(request.cfg, 'gwiki_meta_before', '')
-                        repl_str = "%s\n\\1" % (inclusion)
-                    if not pattern:
-                        pattern = default_meta_before
-
-                    # if pattern is not found on page, just append meta
-                    pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
-                    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
-                    if not repls:
-                        oldtext = oldtext.rstrip('\n')
-                        oldtext += '\n%s\n' % (inclusion)
-                    else:
-                        oldtext = newtext
-
-                    return oldtext
-
-                # print "Meta change", repr(key), repr(newval)
-
-                # print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
-
-                # If nothing to do, do nothing
-                if (not oldmeta.has_key(key)
-                    and not newval.strip()):
-
-                    # print "Nothing to do\n"
-
-                    continue
-
-                # If prototypes ( key:: ) are present, replace them
-                elif (dl_proto_re.search(oldtext + '\n')):
-                #elif (re.search(dl_proto % (oldkey), oldtext + '\n')):
-
-                    # Do not replace with empties, i.e. status quo
-                    if not newval.strip():
-                        continue
-
-                    oldkey = _fix_key(key)
-
-                    oldtext = dl_proto_re.sub('\\1 %s' % (newval),
-                                              oldtext + '\n', 1)
-
-                    added_keys.add(key)
-
-                    # print "Proto", repr(newval), '\n'
-
-                    continue
-
-                # If the old text has this key (either in old revision
-                # or added by this edit), add them (as dl).
-                # Cluster values of same keys near
-                elif (key in added_keys or
-                      (oldmeta.has_key(key) and 
-                       len(oldmeta[key]) - 1 < i)):
-
-                    # print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
-
-                    # Easiest to strip excess line breaks in a function
-                    def cluster_metas(mo):
-                        all = mo.group(0)
-                        all = all.lstrip('\n')
-                        return '%s\n%s' % (inclusion, all)
-
-                    # DL meta supported only, otherwise
-                    # fall back to just adding
-                    text, count = dl_add_re.subn(cluster_metas,
-                                                 oldtext, 1)
-
-                    if count:
-                        oldtext = text
-                        continue
-
-                    oldtext = default_add(request, inclusion, newval, oldtext)
-
-                # If the old text does not have this key, add it (as dl)
-                elif not oldmeta.has_key(key):
-                    # print "Newval"
-                    oldtext = default_add(request, inclusion, newval, oldtext)
-                    added_keys.add(key)
-
-                # Else, replace old value with new value
-                else:
-                    oldval = oldmeta[key][i]
-                    # print "Replace", repr(oldval), repr(newval)
-                    # print "# ", repr(oldval)
-                    oldkey = _fix_key(key)
-                    # First try to replace the dict variable
-                    oldtext = dl_re.sub(dl_subfun, oldtext)
-                    # Then try to replace the MetaData macro on page
-                    oldtext = metadata_re.sub(macro_subfun, oldtext)
-
-                # print
-
-        return oldtext
-
-    msg, p = edit(pagename, editfun, request, category_edit, catlist)
+    msg, p = edit(pagename, replace_metas, oldmeta, newmeta, request, 
+                  category_edit, catlist)
 
     return msg
 
-def process_edit(request, input,
-                 category_edit='', categories={}):
-    _ = request.getText
-    # request.write(repr(request.form) + '<br>')
-    # print repr(input) + '<br>'
+def set_metas(request, cleared, discarded, added):
+    pages = set(cleared) | set(discarded) | set(added)
 
-    def urlquote(s):
-        if isinstance(s, unicode):
-            s = s.encode(config.charset)
-        return urllib.quote(s)
+    # Discard empties and junk
+    pages = [x.strip() for x in pages if x.strip()]
 
-    def url_unquote(s):
-        s = urllib.unquote(s)
-        if not isinstance(s, unicode):
-            s = unicode(s, config.charset)
-        return s
+    msg = list()
 
-    globaldata = getgraphdata(request)
+    # We don't have to check whether the user is allowed to read
+    # the page, as we don't send any info on the pages out. Only
+    # check that we can write to the requested pages.
+    for page in pages:
+        if not request.user.may.write(page):
+            message = "You are not allowed to edit page '%s'" % page
+            return xmlrpclib.Fault(2, request.getText(message))
 
+    for page in pages:
+        pageCleared = cleared.get(page, set())
+        pageDiscarded = discarded.get(page, dict())
+        pageAdded = added.get(page, dict())
+        
+        # Template clears might make sense at some point, not implemented
+        if TEMPLATE_KEY in pageCleared:
+            del pageCleared[TEMPLATE_KEY]
+        # Template changes might make sense at some point, not implemented
+        if TEMPLATE_KEY in pageDiscarded:
+            del pageDiscarded[TEMPLATE_KEY]
+        # Save templates for empty pages
+        if TEMPLATE_KEY in pageAdded:
+            save_template(request, page, ''.join(pageAdded[TEMPLATE_KEY]))
+            del pageAdded[TEMPLATE_KEY]
+
+        metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
+        old = get_metas(request, page, metakeys, checkAccess=False)
+                       
+
+        # Handle the magic duality between normal categories (CategoryBah)
+        # and meta style categories
+        if CATEGORY_KEY in pageCleared:
+            edit_meta(request, page, dict(), dict(), "set", list())
+        if CATEGORY_KEY in pageDiscarded:
+            categories = pageDiscarded[CATEGORY_KEY]
+            edit_meta(request, page, dict(), dict(), "del", categories)
+        if CATEGORY_KEY in pageAdded:
+            categories = set(pageAdded[CATEGORY_KEY])
+            filtered = filter_categories(request, categories)
+            filtered = set(filtered) - set(old.get(CATEGORY_KEY, set()))
+            edit_meta(request, page, dict(), dict(), "add", list(filtered))
+            pageAdded[CATEGORY_KEY] = list(categories - filtered)
+
+        new = dict()
+        for key in old:
+            values = old.pop(key)
+            key = key
+            old[key] = values
+            new[key] = set(values)
+        for key in pageCleared:
+            new[key] = set()
+        for key, values in pageDiscarded.iteritems():
+            new[key].difference_update(values)
+        for key, values in pageAdded.iteritems():
+            new[key].update(values)
+
+        for key, values in new.iteritems():
+            ordered = copy.copy(old[key])
+            
+            for index, value in enumerate(ordered):
+                if value not in values:
+                    ordered[index] = u""
+                values.discard(value)
+
+            ordered.extend(values)
+            new[key] = ordered
+
+        #a = file('/tmp/log', 'a')
+        #a.write('\n')
+        #a.write(repr(old) + '\n')
+        #a.write(repr(new) + '\n')
+        #a.flush()
+        #a.close()
+
+        msg.append(edit_meta(request, page, old, new))
+
+    return True, msg
+
+def process_meta_changes(request, input):
     changes = dict()
     keychanges = dict()
     keypage = ''
@@ -680,7 +758,7 @@ def process_edit(request, input,
         if not key.startswith(':: '):
             continue
 
-        newkey = encode(input[key][0])
+        newkey = input[key][0]
         key = key[3:]
         if key == newkey:
             continue
@@ -689,78 +767,83 @@ def process_edit(request, input,
         if not newkey.strip():
             newkey = ''
 
-        keychanges[urlquote(key)] = urlquote(newkey)
+        # Form keys not autodecoded from utf-8
+        keychanges[key] = newkey
         # print repr(keychanges)
 
     for val in input:
         # At least the key 'save' may be there and should be ignored
-        if not '!' in val:
+        if not '?' in val:
             continue
 
         newvals = input[val]
 
-        keypage, key = val.split('!')
+        # Form keys not autodecoded from utf-8
+        keypage, key = map(decode_page, val.split('?'))
 
-        if not request.user.may.write(url_unquote(keypage)):
+        if not request.user.may.write(keypage):
             continue
 
-        keypage, key = map(urlquote, [keypage, key])
-
-        oldvals = list()
-        for val, typ in getvalues(request, globaldata, keypage,
-                                  key, display=False, abs_attach=False):
-            # Skip default labels
-            if key == 'label' and val == url_unquote(keypage):
-                pass
-            else:
-                oldvals.append(val)
+        keymetas = get_metas(request, keypage, [key], abs_attach=False)
+        oldvals = keymetas[key]
 
         if oldvals != newvals or keychanges:
-            changes.setdefault(keypage, {})
+            changes.setdefault(keypage, dict())
             if key in keychanges:
+
                 # In case of new keys there is no old one
                 if key.strip():
                     # print 'deleting key', repr(key)
                     # Otherwise, delete contents of old key
-                    changes[keypage].setdefault('old', {})[key] = oldvals
-                    changes[keypage].setdefault('new',
-                                                {})[key] = [''] * len(oldvals)
+                    changes[keypage].setdefault('old', dict())[key] = oldvals
+                    changes[keypage].setdefault('new', dict())[key] = \
+                        [''] * len(oldvals)
+
                 # If new key is empty, don't add anything
                 if keychanges[key].strip():
                     # print 'adding key', repr(keychanges[key])
                     if not newvals:
                         newvals = ['']
                     # Otherwise, add old values under new key
-                    changes[keypage].setdefault('new',
-                                                {})[keychanges[key]] = newvals
+                    changes[keypage].setdefault('new', dict())[keychanges[key]]\
+                        = newvals
+                                                
             else:
                 if oldvals:
-                    changes[keypage].setdefault('old', {})[key] = oldvals
-                changes[keypage].setdefault('new', {})[key] = newvals
+                    changes[keypage].setdefault('old', dict())[key] = oldvals
+                changes[keypage].setdefault('new', dict())[key] = newvals
 
-    msg = []
-    
+    return changes
+
+# Handle input from a MetaEdit-form
+def process_edit(request, input,
+                 category_edit='', categories={}):
+    _ = request.getText
+    # request.write(repr(request.form) + '<br>')
+    # print repr(input) + '<br>'
+
+    changes = process_meta_changes(request, input)
+
+    msg = list()
+
     # For category-only changes
     if not changes and category_edit:
         for keypage in categories:
-            msg.append('%s: ' % url_unquote(keypage) + \
-                       edit_meta(request, url_unquote(keypage),
-                                 {}, {},
+            msg.append('%s: ' % keypage + \
+                       edit_meta(request, keypage,
+                                 dict(), dict(),
                                  category_edit, categories[keypage]))
                                  
     elif changes:
         for keypage in changes:
-            catlist = categories.get(keypage, [])
-            msg.append('%s: ' % url_unquote(keypage) + \
-                       edit_meta(request, url_unquote(keypage),
+            catlist = categories.get(keypage, list())
+            msg.append('%s: ' % keypage + \
+                       edit_meta(request, keypage,
                                  changes[keypage].get('old', dict()),
                                  changes[keypage]['new'],
                                  category_edit, catlist))
     else:
-        if keypage:
-            msg.append('%s: %s' % (url_unquote(keypage), _("Unchanged")))
-        else:
-            msg.append(_('No pages changed'))
+        msg.append(_('No pages changed'))
 
     return msg
 
@@ -769,6 +852,9 @@ def save_template(request, page, template):
     raw_body = Page(request, page).get_raw_body()
     msg = ''
     if not raw_body:
+        # Start writing
+        request.graphdata.writelock()
+
         raw_body = ' '
         p = PageEditor(request, page)
         template_page = wikiutil.unquoteWikiname(template)
@@ -779,94 +865,23 @@ def save_template(request, page, template):
 
         msg = p.saveText(raw_body, 0)
 
+        # Stop writing
+        request.graphdata.readlock()
+
     return msg
-
-def order_meta_input(request, page, input, action):
-    def urlquote(s):
-        if isinstance(s, unicode):
-            s = s.encode(config.charset)
-        return urllib.quote(s)
-
-    # Expects MetaTable arguments
-    globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page)
-
-    globaldata.getpage(urlquote(page))
-
-    output = {}
-    # Add existing metadata so that values would be added
-    for key in input:
-        # Strip spaces
-        pair = '%s!%s' % (page, key.strip())
-        output[pair] = [x.strip() for x in input[key]]
-
-        if key in metakeys:
-            if action == 'repl':
-
-                # Add similar, purge rest
-                # Do not add a meta value twice
-                old = list()
-                for val, typ in getvalues(request, globaldata,
-                                          urlquote(page),
-                                          key, display=False):
-                    old.append(val)
-                src = set(output[pair])
-                tmp = set(src).intersection(set(old))
-
-                dst = []
-                # Due to the structure of the edit function,
-                # the order of the added values is significant:
-                # We want to have the common keys
-                # in the same 'slot' of the 'form'
-                for val in old:
-                    # If we have the common key, keep it
-                    if val in tmp:
-                        dst.append(val)
-                        tmp.remove(val)
-                        src.discard(val)
-                    # If we don't have the common key,
-                    # but still have keys, add a non-common one
-                    elif src:
-                        added = False
-                        for newval in src:
-                            if not newval in tmp:
-                                dst.append(newval)
-                                src.remove(newval)
-                                added = True
-                                break
-                        # If we only had common keys left, add empty
-                        if not added:
-                            dst.append(u'')
-                    else:
-                        dst.append(u'')
-                if src:
-                    dst.extend(src)
-                output[pair] = dst
-            else:
-                # Do not add a meta value twice
-                src = list()
-                for val, typ in getvalues(request, globaldata,
-                                          urlquote(page),
-                                          key, display=False):
-                    src.append(val)
-                for val in src:
-                    if val in output[pair]:
-                        output[pair].remove(val)
-                output[pair].extend(src)
-
-    return output
 
 def savetext(pagename, newtext):
     """ Savetext - a function to be used by local CLI scripts that
     modify page content directly.
 
     """
-    def editfun(pagename, oldtext):
+    def replace_metas(pagename, oldtext):
         return newtext
 
     # For some reason when saving a page with RequestCLI,
     # the pagelinks will present problems with patterns
     # unless explicitly cached
-    msg, p = edit(pagename, editfun)
+    msg, p = edit(pagename, replace_metas, {}, {}, request)
     if msg != u'Unchanged':
         req = p.request
         req.page = p
@@ -874,25 +889,52 @@ def savetext(pagename, newtext):
 
     return msg
 
+def string_aton(value):
+    value = value.lstrip('[').rstrip(']').strip('"')
+
+    # 00 is stylistic to avoid this: 
+    # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
+    #             socket.inet_aton('1.2.3.4')]) 
+    # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
+    return u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
+                           "unicode_escape")
+
+ORDER_FUNCS = [
+    # (conversion function, ignored exception type(s))
+    # integers
+    (int, ValueError),
+    # floats
+    (float, ValueError),
+    # ipv4 addresses
+    (string_aton, (socket.error, UnicodeEncodeError, TypeError)),
+    # strings (unicode or otherwise)
+    (lambda x: x.lower(), AttributeError)
+    ]
+
+def ordervalue(value):
+    for func, ignoredExceptionTypes in ORDER_FUNCS:
+        try:
+            return func(value)
+        except ignoredExceptionTypes:
+            pass
+    return value
+
 def metatable_parseargs(request, args,
-                        globaldata = None,
-                        get_all_keys = False,
-                        get_all_pages = False,
-                        checkAccess = True):
+                        get_all_keys=False,
+                        get_all_pages=False,
+                        checkAccess=True):
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
-        if not get_all_pages and request.page.page_name is not None:
-            args = request.page.page_name
-        else:
+        req_page = request.page
+        if get_all_pages or req_page is None or req_page.page_name is None:
             args = ""
+        else:
+            args = req_page.page_name
 
     # Category, Template matching regexps
     cat_re = re.compile(request.cfg.page_category_regex)
     temp_re = re.compile(request.cfg.page_template_regex)
-
-    # Placeholder for list of all pages
-    all_pages = []
 
     # Arg placeholders
     argset = set([])
@@ -905,9 +947,6 @@ def metatable_parseargs(request, args,
 
     # Flag: were there page arguments?
     pageargs = False
-
-    if not globaldata:
-        globaldata = getgraphdata(request)
 
     # Regex preprocessing
     for arg in (x.strip() for x in args.split(',') if x.strip()):
@@ -922,20 +961,20 @@ def metatable_parseargs(request, args,
                 # Grab styles
                 if key.startswith('<') and '>' in key:
                     style = wikiutil.parseAttributes(request,
-                                                     encode(key[1:]), '>')
+                                                     key[1:], '>')
                     key = key[key.index('>') + 1:].strip()
 
                     if style:
                         styles[key] = style[0]
 
-                keyspec.append(url_quote(encode(key.strip())))
+                keyspec.append(key.strip())
 
             continue
 
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
-            key = url_quote(encode(data[0]))
+            key = data[0]
             val = '='.join(data[1:])
 
             # Assume that value limits are regexps, if
@@ -975,90 +1014,60 @@ def metatable_parseargs(request, args,
             continue
 
         # Get all pages, check which of them match to the supplied regexp
-        all_pages = [unicode(url_unquote(x), config.charset)
-                     for x in globaldata]
-        for page in all_pages:
+        for page in request.graphdata:
             if page_re.match(page):
                 argset.add(page)
 
-    def unquote_name(name):
-        return unicode(url_unquote(name), config.charset)        
-
     def is_saved(name):
-        return globaldata.getpage(name).has_key('saved')
+        return request.graphdata.getpage(name).has_key('saved')
 
     def can_be_read(name):
-        return request.user.may.read(unquote_name(name))
-    
-    def is_a_existing_page(name):
-        return name in globaldata
+        return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        # Filter nonexisting pages and the pages the user may not read
+        pages = filter(is_saved, request.graphdata)
         if checkAccess:
-            pages = set(filter(can_be_read, filter(is_saved, globaldata)))
-        else:
-            pages = set(filter(is_a_existing_page, globaldata))
-
-    
+            # Filter out the pages the user may not read
+            pages = filter(can_be_read, pages)
+        pages = set(pages)
     # Otherwise check out the wanted pages
     else:
-        # Filter pages the user may not read
-        
         if checkAccess:
-            argset = set(url_quote(encode(x)) for x in
-                         filter(request.user.may.read, argset))
-        pages = set([])
+            # Filter pages the user may not read
+            argset = set(filter(can_be_read, argset))
 
-        for arg in argset:
-            if cat_re.search(arg):
-                # Nonexisting categories
-                try:
-                    page = globaldata.getpage(arg)
-                except KeyError:
+        pages = set()
+        categories = set(filter_categories(request, argset))
+        other = argset - categories
+
+        for arg in categories:
+            page = request.graphdata.getpage(arg)
+            newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
+            for newpage in newpages:
+                # Check that the page is not a category or template page
+                if cat_re.match(newpage) or temp_re.search(newpage):
                     continue
-
-                if not page.has_key('in'):
-                    # no such category
+                if checkAccess and not can_be_read(newpage):
                     continue
-                for type in page['in']:
-                    for newpage in page['in'][type]:
-                        # If page already added
-                        if newpage in argset:
-                            continue
+                pages.add(newpage)
 
-                        if not (cat_re.search(newpage) or
-                                temp_re.search(newpage)):
-                            unqname = unquote_name(newpage)
-                            # Check that user may view any added pages
-                            if not checkAccess:
-                                pages.add(newpage)
-                            if request.user.may.read(unqname):
-                                pages.add(newpage)
-            elif arg:
-                # Filter out nonexisting pages
-                try:
-                    page = globaldata.getpage(arg)
-                except KeyError:
-                    continue
+        for name in other:
+            if not is_saved(name):
+                continue
+            if checkAccess and not can_be_read(name):
+                continue
+            pages.add(name)
 
-                # Added filtering of nonexisting and non-local pages
-                if not page.has_key('saved'):
-                    continue
-                
-                pages.add(arg)
-
-    pagelist = set([])
-
+    pagelist = set()
     for page in pages:
         clear = True
         # Filter by regexps (if any)
         if limitregexps:
             # We're sure we have access to read the page, don't check again
-            metas = getmetas(request, globaldata, page, limitregexps,
-                             checkAccess=False)
-
+            metas = get_metas(request, page, limitregexps, 
+                              display=True, checkAccess=False)
+                             
             for key, re_limits in limitregexps.iteritems():
 
                 values = metas[key]
@@ -1070,7 +1079,7 @@ def metatable_parseargs(request, args,
                     clear = False
 
                     # Iterate all the keys for the value for a match
-                    for value, _ in values:
+                    for value in values:
                         if re_limit.search(value):
                             clear = True
                             # Single match is enough
@@ -1094,144 +1103,54 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in getkeys(globaldata, name):
-                    # One further check, we probably do not want
-                    # to see categories in our table by default
-                    if key != 'WikiCategory':
-                        metakeys.add(key)
+                for key in getkeys(request, name):
+                    metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(getkeys(globaldata, name)):
-                    # One further check, we probably do not want
-                    # to see categories in our table by default
-                    if key != 'WikiCategory':
-                        metakeys.add(key)
+                for key in nonguaranteeds_p(getkeys(request, name)):
+                    metakeys.add(key)
 
-        metakeys = sorted(metakeys, key=str.lower)
+        metakeys = sorted(metakeys, key=ordervalue)
     else:
         metakeys = keyspec
 
     # sorting pagelist
     if not orderspec:
-        orderpages = dict()
-        for page in pagelist:
-            orderpages[ordervalue(page)] = page
-        sortlist = sorted(orderpages.keys())
-        pagelist = [orderpages[x] for x in sortlist]
+        pagelist = sorted(pagelist, key=ordervalue)
     else:
-        s_list = dict()
-        for dir, key in orderspec:
-            s_list[key] = dict()
-            for page in pagelist:
-                # get all vals of a key in order
-                s_list[key][page] = [x for x, y in
-                                     sorted(getvalues(request,
-                                                      globaldata,
-                                                      page,
-                                                      url_quote(encode(key))))]
-        ordvals = dict()
-        byval = dict()
-        ord = [x for _, x in orderspec]
-        pages = set()
+        orderkeys = [key for (dir, key) in orderspec]
+        orderpages = dict()
 
-        for dir, key in orderspec:
-            byval[key] = dict()
+        for page in pagelist:
+            ordermetas = get_metas(request, page, orderkeys, 
+                                   display=True, checkAccess=False)
+            for key, values in ordermetas.iteritems():
+                values = map(ordervalue, values)
+                ordermetas[key] = values
+            orderpages[page] = ordermetas
 
-            if not key in s_list:
-                continue
-            ordvals[key] = set()
-            reverse = dir == '>>' and True or False
+        def comparison(page1, page2):
+            for dir, key in orderspec:
+                values1 = orderpages[page1][key]
+                values2 = orderpages[page2][key]
+            
+                result = cmp(values1, values2)
+                if result == 0:
+                    continue
+            
+                if not values1:
+                    return 1
+                if not values2:
+                    return -1
 
-            for page in s_list[key]:
-                pages.add(page)
+                if dir == ">>":
+                    return -result
+                return result
+            return cmp(ordervalue(page1), ordervalue(page2))
 
-                if not s_list[key][page]:
-                   vals = [None]
-                else:
-                    vals = s_list[key][page]
+        pagelist = sorted(pagelist, cmp=comparison)
 
-                # Patch: no value not included in sorting
-                #        break glass if necessary
-                # vals = s_list[key][page]
-                vals = [ordervalue(x) for x in vals]
-                s_list[key][page] = vals
-
-                # Make equivalence classes of key-value pairs
-                for val in vals:
-                    byval[key].setdefault(val, list()).append(page)
-
-                ordvals[key].update(vals)
-
-            ordvals[key] = sorted(ordvals[key], reverse=reverse)
-
-        # Subfunction to add pages to ordered list and remove
-        # them from the pages yet to be sorted
-        def olist_add(orderlist, pages, page, key, val):
-            if page in pages:
-                # print "Adding %s (%s=%s)" % (page, key, val)
-                orderlist.append(page)
-                pages.remove(page)
-            return orderlist, pages
-
-        def order(pages, s_list, byval, ord, orderlist):
-            # print "entering order", pages, ord
-            for key in ord:
-                for val in ordvals[key]:
-                    if not pages:
-                        return orderlist, pages
-
-                    if not byval[key].has_key(val):
-                        # print "Not existing: %s %s" % (key, val)
-                        continue
-
-                    # If equivalence class only has one
-                    # member, it's the next one in order
-                    if len(byval[key][val]) == 1:
-                        page = byval[key][val][0]
-                        # Skip if already added
-                        orderlist, pages = olist_add(orderlist, pages,
-                                                     page, key, val)
-                    elif len(byval[key][val]) > 1:
-                        # print byval[key][val], len(ord)
-                        if len(ord) < 2:
-                            for page in sorted(byval[key][val]):
-                                # print "Adding unsorted", page
-                                orderlist, pages = olist_add(orderlist, pages,
-                                                             page, key, val)
-                        else:
-                            newround = list()
-                            for page in byval[key][val]:
-                                if page in pages:
-                                    newround.append(page)
-                            if not newround:
-                                continue
-                        
-                            for page in newround:
-                                # print 'removing', page
-                                pages.remove(page)
-
-                            # print "Next round"
-                            orderlist, unord = order(newround, s_list,
-                                                     byval, ord[1:], orderlist)
-
-                            for page in sorted(unord):
-                                # print "Adding unsorted", page
-                                orderlist, _ = olist_add(orderlist, unord,
-                                                         page, key, val)
-
-                        # print "and out"
-
-            return orderlist, pages
-
-        pagelist, pages = order(pages, s_list, byval, ord, [])
-
-        # Add the rest of the pages in alphabetical order
-        # Should not be needed
-        if pages:
-            #print "extending with %s" % (pages)
-            pagelist.extend(sorted(pages))
-
-    return globaldata, pagelist, metakeys, styles
+    return pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
     # Check that the attach dir exists
@@ -1362,3 +1281,22 @@ def getuserpass(username=''):
 
     sys.stdout = old_stdout
     return username, password
+
+def _doctest_request():
+    class Request(object):
+        pass
+    class Config(object):
+        pass
+    
+    request = Request()
+    request.cfg = Config()
+    request.cfg.page_category_regex = u'^Category[A-Z]'
+
+    return request
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
     patterns class
-     - a forwards chaining inference engine for finding graph patterns
 
     @copyright: 2006 by Joachim Viide and
                         Juhani Eronen <exec@iki.fi>
@@ -32,18 +31,21 @@
 import re
 import os
 import shelve
-from codecs import getencoder
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
+import itertools
+import UserDict
+import StringIO
+import cgi
 
-from MoinMoin.request import RequestBase
-from MoinMoin.Page import Page
+from codecs import getencoder
+
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
+from MoinMoin.parser.wiki import Parser
+from MoinMoin.action import AttachFile
+from MoinMoin.Page import Page
 
 from graphingwiki.graph import Graph
-from UserDict import DictMixin
 
 # Get action name
 def actionname(request, pagename):
@@ -54,28 +56,47 @@ encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
 
-def debug(val):
-    d = file('/tmp/k', 'a')
-    d.write(encode(val) + '\n')
-    d.flush()
+def url_escape(text):
+    # Escape characters that break links in html values fields, 
+    # macros and urls with parameters
+    return re.sub('[\]"\?#&]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
+def form_escape(text):
+    # Escape characters that break value fields in html forms
+    #return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
+    return cgi.escape(text, quote=True)
+
+def url_parameters(args):
+    req_url = u'?'
+
+    url_args = list()
+    for key in args:
+        for val in args[key]:
+            url_args.append(u'='.join(map(url_escape, [key, val])))
+
+    req_url += u'&'.join(url_args)
+
+    return req_url
+
+def url_construct(request, args):
+    req_url = request.getScriptname() + u'/' + request.page.page_name 
+
+    if args:
+        req_url += url_parameters(args)
+
+    return request.getQualifiedURL(req_url)
 
 # Default node attributes that should not be shown
-special_attrs = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
+SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',
-                 'gwikiURL', 'gwikishapefile', "gwikishape", "gwikistyle",
-                 'belongs_to_patterns']
-
+                 'gwikishapefile', "gwikishape", "gwikistyle", 
+                 'gwikicategory', 'gwikiURL']
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
-                                       special_attrs, dict(node))
+                                       SPECIAL_ATTRS, dict(node))
 
-# For stripping lists of quoted strings
-qstrip_p = lambda lst: ('"' +
-                        ', '.join([x.strip('"') for x in lst]) +
-                        '"')
-qpirts_p = lambda txt: ['"' + x + '"' for x in
-                        txt.strip('"').split(', ')]
+NO_TYPE = u'_notype'
 
-
+# FIXME: Is this needed?
 def resolve_iw_url(request, wiki, page): 
     res = wikiutil.resolve_interwiki(request, wiki, page) 
     if res[3] == False: 
@@ -85,23 +106,137 @@ def resolve_iw_url(request, wiki, page):
         
     return iw_url 
 
-def getgraphdata(request):
-    "utility function to glue GraphData to the request"
-    if not hasattr(request, 'graphdata'):
-        request.graphdata = GraphData(request)
-        request.origfinish = request.finish 
-        def patched_finish(): 
-            try: 
-                return request.origfinish() 
-            finally: 
-                if request.graphdata.opened: 
-                    request.graphdata.closedb() 
-  
-        request.finish = patched_finish 
-         
-    return request.graphdata
+# Ripped off from Parser
+url_pattern = u'|'.join(config.url_schemas)
 
-class GraphData(DictMixin):
+url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
+    'url_guard': u'(^|(?<!\w))',
+    'url': url_pattern,
+    'punct': Parser.punct_pattern,
+}
+
+url_re = re.compile(url_rule)
+
+def encode_page(page):
+    return encode(page)
+
+def decode_page(page):
+    return unicode(page, config.charset)
+
+def node_type(request, nodename):
+    if ':' in nodename:
+        if url_re.search(nodename):
+            return 'url'
+
+        start = nodename.split(':')[0]
+        if start in Parser.attachment_schemas:
+            return 'attachment'
+
+        get_interwikilist(request)
+        if request.iwlist.has_key(start):
+            return 'interwiki'
+
+    return 'page'
+
+def filter_categories(request, candidates):
+    # Let through only the candidates that are both valid category
+    # names and WikiWords
+    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
+
+    candidates = wikiutil.filterCategoryPages(request, candidates)
+    candidates = filter(wordRex.match, candidates)
+
+    return candidates
+
+def get_url_ns(request, pagename, link):
+    # Find out subpage level to adjust URL:s accordingly
+    subrank = pagename.count('/')
+    # Namespaced names
+    if ':' in link:
+        if not hasattr(request, 'iwlist'):
+            get_interwikilist(request)
+        iwname = link.split(':')
+        if request.iwlist.has_key(iwname[0]):
+            return request.iwlist[iwname[0]] + iwname[1]
+        else:
+            return '../' * subrank + './InterWiki'
+    # handle categories as ordernodes different
+    # so that they would point to the corresponding categories
+    if filter_categories(request, [link]):
+        return '../' * subrank + './' + link
+    else:
+        return '../' * subrank + './Property' + link
+
+def format_wikitext(request, data):
+    request.page.formatter = request.formatter
+    parser = Parser(data, request)
+    parser.request = request
+    # No line anchors of any type to table cells
+    request.page.formatter.in_p = 1
+    parser._line_anchordef = lambda: ''
+
+    # Do not parse macros from revision pages. For some reason,
+    # it spawns multiple requests, which are not finished properly,
+    # thus littering a number of readlocks. Besides, the macros do not
+    # return anything useful anyway for pages they don't recognize
+    if '?action=recall' in request.page.page_name:
+        parser._macro_repl = lambda x: x
+
+    # Using StringIO in order to strip the output
+    data = StringIO.StringIO()
+    request.redirect(data)
+    # Produces output on a single table cell
+    request.page.format(parser)
+    request.redirect()
+
+    return data.getvalue().strip()
+
+def absolute_attach_name(name, target):
+    abs_method = target.split(':')[0]
+
+    # Pages from MetaRevisions may have ?action=recall, breaking attach links
+    if '?' in name:
+        name = name.split('?', 1)[0]
+
+    if abs_method in Parser.attachment_schemas and not '/' in target:
+        target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
+
+    return target 
+
+def get_interwikilist(request):
+    # request.cfg._interwiki_list is gathered by wikiutil
+    # the first time resolve_wiki is called
+    wikiutil.resolve_wiki(request, 'Dummy:Testing')
+
+    iwlist = dict()
+    selfname = get_selfname(request)
+
+    # Add interwikinames to namespaces
+    for iw in request.cfg._interwiki_list:
+        iw_url = request.cfg._interwiki_list[iw]
+        if iw_url.startswith('/'):
+            if iw != selfname:
+                continue
+            iw_url = get_wikiurl(request)
+        iwlist[iw] = iw_url
+
+    request.iwlist = iwlist
+
+def get_selfname(request):
+    if request.cfg.interwikiname:
+        return request.cfg.interwikiname
+    else:
+        return 'Self'
+
+def get_wikiurl(request):
+    return request.getBaseURL() + '/'
+
+def attachment_file(request, page, file):
+    att_file = AttachFile.getFilename(request, page, file)
+                                                   
+    return att_file, os.path.isfile(att_file)
+
+class GraphData(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request
 
@@ -109,14 +244,9 @@ class GraphData(DictMixin):
         self.cat_re = re.compile(request.cfg.page_category_regex)
         self.temp_re = re.compile(request.cfg.page_template_regex)
 
-        self.graphshelve = os.path.join(request.cfg.data_dir, 'graphdata.shelve')
+        self.graphshelve = os.path.join(request.cfg.data_dir, 
+                                        'graphdata.shelve')
 
-        self.db = None
-        self.cache = dict()
-        
-        self.opened = False
-        self.writing = False
-        
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         if self.use_sq_dict:
             import sq_dict
@@ -127,20 +257,56 @@ class GraphData(DictMixin):
         # XXX (falsely) assumes shelve.open creates file with same name;
         # it happens to work with the bsddb backend.
         if not os.path.exists(self.graphshelve):
-            self.writelock()
-            self.closedb()
+            db = self.shelveopen(self.graphshelve, 'c')
+            db.close()
 
+        self.db = None
+        self.cache = dict()
+
+        self.opened = False
+        self.writing = False
+        self.lock = None
+        
         self.readlock()
 
+    def __getitem__(self, item):
+        page = encode_page(item)
+
+        if page not in self.cache:
+            self.cache[page] = self.db[page]
+        return self.cache[page]
+
+    def __setitem__(self, item, value):
+        page = encode_page(item)
+
+        self.db[page] = value
+        self.cache[page] = value
+
+    def cacheset(self, item, value):
+        page = encode_page(item)
+
+        self.cache[page] = value
+
+    def __delitem__(self, item, value):
+        page = encode_page(item)
+
+        del self.db[page]
+        self.cache.pop(page, None)
+
+    def keys(self):
+        return map(decode_page, self.db.keys())
+
+    def __iter__(self):
+        return itertools.imap(decode_page, self.db)
+
+    def __contains__(self, item):
+        page = encode_page(item)
+        return page in self.cache or page in self.db
+
     def readlock(self):
-        lock = getattr(self.request, "lock", None)
-        if lock is None or not lock.isLocked():
-            # Seems that MoinMoin's locking doesn't work on certain
-            # platforms when using timeouts. Used to be:
-            #  lock = ReadLock(self.request.cfg.data_dir, timeout=600.0)
-            lock = ReadLock(self.request.cfg.data_dir)
-            lock.acquire()
-        self.request.lock = lock
+        if self.lock is None or not self.lock.isLocked():
+            self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
+            self.lock.acquire()
 
         if not self.opened:
             self.db = self.shelveopen(self.graphshelve, "r")
@@ -152,52 +318,31 @@ class GraphData(DictMixin):
             self.db.close()
             self.opened = False
         
-        lock = getattr(self.request, "lock", None)
-        if lock is not None and lock.isLocked() and isinstance(lock, ReadLock):
-            lock.release()
-        if lock is None or not lock.isLocked():
-            # Seems that MoinMoin's locking doesn't work on certain
-            # platforms when using timeouts. Used to be:
-            #  lock = WriteLock(self.request.cfg.data_dir, readlocktimeout=60.0)
-            lock = WriteLock(self.request.cfg.data_dir)
-            lock.acquire()
-        self.request.lock = lock
+        if (self.lock is not None and self.lock.isLocked() and 
+            isinstance(self.lock, ReadLock)):
+            self.lock.release()
+        if self.lock is None or not self.lock.isLocked():
+            self.lock = WriteLock(self.request.cfg.data_dir, 
+                                  readlocktimeout=60.0)
+            self.lock.acquire()
 
         if not self.opened or not self.writing:
             self.db = self.shelveopen(self.graphshelve, "c")
             self.writing = True
             self.opened = True
 
-    def __getitem__(self, page):
-        if page not in self.cache:
-            self.cache[page] = self.db[page]
-        return self.cache[page]
-
-    def __setitem__(self, page, value):
-        self.db[page] = value
-        self.cache[page] = value
-
-    def __delitem__(self, page):
-        del self.db[page]
-        self.cache.pop(page, None)
-
-    def keys(self):
-        return self.db.keys()
-
-    def __iter__(self):
-        return iter(self.db)
-
-    def __contains__(self, page):
-        return page in self.cache or page in self.db
-
     def closedb(self):
+        if not self.opened:
+            return
+
+        if self.lock is not None and self.lock.isLocked():
+            self.lock.release()
         self.db.close()
-        
-        if hasattr(self.request, "lock") and self.request.lock.isLocked():
-            self.request.lock.release()
-            
+
+        self.db = None
         self.cache.clear()
         self.opened = False
+        self.writing = False
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights,
@@ -205,31 +350,29 @@ class GraphData(DictMixin):
         return self.get(pagename, dict())
 
     def reverse_meta(self):
-        self.keys_on_pages = {}
-        self.vals_on_pages = {}
-        self.vals_on_keys = {}
+        self.keys_on_pages = dict()
+        self.vals_on_pages = dict()
+        self.vals_on_keys = dict()
 
-        globaldata = self
-
-        for page in globaldata:
+        for page in self:
             if page.endswith('Template'):
                 continue
-            for key in globaldata[page].get('meta', {}):
+
+            value = self[page]
+
+            for key in value.get('meta', dict()):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in globaldata[page]['meta'][key]:
-                    val = unicode(val, config.charset).strip('"')
-                    val = val.replace('\\"', '"')
+                for val in value['meta'][key]:
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in globaldata[page].get('lit', {}):
+            for key in value.get('lit', dict()):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in globaldata[page]['lit'][key]:
-                    val = val.strip('"')
+                for val in value['lit'][key]:
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-    def _add_node(self, pagename, graph, urladd=""):
+    def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
         if graph.nodes.get(pagename):
             return graph
@@ -238,24 +381,36 @@ class GraphData(DictMixin):
 
         node = graph.nodes.add(pagename)
         # Add metadata
-        for key, val in page.get('meta', {}).iteritems():
-            if key in special_attrs:
-                setattr(node, key, ''.join(x.strip('"') for x in val))
+        for key, val in page.get('meta', dict()).iteritems():
+            if key in SPECIAL_ATTRS:
+                node.__setattr__(key, ''.join(val))
             else:
-                setattr(node, key, val)
+                node.__setattr__(key, val)
 
         # Shapefile is an extra special case
-        for shape in page.get('lit', {}).get('gwikishapefile', []):
-            node.gwikishapefile = encode(shape)
+        for shape in page.get('lit', dict()).get('gwikishapefile', list()):
+            node.gwikishapefile = shape
+        # so is category
+        node.gwikicategory = \
+            page.get('out', dict()).get('gwikicategory', list())
+
+        # Configuration for local pages next, 
+        # return known to be something else
+        if not nodetype == 'page':
+            return graph
 
         # Local nonexistent pages must get URL-attribute
         if not hasattr(node, 'gwikiURL'):
             node.gwikiURL = './' + pagename
 
-        # Nodes representing existing local nodes may be traversed
         if page.has_key('saved'):
             node.gwikiURL += urladd
-            node.gwikiURL = './' + node.gwikiURL
+            # FIXME: Is this needed?
+            # node.gwikiURL = './' + node.gwikiURL
+        elif Page(self.request, pagename).isStandardPage():
+            # try to be helpful and add editlinks to non-underlay pages
+            node.gwikiURL += u"?action=edit"
+            node.gwikitooltip = self.request.getText('Add page')
 
         if node.gwikiURL.startswith('attachment:'):
             pagefile = node.gwikiURL.split(':')[1]
@@ -277,22 +432,23 @@ class GraphData(DictMixin):
             e.linktype.add(type)
         return adata
 
-    def load_graph(self, pagename, urladd):
-        if not self.request.user.may.read(unicode(url_unquote(pagename),
-                                                  config.charset)):
+    def load_graph(self, pagename, urladd, load_origin=True):
+        if not self.request.user.may.read(pagename):
             return None
 
         page = self.getpage(pagename)
-
         if not page:
             return None
 
         # Make graph, initialise head node
         adata = Graph()
-        adata = self._add_node(pagename, adata, urladd)
+        if load_origin:
+            adata = self._add_node(pagename, adata, urladd, 'page')
+        else:
+            adata.nodes.add(pagename)
 
         # Add links to page
-        links = page.get('in', {})
+        links = page.get('in', dict())
         for type in links:
             for src in links[type]:
                 # Filter Category, Template pages
@@ -300,340 +456,152 @@ class GraphData(DictMixin):
                        self.temp_re.search(src):
                     continue
                 # Add page and its metadata
-                adata = self._add_node(src, adata, urladd)
+                # Currently pages can have links in them only
+                # from local pages, thus nodetype == page
+                adata = self._add_node(src, adata, urladd, 'page')
                 adata = self._add_link(adata, (src, pagename), type)
 
         # Add links from page
-        links = page.get('out', {})
+        links = page.get('out', dict())
+        lit_links = page.get('lit', dict())
         for type in links:
-            for dst in links[type]:
+            for i, dst in enumerate(links[type]):
                 # Filter Category, Template pages
                 if self.cat_re.search(dst) or \
                        self.temp_re.search(dst):
                     continue
+
+                # Fix links to everything but pages
+                label = ''
+                gwikiurl = ''
+                tooltip = ''
+                nodetype = node_type(self.request, dst)
+
+                if nodetype == 'attachment':
+                    # get the absolute name ie both page and filename
+                    gwikiurl = absolute_attach_name(pagename, dst)
+                    att_parts = gwikiurl.split(':')[1].split('/')
+                    att_page = '/'.join(att_parts[:-1])
+                    att_file = att_parts[-1]
+
+                    if pagename == att_page:
+                        label = "Attachment: %s" % (att_file)
+                    else:
+                        label = "Attachment: %s/%s" % (att_page, att_file)
+
+                    _, exists = attachment_file(self.request, 
+                                                att_page, att_file)
+
+                    # For existing attachments, have link to view it
+                    if exists:
+                        gwikiurl = "./%s?action=AttachFile&do=get&target=%s" % \
+                            (att_page, att_file)
+                        tooltip = self.request.getText('View attachment')
+                    # For non-existing, have a link to upload it
+                    else:
+                        gwikiurl = "./%s?action=AttachFile&rename=%s" % \
+                            (att_page, att_file)
+                        tooltip = self.request.getText('Add attachment')
+
+                elif nodetype == 'interwiki':
+                    # Get effective URL:s to interwiki URL:s
+                    iwname = dst.split(':')
+                    gwikiurl = self.request.iwlist[iwname[0]] + iwname[1]
+                    tooltip = iwname[1] + ' ' + \
+                        self.request.getText('page on') + \
+                        ' ' + iwname[0] + ' ' + \
+                        self.request.getText('wiki')
+
+                elif nodetype == 'url':
+                    # URL:s have the url already, keep it
+                    gwikiurl = dst
+                    tooltip = dst
+
                 # Add page and its metadata
-                adata = self._add_node(dst, adata, urladd)
+                adata = self._add_node(dst, adata, urladd, nodetype)
                 adata = self._add_link(adata, (pagename, dst), type)
 
-        return adata
+                if label or gwikiurl or tooltip:
+                    node = adata.nodes.get(dst)
 
-    def load_with_links(self, pagename):
-        if isinstance(pagename, unicode):
-            pagename = url_quote(encode(pagename))
-        # No urladd
-        return self.load_graph(pagename, '')
-
-class LazyItem(object):
-    def __init__(self):
-        pass
-
-    def __eq__(self, obj):
-        return Equal(self, obj)
-
-    def __ne__(self, obj):
-        return Not(Equal(self, obj))
-
-    def __and__(self, obj):
-        return And(self, obj)
-
-    def __or__(self, obj):
-        return Or(self, obj)
-
-    def __invert__(self):
-        return Not(self)
-
-    def __getattr__(self, key):
-        if len(key) > 4 and key.startswith("__") and key.endswith("__"):
-            return object.__getattr__(self, key)
-        return LazyAttribute(self, key)
-
-    def __wrap__(self, obj):
-        if isinstance(obj, LazyItem):
-            return obj
-        else:
-            return LazyConstant(obj)
-
-    def __call__(self, *args, **keys):        
-        args = tuple(map(self.__wrap__, args))
-        keys = dict(keys)
-        for key in keys:
-            keys[key] = self.__wrap__(keys[key])
-        return LazyApply(self, args, keys)
-        
-    def value(self, obj, bindings):
-        return obj
-
-class LazyConstant(LazyItem):
-    def __init__(self, val):
-        self.val = val
-
-    def value(self, obj, bindings):
-        return self.val
-
-    def __repr__(self):
-        return " Constant "+repr(self.val)
-
-class LazyApply(LazyItem):
-    def __init__(self, func, args, keys):
-        self.func = func
-        self.args = args
-        self.keys = keys
-
-    def value(self, obj, bindings):
-        func = self.func.value(obj, bindings)
-        args = tuple(map(lambda x: x.value(obj, bindings), self.args))
-        keys = dict()
-        for key, value in self.keys.iteritems():
-            keys[key] = value.value(obj, bindings)
-        return func(*args, **keys)
-
-class And(LazyItem):
-    def __init__(self, obj1, obj2):
-        self.obj1 = obj1
-        self.obj2 = obj2
-
-    def value(self, obj, bindings):
-        val1 = self.obj1.value(obj, bindings)
-        if not val1:
-            return False
-        val2 = self.obj2.value(obj, bindings)
-        return val2    
-
-Equal = LazyConstant(lambda x, y: x == y)
-Not = LazyConstant(lambda x: not x)
-Or = lambda x, y: Not(And(Not(x), Not(y)))
-LazyAttribute = LazyConstant(lambda x, y: getattr(x, y, None))
-
-class Fixed(LazyItem):
-    def __init__(self, inner):
-        self.inner = inner
-
-    def value(self, obj, bindings):
-        return bindings[self]
-
-    def match(self, data, bindings):
-        for obj, result, data, bindings in self.inner.match(data, bindings):
-            if self in bindings and bindings[self] != obj:
-                continue
-            bindings = bindings.copy()
-            bindings[self] = obj
-            yield obj, result, data, bindings
-
-class Cond:
-    def __init__(self, obj, cond):
-        self.obj = obj
-        self.cond = cond
-
-    def match(self, data, bindings):
-        for obj, result, data, bindings in self.obj.match(data, bindings):
-            value = self.cond.value(obj, bindings)
-            if value:
-                yield obj, result, data, bindings
-
-class Sequence:
-    def __init__(self, *objs):
-        self.objs = objs
-
-    def match(self, data, bindings):
-        objs = self.objs
-        if not objs:
-            yield (), (), data, bindings
-            return
-
-        for hobj, head, data, bindings in objs[0].match(data, bindings):
-            seq = Sequence(*objs[1:])
-            for tobj, tail, newdata, newbindings in seq.match(data, bindings):
-                yield head+tail, head+tail, newdata, newbindings
-
-class Epsilon:
-    def __init__(self):
-        pass
-
-    def match(self, data, bindings):
-        yield (), (), data, bindings
-
-class Kleene:
-    def __init__(self, obj):
-        self.obj = obj
-        self.eps = Epsilon()
-
-    def match(self, data, bindings):
-        def recurse(data, bindings, visited):
-            for hobj, head, data, bindings in self.obj.match(data, bindings):
-                if head in visited:
-                    continue
-                newvisited = visited.copy()
-                newvisited.add(head)
-                for tobj, tail, newdata, newbindings in recurse(data, bindings, newvisited):
-                    yield head+tail, head+tail, newdata, newbindings
-            for result in self.eps.match(data, bindings):
-                yield result
-        for result in recurse(data, bindings, set()):
-            yield result
-
-class Union:
-    def __init__(self, *objs):
-        self.objs = objs
-
-    def match(self, data, bindings):
-        for obj in self.objs:
-            return obj.match(data, bindings)
-
-class Node:
-    def match(self, data, bindings):
-        nodes, graph = data
-        for node in nodes:
-            children = set(child for parent, child in graph.edges.getall(parent = node))
-            node = graph.nodes.get(*node)
-            yield node, (node,), (children, graph), bindings
-
-class Edge:
-    def match(self, data, bindings):
-        edges, graph = data
-        for parent, child in edges:
-            children = graph.edges.getall(parent = child)
-            edge = graph.edges.get(parent, child)
-            yield edge, (edge,), (children, graph), bindings
-
-class WikiNode(object):
-    # List of startpages -> pages to which gather in-links from global
-    startpages = []
-    # request associated with the page
-    request = None
-    # url addition from action
-    urladd = ""
-    # globaldata
-    graphdata = None
-
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Wiki"
-        if request is not None: 
-            WikiNode.request = request
-        if urladd is not None:
-            WikiNode.urladd = urladd
-        if startpages is not None:
-            WikiNode.startpages = startpages
-
-        if request:
-            WikiNode.graphdata = getgraphdata(WikiNode.request)
-
-    def _load(self, graph, node):
-        nodeitem = graph.nodes.get(node)
-        k = getattr(nodeitem, 'gwikiURL', '')
-
-        if isinstance(k, set):
-            k = ''.join(k)
-            if k[0] in ['.', '/']:
-                k += WikiNode.urladd
-            nodeitem.gwikiURL = k
-
-        adata = WikiNode.graphdata.load_graph(node, WikiNode.urladd)
+                # Add labels, gwikiurls and tooltips
+                if label:
+                    node.gwikilabel = label
+                if gwikiurl:
+                    node.gwikiURL = gwikiurl
+                if tooltip:
+                    node.gwikitooltip = tooltip
 
         return adata
 
-class HeadNode(WikiNode):
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Head"
-        super(HeadNode, self).__init__(request, urladd, startpages)
+# The load_ -functions try to minimise unnecessary reloading and overloading
 
-    def loadpage(self, graph, node):
-        # Get new data for current node
-        adata = self._load(graph, node)
-        if not adata:
-#            print "No adata head", node
-            return
-        if not adata.nodes.get(node):
-#            print "Wrong adata head", node
-            return
-        nodeitem = graph.nodes.get(node)
-        nodeitem.update(adata.nodes.get(node))
+def load_children(request, graph, parent, urladd):
+    load_origin = False
 
-        # Add new nodes, edges that link to/from the current node
-        for parent, child in adata.edges.getall():
-            # Only add links from amongst nodes already traversed
-            if not graph.nodes.get(parent):
-                continue
+    nodeitem = graph.nodes.get(parent)
+    if not nodeitem:
+        nodeitem = graph.nodes.add(parent)
+        load_origin = True
 
-            newnode = graph.nodes.get(child)
-            if not newnode:
-                newnode = graph.nodes.add(child)
+    # Get new data for current node
+    adata = request.graphdata.load_graph(parent, urladd, load_origin)
+
+    # If no data
+    if not adata:
+        return list()
+    if not adata.nodes.get(parent):
+        return list()
+
+    nodeitem.update(adata.nodes.get(parent))
+    
+    children = set()
+
+    # Add new nodes, edges that link to/from the current node
+    for child in adata.edges.children(parent):
+        if not graph.nodes.get(child):
+            newnode = graph.nodes.add(child)
             newnode.update(adata.nodes.get(child))
 
-            newedge = graph.edges.add(parent, child)
-            edgedata = adata.edges.get(parent, child)
-            newedge.update(edgedata)
-            
-    def match(self, data, bindings):
-        nodes, graph = data
-        for node in nodes:
-            self.loadpage(graph, node)
-            children = set(child for parent, child
-                           in graph.edges.getall(parent=node))
-            node = graph.nodes.get(node)
-            yield node, (node,), (children, graph), bindings
+        newedge = graph.edges.add(parent, child)
+        edgedata = adata.edges.get(parent, child)
+        newedge.update(edgedata)
 
-class TailNode(WikiNode):
-    def __init__(self, request=None, urladd=None, startpages=None):
-#        print "Tail"
-        super(TailNode, self).__init__(request, urladd, startpages)
+        children.add(child)
 
-    def loadpage(self, graph, node):
-        # Get new data for current node
-        adata = self._load(graph, node)
-        if not adata:
-#            print "No adata tail", node
-            return
-        if not adata.nodes.get(node):
-#            print "Wrong adata tail", node
-            return
-        nodeitem = graph.nodes.get(node)
-        nodeitem.update(adata.nodes.get(node))
+    return children
 
-        # Add new nodes, edges that are the parents of either the
-        # current node, or the start nodes
-        for parent, child in adata.edges.getall():
-            if child not in [node] + WikiNode.startpages:
-                continue
+def load_parents(request, graph, child, urladd):
+    load_origin = False
 
-            newnode = graph.nodes.get(parent)
-            if not newnode:
-                newnode = graph.nodes.add(parent)
+    nodeitem = graph.nodes.get(child)
+    if not nodeitem:
+        nodeitem = graph.nodes.add(child)
+        load_origin = True
+
+    # Get new data for current node
+    adata = request.graphdata.load_graph(child, urladd, load_origin)
+
+    # If no data
+    if not adata:
+        return list()
+    if not adata.nodes.get(child):
+        return list()
+
+    nodeitem.update(adata.nodes.get(child))
+
+    parents = set()
+
+    # Add new nodes, edges that are the parents of the current node
+    for parent in adata.edges.parents(child):
+        if not graph.nodes.get(parent):
+            newnode = graph.nodes.add(parent)
             newnode.update(adata.nodes.get(parent))
 
-            newedge = graph.edges.get(parent, child)
-            if not newedge:
-                newedge = graph.edges.add(parent, child)
-            edgedata = adata.edges.get(parent, child)
-            newedge.update(edgedata)
-    
-    def match(self, data, bindings):
-        nodes, graph = data
-        for node in nodes:
-            self.loadpage(graph, node)
-            parents = set(parent for parent, child
-                          in graph.edges.getall(child=node))
-            node = graph.nodes.get(node)
-            yield node, (node,), (parents, graph), bindings
+        newedge = graph.edges.add(parent, child)
+        edgedata = adata.edges.get(parent, child)
+        newedge.update(edgedata)
 
-def match(pattern, data):
-    empty = {}
-    for obj, result, data, bindings in pattern.match(data, empty):
-        yield obj
+        parents.add(parent)
 
-if __name__ == '__main__':
-    import graph
-
-    g = graph.Graph()
-    g.nodes.add(1)
-    g.nodes.add(2)
-    g.nodes.add(3)
-    g.edges.add(1, 2)
-    g.edges.add(2, 3)
-    g.edges.add(3, 1)
-
-    nodes = set(node for node, in g.nodes.getall())
-
-    pattern = Kleene(Node())
-
-    for result in match(pattern, (nodes, g)):
-        print result
+    return parents
