@@ -11,13 +11,8 @@
 """
 import re
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
-
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import NO_TYPE
 
 Dependencies = ["namespace"]
 
@@ -61,17 +56,17 @@ def execute(macro, args):
    else:
       args = ','.join(args)
 
-   globaldata, pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
-                                                           get_all_pages = True)
+   pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
+                                               get_all_pages = True)
     
-   if not hasattr(globaldata, 'keys_on_pages'):
-      globaldata.reverse_meta()
+   if not hasattr(request.graphdata, 'keys_on_pages'):
+      request.graphdata.reverse_meta()
 
    for name in pagelist:
-      page = globaldata.getpage(name)
+      page = request.graphdata.getpage(name)
       if mode == 'keys':
          tags.extend(x for x in page.get('meta', {}).keys())
-         tags.extend(x for x in page.get('out', {}).keys() if x != '_notype')
+         tags.extend(x for x in page.get('out', {}).keys() if x != NO_TYPE)
       else:
          for key in page.get('meta', {}).keys():
             if key in ['label', 'URL']:
@@ -79,7 +74,7 @@ def execute(macro, args):
 #            print key, repr(page['meta'][key])
             tags.extend(x.strip('"') for x in page['meta'][key])
          for key in page.get('out', {}).keys():
-            if key == '_notype':
+            if key == NO_TYPE:
                continue
 #            print repr(page['out'][key])
             tags.extend(page['out'][key])
@@ -91,11 +86,8 @@ def execute(macro, args):
 
    show = []
    for tag in taglist:
-      enc_tag = unicode(url_unquote(tag), config.charset)
-      # Replace quotes from link keys
-      enc_tag = enc_tag.replace('"', '&#x22;')
-      cnt = tags.count(enc_tag)
-      show.append((enc_tag, cnt, tag))
+      cnt = tags.count(tag)
+      show.append((tag, cnt, tag))
    show.sort(key=sort, reverse=True)
    show = show[0:maxTags]
    show.sort()
@@ -108,15 +100,15 @@ def execute(macro, args):
    for tag in show:
       title = ""
       if mode == 'keys':
-         data = globaldata.keys_on_pages.get(tag[2])
+         data = request.graphdata.keys_on_pages.get(tag[2])
          if data:
-            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(globaldata.keys_on_pages.get(tag[2])))
+            title = '\n'.join(x for x in 
+                              sorted(request.graphdata.keys_on_pages.get(tag[2]), key=unicode.lower))
       else:
-         data = globaldata.vals_on_pages.get(tag[2])
+         data = request.graphdata.vals_on_pages.get(tag[2])
          if data:
-            title = '\n'.join(unicode(url_unquote(x), config.charset) for x in
-                             sorted(globaldata.vals_on_pages.get(tag[2])))
+            title = '\n'.join(x for x in
+                              sorted(request.graphdata.vals_on_pages.get(tag[2]), key=unicode.lower))
 
       pagename = tag[0]
       hits = tag[1]

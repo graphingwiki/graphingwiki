@@ -27,20 +27,14 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
-from codecs import getencoder
-
-from MoinMoin import config
-
-from graphingwiki.patterns import encode, getgraphdata
+from graphingwiki.patterns import NO_TYPE
 
 Dependencies = ['pagelinks']
 
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
-    pagename = url_quote(encode(pagename))
-    _ = macro.request.getText
+    request = macro.request
+    _ = request.getText
 
     meta = False
     if args and 'meta' in args:
@@ -48,16 +42,14 @@ def execute(macro, args):
 
     out = []
     nodes = set()
-    globaldata = getgraphdata(macro.request)
     # User rights are not checked here as the page will not be
     # displayed at all if user does not have rights
-    pdata = globaldata.getpage(pagename)
+    pdata = request.graphdata.getpage(pagename)
     for type in pdata.get('in', {}):
         for page in pdata['in'][type]:
             typeinfo = ''
-            if meta and type != '_notype':
+            if meta and type != NO_TYPE:
                 typeinfo = " (%s)" % (type)
-            page = unicode(url_unquote(page), config.charset)
             if not page in nodes:
                 out.append(macro.formatter.pagelink(1, page) +
                            macro.formatter.text(page + typeinfo) +

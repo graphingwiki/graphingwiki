@@ -30,14 +30,10 @@
 """
 import StringIO
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 Dependencies = ['metadata']
 
@@ -48,9 +44,6 @@ def t_cell(macro, value):
     style['class'] = 'meta_cell'
 
     out.write(macro.formatter.table_cell(1, attrs=style))
-
-    if not isinstance(value, unicode):
-        value = unicode(value, config.charset)
 
     value = value.strip()
 
@@ -69,7 +62,7 @@ def t_cell(macro, value):
 
     out.write(value.getvalue().strip())
 
-def construct_table(macro, globaldata, pagelist, key, sort_order):
+def construct_table(macro, pagelist, key, sort_order):
     request = macro.request
     request.page.formatter = request.formatter
 
@@ -78,18 +71,16 @@ def construct_table(macro, globaldata, pagelist, key, sort_order):
     orginalPage = request.page
 
     for page in pagelist:
-        pageobj = Page(request, unicode(url_unquote(page), config.charset))
+        pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
 
         # WARNING: Skipping access check because we know that metatable_parseargs
         #          already  checked  them. If you plan to use this code elsewhere
         #          you should make sure that you check for access.
-        metas = getmetas(request, globaldata, page, [key], display=False,
-                         checkAccess=False)
+        metas = get_metas(request, page, [key], checkAccess=False)
 
-        values = [x for x,y in metas[key]]
-        for value in values:
+        for value in metas[key]:
             current = count.get(value, 0)
             count[value] = current + 1
 
@@ -153,6 +144,9 @@ def show_error(macro, args, error):
 def execute(macro, args):
     request = macro.request
 
+    if not args:
+        return u''
+
     args = args.split(",")
     args = map(lambda x: x.strip(), args)
 
@@ -163,8 +157,8 @@ def execute(macro, args):
     query = "%s,||%s||" % tuple(args[:2])
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, _ = \
-                metatable_parseargs(request, query, get_all_keys=True)
+    pagelist, metakeys, _ = \
+        metatable_parseargs(request, query, get_all_keys=True)
 
     if not pagelist:
         show_error(macro, args, "No content")
@@ -186,6 +180,6 @@ def execute(macro, args):
         return ""
 
     # We're sure the user has the access to the page, so don't check
-    construct_table(macro, globaldata, pagelist, key, sort_order)
+    construct_table(macro, pagelist, key, sort_order)
 
-    return ""
+    return ''

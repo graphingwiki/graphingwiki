@@ -28,23 +28,15 @@
 
 """
 import re
-import StringIO
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
-from MoinMoin import config
-from MoinMoin import wikiutil
-from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.editing import formatting_rules
-from graphingwiki.patterns import encode
+from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.patterns import format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style={}):
+def t_cell(macro, vals, head=0, style=dict()):
     out = macro.request
 
     if not style.has_key('class'):
@@ -68,13 +60,12 @@ def t_cell(macro, vals, head=0, style={}):
             out.write(macro.formatter.text(',') + \
                       macro.formatter.linebreak())
 
-        if not isinstance(data, unicode):
-            data = unicode(data, config.charset)
-
         if head:
-            kw = {}
+            kw = dict()
             if '?' in data:
-                data, query = data.split('?')
+                data = data.split('?')
+                query = '?'.join(data[1:])
+                data = data[0]
                 kw['querystr'] = query
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
@@ -83,20 +74,7 @@ def t_cell(macro, vals, head=0, style={}):
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(1))
 
-            out.page.formatter = out.formatter
-            parser = Parser(data, out)
-            # No line anchors of any type to table cells
-            out.page.formatter.in_p = 1
-            parser._line_anchordef = lambda: ''
-
-            # Using StringIO in order to strip the output
-            data = StringIO.StringIO()
-            out.redirect(data)
-            # Produces output on a single table cell
-            out.page.format(parser)
-            out.redirect()
-
-            out.write(data.getvalue().strip())
+            out.write(format_wikitext(out, data))
 
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(0))
@@ -106,8 +84,8 @@ def t_cell(macro, vals, head=0, style={}):
     if cellstyle == 'list':
         out.write(macro.formatter.bullet_list(1))
 
-def construct_table(macro, globaldata, pagelist, metakeys, 
-                    legend='', checkAccess=True, styles={}):
+def construct_table(macro, pagelist, metakeys, 
+                    legend='', checkAccess=True, styles=dict()):
     request = macro.request
     request.page.formatter = request.formatter
     _ = request.getText
@@ -127,8 +105,7 @@ def construct_table(macro, globaldata, pagelist, metakeys,
         t_cell(macro, [legend])
 
     for key in metakeys:
-        key = unicode(url_unquote(key), config.charset)
-        style = styles.get(key, {})
+        style = styles.get(key, dict())
         
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
@@ -149,14 +126,13 @@ def construct_table(macro, globaldata, pagelist, metakeys,
     tmp_page = request.page
 
     for page in pagelist:
-        pageobj = Page(request, unicode(url_unquote(page), config.charset))
+        pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
 
         row = row + 1
-        metas = getmetas(request, globaldata, page,
-                         metakeys, display=False,
-                         checkAccess=checkAccess)
+        metas = get_metas(request, page, metakeys, 
+                          checkAccess=checkAccess)
 
         if row % 2:
             request.write(macro.formatter.table_row(1, {'rowclass':
@@ -164,13 +140,11 @@ def construct_table(macro, globaldata, pagelist, metakeys,
         else:
             request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-even-row'}))
-        t_cell(macro, [url_unquote(page)], head=1)
+        t_cell(macro, [page], head=1)
 
         for key in metakeys:
-            values = [x for x,y in metas[key]]
-            key = unicode(url_unquote(key), config.charset)
-            style = styles.get(key, {})
-            t_cell(macro, values, style=style)
+            style = styles.get(key, dict())
+            t_cell(macro, metas[key], style=style)
 
         request.write(macro.formatter.table_row(0))
 
@@ -191,9 +165,8 @@ def execute(macro, args):
         args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, styles = \
-                metatable_parseargs(macro.request, args,
-                                    get_all_keys=True)
+    pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
+                                                     get_all_keys=True)
 
     request = macro.request
     _ = request.getText
@@ -210,17 +183,16 @@ def execute(macro, args):
         return ""
 
     # We're sure the user has the access to the page, so don't check
-    construct_table(macro, globaldata, pagelist, metakeys,
+    construct_table(macro, pagelist, metakeys,
                     checkAccess=False, styles=styles)
 
     def action_link(action, linktext, args):
         req_url = request.getScriptname() + \
                   '/' + request.page.page_name + \
-                  '?action=' + action + '&args=' + args 
+                  '?action=' + action + '&args=' + url_escape(args)
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))
 
-    args = url_quote(encode(args))
     # If the user has no write access to this page, omit editlink
     if editlink:
         request.write(action_link('MetaEdit', 'edit', args))

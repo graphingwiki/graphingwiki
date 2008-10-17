@@ -9,49 +9,38 @@
 
 Dependencies = ['metadata']
 
-import urllib
-import StringIO
+from MoinMoin.macro.Include import _sysmsg
 
-from MoinMoin import config
-from MoinMoin.parser.wiki import Parser
-
-from graphingwiki.editing import getvalues, metatable_parseargs
-
-def urlquote(s):
-    if isinstance(s, unicode):
-        s = s.encode(config.charset)
-    return urllib.quote(s)
+from graphingwiki.editing import get_metas
+from graphingwiki.patterns import format_wikitext
 
 def execute(macro, args):
     request = macro.request
+    _ = request.getText
 
-    if not request.user.may.read(args.split(',')[0]):
-        return ''
+    args = [x.strip() for x in args.split(',')]
+    # Wrong number of arguments
+    if len(args) not in [1, 2]:
+        return _sysmsg % ('error', 
+                          _("GetMetaData: Need to specify page, or page and key"))
 
-    try:
-        page, key = [urlquote(x.strip()) for x in args.split(',')]
+    # Get all non-empty args
+    args = [x for x in args if x]
 
-        # Note, metatable_parseargs deals with permissions
-        globaldata, pagelist, metakeys, _ = metatable_parseargs(request, page,
-                                                                get_all_keys=True)
+    # If not page specified, defaulting to current page
+    if len(args) == 1:
+        page = request.page.page_name
+        key = args[0]
+    elif len(args) == 2:
+        page = args[0]
+        key = args[1]
+    # Faulty args
+    else:
+        return _sysmsg % ('error', 
+                          _("GetMetaData: Need to specify page, or page and key"))
 
-        vals = list()
-        for val, typ in getvalues(request, globaldata, page, key,
-                                  display=False):
-            vals.append(val)
+    vals = get_metas(request, page, [key])
 
-    except:
-        return ''
+    val = ', '.join(vals[key])
 
-    request.page.formatter = request.formatter
-    parser = Parser(', '.join(vals), request)
-    # No line anchors of any type to table cells
-    request.page.formatter.in_p = 1
-    parser._line_anchordef = lambda: ''
-
-    data = StringIO.StringIO()
-    request.redirect(data)
-    request.page.format(parser)
-    request.redirect()
-
-    return data.getvalue().strip()
+    return format_wikitext(request, val)
