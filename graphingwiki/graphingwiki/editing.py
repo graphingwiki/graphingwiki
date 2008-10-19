@@ -457,6 +457,17 @@ def add_meta_regex(request, inclusion, newval, oldtext):
     return oldtext
 
 def replace_metas(request, oldtext, oldmeta, newmeta):
+    r"""
+    Regression test: The following scenario probably shouldn't preduce
+    an empty result text.
+    
+    >>> replace_metas(object(), 
+    ...               u" test:: 1\n test:: 1", 
+    ...               dict(test=[u"1", u"1"]),
+    ...               dict(test=[u"1", u""]))
+    u' test:: 1\n test:: 1'
+    """
+
     oldtext = oldtext.rstrip()
     # Annoying corner case with dl:s
     if oldtext.endswith('::'):
@@ -690,17 +701,10 @@ def set_metas(request, cleared, discarded, added):
             for index, value in enumerate(ordered):
                 if value not in values:
                     ordered[index] = u""
-                values.discard(value)
 
+            values.difference_update(ordered)
             ordered.extend(values)
             new[key] = ordered
-
-        #a = file('/tmp/log', 'a')
-        #a.write('\n')
-        #a.write(repr(old) + '\n')
-        #a.write(repr(new) + '\n')
-        #a.flush()
-        #a.close()
 
         msg.append(edit_meta(request, page, old, new))
 
