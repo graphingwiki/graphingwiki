@@ -1,0 +1,40 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Joachim Viide
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import optparse
+from opencollab.wiki import CLIWiki
+
+parser = optparse.OptionParser()
+parser.set_usage("%prog [options] WIKIURL METAQUERY")
+options, args = parser.parse_args()
+
+if len(args) != 2:
+    parser.error("wiki url and meta query have to be defined")
+
+url, query = args
+wiki = CLIWiki(url)
+
+print "Fetching pages for duplicate meta removal."
+pages = wiki.getMeta(query)
+
+print "Found %d pages." % len(pages)
+
+cleared = dict()
+added = dict()
+for page, metas in pages.iteritems():
+    cleared[page] = list(metas)
+    added[page] = dict()
+
+    for key, values in metas.iteritems():
+        added[page][key] = list(values)
+
+# clear everything
+print "Removing the metas. If you quit now, your wiki will suffer."
+wiki.request("IncSetMeta", cleared, dict(), dict())
+
+# add everything back
+print "Adding the metas back. If you quit now, your wiki will suffer more."
+wiki.request("IncSetMeta", dict(), dict(), added)

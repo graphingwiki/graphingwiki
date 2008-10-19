@@ -32,15 +32,6 @@ class UrlRequired(WikiFailure):
     pass
 
 DEFAULT_CHUNK = 256 * 1024
-LINK_REX = re.compile("\[[\"'](.*)[\"']\]")
-
-def unquote(string):
-    string = urllib.unquote(string)
-
-    match = LINK_REX.match(string)
-    if match:
-        string = match.group(1)
-    return string
 
 def urlQuote(string):
     if isinstance(string, unicode):
@@ -256,22 +247,19 @@ class GraphingWiki(object):
         keysOnly = False
         results = self.request("GetMeta", value, keysOnly)
 
-        keys = map(unquote, results.pop(0))
+        keys = results.pop(0)
         pages = dict()
 
         for result in results:
             # Page names and meta keys seem to come from the wiki
             # UTF-8 encoded in contrast to the actual key values
-            page = unquote(result.pop(0))
-            page = unicode(page, "utf-8")
-
+            page = result.pop(0)
             meta = Meta()
 
             for key, values in zip(keys, result):
-                key = unicode(key, "utf-8")
                 if not values:
                     continue
-                meta[key].update(map(unquote, values))
+                meta[key].update(values)
 
             pages[page] = meta
 
