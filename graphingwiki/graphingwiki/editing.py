@@ -458,14 +458,14 @@ def add_meta_regex(request, inclusion, newval, oldtext):
 
 def replace_metas(request, oldtext, oldmeta, newmeta):
     r"""
-    Regression test: The following scenario probably shouldn't preduce
+    Regression test: The following scenario probably shouldn't produce
     an empty result text.
     
     >>> replace_metas(object(), 
     ...               u" test:: 1\n test:: 1", 
     ...               dict(test=[u"1", u"1"]),
     ...               dict(test=[u"1", u""]))
-    u' test:: 1\n test:: 1'
+    u' test:: 1\n'
     """
 
     oldtext = oldtext.rstrip()
@@ -666,8 +666,7 @@ def set_metas(request, cleared, discarded, added):
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         old = get_metas(request, page, metakeys, checkAccess=False)
-                       
-
+        
         # Handle the magic duality between normal categories (CategoryBah)
         # and meta style categories
         if CATEGORY_KEY in pageCleared:
@@ -677,8 +676,7 @@ def set_metas(request, cleared, discarded, added):
             edit_meta(request, page, dict(), dict(), "del", categories)
         if CATEGORY_KEY in pageAdded:
             categories = set(pageAdded[CATEGORY_KEY])
-            filtered = filter_categories(request, categories)
-            filtered = set(filtered) - set(old.get(CATEGORY_KEY, set()))
+            filtered = set(filter_categories(request, categories))
             edit_meta(request, page, dict(), dict(), "add", list(filtered))
             pageAdded[CATEGORY_KEY] = list(categories - filtered)
 
