@@ -8,13 +8,14 @@
 """
 import xmlrpclib
 
-from graphingwiki.editing import set_metas, get_metas
+from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 # To be deprecated, now mimics the original interface with its quirks
 def execute(xmlrpcobj, page, input, action='add',
             createpage=True, category_edit='', catlist=[],
             template=''):
+
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
@@ -36,23 +37,20 @@ def execute(xmlrpcobj, page, input, action='add',
     if category_edit == 'repl':
         category_edit = 'set'
 
-    cleared, added, discarded = {page: dict()}, {page: dict()}, {page: dict()}
+    cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
 
     if action == 'add':
         for key in input:
             added[page][key] = input[key]
     elif action == 'set':
-        old = get_metas(request, page, input.keys())
-        for key in old:
-            discarded[page][key] = old[key]
-            for key in input:
-                added[page][key] = input[key]
+        for key in input:
+            cleared[page].add(key)
+            added[page][key] = input[key]
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
-        oldcats = get_metas(request, page, ['gwikicategory'])
-        discarded[page].setdefault('gwikicategory', list()).extend(oldcats)
+        cleared[page].add("gwikicategory")
         added[page].setdefault('gwikicategory', list()).extend(catlist)
     # default to add category
     else:
