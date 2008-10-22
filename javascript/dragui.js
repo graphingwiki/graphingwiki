@@ -1086,7 +1086,9 @@ drawline();
 
 /*function to show an info div about specified element*/
 function showInfo(id){
-
+var alignto = $('ttypesel');
+var posx = alignto.getCoordinates().width + alignto.getPosition().x + 20;
+posy = alignto.getPosition().y;
 if($('infodiv')){
 	$('infodiv').destroy();
 }
@@ -1100,8 +1102,8 @@ var infodiv = new Element('div', {
 'id' : 'infodiv',
 'styles' : {
 	'width' : '200px',
-	'left' : '450px',
-	'top' : '180px',
+	'left' : posx +'px',
+	'top' :  posy + 'px',
 	'position' : 'absolute',
 	'border' : 'solid black 1px',
 	'span' : '1em',
@@ -1136,7 +1138,9 @@ infodiv.grab(new Element('b',{
 }));
 createMenuButtons(infodiv,id);
 */
-$('content').grab(infodiv);
+//$('content').grab(infodiv);
+$('page').grab(infodiv);
+
 }
 
 /* Turns box tree into form with hidden inputs*/
