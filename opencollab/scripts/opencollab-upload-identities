@@ -4,7 +4,8 @@
     The purpose if this script is to wautomate simple identity uploads
     with an input data set of one identity per page. Moreover, the
     identity instantiation should be done through templating, e.g.
-    IdentityTemplate.
+    IdentityTemplate. At present the input identities are assumed
+    to be email addresses.
 
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -44,7 +45,14 @@ def parse_input_file( metas, path ):
     epoch = utctimestamp(epoch)
     for line in lines:
         line = line.strip()
+        local, domain = line.split('@') 
+        title = local.title()
+        id = title.split('.')
+        sname = ' '.join( id )
         metas[line]["Attribution"].add(epoch)
+        metas[line]["SMTP Domain"].add( '["%s"]' % domain )
+        metas[line]["SMTP Local Part"].add(local)
+        metas[line]["Subject Name"].add( '["%s"]' % sname )
 
 def import_metas( collab, metas, template, verbose ):
     for page, pmeta in metas.iteritems():
