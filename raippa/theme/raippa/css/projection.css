@@ -42,5 +42,11 @@ ul {
 	line-height: 1.3em;
 }
 
+ol {
+        font-size: 90%;
+        line-height: 1.3em;
+}
+
+
 #interwiki, #pagelocation, #pageinfo { display: none; }
 
