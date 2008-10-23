@@ -990,49 +990,31 @@ def metatable_parseargs(request, args,
         if checkAccess:
             # Filter nonexisting pages and the pages the user may not read
             pages = filter(can_be_read, pages)
-
         pages = set(pages)
-
     # Otherwise check out the wanted pages
     else:
-        if checkAccess:
-            # Filter pages the user may not read
-            argset = set(filter(request.user.may.read, argset))
-
         pages = set()
-
         categories = set(filter_categories(request, argset))
         other = argset - categories
 
         for arg in categories:
-            # Nonexisting categories
-            try:
-                page = request.graphdata.getpage(arg)
-            except KeyError:
-                continue
-            
+            page = request.graphdata.getpage(arg)
             newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
             for newpage in newpages:
                 # Check that the page is not a category or template page
                 if cat_re.match(newpage) or temp_re.search(newpage):
                     continue
-                if checkAccess and request.user.may.read(newpage):
-                    # Check that user may view any the page
-                    pages.add(newpage)
-                else:
-                    pages.add(newpage)
+                if not is_saved(newpage):
+                    continue
+                if checkAccess and not can_be_read(newpage):
+                    continue
+                pages.add(newpage)
 
         for name in other:
-            # Filter out nonexisting pages
-            try:
-                page = request.graphdata.getpage(name)
-            except KeyError:
+            if not is_saved(name):
                 continue
-
-            # Added filtering of nonexisting and non-local pages
-            if not page.has_key('saved'):
+            if checkAccess and not can_be_read(name):
                 continue
-                
             pages.add(name)
 
     pagelist = set([])
