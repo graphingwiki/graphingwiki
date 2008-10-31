@@ -107,9 +107,9 @@ function del_confirm(form){
   var form = $(form);
 
   if(form.id != 'course_form'){
-	var sel = $(form.getChildren('select')[0].value);
-  }else{
-	var sel = form.getChildren('select')[0];
+	var sel = $(form.getElements('select')[0].value);
+  }else if(form){
+	var sel = form.getElements('select')[0];
   }
 
   if(sel){
