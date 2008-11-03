@@ -68,7 +68,23 @@ request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_pre
     <input type="hidden" name="action" value="editTask">
     <input type='submit' name='new' value='NewTask'>
 </form><br>\n''' % request.request_uri.split("?")[0]
-   
+    pagehtml += u'''<form method="post" id="submitform" name="courseForm">
+<input type="hidden" name="action" value="editCourse">\n'''
+    if course:
+        pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course.replace('"', '&quot;')
+    pagehtml += '''
+    <div style="width:200px">
+    <b>id:</b><br>
+    <input class="maxwidth" id="courseid" type="text" name="courseid" value="%s"><br>
+    <b>name:</b><br>
+    <input class="maxwidth" type="text" id="coursename" name="coursename" value="%s"><br>
+<input type="submit" name="save" value="Save" onclick="return submitTree(this);">
+<input type="submit" name="cancel" value="Cancel" onclick="return submitTree(this);">
+</div>
+</form>
+''' % (id, name)
+
+
     globaldata, pagelist, metakeys, styles = metatable_parseargs(request, taskcategory)
     subjectdict = {None:list()}
     for page in pagelist:
@@ -90,8 +106,9 @@ request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_pre
         except:
             pass
     #subjectlist
-    pagehtml += u'Tasks subjects: <br>'
-    pagehtml += u'<select style="width:190px" id="ttypesel" name="tasksubject">\n'
+    pagehtml += u'''<div id="tasklist_cont"> Tasks subjects: <br>
+    <select style="width:190px"
+    id="ttypesel" name="tasksubject">\n'''
     for subject in subjectdict:
         pagehtml+=u'<option value="t_type_%s">%s</option>\n' % (subject, subject)
     pagehtml += u'''</select>
@@ -105,14 +122,11 @@ Tasks:
 		for taskpagename, taskdescription in tasklist:
 			pagehtml += u'''<div class="dragItem"><input type="hidden" name="%s"
 	value="%s">%s</div>\n''' % (taskdescription.replace('"', '&quot;'), taskpagename, taskdescription)
-		pagehtml += u'</div>\n'
+		pagehtml += u'</div></div>\n'
 
     pagehtml += u'''
 <div id="start">Start by dragging here!<br></div>
-<form method="post" id="submitform" name="courseForm">
-<input type="hidden" name="action" value="editCourse">\n'''
-    if course:
-        pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course.replace('"', '&quot;')
+'''
     pagehtml += u'''
     <script type="text/javascript">
 	function loadData(){\n'''
@@ -196,25 +210,6 @@ Tasks:
     pagehtml += '''
 	}//loadData
     </script>\n'''
-    if id:
-        #pagehtml += '<input id="courseid" type="hidden" name="courseid" value="%s">' % id 
-        pagehtml += 'id: <input id="courseid" type="text" name="courseid" value="%s"><br>' % id
-    else:
-        pagehtml += 'id: <input id="courseid" type="text" name="courseid"><br>'
-    if "timetrack" in options:
-        timetrack = 'checked'
-    else:
-        timetrack = ''
-    pagehtml += '''
-name: <input type="text" id="coursename" name="coursename" value="%s"><br> 
-timetrack: <input type="checkbox" name="option" value="timetrack" %s><br>
-description:<br> 
-<textarea name="coursedescription" rows="10" cols="40">%s</textarea><br>
-<input type="submit" name="save" value="Save" onclick="return submitTree(this);">
-<input type="submit" name="cancel" value="Cancel" onclick="return submitTree(this);">
-</form>
-''' % (name, timetrack, coursedescription)
-
     request.write(u'%s' % pagehtml)
 
 def editcourse(request, coursepage=None):
