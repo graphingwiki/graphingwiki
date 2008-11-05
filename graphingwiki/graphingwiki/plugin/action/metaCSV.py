@@ -9,7 +9,7 @@ from MoinMoin import wikiutil
 from MoinMoin.util import MoinMoinNoFooter
 from graphingwiki.editing import process_edit
 from graphingwiki.editing import getmeta_to_table
-from graphingwiki.patterns import encode
+from graphingwiki.patterns import encode_page
 
 def execute(pagename, request):
     # Strip non-ascii chars in header
@@ -37,6 +37,6 @@ def execute(pagename, request):
     writer = csv.writer(request, delimiter=';')
 
     for row in table:
-        writer.writerow(row)
+        writer.writerow(encode_page(x) for x in row)
 	
     raise MoinMoinNoFooter

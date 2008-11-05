@@ -43,7 +43,7 @@ metadata_re = macro_re("MetaData")
 regexp_re = re.compile('^/.+/$')
 # Dl_re includes newlines, if available, and will replace them
 # in the sub-function
-dl_re = re.compile('(\n?^\s+(.+?):: (.+))$', re.M)
+dl_re = re.compile('(^\s+(.+?):: (.+)$\n?)', re.M)
 # From Parser, slight modification due to multiline usage
 dl_proto = "^(\s+?%s::)\s*$"
 # Regex for adding new
@@ -417,17 +417,17 @@ def add_meta_regex(request, inclusion, newval, oldtext):
         "CategoryBlaa\\n"
     >>> 
     >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
-    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n----\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n \\xc3\\xb6\\xc3\\xb6\\xc3\\xb6 \\xc3\\xa4\\xc3\\xa4:: blaa\\n----\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
     >>> 
     >>> request.cfg.gwiki_meta_after = '^----'
     >>> 
     >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
-    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n \\xc3\\xb6\\xc3\\xb6\\xc3\\xb6 \\xc3\\xa4\\xc3\\xa4:: blaa\\nCategoryIdentity\\n##fslsjdfldfj\\nCategoryBlaa\\n'
     >>> 
     >>> s = '\\n'.join(s.split('\\n')[:2])
     >>> 
     >>> add_meta_regex(request, u' ööö ää:: blaa', u'blaa', s)
-    u'= @PAGE@ =\\n[[TableOfContents]]\\n \xc3\xb6\xc3\xb6\xc3\xb6 \xc3\xa4\xc3\xa4:: blaa\\n'
+    u'= @PAGE@ =\\n[[TableOfContents]]\\n \\xc3\\xb6\\xc3\\xb6\\xc3\\xb6 \\xc3\\xa4\\xc3\\xa4:: blaa\\n'
     """
 
     if not newval:
@@ -472,13 +472,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     # Annoying corner case with dl:s
     if oldtext.endswith('::'):
         oldtext = oldtext + ' '
-
-    #a = file('/tmp/log', 'a')
-    #a.write(repr(oldtext) + '\n')
-    #a.write(repr(oldmeta) + '\n')
-    #a.write(repr(newmeta) + '\n')
-    #a.flush()
-    #a.close()
+    oldtext = oldtext + '\n'
 
     # Keeps track on the keys added during this edit
     added_keys = set()
@@ -525,10 +519,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         if not val.strip():
             return ''
 
-        out = ' %s:: %s' % (key, val)
-
-        if all.startswith('\n'):
-            out = '\n' + out
+        out = ' %s:: %s\n' % (key, val)
 
         return out
 
@@ -538,7 +529,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
         dl_add_re = re.compile(dl_add % (oldkey), re.M)
 
-        for i, newval in enumerate(newmeta[key]):
+        for i, newval in enumerate(reversed(newmeta[key])):
             # print repr(newval)
             # Remove newlines from input, as they could really wreck havoc.
             newval = newval.replace('\n', ' ')
@@ -566,9 +557,10 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
                 #print "# ", repr(oldval)
                 oldkey = key
                 # First try to replace the dict variable
-                oldtext = dl_re.sub(dl_subfun, oldtext)
+                oldtext, repls = dl_re.subn(dl_subfun, oldtext, 1)
                 # Then try to replace the MetaData macro on page
-                oldtext = metadata_re.sub(macro_subfun, oldtext)
+                if not repls:
+                    oldtext = metadata_re.sub(macro_subfun, oldtext, 1)
 
             # If prototypes ( key:: ) are present, replace them
             elif (dl_proto_re.search(oldtext + '\n')):

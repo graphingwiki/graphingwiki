@@ -41,7 +41,6 @@ from MoinMoin.macro.Include import _sysmsg
 from graphingwiki.graphrepr import Graphviz, gv_found
 from graphingwiki.patterns import actionname, form_escape
 
-from ShowGraph import quotetoshow
 from savegraphdata import encode
 
 class ViewDot(object):
