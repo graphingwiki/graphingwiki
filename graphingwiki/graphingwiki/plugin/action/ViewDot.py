@@ -43,7 +43,6 @@ from MoinMoin.error import InternalError
 from graphingwiki.graphrepr import Graphviz, gv_found
 from graphingwiki.patterns import actionname
 
-from ShowGraph import quotetoshow
 from savegraphdata import encode
 
 class ViewDot(object):

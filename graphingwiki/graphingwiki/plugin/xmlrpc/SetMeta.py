@@ -9,7 +9,7 @@
 import urllib
 import xmlrpclib
 
-from MoinMoin import config
+from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 from graphingwiki.patterns import encode, getgraphdata
@@ -26,6 +26,7 @@ def urlquote(s):
 def execute(xmlrpcobj, page, input, action='add',
             createpage=True, category_edit='', catlist=[],
             template=''):
+
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
@@ -49,10 +50,21 @@ def execute(xmlrpcobj, page, input, action='add',
         # Graphdata locked at once in hopes of reducing race conditions
         getgraphdata(request)
 
-    # process_edit requires a certain order to meta input
-    output = order_meta_input(request, page, input, action)
+    cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
 
-    categories = {page: catlist}
+    if action == 'add':
+        for key in input:
+            added[page][key] = input[key]
+    elif action == 'set':
+        for key in input:
+            cleared[page].add(key)
+            added[page][key] = input[key]
 
-    return process_edit(request, output, category_edit, categories)
-
+    if category_edit == 'del':
+        discarded[page].setdefault('gwikicategory', list()).extend(catlist)
+    elif category_edit == 'set':
+        cleared[page].add("gwikicategory")
+        added[page].setdefault('gwikicategory', list()).extend(catlist)
+    # default to add category
+    else:
+        added[page].setdefault('gwikicategory', list()).extend(catlist)
