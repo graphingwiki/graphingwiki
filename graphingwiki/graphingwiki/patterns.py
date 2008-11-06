@@ -41,9 +41,15 @@ from codecs import getencoder
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
-from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
+
+# Fixes failure modes in scripts that have not initialised a request
+from MoinMoin import i18n
+if i18n.wikiLanguages() is None: 
+    i18n.wikiLanguages = lambda: ["en"]
+
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.graph import Graph
 
@@ -59,7 +65,7 @@ def encode(str):
 def url_escape(text):
     # Escape characters that break links in html values fields, 
     # macros and urls with parameters
-    return re.sub('[\]"\?#&]', lambda mo: '%%%02x' % ord(mo.group()), text)
+    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
 
 def form_escape(text):
     # Escape characters that break value fields in html forms

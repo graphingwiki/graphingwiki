@@ -1264,10 +1264,13 @@ def _doctest_request():
         pass
     class Config(object):
         pass
+    class Cache(object):
+        pass
     
     request = Request()
     request.cfg = Config()
-    request.cfg.page_category_regex = u'^Category[A-Z]'
+    request.cfg.cache = Cache()
+    request.cfg.cache.page_category_regex = re.compile(u'^Category[A-Z]', re.UNICODE)
 
     return request
 
