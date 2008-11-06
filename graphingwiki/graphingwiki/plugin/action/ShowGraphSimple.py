@@ -35,6 +35,7 @@ from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.action import AttachFile
 
 from graphingwiki.graphrepr import gv_found
+from graphingwiki.patterns import form_escape
 from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):
@@ -46,74 +47,70 @@ class GraphShowerSimple(GraphShower):
 
         super(GraphShowerSimple, self).__init__(pagename, request,
                                                 self.graphengine)
+
+        # If we appear on a subpage, links may be screwed - 
+        # app_page retains knowledge on the page graph appears in
+        if kw.has_key('app_page'):
+            self.app_page = kw['app_page']
+
         # URL addition
         self.image = 0
         self.urladd = ''
         self.available_formats = ['png', 'svg', 'dot', 'zgr']
         self.do_form = kw['do_form']
     
-    def sendGraph(self, gr):
-        img = self.getLayoutInFormat(gr.graphviz, self.format)
+    def send_graph(self, gr):
+        img = self.get_layout(gr.graphviz, self.format)
         self.request.write(img)
 
-    def sendLegend(self):
+    def send_legend(self):
         legend = None
         if self.coloredges or self.colornodes:
-            legend = self.makeLegend()
+            legend = self.make_legend()
 
         if legend:
-            img = self.getLayoutInFormat(legend, self.format)
+            img = self.get_layout(legend, self.format)
             self.request.write(img)
 
     def execute_page(self):
-        formatter = self.sendHeaders()
+        formatter = self.send_headers()
         _ = self.request.getText
 
-        if self.isstandard:
+        if not self.request.page.isStandardPage(includeDeleted=False):
             self.request.write(formatter.text(
                 _("No graph data available.")))
             self.request.write(formatter.endContent())
-            self.request.theme.send_footer(self.pagename)
+            wikiutil.send_footer(self.request, self.pagename)
             return
 
         self.execute_graphs()
 
-        self.sendFooter(formatter)
-
+        self.send_footer(formatter)
 
     def execute_graphs(self, urladd=None):
         _ = self.request.getText
         if urladd:
             self.urladd = urladd
 
-        # Init WikiNode-pattern
-        self.globaldata = WikiNode(request=self.request,
-                                   urladd=self.urladd,
-                                   startpages=self.startpages).graphdata
-
-
-        # The working with patterns goes a bit like this:
-        # First, get a sequence, add it to outgraph
-        # Then, match from outgraph, add graphviz attrs
-
         outgraph = self.get_graph()
 
         if self.format and gv_found:
-            gr = self.generateLayout(outgraph)
+            gr = self.generate_layout(outgraph)
 
         if self.do_form:
             if self.format == 'dot':
-                self.sendGv(gr)
+                self.send_gv(gr)
                 # Cleanup
+                raise MoinMoinNoFooter
             else:
-                self.sendForm()
+                self.send_form()
 
         img_url = self.request.getQualifiedURL() + \
                   self.request.request_uri + "&image="
 
         legend = None
         if (self.coloredges or self.colornodes) and gv_found:
-            legend = self.makeLegend()
+            legend = self.make_legend()
 
         if self.help == 'inline':
             urladd = self.request.page.page_name + \
@@ -121,28 +118,15 @@ class GraphShowerSimple(GraphShower):
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
             self.request.write('[[InlineGraph(%s)]]' % urladd)
+
         elif not self.format:
-            formatter = self.request.formatter
-            self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text(_("Nodes in graph") + ": " +
-                                                str(len(
-                outgraph.nodes.getall()))))
-            self.request.write(formatter.paragraph(0))
-            self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text(_("Edges in graph") + ": " +
-                                              str(len(
-                outgraph.edges.getall()))))
-            self.request.write(formatter.paragraph(0))
-            if getattr(self, 'orderby', '_hier') != '_hier':
-                self.request.write(formatter.paragraph(1))
-                self.request.write(formatter.text(_("Order levels") + ": " +
-                                                  str(len(
-                    self.ordernodes.keys()))))
-                self.request.write(formatter.paragraph(0))
+            self.test_graph(outgraph)
+
         elif not gv_found:
             self.request.write(self.request.formatter.text(_(\
                     "ERROR: Graphviz Python extensions not installed. " +\
                     "Not performing layout.")))
+
         elif self.format == 'zgr':
             if not self.height:
                 self.height = "600"
@@ -168,51 +152,46 @@ class GraphShowerSimple(GraphShower):
             if legend:
                 self.request.write('<img src="%s" alt="legend"><br>\n' %
                                    (img_url + "2"))
+
         elif self.format == 'svg':
             self.request.write('<img src="%s" alt="graph">\n' %
                                (img_url + "1"))
             if legend:
                 self.request.write('<img src="%s" alt="legend">' %
                                    (img_url + "2"))
+
         else:
             self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'%
                                (img_url + "1", _('graph'),
                                 gr.graphattrs['name']))
-            self.sendMap(gr.graphviz)
+            self.send_map(gr.graphviz)
             if legend:
                 self.request.write('<img src="%s" alt="%s" usemap="#%s">'%
                                    (img_url + "2", _('legend'), legend.name))
-                self.sendMap(legend)
+                self.send_map(legend)
 
     def get_graph(self):
         # First, let's get do the desired traversal, get outgraph
-        graphdata = self.buildGraphData()
-        # Stupid ugly hack:
-        # after saving page, the code execution seems to
-        # go pretty erratic, buildgraphdata is somehow
-        # executed two times over (??), leaving the
-        # db closed - hence opening the db again
-        # here seems to do the trick?
-        if not self.globaldata.opened:
-            self.globaldata.opendb()
-        outgraph = self.buildOutGraph()
+        self.build_graph_data()
+        outgraph = self.build_outgraph()
 
         # Fixes some weird problems with transparency
         if self.format == 'svg':
             outgraph.bgcolor = 'white'
 
         nodes = set(self.startpages)
-        outgraph = self.doTraverse(graphdata, outgraph, nodes)
+        outgraph = self.traverse(outgraph, nodes)
+        outgraph = self.gather_layout_data(outgraph)
 
         # Stylistic stuff: Color nodes, edges, bold startpages
         if self.colorby:
-            outgraph = self.colorNodes(outgraph)
-        outgraph = self.colorEdges(outgraph)
-        outgraph = self.edgeTooltips(outgraph)
-        outgraph = self.circleStartNodes(outgraph)
+            outgraph = self.color_nodes(outgraph)
+        outgraph = self.color_edges(outgraph)
+        outgraph = self.edge_tooltips(outgraph)
+        outgraph = self.circle_start_nodes(outgraph)
 
         # Fix URL:s
-        outgraph = self.fixNodeUrls(outgraph)
+        outgraph = self.fix_node_urls(outgraph)
 
         if self.format == 'zgr':
             self.origformat = True
@@ -220,7 +199,7 @@ class GraphShowerSimple(GraphShower):
         # To fix links with zgrviewer
         if hasattr(self, 'origformat'):
             src = self.request.getQualifiedURL() + '/'
-            for node, in outgraph.nodes.getall():
+            for node in outgraph.nodes:
                 node = outgraph.nodes.get(node)
 
                 # To fix some weird problems with transparency
@@ -256,12 +235,8 @@ class GraphShowerSimple(GraphShower):
                 node.gwikiURL = node.gwikiURL.replace('&image=1', '')
 
             src = self.request.getQualifiedURL()
-            for edge in outgraph.edges.getall():
+            for edge in outgraph.edges:
                 edge = outgraph.edges.get(*edge)
-
-                # Quoting fix
-                tooltip = edge.tooltip.split('>')
-                edge.tooltip = '>'.join(url_unquote(x) for x in tooltip)
 
                 # Fix edge URL:s
                 if edge.URL.startswith('..'):
@@ -280,12 +255,8 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(_(\
                         "ERROR: Graphviz Python extensions not installed. " +\
                         "Not performing layout.")))
+            raise MoinMoinNoFooter
         
-        # Init WikiNode-pattern
-        self.globaldata = WikiNode(request=self.request,
-                                   urladd=self.urladd,
-                                   startpages=self.startpages).graphdata
-
         formatcontent = self.format
 
         if self.format == 'zgr':
@@ -298,23 +269,28 @@ class GraphShowerSimple(GraphShower):
         if isinstance(self.request, RequestModPy):
             self.request.setHttpHeader('Content-type: image/%s' % formatcontent)
             del self.request.mpyreq.headers_out['Vary']
+
         elif not isinstance(self.request, RequestStandAlone):
             # Do not send content type in StandAlone
             self.request.write("Content-type: image/%s\n\n" % formatcontent)
 
         if self.image == 1:
             outgraph = self.get_graph()
-            gr = self.generateLayout(outgraph)
-            self.sendGraph(gr)
+            gr = self.generate_layout(outgraph)
+            self.send_graph(gr)
             # Cleanup
+            raise MoinMoinNoFooter
+
         else:
+
             outgraph = self.get_graph()
-            gr = self.generateLayout(outgraph)
-            self.sendLegend()
+            gr = self.generate_layout(outgraph)
+            self.send_legend()
             # Cleanup
+            raise MoinMoinNoFooter
 
     def execute(self):
-        self.formargs()
+        self.form_args()
 
         # Whether to do print the page frame or the image
         if self.request.form.has_key('image'):
@@ -341,5 +317,5 @@ def execute_graphs(pagename, request, **kw):
     urladd = kw['urladd']
 
     graphshower = GraphShowerSimple(pagename, request, **kw)
-    graphshower.formargs()
+    graphshower.form_args()
     graphshower.execute_graphs(urladd=urladd)

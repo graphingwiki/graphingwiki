@@ -10,11 +10,7 @@
 import cgi
  
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
-
-from graphingwiki.patterns import debug
-
-def htmlquote(s):
-    return cgi.escape(s, 1)
+from graphingwiki.patterns import form_escape
 
 Dependencies = []
 
@@ -72,7 +68,7 @@ class Parser(wikiParser):
 
         return apply(wikiParser._dl_repl, (self, match, groups)) + \
                '\n<input class="metavalue" type="text" name="' + \
-               htmlquote('%s!%s' % (self.pagename, dt)) + '" value="'
+               form_escape('%s?%s' % (self.pagename, dt)) + '" value="'
 
     def _url_repl(self, word, groups):
         if self.in_dd:

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
+import os
+
 from MoinMoin.security import Permissions
 from MoinMoin.request import RequestBase
-from MoinMoin.util.antispam import SecurityPolicy as AntiSpam
-
-from graphingwiki.editing import underlay_to_pages
-from graphingwiki.patterns import GraphData
+from MoinMoin.security.antispam import SecurityPolicy as AntiSpam
 
 # Monkey patching request objects (that are instances of subclasses of 
 # RequestBase) to have automatically opened and closed property
@@ -13,6 +12,8 @@ from graphingwiki.patterns import GraphData
 orig_finish = RequestBase.finish
 
 def graphdata_getter(self):
+    from graphingwiki.patterns import GraphData
+
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
@@ -27,6 +28,21 @@ def patched_finish(self, *args, **keys):
             
 RequestBase.graphdata = property(graphdata_getter)
 RequestBase.finish = patched_finish
+
+def underlay_to_pages(req, p):
+    underlaydir = req.cfg.data_underlay_dir
+    pagedir = os.path.join(req.cfg.data_dir, 'pages')
+
+    pagepath = p.getPagePath()
+
+    # If the page has not been created yet,
+    # create its directory and save the stuff there
+    if underlaydir in pagepath:
+        pagepath = pagepath.replace(underlaydir, pagepath)
+        if not os.path.exists(pagepath):
+            os.makedirs(pagepath)
+
+    return pagepath
 
 class SecurityPolicy(AntiSpam):
     def save(self, editor, newtext, rev, **kw):

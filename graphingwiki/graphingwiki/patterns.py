@@ -2,8 +2,8 @@
 """
     patterns class
 
-    @copyright: 2006 by Joachim Viide and
-                        Juhani Eronen <exec@iki.fi>
+    @copyright: 2006-2008 by Joachim Viide and
+                             Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -41,7 +41,7 @@ from codecs import getencoder
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
 
@@ -117,6 +117,8 @@ url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punc
 
 url_re = re.compile(url_rule)
 
+ATTACHMENT_SCHEMAS = ["attachment", "drawing"]
+
 def encode_page(page):
     return encode(page)
 
@@ -129,7 +131,7 @@ def node_type(request, nodename):
             return 'url'
 
         start = nodename.split(':')[0]
-        if start in Parser.attachment_schemas:
+        if start in ATTACHMENT_SCHEMAS:
             return 'attachment'
 
         get_interwikilist(request)
@@ -198,7 +200,7 @@ def absolute_attach_name(name, target):
     if '?' in name:
         name = name.split('?', 1)[0]
 
-    if abs_method in Parser.attachment_schemas and not '/' in target:
+    if abs_method in ATTACHMENT_SCHEMAS and not '/' in target:
         target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
 
     return target 

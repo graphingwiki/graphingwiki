@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-    graph class
-     - a data structure to represent graphs
+    Graph class - a data structure to represent graphs
+    * 2008-09-19 Written to emulate the old weird sync.py based contraption
+                 with 10^5 times less code.
 
-    @copyright: 2006 by Joachim Viide and
+    @copyright: 2008 by Joachim Viide and
                         Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
@@ -26,230 +27,246 @@
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
-
 """
-from sync import Sync
-import pdb
 
-class Graph(Sync):
-    def __init__(self):
-        Sync.__init__(self,
-                      (
-                         ("edges",
-                          ("parent", "child"),
-                          ()
-                         ),
-                         ("nodes",
-                          ("node",),
-                          ((("gwikilabel", ""), ("belongs_to_patterns","")))
-                         ) # nodes
-                      ) #tables
-                     ) #self
+from codecs import getencoder
 
-        self.connections = {}
-        self.edges.addhandler += self.__addedge
-        self.edges.delhandler += self.__deledge
-        self.nodes.addhandler += self.__addnode
-        self.nodes.delhandler += self.__delnode
+## HACK
+from MoinMoin import config
+# Encoder from unicode to charset selected in config
+encoder = getencoder(config.charset)
+def encode(str):
+    return encoder(str, 'replace')[0]
+
+def encode_page(page):
+    return encode(page)
+
+class AttrBag(object):
+    def __init__(self, **keys):
+        object.__init__(self)
+
+        self._ignored = set()
+        self._ignored.update(self.__dict__)
+
+        self.__dict__.update(keys)
 
     def __iter__(self):
-        import re
-        # grab local variables not from sync or __init__
-        for key in filter(lambda x: not
-                          re.match(r'addhandler|delhandler|commithandler|' + \
-                                   r'listeners|listened|tablenames|order|' + \
-                                   r'connections|nodes|edges|_Sync.+', x),
-                          self.__dict__.keys()):
+        variables = set(self.__dict__)
+        
+        for key in variables:
+            if key in self._ignored:
+                continue
             yield key, self.__dict__[key]
 
-    def __getstate__(self):
-        vars = dict(self)
+    def __setattr__(self, key, value):
+        # HACK
+        if isinstance(key, unicode):
+            key = encode_page(key)
+        self.__dict__[key] = value
 
-        items = dict()
+    def update(self, other):
+        for name, value in other:
+            self.__setattr__(name, value)
 
-        # save nodes and edges
-        for type in ["nodes", "edges"]:
-            items[type] = dict()
-            group = getattr(self, type)
-            for item in group.getall():
-                # get item attributes
-                items[type][item] = dict(group.get(*item))
+class Node(AttrBag):
+    def __init__(self, identity, **keys):
+        # Set the _identity attribute before calling the __init__ of
+        # the super class, because we don't want it returned when
+        # e.g. iterating.
+        self._identity = identity
+        AttrBag.__init__(self, **keys)
 
-        return vars, items
+    def __unicode__(self):
+        return self._identity
 
-    # Set state after pickling. Gets items from getstate, initialises
-    # nodes, edges and their attributes.
-    def __setstate__(self, state):
-        vars, items = state
+class Nodes(object):
+    def __init__(self, graph):
+        object.__init__(self)
 
-        # First, local variables
-        self.__dict__ = vars
+        self.graph = graph
+        self.nodes = dict()
 
-        # Then, init graph + sync
-        self.__init__()
+    def add(self, identity, **keys):
+        if identity not in self.nodes:
+            self.nodes[identity] = Node(identity, **keys)
+        return self.nodes[identity]
 
-        # Finally, nodes and edges. 
-        for type in ["nodes", "edges"]:
-            group = getattr(self, type)
-            for item, attributes in items[type].iteritems():
-                # add items
-                row = group.add(*item)
-                # set item attributes, if any
-                for attr, val in attributes.iteritems():
-                    row.__setattr__(attr, val)
+    def delete(self, identity):
+        self.nodes.pop(identity, None)
+        self.graph.edges._delete(identity)
 
-    def nodelist(self):
-        return [x[0] for x in self.nodes.getall()]    
+    def get(self, identity):
+        return self.nodes.get(identity, None)
 
-    def __disconnect(self, node1, node2):
- 	if node1 not in self.connections:
- 	    return
- 	if node2 not in self.connections:
- 	    return        
+    def __iter__(self):
+        return iter(self.nodes)
 
- 	current = set()
- 	current.add(node1)
+    def __len__(self):
+        return len(self.nodes)
 
-        total = set()
- 	while current:
- 	    next = set()
- 	    for node in current:
-                for parent, child in self.edges.getall(parent = node):
- 		    next.add(child)
- 		for parent, child in self.edges.getall(child = node):
- 		    next.add(parent)
-            total.update(current)
-            current = next - total
+class Edges(object):
+    def __init__(self):
+        object.__init__(self)
 
-        if len(total) == len(self.connections[node1]):
-            return
+        self.edges = dict()
+        self.childDict = dict()
+        self.parentDict = dict()
 
-        for node in total:
-            self.connections[node] = total
+    def add(self, parent, child, **keys):
+        """
+        >>> edges = Edges()
+        >>> e1 = edges.add(1, 2)
+        >>> e2 = edges.add(1, 3)
+        >>> sorted(edges)
+        [(1, 2), (1, 3)]
 
-        total = self.connections[node2] - total
-        for node in total:
-            self.connections[node] = total
+        Adding an already existing edge just returns the already existing
+        edge item:
 
-    def __connect(self, parent, child):
-        children = self.connections[child]
-        parents = self.connections[parent]
+        >>> edges.add(1, 2) is e1
+        True
+        >>> sorted(edges)
+        [(1, 2), (1, 3)]
+        """
+        identity = parent, child
+        if identity not in self.edges:
+            self.edges[identity] = AttrBag(**keys)
+            self.childDict.setdefault(parent, set()).add(child)
+            self.parentDict.setdefault(child, set()).add(parent)
+        return self.edges[identity]
 
-        if children is parents:
-            return
+    def delete(self, parent, child):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
 
-        children.update(parents)
-        for node in parents:
-            self.connections[node] = children
+        >>> edges.delete(1, 2)
+        >>> sorted(edges)
+        [(1, 3)]
 
-    def __addnode(self, table, attributes, node):
-        self.connections[node] = set()
-        self.connections[node].add(node)
+        Deleting a non-existing edge does nothing:
+
+        >>> edges.delete(7, 8)
+        >>> sorted(edges)
+        [(1, 3)]
+        """
+        identity = parent, child
         
-    def __delnode(self, table, attributes, node):
-        self.edges.deleteall(parent = node)
-        self.edges.deleteall(child = node)	
-        del self.connections[node]
+        if identity in self.edges:
+            del self.edges[identity]
 
-    def __addedge(self, table, attributes, parent, child):
-        if not self.nodes.has(parent) or not self.nodes.has(child):
-            self.edges.delete(parent, child)
-            raise Exception, "Can't add an edge for a node not in the graph"
-        self.__connect(parent, child)
+            self.childDict[parent].discard(child)
+            if not self.childDict[parent]:
+                del self.childDict[parent]
 
-    def __deledge(self, table, attributes, parent, child):
-        self.__disconnect(parent, child)
+            self.parentDict[child].discard(parent)
+            if not self.parentDict[child]:
+                del self.parentDict[child]
 
-    def getrecursivenodes(self):
-        nodes = set()
-        for node, in self.nodes.getall():
-            if isinstance(node, Graph):
-                nodes.update(node.getrecursivenodes())
-            else:
-                nodes.add(node)
-	return nodes
+    def get(self, parent, child):
+        """
+        >>> edges = Edges()
 
-    def getconnected(self, node, maxdist = None):
-        if node not in self.connections:
-            return None
-        
-        if maxdist == None:        
-            return self.connections[node]
+        Getting a non-existing edge returns None:
 
-        current = set()
-        current.add(node)
+        >>> edges.get(1, 2)
+     
+        Getting an edge naturally returns the same edge item as when adding:
 
-        distance = 0
-        total = set()
+        >>> e1 = edges.add(1, 2)
+        >>> edges.get(1, 2) is e1
+        True
 
-        while current and distance <= maxdist:
-            next = set()
-            for node in current:
-                for parent, child in self.edges.getall(parent = node):
-                    next.add(child)
-                for parent, child in self.edges.getall(child = node):
-                    next.add(parent)                
-            total.update(current)
-            current = next - total
-            distance += 1
-        return total
+        Deleting an edge also deletes the edge item. Re-adding the edge
+        creates a new edge item:
 
-    def getdistance(self, node1, node2):
-        if node2 not in self.connections:
-            return None
-        
-        if node1 not in self.connections[node2]:
-            return None
-        
-        current = set()
-        current.add(node1)
+        >>> edges.delete(1, 2)
+        >>> _ = edges.add(1, 2)
+        >>> edges.get(1, 2) is e1
+        False
+        """
 
-        distance = 0
-        total = set()
+        identity = parent, child
+        return self.edges.get(identity, None)
 
-        while current:
-            if node2 in current:
-                return distance
-            
-            next = set()
-            for node in current:
-                for parent, child in self.edges.getall(parent = node):
-                    next.add(child)
-                for parent, child in self.edges.getall(child = node):
-                    next.add(parent)                
-            total.update(current)
-            current = next - total
-            distance += 1
-        return None
+    def children(self, parent):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
+        >>> sorted(edges.children(1))
+        [2, 3]
 
-    def isconnected(self, node1, node2, maxdist = None):
-        if maxdist == None:
-            if node1 not in self.connections or node2 in self.connections:
-                return False
-            if self.connections[node2] is self.connections[node1]:
-                return True
-            return False
-        
-        distance = self.getdistance(node1, node2)
-        return distance != None and (maxdist == None or distance <= maxdist)                
+        >>> edges.delete(1, 2)
+        >>> sorted(edges.children(1))
+        [3]
+        """
 
+        return self.childDict.get(parent, set())
 
+    def parents(self, child):
+        """
+        >>> edges = Edges()
+        >>> _ = edges.add(1, 2)
+        >>> _ = edges.add(1, 3)
 
-if __name__ == '__main__':
-    g = Graph()
-    g.nodes.add(1).label = "blah"
-    g.nodes.add(2)
-    g.nodes.add(3)
-    g.nodes.add(4)    
-    g.edges.add(1, 2)
-    g.edges.add(3, 4)
+        >>> sorted(edges.parents(2))
+        [1]
 
-    print g.getconnected(1)
-    g.edges.add(2, 3)
+        >>> edges.delete(1, 2)
+        >>> sorted(edges.parents(2))
+        []
+        """
 
-    print g.getconnected(1)
-    g.edges.delete(3, 4)
-    
-    print g.getconnected(1, 0)
-    print "X"
-    print g.nodes.getall(label = "blah")
+        return self.parentDict.get(child, set())
+
+    def _delete(self, node):
+        for child in self.childDict.pop(node, set()):
+            identity = node, child
+            del self.edges[identity]
+        for parent in self.parentDict.pop(node, set()):
+            identity = parent, node
+            del self.edges[identity]
+
+    def __iter__(self):
+        return iter(self.edges)
+
+    def __len__(self):
+        return len(self.edges)
+
+class Graph(Node):
+    """
+    >>> graph = Graph()
+
+    >>> _ = graph.nodes.add(1)
+    >>> _ = graph.nodes.add(2)
+    >>> sorted(graph.nodes)
+    [1, 2]
+    >>> _ = graph.edges.add(1, 2)
+    >>> sorted(graph.edges)
+    [(1, 2)]
+
+    Deleting a node also deletes the related edges:
+
+    >>> graph.nodes.delete(2)
+    >>> sorted(graph.nodes)
+    [1]
+    >>> sorted(graph.edges)
+    []
+    """
+
+    def __init__(self):
+        self.nodes = Nodes(self)
+        self.edges = Edges()
+        Node.__init__(self, '')
+
+    def __nonzero__(self):
+        return len(self.nodes) > 0
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()

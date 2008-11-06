@@ -41,7 +41,7 @@ from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin import config
 
-from graphingwiki.editing import underlay_to_pages
+from graphingwiki.securitypolicy import underlay_to_pages
 
 # securitypolicy does magic monkey-patching of Moin's Request class on import
 import graphingwiki.securitypolicy
@@ -110,7 +110,7 @@ padding = len(str(total))
 count = 1
 
 # Just init one request
-req = request.RequestCLI()
+req = RequestCLI()
 
 for pagename in pages:
     page_enc = _e(pagename)
