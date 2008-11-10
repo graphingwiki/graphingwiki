@@ -673,7 +673,7 @@ class GraphShower(object):
                     # Add to filterordervalues in the nonmodified form
                     self.orderfiltervalues.update(value)
                     # Add to self.ordernodes by combined value of metadata
-                    value = ', '.join(value)
+                    value = ', '.join(sorted(value))
 
                     re_order = getattr(self, 're_order', None)
                     if re_order:
@@ -734,7 +734,7 @@ class GraphShower(object):
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
                 self.colorfiltervalues.update(rule)
-                rule = ', '.join(rule)
+                rule = ', '.join(sorted(rule))
                 re_color = getattr(self, 're_color', None)
                 # Add to filterordervalues in the nonmodified form
                 if re_color:
@@ -745,7 +745,7 @@ class GraphShower(object):
             rule = getattr(obj, colorby, None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
-                rule = ', '.join(rule)
+                rule = ', '.join(sorted(rule))
                 re_color = getattr(self, 're_color', None)
                 if re_color:
                     rule = re_color.sub(self.colorsub, rule)
@@ -1238,7 +1238,9 @@ class GraphShower(object):
         # Add startpages, even if unconnected
         for node in nodes:
             nodeitem = outgraph.nodes.add(node)
-            nodeitem.update(self.graphdata.nodes.get(node))
+            oldnode = self.graphdata.nodes.get(node)
+            if oldnode:
+                nodeitem.update(oldnode)
     
         for n in range(1, self.depth+1):
             outgraph = self.traverse_one(outgraph, newnodes)
