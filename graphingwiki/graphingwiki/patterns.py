@@ -149,12 +149,11 @@ def node_type(request, nodename):
 def filter_categories(request, candidates):
     # Let through only the candidates that are both valid category
     # names and WikiWords
-    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
 
-    candidates = wikiutil.filterCategoryPages(request, candidates)
-    candidates = filter(wordRex.match, candidates)
+    # Nah, the word rules in 1.6 were not for the feint for heart,
+    # just use the wikiutil function until further notice
 
-    return candidates
+    return wikiutil.filterCategoryPages(request, candidates)
 
 def get_url_ns(request, pagename, link):
     # Find out subpage level to adjust URL:s accordingly

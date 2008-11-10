@@ -239,12 +239,12 @@ def parse_text(request, page, text):
                 dnode = item[1]
                 hit = item[0]
             elif type == 'category':
-                # print "adding cat",item
+                # print "adding cat", item, repr(categories)
                 dnode = item
                 hit = item
                 if item in categories:
-                    add_link(new_data, pagename, name, 
-                             u"gwikicategory", category)
+                    add_link(new_data, pagename, dnode, 
+                             u"gwikicategory", item)
             elif type == 'meta':
                 add_meta(new_data, pagename, (metakey, item))
 
