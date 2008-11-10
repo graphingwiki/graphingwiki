@@ -140,8 +140,8 @@ def node_type(request, nodename):
         if start in ATTACHMENT_SCHEMAS:
             return 'attachment'
 
-        get_interwikilist(request)
-        if request.iwlist.has_key(start):
+        iw_list = wikiutil.load_wikimap(request)
+        if iw_list.has_key(start):
             return 'interwiki'
 
     return 'page'
@@ -161,11 +161,10 @@ def get_url_ns(request, pagename, link):
     subrank = pagename.count('/')
     # Namespaced names
     if ':' in link:
-        if not hasattr(request, 'iwlist'):
-            get_interwikilist(request)
+        iw_list = wikiutil.load_wikimap(request)
         iwname = link.split(':')
-        if request.iwlist.has_key(iwname[0]):
-            return request.iwlist[iwname[0]] + iwname[1]
+        if iw_list.has_key(iwname[0]):
+            return iw_list[iwname[0]] + iwname[1]
         else:
             return '../' * subrank + './InterWiki'
     # handle categories as ordernodes different
@@ -210,25 +209,6 @@ def absolute_attach_name(name, target):
         target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
 
     return target 
-
-def get_interwikilist(request):
-    # request.cfg._interwiki_list is gathered by wikiutil
-    # the first time resolve_wiki is called
-    wikiutil.resolve_wiki(request, 'Dummy:Testing')
-
-    iwlist = dict()
-    selfname = get_selfname(request)
-
-    # Add interwikinames to namespaces
-    for iw in request.cfg._interwiki_list:
-        iw_url = request.cfg._interwiki_list[iw]
-        if iw_url.startswith('/'):
-            if iw != selfname:
-                continue
-            iw_url = get_wikiurl(request)
-        iwlist[iw] = iw_url
-
-    request.iwlist = iwlist
 
 def get_selfname(request):
     if request.cfg.interwikiname:
@@ -514,7 +494,9 @@ class GraphData(UserDict.DictMixin):
                 elif nodetype == 'interwiki':
                     # Get effective URL:s to interwiki URL:s
                     iwname = dst.split(':')
-                    gwikiurl = self.request.iwlist[iwname[0]] + iwname[1]
+                    iw_list = wikiutil.load_wikimap(request)
+
+                    gwikiurl = iw_list[iwname[0]] + iwname[1]
                     tooltip = iwname[1] + ' ' + \
                         self.request.getText('page on') + \
                         ' ' + iwname[0] + ' ' + \
