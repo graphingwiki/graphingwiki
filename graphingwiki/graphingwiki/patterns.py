@@ -59,7 +59,7 @@ def encode(str):
 def url_escape(text):
     # Escape characters that break links in html values fields, 
     # macros and urls with parameters
-    return re.sub('[\]"\?#&]', lambda mo: '%%%02x' % ord(mo.group()), text)
+    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
 
 def form_escape(text):
     # Escape characters that break value fields in html forms
@@ -159,6 +159,7 @@ def get_url_ns(request, pagename, link):
 
 def format_wikitext(request, data):
     request.page.formatter = request.formatter
+    request.formatter.page = request.page
     parser = Parser(data, request)
     parser.request = request
     # No line anchors of any type to table cells
