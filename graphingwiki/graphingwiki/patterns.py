@@ -501,16 +501,23 @@ class GraphData(UserDict.DictMixin):
 
 # The load_ -functions try to minimise unnecessary reloading and overloading
 
-def load_children(request, graph, parent, urladd):
+def load_node(request, graph, node, urladd):
     load_origin = False
 
-    nodeitem = graph.nodes.get(parent)
+    nodeitem = graph.nodes.get(node)
     if not nodeitem:
-        nodeitem = graph.nodes.add(parent)
+        nodeitem = graph.nodes.add(node)
         load_origin = True
 
     # Get new data for current node
-    adata = request.graphdata.load_graph(parent, urladd, load_origin)
+    adata = request.graphdata.load_graph(node, urladd, load_origin)
+
+    nodeitem.update(adata.nodes.get(node))
+
+    return adata
+
+def load_children(request, graph, parent, urladd):
+    adata = load_node(request, graph, parent, urladd)
 
     # If no data
     if not adata:
@@ -518,8 +525,6 @@ def load_children(request, graph, parent, urladd):
     if not adata.nodes.get(parent):
         return list()
 
-    nodeitem.update(adata.nodes.get(parent))
-    
     children = set()
 
     # Add new nodes, edges that link to/from the current node
@@ -537,23 +542,13 @@ def load_children(request, graph, parent, urladd):
     return children
 
 def load_parents(request, graph, child, urladd):
-    load_origin = False
-
-    nodeitem = graph.nodes.get(child)
-    if not nodeitem:
-        nodeitem = graph.nodes.add(child)
-        load_origin = True
-
-    # Get new data for current node
-    adata = request.graphdata.load_graph(child, urladd, load_origin)
+    adata = load_node(request, graph, child, urladd)
 
     # If no data
     if not adata:
         return list()
     if not adata.nodes.get(child):
         return list()
-
-    nodeitem.update(adata.nodes.get(child))
 
     parents = set()
 

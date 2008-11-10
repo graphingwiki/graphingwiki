@@ -55,11 +55,6 @@ def execute(pagename, request):
         metas = get_metas(request, page, metakeys, checkAccess=False)
 
         timekey = metakeys[0]
-        #request.write(repr(page))
-        #request.write(repr(metas))
-        #request.write(repr(timekey))
-        #request.write(repr(metas.get(timekey, list())))
-        #request.write('\n')
 
         time = metas.get(timekey, list())
         if not time:

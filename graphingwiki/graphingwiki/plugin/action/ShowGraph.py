@@ -334,7 +334,8 @@ class GraphShower(object):
         # Other pages
         if request.form.has_key('otherpages'):
             self.otherpages = [x.strip() for x in 
-                               ','.join(request.form["otherpages"]).split(',')]
+                               ','.join(request.form["otherpages"]).split(',')
+                               if x.strip()]
 
         # String arguments, only include non-empty
         for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
@@ -437,6 +438,7 @@ class GraphShower(object):
 
         for nodename in self.otherpages:
             self.startpages.append(nodename)
+            load_node(self.request, self.graphdata, nodename, self.urladd)
             self.categories_add(get_categories(nodename))
 
         # Do not add self to graph if self is category or
@@ -457,6 +459,8 @@ class GraphShower(object):
                 for newpage in catpage['in'][type]:
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
+                        load_node(self.request, self.graphdata, 
+                                  newpage, self.urladd)
                         self.startpages.append(newpage)
                         self.categories_add(get_categories(newpage))
 
@@ -1230,6 +1234,11 @@ class GraphShower(object):
 
     def traverse(self, outgraph, nodes):
         newnodes = nodes
+
+        # Add startpages, even if unconnected
+        for node in nodes:
+            nodeitem = outgraph.nodes.add(node)
+            nodeitem.update(self.graphdata.nodes.get(node))
     
         for n in range(1, self.depth+1):
             outgraph = self.traverse_one(outgraph, newnodes)
