@@ -15,13 +15,41 @@
  * lkm          : count of boxes created
  * endPoints    : list of boxes without child
  */
+
 window.addEvent('domready', function(){
- childBoxes = new Hash();
+
+$('content').setStyle('background-image','url()');
+
+$('tasklist_cont').setStyles({
+	'position' : 'fixed',
+	'left': '0px',
+	'padding' : '0 0 0 5px',
+	'top': '140px'
+});
+$('coursemenu').setStyles({
+	'position' : 'fixed',
+	'top' : '200px',
+	'left' : '230px'
+}).grab(new Element('div',{
+	'id' : 'task_infodiv',
+	'html' : '<b>Info:</b><br>Click a task item to see and edit details.'
+}));
+
+//stores child data:  id : [child1,child2..]
+childBoxes = new Hash();
  boxData = new Hash({
      'lkm': 1,
      'endPoints': new Array()
      });
 
+start_size = {
+		'width': 100,
+		'height': 40
+};
+el_size = {
+		'width' : 75,
+		'height' : 25
+}
 $$('#start').each(function(drag){  
 
     childBoxes.set(drag.id, new Array());
@@ -36,9 +64,8 @@ $$('#start').each(function(drag){
 		'text-align' : 'center',
 		'left' : '800px',
 		'top': '175px',
-		'width': '150px',
-		'height': '50px'
 		});
+		drag.setStyles(start_size);
     });
 
 var heightfix = new Element('div', {
@@ -62,7 +89,8 @@ $$('.dragItem').each(function(item){
 		var description = input.get('name');
         var clone = this.clone()
             .setStyles(this.getCoordinates())
-            .setStyles({'opacity' : 0.7})
+            .setStyles({'opacity' : 0.7,
+						'top' : this.getPosition().y + $(window).getScroll().y})
             .addEvent('emptydrop', function(){
                 this.destroy();
             }).inject(document.body);
@@ -77,15 +105,9 @@ $$('.dragItem').each(function(item){
             onDrop: function(el, drop){
                 el.destroy();
                 if(drop){
-                drop.morph({
-                    'height' : (50+hfix) + 'px',
-                    'width' : '150px'
-                });
+                drop.morph(el_size);
 				if(drop.id != 'start'){
-				drop.getElements('canvas').morph({
-                    'height' : (50 + hfix) + 'px',
-                    'width' : '150px'
-                });
+				drop.getElements('canvas').morph(el_size);
 
 				}
                     if(childBoxes.get(drop.id).length ==0){
@@ -99,33 +121,27 @@ $$('.dragItem').each(function(item){
                 }
             },
             onEnter: function(el, drop){
-						 if(drop.id == 'start'){
-                         hfix = 0;
-                         }else{
-
-						 hfix = boxData.get(drop.id+'_desc').toString().length > 18 ? 15 : 0;
-						 drop.getElements('canvas').morph({
-							'height' : (60+ hfix) + 'px',
-							'width' : '170px'
-						 });
-						 }
-                        hfix[0]= drop.id;
-						drop.morph({
-							'height' : (60+hfix) + 'px',
-							'width' : '170px'
+					if(drop.id == 'start'){
+						 drop.morph({
+							'height' : (start_size.height + 10) +'px',
+							'width' : (start_size.width + 10) +'px'
 						});
+
+                    }else{
+						drop.getElements('canvas').morph({
+							'height' : el_size.height + 10,
+							'width' : el_size.width + 10
+							});
+						drop.morph(el_size);
+					}
             },
             onLeave : function(el, drop){
 			if(drop.id != 'start'){
-			drop.getElements('canvas').morph({
-                    'height' : (50 + hfix) + 'px',
-                    'width' : '150px'
-                });
+                drop.morph(el_size);
+				drop.getElements('canvas').morph(el_size);
+			}else{
+				drop.morph(start_size);
 			}
-                drop.morph({
-                    'height' : (50 + hfix) + 'px',
-                    'width' : '150px'
-                });
           }
         });
         drag.start(e);
@@ -341,7 +357,7 @@ try{
 var cancel = new Element('a', {
     'text': 'X',
     'title': 'Cancel',
-    'href':'javascript:  ;',
+	'class' : 'jslink',
     'styles' : {
             'color': '#FF0000',
             'position': 'absolute',
@@ -367,7 +383,7 @@ menu.destroy();
     }
 });
 
-if(getParentBox(pDiv.id).length > 1){
+if(getParentBox(pDiv.id).length >= 1){
 reqMenu.inject(menu);
 }
 
@@ -395,7 +411,7 @@ var detach = new Element('input', {
 });
 var newep = new Element('input', {
         'type' : 'button',
-        'value' : 'New endpoint',
+        'value' : 'Create new endpoint',
         'events' : {'click': function(){
                 newEndPoint(pDiv);
                 menu.destroy();
@@ -416,7 +432,7 @@ var setExp = new Element('input', {
 		'type' : 'button',
 		'value' : 'Deadline',
 		'events' : { 'click' : function(){
-				setExpiration(pDiv);
+				expSel(pDiv);
 				menu.destroy();
 		}}
 });
@@ -426,7 +442,7 @@ var del = new Element('input', {
 'type' : 'button',
 'value' : 'Delete box',
 'events' : {'click' : function(){
-if(confirm('Delete box?')){
+if(confirm('Remove task from tree?')){
 deleteBox(pDiv);
 }
 menu.destroy();
@@ -477,9 +493,14 @@ menu.grab(setExp);
 }
 
 
-/* Creates selector with caledar to set expiration date */
-function setExpiration(pDiv){
+/* Creates selector with caledar to set expiration date
+@param pDiv		div to aling with
+@param id		id of el
+*/
+function expSel(pDiv, id){
 var pDiv = $(pDiv);
+if(id === null){
+var id = pDiv.id;
 var menu = new Element('div', {
 'styles' : {
 		'background-color' : '#caffee',
@@ -492,11 +513,13 @@ var menu = new Element('div', {
         'left' : pDiv.getPosition().x + 25
 }
 });
-
+}else{
+var menu = pDiv;
+}
 var cancel = new Element('a', {
     'text': 'X',
     'title': 'Cancel',
-    'href':'javascript:  ;',
+	'class' : 'jslink',
     'styles' : {
             'color': '#FF0000',
             'position': 'absolute',
@@ -516,33 +539,50 @@ month = month < 10 ? '0' + month : month;
 day = cur_date.getDate() < 10 ? '0' + cur_date.getDate(): cur_date.getDate();
 cur_date = cur_date.getFullYear() + '-' + month + '-' + day;
 
-var def_value = boxData.get(pDiv.id +'_expires');
-def_value = def_value ? def_value : cur_date;
-
+var def_value = boxData.get(id +'_expires');
+var cur_value = def_value ? def_value : cur_date;
+var label = def_value ? def_value : "none";
 var expdate = new Element('input',{
 		'type' : 'textfield',
 		'id' : 'expdate',
 		'name' : 'expdate',
-		'value' : def_value,
+		'value' : cur_value,
 		'styles':{
 			'width' : '75px'
 		}
 });
 menu.grab(new Element('b',{
-'text' : 'Deadline:'
+'text' : 'Deadline: '
 }));
-menu.grab(cancel);
+menu.appendText(label + ' ');
+menu.grab(new Element('a',{
+	'text' : 'change',
+	'class' : 'jslink',
+	'events' : {
+		'click' : function(){
+			datepick.toggleClass('hidden');
+		}
+	}
+}));
+var datepick = new Element('div');
+if(!id){
+	menu.grab(cancel);
+}else{
+	datepick.addClass('hidden');
+}
 menu.grab(new Element('br'));
-menu.grab(expdate);
+
+datepick.grab(expdate);
 
 var save = new Element('input', {
 		'type' : 'button',
-		'value' : 'Save',
+		'value' : 'Set',
 		'events' : {
 			'click' : function(){
-			boxData.set(pDiv.id + '_expires', expdate.value);
+			boxData.set(id + '_expires', expdate.value);
 			//calendar.destroy()
 			menu.destroy();
+			showInfo(id);
 			}
 		}
 });
@@ -553,15 +593,15 @@ var remove = new Element('input',{
 			boxData.set(pDiv.id + '_expires', '');
 			//calendar.destroy()
 			menu.destroy();
+			showInfo(id);
 		}
 	}
 });
-
-menu.grab(new Element('br'));
-menu.grab(save);
-menu.grab(remove);
-menu.grab(new Element('br'));
-menu.inject(document.body);
+if(!id) datepick.grab(new Element('br'));
+datepick.grab(save);
+datepick.grab(remove);
+menu.grab(datepick);
+if(!id) menu.inject(document.body);
 
 var calendar = new Calendar({
 	expdate : 'Y-m-d'
@@ -776,7 +816,7 @@ var ep = new Canvas({
                 'cursor': 'move',
                 'z-index' : 1,
                 'left': pDiv.getPosition().x + pDiv.getCoordinates().width /2 -10,
-                'top': pDiv.getPosition().y + 75
+                'top': pDiv.getPosition().y + 50
                 } 
 });
 ep.inject(document.body);
@@ -804,6 +844,8 @@ ep.addEvent('mousedown', function(e){
 					var p_id = el.id.replace('ep_','');
 					childBoxes.get(p_id).include(drop.id);
 					boxData.get('endPoints').erase(p_id);
+					boxData.get(drop.id
+					+'_required').include(boxData.get(p_id));
 					el.destroy();
 					drawline();
 				}else{
@@ -902,18 +944,21 @@ menu.grab(submit);
 $(document.body).grab(menu);
 }
 
-/* Creates new box and sets child relations and end points. Parameters:
-* @to			: Element which after box should be placed (either html 
-*					element id or value it's carrying)
-* @value			: calue to carry
-* @description	: label visible to user
+/**
+* Creates new box and sets child relations and end points.
+* @param to			Element which after box should be placed (either html
+*						element id or value it's carrying)
+* @param value		calue to carry
+* @param description label visible to user
 * optional parameters:
-* @type			: random | select
-* @required		: required value (task id)
-* @posx			: x-coordinate
-* @posy			: y-coordinate
+* @param type		random | select
+* @param required	required value (task id)
+* @param posx		x-coordinate
+* @param posy		y-coordinate
 **/
 function newBox(to, value, description, type, required, expires,  posx, posy){
+
+var enable_text = false;
 if(to === null){
 to = 'start';
 }
@@ -955,7 +1000,7 @@ boxData.set(id+'_desc', description);
 expires = expires ? expires.toString() : "";
 boxData.set(id+'_expires', expires);
 
-var req = required ? required : new Array();
+var req = required ? required : [boxData.get(pDiv.id)];
 boxData.set(id+'_required', req);
 if(boxData.get('endPoints').contains(pDiv.id) == true){
     boxData.get('endPoints').erase(pDiv.id);
@@ -969,10 +1014,10 @@ childBoxes.set(pDiv.id, new Array());
 getChildBox(id).each(function(id){
         if(boxData.get('endPoints').contains(id)){
             ep = $('ep_'+id);
-            ep.setStyle('top', ep.getPosition().y + 75);
+            ep.setStyle('top', ep.getPosition().y + 40);
             }
         el = $(id);
-        el.setStyle('top', el.getPosition().y + 75);
+        el.setStyle('top', el.getPosition().y + 40);
         });
 }
 
@@ -990,59 +1035,84 @@ var box = new Element('div', {
     'id' : id,
     'class' : 'l3'
 });
-hfix = description.toString().length > 18 ? 15 : 0;
+if(enable_text){
+var hfix = description.toString().length > 18 ? 15 : 0;
+var wfix = 0;
+}else{
+var wfix = -75;
+var hfix = -25;
+}
 box.setStyles({
 		'text-align' : 'center',
 		'cursor' : 'move',
-		'width' : '150px',
-		'height' : (50 + hfix) +'px'
 		});
+
+box.setStyles(el_size);
 //box.height = 50 + hfix;
 //box.widht = 150;
 var canv = new Canvas();
 canv.setStyles({'position': 'relative'});
-canv.height = 50 + hfix;
+canv.height = 50;
 canv.width = 150;
+canv.setStyles(el_size);
 box.adopt(canv);
 var ctx = canv.getContext('2d');
 ctx.lineWidth =3;
 ctx.fillStyle = "#81BBF2";
 ctx.beginPath();
-ctx.moveTo(75,0);
-ctx.bezierCurveTo(175,0,175,50 + hfix,75,50 + hfix);
-ctx.bezierCurveTo(-25,50 + hfix,-25,0,75,0);
+
+	ctx.moveTo(75,0);
+	ctx.bezierCurveTo(175,0,175,50,75,50);
+	ctx.bezierCurveTo(-25,50,-25,0,75,0);
 ctx.fill();
 
 //div for text and buttons
 var content = new Element('div',{
-'id' : 'content',
+'id' : 'box_content',
+'title' : description,
 'styles' : {
 	'height' : (45+hfix) + 'px',
-	'widht' : '145px',
+	'widht' : (145+wfix)+'px',
 	'position' : 'relative',
-	'margin-top' : (-45 - hfix) +'px',
-	'margin-left' : '3px',
+	'margin-top' : (-50 - hfix) +'px',
 	'z-index' : '2'
 }});
+if(enable_text){
 var descText = document.createTextNode(description.toString().substring(0,30));
+}else{
+var descText = document.createTextNode(' ');
+}
 content.appendChild(descText);
-content.grab(new Element('br'));
+//content.grab(new Element('br'));
 
+var del = new Element('a', {
+	'class' : 'jslink',
+	'text' : 'X',
+	'title' : 'Remove task'
+});
+del.setStyle('color', 'red');
+del.addEvent('click', function(){
+	if(confirm('Remove "'+ description+'" from tree?')){
+		deleteBox(id);
+	}
+});
+del.inject(content);
 //box.style.background = '#' + color;
 var but = new Element('input', {
         'type' : 'button',
         'value' : 'Edit'
         });
-but.inject(content);
+//but.inject(content);
 but.addEvent('click', function(){ editMenu(this);});
 box.grab(content);
 box.inject(document.body);
 
 //trying to move box to free space
-bX =  $(pDiv).getPosition().x + Math.ceil(cLkm/2) * 200 * Math.pow( -1, cLkm); 
-bY =  $(pDiv).getPosition().y+75;
+var ppos = $(pDiv).getCoordinates();
+bX =  ppos.left + ppos.width/2 - content.getCoordinates().width/2 +Math.ceil(cLkm/2) * 100 * Math.pow( -1, cLkm);
+bY =  ppos.top + 20 + ppos.height;
 if(bX < 100){
-	bX = Math.abs(bX - 100)  + 100 ;
+	bX = Math.abs(bX - 100)  + 100;
 	bY += 25;
 }
 if(posx){ bX = posx; }
@@ -1050,7 +1120,7 @@ if(posy){ bY = posy;}
 box.setStyle('left', bX);
 box.setStyle('top',bY);
 
-box.addEvent('mouseenter',function(){
+box.addEvent('click',function(){
 	showInfo(id);
 });
 
@@ -1059,7 +1129,7 @@ onDrag: function(){
         if(boxData.get('endPoints').contains(box.id)){
             $('ep_'+box.id).setStyles({
                 'left': box.getPosition().x + box.getCoordinates().width /2 -10,
-                'top': box.getPosition().y + 75
+                'top': box.getPosition().y + 40
                 });
         }
         drawline(box.id);
@@ -1073,9 +1143,11 @@ onDrag: function(){
 });
 //IE hack 
 canv.morph({
-                    'height' : (50+hfix) + 'px',
-                    'width' : '150px'
-                });
+        'height' : (50+hfix) + 'px',
+        'width' : (150+wfix)+'px'
+});
+
+tip = new Tips(content);
 
 if(type != "after"){
 newEndPoint(box);
@@ -1089,58 +1161,126 @@ function showInfo(id){
 var alignto = $('ttypesel');
 var posx = alignto.getCoordinates().width + alignto.getPosition().x + 20;
 posy = alignto.getPosition().y;
-if($('infodiv')){
-	$('infodiv').destroy();
+if($('task_infodiv')){
+	$('task_infodiv').destroy();
 }
 
 var required = boxData.get(id + '_required');
+required = required ? required : "none";
 var expires = boxData.get(id + '_expires');
 var type = boxData.get(id + '_type');
 var childs = childBoxes.get(id);
-
+var parents = getParentBox(id);
+parents = parents.erase("start");
 var infodiv = new Element('div', {
-'id' : 'infodiv',
-'styles' : {
-	'width' : '200px',
-	'left' : posx +'px',
-	'top' :  posy + 'px',
-	'position' : 'absolute',
-	'border' : 'solid black 1px',
-	'span' : '1em',
-	'background-color' : '#ffffee'
-	}
+'id' : 'task_infodiv'
 });
-infodiv.grab(new Element('b',{
-	'html': 'Info:<br>'
+//infodiv.inject('tasklist_cont', 'top');
+infodiv.inject('coursemenu');
+infodiv.grab(new Element('h4',{
+	'text': 'Info:',
+	'styles' : {
+		'margin' : '0 0 0 0'
+	}
 }));
-infodiv.grab(document.createTextNode('Id: ' + boxData.get(id)));
+//inserting content to infodiv
+infodiv.grab(new Element('b',{ text : 'Id:'}));
+infodiv.appendText(boxData.get(id));
 infodiv.grab(new Element('br'));
-infodiv.grab(document.createTextNode('Name: ' + boxData.get(id+'_desc')));
 
-if(required.length > 0){
-	infodiv.grab(new Element('br'));
-	infodiv.grab(document.createTextNode('Prerequisites: ' + required));
-}
+infodiv.grab(new Element('b', {text : 'Name: '}));
+infodiv.appendText(boxData.get(id+'_desc'));
 
-if(expires){
+/* list of childs */
+infodiv.grab(new Element('br'));
+infodiv.grab(new Element('b',{ text : 'Next: '}));
+var childs = childBoxes.get(id);
+childs.each(function(el){
 	infodiv.grab(new Element('br'));
-	infodiv.grab(document.createTextNode('Deadline: ' + expires));
-}
+	infodiv.appendText(boxData.get(el + '_desc') +'  ');
+	infodiv.grab(new Element('a',{
+		'text' : 'detach',
+		'class' : 'jslink',
+		'events' : {
+			'click' : function(){
+				childBoxes.get(id).erase(el);
+				drawline();
+				infodiv.destroy();
+				showInfo(id);
+			}
+		}
+	}));
+});
+	infodiv.grab(new Element('br'));
+	if(boxData.get('endPoints').contains(id)){
+		infodiv.grab(new Element('a',{
+			'text' : 'Remove endpoint',
+			'class' : 'jslink',
+			'events' : {
+				'click' : function(){
+					$('ep_'+id).destroy();
+					boxData.get('endPoints').erase(id);
+					drawline(id);
+					infodiv.destroy();
+					showInfo(id);
+				}
+			}
+		}));
+	}else{
+	infodiv.grab(new Element('a', {
+		'text' : 'Create a new endpoint',
+		'class' : 'jslink',
+		'events' : {
+			'click': function(){
+				newEndPoint(id);
+				infodiv.destroy();
+				showInfo(id);
+			}
+		}
+	}));
+	}
+	infodiv.grab(new Element('br'));
+	infodiv.grab(new Element('b',{ text : 'Prerequisites: '}));
+	if(parents.length >0){
+	parents.each(function(el){
+		var desc = boxData.get(el+'_desc');
+		var val = boxData.get(el);
+		var checked = boxData.get(id +'_required').contains(val)? 'checked'
+		:'';
+		var reqdiv = new Element('div');
+		reqdiv.grab(new Element('input',{
+			'type' : 'checkbox',
+			'value' : val,
+			'name' : 'req[]',
+			'id' : el +'_req',
+			'checked' : checked,
+			'events' :{ 
+				'change' : function(){
+				if(this.checked){
+					boxData.get(id+'_required').include(val);
+				}else{
+					boxData.get(id+'_required').erase(val);
+				}
+			}
+			}
+		}));
+		reqdiv.grab(new Element('label', {
+		'for' : el + '_req',
+		'text' : desc
+		}));
+		infodiv.grab(reqdiv);
+	});
+	}else{
+		infodiv.grab(new Element('div', {'text' : 'none'}));
+	}
+expSel(infodiv,id);
 if(type){
-	infodiv.grab(new Element('br'));
-	infodiv.grab(document.createTextNode('Select type: ' + type));
+	infodiv.grab(new Element('b', {text : 'Select type: '}));
+	infodiv.appendText(type);
 }
 
-/*
-infodiv.grab(new Element('hr'));
-infodiv.grab(new Element('b',{
-	'html': 'Actions:'
-}));
-createMenuButtons(infodiv,id);
-*/
 //$('content').grab(infodiv);
-$('page').grab(infodiv);
-
+infodiv.highlight('#90EE90');
 }
 
 /* Turns box tree into form with hidden inputs*/
@@ -1148,7 +1288,18 @@ function submitTree(button){
 if(button.value == "Cancel"){
 	return true;
 }
+var fail = false;
+childBoxes.each(function(val, id){
+	if(id != 'start' && getParentBox(id).length == 0){
+		alert('The task tree is broken, please make sure all of the items are connected in some way');
+		fail = true;
+	}
+});
+if(fail){
+	return false;
+}
 var form = $('submitform');
+var backp = form;
 childBoxes.each(function(value,id){
         id_strip = id.replace('item','');
 
@@ -1193,14 +1344,6 @@ form.adopt(new Element('input', {
             'value' : wrong
 			})
     )}});
-	if($('courseid').value.length < 1){
-	alert('Please fill course id before saving');
-	return false;
-	}else if($('coursename').value.length < 1){
-	alert('Please fill course name before saving');
-	return false;
-	}else{
 	return true;
-	}
 }
 
