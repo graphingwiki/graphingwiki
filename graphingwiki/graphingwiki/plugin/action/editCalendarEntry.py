@@ -4,11 +4,11 @@ action_name = 'editCalendarEntry'
 import datetime
 import re
 
-from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 
-from graphingwiki.editing import order_meta_input, savetext
+from graphingwiki.editing import order_meta_input
 from graphingwiki.editing import metatable_parseargs, getmetas
 from graphingwiki.patterns import getgraphdata
 
@@ -78,16 +78,19 @@ def savedata(request):
     if errors:
         return errors
 
-    i = 0
-    #generating unique pagename
-    while True:
-        pagename = u'%s_%s' % (date,i)
-        i += 1
-        if not Page(request, pagename).exists():
-            break
-
     if edit:
-        pagename = edit
+        page = PageEditor(request,edit)
+
+    else:
+        i = 0
+        #generating unique pagename
+        while True:
+            pagename = u'%s_%s' % (date,i)
+            i += 1
+            page = PageEditor(request,pagename)
+            if not page.exists():
+                break
+
 
     content = u'''%s
 ----
@@ -96,11 +99,13 @@ def savedata(request):
   Duration:: %s
   Type:: %s
   Until:: %s
-  Location:: %s
-  Capacity:: %s
+  Location:: %s''' % (title, date, time, duration, type, until, location)
+    if capacity > 0:
+        content += u'\n  Capacity:: %s' %capacity
 
-%s''' % (title, date, time, duration, type, until, location, capacity, category)
-    savetext(pagename, content)
+    content += '\n%s' %category
+
+    page.saveText(content,page.get_real_rev())
 
 def show_entryform(request):
     time_now = datetime.datetime.now() + datetime.timedelta(minutes=30)
@@ -165,7 +170,7 @@ def show_entryform(request):
                 except:
                     type = u'Once'
 
-            body = Page(request, edit).get_raw_body()
+            body = PageEditor(request, edit).get_raw_body()
             if '----' in body:
                 title = body.split('----')[0]
 
@@ -324,7 +329,7 @@ function formcheck(){
     alert('No description!');
     return false;
     }
-  if(cap && !cap.value.match(/^[0-9]+$/)){
+  if(cap && !cap.value.match(/^[0-9]*$/)){
 	alert('capacity is not numeric!');
 	return false;
 	}
@@ -391,7 +396,7 @@ edit_page, title, def_date, time_opts, def_date, time_opts, duration, location, 
 
 
 def execute(pagename, request):
-    
+ 
     if request.form.has_key('save'):
         errors = savedata(request)
         if errors:
@@ -407,5 +412,4 @@ def execute(pagename, request):
     else:
         _enter_page(request, pagename)
         show_entryform(request)
-
-    _exit_page(request, pagename)
+        _exit_page(request, pagename)
