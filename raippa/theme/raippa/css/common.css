@@ -440,12 +440,26 @@ background: url(../img2/spinner.gif) no-repeat center;
 /* Course editor task list */
 
 .tasklist {
- width:200px;
- height:250px;
- overflow:scroll;
+ width: 200px;
+ height: 250px;
+ overflow: auto;
+}
+
+div#task_infodiv {
+	width: 200px;
+	border: solid black 1px;
+	background: #F0FFFF;
 }
 
 /* Qestion editor answer table*/
 table#questionTable textarea {
 width: 240px;
+}
+
+.hidden {
+	display: none;
+}
+
+a.jslink:hover {
+	cursor: pointer;
 }
