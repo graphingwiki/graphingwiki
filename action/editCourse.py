@@ -73,6 +73,7 @@ request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_pre
     if course:
         pagehtml += u'<input type="hidden" name="course" value="%s">\n' % course.replace('"', '&quot;')
     pagehtml += '''
+    <div id="coursemenu">
     <div style="width:200px">
     <b>id:</b><br>
     <input class="maxwidth" id="courseid" type="text" name="courseid" value="%s"><br>
@@ -80,6 +81,7 @@ request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_pre
     <input class="maxwidth" type="text" id="coursename" name="coursename" value="%s"><br>
 <input type="submit" name="save" value="Save" onclick="return submitTree(this);">
 <input type="submit" name="cancel" value="Cancel" onclick="return submitTree(this);">
+</div>
 </div>
 </form>
 ''' % (id, name)
