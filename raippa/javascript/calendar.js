@@ -13,6 +13,7 @@ var Calendar = new Class({
 		months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 		navigation: 1, // 0 = no nav; 1 = single nav for month; 2 = dual nav for month and year
 		offset: 0, // first day of the week: 0 = sunday, 1 = monday, etc..
+		fixed: false,
 		onHideStart: Class.empty,
 		onHideComplete: Class.empty,
 		onShowStart: Class.empty,
@@ -860,6 +861,11 @@ var Calendar = new Class({
 
 			var x = coord.right + this.options.tweak.x;
 			var y = coord.top + this.options.tweak.y;
+			
+			if(this.options.fixed){
+				y += window.getScroll().y;
+				x += window.getScroll().x;
+			}
 
 			// make sure the calendar doesn't open off screen
 			if (!this.calendar.coord) { this.calendar.coord = this.calendar.getCoordinates(); }
