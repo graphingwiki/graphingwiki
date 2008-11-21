@@ -71,7 +71,8 @@ $$('#start').each(function(drag){
 var heightfix = new Element('div', {
 	id : 'heightfix',
 	styles: {
-		'z-index' : '10'
+		'z-index' : '-10',
+		'height' : '500px'
 	}
 });
 
@@ -105,10 +106,11 @@ $$('.dragItem').each(function(item){
             onDrop: function(el, drop){
                 el.destroy();
                 if(drop){
-                drop.morph(el_size);
 				if(drop.id != 'start'){
-				drop.getElements('canvas').morph(el_size);
-
+					drop.morph(el_size);
+					drop.getElements('canvas').morph(el_size);
+				}else{
+					drop.morph(start_size);
 				}
                     if(childBoxes.get(drop.id).length ==0){
                     newBox(drop.id, value.toString(), description);
@@ -285,7 +287,7 @@ if($('canv_'+ pId+'_'+childs[j]) != null){
 }
 }
 if(!id){
-	hfixdiv.setStyle('height', maxheight);
+	hfixdiv.setStyle('height', maxheight + 50);
 }
 
 }
@@ -333,165 +335,6 @@ childs = tmp.flatten();
 }
 return result.flatten();
 }
-
-/* Creates menu to edit box*/
-function editMenu(button){
-try{
-    $('boxMenu').destroy();
-}catch(e){}
-    var pDiv = $(button).parentNode.parentNode;
-    var menu = new Element('div', {
-    'id' : 'boxMenu',
-    'styles' :{
-        'position' : 'absolute',
-        'text-align' : 'center',
-        'width' : 100,
-        'height' : 50,
-        'background' : '#caffee',
-        'z-index' : 5,
-        'top' : button.getPosition().y,
-        'left' : button.getPosition().x,
-        'opacity' : 0.7
-            }
-    });
-var cancel = new Element('a', {
-    'text': 'X',
-    'title': 'Cancel',
-	'class' : 'jslink',
-    'styles' : {
-            'color': '#FF0000',
-            'position': 'absolute',
-            'right' : 0,
-            'text-decoration': 'none'
-    },
-    'events' : {'click' : function(){
-                menu.destroy();
-                }
-    }
-});
-
-cancel.inject(menu);
-createMenuButtons(menu,pDiv);
-
-var reqMenu  = new Element('input', {
-'type' : 'button',
-'value' : 'Prerequisites',
-'events' : { 'click' : function(){
-dropMenu(pDiv);
-menu.destroy();
-        }
-    }
-});
-
-if(getParentBox(pDiv.id).length >= 1){
-reqMenu.inject(menu);
-}
-
-menu.inject(document.body);
-}
-
-function createMenuButtons(menu,pDiv){
-var menu = $(menu);
-var pDiv = $(pDiv);
-
-var detach = new Element('input', {
-        'type' : 'button',
-        'value' : 'Detach',
-        'events' : {'click': function(){
-				cId = childBoxes.get(pDiv.id);
-				cId.each(function(c){
-					boxData.get(c+'_required').erase(pDiv.id);
-					if(getParentBox(c).length > 1){
-						childBoxes.get(pDiv.id).erase(c);
-					}
-				});
-                newEndPoint(pDiv);
-                menu.destroy();
-        }}
-});
-var newep = new Element('input', {
-        'type' : 'button',
-        'value' : 'Create new endpoint',
-        'events' : {'click': function(){
-                newEndPoint(pDiv);
-                menu.destroy();
-        }}
-});
-var delep = new Element('input', {
-        'type' : 'button',
-        'value' : 'Remove endpoint',
-        'events' : {'click': function(){
-                $('ep_'+pDiv.id).destroy();
-				boxData.get('endPoints').erase(pDiv.id);
-				menu.destroy();
-				drawline();
-        }}
-});
-
-var setExp = new Element('input', {
-		'type' : 'button',
-		'value' : 'Deadline',
-		'events' : { 'click' : function(){
-				expSel(pDiv);
-				menu.destroy();
-		}}
-});
-
-var type = new Element('input');
-var del = new Element('input', {
-'type' : 'button',
-'value' : 'Delete box',
-'events' : {'click' : function(){
-if(confirm('Remove task from tree?')){
-deleteBox(pDiv);
-}
-menu.destroy();
-        }
-    }
-});
-
-menu.grab(new Element('br'));
-del.inject(menu);
-
-if(boxData.get('endPoints').contains(pDiv.id) == false){
-	menu.grab(new Element('br'));
-	newep.inject(menu);
-}else if(childBoxes.get(pDiv.id).length > 0){
-	menu.grab(new Element('br'));
-	delep.inject(menu);
-}
-
-var childs  = childBoxes.get(pDiv.id);
-if(childs.length == 1){
-    if(childs.filter(function(c){
-		return getParentBox(c).length > 1;
-		}).length >0){
-		menu.grab(new Element('br'));
-        detach.inject(menu);
-    }
-}
-var button_count = menu.getElements('input').length;
-menu.addEvents({
-    mouseenter: function(){
-        this.morph({
-                'opacity': 1,
-                'height': 65 + button_count * 20,
-                'width' : 100
-            });
-        },
-    mouseleave : function(){
-        this.morph({
-                'height' : 60 + button_count * 20,
-                'width' : 100,
-                'opacity' : 0.9
-            });
-        }
-    });
-
-
-menu.grab(setExp);
-}
-
 
 /* Creates selector with caledar to set expiration date
 @param pDiv		div to aling with
@@ -608,7 +451,8 @@ var calendar = new Calendar({
 	},
 	{
 	draggable : false,
-	direction : 1
+	direction : 1,
+	fixed: true
 	}
 );
 }
@@ -1122,6 +966,7 @@ box.setStyle('top',bY);
 
 box.addEvent('click',function(){
 	showInfo(id);
+	box.highlight('#C0FF3E');
 });
 
 box.makeDraggable({
