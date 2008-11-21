@@ -64,7 +64,7 @@ def execute(macro, args):
     
 
     #get pages
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, metatableargs, get_all_keys=True)
+    pagelist, metakeys, styles = metatable_parseargs(macro.request, metatableargs, get_all_keys=True)
 
     #use MoinMoin's include to print the pages
     return moinInclude.execute(macro, make_pagelist(pagelist)+includeargs)
