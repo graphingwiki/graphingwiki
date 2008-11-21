@@ -65,6 +65,10 @@ def execute(macro, args):
 
     #get pages
     pagelist, metakeys, styles = metatable_parseargs(macro.request, metatableargs, get_all_keys=True)
+    
+    #if on matches
+    if not pagelist:
+        return "No match for '%s'" % metatableargs
 
     #use MoinMoin's include to print the pages
     return moinInclude.execute(macro, make_pagelist(pagelist)+includeargs)
