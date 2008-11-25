@@ -493,6 +493,14 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u"1"]),
     ...               dict(test=[u"1", u""]))
     u' test:: 1\n'
+
+    Regression test (bug #527):
+    
+    >>> replace_metas(object(),
+    ...               u" bar:: 1\n foo:: 2",
+    ...               dict(foo=[u"2"]),
+    ...               dict(foo=[u""]))
+    u' bar:: 1\n'
     """
 
     oldtext = oldtext.rstrip()
