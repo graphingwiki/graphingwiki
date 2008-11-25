@@ -200,7 +200,7 @@ function drawline(id){
 if(id != null){
 	var boxes = [$(id)];
 }else{
-	var boxes = $(document.body).getElements('div[id^=item], #start');
+	var boxes = $(document.body).getElements('#start, div[id^=item]');
 	$$('canvas[id^=canv]').destroy();
 }
 var coords = new Array();
@@ -230,20 +230,18 @@ for(var i=0;  i < boxes.length; i++){
         continue;
     }
 for(var j = 0 ; j < childs.length ; j++){
- c2 = $(childs[j]).getCoordinates($(pId));
- c2a = $(childs[j]).getCoordinates();
+ c = $(childs[j]);
+ c2 = c.getCoordinates($(pId));
+ c2a = c.getCoordinates();
  c2y = c2a.top + 0.5 * c2a.height;
  c2x = c2a.left + 0.5 * c2a.width;
- fix_pid = getParentBox(pId).contains(childs[j]) ? childs[j] : pId;
-
- if(boxData.get(pId+'_wrong') == $(childs[j]).id){
+ //checking if "child" is actually child or end point
+ is_ep = 'ep_' + pId == childs[j]? true: false;
+ is_child = childBoxes.get(pId).contains(childs[j]) || is_ep ? true:false ; 
+ fix_pid = is_child ? pId :childs[j];
+ fix_cid = is_child ? childs[j] : pId;
+ if(is_ep || boxData.get(fix_cid +'_required').contains(boxData.get(fix_pid))){
 	color = '#FF0000';
- }else if(boxData.get(fix_pid+'_type') == 'select' &&
-	childBoxes.get(fix_pid).length >1){
-	color = '#00FF00';
- }else if(boxData.get(fix_pid+'_type') == 'random' &&
-	childBoxes.get(fix_pid).length >1){
-	color = '#FFFF00';
  }else{
 	color = '#000000';
  }
@@ -262,28 +260,66 @@ if($('canv_'+ pId+'_'+childs[j]) != null){
 			}
 	});
 	}
-	xdiff = Math.max(Math.abs(c1.width/2 + c1.left - c2a.width / 2-c2a.left),4);
-	ydiff = Math.max(Math.abs(c1.height/2 + c1.top - c2a.height / 2-c2a.top),4);
-	
-	canv.setStyle('top' , Math.min(c1y,c2y) - 2);
-	canv.setStyle('left',  Math.min(c1x, c2x)- 2);
+	var pad = 10;
+	xdiff = Math.max(Math.abs(c1x - c2x),0);//pad *2);
+	ydiff = Math.max(Math.abs(c1y - c2y),0);//pad *2);
 
-	canv.height = ydiff + 4;
-	canv.width = xdiff+4;
+	canv.setStyle('top' , Math.min(c1y,c2y) - pad);
+	canv.setStyle('left',  Math.min(c1x, c2x)- pad);
+
+	canv.height = ydiff + pad *2 ;
+	canv.width = xdiff + pad *2;
 	yswap = 0;
 
-	if((c2y - c1y) * (c2x - c1x) < 0){
+	if((c2y - c1y) * (c2x - c1x) <= 0){
 	yswap = 1;
 	}
 
 	$(document.body).grab(canv,'top');
 	ctx = canv.getContext('2d');
-	ctx.lineWidth = 4;
+	//drawing lines and leaving padding around
+	ctx.translate(pad , pad)
+	ctx.lineWidth = 3;
 	ctx.beginPath();
 	ctx.strokeStyle = color;
-	ctx.moveTo(2, ydiff * yswap +2 - yswap * 4);
-	ctx.lineTo(xdiff - 2, ydiff * Math.abs(yswap -1) -2 + yswap * 4);
+	var xfrom = 0;
+	var yfrom = ydiff * yswap;
+	var xto = xdiff;
+	var yto = ydiff * Math.abs(yswap -1);
+	ctx.moveTo(xfrom, yfrom);
+	ctx.lineTo(xto, yto);
 	ctx.stroke();
+
+	//calculating points for arrow
+	var midx = (xto - xfrom)/2;
+	var midy = Math.abs(yto - yfrom)/2;
+	var vx = xto - xfrom;
+	var vy = yto - yfrom;
+	//unit vector for line
+	var v0x = vx / Math.sqrt(vx*vx + vy*vy) * 15;
+	var v0y = vy / Math.sqrt(vx*vx + vy*vy) * 15;
+	//determining which way to put arrow
+	if(c1x > c2x || c1x == c2x && is_child && c1y > c2y || c1x == c2x && c1y < c2y){
+		var reverse = 1;
+	}else{
+		var reverse = -1;
+	}
+	//check if c1 is really c2's parent
+	if(is_child){
+		reverse *= -1;
+	}
+	midx += v0x * reverse / 2;
+	midy += v0y * reverse / 2;
+	var ang = Math.PI * (1/2 + reverse * 2/6);
+	var a1x = v0x * Math.cos(ang) - v0y * Math.sin(ang) + midx;
+	var a1y = v0x * Math.sin(ang) + v0y * Math.cos(ang) + midy;
+	var a2x = v0x * Math.cos(-ang) - v0y * Math.sin(-ang) + midx;
+	var a2y = v0x * Math.sin(-ang) + v0y * Math.cos(-ang) + midy;
+	ctx.fillStyle = color;
+	ctx.moveTo(midx,midy);
+	ctx.lineTo(a1x, a1y);
+	ctx.lineTo(a2x, a2y);
+	ctx.fill();
 }
 }
 if(!id){
@@ -1106,6 +1142,7 @@ childs.each(function(el){
 				}else{
 					boxData.get(id+'_required').erase(val);
 				}
+				drawline(el);
 			}
 			}
 		}));
@@ -1189,6 +1226,7 @@ form.adopt(new Element('input', {
             'value' : wrong
 			})
     )}});
+	alert(form.getElements('input').length);
 	return true;
 }
 
