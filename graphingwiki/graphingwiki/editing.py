@@ -494,7 +494,8 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u""]))
     u' test:: 1\n'
 
-    Regression test (bug #527):
+    Regression test, bug #527: If the meta-to-be-replaced is not
+    the first one on the page, it should still be replaced.
     
     >>> replace_metas(object(),
     ...               u" bar:: 1\n foo:: 2",
@@ -512,26 +513,6 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     # Keeps track on the keys added during this edit
     added_keys = set()
 
-    def macro_subfun(mo):
-        old_keyval_pair = mo.group(2).split(',')
-
-        # Strip away empty metadatas [[MetaData()]]
-        # and placeholders [[MetaData(%s,)]]
-        # (Placeholders should become obsolete with MetaEdit)
-        if len(old_keyval_pair) < 2:
-            return ''
-
-        # Check if the value has changed
-        key = old_keyval_pair[0]
-        key = key.strip()
-        val = ','.join(old_keyval_pair[1:])
-
-        if key.strip() == oldkey.strip() and val.strip() == oldval.strip():
-            val = newval
-
-        # Return dict variable
-        return '\n %s:: %s' % (key, val)
-
     def dl_subfun(mo):
         all, key, val = mo.groups()
 
@@ -540,7 +521,6 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         # Don't even start working on it if the key does not match
         if key.strip() != oldkey.strip():
             return all
-
         # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
 
         # Check if the value has changed
@@ -580,22 +560,19 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             if (not oldmeta.has_key(key)
                 and not newval.strip()):
 
-                #print "Nothing to do\n"
 
                 continue
 
             # If old meta has the key with i valus of it, 
             # replace its i:th value with the new key. Preserves order.
             elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
+
                 oldval = oldmeta[key][i]
                 #print "Replace", repr(oldval), repr(newval)
                 #print "# ", repr(oldval)
                 oldkey = key
                 # First try to replace the dict variable
                 oldtext, repls = dl_re.subn(dl_subfun, oldtext, 1)
-                # Then try to replace the MetaData macro on page
-                if not repls:
-                    oldtext = metadata_re.sub(macro_subfun, oldtext, 1)
 
             # If prototypes ( key:: ) are present, replace them
             elif (dl_proto_re.search(oldtext + '\n')):
