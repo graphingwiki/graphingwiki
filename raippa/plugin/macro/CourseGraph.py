@@ -27,7 +27,7 @@ Error is reported to the admins. Please come back later.'''
 
     for node, nextlist in flow.iteritems():
         if node not in nodes.keys():
-            nodes[node] = gv.node(G, node)
+            nodes[node] = gv.node(G, str(node))
         for nextnode in nextlist:
             if nextnode not in nodes.keys():
                 nodes[nextnode] = gv.node(G, str(nextnode))
