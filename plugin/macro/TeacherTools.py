@@ -9,7 +9,7 @@ def coursesform(request):
     courselist, metakeys, styles = metatable_parseargs(request,raippacategories["coursecategory"])
     if courselist:
         html += u'''
-  <script type="text/javascript" src="%s/raippajs/js/mootools-1.2-core-yc.js"></script>
+  <script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
 window.addEvent('domready', function(){
   var qtypesel = $('qtypesel');
@@ -236,7 +236,7 @@ Tasks:
     html += u'''
     </td>
     <td>
-    <input type="hidden" name="action" value="editTask">
+    <input type="hidden" name="action" value="EditTask">
     <input type='button' name='delete' value='delete'
     onclick="del_confirm('task_form');">
     <input type='button' name='edit' value='edit' onclick="submitTasks();">

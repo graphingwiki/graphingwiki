@@ -694,8 +694,8 @@ def delete(request, pagename):
 def _enter_page(request, pagename):
     request.http_headers()
     head = u'''
-<script type="text/javascript" src="%s/raippajs/js/mootools-1.2-core-yc.js"></script>
-<script type="text/javascript" src="%s/raippajs/js/mootools-1.2-more.js"></script>
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 ''' % (request.cfg.url_prefix_static,request.cfg.url_prefix_static)
 
     request.theme.send_title(u'Teacher Tools', formatted=False, html_head=head)
