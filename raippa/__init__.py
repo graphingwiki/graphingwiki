@@ -1,468 +1,424 @@
 import random
-from tempfile import mkstemp
 import time
-import os
 
-from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
-from MoinMoin.user import User
-from MoinMoin.action.AttachFile import getAttachDir
 
-from graphingwiki.editing import getmetas
-from graphingwiki.editing import edit_meta
+from graphingwiki.editing import get_metas
+from graphingwiki.editing import set_metas
 from graphingwiki.editing import getkeys
-from graphingwiki.editing import process_edit
-from graphingwiki.editing import order_meta_input
-from graphingwiki.patterns import GraphData
-from graphingwiki.patterns import getgraphdata
-from graphingwiki.patterns import encode
 
-statuscategory = u'CategoryStatus'
-coursecategory = u'CategoryCourse'
-coursepointcategory = u'CategoryCoursepoint'
-taskcategory = u'CategoryTask'
-taskpointcategory = u'CategoryTaskpoint'
-historycategory = u'CategoryHistory'
-answercategory = u'CategoryAnswer'
-tipcategory = u'CategoryTip'
-timetrackcategory = u'CategoryTimetrack'
-usercategory = u'CategoryUser'
+raippacategories = {"statuscategory": "CategoryStatus",
+                    "coursecategory": "CategoryCourse",
+                    "coursepointcategory": "CategoryCoursepoint",
+                    "taskcategory": "CategoryTask",
+                    "taskpointcategory": "CategoryTaskpoint",
+                    "historycategory": "CategoryHistory",
+                    "questioncategory": "CategoryQuestion",
+                    "answercategory": "CategoryAnswer",
+                    "tipcategory": "CategoryTip",
+                    "timetrackcategory": "CategoryTimetrack",
+                    "usercategory": "CategoryUser"}
+
+raippagroups = {"teachergroup": "TeacherGroup",
+                "quarantinegroup": "QuarantineGroup"}
+
+class RaippaException(Exception):
+    def __init__(self, args=str()):
+        self.args = args
+    def __str__(self):
+        return self.args
 
 class RaippaUser:
-    def __init__(self, request, name=None):
-        getgraphdata(request)
+    def __init__(self, request, user=None):
         self.request = request
 
-        if name:
-            self.id = encode(name)
-            self.name = unicode() 
-        else:
-            self.id = encode(self.request.user.name)
-            self.name = self.request.user.aliasname
-
-        self.categories = list()
-        if self.id in request.graphdata:
-            meta = getmetas(request, self.request.graphdata, encode(self.id), ["WikiCategory", "name"], checkAccess=False)
-            for name, type in meta["name"]:
-                self.name = name
-                break
-            for category, type in meta["WikiCategory"]:
-                self.categories.append(category)
-        if not self.categories:
-            self.categories.append(usercategory)
- 
-        self.statuspage = encode("%s/status" % self.id)
-        if self.statuspage in request.graphdata:
-            self.statusdict = self.request.graphdata.getpage(self.statuspage).get('lit', {})
-        else:
-            self.statusdict = dict()
-
-        self.currentcourse = removelink(self.statusdict.get("current", [""])[0])
-        self.currentcoursepoint = removelink(self.statusdict.get(self.currentcourse, [""])[0])
-        self.currenttask = removelink(self.statusdict.get(self.currentcoursepoint, [""])[0])
-
-    def getcourselist(self):
-        courselist = list()
-        metakeys = getkeys(self.request.graphdata, self.statuspage)
-        for key in metakeys:
-            categorymetas = getmetas(self.request, self.request.graphdata, key, ["WikiCategory"], checkAccess=False)
-            for category, type in categorymetas["WikiCategory"]:
-                if category == coursecategory:
-                    courselist.append(key)
-                    break
-        return courselist
-
-    def gettimetrack(self, course):
-        page = self.request.graphdata.getpage(self.id)
-        linking_in = page.get('in', {}) 
-        pagelist = linking_in.get("user", [])
-        timetracklist = dict()
-        for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, page, ["course", "WikiCategory", "hours", "description", "date"], checkAccess=False)
-            if metas["course"]:
-                if course == metas["course"][0][0]:
-                    for category, type in metas["WikiCategory"]:
-                        if category == timetrackcategory:
-                            if metas["date"] and metas["hours"]:
-                                date = metas["date"][0][0]
-                                hours = metas["hours"][0][0]
-                                if metas["description"]:
-                                    description = metas["description"][0][0]
-                                else:
-                                    description = unicode()
-                    
-                                timetracklist[description] = [date, hours]
-                            break
-        return timetracklist
-
-    def canDo(self, pagename, course):
-        page = FlowPage(self.request, pagename)
-        may = False
-        if "[[end]]" in self.statusdict.get(page.pagename, []):
-            return False
-        elif coursepointcategory in page.categories:
-            metas = getmetas(self.request, self.request.graphdata, encode(pagename), ["deadline"], checkAccess=False)
-            if metas["deadline"]:
-                deadline = time.strptime(metas["deadline"][0][0], "%Y-%m-%d")
-                currentdate = time.gmtime()
-                if (deadline[0] < currentdate[0]) or \
-                   (deadline[0] <= currentdate[0] and deadline[1] < currentdate[1]) or \
-                   (deadline[0] <= currentdate[0] and deadline[1] <= currentdate[1] and deadline[2] < currentdate[2]):
-                    return False
-            prerequisites = page.getprerequisite()
-            for prequisite in prerequisites:
-                 if not self.hasDone(prequisite, course):
-                     return False
-            course = FlowPage(self.request, course)
-            flow = course.getflow()
-            prelist = list()
-            for point, nextlist in flow.iteritems():
-                if page.pagename in nextlist:
-                    prelist.append(point)
-                    if point == "start":
-                        may = True
-                        continue
-                    statuslist = self.statusdict.get(point, [])
-                    if "[[end]]" in statuslist:
-                        may = True
-        return may
-
-    def hasDone(self, pagename, course=None):
-        page = FlowPage(self.request, pagename)
-        if coursepointcategory in page.categories:
-            flow = page.getflow()
-            taskpoint = encode(flow.pop()[0])
-        elif taskpointcategory in page.categories:
-            taskpoint = encode(pagename)
-        taskpoint = self.request.graphdata.getpage(taskpoint)
-        linking_in = taskpoint.get('in', {})
-        pagelist = linking_in.get("task", [])
-        for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, encode(page), ["WikiCategory", "user", "overallvalue"], checkAccess=False)
-            if metas["user"] and metas["overallvalue"]:
-                for category, type in metas["WikiCategory"]:
-                    if category == historycategory and metas["user"][0][0] == self.id:
-                        return True
-        return False
-
-    def updatestatus(self, newstatusdict=None):
-        if newstatusdict:
-            for key in newstatusdict:
-                self.statusdict[key] = newstatusdict[key]
-        else:
-            statuspage = self.request.graphdata.getpage(self.statuspage)
-            self.statusdict = statuspage.get('lit', {})
-
-        self.currentcourse = removelink(self.statusdict.get("current", [""])[0])
-        self.currentcoursepoint = removelink(self.statusdict.get(self.currentcourse, [""])[0])
-        self.currenttask = removelink(self.statusdict.get(self.currentcoursepoint, [""])[0])
-
-    def editstatus(self, flowpoint, task, debug=None):
-        #print debug, flowpoint, task
-        flowpoint = encode(flowpoint)
-        task = encode(task)
-
-        metakeys = getkeys(self.request.graphdata, self.statuspage)
-
-        oldmetas = dict()
-        newmetas = dict()
-
-        newmetas[self.currentcourse] = [addlink(flowpoint)]
-        if metakeys.has_key(self.currentcourse):
-            oldmetas[self.currentcourse] = [addlink(self.currentcoursepoint)]
-        else:
-            oldmetas[u''] = [u'']
-
-
-        if flowpoint != u'end' and task != u'end':
-            newmetas[flowpoint] = [addlink(task)]
-            if metakeys.has_key(flowpoint):
-                meta = getmetas(self.request, self.request.graphdata, self.statuspage, [flowpoint], checkAccess=False)
-                oldtask = encode(meta[flowpoint][0][0])
-                oldmetas[flowpoint] = [addlink(oldtask)]
-            else:
-                oldmetas[u''] = [u'']
-        else:
-            newmetas[self.currentcoursepoint] = [addlink(task)]
-            if metakeys.has_key(self.currentcoursepoint):
-                meta = getmetas(self.request, self.request.graphdata, self.statuspage, [self.currentcoursepoint], checkAccess=False)
-                oldtask = encode(meta[self.currentcoursepoint][0][0])
-                oldmetas[self.currentcoursepoint] = [addlink(oldtask)]
-            else:
-                oldmetas[u''] = [u'']
-        msg = edit_meta(self.request, self.statuspage, oldmetas, newmetas, True, [statuscategory])
-        self.updatestatus(newmetas)
-
-
-class FlowPage:
-    def __init__(self, request, pagename, user=None):
-        if not hasattr(request, 'graphdata'):
-            getgraphdata(request)
-        self.request = request
-
-        self.pagename = encode(pagename)
         if user:
             self.user = user
-        
-        metas = getmetas(request, self.request.graphdata, self.pagename, ["WikiCategory", "type", "next", "start"], checkAccess=False)
-        self.categories = list()
-        for category, type in metas[u'WikiCategory']:
-            self.categories.append(category)
-            
-        self.startlist = list()
-        for start, type in metas["start"]:
-            self.startlist.append(start)
-            
-        self.nextlist = list()
-        for next, type in metas["next"]:
-            self.nextlist.append(next)
-
-        if metas[u'type']:
-            self.type = metas[u'type'][0][0]
+            meta = get_metas(request, user, ["name"])
+            if meta["name"]:
+                self.name = meta["name"]
+            else:
+                self.name = unicode() 
         else:
-            self.type = None
+            self.user = self.request.user.name
+            self.name = self.request.user.aliasname
 
-    def setnextpage(self, userselection=None):
-        if coursecategory in self.categories:
-            if userselection in self.startlist:
-                courseflowpoint = FlowPage(self.request, userselection, self.user)
-                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                return nextcoursepoint, nexttask
-            elif userselection and self.user.canDo(userselection, self.pagename):
-                courseflowpoint = FlowPage(self.request, userselection, self.user)
-                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                return nextcoursepoint, nexttask
-            elif self.user.currenttask and self.user.currenttask != "end":
-                return self.user.currentcoursepoint, self.user.currenttask
-            elif self.user.currentcoursepoint and self.user.currentcoursepoint != "end":
-                courseflowpoint = FlowPage(self.request, self.user.currentcoursepoint, self.user)
-                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                return nextcoursepoint, nexttask
-            else:
-                courseflowpoint = FlowPage(self.request, self.startlist[0], self.user)
-                nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                return nextcoursepoint, nexttask
-        elif coursepointcategory in self.categories:
-            recapkey = self.pagename+"/recap"
-            if self.user.statusdict.has_key(recapkey):
-                recaptask = removelink(self.user.statusdict[recapkey][0])
-                return recapkey, recaptask
-            else:
-                temp = removelink(self.user.statusdict.get(self.pagename, [""])[0])
-                if temp:
-                    if temp == "end":
-                        if not "end" in self.nextlist:
-                            metas = getmetas(self.request, self.request.graphdata, self.pagename, ["split"], checkAccess=False)
-                            #let's go to coursepage if coursepoint has many selectable next pages
-                            if len(self.nextlist) > 1:
-                                for split, type in metas["split"]:
-                                    if split == u'select':
-                                        return "end", "end"
+    def isTeacher(self):
+        teachergroup = Page(self.request, raippagroups["teachergroup"])
+        raw = teachergroup.get_raw_body()
 
-                            #else, let se system decide where to go
-                            next = random.choice(self.nextlist)
-                            for key in self.user.statusdict:
-                                if key in self.nextlist:
-                                    next = key
-                                    break
-                            courseflowpoint = FlowPage(self.request, next, self.user)
-                            nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                            return nextcoursepoint, nexttask
-                        else:
-                            return "end", "end"
+        for line in raw.split("\n"):
+            if line.startswith(" * ") and line[3:].rstrip() == self.user:
+                return True 
+
+        return False
+
+    def isQuarantined(self):
+        quarantinegroup = Page(self.request, raippagroups["quarantinegroup"])
+        raw = quarantinegroup.get_raw_body()          
+
+        for line in raw.split("\n"):
+            if line.startswith(" * ") and line[3:].rstrip() == self.user:
+                return True 
+
+        return False
+
+    def gethistory(self, question, course):
+        page = self.request.graphdata.getpage(question)
+        linking_in = page.get('in', {})
+        pagelist = linking_in.get("question", [])
+
+        for temp in pagelist:
+            categories = get_metas(self.request, temp, ["gwikicategory"], checkAccess=False)
+
+            if raippacategories["historycategory"] in categories["gwikicategory"]:
+                keys = ["user", "course", "overallvalue", "task", "true", "false"]
+                metas = get_metas(self.request, temp, keys, display=True, checkAccess=False)
+
+                if not metas["user"]:
+                    reporterror(self.request, "%s doesn't have user meta." % temp)
+                    continue
+
+                if not metas["overallvalue"]:
+                    continue
+                    reporterror(self.request, "%s doesn't have overallvalue meta." % temp)
+
+                if self.user in metas["user"] and course in metas["course"]:
+                    overallvalue = metas["overallvalue"].pop()
+
+                    if metas["task"]:
+                        task = metas["task"].pop()
                     else:
-                        self.user.editstatus(self.pagename, temp, 2)
-                        return self.pagename, temp
-                else:
-                    metas = getmetas(self.request, self.request.graphdata, self.pagename, ["task"], checkAccess=False)
-                    self.user.editstatus(self.pagename, metas["task"][0][0], 3)
-                    return self.pagename, metas["task"][0][0]
-        elif taskcategory in self.categories:
-            metas = getmetas(self.request, self.request.graphdata, self.pagename, ["start"], checkAccess=False)
-            if metas["start"]:
-                start = random.choice(metas["start"])[0]
-                self.user.editstatus(self.user.currentcoursepoint, start, 4)
-                return self.user.currentcoursepoint, start
-            else:
-                return False, False
-        elif taskpointcategory in self.categories:
-            metas = getmetas(self.request, self.request.graphdata, self.pagename, ["next"], checkAccess=False)
-            if metas["next"]:
-                nextpage = random.choice(metas["next"])[0]
-                if nextpage != "end":
-                    self.user.editstatus(self.user.currentcoursepoint, nextpage, 5)
-                    return self.user.currentcoursepoint, nextpage
-                else:
-                    if self.user.currentcoursepoint.endswith("/recap"):
-                        returncp = "/".join(self.user.currentcoursepoint.split("/")[:-1])
-                        returntask = removelink(self.user.statusdict[returncp][0])
-                        statusdata = {self.user.currentcoursepoint: [" "],
-                                      self.user.currentcourse: [addlink(returncp)]}
-                        input = order_meta_input(self.request, self.user.statuspage, statusdata, "repl")
-                        process_edit(self.request, input, True, {self.user.statuspage:[statuscategory]})
-                        return returncp, returntask
-                    else:
-                        self.user.editstatus(self.user.currentcoursepoint, "end", 6)
-                        courseflowpoint  = FlowPage(self.request, self.user.currentcoursepoint, self.user)
-                        nextcoursepoint, nexttask = courseflowpoint.setnextpage()
-                        return nextcoursepoint, nexttask
-                return False, False
-        else:
-            self.request.write(u'%s has no category.' % self.pagename)
-            return False, False
+                        task = unicode()
 
-    def getprerequisite(self):
-        if not coursepointcategory in self.categories:
-            return []
-        else:
-            meta = getmetas(self.request, self.request.graphdata, self.pagename, ["prerequisite"], checkAccess=False)
-            prerequisites = list()
-            for prerequisite, type in meta["prerequisite"]:
-                prerequisites.append(prerequisite)
-            return prerequisites
-
-    def getquestionpage(self):
-        meta = getmetas(self.request, self.request.graphdata, self.pagename, [u'question'], checkAccess=False)
-        if meta[u'question']:
-            return encode(meta[u'question'][0][0])
-        else:
-            return None
-
-    def getflow(self):
-        if coursecategory in self.categories:
-            flow = dict()
-            def subflow(page):
-                meta = getmetas(self.request, self.request.graphdata, page, ["next"], checkAccess=False)
-                for next, type in meta["next"]:
-                    next = encode(next)
-                    if page not in flow.keys():
-                        flow[page] = list()
-                    if next not in flow[page]:
-                        flow[page].append(next)
-                    if next != "end":
-                        subflow(next)
+                    useranswers = dict()
+                    for true in metas["true"]:
+                        useranswers[true] = "true"
+                    for false in metas["false"]:
+                        useranswers[false] = "false"
                     
-            meta = getmetas(self.request, self.request.graphdata, self.pagename, ["start"], checkAccess=False)
-            for start, type in meta["start"]:
-                start = encode(start)
-                if "start" not in flow.keys():
-                    flow["start"] = []
-                if start not in flow["start"]:
-                    flow["start"].append(start)
-                subflow(start)
-        elif taskcategory in self.categories:
-            #if self.type == "exam" or self.type == "questionary":
-            meta = getmetas(self.request, self.request.graphdata, self.pagename, ["start"], checkAccess=False)
-            taskpoint = encode(meta["start"][0][0])
-            flow = list()
-            while taskpoint != "end":
-                meta = getmetas(self.request, self.request.graphdata, taskpoint, ["question", "next"], checkAccess=False)
-                taskpage = encode(meta["question"][0][0])
-                flow.append((taskpoint, taskpage))
-                if meta["next"]:
-                    taskpoint = encode(meta["next"][0][0])
+                    return [overallvalue, useranswers, task, temp]
+
+        return False
+
+    def canDo(self, page, course):
+        _ = self.request.getText
+
+        if not pageexists(self.request, page):
+            raise RaippaException(u'The page %s does not exist.' % page)
+
+        categories = get_metas(self.request, page, ["gwikicategory"], checkAccess=False)
+
+        if raippacategories["coursepointcategory"] in categories["gwikicategory"]:
+            #can't do if already done except if there is redo taskpoint
+            done, reason = self.hasDone(page, course)
+            if done:
+                if reason == "redo":
+                    return True, reason
                 else:
-                    taskpoint = "end"
-        else:
-            return False
-        return flow
+                    return False, reason
+
+            keys = ["deadline", "prerequisite"]
+            metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
+            #can't do if deadline is gone
+            if metas["deadline"]:
+                try:
+                    deadline = time.strptime(metas["deadline"].pop(), "%Y-%m-%d")
+                    currentdate = time.gmtime()
+                    if (deadline[0] < currentdate[0]) or \
+                       (deadline[0] <= currentdate[0] and deadline[1] < currentdate[1]) or \
+                       (deadline[0] <= currentdate[0] and deadline[1] <= currentdate[1] and \
+                        deadline[2] < currentdate[2]):
+                        return False, "deadline"
+                except ValueError:
+                    reporterror(self.request, "%s has invalid deadline format." % page)
+
+            #can't do if prerequisites are not done
+            for prerequisite in metas["prerequisite"]:
+                if not pageexists(self.request, prerequisite):
+                    raise RaippaException(u"%s linked in %s doesn't exist." % (prerequisite, page))
+
+                done, reason = self.hasDone(prerequisite, course)
+                if not done:
+                    return False, "prerequisite"
+
+            #if no prerequisites return True
+            return True, "noprerequisite"
+
+        elif raippacategories["taskcategory"] in categories["gwikicategory"]:
+            #can't do if allready done
+            done, reason = self.hasDone(page, course)
+            if done:
+                if reason == "redo":
+                    return True, reason
+                else:
+                    return False, reason
+
+            #try to find tasks coursepoint
+            task = self.request.graphdata.getpage(page)
+            linking_in = task.get('in', {})
+            pagelist = linking_in.get("task", [])
+
+            for linking_page in pagelist:
+                meta = get_metas(self.request, linking_page, ["gwikicategory"], checkAccess=False)
+                if raippacategories["coursepointcategory"] in meta["gwikicategory"]:
+                    #if we find coursepoint, return coursepoints canDo
+                    if linking_page.startswith(course):
+                        return self.canDo(linking_page, course)
+
+            raise RaippaException("No coursepoints linking into %s" % page)
+
+        elif raippacategories["taskpointcategory"] in categories["gwikicategory"]:
+            #can't do if allready done
+            done, reason = self.hasDone(page, course)
+            if done:
+                if reason == "redo":
+                    return True, reason
+                else:
+                    return False, reason
+            else:
+                if reason == "recap":
+                    return False, reason 
+                elif reason in ["pending", "picked"]:
+                    return False, "pending"
+
+            #find task and tasktype 
+            #TODO: parents are evil
+            temp = page.split("/")
+            temp.pop()
+            taskpage = "/".join(temp)
+
+            types = get_metas(self.request, taskpage, ["type"], display=True, checkAccess=False)
+            if types["type"]:
+                tasktype = types["type"].pop()
+            else:
+                reporterror(self.request, u"%s doesn't have tasktype." % taskpage)
+                tasktype = "basic"
+
+            if tasktype in ["exam", "questionary"] and not done and reason == "False":
+                return False, "done"
+
+            if tasktype not in  ["exam", "questionary"]:
+                #can do if previous point is done
+                taskpoint = self.request.graphdata.getpage(page)
+                linking_in = taskpoint.get('in', dict())
+                nextlist = linking_in.get("next", list())
+                for next in nextlist:
+                    meta = get_metas(self.request, next, ["gwikicategory"], checkAccess=False)
+                    if raippacategories["taskpointcategory"] in meta["gwikicategory"]:
+                        done, reason = self.hasDone(next, course)
+                        if done:
+                            return True, "previousdone" 
+                        else:
+                            return False, "previousnot"
+
+            #if no previous taskpoints, return parents canDo
+            return self.canDo(taskpage, course)
+
+        raise RaippaException("Invalid category %s" % page)
+
+    def hasDone(self, page, course):
+        _ = self.request.getText
+
+        if not pageexists(self.request, page):
+            raise RaippaException(u'The page %s does not exist.' % page)
+
+        keys = ["gwikicategory", "task", "start", "option", "question", "type"]
+        metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
+
+        categories = metas["gwikicategory"]
+        if raippacategories["coursepointcategory"] in categories:
+            #find coursepoints task and return tasks hasDone
+            if metas["task"]:
+                task = metas["task"].pop()
+                if not pageexists(self.request, task):
+                    raise RaippaException(u"%s linked in %s doesn't exist." % (task, page))
+                return self.hasDone(task, course)
+            else:
+                raise RaippaException(u"%s doesn't have task link." % page)
+
+        elif raippacategories["taskcategory"] in categories:
+            #get task type
+            if metas["type"]:
+                tasktype = metas["type"].pop()
+            else:
+                tasktype = "basic"
+                reporterror(self.request, u"%s doesn't have tasktype.")
+
+            #task is done only if all taskpoints in task are done
+            redo = False
+            if metas["start"]:
+                taskpoint = metas["start"].pop()
+            else:
+                raise RaippaException(u"%s doesn't have start link." % page)
+
+            while taskpoint != "end":
+                if not pageexists(self.request, taskpoint):
+                    raise RaippaException(u"%s linked in %s doesn't exist." % (taskpoint, page))
+
+                done, reason = self.hasDone(taskpoint, course)
+                if not done:
+                    if tasktype in ["exam", "questionary"]:
+                        if reason == "nohistory":
+                            return False, reason
+                    else:
+                        return False, reason
+                else:
+                    if reason == "redo":
+                        redo = True
+
+                tpmeta = get_metas(self.request, taskpoint, ["next"], display=True, checkAccess=False)
+                if tpmeta["next"]:
+                    taskpoint = tpmeta["next"].pop()
+                else:
+                    raise RaippaException(u"%s doesn't have next link." % taskpoint)
+
+            if redo:
+                return True, "redo"
+            else:
+                return True, "done"
+
+        elif raippacategories["taskpointcategory"] in categories:
+            #see if taskpoints question is done
+            if metas["question"]:
+                questionpage = metas["question"].pop()
+                if not pageexists(self.request, questionpage):
+                    raise RaippaException(u"%s linked in %s doesn't exist." % (questionpage, page))
+            else:
+                raise RaippaException(u"%s doesn't have question link." % page)
+
+            history = self.gethistory(questionpage, course)
+
+            if history:
+                overallvalue = history[0]
+                if overallvalue in ["False", "pending", "picked", "recap"]:
+                    return False, overallvalue
+                else:
+                    if "redo" in metas["option"]:
+                        return True, "redo"
+                    else:
+                        return True, "done"
+            return False, "nohistory"
+
+        raise RaippaException("Invalid category %s." % page)
+
 
 class Question:         
-    def __init__(self, request, pagename):
-        self.pagename = encode(pagename)
-        if not hasattr(request, 'graphdata'):
-            getgraphdata(request)
+    def __init__(self, request, pagename, init_all=True):
         self.request = request
+        self.pagename = pagename
 
-        metas = getmetas(request, self.request.graphdata, self.pagename, ["question", "answertype", "note", "type"], checkAccess=False)                  
-        self.question = unicode()
-        self.answertype = unicode()
-        self.note = unicode()
-        self.types = list()
+        if not pageexists(self.request, self.pagename):
+            raise RaippaException(u'The page %s does not exist.' % self.pagename)
 
-        if metas["question"]:
-            self.question = metas["question"][0][0]
+        if init_all:
+            keys = ["answertype", "note", "question", "type"]
+            metas = get_metas(request, self.pagename, keys, display=True, checkAccess=False)
 
-        if metas["answertype"]:
-            self.answertype = metas["answertype"][0][0]
+            if metas["question"]:
+                self.question = metas["question"].pop() 
+            else:
+                self.question = None
+                raise RaippaException(u"%s doesn't have question meta." % self.pagename)
 
-        notepage = encode(self.pagename+"/note")
-        if notepage in request.graphdata:
-            self.note = Page(self.request, notepage).get_raw_body()
-        elif metas["note"]:
-            self.note = metas["note"][0][0]
+            if metas["answertype"]:
+                self.answertype = metas["answertype"].pop() 
+            else:
+                reporterror(request, "%s doesn't have answertype." % self.pagename)
+                self.answertype = "text"
 
-        for type, metatype in metas["type"]:
-            self.types.append(type)
+            if metas["note"]:
+                self. note = metas["note"].pop()
+            else:
+                self.note = str()
 
-    def gethistories(self):
+            self.types = metas["type"]
+
+    def gethistories(self, coursefilter=None, taskfilter=None, userfilter=None):
         histories = list()
+
         page = self.request.graphdata.getpage(self.pagename)
         linking_in = page.get('in', {})
         pagelist = linking_in.get("question", [])
+
         for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, page, ["WikiCategory", "user", "overallvalue", "false", "true", "course", "task"], checkAccess=False)
-            for category, type in metas["WikiCategory"]:
-                if category == historycategory:
-                    if metas["user"] and metas["overallvalue"] and metas["course"]:
-                        user = metas["user"][0][0]
-                        overallvalue = metas["overallvalue"][0][0]
-                        course = metas["course"][0][0]
-                        if metas["task"]:
-                            task = metas["task"][0][0]
-                        else:
-                            task = unicode()
-                        useranswers = dict()
-                        for true in metas["true"]:
-                            useranswers[true[0]] = "true"
-                        for false in metas["false"]:
-                            useranswers[false[0]] = "false"
-                        histories.append([user, overallvalue, useranswers, course, task, page])
-                    break
+            keys = ["gwikicategory", "task", "user", "course", "overallvalue", "true", "false"]
+            metas = get_metas(request, node, keys, display=True, checkAccess=False)
+
+            categories = metas["gwikicategory"]
+
+            if raippacategories["historycategory"] in categories:
+                tasks = metas["task"] 
+                if not tasks or (taskfilter and taskfilter not in tasks):
+                    continue
+
+                users = metas["user"]
+                if not users or (userfilter and userfilter not in users):
+                    continue
+
+                courses = metas["course"]
+                if not courses or (coursefilter and coursefilter not in courses):
+                    continue
+
+                if metas["overallvalue"]:
+                    overallvalue = metas["overallvalue"].pop()
+                else:
+                    reporterror(self.request, "%s doesn't have overallvalue." % node)
+                    overallvalue = "False"
+
+                if metas["task"]:
+                    task = metas["task"].pop()
+                else:
+                    task = unicode()
+                
+                useranswers = dict()
+                for true in metas["true"]:
+                    useranswers[true] = "true"
+                for false in metas["false"]:
+                    useranswers[false] = "false"
+                
+                course = courses.pop()
+                user = users.pop()
+                histories.append([user, overallvalue, useranswers, course, task, page])
+
         return histories
 
     def getanswers(self):
+        #NOTE: this might get slow when lot of links to question
         questionpage = self.request.graphdata.getpage(self.pagename)
         linking_in_question = questionpage.get('in', {})
         pagelist = linking_in_question.get("question", [])
         answerdict = dict()
         for page in pagelist:
-            metas = getmetas(self.request, self.request.graphdata, page, ["WikiCategory", "true", "false", "option"], checkAccess=False)
-            for category, type in metas["WikiCategory"]:
-                if category == answercategory:
-                    tip = None
-                    options = list()
-                    if metas["true"]:
-                        value = u'true'
-                        for answer, type in metas["true"]:
-                            if type == "link" and answer.startswith("mailto:"):
-                                answer = answer[7:]
+            keys = ["gwikicategory", "true", "false", "option"]
+            metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
+            if raippacategories["answercategory"] in metas["gwikicategory"]:
+                if metas["true"]:
+                    value = u'true'
+                    answer = metas["true"].pop()
+                    if answer.startswith("mailto:"):
+                        answer = answer[7:]
+                elif metas["false"]:
+                    value = u'false'
+                    answer = metas["false"].pop()
+                    if answer.startswith("mailto:"):
+                        answer = answer[7:]
+
+                answerpage = self.request.graphdata.getpage(page)
+                tip = None
+                try:
+                    linking_in_answer = answerpage.get('in', {})
+                    tiplist = linking_in_answer["answer"]
+                    for tippage in tiplist:
+                        meta = get_metas(self.request, tippage, ["gwikicategory"], checkAccess=False)
+                        if raippacategories["tipcategory"] in meta["gwikicategory"]:
+                            tip = tippage
                             break
-                    elif metas["false"]:
-                        value = u'false'
-                        for answer, type in metas["false"]:
-                            if type == "link" and answer.startswith("mailto:"):
-                                answer = answer[7:]
-                            break
-                        answerpage = self.request.graphdata.getpage(page)
-                        try:
-                            linking_in_answer = answerpage.get('in', {})
-                            tiplist = linking_in_answer["answer"]
-                            for tippage in tiplist:
-                                meta = getmetas(self.request, self.request.graphdata, tippage, ["WikiCategory"], checkAccess=False)
-                                for category, type in meta["WikiCategory"]:
-                                    if category == tipcategory:
-                                        tip = tippage.split("/")[1]
-                                        break
-                        except:
-                            pass
-                    if metas["option"]:
-                        for option, type in metas["option"]:
-                            options.append(option)
-                    answerdict[answer] = [value, tip, options, page]
-                    break
+                except:
+                    pass
+
+                answerdict[answer] = [value, tip, metas["option"], page]
         return answerdict
 
     def checkanswers(self, useranswers):
@@ -481,6 +437,8 @@ class Question:
             if answer in truelist:
                 truelist.remove(answer)
                 successdict[answer] = "true"
+                if answerdict.get(answer, [u'', u''])[1]:        
+                    tips.append(answerdict[answer][1])
             else:
                 successdict[answer] = "false"
                 if answerdict.get(answer, [u'', u''])[1]:
@@ -498,64 +456,76 @@ class Question:
         return overallvalue, successdict, tips
 
     def writehistory(self, user, course, task, overallvalue, successdict, file=False):
-        historypage = None
-        histories = self.gethistories()
-        for historyuser, ovalue, answers, historycourse, historytask, page in histories:
-            if historyuser == user and historycourse == course:
-                historypage = page
-                oldkeys = getkeys(self.request.graphdata, historypage).keys()
-                metas = getmetas(self.request, self.request.graphdata, historypage, oldkeys, checkAccess=False) 
-                oldmetas = dict()
-                for metakey in oldkeys:
-                    oldmetas[metakey] = list()
-                    for meta, type in metas[metakey]:
-                        oldmetas[metakey].append(meta)
-                break
-        if not historypage:
-            historypage = randompage(self.request, "History")
-            oldmetas = {}
+        _ = self.request.getText
+        if not isinstance(user, RaippaUser):
+            user = RaippaUser(self.request, user)
 
-        historydata = {u'user':[addlink(user)],
+        historypage = None
+        history = user.gethistory(self.pagename, course)
+        if history:
+            historypage = history[3]
+            oldkeys = getkeys(self.request, historypage).keys()
+            remove = {historypage: oldkeys}
+        else:
+            historypage = randompage(self.request, "History")
+            remove = dict()
+
+        historydata = {u'user':[addlink(user.user)],
                        u'course':[addlink(course)],
                        u'task':[addlink(task)],
                        u'question':[addlink(self.pagename)],
                        u'overallvalue':[unicode(overallvalue)],
-                       u'time':[time.strftime("%Y-%m-%d %H:%M:%S")]}
+                       u'useragent':[self.request.getUserAgent()],
+                       u'time':[time.strftime("%Y-%m-%d %H:%M:%S")],
+                       u'gwikicategory': [raippacategories["historycategory"]]}
+
+        if overallvalue == "recap":
+            meta = get_metas(self.request, task, ["recap"], display=True, checkAccess=False)
+            if meta["recap"]:
+                historydata["recap"] = meta["recap"].pop()
 
         if file:
             filename = unicode()
             if self.request.form.has_key('answer__filename__'):
-                filename = self.request.form['answer__filename__']
-            filecontent = self.request.form["answer"][0]
+                filename = self.request.form.get('answer__filename__', unicode())
+            filecontent = self.request.form.get("answer", [str()]).pop()
+
             if not isinstance(filecontent, str):
                 temp = filecontent.read()
                 filecontent = temp
-
             filecontent = unicode(filecontent, 'iso-8859-15')
             
             if filename.endswith(".py"):
-                filecontent = u'#FORMAT python\n%s' % filecontent
+                filecontent = "#FORMAT python\n"+filecontent
+            elif filename.endswith(".c") or filename.endswith(".cpp"):
+                filecontent = "#FORMAT cplusplus\n"+filecontent
             else:
-                filecontent = u'#FORMAT plain\n%s' % filecontent
+                filecontent = "#FORMAT plain\n"+filecontent
 
             filepage = PageEditor(self.request, historypage+"/file")
             try:
-                filepage.saveText(filecontent, filepage.get_real_rev())
-            except:
+                msg = filepage.saveText(filecontent, filepage.get_real_rev())
+                if msg != _("Thank you for your changes. Your attention to detail is appreciated."):
+                    return False
+            except filepage.Unchanged:
                 pass
-
+            except:
+                return False
             historydata[u'file'] = [addlink(historypage+"/file")]
+            historydata[u'filename'] = [filename]
 
         for useranswer, value in successdict.iteritems():
             if not historydata.has_key(value):
                 historydata[value] = list()
             historydata[value].append(useranswer)
-        if not historydata.has_key("true"):
-            historydata["true"] = [u'']
-        if not historydata.has_key("false"):
-            historydata["false"] = [u'']
 
-        edit_meta(self.request, historypage, oldmetas, historydata, True, [historycategory])
+        historydata = {historypage: historydata}
+
+        result, msg = set_metas(self.request, remove, dict(), historydata)
+        if result:
+            return historypage
+        else:
+            return False
 
     def getaverage(self, coursename, taskpoint):
         histories = self.gethistories()
@@ -592,12 +562,115 @@ def addlink(pagename):
 def removelink(pagename):
     if pagename.startswith("[[") and pagename.endswith("]]"):
         pagename = pagename[2:-2]
-    return encode(pagename)
+    return pagename
 
 def randompage(request, type):
-    getgraphdata(request)
-
     while True:
-        pagename = encode("%s/%i" % (type, random.randint(10000,99999)))
-        if pagename not in request.graphdata:
+        pagename = "%s/%i" % (type, random.randint(10000,99999))
+        if not pageexists(request, pagename):
             return pagename
+
+def revert(request, pagename, rev):
+    _ = request.getText
+    try:
+        current = PageEditor(request, pagename)
+        if current.get_real_rev() > rev:
+            old = Page(request, pagename, rev=rev)
+            revstr = '%08d' % rev
+            msg = current.saveText(old.get_raw_body(), 0, extra=revstr, action="SAVE/REVERT")
+            if msg == _("Thank you for your changes. Your attention to detail is appreciated."):
+                return True
+        return False
+    except page.Unchanged:
+        return True
+    except:
+        return False
+
+def reporterror(request, note, priority=None):
+    page = PageEditor(request, "ErrorPage")
+    note = " * %s" % note
+    body = page.get_raw_body()
+    if note not in body:
+        page.saveText(body + "\n%s" % note, page.get_real_rev())
+
+def pageexists(request, pagename):
+    pagename = removelink(pagename)
+    content = Page(request, pagename).get_raw_body()
+    if not content:
+        return False
+    else:
+        return True
+
+def getflow(request, pagename):
+    keys = ["gwikicategory", "start", "task"]
+    metas = get_metas(request, pagename, keys, display=True, checkAccess=False)
+
+    categories = metas["gwikicategory"]
+
+    if raippacategories["coursecategory"] in categories:
+        flow = {"start":list()}
+
+        def subflow(current):
+            if current not in flow.keys():
+                if not pageexists(request, current):
+                    raise RaippaException(u'The page %s does not exist.' % current) 
+                flow[current] = list()
+
+            metanext = get_metas(request, current, ["next"], display=True, checkAccess=False)
+            if not metanext["next"]:
+                raise RaippaException(u"%s doesn't have next link." % current)
+                
+            for next in metanext["next"]:
+                if next not in flow[current]:
+                    flow[current].append(next)
+                if next != "end":
+                    subflow(next)
+        
+        if not metas["start"]:
+            raise RaippaException(u"%s doesn't have start link." % pagename)
+
+        for start in metas["start"]:
+            if start not in flow["start"]:
+                flow["start"].append(start)
+            subflow(start)
+
+        return flow
+
+    elif raippacategories["coursepointcategory"] in categories:
+        if metas["task"]:
+            taskpage = metas["task"].pop()
+            if not pageexists(request, taskpage):
+                raise RaippaException(u"%s linked in %s doesn't exist." % (taskpage, pagename))
+        else:
+            raise RaippaException(u"%s doesn't have task link." % pagename)
+
+        return getflow(request, taskpage)
+
+    elif raippacategories["taskcategory"] in categories:
+        flow = list()
+        if metas["start"]:
+            taskpoint = metas["start"].pop()
+            if not pageexists(request, taskpoint):
+                raise RaippaException(u"%s linked in %s doesn't exist." % (taskpoint, pagename))
+        else:
+            raise RaippaException(u"%s doesn't have start link." % pagename)
+
+        while taskpoint != "end":
+            keys = ["question", "next"]
+            pointmeta = get_metas(request, taskpoint, keys, display=True, checkAccess=False)
+            if pointmeta["question"]:
+                questionpage = pointmeta["question"].pop()
+                #TODO: handle missing page
+            else:
+                raise RaippaException(u"%s doesn't have question link." % taskpoint)
+            flow.append((taskpoint, questionpage))
+
+            if pointmeta["next"]:
+                taskpoint = pointmeta["next"].pop()
+                #TODO: handle missing page
+            else:
+                raise MissingMetakException(u"%s doesn't have next link." % taskpoint)
+
+        return flow
+
+    raise RaippaException("Invalid category %s" % pagename)
