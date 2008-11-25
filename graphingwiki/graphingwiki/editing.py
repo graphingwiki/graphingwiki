@@ -45,7 +45,7 @@ regexp_re = re.compile('^/.+/$')
 # in the sub-function
 dl_re = re.compile('(^\s+(.+?):: (.+)$\n?)', re.M)
 # From Parser, slight modification due to multiline usage
-dl_proto = "^(\s+?%s::)\s*$"
+dl_proto_re = re.compile('(^\s+(.+?)::\s*$\n?)', re.M)
 # Regex for adding new
 dl_add = '^(\\s+?%s::\\s.+?)$'
 
@@ -485,10 +485,48 @@ def add_meta_regex(request, inclusion, newval, oldtext):
 
 def replace_metas(request, oldtext, oldmeta, newmeta):
     r"""
+    >>> request = _doctest_request()
+
+    Replacing metas:
+    >>> replace_metas(request,
+    ...               u" test:: 1\n test:: 2",
+    ...               dict(test=[u"1"]),
+    ...               dict(test=[u"3"]))
+    u' test:: 3\n test:: 2'
+    >>> replace_metas(request,
+    ...               u" test:: 1\n test:: 2",
+    ...               dict(test=[u"1"]),
+    ...               dict(test=[u""]))
+    u' test:: 2'
+    >>> replace_metas(request,
+    ...               u" test:: 1\n test:: 2",
+    ...               dict(test=[u"2"]),
+    ...               dict(test=[u""]))
+    u' test:: 1\n'
+
+    Prototypes:
+    >>> replace_metas(request,
+    ...               u"This is just filler\n test::\nYeah",
+    ...               dict(),
+    ...               dict(test=[u"1"]))
+    u'This is just filler\n test:: 1\nYeah'
+
+    Adding metas, clustering when possible:
+    >>> replace_metas(request,
+    ...               u"This is just filler\nYeah",
+    ...               dict(test=[]),
+    ...               dict(test=[u"1", u"2"]))
+    u'This is just filler\nYeah\n test:: 1\n test:: 2\n\n'
+    >>> replace_metas(request,
+    ...               u"This is just filler\n test:: 1\nYeah",
+    ...               dict(test=[u"1"]),
+    ...               dict(test=[u"1", u"2"]))
+    u'This is just filler\n test:: 1\n test:: 2\nYeah'
+
     Regression test: The following scenario probably shouldn't produce
     an empty result text.
     
-    >>> replace_metas(object(), 
+    >>> replace_metas(request,
     ...               u" test:: 1\n test:: 1", 
     ...               dict(test=[u"1", u"1"]),
     ...               dict(test=[u"1", u""]))
@@ -497,7 +535,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     Regression test, bug #527: If the meta-to-be-replaced is not
     the first one on the page, it should still be replaced.
     
-    >>> replace_metas(object(),
+    >>> replace_metas(request,
     ...               u" bar:: 1\n foo:: 2",
     ...               dict(foo=[u"2"]),
     ...               dict(foo=[u""]))
@@ -507,125 +545,76 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     oldtext = oldtext.rstrip()
     # Annoying corner case with dl:s
     if oldtext.endswith('::'):
-        oldtext = oldtext + ' '
-    oldtext = oldtext + '\n'
+        oldtext = oldtext + " \n"
 
-    # Keeps track on the keys added during this edit
-    added_keys = set()
-
+    # Replace the values we can
     def dl_subfun(mo):
         all, key, val = mo.groups()
 
-        # print repr(all), repr(key), repr(val)
-
-        # Don't even start working on it if the key does not match
-        if key.strip() != oldkey.strip():
-            return all
-        # print "Trying", repr(oldkey), repr(key), repr(oldval), repr(newval)
-
-        # Check if the value has changed
         key = key.strip()
-        # print repr(oldval), repr(val), repr(newval)
-        # print repr(oldkey), repr(key)
-        if key == oldkey.strip() and val.strip() == oldval.strip():
-            val = newval
+        val = val.strip()
 
-        # Do not return placeholders
-        if not val.strip():
-            return ''
+        # Don't touch unmodified keys
+        if key not in oldmeta:
+            return all
 
-        out = ' %s:: %s\n' % (key, val)
+        # Don't touch placeholders
+        if not val:
+            return ""
 
-        return out
+        # Don't touch unmodified values
+        try:
+            index = oldmeta[key].index(val)
+        except ValueError:
+            return all
+        
+        newval = newmeta[key][index].replace("\n", " ").strip()
+        del oldmeta[key][index]
+        del newmeta[key][index]
 
-    for key in newmeta:
-        # print repr(key)
-        oldkey = key
-        dl_proto_re = re.compile(dl_proto % (oldkey), re.M)
-        dl_add_re = re.compile(dl_add % (oldkey), re.M)
+        if not newval:
+            return ""
 
-        for i, newval in enumerate(reversed(newmeta[key])):
-            # print repr(newval)
-            # Remove newlines from input, as they could really wreck havoc.
-            newval = newval.replace('\n', ' ')
-            inclusion = ' %s:: %s' % (oldkey, newval)
+        return " %s:: %s\n" % (key, newval)
+    oldtext = dl_re.sub(dl_subfun, oldtext)
 
-            #print repr(inclusion)
+    # Fill in the prototypes
+    def dl_fillfun(mo):
+        all, key = mo.groups()
+        key = key.strip()
 
-            #print "Meta change", repr(key), repr(newval)
+        if key not in newmeta or not newmeta[key]:
+            return ""
 
-            #print key, repr(oldmeta.has_key(key)), repr(oldmeta.get(key, '')), len(oldmeta.get(key, '')), repr(newval.strip())
+        newval = newmeta[key].pop(0).replace("\n", " ").strip()
+        if not newval:
+            return ""
 
-            # If nothing to do, do nothing
-            if (not oldmeta.has_key(key)
-                and not newval.strip()):
+        return " %s:: %s\n" % (key, newval)
+    oldtext = dl_proto_re.sub(dl_fillfun, oldtext)
 
+    # Add clustered values
+    def dl_clusterfun(mo):
+        all, key, val = mo.groups()
 
-                continue
+        key = key.strip()
+        if key not in newmeta:
+            return all
 
-            # If old meta has the key with i valus of it, 
-            # replace its i:th value with the new key. Preserves order.
-            elif (oldmeta.has_key(key) and len(oldmeta[key]) - 1 >= i):
+        for value in newmeta[key]:
+            value = value.replace("\n", " ").strip()
+            all += " %s:: %s\n" % (key, value)
 
-                oldval = oldmeta[key][i]
-                #print "Replace", repr(oldval), repr(newval)
-                #print "# ", repr(oldval)
-                oldkey = key
-                # First try to replace the dict variable
-                oldtext, repls = dl_re.subn(dl_subfun, oldtext, 1)
+        newmeta[key] = list()
+        return all
+    oldtext = dl_re.sub(dl_clusterfun, oldtext)
 
-            # If prototypes ( key:: ) are present, replace them
-            elif (dl_proto_re.search(oldtext + '\n')):
-
-                # Do not replace with empties, i.e. status quo
-                if not newval.strip():
-                    continue
-
-                oldkey = key
-
-                oldtext = dl_proto_re.sub('\\1 %s' % (newval),
-                                          oldtext + '\n', 1)
-
-                added_keys.add(key)
-
-                #print "Proto", repr(newval), '\n'
-
-                continue
-
-            # If the old text has this key (either before this edit
-            # or added by this edit), add them (as dl).
-            # Cluster values of same keys near
-            elif (key in added_keys or
-                  (oldmeta.has_key(key) and 
-                   len(oldmeta[key]) - 1 < i)):
-
-                #print "Cluster", repr(newval), repr(oldmeta.get(key, '')), '\n'
-
-                # Easiest to strip excess line breaks in a function
-                def cluster_metas(mo):
-                    all = mo.group(0)
-                    all = all.lstrip('\n')
-                    return '%s\n%s' % (inclusion, all)
-
-                # DL meta supported only, otherwise
-                # fall back to just adding
-                text, count = dl_add_re.subn(cluster_metas,
-                                             oldtext, 1)
-
-                if count:
-                    oldtext = text
-                    continue
-
-                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
-
-            # If the old text does not have this key, add it (as dl)
-            else:
-                #print "Newval"
-                oldtext = add_meta_regex(request, inclusion, newval, oldtext)
-                added_keys.add(key)
-
-            # print
-
+    # Add values we couldn't cluster
+    for key, values in newmeta.iteritems():
+        for value in values:
+            inclusion = " %s:: %s\n" % (key, value)
+            oldtext = add_meta_regex(request, inclusion, value, oldtext)
+    
     return oldtext
 
 def edit_meta(request, pagename, oldmeta, newmeta,
