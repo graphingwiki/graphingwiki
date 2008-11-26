@@ -278,8 +278,6 @@ Questions:
                 typedict[None] = list()
             typedict[None].append((page, question))
 
-    print pagelist, typedict
-
     #typelist
     html += u'<select id="qtypesel" class="maxwidth" name="question_type">\n'
 

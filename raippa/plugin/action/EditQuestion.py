@@ -537,8 +537,7 @@ def save_question(request, questiondata, questionpage=None):
 
     data = {"question": [questiontext],
             "answertype": [answertype],
-            "type": types,
-            "gwikicategory": [raippacategories["questioncategory"]]}
+            "type": types}
 
     #save note
     notepage = questionpage + "/note"
@@ -589,7 +588,10 @@ def save_question(request, questiondata, questionpage=None):
             revert(request, page, rev)
         return u'Failed to save the question (%s).' % questionpage
 
-    text = u'<<MetaInclude(%s,question=%s,,,,editlink)>>' %(raippacategories["answercategory"], questionpage)
+    text = u'''
+----
+<<MetaInclude(%s,question=%s,,,,editlink)>>''' %(raippacategories["answercategory"], questionpage)
+
     oldcontent = Page(request, questionpage).get_raw_body()
     if text not in oldcontent:
         content = oldcontent + text
@@ -599,6 +601,13 @@ def save_question(request, questiondata, questionpage=None):
             msg = page.saveText(content, page.get_real_rev())
         except:
             pass
+
+    data = {questionpage: {"gwikicategory": [raippacategories["questioncategory"]]}}
+    result, msg = set_metas(request, remove, dict(), data)
+    if not result:
+        for page, rev in backup.iteritems():
+            revert(request, page, rev)
+        return u'Failed to save category for %s.' % questionpage
 
     if filename and filecontent:
         if not do_upload(request, questionpage, filename, filecontent):
@@ -661,8 +670,7 @@ def save_question(request, questiondata, questionpage=None):
 
         data = {"question": [addlink(questionpage)],
                 "true": list(),
-                "false": list(),
-                "gwikicategory": [raippacategories["answercategory"]]}
+                "false": list()}
         
         docpage = answerpage + "/doctests"
         if answertype == "file":
@@ -716,7 +724,10 @@ def save_question(request, questiondata, questionpage=None):
                 revert(request, page, rev)
             return u'Question was not saved. Failed to save the answer (%s).' % answerpage
 
-        text = u'<<MetaInclude(%s,answer=%s,,,,editlink)>>' % (raippacategories["tipcategory"], answerpage)
+        text = u'''
+----
+<<MetaInclude(%s,answer=%s,,,,editlink)>>''' % (raippacategories["tipcategory"], answerpage)
+
         oldcontent = Page(request, answerpage).get_raw_body()
         if text not in oldcontent:
             content = oldcontent + text
@@ -727,6 +738,12 @@ def save_question(request, questiondata, questionpage=None):
             except:
                 pass
 
+        data = {answerpage: {"gwikicategory": [raippacategories["answercategory"]]}}
+        result, msg = set_metas(request, remove, dict(), data)
+        if not result:
+            for page, rev in backup.iteritems():
+                revert(request, page, rev)
+            return u'Failed to save category for %s.' % answerpage
 
         #save tip
         if tip:
@@ -780,7 +797,6 @@ def save_question(request, questiondata, questionpage=None):
 
 def delete_question(request, pagename):
     #TODO: delete attachments
-    _ = request.getText
     failures = list()
 
     if pageexists(request, pagename):
@@ -882,6 +898,7 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
+    print request.form
     ruser = RaippaUser(request)
     if not ruser.isTeacher():
         action = {"action_name": action_name}
