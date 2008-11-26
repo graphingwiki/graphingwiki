@@ -724,7 +724,7 @@ def execute(pagename, request):
         Page(request, pagename).send_page(msg=message)
 
     elif request.form.has_key('save'):
-        taskpage = request.form.get("task", None).pop()
+        taskpage = request.form.get("task", [None]).pop()
         taskdata = {"title": request.form.get("title", [None])[0],
                     "description": request.form.get("description", [unicode()])[0].rstrip(),
                     "type": request.form.get('type', [None])[0],
