@@ -13,7 +13,7 @@ class Theme(ThemeBase):
     name = "raippa"
 
     def logo(self):
-        newlogo = 'moin_static163/' + Theme.name + '/img2/raippa-logo.gif'
+        newlogo = self.cfg.url_prefix + '/' + Theme.name + '/img2/raippa-logo.gif'
         html = ThemeBase.logo(self)
         import re
         html = re.sub(r'src="([^"]*)"', r'src="' + newlogo +'"', html)
