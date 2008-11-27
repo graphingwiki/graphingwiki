@@ -256,6 +256,7 @@ class GraphData(UserDict.DictMixin):
 
         if page not in self.cache:
             self.cache[page] = self.db[page]
+
         return self.cache[page]
 
     def __setitem__(self, item, value):
@@ -269,7 +270,7 @@ class GraphData(UserDict.DictMixin):
 
         self.cache[page] = value
 
-    def __delitem__(self, item, value):
+    def __delitem__(self, item):
         page = encode_page(item)
 
         del self.db[page]
@@ -512,7 +513,8 @@ def load_node(request, graph, node, urladd):
     # Get new data for current node
     adata = request.graphdata.load_graph(node, urladd, load_origin)
 
-    nodeitem.update(adata.nodes.get(node))
+    if adata:
+        nodeitem.update(adata.nodes.get(node))
 
     return adata
 
