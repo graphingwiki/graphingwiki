@@ -43,6 +43,11 @@ class RaippaUser:
         else:
             self.user = self.request.user.name
             self.name = self.request.user.aliasname
+            if not pageexists(self.request, self.user) and self.name:
+                data = {self.user: {"name": [self.name]}}
+                result, msg = set_metas(request, dict(), dict(), data)
+                if not result:
+                    reporterror(request, "failed to write %s to page %s" % (self.name, self.user))
 
     def isTeacher(self):
         teachergroup = Page(self.request, raippagroups["teachergroup"])
