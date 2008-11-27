@@ -150,7 +150,7 @@ function toQuestionEditor(question){
   form.grab(new Element('input', {
     'type' : 'hidden',
     'name' : 'action',
-    'value' : 'editQuestion'
+    'value' : 'EditQuestion'
     }));
 if(question){
 form.grab(new Element('input', {
@@ -379,7 +379,7 @@ function submitCheck(button){
 
 select questions:<br>
 <form method="POST" action="%s" onsubmit="saveTaskData();">
-    <input type="hidden" name="action" value="editQuestion">
+    <input type="hidden" name="action" value="EditQuestion">
     <input type='submit' name='new' value='NewQuestion'>
 </form>
 <form id="taskForm" method="post" name="taskForm" action="">
