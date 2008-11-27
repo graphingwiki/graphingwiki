@@ -9,6 +9,7 @@ from graphingwiki.editing import metatable_parseargs
 
 from raippa import addlink, pageexists, revert, randompage, getflow
 from raippa import raippacategories
+from raippa import RaippaUser
 
 action_name = 'EditCourse'
 
@@ -475,44 +476,42 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    print request.form
-    if request.form.has_key('save'):
-        if request.form.has_key('course'):
-            course = request.form["course"][0]
-        else:
-            course = None
-        if not editcourse(request, course):
-            _enter_page(request, pagename)
-            if course:
-                request.write(u'Edit failed. Reverted back to original.')
+    ruser = RaippaUser(request)
+    _enter_page(request, pagename)
+
+    if not ruser.isTeacher():
+        action = {"action_name": action_name}
+        message = u'You are not allowed to do %(action_name)s on this page.' % action
+        Page(request, pagename).send_page(msg=message)
+
+    if request.form.has_key('cancel'):
+        message = u'Edit was cancelled.'
+        Page(request, pagename).send_page(msg=message)
+    elif request.form.has_key('save'):
+        coursepage = request.form.get("course", [None]).pop()
+        if not editcourse(request, coursepage):
+            if coursepage:
+                message = u'Edit failed. Reverted back to original.'
             else:
-                request.write(u'Edit failed.')
-            _exit_page(request, pagename)
+                message = u'Edit failed.'
         else:
-            url = u'%s/%s' % (request.getBaseURL(), pagename)
-            request.http_redirect(url)
+            message = u'Thank you for your changes. Your attention to detail is appreciated.'
+
+        Page(request, pagename).send_page(msg=message)
     elif request.form.has_key("delete") and request.form.has_key("course"):
-        try:
-            page = request.form["course"][0]
-            msg = delete(request, page)
-        except:
-            msg = "Failed to delete page."
-        if msg == "Success":
-            url = u'%s/%s' % (request.getBaseURL(), pagename)
-            request.http_redirect(url)
-        else:
-            _enter_page(request, pagename)
-            request.write(msg)
-            _exit_page(request, pagename)
+        coursepage = request.form.get("course", [None]).pop()
+        message = delete(request, coursepage)
+        Page(request, pagename).send_page(msg=message)
     elif request.form.has_key('edit') and request.form.has_key('course'):
-        _enter_page(request, pagename)
-        course = request.form["course"][0]
-        courseform(request, course)
-        _exit_page(request, pagename)
-    elif request.form.has_key('cancel'):
-        url = u'%s/%s' % (request.getBaseURL(), pagename)
-        request.http_redirect(url)
+        coursepage = request.form.get("course", [None]).pop()
+        courseform(request, coursepage)
     else:
-        _enter_page(request, pagename)
-        courseform(request)
-        _exit_page(request, pagename)
+        if request.form.has_key("new"):
+            coursepage = None
+        else:
+            coursepage = request.form.get("course", [None])[0]
+            if not coursepage:
+                coursepage = pagename
+
+        courseform(request, coursepage)
+    _exit_page(request, pagename)

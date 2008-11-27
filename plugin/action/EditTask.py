@@ -758,16 +758,14 @@ def execute(pagename, request):
             _enter_page(request, pagename)
             request.write(msg)
             _exit_page(request, pagename)
-    elif request.form.has_key('edit') and request.form.has_key('task'):
-        _enter_page(request, pagename)
-        try:
-            task = request.form["task"][0]
-        except:
-            request.write("Missing task.")
-            return None
-        taskform(request, task)
-        _exit_page(request, pagename)
     else:
+        if request.form.has_key("new"):
+            taskpage = None
+        else:
+            taskpage = request.form.get("task", [None])[0]
+            if not taskpage:
+                taskpage = pagename
+
         _enter_page(request, pagename)
-        taskform(request)
+        taskform(request, taskpage)
         _exit_page(request, pagename)

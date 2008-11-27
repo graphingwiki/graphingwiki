@@ -898,7 +898,6 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def execute(pagename, request):
-    print request.form
     ruser = RaippaUser(request)
     if not ruser.isTeacher():
         action = {"action_name": action_name}
