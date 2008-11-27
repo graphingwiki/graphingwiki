@@ -49,7 +49,7 @@ class RaippaUser:
         raw = teachergroup.get_raw_body()
 
         for line in raw.split("\n"):
-            if line.startswith(" * ") and line[3:].rstrip() == self.user:
+            if line.startswith(" * ") and removelink(line[3:].rstrip()) == self.user:
                 return True 
 
         return False
@@ -59,7 +59,7 @@ class RaippaUser:
         raw = quarantinegroup.get_raw_body()          
 
         for line in raw.split("\n"):
-            if line.startswith(" * ") and line[3:].rstrip() == self.user:
+            if line.startswith(" * ") and removelink(line[3:].rstrip()) == self.user:
                 return True 
 
         return False
