@@ -184,7 +184,7 @@ def execute(macro, text):
         pagename = request.page.page_name
         html = unicode()
         if ruser.isTeacher():
-            html += u'<a href="%s/%s?action=editCourse">[edit course]</a><br>\n' % (request.getBaseURL(), course)
+            html += u'<a href="%s/%s?action=EditCourse">[edit course]</a><br>\n' % (request.getBaseURL(), course)
 
         #check if user is quarantined
         if ruser.isQuarantined():

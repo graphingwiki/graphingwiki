@@ -150,7 +150,7 @@ Courses:
 <td style="width:200px">
 </td>
 <td style="width:300px;">
-    <input type="hidden"id="course_action" name="action" value="editCourse">
+    <input type="hidden"id="course_action" name="action" value="EditCourse">
     <select size="1" name="course" class="maxwidth">''' % request.request_uri.split("?")[0]
     for page in courselist:
         listtext = unicode()
@@ -193,8 +193,7 @@ Courses:
         if metas["title"]:
             description = metas["title"].pop()
         else:
-            pass
-            #TODO: report missing title
+            description = page+" (missing title)"
 
         if metas["subject"]:
             for subject in metas["subject"]:

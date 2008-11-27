@@ -21,7 +21,7 @@ def taskform(request, task=None):
         if metas["title"]:
             title = metas["title"].pop()
         else:
-            title = unicode()
+            title = unicode() 
 
         if metas["description"]:
             description = metas["description"].pop()
@@ -231,8 +231,7 @@ function createPenaltySel(el, defVal){
         if data["title"]:
             desc = data["title"].pop()
         else:
-            #TODO: report missing title
-            desc = ti
+            desc = ti+" (missing title)"
         pagehtml += u'''
   select.grab(new Element('option', {
 	  'value' : '%s',
@@ -566,10 +565,12 @@ def save_task(request, taskdata, taskpage=None):
 
         #save just taskpage if flow haven't changed
         if oldquestions == flowlist or not recapdict:
+            startmeta = get_metas(request, taskpage, ["start"])
             data = {"title": [title],
                     "description": [description],
                     "type": [tasktype],
                     "subject": subjects,
+                    "start": startmeta["start"],
                     "gwikicategory": [raippacategories["taskcategory"]]}
             data = {taskpage: data}
             
@@ -730,7 +731,7 @@ def execute(pagename, request):
                     "type": request.form.get('type', [None])[0],
                     "subject": request.form.get("subject", list()),
                     "flowlist": request.form.get("flowlist", list())}
-        
+
         recapdict = dict()
         for key in request.form:
             if key.endswith("_recap"):
