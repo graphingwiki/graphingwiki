@@ -33,7 +33,12 @@ def courseform(request, course=None):
 
         options = metas["option"]
 
-        flow = getflow(request, course)
+        #if getflow fails it means that there is no points
+        try:
+            flow = getflow(request, course)
+        except:
+            flow = dict()
+
         tasks = dict()
         for cp in flow:
             if cp != "start":
@@ -252,8 +257,6 @@ def editcourse(request, coursepage=None):
         return "Missing course id."
     if not coursename:
         return "Missing course name."
-    if not taskdict:
-        return "Missing task list."
 
     if not coursepage:
         newlist = list()
@@ -307,16 +310,17 @@ def editcourse(request, coursepage=None):
                       "option": options,
                       "gwikicategory": [raippacategories["coursecategory"]]}
 
-        startlist = nodedict["start"]
+        startlist = nodedict.get("start", list())
         for node in startlist:
-            cp = coursepointdict[node]
-            coursedata[u'start'].append(addlink(cp))
+            if node != "end":
+                cp = coursepointdict[node]
+                coursedata[u'start'].append(addlink(cp))
 
         coursedata[u'split'] = splittypes.get("start", [unicode()])
         coursedata = {coursepage: coursedata}
         result, msg = set_metas(request, dict(), dict(), coursedata)
         if result:
-            return True
+            return u'Thank you for your changes. Your attention to detail is appreciated.' 
         else:
             for page in newlist:
                 if pageexists(request, page):
@@ -332,79 +336,88 @@ def editcourse(request, coursepage=None):
         for valuelist in taskdict.values():
             tasks.extend(valuelist)
 
-        flow = getflow(request, coursepage)
-        for cp in flow:
-            if cp != "start":
-                backupdict[cp] = Page(request, cp).get_real_rev() 
-                metas = get_metas(request, cp, ["task"], display=True)
-                if metas["task"]:
-                    task = metas["task"].pop()
-                    if task not in tasks:
-                        deletelist.append(cp)
-                    else:
-                        oldtasks[task] = cp
-                else:
-                    pass
-                    #TODO: report missing task
+        try:
+            flow = getflow(request, coursepage)
+        except:
+            flow = dict()
 
-        coursepointdict = dict()
-        for number, taskdata in taskdict.iteritems():
-            taskpage = taskdata[0]
-            deadline = taskdata[1]
-
-            coursepoint = coursepointdict.get(number, None)
-            if not coursepoint:
-                if taskpage in oldtasks:
-                    coursepoint = oldtasks[taskpage]
-                elif len(deletelist) > 0:
-                    coursepoint = deletelist.pop()
-                else: 
-                    coursepoint = randompage(request, coursepage)
-                    newlist.append(coursepoint)
-                coursepointdict[number] = coursepoint
-
-            pointdata = {"task": [addlink(taskpage)],
-                         "prerequisite": prerequisites.get(number, list()),
-                         "split": splittypes.get(number, [u'select']),
-                         "deadline": deadline,
-                         "next": list(),
-                         "gwikicategory": [raippacategories["coursepointcategory"]]}
-
-            nextlist = nodedict.get(number, [u'end'])
-            for next in nextlist:
-                if next != u'end':
-                    nextcp = coursepointdict.get(next, None)
-                    if not nextcp:
-                        task = taskdict.get(next, [u'', u''])[0]
-                        if task and task in oldtasks:
-                            nextcp = oldtasks[task]
-                        elif len(deletelist) > 0:
-                            nextcp = deletelist.pop()
+        #if no tasks from editor just delete old ones
+        if not taskdict:
+            for cp in flow:
+                deletelist.append(cp)
+        else:
+            for cp in flow:
+                if cp != "start":
+                    backupdict[cp] = Page(request, cp).get_real_rev() 
+                    metas = get_metas(request, cp, ["task"], display=True)
+                    if metas["task"]:
+                        task = metas["task"].pop()
+                        if task not in tasks:
+                            deletelist.append(cp)
                         else:
-                            nextcp = randompage(request, coursepage)
-                            newlist.append(nextcp)
-                        coursepointdict[next] = nextcp
+                            oldtasks[task] = cp
+                    else:
+                        pass
+                        #TODO: report missing task
+
+            coursepointdict = dict()
+            for number, taskdata in taskdict.iteritems():
+                taskpage = taskdata[0]
+                deadline = taskdata[1]
+
+                coursepoint = coursepointdict.get(number, None)
+                if not coursepoint:
+                    if taskpage in oldtasks:
+                        coursepoint = oldtasks[taskpage]
+                    elif len(deletelist) > 0:
+                        coursepoint = deletelist.pop()
+                    else: 
+                        coursepoint = randompage(request, coursepage)
+                        newlist.append(coursepoint)
+                    coursepointdict[number] = coursepoint
+
+                pointdata = {"task": [addlink(taskpage)],
+                             "prerequisite": prerequisites.get(number, list()),
+                             "split": splittypes.get(number, [u'select']),
+                             "deadline": deadline,
+                             "next": list(),
+                             "gwikicategory": [raippacategories["coursepointcategory"]]}
+
+                nextlist = nodedict.get(number, [u'end'])
+                for next in nextlist:
+                    if next != u'end':
+                        nextcp = coursepointdict.get(next, None)
+                        if not nextcp:
+                            task = taskdict.get(next, [u'', u''])[0]
+                            if task and task in oldtasks:
+                                nextcp = oldtasks[task]
+                            elif len(deletelist) > 0:
+                                nextcp = deletelist.pop()
+                            else:
+                                nextcp = randompage(request, coursepage)
+                                newlist.append(nextcp)
+                            coursepointdict[next] = nextcp
+                    else:
+                        nextcp = u'end'
+                    pointdata["next"].append(addlink(nextcp))
+
+                if pageexists(request, coursepoint):
+                    oldkeys = getkeys(request, coursepoint)
+                    remove = {coursepoint: oldkeys}
                 else:
-                    nextcp = u'end'
-                pointdata["next"].append(addlink(nextcp))
+                    remove = dict()
 
-            if pageexists(request, coursepoint):
-                oldkeys = getkeys(request, coursepoint)
-                remove = {coursepoint: oldkeys}
-            else:
-                remove = dict()
+                pointdata = {coursepoint: pointdata}
+                result, msg = set_metas(request, remove, dict(), pointdata)
+                if not result:
+                    for page, rev in backupdict.iteritems():
+                        revert(request, page, rev)
 
-            pointdata = {coursepoint: pointdata}
-            result, msg = set_metas(request, remove, dict(), pointdata)
-            if not result:
-                for page, rev in backupdict.iteritems():
-                    revert(request, page, rev)
-
-                for page in newlist:
-                    if pageexists(request, page):
-                        msg = PageEditor(request, page, do_editor_backup=0).deletePage()
-                #TODO: maybe return little info here?
-                return False
+                    for page in newlist:
+                        if pageexists(request, page):
+                            msg = PageEditor(request, page, do_editor_backup=0).deletePage()
+                    #TODO: maybe return little info here?
+                    return False
 
         coursedata = {"id": [courseid],
                       "author": [addlink(request.user.name)],
@@ -415,10 +428,11 @@ def editcourse(request, coursepage=None):
                       "split": splittypes.get("start", [unicode()]),
                       "gwikicategory": [raippacategories["coursecategory"]]}
 
-        startlist = nodedict["start"]
+        startlist = nodedict.get("start", list())
         for node in startlist:
-            cp = coursepointdict[node]
-            coursedata[u'start'].append(addlink(cp))
+            if node != "end":
+                cp = coursepointdict[node]
+                coursedata[u'start'].append(addlink(cp))
 
         if pageexists(request, coursepage):
             oldkeys = getkeys(request, coursepage)
@@ -432,7 +446,7 @@ def editcourse(request, coursepage=None):
             for page in deletelist:
                 if pageexists(request, page):
                     msg = PageEditor(request, page, do_editor_backup=0).deletePage()
-            return True
+            return u'Thank you for your changes. Your attention to detail is appreciated.' 
         else:
             for page, rev in backupdict.iteritems():
                 revert(request, page, rev)
@@ -477,7 +491,6 @@ def _exit_page(request, pagename):
 
 def execute(pagename, request):
     ruser = RaippaUser(request)
-    _enter_page(request, pagename)
 
     if not ruser.isTeacher():
         action = {"action_name": action_name}
@@ -489,13 +502,14 @@ def execute(pagename, request):
         Page(request, pagename).send_page(msg=message)
     elif request.form.has_key('save'):
         coursepage = request.form.get("course", [None]).pop()
-        if not editcourse(request, coursepage):
+        msg = editcourse(request, coursepage)
+        if not msg:
             if coursepage:
                 message = u'Edit failed. Reverted back to original.'
             else:
                 message = u'Edit failed.'
         else:
-            message = u'Thank you for your changes. Your attention to detail is appreciated.'
+            message = msg
 
         Page(request, pagename).send_page(msg=message)
     elif request.form.has_key("delete") and request.form.has_key("course"):
@@ -504,7 +518,9 @@ def execute(pagename, request):
         Page(request, pagename).send_page(msg=message)
     elif request.form.has_key('edit') and request.form.has_key('course'):
         coursepage = request.form.get("course", [None]).pop()
+        _enter_page(request, pagename)
         courseform(request, coursepage)
+        _exit_page(request, pagename)
     else:
         if request.form.has_key("new"):
             coursepage = None
@@ -512,6 +528,7 @@ def execute(pagename, request):
             coursepage = request.form.get("course", [None])[0]
             if not coursepage:
                 coursepage = pagename
-
+        
+        _enter_page(request, pagename)
         courseform(request, coursepage)
-    _exit_page(request, pagename)
+        _exit_page(request, pagename)
