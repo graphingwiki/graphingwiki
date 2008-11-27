@@ -639,7 +639,7 @@ def set_metas(request, cleared, discarded, added):
     for page in pages:
         if not request.user.may.write(page):
             message = "You are not allowed to edit page '%s'" % page
-            return xmlrpclib.Fault(2, request.getText(message))
+            return False, request.getText(message)
 
     for page in pages:
         pageCleared = cleared.get(page, set())
