@@ -578,8 +578,12 @@ def save_question(request, questiondata, questionpage=None):
            failures.append(notepage)
 
     #save questionpage
-    oldkeys = getkeys(request, questionpage).keys()
-    remove = {questionpage: oldkeys}
+    if questionpage not in newpages:
+        oldkeys = getkeys(request, questionpage).keys()
+        remove = {questionpage: oldkeys}
+    else:
+        remove = dict()
+
     data = {questionpage: data}
     result, msg = set_metas(request, remove, dict(), data)
 
@@ -603,7 +607,7 @@ def save_question(request, questiondata, questionpage=None):
             pass
 
     data = {questionpage: {"gwikicategory": [raippacategories["questioncategory"]]}}
-    result, msg = set_metas(request, remove, dict(), data)
+    result, msg = set_metas(request, dict(), dict(), data)
     if not result:
         for page, rev in backup.iteritems():
             revert(request, page, rev)
@@ -711,11 +715,14 @@ def save_question(request, questiondata, questionpage=None):
                     failures.append(docpage)
 
             data[value] = [answer]
-
         
         #save answer
-        oldkeys = getkeys(request, answerpage).keys()
-        remove = {answerpage: oldkeys}
+        if answerpage not in newpages:
+            oldkeys = getkeys(request, answerpage).keys()
+            remove = {answerpage: oldkeys}
+        else:
+            remove = dict()
+
         data = {answerpage: data}
         result, msg = set_metas(request, remove, dict(), data)
 
@@ -739,7 +746,7 @@ def save_question(request, questiondata, questionpage=None):
                 pass
 
         data = {answerpage: {"gwikicategory": [raippacategories["answercategory"]]}}
-        result, msg = set_metas(request, remove, dict(), data)
+        result, msg = set_metas(request, dict(), dict(), data)
         if not result:
             for page, rev in backup.iteritems():
                 revert(request, page, rev)
@@ -747,11 +754,16 @@ def save_question(request, questiondata, questionpage=None):
 
         #save tip
         if tip:
-            oldkeys = getkeys(request, tippage).keys()
-            remove = {tippage: oldkeys}
+            if tippage not in newpages:
+                oldkeys = getkeys(request, tippage).keys()
+                remove = {tippage: oldkeys}
+            else:
+                remove = dict()
+
             data = {tippage: {"answer":[addlink(answerpage)], 
                               "tip": [tip],
                               "gwikicategory": [raippacategories["tipcategory"]]}}
+
             result, msg = set_metas(request, remove, dict(), data)
             if not result:
                 for page, rev in backup.iteritems():
