@@ -63,7 +63,7 @@ $$('#start').each(function(drag){
 		'cursor' : 'move',
 		'text-align' : 'center',
 		'left' : '800px',
-		'top': '175px',
+		'top': '175px'
 		});
 		drag.setStyles(start_size);
     });
@@ -646,10 +646,10 @@ menuel.setStyle('display', '');
 getChildBox(pDiv.id).each(function(id){
 if(boxData.get('endPoints').contains(id)){
      ep = $('ep_'+id);
-     ep.setStyle('top', Math.max(ep.getPosition().y - 75, 17));
+     ep.setStyle('top', Math.max(ep.getPosition().y - 40, 17));
 }
 el = $(id);
-pos = Math.max(el.getPosition().y -75, 100);
+pos = Math.max(el.getPosition().y -40, 100);
 el.setStyle('top', pos);
 
         });
@@ -832,7 +832,7 @@ $(document.body).grab(menu);
 * @param description label visible to user
 * optional parameters:
 * @param type		random | select
-* @param required	required value (task id)
+* @param required	prerequisite (task id)
 * @param posx		x-coordinate
 * @param posy		y-coordinate
 **/
@@ -902,7 +902,6 @@ getChildBox(id).each(function(id){
 }
 
 cLkm = childBoxes.get(pDiv.id).length;
-
 childBoxes.set(pDiv.id , childBoxes.get(pDiv.id).include(id));
 
 if(/random|select/.test(type)){
@@ -924,7 +923,7 @@ var hfix = -25;
 }
 box.setStyles({
 		'text-align' : 'center',
-		'cursor' : 'move',
+		'cursor' : 'move'
 		});
 
 box.setStyles(el_size);
@@ -1226,7 +1225,6 @@ form.adopt(new Element('input', {
             'value' : wrong
 			})
     )}});
-	alert(form.getElements('input').length);
 	return true;
 }
 
