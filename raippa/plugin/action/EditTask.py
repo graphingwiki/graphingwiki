@@ -55,37 +55,45 @@ def taskform(request, task=None):
     pagehtml = '''
 <script type="text/javascript">
 window.addEvent('domready', function(){
-  addOpts();
-  $$('select[id^=type_]').setStyle('display' , 'none');
-  var val = $($('typeSelect').value) ? $('typeSelect').value : 'type_None';
-  
-  $(val).setStyle('display','');
-  
-  $('typeSelect').addEvent('change',function(){
-    var val = this.value;
-    if($(val)){
-      $$('select[id^=type_]').setStyle('display' , 'none');
-      $(val).setStyle('display','');
-      }
+
+    //loading previously selected questions
+    addOpts();
+
+    //hiding all source questions except the default one
+    $$('select[id^=type_]').setStyle('display' , 'none');
+    var val = $($('typeSelect').value) ? $('typeSelect').value : 'type_None';
+    $(val).setStyle('display','');
+
+    //showing Q list selected in type selector
+    $('typeSelect').addEvent('change',function(){
+        var val = this.value;
+        if($(val)){
+            $$('select[id^=type_]').setStyle('display' , 'none');
+            $(val).setStyle('display','');
+        }
     });
-  var links = $$('option').filter(function(el){
-    return el.title.match("::") ? true : false;
+
+    //selecting all options with definition title
+    var links = $$('option').filter(function(el){
+        return el.title.match("::") ? true : false;
     });
-   //var tips = new Tips(links);
-   
-   var sels = $('selstr').getElements('select');
+    //var tips = new Tips(links);
+
+    //draw info box for source Q's on click
+    var sels = $('selstr').getElements('select');
     sels.addEvent('change',function(){
-      var opt = $$('option[value='+this.value+']');
-      if(opt && opt[0].title){
-        drawInfo(opt[0]);
+        var opt = $$('option[value='+this.value+']');
+        if(opt && opt[0].title){
+            drawInfo(opt[0]);
         }
       });
-    
+
     links.addEvent('mouseenter', function(){
       //drawInfo(this);
       });
    });
 
+/*Draw infobox for el*/
 function drawInfo(el){
        var div = $('infodiv');
       if(div){
@@ -98,28 +106,68 @@ function drawInfo(el){
             'width' : '100%'
           }
         });
-      
-      div.grab(new Element('b', {
+
+      var desc = new Element('p', {
         'text' : el.title,
         'styles' : {
+              'font-weight':'bold',
               'margin-right' : '50px',
               'float' :'left'
           }
-        }));
-      div.grab(new Element('input', {
+        });
+      div.grab(desc);
+
+     desc.adopt(new Element('br'), 
+        new Element('input', {
         'type' : 'button',
         'value' : 'Edit',
-        'styles' : {
-            'float' : 'right'
-          },
         'events' : {
             'click' : function(){
               saveTaskData(el);
             }
           }
         }));
-    $('info').grab(div);
+    var rec = $(el.value +'_recap');
+    var redo = $(el.value + '_redo');
+    if(rec && redo){
+
+    var recsel = createPenaltySel(el, rec.value).setStyles({
+        'display':'',
+        'position' : '',
+        'float':'right'
+    }).addEvent('change',function(){
+        rec.set('value', this.value);
+         rec.fireEvent('change');
+    });
+    var menu = new Element('div', {
+         'styles' : {
+            'float' : 'right',
+            'clear' : 'right'
+          }
+          });
+
+    menu.adopt(new Element('input', {
+        'type':'checkbox',
+        'id':'doMany',
+        'checked' : redo.value,
+        'events':{
+            'change' : function(){
+                redo.value = this.checked;
+                }
+            }
+        }),new Element('label',{
+            'for' : 'doMany',
+            'text': 'Do multiple times'
+        }), new Element('br'));
+
+    menu.adopt(recsel);
+    div.grab(menu);
+    }
+    $('info').adopt(div);
   }
+
+
+/* Save task form using ajax and redirect to Q editor*/
 function saveTaskData(el){
  
  $('info').addClass('ajax_loading');
@@ -142,7 +190,7 @@ function saveTaskData(el){
  form.send(url);
 }
 
-
+/* Creating form which redirects to Q editor*/
 function toQuestionEditor(question){
   var form = new Element('form', {
     'method' : 'post'
@@ -175,39 +223,28 @@ form.grab(new Element('input', {
  form.submit();
 }
 
-function createPenaltySel(el, defVal){
-  var opt = $(el);
-  var sel = opt.getParent('select');
-  var posx = sel.getCoordinates().width + sel.getCoordinates().left + 55;
-  var posy = sel.getCoordinates().top + 15 *
-  opt.getAllPrevious('option').length;
-	var noPenalty = 'selected';
-  if(defVal){
-	noPenalty = '';
-	}
-  var form = $('taskForm');
-  document.getElements('select[id$=_recap]').setStyle('display', 'none');
-  var select = $(opt.value+'_recap');
 
-  if(select != null){
-	select.setStyles({
-	  'display': '',
-	  'top' : posy,
-	  'left' : posx
-	});
-  }else{
+/* Return a select including all posible values */
+function createPenaltySel(el, defVal, pos){
+    var opt = $(el);
+    var sel = opt.getParent('select');
+    var noPenalty = 'selected';
+    if(defVal){
+	    noPenalty = '';
+	}
+    var form = $('taskForm');
+    var select = $(opt.value+'_recap_sel');
+
+    if(select != null){
+	    select.value = defVal;
+    }else{
 	var select = new Element('select', {
-	'id' : opt.value+'_recap',
-	'name' : opt.value+'_recap',
+	'id' : opt.value+'_recap_sel',
+	'name' : opt.value+'_recap_sel',
 	'size' : 1,
-	'styles': {
-		'position' : 'absolute',
-		'display' : '',
-		'top' : posy,
-		'left' : posx
-		},
 	'events' : {
 		'change' : function(){
+            $(opt.value + '_recap').value = this.value;
 		  if(this.value == ''){
 			  opt.setStyle('background-color', '');
 			}else{
@@ -220,6 +257,7 @@ function createPenaltySel(el, defVal){
 		  }
 	  }
 	});
+
   select.grab(new Element('option',{
 	  'value' : '',
 	  'text' : 'no recap',
@@ -242,7 +280,7 @@ function createPenaltySel(el, defVal){
 	}\n''' % (ti, desc,ti)
 
     pagehtml += u'''
-  select.inject(document.body);
+  return select;
   }
 }
 
@@ -258,62 +296,77 @@ function moveSel(theSel, dir){
 	  }
 	  }
 	});
- 
+
 }
 
-function addOption(theSel, theText, theValue, recap)
+function addOption(theSel, theText, theValue, recap, redo)
 {
 	var newOpt = new Element('option', {
 	  'text' : theText,
 	  'title' : theText +'::',
 	  'value' : theValue
 });
-    $(theSel).grab(newOpt);
-	
+    var sel = $(theSel);
+    sel.grab(newOpt);
+
 	if(recap){
 	  newOpt.setStyle('background-color', 'red');
-	  createPenaltySel(newOpt, recap);
-	}else{
-	  createPenaltySel(newOpt, '');
 	}
+
+    $('taskForm').grab(new Element('input', {
+        'type': 'hidden',
+        'id': theValue +'_recap',
+        'name': theValue +'_recap',
+        'value': recap
+        }));
+
+    $('taskForm').grab(new Element('input', {
+        'type': 'hidden',
+        'id': theValue +'_redo',
+        'name': theValue +'_redo',
+        'value': redo
+        }));
+
+
 	  newOpt.setStyle('width', 'auto');
-  document.getElements('select[id$=_recap]').setStyle('display', 'none');
-	$(theSel).addEvent('keyup', function(event){
-			  if(theSel.id == 'flist'){
-				sel = $(theSel).getChildren('option').filter(function(el){
-				  return el.selected == true
-				  });
-				  if(sel){
-					createPenaltySel(sel[0]);
-				  }
-			  }
-			});
-$(theSel).addEvent('click', function(event){
-			  if(theSel.id == 'flist'){
-				sel = $(theSel).getChildren('option').filter(function(el){
-				  return el.selected == true
-				  });
-				  if(sel){
-					createPenaltySel(sel[0]);
-				  }
-			  }
-			});
+
+sel.addEvent('click', function(event){
+		    if(theSel.id == 'flist'){
+			    sel = $(theSel).getChildren('option').filter(function(el){
+				    return el.selected == true
+				});
+				if(sel){
+				    createPenaltySel(sel[0]);
+				}
+			}
+		});
+
+sel.addEvent('keyup', function(event){
+	    $(theSel).fireEvent('click');
+    });
 }
 
+
+/* Deletes select option and recap/redo if exits*/
 function deleteOption(theSel, theIndex)
 {
     var selLength = theSel.length;
     if(selLength > 0)
     {
-		var penSel = $(theSel.options[theIndex].value +'_recap');
-		if(penSel != null){
-			penSel.destroy();
+		var recap = $(theSel.options[theIndex].value +'_recap');
+		if(recap != null){
+			recap.destroy();
 		  }
+        var redo = $(theSel.options[theIndex].value +'_redo');
+        if(redo){
+            redo.destroy();
+        }
         theSel.options[theIndex] = null;
     }
-  document.getElements('select[id$=_recap]').setStyle('display', 'none');
 }
 
+
+/* Move one or more selected options from select to other */
 function moveOptions(theSelFrom, theSelTo)
 {
     var selLength = theSelFrom.length;
@@ -340,22 +393,22 @@ function moveOptions(theSelFrom, theSelTo)
 
 }
 
+
+/* Select all options and insert recap data to form */
 function selectAllOptions(selStr)
 {
     $(selStr).getChildren('option').each(function(el){
 	  el.selected = true;
-	  var sel = $(el.value +'_recap');
-	  var val = sel != null ? sel.value : false;
-	  if(val != ""){
-		$('taskForm').grab(new Element('input', {
-		  'type' : 'hidden',
-		  'name' : el.value +'_recap',
-		  'value' : val
-		  }));
-		}
-	  });
+	});
+
+    var infodiv = $('infodiv');
+    if(infodiv){
+        infodiv.destroy();
+    }
 }
 
+
+/* Checks if form is filled correctly*/
 function submitCheck(button){
   if(button.value == "Cancel"){
     return true;
