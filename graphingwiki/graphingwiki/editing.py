@@ -1168,69 +1168,6 @@ def list_attachments(request, pagename):
 
     return []
 
-def xmlrpc_conninit(wiki, username, password):
-    # Action-unrelated connection code
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(wiki)
-
-    netloc = "%s:%s@%s" % (username, password, netloc)
-
-    action = "action=xmlrpc2"
-    url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
-    srcWiki = xmlrpclib.ServerProxy(url)
-
-    return srcWiki, url
-
-def xmlrpc_connect(func, wiki, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except xmlrpclib.ProtocolError, e:
-        return {'faultCode': 4,
-                'faultString': 'Cannot connect to server at %s (%d %s)' %
-                (wiki, e.errcode, e.errmsg)}
-    except socket.error, e:
-        # Socket.error does not return two values consistently
-        # it might return also ('timed out',), so I'm preparing
-        # for the flying elephants here
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            return {'faultCode': '666',
-                    'faultString': ''.join(args)}
-        else:
-            return {'faultCode': args[0],
-                    'faultString': args[1]}
-    except socket.gaierror, e:
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            return {'faultCode': '666',
-                    'faultString': ''.join(args)}
-        else:
-            return {'faultCode': args[0],
-                    'faultString': args[1]}
-
-def xmlrpc_attach(wiki, page, fname, username, password, method,
-                  content='', overwrite=False):
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
-    if content:
-        content = xmlrpclib.Binary(content)
-
-    return xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
-                          method, content, overwrite)
-
-def xmlrpc_error(error):
-    return error['faultCode'], error['faultString']
-
-def getuserpass(username=''):
-    # Redirecting stdout to stderr for these queries
-    old_stdout = sys.stdout
-    sys.stdout = sys.stderr
-
-    if not username:
-        username = raw_input("Username:")
-    password = getpass.getpass("Password:")
-
-    sys.stdout = old_stdout
-    return username, password
-
 def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):
         pass
