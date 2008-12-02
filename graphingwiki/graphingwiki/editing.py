@@ -820,25 +820,6 @@ def save_template(request, page, template):
 
     return msg
 
-def savetext(pagename, newtext):
-    """ Savetext - a function to be used by local CLI scripts that
-    modify page content directly.
-
-    """
-    def replace_metas(pagename, oldtext):
-        return newtext
-
-    # For some reason when saving a page with RequestCLI,
-    # the pagelinks will present problems with patterns
-    # unless explicitly cached
-    msg, p = edit(pagename, replace_metas, {}, {}, request)
-    if msg != u'Unchanged':
-        req = p.request
-        req.page = p
-        p.getPageLinks(req)
-
-    return msg
-
 def string_aton(value):
     value = value.lstrip('[').rstrip(']').strip('"')
 
