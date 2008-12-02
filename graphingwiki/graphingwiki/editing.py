@@ -8,27 +8,19 @@
 """
 import os
 import re
-import sys
-import string
-import xmlrpclib
-import urlparse
 import socket
-import urllib
-import getpass
 import copy
 import md5
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename
 from MoinMoin.PageEditor import PageEditor
-from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
-from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError
+from MoinMoin.wikiutil import importPlugin, PluginMissingError
 
-from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
+from graphingwiki.patterns import nonguaranteeds_p, decode_page
 from graphingwiki.patterns import absolute_attach_name, filter_categories
 from graphingwiki.patterns import NO_TYPE
 
