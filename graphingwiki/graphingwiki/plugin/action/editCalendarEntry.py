@@ -47,7 +47,6 @@ def _exit_page(request, pagename):
 
 
 def savedata(request):
-    print request.form
     date = request.form.get('start_date', [u''])[0]
     time = request.form.get('start_time', [u''])[0]
     duration = request.form.get('duration', [u''])[0]
@@ -108,7 +107,6 @@ def savedata(request):
         data["Capacity"] = [unicode(capacity)]
 
     data = {pagename: data}
-    print data
     result, msg = set_metas(request, remove, dict(), data)
     if not result:
         return msg
@@ -197,7 +195,7 @@ def show_entryform(request):
             for line in title.split("\n"):
                 if not line.startswith("#acl"):
                     temp.append(line)
-            title = "\n".join(temp)
+            title = " ".join(temp)
 
     for h in range(24):
         for m in ['00','30']:
