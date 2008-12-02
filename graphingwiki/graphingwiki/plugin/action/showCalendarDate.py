@@ -6,8 +6,8 @@ from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 
-from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import getgraphdata
+from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import get_metas
 
 def _enter_page(request, pagename):
     _ = request.getText
@@ -38,6 +38,25 @@ def _exit_page(request, pagename):
 def addEntry(pagename, date, request):
     request.write('<br><a href="?action=editCalendarEntry&date=%s&categories=%s">Add entry</a>' % (date, request.form.get('categories',[u''])[0].encode()))
 
+def getParticipants(request, eventpage):
+    meta = get_metas(request, eventpage, ["Capacity"], checkAccess=False)
+
+    if meta["Capacity"]:
+        capacity = int(meta["Capacity"][0])
+    else:
+        capacity = 0
+
+    grouppage = "%s/EventGroup" % eventpage
+    eventgroup = Page(request, grouppage)
+    if eventgroup.exists():
+        participants = list()
+        raw = eventgroup.getPageText()
+        for line in raw.split("\n"):
+            if line.startswith(" * "):
+                participants.append(line[3:].rstrip())
+        return participants, capacity
+    else:
+        return [], capacity
       
 def printEntries(entries, date, pagename, request):
 
@@ -85,6 +104,9 @@ def printEntries(entries, date, pagename, request):
                 writeCell(entry['Capacity'])
             else:
                 writeCell('?')
+
+            writeCell(", ".join(entry['Participants']))
+
             #edit link
             writeCell('<a href="?action=editCalendarEntry&edit=%s&categories=%s">edit</a>' % (entry['Page'], request.form.get('categories',[u''])[0].encode()))
             #remove link
@@ -107,34 +129,43 @@ def execute(pagename, request):
     categories = ','.join(categories)
 
     
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
+    pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
 
     entries = dict()
 
-    if not hasattr(request, 'graphdata'):
-        getgraphdata(request)
-
     for page in pagelist:
-        metas = getmetas(request, request.graphdata, page, metakeys, display=False, checkAccess=True)
+        metas = get_metas(request, page, metakeys, display=False, checkAccess=True)
 
         if u'Date' not in metas.keys():
             continue
 
         if metas[u'Date']:
-            date = metas[u'Date'][0][0]
+            date = metas[u'Date'][0]
             datedata = entries.setdefault(date, list())
             entrycontent = dict()
-            content = Page(request, page).get_raw_body()
+
+            content = Page(request, page).getPageText()
             if '----' in content:
                 content = content.split('----')[0]
+            temp = list()
+            for line in content.split("\n"):
+                if not line.startswith("#acl"):
+                    temp.append(line)
+            content = "\n".join(temp)
+
             entrycontent['Content'] = content
 
             entrycontent['Page'] = page
 
+            participants, capacity = getParticipants(request, page)
+            if not participants:
+                participants = ["no participants"]
+            entrycontent['Participants'] = participants
+
             for meta in metas:
                 if not metas[meta]:
                     continue
-                entrycontent[meta] = metas[meta][0][0]
+                entrycontent[meta] = metas[meta][0]
             datedata.append(entrycontent)
 
 

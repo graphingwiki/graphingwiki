@@ -6,8 +6,8 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin import wikiutil
 
-from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import getgraphdata, encode
+from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import get_metas
 
 def _enter_page(request, pagename):
     request.http_headers()
@@ -37,18 +37,18 @@ def _exit_page(request, pagename):
     request.theme.send_footer(pagename)
 
 def getParticipants(request, eventpage):
-    meta = getmetas(request, request.graphdata, encode(eventpage), ["Capacity"], checkAccess=True)
+    meta = get_metas(request, eventpage, ["Capacity"], checkAccess=False)
 
     if meta["Capacity"]:
-        capacity = int(meta["Capacity"][0][0])
+        capacity = int(meta["Capacity"][0])
     else:
         capacity = 0
 
-    grouppage = encode("%s/EventGroup" % eventpage)
+    grouppage = "%s/EventGroup" % eventpage
     eventgroup = Page(request, grouppage)
     if eventgroup.exists():
         participants = list()
-        raw = eventgroup.get_raw_body()
+        raw = eventgroup.getPageText()
         for line in raw.split("\n"):
             if line.startswith(" * "):
                 participants.append(line[3:].rstrip())
@@ -57,26 +57,28 @@ def getParticipants(request, eventpage):
         return [], capacity
 
 def signupEvent(request, eventpage):
+    _ = request.getText
     participants, capacity = getParticipants(request, eventpage)
     if (not capacity or len(participants) < capacity) and not request.user.name in participants:
         grouppage = "%s/EventGroup" % eventpage
         eventgroup = PageEditor(request, grouppage)
-        pagecontent = eventgroup.get_raw_body() + u'\n * %s' % request.user.name
+        pagecontent = eventgroup.getPageText() + u'\n * %s' % request.user.name
         msg = eventgroup.saveText(pagecontent, eventgroup.get_real_rev())
-        if msg == u'Thank you for your changes. Your attention to detail is appreciated.':
+        if msg == _(u'Thank you for your changes. Your attention to detail is appreciated.'):
             return True
         else:
             return False
     return False
 
 def leaveEvent(request, eventpage):
+    _ = request.getText
     participants, capacity = getParticipants(request, eventpage)
     if request.user.name in participants:
         grouppage = "%s/EventGroup" % eventpage
         eventgroup = PageEditor(request, grouppage)
         if not eventgroup.exists():
             return True
-        rawlines = eventgroup.get_raw_body().split("\n")
+        rawlines = eventgroup.getPageText().split("\n")
         for index, line in enumerate(rawlines):
             if line.rstrip() == u' * %s' % request.user.name:
                 rawlines.pop(index)
@@ -86,7 +88,7 @@ def leaveEvent(request, eventpage):
             return True
         pagecontent = "\n".join(rawlines)
         msg = eventgroup.saveText(pagecontent, eventgroup.get_real_rev())
-        if msg == u'Thank you for your changes. Your attention to detail is appreciated.':
+        if msg == _(u'Thank you for your changes. Your attention to detail is appreciated.'):
             return True
         else:
             return False
@@ -163,9 +165,12 @@ def printEntries(entries, date, pagename, request):
 
 
 def execute(pagename, request):
-    if not hasattr(request, 'graphdata'):
-        getgraphdata(request)
-    
+    if not request.user.name:
+        _enter_page(request, pagename)
+        request.write(u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.')
+        _exit_page(request, pagename)
+        return None
+
     thisdate = request.form.get('date', [None])[0]
     categories = request.form.get('categories', [None])
     categories = ','.join(categories)
@@ -202,22 +207,28 @@ def execute(pagename, request):
 
     else:
         _enter_page(request, pagename)
-        globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
+        pages, keys, s = metatable_parseargs(request, categories, get_all_keys=True, checkAccess=False)
 
         entries = dict()
-        for page in pagelist:
-            metas = getmetas(request, request.graphdata, page, metakeys, display=False, checkAccess=True)
+        for page in pages:
+            metas = get_metas(request, page, keys, display=False, checkAccess=False)
 
             if u'Date' not in metas.keys():
                 continue
 
             if metas[u'Date']:
-                date = metas[u'Date'][0][0]
+                date = metas[u'Date'][0]
                 datedata = entries.setdefault(date, list())
                 entrycontent = dict()
-                content = Page(request, page).get_raw_body()
+
+                content = Page(request, page).getPageText()
                 if '----' in content:
                     content = content.split('----')[0]
+                temp = list()
+                for line in content.split("\n"):
+                    if not line.startswith("#acl"):
+                        temp.append(line)
+                content = "\n".join(temp)
                 entrycontent['Content'] = content
 
                 entrycontent['Page'] = page
@@ -225,7 +236,7 @@ def execute(pagename, request):
                 for meta in metas:
                     if not metas[meta]:
                         continue
-                    entrycontent[meta] = metas[meta][0][0]
+                    entrycontent[meta] = metas[meta][0]
                 datedata.append(entrycontent) 
         
         #Getting current month

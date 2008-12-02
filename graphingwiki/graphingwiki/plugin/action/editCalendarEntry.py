@@ -5,12 +5,14 @@ import datetime
 import re
 
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 
-from graphingwiki.editing import order_meta_input
-from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.patterns import getgraphdata
+from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import get_metas
+from graphingwiki.editing import getkeys
+from graphingwiki.editing import set_metas
 
 def _enter_page(request, pagename):
     request.http_headers()
@@ -45,7 +47,7 @@ def _exit_page(request, pagename):
 
 
 def savedata(request):
-
+    print request.form
     date = request.form.get('start_date', [u''])[0]
     time = request.form.get('start_time', [u''])[0]
     duration = request.form.get('duration', [u''])[0]
@@ -54,6 +56,8 @@ def savedata(request):
     until = request.form.get('until', [u''])[0]
     edit = request.form.get('edit', [u''])[0]
     category = request.form.get('categories', [u'CategoryCalendarEntry'])[0]
+    if not category:
+        category = u'CategoryCalendarEntry'
     location = request.form.get('location', [u''])[0]
     capacity = request.form.get('capacity', [0])[0]
 
@@ -79,33 +83,50 @@ def savedata(request):
         return errors
 
     if edit:
-        page = PageEditor(request,edit)
-
+        pagename = edit
+        oldkeys = getkeys(request, pagename)
+        remove = {pagename: oldkeys}
     else:
+        remove = dict()
         i = 0
         #generating unique pagename
         while True:
             pagename = u'%s_%s' % (date,i)
             i += 1
-            page = PageEditor(request,pagename)
-            if not page.exists():
+            if not Page(request, pagename).exists():
                 break
+    
+    data = {"Date": [date],
+            "Time": [time],
+            "Duration": [duration],
+            "Type": [type],
+            "Until": [until],
+            "Location": [location],
+            "gwikicategory": [category]}
 
-
-    content = u'''%s
-----
-  Date:: %s
-  Time:: %s
-  Duration:: %s
-  Type:: %s
-  Until:: %s
-  Location:: %s''' % (title, date, time, duration, type, until, location)
     if capacity > 0:
-        content += u'\n  Capacity:: %s' %capacity
+        data["Capacity"] = [unicode(capacity)]
 
-    content += '\n%s' %category
+    data = {pagename: data}
+    print data
+    result, msg = set_metas(request, remove, dict(), data)
+    if not result:
+        return msg
 
-    page.saveText(content,page.get_real_rev())
+    page = PageEditor(request, pagename)
+    if edit:
+        oldbody = page.get_raw_body()
+        if oldbody.split("\n")[0].startswith("#acl"):
+            acl = oldbody.split("\n")[0]
+        else:
+            acl = unicode()
+        oldcontent = "----".join(oldbody.split("----")[1:])
+        content = u'%s\n%s\n----\n%s' % (acl, title, oldcontent)
+    else:
+        oldcontent = page.get_raw_body()
+        content = u'%s\n----\n%s' % (title, oldcontent)
+    page.saveText(content, page.get_real_rev())
+
 
 def show_entryform(request):
     time_now = datetime.datetime.now() + datetime.timedelta(minutes=30)
@@ -131,21 +152,19 @@ def show_entryform(request):
         edit_page = u'<input type="hidden" name="edit" value="%s">' % edit
         def_date = edit.split('_')[0]
         #categories = ','.join(categories)
-        globaldata, pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
-        if not hasattr(request, 'graphdata'):
-            getgraphdata(request)
-        meta = getmetas(request, request.graphdata, edit, metakeys, display=False, checkAccess=True)
+        pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
+        meta = get_metas(request, edit, metakeys, display=False, checkAccess=True)
 
         if meta[u'Date']:
             if meta.has_key(u'Duration'):
                 try:
-                    duration = meta[u'Duration'][0][0]
+                    duration = meta[u'Duration'][0]
                 except:
                     None
 
             if meta.has_key(u'Capacity'):
                 try:
-                    capacity = meta[u'Capacity'][0][0]
+                    capacity = meta[u'Capacity'][0]
                     if capacity == 0:
                         capacity = unicode()
                 except:
@@ -153,26 +172,32 @@ def show_entryform(request):
 
             if meta.has_key(u'Location'):
                 try:
-                    location = meta[u'Location'][0][0]
+                    location = meta[u'Location'][0]
                 except:
                     None
 
             if meta.has_key(u'Time'):
                 try:
-                    def_time = meta[u'Time'][0][0]
+                    def_time = meta[u'Time'][0]
                 except:
                     None
 
             if meta.has_key(u'Type'):
                 try:
-                    type = meta[u'Type'][0][0]
-                    until = meta[u'Until'][0][0]
+                    type = meta[u'Type'][0]
+                    until = meta[u'Until'][0]
                 except:
                     type = u'Once'
 
             body = PageEditor(request, edit).get_raw_body()
             if '----' in body:
                 title = body.split('----')[0]
+
+            temp = list()
+            for line in title.split("\n"):
+                if not line.startswith("#acl"):
+                    temp.append(line)
+            title = "\n".join(temp)
 
     for h in range(24):
         for m in ['00','30']:

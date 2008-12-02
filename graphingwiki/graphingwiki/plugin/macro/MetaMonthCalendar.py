@@ -39,14 +39,13 @@ from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
 
 
-from graphingwiki.editing import metatable_parseargs, getmetas
-from graphingwiki.editing import formatting_rules
-from graphingwiki.patterns import encode
-from graphingwiki.patterns import  getgraphdata
+from graphingwiki.editing import metatable_parseargs
+from graphingwiki.editing import get_metas
 
 Dependencies = ['metadata', 'time']
 
 def execute(macro, args):
+    request = macro.request
     action = 'showCalendarDate'
     if args is None:
         args = ''
@@ -56,37 +55,38 @@ def execute(macro, args):
             args = ",".join(args.split(",")[1:])
 
     # Note, metatable_parseargs deals with permissions
-    globaldata, pagelist, metakeys, styles = metatable_parseargs(macro.request, args, get_all_keys=True)
-    request = macro.request
+    pagelist, keys, s = metatable_parseargs(request, args, get_all_keys=True, checkAccess=False)
     _ = request.getText
 
-    if not hasattr(macro.request, 'graphdata'):
-        getgraphdata(macro.request)
-
-    out = macro.request
+    out = request
 
     entries = dict()
 
     for page in pagelist:
-        metas = getmetas(request, request.graphdata, page, metakeys, display=False, checkAccess=True)
+        metas = get_metas(request, page, keys, display=False, checkAccess=False)
         if u'Date' not in metas.keys():
             continue
 
         if metas[u'Date']:
-            date = metas[u'Date'][0][0]
+            date = metas[u'Date'][0]
             datedata = entries.setdefault(date, list())
             entrycontent = dict()
-            content = Page(request, page).get_raw_body()
+
+            content = Page(request, page).getPageText()
             if '----' in content:
                 content = content.split('----')[0]
+            temp = list()
+            for line in content.split("\n"):
+                if not line.startswith("#acl"):
+                    temp.append(line)
+            content = "\n".join(temp)
             entrycontent['Content'] = content
 
             for meta in metas:
                 if not metas[meta]:
                     continue
-                entrycontent[meta] = metas[meta][0][0]
+                entrycontent[meta] = metas[meta][0]
             datedata.append(entrycontent)
-
 
     #Getting current month
     now = datetime.datetime.today()
@@ -265,7 +265,7 @@ var dates = new Hash();
                 output += macro.formatter.table_cell(1, {'class': 'calendar-day'})
             timestamp = u'%04d-%02d-%02d' % (year, month, day)
             if day:
-                urldict = dict(pagename = macro.request.page.page_name, action = action, date = timestamp, categories = categories)
+                urldict = dict(pagename = request.page.page_name, action = action, date = timestamp, categories = categories)
                 url = macro.request.getQualifiedURL() + '/' + '%(pagename)s?action=%(action)s&date=%(date)s&categories=%(categories)s' % urldict
                 output += macro.formatter.url(1, url, u'metamonthcalendar_noentry_url')
                 output += macro.formatter.text(u'%d' % day)
