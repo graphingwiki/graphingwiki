@@ -675,101 +675,98 @@ def set_metas(request, cleared, discarded, added):
     return True, msg
 
 def process_meta_changes(request, input):
-    changes = dict()
-    keychanges = dict()
-    keypage = ''
+    r"""
+    >>> request = _doctest_request()
+    >>> process_meta_changes(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
+    {u'Test': ({}, {'a': ['1', '2']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
+    >>> process_meta_changes(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
+    {u'Test': ({u'a': ['x']}, {u'a': ['1', '2']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
+    >>> process_meta_changes(request, {"Test?a" : ["x"], ":: a" : [""]})
+    {u'Test': ({u'a': ['x']}, {u'a': ['']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["1", "2"]}}})
+    >>> process_meta_changes(request, {"Test?a" : ["1"], ":: a" : ["a"]})
+    {u'Test': ({u'a': ['1', '2']}, {u'a': ['1', '']})}
+    """
+
+    keys = dict()
+    pages = dict()
 
     # Key changes
-    for key in input:
-        if not key.startswith(':: '):
+    for oldKey, newKeys in input.iteritems():
+        if not newKeys or not oldKey.startswith(':: '):
             continue
 
-        newkey = input[key][0]
-        key = key[3:]
-        if key == newkey:
+        newKey = newKeys[0].strip()
+        oldKey = oldKey[3:].strip()
+        if oldKey == newKey:
             continue
 
-        # Form presents you with ' ' if the key box is empty
-        if not newkey.strip():
-            newkey = ''
+        keys[oldKey] = newKey
 
-        # Form keys not autodecoded from utf-8
-        keychanges[key] = newkey
-        # print repr(keychanges)
-
-    for val in input:
+    # Value changes
+    for pageAndKey, newValues in input.iteritems():
         # At least the key 'save' may be there and should be ignored
-        if not '?' in val:
+        if not '?' in pageAndKey:
             continue
-
-        newvals = input[val]
 
         # Form keys not autodecoded from utf-8
-        keypage, key = map(decode_page, val.split('?'))
+        page, oldKey = map(decode_page, pageAndKey.split('?', 1))
+        newKey = keys.get(oldKey, oldKey)
 
-        if not request.user.may.write(keypage):
+        if not request.user.may.write(page):
             continue
 
-        keymetas = get_metas(request, keypage, [key], abs_attach=False)
-        oldvals = keymetas[key]
+        oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
 
-        if oldvals != newvals or keychanges:
-            changes.setdefault(keypage, dict())
-            if key in keychanges:
+        if oldKey:
+            oldMetas = get_metas(request, page, [oldKey], abs_attach=False)
+            oldValues = oldMetas[oldKey]
 
-                # In case of new keys there is no old one
-                if key.strip():
-                    # print 'deleting key', repr(key)
-                    # Otherwise, delete contents of old key
-                    changes[keypage].setdefault('old', dict())[key] = oldvals
-                    changes[keypage].setdefault('new', dict())[key] = \
-                        [''] * len(oldvals)
+            oldMeta.setdefault(oldKey, list()).extend(oldValues)
 
-                # If new key is empty, don't add anything
-                if keychanges[key].strip():
-                    # print 'adding key', repr(keychanges[key])
-                    if not newvals:
-                        newvals = ['']
-                    # Otherwise, add old values under new key
-                    changes[keypage].setdefault('new', dict())[keychanges[key]]\
-                        = newvals
-                                                
-            else:
-                if oldvals:
-                    changes[keypage].setdefault('old', dict())[key] = oldvals
-                changes[keypage].setdefault('new', dict())[key] = newvals
+            if newKey != oldKey:
+                # Remove the corresponding values
+                newMeta.setdefault(oldKey, list()).extend([""] * len(oldValues))
 
-    return changes
+        if newKey:
+            missing = 0
+            if oldKey:
+                missing = len(oldValues) - len(newValues)
+
+            newMeta.setdefault(newKey, list()).extend(newValues)
+            newMeta.setdefault(newKey, list()).extend([""] * missing)
+
+    # Prune
+    for page, (oldMeta, newMeta) in list(pages.iteritems()):
+        for key in list(newMeta):
+            if key not in oldMeta:
+                continue
+            if oldMeta[key] != newMeta[key]:
+                continue
+            del oldMeta[key]
+            del newMeta[key]
+
+        if not (oldMeta or newMeta):
+            del pages[page]
+
+    return pages
 
 # Handle input from a MetaEdit-form
-def process_edit(request, input,
-                 category_edit='', categories={}):
-    _ = request.getText
-    # request.write(repr(request.form) + '<br>')
-    # print repr(input) + '<br>'
-
-    changes = process_meta_changes(request, input)
-
+def process_edit(request, input):
     msg = list()
+    pages = process_meta_changes(request, input)
 
-    # For category-only changes
-    if not changes and category_edit:
-        for keypage in categories:
-            msg.append('%s: ' % keypage + \
-                       edit_meta(request, keypage,
-                                 dict(), dict(),
-                                 category_edit, categories[keypage]))
-                                 
-    elif changes:
-        for keypage in changes:
-            catlist = categories.get(keypage, list())
-            msg.append('%s: ' % keypage + \
-                       edit_meta(request, keypage,
-                                 changes[keypage].get('old', dict()),
-                                 changes[keypage]['new'],
-                                 category_edit, catlist))
+    if pages:
+        for page, (oldMeta, newMeta) in pages.iteritems():
+            msg.append('%s: ' % page + 
+                       edit_meta(request, page, oldMeta, newMeta))
     else:
-        msg.append(_('No pages changed'))
+        msg.append(request.getText('No pages changed'))
 
     return msg
 
@@ -1207,15 +1204,27 @@ def getuserpass(username=''):
     sys.stdout = old_stdout
     return username, password
 
-def _doctest_request():
+def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):
         pass
     class Config(object):
         pass
+    class Object(object):
+        pass
+    class GraphData(dict):
+        def getpage(self, page):
+            return self.get(page, dict())
     
     request = Request()
     request.cfg = Config()
     request.cfg.page_category_regex = u'^Category[A-Z]'
+
+    request.graphdata = GraphData(graphdata)
+
+    request.user = Object()
+    request.user.may = Object()
+    request.user.may.read = lambda x: mayRead
+    request.user.may.write = lambda x: mayWrite
 
     return request
 
