@@ -8,7 +8,7 @@
 """
 import urllib
  
-from graphingwiki.editing import metatable_parseargs, getmetas
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request
@@ -16,8 +16,6 @@ def execute(xmlrpcobj, args, keysonly=True):
 
     # Expects MetaTable arguments
     pagelist, metakeys, _ = metatable_parseargs(request, args, get_all_keys=True)
-
-
     # If we only want the keys as specified by the args
     if keysonly:
         return list(metakeys), list(pagelist)
@@ -31,10 +29,10 @@ def execute(xmlrpcobj, args, keysonly=True):
     for page in pagelist:
         # We're pretty sure the user has the read access to the pages,
         # so don't check again
-        metas = getmetas(request, page, metakeys, display=False, checkAccess=False)
+        metas = get_metas(request, page, metakeys, display=False, abs_attach=False, checkAccess=False)
         row = [page]
         for key in metakeys:
-            row.append([value for (value, type) in metas[key]])
+            row.append([value for value in metas[key]])
         out.append(row)
 
     return out
