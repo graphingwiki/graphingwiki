@@ -67,9 +67,28 @@ def printEntries(entries, date, pagename, request):
             request.write('<td>')
         request.write(stuff)
         request.write('</td>')
-
-    request.write(u'<table>')
-    request.write(u'<th colspan=4>%s</th>' % date)
+    
+    request.write(u'''<script type="text/javascript"
+    src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+    <script type="text/javascript">
+    function toggle(el){
+        var part_list = $(el).getParent('p').getNext('div');
+        part_list.toggleClass('hidden');
+        if(el.text == "hide"){
+            el.set('text', 'show');
+        }else{
+            el.set('text', 'hide');    
+        }
+    }
+    </script>
+    '''% request.cfg.url_prefix_static )
+    request.write(u'<table id="calEventList">')
+    request.write(u'''<tr><th colspan="6">%s</th></tr>
+    <tr>
+    <th>Time</th><th>Location</th><th>Event</th><th>Participants/Capacity</th>
+    <th colspan="2"></th>
+    </tr>
+    ''' % date)
 
     for day in entries:
         if day != date:
@@ -101,11 +120,22 @@ def printEntries(entries, date, pagename, request):
             writeCell(request.formatter.text(entry['Content'], width="40%"))
 
             if 'Capacity' in entry:
-                writeCell(entry['Capacity'])
+                capacity = entry['Capacity']
             else:
-                writeCell('?')
+                capacity = '?'
 
-            writeCell(", ".join(entry['Participants']))
+            participants = entry['Participants'] 
+            if len(participants) > 0:
+               participant_list = "<br>".join(participants)
+               participant_div = '''<p><span style="float:left;">%s /
+               <b>%s</b></span><span style="float:right;margin-left:5px;"><a class="jslink" 
+               onclick="toggle(this);">show</a></span><br
+               clear="all"></p><div class="hidden">%s</div>
+               ''' % (len(participants), capacity, participant_list)
+            else:
+                participant_div = "0 / <b>%s</b>" % capacity
+
+            writeCell(participant_div)
 
             #edit link
             writeCell('<a href="?action=editCalendarEntry&edit=%s&categories=%s">edit</a>' % (entry['Page'], request.form.get('categories',[u''])[0].encode()))
@@ -158,8 +188,10 @@ def execute(pagename, request):
             entrycontent['Page'] = page
 
             participants, capacity = getParticipants(request, page)
-            if not participants:
-                participants = ["no participants"]
+            if participants:
+                for i, p in enumerate(participants):
+                    participants[i] = '<a href="%s">%s</a>' % (p,p)
+
             entrycontent['Participants'] = participants
 
             for meta in metas:
