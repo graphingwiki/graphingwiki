@@ -464,3 +464,15 @@ width: 240px;
 a.jslink:hover {
 	cursor: pointer;
 }
+a.jslink {
+	color: green;
+
+}
+
+/* Styling for show calendar date*/
+table#calEventList td {
+	vertical-align: top;
+}
+table#calEventList th {
+	padding: 0 5px 0 5px;
+}
