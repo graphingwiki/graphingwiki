@@ -81,7 +81,8 @@ def drawquestion(request, question, taskpoint, course, ruser=False, recap=None):
             wr(u'<a href="%s" target="_blank">%s </a>\n' % (image_url, image))
     wr(u'<br>\n')
 
-    history = ruser.gethistory(question.pagename, course)
+    #history = ruser.gethistory(question.pagename, course)
+    history = question.gethistory(ruser.user, course)
 
     if history:
         overallvalue = history[0]
@@ -173,7 +174,8 @@ def drawtaskpointpage(request, questionpage, taskpoint, course, ruser=False, rec
         return None
 
     if question.answertype == "file":
-        history = ruser.gethistory(question.pagename, course)
+        #history = ruser.gethistory(question.pagename, course)
+        history = question.gethistory(ruser.user, course)
         if history:
             overallvalue = history[0]
             if overallvalue in ["pending", "picked"]:
@@ -252,7 +254,7 @@ def drawtaskpage(request, taskpage, course, ruser=False, recap=None):
             historypage = recap
             meta = get_metas(request, historypage, ["recap"], display=True, checkAccess=False)
             if meta["recap"]:
-                recaptask = metas["recap"].pop()
+                recaptask = meta["recap"].pop()
             else:
                 #TODO: handle missin recap link
                 pass
@@ -272,7 +274,7 @@ def drawtaskpage(request, taskpage, course, ruser=False, recap=None):
                 drawerrormessage(request)
                 return None
 
-#            history = ruser.gethistory(question.pagename, course)
+#            history = question.gethistory(ruser.user, course)
 #            commentpage = None
 #            if history:
 #                historypage = history[3]
@@ -289,7 +291,7 @@ def drawtaskpage(request, taskpage, course, ruser=False, recap=None):
                 if reason in ["pending", "picked"]:
                     html += u'pending'
                 elif reason == "recap":
-                    history = ruser.gethistory(question.pagename, course)
+                    history = question.gethistory(ruser.user, course)
                     if history:
                         historypage = history[3]
                         html += u'<a href="%s&recap=%s">recap</a>' % (url, historypage)
@@ -504,7 +506,7 @@ def execute(pagename, request):
 
         question = Question(request, questionpage)
         if question.answertype == "file":
-            if not question.writehistory(ruser, coursepage, currentpage, "pending", {},file=True):
+            if not question.writehistory([ruser.user], coursepage, currentpage, "pending", {},file=True):
                 #TODO: should be message?
                 request.write(u'Answer writing failed.')
                 return None
@@ -534,11 +536,10 @@ def execute(pagename, request):
                         if pageexists(request, next):
                             if next != "end":
                                 newmetas = {recaphistory: {"recap":[next]}}
-                                oldmetas = get_metas(request, recaphistory, ["recap"], display=True, checkAccess=False)
-                                remove = {recaphistory: oldmetas}
+                                remove = {recaphistory: ["recap"]}
 
                                 #TODO: check write success
-                                success, msg = set_metas(request, dict(), remove, newmetas)
+                                success, msg = set_metas(request, remove, dict(), newmetas)
 
                                 #TODO: parents are evil
                                 temp = currentpage.split("/")
@@ -549,16 +550,13 @@ def execute(pagename, request):
                                 drawpage(request, taskpage, coursepage, ruser, recaphistory)
                                 _exit_page(request, pagename)
                             else:
-                                keys = ["recap", "overallvalue", "task"]
-                                metas = get_metas(request, recaphistory, keys, display=True, checkAccess=False)
-                                remove = {recaphistory: {"recap": metas["recap"],
-                                                         "overallvalue": metas["overallvalue"]}}
-
+                                remove = {recaphistory: ["recap", "overallvalue"]}
                                 newmetas = {recaphistory: {"overallvalue":["False"]}}
                                     
                                 #TODO: check write success
-                                success, msg = set_metas(request, dict(), remove, newmetas)
+                                success, msg = set_metas(request, remove, dict(), newmetas)
 
+                                metas = get_metas(request, recaphistory, ["task"], display=True, checkAccess=False)
                                 if metas["task"]:
                                     taskpage = metas["task"].pop()
                                     temp = taskpage.split("/")
@@ -579,7 +577,7 @@ def execute(pagename, request):
                         pass
 
                 else:
-                    if not question.writehistory(ruser, coursepage, currentpage, overall,success):
+                    if not question.writehistory([ruser.user], coursepage, currentpage, overall,success):
                         #TODO: should be message?
                         request.write(u'Answer writing failed.')
                         return None
@@ -610,7 +608,7 @@ def execute(pagename, request):
                     if metas["recap"]:
                         recappage = metas["recap"].pop()
                         if pageexists(request, recappage):
-                            historypage = question.writehistory(ruser, coursepage, currentpage, "recap", success)
+                            historypage = question.writehistory([ruser.user], coursepage, currentpage, "recap", success)
                             if not historypage:
                                 #TODO: should be message?
                                 request.write(u'Answer writing failed.')
@@ -626,7 +624,7 @@ def execute(pagename, request):
                             #TODO: report missing recappage
                     else:
                         #if no recap found, just save
-                        succ = question.writehistory(ruser, coursepage, currentpage, overall, success)
+                        succ = question.writehistory([ruser.user], coursepage, currentpage, overall, success)
                         if not succ:
                             #TODO: should be message?
                             request.write(u'Answer writing failed.')

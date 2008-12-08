@@ -169,10 +169,10 @@ if($('ttDate')){
 
 def execute(macro, text):
     request = macro.request
-    
+    pagename = request.page.page_name 
 
     if not text:
-        reporterror(request, u"CourseGraph macro in %s does not have course page." % currentpage)
+        reporterror(request, u"CourseGraph macro in %s does not have course page." % pagename)
         return u'Missing course page.'
 
     if not request.user.name:
@@ -181,7 +181,6 @@ def execute(macro, text):
     course = text
     if pageexists(request, course):
         ruser = RaippaUser(request)
-        pagename = request.page.page_name
         html = unicode()
         if ruser.isTeacher():
             html += u'<a href="%s/%s?action=EditCourse">[edit course]</a><br>\n' % (request.getBaseURL(), course)
@@ -198,6 +197,6 @@ def execute(macro, text):
             html += draw(request, course, ruser)
         return html
     else:
-        reporterror(request, u"The page %s used in %s does not exist." % (course, currentpage))
+        reporterror(request, u"The page %s used in %s does not exist." % (course, pagename))
         return u'Page (%s) does not exist.' % course
 
