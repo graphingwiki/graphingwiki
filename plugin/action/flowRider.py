@@ -523,52 +523,49 @@ def execute(pagename, request):
                 drawpage(request, currentpage, coursepage, ruser)
                 _exit_page(request, pagename)
                 return None
-
             overall, success, tips = question.checkanswers(useranswer)
             if overall:
                 #TODO: if positive tip, show it and continuebutton
-
                 if recaphistory:
                     #TODO: if pages are not found reset recap
                     metas = get_metas(request, currentpage, ["next"], display=True, checkAccess=False)
                     if metas["next"]:
                         next = metas["next"].pop()
-                        if pageexists(request, next):
-                            if next != "end":
-                                newmetas = {recaphistory: {"recap":[next]}}
-                                remove = {recaphistory: ["recap"]}
+                        if next != "end" and pageexists(request, next):
+                            newmetas = {recaphistory: {"recap":[next]}}
+                            remove = {recaphistory: ["recap"]}
 
-                                #TODO: check write success
-                                success, msg = set_metas(request, remove, dict(), newmetas)
+                            #TODO: check write success
+                            success, msg = set_metas(request, remove, dict(), newmetas)
 
-                                #TODO: parents are evil
-                                temp = currentpage.split("/")
+                            #TODO: parents are evil
+                            temp = currentpage.split("/")
+                            temp.pop()
+                            taskpage = "/".join(temp)
+
+                            _enter_page(request, pagename)
+                            drawpage(request, taskpage, coursepage, ruser, recaphistory)
+                            _exit_page(request, pagename)
+                        elif next == "end":
+                            remove = {recaphistory: ["recap", "overallvalue"]}
+                            newmetas = {recaphistory: {"overallvalue":["False"]}}
+                                    
+                            #TODO: check write success
+                            success, msg = set_metas(request, remove, dict(), newmetas)
+
+                            metas = get_metas(request, recaphistory, ["task"], display=True, checkAccess=False)
+                            if metas["task"]:
+                                taskpage = metas["task"].pop()
+                                temp = taskpage.split("/")
                                 temp.pop()
                                 taskpage = "/".join(temp)
 
                                 _enter_page(request, pagename)
-                                drawpage(request, taskpage, coursepage, ruser, recaphistory)
+                                drawpage(request, taskpage, coursepage, ruser)
                                 _exit_page(request, pagename)
                             else:
-                                remove = {recaphistory: ["recap", "overallvalue"]}
-                                newmetas = {recaphistory: {"overallvalue":["False"]}}
-                                    
-                                #TODO: check write success
-                                success, msg = set_metas(request, remove, dict(), newmetas)
-
-                                metas = get_metas(request, recaphistory, ["task"], display=True, checkAccess=False)
-                                if metas["task"]:
-                                    taskpage = metas["task"].pop()
-                                    temp = taskpage.split("/")
-                                    temp.pop()
-                                    taskpage = "/".join(temp)
-
-                                    _enter_page(request, pagename)
-                                    drawpage(request, taskpage, coursepage, ruser)
-                                    _exit_page(request, pagename)
-                                else:
-                                    pass
-                                    #TODO: handle missing task link
+                                pass
+                                #TODO: handle missing task link
                         else:
                             #TODO:handle missing page
                             pass
@@ -591,7 +588,6 @@ def execute(pagename, request):
                         drawerrormessage(request)
                         _exit_page(request, pagename)
                         return None
-
                     if done:
                         message = u'Congratulations! You have passed the task.'
                         Page(request, pagename).send_page(msg=message)
@@ -629,7 +625,6 @@ def execute(pagename, request):
                             #TODO: should be message?
                             request.write(u'Answer writing failed.')
                             return None
-
                 _enter_page(request, pagename)
                 if tasktype == "exam" or tasktype == "questionary":
                     drawpage(request, taskpage, coursepage, ruser)
