@@ -69,44 +69,6 @@ class RaippaUser:
 
         return False
 
-    def gethistory(self, question, course):
-        page = self.request.graphdata.getpage(question)
-        linking_in = page.get('in', {})
-        pagelist = linking_in.get("question", [])
-
-        for temp in pagelist:
-            categories = get_metas(self.request, temp, ["gwikicategory"], checkAccess=False)
-
-            if raippacategories["historycategory"] in categories["gwikicategory"]:
-                keys = ["user", "course", "overallvalue", "task", "true", "false"]
-                metas = get_metas(self.request, temp, keys, display=True, checkAccess=False)
-
-                if not metas["user"]:
-                    reporterror(self.request, "%s doesn't have user meta." % temp)
-                    continue
-
-                if not metas["overallvalue"]:
-                    continue
-                    reporterror(self.request, "%s doesn't have overallvalue meta." % temp)
-
-                if self.user in metas["user"] and course in metas["course"]:
-                    overallvalue = metas["overallvalue"].pop()
-
-                    if metas["task"]:
-                        task = metas["task"].pop()
-                    else:
-                        task = unicode()
-
-                    useranswers = dict()
-                    for true in metas["true"]:
-                        useranswers[true] = "true"
-                    for false in metas["false"]:
-                        useranswers[false] = "false"
-                    
-                    return [overallvalue, useranswers, task, temp]
-
-        return False
-
     def canDo(self, page, course):
         _ = self.request.getText
 
@@ -293,7 +255,7 @@ class RaippaUser:
             else:
                 raise RaippaException(u"%s doesn't have question link." % page)
 
-            history = self.gethistory(questionpage, course)
+            history = Question(self.request, questionpage).gethistory(self.user, course)
 
             if history:
                 overallvalue = history[0]
@@ -339,6 +301,44 @@ class Question:
                 self.note = str()
 
             self.types = metas["type"]
+
+    def gethistory(self, user, course):
+        page = self.request.graphdata.getpage(self.pagename)
+        linking_in = page.get('in', {})
+        pagelist = linking_in.get("question", [])
+
+        for temp in pagelist:
+            categories = get_metas(self.request, temp, ["gwikicategory"], checkAccess=False)
+
+            if raippacategories["historycategory"] in categories["gwikicategory"]:
+                keys = ["user", "course", "overallvalue", "task", "true", "false"]
+                metas = get_metas(self.request, temp, keys, display=True, checkAccess=False)
+
+                if not metas["user"]:
+                    reporterror(self.request, "%s doesn't have user meta." % temp)
+                    continue
+
+                if not metas["overallvalue"]:
+                    continue
+                    reporterror(self.request, "%s doesn't have overallvalue meta." % temp)
+
+                if user in metas["user"] and course in metas["course"]:
+                    overallvalue = metas["overallvalue"].pop()
+
+                    if metas["task"]:
+                        task = metas["task"].pop()
+                    else:
+                        task = unicode()
+
+                    useranswers = dict()
+                    for true in metas["true"]:
+                        useranswers[true] = "true"
+                    for false in metas["false"]:
+                        useranswers[false] = "false"
+
+                    return [overallvalue, useranswers, task, temp]
+
+        return False
 
     def gethistories(self, coursefilter=None, taskfilter=None, userfilter=None):
         histories = list()
@@ -460,34 +460,37 @@ class Question:
 
         return overallvalue, successdict, tips
 
-    def writehistory(self, user, course, task, overallvalue, successdict, file=False):
+    def writehistory(self, users, course, task, overallvalue, successdict, file=False):
         _ = self.request.getText
-        if not isinstance(user, RaippaUser):
-            user = RaippaUser(self.request, user)
 
-        historypage = None
-        history = user.gethistory(self.pagename, course)
-        if history:
-            historypage = history[3]
-            oldkeys = getkeys(self.request, historypage).keys()
-            remove = {historypage: oldkeys}
+        for user in users:
+            history = self.gethistory(user, course)
+            if history:
+                historypage = history[3]
+                oldkeys = getkeys(self.request, historypage).keys()
+                remove = {historypage: oldkeys}
+                break
         else:
             historypage = randompage(self.request, "History")
             remove = dict()
 
-        historydata = {u'user':[addlink(user.user)],
-                       u'course':[addlink(course)],
-                       u'task':[addlink(task)],
-                       u'question':[addlink(self.pagename)],
-                       u'overallvalue':[unicode(overallvalue)],
-                       u'useragent':[self.request.getUserAgent()],
-                       u'time':[time.strftime("%Y-%m-%d %H:%M:%S")],
-                       u'gwikicategory': [raippacategories["historycategory"]]}
+        linked_users = list()
+        for user in users:
+            linked_users.append(addlink(user))
+
+        historydata = {"user": linked_users,
+                       "course": [addlink(course)],
+                       "task": [addlink(task)],
+                       "question": [addlink(self.pagename)],
+                       "overallvalue": [unicode(overallvalue)],
+                       "useragent": [self.request.getUserAgent()],
+                       "time": [time.strftime("%Y-%m-%d %H:%M:%S")],
+                       "gwikicategory": [raippacategories["historycategory"]]}
 
         if overallvalue == "recap":
-            meta = get_metas(self.request, task, ["recap"], display=True, checkAccess=False)
+            meta = get_metas(self.request, task, ["recap"], checkAccess=False)
             if meta["recap"]:
-                historydata["recap"] = meta["recap"].pop()
+                historydata["recap"] = meta["recap"]
 
         if file:
             filename = unicode()
