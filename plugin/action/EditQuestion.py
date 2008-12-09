@@ -921,19 +921,40 @@ def execute(pagename, request):
         Page(request, pagename).send_page(msg=message)
 
     elif request.form.has_key("save"):
-        questionpage = request.form.get("questionpage", [""])[0]
+        questionpage = request.form.get("questionpage", list())
+        if len(questionpage) > 0:
+            questionpage = questionpage.pop()
+        else:
+            questionpage = None
 
-        questiondata = {"question": request.form.get("question", [unicode()])[0].rstrip(),
-                        "answertype": request.form.get("answertype", [u'text'])[0],
-                        "types": request.form.get("type", []),
-                        "note": request.form.get("note", [unicode()])[0].rstrip(),
+        questiondata = {"types": request.form.get("type", list()),
                         "answers": dict(),
-                        "filename": request.form.get("file__filename__", None),
-                        "filecontent": request.form.get("file", [None])[0]}
+                        "filename": request.form.get("file__filename__", None)}
 
-        if not questiondata["question"]:
+        question = request.form.get("question", list())
+        if len(question) > 0:
+            questiondata["question"] = question.pop().rstrip()
+        else:
             Page(request, pagename).send_page(msg=u'Missing question.')
             return None
+
+        answertype = request.form.get("answertype", list())
+        if len(answertype) > 0:
+            questiondata["answertype"] = answertype.pop()
+        else:
+            questiondata["answertype"] = u'text'
+
+        note = request.form.get("note", list())
+        if len(note) > 0:
+            questiondata["note"] = note.pop().rstrip()
+        else:
+            questiondata["note"] = unicode()
+
+        filecontent = request.form.get("file", list())
+        if len(filecontent) > 0:
+            questiondata["filecontent"] =  filecontent.pop()
+        else:
+            questiondata["filecontent"] = None
 
         for key in request.form:
             if key != "answertype" and key.startswith("answer"):
