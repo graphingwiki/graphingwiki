@@ -12,8 +12,8 @@ import xmlrpclib
 from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
-from graphingwiki.patterns import encode, getgraphdata
-from graphingwiki.editing import process_edit, order_meta_input, save_template
+from graphingwiki.patterns import encode
+from graphingwiki.editing import process_edit, save_template
 
 def urlquote(s):
     if isinstance(s, unicode):
@@ -31,11 +31,6 @@ def execute(xmlrpcobj, page, input, action='add',
     _ = request.getText
     request.formatter = TextFormatter(request)
 
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
 
     if not request.user.may.write(page):
         return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
@@ -47,8 +42,6 @@ def execute(xmlrpcobj, page, input, action='add',
     # Pre-create page if it does not exist, using the template specified
     if createpage:
         save_template(request, page, template)
-        # Graphdata locked at once in hopes of reducing race conditions
-        getgraphdata(request)
 
     cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
 
@@ -68,3 +61,10 @@ def execute(xmlrpcobj, page, input, action='add',
     # default to add category
     else:
         added[page].setdefault('gwikicategory', list()).extend(catlist)
+
+    if template:
+        added[page]['gwikitemplate'] = template
+    
+    _, msg = set_metas(request, cleared, discarded, added)
+    
+    return msg
