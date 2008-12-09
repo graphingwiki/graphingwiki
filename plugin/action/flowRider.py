@@ -13,7 +13,7 @@ from graphingwiki.editing import list_attachments
 from raippa import RaippaUser
 from raippa import Question
 from raippa import raippacategories
-from raippa import addlink, pageexists, getflow, reporterror
+from raippa import addlink, removelink, pageexists, getflow, reporterror
 
 def _enter_page(request, pagename):
     request.http_headers()
@@ -115,6 +115,22 @@ def drawquestion(request, question, taskpoint, course, ruser=False, recap=None):
                     wr(u'<input type="hidden" name="recap" value="%s">\n' % recap)
                 wr(u'<input type="submit" name="continue" value="Continue">\n')
                 wr(u'</form>\n')
+            elif overallvalue == "pending":
+                wr(u'<strong>Your answer to this question is being processed. As soon as it has been checked, the result will be posted here. You may return new answer to replace the old one, if you so please. <strong><br>\n')
+                if commentpage:
+                    drawcomment(request, commentpage)
+                #TODO: parents are evil
+                temp = taskpoint.split("/")
+                temp.pop()
+                taskpage = "/".join(temp)
+                wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n' % request.page.page_name.split("/")[-1])
+                wr(u'<input type="hidden" name="action" value="flowRider">\n')
+                wr(u'<input type="hidden" name="select" value="%s">\n' % taskpage)
+                wr(u'<input type="hidden" name="course" value="%s">\n' % course)
+                if recap:
+                    wr(u'<input type="hidden" name="recap" value="%s">\n' % recap)
+                wr(u'<input type="submit" name="continue" value="Continue">\n')
+                wr(u'</form>\n')
             elif overallvalue == "False":
                 wr(u'<strong>You have answered this question and your answer was incorrect. Please try again.</strong><br>\n')
                 if commentpage:
@@ -178,7 +194,7 @@ def drawtaskpointpage(request, questionpage, taskpoint, course, ruser=False, rec
         history = question.gethistory(ruser.user, course)
         if history:
             overallvalue = history[0]
-            if overallvalue in ["pending", "picked"]:
+            if overallvalue == "picked":  #in ["pending", "picked"]:
                 wr(u'You have already answered this question. Waiting for your answer to be checked.\n')
                 return None
 
@@ -285,11 +301,13 @@ def drawtaskpage(request, taskpage, course, ruser=False, recap=None):
             if may:
                 if reason == "redo":
                     html += u'<a href="%s&select=%s">redo</a>' % (url, taskpointpage)
+                elif reason == "pending":
+                    html += u'<a href="%s&select=%s">redo</a>' % (url, taskpointpage)
                 else:
                     html += u'<a href="%s&select=%s">select</a>' % (url, taskpointpage)
             else:
-                if reason in ["pending", "picked"]:
-                    html += u'pending'
+                if reason == "picked": #in ["pending", "picked"]:
+                    html += u'picked for checking'
                 elif reason == "recap":
                     history = question.gethistory(ruser.user, course)
                     if history:
@@ -504,9 +522,26 @@ def execute(pagename, request):
             _exit_page(request, pagename)
             return None
 
+        #check user is in a group
+        userpage = request.graphdata.getpage(ruser.user)
+        linking_in = userpage.get('in', {})
+        pagelist = linking_in.get("user", [])
+        users = list()
+        for page in pagelist:
+            if page.startswith(coursepage) and page.endswith("Group"):
+                raw = Page(request, page).getPageText()
+                for line in raw.split("\n"):
+                    if line.startswith(" * "):
+                        user_in_line = removelink(line[3:].rstrip())
+                        users.append(user_in_line)
+                #user can be only in one group/course
+                break
+        else:
+            users = [ruser.user]
+
         question = Question(request, questionpage)
         if question.answertype == "file":
-            if not question.writehistory([ruser.user], coursepage, currentpage, "pending", {},file=True):
+            if not question.writehistory(users, coursepage, currentpage, "pending",{},file=True):
                 #TODO: should be message?
                 request.write(u'Answer writing failed.')
                 return None
@@ -574,7 +609,7 @@ def execute(pagename, request):
                         pass
 
                 else:
-                    if not question.writehistory([ruser.user], coursepage, currentpage, overall,success):
+                    if not question.writehistory(users, coursepage, currentpage, overall,success):
                         #TODO: should be message?
                         request.write(u'Answer writing failed.')
                         return None
@@ -604,7 +639,7 @@ def execute(pagename, request):
                     if metas["recap"]:
                         recappage = metas["recap"].pop()
                         if pageexists(request, recappage):
-                            historypage = question.writehistory([ruser.user], coursepage, currentpage, "recap", success)
+                            historypage = question.writehistory(users, coursepage, currentpage, "recap", success)
                             if not historypage:
                                 #TODO: should be message?
                                 request.write(u'Answer writing failed.')
@@ -620,7 +655,7 @@ def execute(pagename, request):
                             #TODO: report missing recappage
                     else:
                         #if no recap found, just save
-                        succ = question.writehistory([ruser.user], coursepage, currentpage, overall, success)
+                        succ = question.writehistory(users, coursepage, currentpage, overall, success)
                         if not succ:
                             #TODO: should be message?
                             request.write(u'Answer writing failed.')
