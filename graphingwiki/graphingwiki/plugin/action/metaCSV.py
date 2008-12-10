@@ -7,7 +7,6 @@ import csv
 
 from MoinMoin import wikiutil
 from MoinMoin.util import MoinMoinNoFooter
-from graphingwiki.editing import process_edit
 from graphingwiki.editing import getmeta_to_table
 from graphingwiki.patterns import encode_page
 
