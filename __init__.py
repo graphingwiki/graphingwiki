@@ -147,8 +147,10 @@ class RaippaUser:
             else:
                 if reason == "recap":
                     return False, reason 
-                elif reason in ["pending", "picked"]:
-                    return False, "pending"
+                elif reason == "pending":
+                    return True, reason 
+                elif reason == "picked": #in ["pending", "picked"]:
+                    return False, "picked"
 
             #find task and tasktype 
             #TODO: parents are evil
