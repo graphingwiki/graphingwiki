@@ -307,16 +307,6 @@ def get_metas(request, name, metakeys,
             
     return pageMeta
 
-# Deprecated, remains for backwards compability for now
-def getmetas(request, name, metakeys, 
-             display=True, abs_attach=True, checkAccess=True):
-    return get_metas(request, name, metakeys, display, abs_attach, checkAccess)
-
-# Deprecated, remains for backwards compability for now
-def getvalues(request, name, key,
-              display=True, abs_attach=True, checkAccess=True):
-    return getmetas(request, name, [key], display, abs_attach, checkAccess)[key]
-
 def get_pages(request):
     def filter(name):
         # aw crap, SystemPagesGroup is not a system page
