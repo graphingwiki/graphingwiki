@@ -93,7 +93,7 @@ def get_revisions(request, page):
 
     metakeys = set()
     for page in pagelist:
-        for key in getkeys(request, page):
+        for key in get_keys(request, page):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=ordervalue)
 
@@ -258,14 +258,6 @@ def formatting_rules(request, parser):
 
     return re.compile(rules, re.UNICODE)
 
-def getkeys(request, name):
-    page = request.graphdata.getpage(name)
-    keys = set(page.get('meta', {}).keys())
-    # Non-typed links are not included
-    keys.update(set(x for x in page.get('out', {}).keys()
-                    if x != NO_TYPE))
-    keys = {}.fromkeys(keys, '')
-    return keys
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, 
@@ -306,6 +298,18 @@ def get_metas(request, name, metakeys,
                 pageMeta[key].append(target)
             
     return pageMeta
+
+def get_keys(request, name):
+    """
+    Return the complete set of page's meta keys.
+    """
+
+    page = request.graphdata.getpage(name)
+    keys = set(page.get('meta', dict()))
+
+    # Non-typed links are not included
+    keys.update([x for x in page.get('out', dict()) if x != NO_TYPE])
+    return keys
 
 def get_pages(request):
     def filter(name):
@@ -919,11 +923,11 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in getkeys(request, name):
+                for key in get_keys(request, name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(getkeys(request, name)):
+                for key in nonguaranteeds_p(get_keys(request, name)):
                     metakeys.add(key)
 
         metakeys = sorted(metakeys, key=ordervalue)
