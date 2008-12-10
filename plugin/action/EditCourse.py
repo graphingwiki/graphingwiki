@@ -124,9 +124,10 @@ Tasks:
 		for taskpagename, taskdescription in tasklist:
 			pagehtml += u'''<div class="dragItem"><input type="hidden" name="%s"
 	value="%s">%s</div>\n''' % (taskdescription.replace('"', '&quot;'), taskpagename, taskdescription)
-		pagehtml += u'</div></div>\n'
+		pagehtml += u'</div>\n'
 
     pagehtml += u'''
+</div>
 <div id="start">Start by dragging here!<br></div>
 '''
     pagehtml += u'''
