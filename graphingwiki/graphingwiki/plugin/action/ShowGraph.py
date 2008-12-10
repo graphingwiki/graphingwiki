@@ -624,8 +624,12 @@ class GraphShower(object):
 
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip
-            pagemeta = pagedata.get('meta', dict())
-            pagemeta.update(pagedata.get('out', dict()))
+            pagemeta = dict()
+            for key in pagedata.get('meta', dict()):
+                pagemeta[key] = [x for x in pagedata['meta'][key]]
+            for key in pagedata.get('out', dict()):
+                pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
+
             if (pagemeta and not hasattr(obj, 'gwikitooltip')):
                 pagekeys = nonguaranteeds_p(pagemeta)
                 tooldata = '\n'.join("-%s: %s" % 

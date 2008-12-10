@@ -65,7 +65,6 @@ def execute(pagename, request):
         try:
             start_time = timestamp(time)
         except ValueError:
-            request.write('problem')
             continue
 
         new_page = Page(request, page)

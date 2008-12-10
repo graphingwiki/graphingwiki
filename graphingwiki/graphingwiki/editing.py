@@ -25,7 +25,6 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
-from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
@@ -389,22 +388,6 @@ def edit_meta(request, pagename, oldmeta, newmeta):
         # probably isn't what we want:
         #  graphsaver(pagename, request, text, p.getPagePath(), p)
 
-        # delete pagelinks
-        key = 'pagelinks'
-        cache = caching.CacheEntry(request, page, key)
-        cache.remove()
-
-        # forget in-memory page text
-        page.set_raw_body(None)
-
-        # clean the in memory acl cache
-        page.clean_acl_cache()
-
-        # clean the cache
-        for formatter_name in ['text_html']:
-            key = formatter_name
-            cache = caching.CacheEntry(request, page, key)
-            cache.remove()
     except page.Unchanged:
         msg = u'Unchanged'
 

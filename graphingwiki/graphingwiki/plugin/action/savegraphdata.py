@@ -37,6 +37,7 @@ from copy import copy
 # MoinMoin imports
 from MoinMoin.parser.wiki import Parser
 from MoinMoin.wikiutil import importPlugin
+from MoinMoin import caching
 
 # graphlib imports
 from graphingwiki.patterns import node_type, SPECIAL_ATTRS, NO_TYPE
@@ -570,6 +571,8 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
+    pageitem = page
+
     # Get new data from parsing the page
     new_data = parse_text(request, page, text)
 
@@ -616,3 +619,27 @@ def execute(pagename, request, text, pagedir, page):
             #print 'addin', repr(page), edge
             linktype, src = edge
             shelve_add_in(request.graphdata, [src, page], linktype)
+
+    # Clear cache
+
+    # delete pagelinks
+    arena = pageitem
+    key = 'pagelinks'
+    cache = caching.CacheEntry(request, arena, key)
+    cache.remove()
+
+    # forget in-memory page text
+    pageitem.set_raw_body(None)
+
+    # clean the in memory acl cache
+    pageitem.clean_acl_cache()
+
+    request.graphdata.cache = dict()
+
+    # clean the cache
+    for formatter_name in ['text_html']:
+        key = formatter_name
+        cache = caching.CacheEntry(request, arena, key)
+        cache.remove()
+
+    request.graphdata.readlock()

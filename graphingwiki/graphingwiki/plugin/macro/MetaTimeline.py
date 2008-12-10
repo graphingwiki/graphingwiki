@@ -4,7 +4,7 @@ from time import strptime, strftime, localtime
 
 Dependencies = ['metadata']
 
-time_format = "%b %d %Y %H:%M:%S %z"
+time_format = "%b %d %Y %H:%M:%S +0000"
 
 def execute(macro, args):
     focus = ""
@@ -18,7 +18,8 @@ def execute(macro, args):
     for arg in arglist:
         if arg.startswith('timelinefocus='):
             try:
-                strptime(time_format, arg.split('=')[1])
+                strptime(arg.split('=')[1], time_format)
+                focus = arg.split('=')[1]
             except ValueError:
                 pass
         else:
