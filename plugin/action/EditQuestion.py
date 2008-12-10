@@ -194,10 +194,7 @@ var radioFalse = new Element('input', {
 td6.grab(radioFalse);
 var span = new Element('span', {
 	'class' : 'tip'
-/*	,'style' : 'visibility: hidden;'  */
 });
-
-span.set('text', 'Tip: ');
 
 span.grab(new Element('textarea', {
 	'name' : 'tip' + lkm
