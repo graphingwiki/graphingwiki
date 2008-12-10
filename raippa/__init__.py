@@ -498,7 +498,11 @@ class Question:
                 filename = self.request.form.get('answer__filename__', unicode())
             filecontent = self.request.form.get("answer", [str()]).pop()
 
-            if not isinstance(filecontent, str):
+            from mod_python import util
+            if isinstance(filecontent, util.Field):
+                content = filecontent.value
+                filecontent = content
+            elif not isinstance(filecontent, str):
                 temp = filecontent.read()
                 filecontent = temp
             filecontent = unicode(filecontent, 'iso-8859-15')
