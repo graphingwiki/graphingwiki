@@ -365,60 +365,50 @@ def remove_preformatted(text):
 
     return text, pre_replace
 
-def edit(pagename, editfun, oldmeta, newmeta, request,
-         category_edit='', catlist=[], lock=None):
-    p = PageEditor(request, pagename)
+def edit_meta(request, pagename, oldmeta, newmeta):
+    page = PageEditor(request, pagename)
 
-    oldtext = p.get_raw_body()
+    text = page.get_raw_body()
+    text, pre_replace = remove_preformatted(text)
 
-    #request.write(repr(oldtext) + '<br>' + repr(pre_replace))
-    #request.write(repr(oldtext % pre_replace) + '<br>')
-    #return '', p
-
-    oldtext, pre_replace = remove_preformatted(oldtext)
-
-    newtext = editfun(request, oldtext, oldmeta, newmeta)
+    text = replace_metas(request, text, oldmeta, newmeta)
 
     # Metas have been set, insert preformatted areas back
     for key in pre_replace:
-        newtext = newtext.replace(key, pre_replace[key])
-
-    # Add categories, if needed
-    if category_edit:
-        newtext = edit_categories(request, newtext, category_edit, catlist)
+        text = text.replace(key, pre_replace[key])
 
     graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
 
     # PageEditor.saveText doesn't allow empty texts
-    if not newtext:
-        newtext = u" "
+    if not text:
+        text = u" "
 
     try:
-        msg = p.saveText(newtext, 0)
-        graphsaver(pagename, request, newtext, p.getPagePath(), p)
+        msg = page.saveText(text, 0)
+        # This used to be here too, causing double page saves. It
+        # probably isn't what we want:
+        #  graphsaver(pagename, request, text, p.getPagePath(), p)
 
         # delete pagelinks
-        arena = p
         key = 'pagelinks'
-        cache = caching.CacheEntry(request, arena, key)
+        cache = caching.CacheEntry(request, page, key)
         cache.remove()
 
         # forget in-memory page text
-        p.set_raw_body(None)
+        page.set_raw_body(None)
 
         # clean the in memory acl cache
-        p.clean_acl_cache()
+        page.clean_acl_cache()
 
         # clean the cache
         for formatter_name in ['text_html']:
             key = formatter_name
-            cache = caching.CacheEntry(request, arena, key)
+            cache = caching.CacheEntry(request, page, key)
             cache.remove()
-
-    except p.Unchanged:
+    except page.Unchanged:
         msg = u'Unchanged'
 
-    return msg, p
+    return msg
 
 def add_meta_regex(request, inclusion, newval, oldtext):
     """
@@ -511,6 +501,29 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u"2"]))
     u'This is just filler\n test:: 1\n test:: 2\nYeah'
 
+    Handling the magical duality normal categories (CategoryBah)
+    and meta style categories:
+    >>> replace_metas(request,
+    ...               u"",
+    ...               dict(),
+    ...               dict(gwikicategory=[u"test"]))
+    u'\n gwikicategory:: test\n\n'
+    >>> replace_metas(request,
+    ...               u"",
+    ...               dict(),
+    ...               dict(gwikicategory=[u"CategoryTest"]))
+    u'----\nCategoryTest\n'
+    >>> replace_metas(request,
+    ...               u" gwikicategory:: test",
+    ...               dict(gwikicategory=[u"test"]),
+    ...               dict(gwikicategory=[u"CategoryTest"]))
+    u' gwikicategory:: CategoryTest\n'
+    >>> replace_metas(request,
+    ...               u"CategoryTest",
+    ...               dict(gwikicategory=[u"CategoryTest"]),
+    ...               dict(gwikicategory=[u"CategoryTest2"]))
+    u'----\nCategoryTest2\n'
+
     Regression test: The following scenario probably shouldn't produce
     an empty result text.
     
@@ -566,6 +579,27 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         return " %s:: %s\n" % (key, newval)
     oldtext = dl_re.sub(dl_subfun, oldtext)
 
+    # Handle the magic duality between normal categories (CategoryBah)
+    # and meta style categories
+    oldcategories = oldmeta.get(CATEGORY_KEY, list())
+    newcategories = newmeta.get(CATEGORY_KEY, list())
+
+    added = filter_categories(request, newcategories)
+    discarded = filter_categories(request, oldcategories)
+    
+    for index, value in reversed(list(enumerate(newcategories))):
+        if value not in added:
+            continue
+
+        if index < len(oldcategories):
+            del oldcategories[index]
+        del newcategories[index]
+
+    if discarded:
+        oldtext = edit_categories(request, oldtext, "del", discarded)
+    if added:
+        oldtext = edit_categories(request, oldtext, "add", added)
+
     # Fill in the prototypes
     def dl_fillfun(mo):
         all, key = mo.groups()
@@ -602,16 +636,8 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         for value in values:
             inclusion = " %s:: %s\n" % (key, value)
             oldtext = add_meta_regex(request, inclusion, value, oldtext)
-    
+
     return oldtext
-
-def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[]):
-
-    msg, p = edit(pagename, replace_metas, oldmeta, newmeta, request, 
-                  category_edit, catlist)
-
-    return msg
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
@@ -647,19 +673,6 @@ def set_metas(request, cleared, discarded, added):
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         old = get_metas(request, page, metakeys, checkAccess=False)
-        
-        # Handle the magic duality between normal categories (CategoryBah)
-        # and meta style categories
-        if CATEGORY_KEY in pageCleared:
-            edit_meta(request, page, dict(), dict(), "set", list())
-        if CATEGORY_KEY in pageDiscarded:
-            categories = pageDiscarded[CATEGORY_KEY]
-            edit_meta(request, page, dict(), dict(), "del", categories)
-        if CATEGORY_KEY in pageAdded:
-            categories = set(pageAdded[CATEGORY_KEY])
-            filtered = set(filter_categories(request, categories))
-            edit_meta(request, page, dict(), dict(), "add", list(filtered))
-            pageAdded[CATEGORY_KEY] = list(categories - filtered)
 
         new = dict()
         for key in old:
@@ -712,11 +725,14 @@ def save_template(request, page, template):
 
     return msg
 
-def savetext(pagename, newtext):
+def savetext(request, pagename, newtext):
     """ Savetext - a function to be used by local CLI scripts that
     modify page content directly.
 
     """
+
+    raise Exception("this function should either be deleted or updated")
+
     def replace_metas(pagename, oldtext):
         return newtext
 
