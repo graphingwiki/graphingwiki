@@ -13,7 +13,7 @@ def draw(request, course, raippauser, result="both"):
     quarantined = raippauser.isQuarantined()
 
     G = gv.digraph(str(course))
-    gv.setv(G, 'rankdir', 'LR')
+    gv.setv(G, 'rankdir', 'TB')
     gv.setv(G, 'bgcolor', 'transparent')
     nodes = dict()
     try:
