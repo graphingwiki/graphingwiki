@@ -277,9 +277,9 @@ def execute(pagename, request):
             if pages:
                 for page, (oldMeta, newMeta) in pages.iteritems():
                     msgs.append('%s: ' % page + 
-                               edit_meta(request, page, oldMeta, newMeta))
-                else:
-                    msgs.append(request.getText('No pages changed'))
+                                edit_meta(request, page, oldMeta, newMeta))
+            else:
+                msgs.append(request.getText('No pages changed'))
             
         msg = ''
         for line in msgs:
