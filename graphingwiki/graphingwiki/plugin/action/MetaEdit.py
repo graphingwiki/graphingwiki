@@ -28,19 +28,19 @@ def parse_editform(request, form):
     >>> from graphingwiki.editing import _doctest_request
     >>> request = _doctest_request()
 
-    >>> process_meta_changes(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
+    >>> parse_editform(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
     {u'Test': ({}, {'a': ['1', '2']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
+    >>> parse_editform(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
     {u'Test': ({u'a': ['x']}, {u'a': ['1', '2']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["x"], ":: a" : [""]})
+    >>> parse_editform(request, {"Test?a" : ["x"], ":: a" : [""]})
     {u'Test': ({u'a': ['x']}, {u'a': ['']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["1", "2"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["1"], ":: a" : ["a"]})
+    >>> parse_editform(request, {"Test?a" : ["1"], ":: a" : ["a"]})
     {u'Test': ({u'a': ['1', '2']}, {u'a': ['1', '']})}
     """
 
