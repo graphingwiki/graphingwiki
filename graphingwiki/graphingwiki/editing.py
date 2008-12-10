@@ -145,6 +145,27 @@ def getmeta_to_table(input):
     return table    
 
 def parse_categories(request, text):
+    r"""
+    Parse category names from the page. Return a list of the preceding
+    text lines and a list of parsed categories.
+
+    >>> request = _doctest_request()
+    >>> parse_categories(request, "CategoryTest")
+    ([], ['CategoryTest'])
+
+    Take into account only the categories that come after all other text
+    (excluding whitespaces):
+
+    >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
+    (['Blah', 'CategoryNot blah'], ['CategoryTest'])
+
+    Regression test, bug #540: Pages with only categories (or whitespaces) 
+    on several lines don't get parsed correctly:
+
+    >>> parse_categories(request, "\nCategoryTest")
+    ([], ['CategoryTest'])
+    """
+
     # We want to parse only the last non-empty line of the text
     lines = text.rstrip().splitlines()
     if not lines:
@@ -168,7 +189,7 @@ def parse_categories(request, text):
         # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
             # The line was not a category line
-            return lines, total_confirmed
+            break
 
         # It was a category line - add the categories
         total_confirmed.extend(confirmed)
@@ -176,7 +197,7 @@ def parse_categories(request, text):
         # Remove the category line
         lines.pop()
 
-    return lines, confirmed
+    return lines, total_confirmed
 
 def edit_categories(request, savetext, action, catlist):
     """
