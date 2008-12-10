@@ -250,7 +250,7 @@ def execute(pagename, request):
     form = fix_form(request.form)
 
     if form.has_key('save') or form.has_key('saveform'):
-        # MetaFormEdit is much closer to setmeta in function
+        # MetaFormEdit is much closer to set_meta in function
         if form.has_key('saveform'):
             added, discarded = {pagename: dict()}, {pagename: dict()}
 
@@ -259,12 +259,12 @@ def execute(pagename, request):
             if template:
                 added[pagename]['gwikitemplate'] = template
 
-            # Ignore form clutter, decode keys encoded by form
+            # Ignore form clutter
             keys = [x.split('?')[1] for x in form if '?' in x]
 
             old = get_metas(request, pagename, keys)
             for key in keys:
-                oldkey = encode_page(pagename + '?' + key)
+                oldkey = pagename + '?' + key
                 discarded[pagename][key] = old.get(key, list())
                 added[pagename][key] = form[oldkey]
 
