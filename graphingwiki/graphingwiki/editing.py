@@ -29,7 +29,7 @@ from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.patterns import absolute_attach_name, filter_categories
-from graphingwiki.patterns import NO_TYPE
+from graphingwiki.patterns import NO_TYPE, SPECIAL_ATTRS
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -947,7 +947,8 @@ def metatable_parseargs(request, args,
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(get_keys(request, name)):
+                for key in (x for x in get_keys(request, name) 
+                            if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 
         metakeys = sorted(metakeys, key=ordervalue)
