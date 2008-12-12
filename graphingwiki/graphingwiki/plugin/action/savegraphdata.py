@@ -37,7 +37,7 @@ from copy import copy
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
-from MoinMoin.Page import Page
+from MoinMoin import caching
 
 # graphlib imports
 from graphingwiki.patterns import node_type, SPECIAL_ATTRS, NO_TYPE
@@ -85,7 +85,7 @@ def shelve_add_out(new_data, (frm, to), linktype, hit):
 
 # Respectively, remove in-links
 def shelve_remove_in(new_data, (frm, to), linktype):
-    import sys
+    # import sys
     # sys.stderr.write('Starting to remove in\n')
     temp = new_data.get(to, {})
     if not temp.has_key(u'in'):
@@ -97,14 +97,15 @@ def shelve_remove_in(new_data, (frm, to), linktype):
         if not temp[u'in'].has_key(type):
             # sys.stderr.write("No such type: %s\n" % type)
             continue
-        while frm in temp[u'in'][type]:
+        if frm in temp[u'in'][type]:
             temp[u'in'][type].remove(frm)
 
             # Notification that the destination has changed
             temp[u'mtime'] = time()
-
+            
         if not temp[u'in'][type]:
             del temp[u'in'][type]
+
 
     # sys.stderr.write("Hey man, I think I did it!\n")
     new_data[to] = temp
@@ -123,12 +124,12 @@ def shelve_remove_out(new_data, (frm, to), linktype):
         if not temp[u'out'].has_key(type):
             # print "No such type: %s" % type
             continue
-        while to in temp[u'out'][type]:
+        if to in temp[u'out'][type]:
             # As the literal text values for the links
             # are added at the same time, they have the
             # same index value
             i = temp[u'out'][type].index(to)
-            temp[u'out'][type].remove(to)
+            del temp[u'out'][type][i]
             del temp[u'lit'][type][i]
 
             # print "removed %s" % (repr(to))
@@ -410,6 +411,8 @@ def execute(pagename, request, text, pagedir, page):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
+    pageitem = page
+
     # Get new data from parsing the page
     new_data = parse_text(request, page, text)
 
@@ -456,6 +459,30 @@ def execute(pagename, request, text, pagedir, page):
             #print 'addin', repr(page), edge
             linktype, src = edge
             shelve_add_in(request.graphdata, [src, page], linktype)
+
+    # Clear cache
+
+    # delete pagelinks
+    arena = pageitem
+    key = 'pagelinks'
+    cache = caching.CacheEntry(request, arena, key)
+    cache.remove()
+
+    # forget in-memory page text
+    pageitem.set_raw_body(None)
+
+    # clean the in memory acl cache
+    pageitem.clean_acl_cache()
+
+    request.graphdata.cache = dict()
+
+    # clean the cache
+    for formatter_name in ['text_html']:
+        key = formatter_name
+        cache = caching.CacheEntry(request, arena, key)
+        cache.remove()
+
+    request.graphdata.readlock()
 
 # - code below lifted from MetaFormEdit -
 

@@ -25,12 +25,11 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
-from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.patterns import absolute_attach_name, filter_categories
-from graphingwiki.patterns import NO_TYPE
+from graphingwiki.patterns import NO_TYPE, SPECIAL_ATTRS
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -92,7 +91,7 @@ def get_revisions(request, page):
 
     metakeys = set()
     for page in pagelist:
-        for key in getkeys(request, page):
+        for key in get_keys(request, page):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=ordervalue)
 
@@ -129,6 +128,27 @@ def getmeta_to_table(input):
     return table    
 
 def parse_categories(request, text):
+    r"""
+    Parse category names from the page. Return a list of the preceding
+    text lines and a list of parsed categories.
+
+    >>> request = _doctest_request()
+    >>> parse_categories(request, "CategoryTest")
+    ([], ['CategoryTest'])
+
+    Take into account only the categories that come after all other text
+    (excluding whitespaces):
+
+    >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
+    (['Blah', 'CategoryNot blah'], ['CategoryTest'])
+
+    Regression test, bug #540: Pages with only categories (or whitespaces) 
+    on several lines don't get parsed correctly:
+
+    >>> parse_categories(request, "\nCategoryTest")
+    ([], ['CategoryTest'])
+    """
+
     # We want to parse only the last non-empty line of the text
     lines = text.rstrip().splitlines()
     if not lines:
@@ -152,7 +172,7 @@ def parse_categories(request, text):
         # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
             # The line was not a category line
-            return lines, total_confirmed
+            break
 
         # It was a category line - add the categories
         total_confirmed.extend(confirmed)
@@ -160,7 +180,7 @@ def parse_categories(request, text):
         # Remove the category line
         lines.pop()
 
-    return lines, confirmed
+    return lines, total_confirmed
 
 def edit_categories(request, savetext, action, catlist):
     """
@@ -244,14 +264,6 @@ def formatting_rules(request, parser):
 
     return re.compile(rules, re.UNICODE)
 
-def getkeys(request, name):
-    page = request.graphdata.getpage(name)
-    keys = set(page.get('meta', {}).keys())
-    # Non-typed links are not included
-    keys.update(set(x for x in page.get('out', {}).keys()
-                    if x != NO_TYPE))
-    keys = {}.fromkeys(keys, '')
-    return keys
 
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
@@ -334,15 +346,17 @@ def get_metas(request, name, metakeys,
             
     return pageMeta
 
-# Deprecated, remains for backwards compability for now
-def getmetas(request, name, metakeys, 
-             display=True, abs_attach=True, checkAccess=True):
-    return get_metas(request, name, metakeys, display, abs_attach, checkAccess)
+def get_keys(request, name):
+    """
+    Return the complete set of page's meta keys.
+    """
 
-# Deprecated, remains for backwards compability for now
-def getvalues(request, name, key,
-              display=True, abs_attach=True, checkAccess=True):
-    return getmetas(request, name, [key], display, abs_attach, checkAccess)[key]
+    page = request.graphdata.getpage(name)
+    keys = set(page.get('meta', dict()))
+
+    # Non-typed links are not included
+    keys.update([x for x in page.get('out', dict()) if x != NO_TYPE])
+    return keys
 
 def get_pages(request):
     def filter(name):
@@ -377,60 +391,34 @@ def remove_preformatted(text):
 
     return text, pre_replace
 
-def edit(pagename, editfun, oldmeta, newmeta, request,
-         category_edit='', catlist=[], lock=None):
-    p = PageEditor(request, pagename)
+def edit_meta(request, pagename, oldmeta, newmeta):
+    page = PageEditor(request, pagename)
 
-    oldtext = p.get_raw_body()
+    text = page.get_raw_body()
+    text, pre_replace = remove_preformatted(text)
 
-    #request.write(repr(oldtext) + '<br>' + repr(pre_replace))
-    #request.write(repr(oldtext % pre_replace) + '<br>')
-    #return '', p
-
-    oldtext, pre_replace = remove_preformatted(oldtext)
-
-    newtext = editfun(request, oldtext, oldmeta, newmeta)
+    text = replace_metas(request, text, oldmeta, newmeta)
 
     # Metas have been set, insert preformatted areas back
     for key in pre_replace:
-        newtext = newtext.replace(key, pre_replace[key])
-
-    # Add categories, if needed
-    if category_edit:
-        newtext = edit_categories(request, newtext, category_edit, catlist)
+        text = text.replace(key, pre_replace[key])
 
     graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
 
     # PageEditor.saveText doesn't allow empty texts
-    if not newtext:
-        newtext = u" "
+    if not text:
+        text = u" "
 
     try:
-        msg = p.saveText(newtext, 0)
-        graphsaver(pagename, request, newtext, p.getPagePath(), p)
+        msg = page.saveText(text, 0)
+        # This used to be here too, causing double page saves. It
+        # probably isn't what we want:
+        #  graphsaver(pagename, request, text, p.getPagePath(), p)
 
-        # delete pagelinks
-        arena = p
-        key = 'pagelinks'
-        cache = caching.CacheEntry(request, arena, key)
-        cache.remove()
-
-        # forget in-memory page text
-        p.set_raw_body(None)
-
-        # clean the in memory acl cache
-        p.clean_acl_cache()
-
-        # clean the cache
-        for formatter_name in ['text_html']:
-            key = formatter_name
-            cache = caching.CacheEntry(request, arena, key)
-            cache.remove()
-
-    except p.Unchanged:
+    except page.Unchanged:
         msg = u'Unchanged'
 
-    return msg, p
+    return msg
 
 def add_meta_regex(request, inclusion, newval, oldtext):
     """
@@ -523,6 +511,29 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u"2"]))
     u'This is just filler\n test:: 1\n test:: 2\nYeah'
 
+    Handling the magical duality normal categories (CategoryBah)
+    and meta style categories:
+    >>> replace_metas(request,
+    ...               u"",
+    ...               dict(),
+    ...               dict(gwikicategory=[u"test"]))
+    u'\n gwikicategory:: test\n\n'
+    >>> replace_metas(request,
+    ...               u"",
+    ...               dict(),
+    ...               dict(gwikicategory=[u"CategoryTest"]))
+    u'----\nCategoryTest\n'
+    >>> replace_metas(request,
+    ...               u" gwikicategory:: test",
+    ...               dict(gwikicategory=[u"test"]),
+    ...               dict(gwikicategory=[u"CategoryTest"]))
+    u' gwikicategory:: CategoryTest\n'
+    >>> replace_metas(request,
+    ...               u"CategoryTest",
+    ...               dict(gwikicategory=[u"CategoryTest"]),
+    ...               dict(gwikicategory=[u"CategoryTest2"]))
+    u'----\nCategoryTest2\n'
+
     Regression test: The following scenario probably shouldn't produce
     an empty result text.
     
@@ -578,6 +589,27 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         return " %s:: %s\n" % (key, newval)
     oldtext = dl_re.sub(dl_subfun, oldtext)
 
+    # Handle the magic duality between normal categories (CategoryBah)
+    # and meta style categories
+    oldcategories = oldmeta.get(CATEGORY_KEY, list())
+    newcategories = newmeta.get(CATEGORY_KEY, list())
+
+    added = filter_categories(request, newcategories)
+    discarded = filter_categories(request, oldcategories)
+    
+    for index, value in reversed(list(enumerate(newcategories))):
+        if value not in added:
+            continue
+
+        if index < len(oldcategories):
+            del oldcategories[index]
+        del newcategories[index]
+
+    if discarded:
+        oldtext = edit_categories(request, oldtext, "del", discarded)
+    if added:
+        oldtext = edit_categories(request, oldtext, "add", added)
+
     # Fill in the prototypes
     def dl_fillfun(mo):
         all, key = mo.groups()
@@ -614,16 +646,8 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         for value in values:
             inclusion = " %s:: %s\n" % (key, value)
             oldtext = add_meta_regex(request, inclusion, value, oldtext)
-    
+
     return oldtext
-
-def edit_meta(request, pagename, oldmeta, newmeta,
-              category_edit='', catlist=[]):
-
-    msg, p = edit(pagename, replace_metas, oldmeta, newmeta, request, 
-                  category_edit, catlist)
-
-    return msg
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
@@ -659,19 +683,6 @@ def set_metas(request, cleared, discarded, added):
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         old = get_metas(request, page, metakeys, checkAccess=False)
-        
-        # Handle the magic duality between normal categories (CategoryBah)
-        # and meta style categories
-        if CATEGORY_KEY in pageCleared:
-            edit_meta(request, page, dict(), dict(), "set", list())
-        if CATEGORY_KEY in pageDiscarded:
-            categories = pageDiscarded[CATEGORY_KEY]
-            edit_meta(request, page, dict(), dict(), "del", categories)
-        if CATEGORY_KEY in pageAdded:
-            categories = set(pageAdded[CATEGORY_KEY])
-            filtered = set(filter_categories(request, categories))
-            edit_meta(request, page, dict(), dict(), "add", list(filtered))
-            pageAdded[CATEGORY_KEY] = list(categories - filtered)
 
         new = dict()
         for key in old:
@@ -701,102 +712,6 @@ def set_metas(request, cleared, discarded, added):
 
     return True, msg
 
-def process_meta_changes(request, input):
-    r"""
-    >>> request = _doctest_request()
-    >>> process_meta_changes(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
-    {u'Test': ({}, {'a': ['1', '2']})}
-
-    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
-    {u'Test': ({u'a': ['x']}, {u'a': ['1', '2']})}
-
-    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["x"], ":: a" : [""]})
-    {u'Test': ({u'a': ['x']}, {u'a': ['']})}
-
-    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["1", "2"]}}})
-    >>> process_meta_changes(request, {"Test?a" : ["1"], ":: a" : ["a"]})
-    {u'Test': ({u'a': ['1', '2']}, {u'a': ['1', '']})}
-    """
-
-    keys = dict()
-    pages = dict()
-
-    # Key changes
-    for oldKey, newKeys in input.iteritems():
-        if not newKeys or not oldKey.startswith(':: '):
-            continue
-
-        newKey = newKeys[0].strip()
-        oldKey = oldKey[3:].strip()
-        if oldKey == newKey:
-            continue
-
-        keys[oldKey] = newKey
-
-    # Value changes
-    for pageAndKey, newValues in input.iteritems():
-        # At least the key 'save' may be there and should be ignored
-        if not '?' in pageAndKey:
-            continue
-
-        # Form keys not autodecoded from utf-8
-        page, oldKey = map(decode_page, pageAndKey.split('?', 1))
-        newKey = keys.get(oldKey, oldKey)
-
-        if not request.user.may.write(page):
-            continue
-
-        oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
-
-        if oldKey:
-            oldMetas = get_metas(request, page, [oldKey], abs_attach=False)
-            oldValues = oldMetas[oldKey]
-
-            oldMeta.setdefault(oldKey, list()).extend(oldValues)
-
-            if newKey != oldKey:
-                # Remove the corresponding values
-                newMeta.setdefault(oldKey, list()).extend([""] * len(oldValues))
-
-        if newKey:
-            missing = 0
-            if oldKey:
-                missing = len(oldValues) - len(newValues)
-
-            newMeta.setdefault(newKey, list()).extend(newValues)
-            newMeta.setdefault(newKey, list()).extend([""] * missing)
-
-    # Prune
-    for page, (oldMeta, newMeta) in list(pages.iteritems()):
-        for key in list(newMeta):
-            if key not in oldMeta:
-                continue
-            if oldMeta[key] != newMeta[key]:
-                continue
-            del oldMeta[key]
-            del newMeta[key]
-
-        if not (oldMeta or newMeta):
-            del pages[page]
-
-    return pages
-
-# Handle input from a MetaEdit-form
-def process_edit(request, input):
-    msg = list()
-    pages = process_meta_changes(request, input)
-
-    if pages:
-        for page, (oldMeta, newMeta) in pages.iteritems():
-            msg.append('%s: ' % page + 
-                       edit_meta(request, page, oldMeta, newMeta))
-    else:
-        msg.append(request.getText('No pages changed'))
-
-    return msg
-
 def save_template(request, page, template):
     # Get body, or template if body is not available, or ' '
     raw_body = Page(request, page).get_raw_body()
@@ -820,11 +735,14 @@ def save_template(request, page, template):
 
     return msg
 
-def savetext(pagename, newtext):
+def savetext(request, pagename, newtext):
     """ Savetext - a function to be used by local CLI scripts that
     modify page content directly.
 
     """
+
+    raise Exception("this function should either be deleted or updated")
+
     def replace_metas(pagename, oldtext):
         return newtext
 
@@ -1052,11 +970,12 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in getkeys(request, name):
+                for key in get_keys(request, name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in nonguaranteeds_p(getkeys(request, name)):
+                for key in (x for x in get_keys(request, name) 
+                            if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 
         metakeys = sorted(metakeys, key=ordervalue)
@@ -1235,8 +1154,6 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):
         pass
     class Config(object):
-        pass
-    class Cache(object):
         pass
     class Object(object):
         pass

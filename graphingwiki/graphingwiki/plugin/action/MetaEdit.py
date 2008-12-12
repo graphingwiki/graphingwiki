@@ -10,12 +10,102 @@
 action_name = 'MetaEdit'
 
 from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import process_edit, get_metas, save_template
-from graphingwiki.editing import metatable_parseargs, set_metas
+from graphingwiki.editing import get_metas, set_metas
+from graphingwiki.editing import metatable_parseargs, edit_meta
 from graphingwiki.patterns import actionname, form_escape, decode_page, encode_page
+
+def fix_form(form):
+    # Decode request form's keys using the config's charset
+    # (Moin 1.5 request.form has its values - but not keys - decoded
+    # into unicode, which tends to lead to hilarious situational
+    # comedy).
+    return dict([(decode_page(key), value) for (key, value) in form.items()])
+
+def parse_editform(request, form):
+    r"""
+    >>> from graphingwiki.editing import _doctest_request
+    >>> request = _doctest_request()
+
+    >>> parse_editform(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
+    {u'Test': ({}, {'a': ['1', '2']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
+    >>> parse_editform(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
+    {u'Test': ({u'a': ['x']}, {u'a': ['1', '2']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
+    >>> parse_editform(request, {"Test?a" : ["x"], ":: a" : [""]})
+    {u'Test': ({u'a': ['x']}, {u'a': ['']})}
+
+    >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["1", "2"]}}})
+    >>> parse_editform(request, {"Test?a" : ["1"], ":: a" : ["a"]})
+    {u'Test': ({u'a': ['1', '2']}, {u'a': ['1', '']})}
+    """
+
+    keys = dict()
+    pages = dict()
+
+    # Key changes
+    for oldKey, newKeys in form.iteritems():
+        if not newKeys or not oldKey.startswith(':: '):
+            continue
+
+        newKey = newKeys[0].strip()
+        oldKey = oldKey[3:].strip()
+        if oldKey == newKey:
+            continue
+
+        keys[oldKey] = newKey
+
+    # Value changes
+    for pageAndKey, newValues in form.iteritems():
+        # At least the key 'save' may be there and should be ignored
+        if not '?' in pageAndKey:
+            continue
+
+        # Form keys not autodecoded from utf-8
+        page, oldKey = pageAndKey.split('?', 1)
+        newKey = keys.get(oldKey, oldKey)
+
+        if not request.user.may.write(page):
+            continue
+
+        oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
+
+        if oldKey:
+            oldMetas = get_metas(request, page, [oldKey], abs_attach=False)
+            oldValues = oldMetas[oldKey]
+
+            oldMeta.setdefault(oldKey, list()).extend(oldValues)
+
+            if newKey != oldKey:
+                # Remove the corresponding values
+                newMeta.setdefault(oldKey, list()).extend([""] * len(oldValues))
+
+        if newKey:
+            missing = 0
+            if oldKey:
+                missing = len(oldValues) - len(newValues)
+
+            newMeta.setdefault(newKey, list()).extend(newValues)
+            newMeta.setdefault(newKey, list()).extend([""] * missing)
+
+    # Prune
+    for page, (oldMeta, newMeta) in list(pages.iteritems()):
+        for key in list(newMeta):
+            if key not in oldMeta:
+                continue
+            if oldMeta[key] != newMeta[key]:
+                continue
+            del oldMeta[key]
+            del newMeta[key]
+
+        if not (oldMeta or newMeta):
+            del pages[page]
+
+    return pages
 
 def show_queryform(wr, request, pagename):
     _ = request.getText
@@ -47,7 +137,7 @@ def show_editform(wr, request, pagename, args):
     for key in metakeys + ['']:
         wr(formatter.table_cell(1, {'class': 'meta_header'}))
         wr(u'<input class="metakey" type="text" name="%s" value="%s">',
-            ':: %s' % key, key)
+           u':: %s' % key, key)
     wr(formatter.table_row(0))
 
     values = dict()
@@ -156,51 +246,58 @@ def execute(pagename, request):
 
     # This action generates data using the user language
     request.setContentLanguage(request.lang)
+    form = fix_form(request.form)
 
-    if request.form.has_key('save') or request.form.has_key('saveform'):
-        # MetaFormEdit is much closer to setmeta in function
-        if request.form.has_key('saveform'):
+    if form.has_key('save') or form.has_key('saveform'):
+        # MetaFormEdit is much closer to set_meta in function
+        if form.has_key('saveform'):
             added, discarded = {pagename: dict()}, {pagename: dict()}
 
             # Pre-create page if it does not exist, using the template specified
-            template = request.form.get('template', [None])[0]
+            template = form.get('template', [None])[0]
             if template:
                 added[pagename]['gwikitemplate'] = template
 
-            # Ignore form clutter, decode keys encoded by form
-            keys = [decode_page(x.split('?')[1]) 
-                    for x in request.form if '?' in x]
+            # Ignore form clutter
+            keys = [x.split('?')[1] for x in form if '?' in x]
 
             old = get_metas(request, pagename, keys)
             for key in keys:
-                oldkey = encode_page(pagename + '?' + key)
+                oldkey = pagename + '?' + key
                 discarded[pagename][key] = old.get(key, list())
-                added[pagename][key] = request.form[oldkey]
+                added[pagename][key] = form[oldkey]
 
             _, msgs = set_metas(request, dict(), discarded, added)
 
         else:
-            msgs = process_edit(request, request.form)
+            msgs = list()
+            pages = parse_editform(request, form)
+
+            if pages:
+                for page, (oldMeta, newMeta) in pages.iteritems():
+                    msgs.append('%s: ' % page + 
+                                edit_meta(request, page, oldMeta, newMeta))
+            else:
+                msgs.append(request.getText('No pages changed'))
             
         msg = ''
-
         for line in msgs:
             msg += line + request.formatter.linebreak(0)
 
         request.reset()
-        backto = request.form.get('backto', [None])[0]
+        backto = form.get('backto', [None])[0]
         if backto:
             request.page = Page(request, backto)
         
         request.page.send_page(msg=msg)
-    elif request.form.has_key('args'):
+    elif form.has_key('args'):
         _enter_page(request, pagename)
         formatter = request.page.formatter
         
         request.write(formatter.heading(1, 2))
         request.write(formatter.text(_("Edit metatable")))
         request.write(formatter.heading(0, 2))
-        args = ', '.join(request.form['args'])
+        args = ', '.join(form['args'])
         show_editform(wr, request, pagename, args)
 
         _exit_page(request, pagename)

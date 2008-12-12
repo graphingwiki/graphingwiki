@@ -28,7 +28,6 @@
 """
 import os
 from tempfile import mkstemp
-from base64 import b64encode
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
@@ -42,8 +41,6 @@ from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
 from graphingwiki.patterns import actionname
-
-from savegraphdata import encode
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
