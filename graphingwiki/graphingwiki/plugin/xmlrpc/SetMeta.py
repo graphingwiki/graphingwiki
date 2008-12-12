@@ -27,8 +27,10 @@ def execute(xmlrpcobj, page, input, action='add',
         message = "You are not allowed to edit pages by XML-RPC"
         return xmlrpclib.Fault(1, _(message))
 
+    page = page.strip()
+
     # Fault at empty pagenames
-    if not page.strip():
+    if not page:
         return xmlrpclib.Fault(2, _("No page name entered"))
 
     if action == 'repl':
