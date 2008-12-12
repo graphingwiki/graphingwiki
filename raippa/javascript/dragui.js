@@ -26,14 +26,17 @@ $('tasklist_cont').setStyles({
 	'padding' : '0 0 0 5px',
 	'top': '140px'
 });
-$('coursemenu').setStyles({
+var coursemenu = $('coursemenu').setStyles({
 	'position' : 'fixed',
 	'top' : '200px',
 	'left' : '230px'
-}).grab(new Element('div',{
+});
+
+var infodiv = new Element('div',{
 	'id' : 'task_infodiv',
 	'html' : '<b>Info:</b><br>Click a task item to see and edit details.'
-}));
+});
+infodiv.inject(coursemenu.getElement('input[name=save]'),'before');
 
 //stores child data:  id : [child1,child2..]
 childBoxes = new Hash();
@@ -49,6 +52,10 @@ start_size = {
 el_size = {
 		'width' : 75,
 		'height' : 25
+}
+el_size_large = {
+		'width' : (el_size.width + 10),
+		'height': (el_size.height + 10)
 }
 $$('#start').each(function(drag){  
 
@@ -108,7 +115,7 @@ $$('.dragItem').each(function(item){
                 if(drop){
 				if(drop.id != 'start'){
 					drop.morph(el_size);
-					drop.getElements('canvas').morph(el_size);
+					drop.getElement('canvas').morph(el_size);
 				}else{
 					drop.morph(start_size);
 				}
@@ -130,17 +137,14 @@ $$('.dragItem').each(function(item){
 						});
 
                     }else{
-						drop.getElements('canvas').morph({
-							'height' : el_size.height + 10,
-							'width' : el_size.width + 10
-							});
-						drop.morph(el_size);
+						drop.getElement('canvas').morph(el_size_large);
+						drop.morph(el_size_large);
 					}
             },
             onLeave : function(el, drop){
 			if(drop.id != 'start'){
                 drop.morph(el_size);
-				drop.getElements('canvas').morph(el_size);
+				drop.getElement('canvas').morph(el_size);
 			}else{
 				drop.morph(start_size);
 			}
@@ -370,7 +374,7 @@ tmp.combine(childBoxes.get(el));
 childs = tmp.flatten();
 }
 return result.flatten();
-}
+	}
 
 /* Creates selector with caledar to set expiration date
 @param pDiv		div to aling with
@@ -914,35 +918,32 @@ var box = new Element('div', {
     'id' : id,
     'class' : 'l3'
 });
-if(enable_text){
-var hfix = description.toString().length > 18 ? 15 : 0;
-var wfix = 0;
-}else{
 var wfix = -75;
 var hfix = -25;
-}
 box.setStyles({
 		'text-align' : 'center',
 		'cursor' : 'move'
 		});
 
 box.setStyles(el_size);
-//box.height = 50 + hfix;
-//box.widht = 150;
 var canv = new Canvas();
-canv.setStyles({'position': 'relative'});
-canv.height = 50;
-canv.width = 150;
+//canv.setStyles({'position': 'relative'});
+
+canv.set('height',' 25px');
+canv.set('width', '75px');
+
 canv.setStyles(el_size);
-box.adopt(canv);
+box.grab(canv);
 var ctx = canv.getContext('2d');
 ctx.lineWidth =3;
 ctx.fillStyle = "#81BBF2";
 ctx.beginPath();
 
-	ctx.moveTo(75,0);
-	ctx.bezierCurveTo(175,0,175,50,75,50);
-	ctx.bezierCurveTo(-25,50,-25,0,75,0);
+	//ellips (37,0), (75,12), (37,25),(0,12)
+	ctx.moveTo(37,0);
+	ctx.bezierCurveTo(87,0,87,25,37,25);
+	ctx.bezierCurveTo(-12,25,-12,0,37,0);
+
 ctx.fill();
 
 //div for text and buttons
@@ -954,38 +955,16 @@ var content = new Element('div',{
 	'widht' : (145+wfix)+'px',
 	'position' : 'relative',
 	'margin-top' : (-50 - hfix) +'px',
-	'z-index' : '2'
+	'z-index' : '2',
+	'font-size':  '10px'
 }});
-if(enable_text){
-var descText = document.createTextNode(description.toString().substring(0,30));
-}else{
-var descText = document.createTextNode(' ');
-}
+
+var descText = document.createTextNode(description.toString().substring(0,10));
+
 content.appendChild(descText);
 //content.grab(new Element('br'));
-
-var del = new Element('a', {
-	'class' : 'jslink',
-	'text' : 'X',
-	'title' : 'Remove task'
-});
-del.setStyle('color', 'red');
-del.addEvent('click', function(){
-	if(confirm('Remove "'+ description+'" from tree?')){
-		deleteBox(id);
-	}
-});
-del.inject(content);
-//box.style.background = '#' + color;
-var but = new Element('input', {
-        'type' : 'button',
-        'value' : 'Edit'
-        });
-//but.inject(content);
-but.addEvent('click', function(){ editMenu(this);});
 box.grab(content);
 box.inject(document.body);
-
 //trying to move box to free space
 var ppos = $(pDiv).getCoordinates();
 bX =  ppos.left + ppos.width/2 - content.getCoordinates().width/2 +Math.ceil(cLkm/2) * 100 * Math.pow( -1, cLkm);
@@ -1021,11 +1000,6 @@ onDrag: function(){
         }
     }
 });
-//IE hack 
-canv.morph({
-        'height' : (50+hfix) + 'px',
-        'width' : (150+wfix)+'px'
-});
 
 tip = new Tips(content);
 
@@ -1041,10 +1015,18 @@ function showInfo(id){
 var alignto = $('ttypesel');
 var posx = alignto.getCoordinates().width + alignto.getPosition().x + 20;
 posy = alignto.getPosition().y;
+
 if($('task_infodiv')){
-	$('task_infodiv').destroy();
+	var infodiv = $('task_infodiv').empty();
+}else{
+	var infodiv = new Element('div', {
+		'id' : 'task_infodiv'
+	});
+
+	infodiv.inject($('coursemenu').getElement('input[name=save]'),'before');
 }
 
+var description = boxData.get(id+'_desc');
 var required = boxData.get(id + '_required');
 required = required ? required : "none";
 var expires = boxData.get(id + '_expires');
@@ -1052,24 +1034,38 @@ var type = boxData.get(id + '_type');
 var childs = childBoxes.get(id);
 var parents = getParentBox(id);
 parents = parents.erase("start");
-var infodiv = new Element('div', {
-'id' : 'task_infodiv'
-});
 //infodiv.inject('tasklist_cont', 'top');
-infodiv.inject('coursemenu');
 infodiv.grab(new Element('h4',{
 	'text': 'Info:',
 	'styles' : {
 		'margin' : '0 0 0 0'
 	}
 }));
+
+var del = new Element('input', {
+	'type' : 'button',
+	'value': 'delete',
+	'events': {
+		'click': function(){
+			if(confirm('Remove "'+ description+'" from tree?')){
+				deleteBox(id);
+				infodiv.empty();
+			}
+		}
+	},
+	'styles' : {
+		'float': 'right',
+		'margin-top': '-1.3em'
+	}});
+infodiv.grab(del);
+
 //inserting content to infodiv
 infodiv.grab(new Element('b',{ text : 'Id:'}));
 infodiv.appendText(boxData.get(id));
 infodiv.grab(new Element('br'));
 
 infodiv.grab(new Element('b', {text : 'Name: '}));
-infodiv.appendText(boxData.get(id+'_desc'));
+infodiv.appendText(description);
 
 /* list of childs */
 infodiv.grab(new Element('br'));
@@ -1085,7 +1081,6 @@ childs.each(function(el){
 			'click' : function(){
 				childBoxes.get(id).erase(el);
 				drawline();
-				infodiv.destroy();
 				showInfo(id);
 			}
 		}
@@ -1100,8 +1095,7 @@ childs.each(function(el){
 				'click' : function(){
 					$('ep_'+id).destroy();
 					boxData.get('endPoints').erase(id);
-					drawline(id);
-					infodiv.destroy();
+					drawline();
 					showInfo(id);
 				}
 			}
@@ -1113,7 +1107,6 @@ childs.each(function(el){
 		'events' : {
 			'click': function(){
 				newEndPoint(id);
-				infodiv.destroy();
 				showInfo(id);
 			}
 		}
