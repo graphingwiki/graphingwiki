@@ -1,22 +1,7 @@
 from MoinMoin.Page import Page
-from graphingwiki.editing import get_metas
-from raippa import removelink, reporterror, pageexists
+import MoinMoin.wikiutil as wikiutil
 
-def getgroups(request, parentpage):
-    linkedpage = request.graphdata.getpage(parentpage)
-    linking_in = linkedpage.get('in', {})
-    pagelist = linking_in.get("course", [])
-    groups = dict()
-    for page in pagelist:
-        if page.startswith(parentpage) and page.endswith("Group"):
-            groups[page] = list()
-            raw = Page(request, page).getPageText()
-            for line in raw.split("\n"):
-                if line.startswith(" * "):
-                    user_in_line = removelink(line[3:].rstrip())
-                    #user can only be in one group/course
-                    groups[page].append(user_in_line)
-    return groups
+from graphingwiki.editing import get_metas
 
 def getgrouphtml(request, groups):
     html = u'Select group from the list or create new.<br>\n'
@@ -62,10 +47,11 @@ def execute(macro, text):
     parentpage = text
     html = u'<h2>Group selector</h2>'
 
-    if not pageexists(request, parentpage):
+    if not Page(request, parentpage).exists():
         html += u'Parent %s doesn\'t exist.' % parentpage
         return html
 
+    getgroups = wikiutil.importPlugin(request.cfg, "action", 'editGroup', 'getgroups')
     groups = getgroups(request, parentpage)
     
     html += getgrouphtml(request, groups)
