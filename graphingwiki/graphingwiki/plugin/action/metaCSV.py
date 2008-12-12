@@ -36,6 +36,6 @@ def execute(pagename, request):
     writer = csv.writer(request, delimiter=';')
 
     for row in table:
-        writer.writerow(encode_page(x) for x in row)
+        writer.writerow(map(encode_page, row))
 	
     raise MoinMoinNoFooter
