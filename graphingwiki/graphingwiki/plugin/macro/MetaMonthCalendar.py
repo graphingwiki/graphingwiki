@@ -164,7 +164,10 @@ var dates = new Hash();
 
     for date, d in entries.iteritems():
         html += u'dates.set("%s","' % date
-        for cont in d:
+        for i, cont in enumerate(d):
+            if i == 4:
+                html += u'<br><b>%s more...</b>' % (len(d) - i)
+                break
             try:
                 start_time = cont['Time']
             except:
