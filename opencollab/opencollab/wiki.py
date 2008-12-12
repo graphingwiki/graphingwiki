@@ -275,6 +275,10 @@ class GraphingWiki(object):
         for key, values in meta.iteritems():
             keys[key] = list(values)
 
+        # If no categories specified, do not set categories to empty
+        if not 'category' in keys:
+            categoryMode = 'add'
+
         categories = keys.pop("category", list())
         createPageOnDemand = True
 
