@@ -42,8 +42,8 @@ def resolve_requests(new,mresolve):
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
     for rr in new:
         mr.stdin.write(rr + '\n')
-    stdoutput = mr.communicate()[0]
-    return stdoutput
+    (sout, err) = mr.communicate()
+    return sout, err
 
 def seed_initial(rlist,resolved,new): 
     dns_name = re.compile('\w\.\w')
@@ -105,8 +105,8 @@ def main():
     new = []
     read_input(rlist)
     seed_initial(rlist,resolved,new)
-    output = resolve_requests(new,path)
-    print output
+    out,err = resolve_requests(new,path)
+    print out
 
 if __name__ == "__main__":
     try:
