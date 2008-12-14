@@ -44,36 +44,31 @@ except ImportError:
 
 from tempfile import mkstemp
 
-from MoinMoin import config
 from MoinMoin.Page import Page
-from MoinMoin.util import MoinMoinNoFooter
-from MoinMoin.request import RequestModPy
+from MoinMoin.request.request_modpython import Request as RequestModPy
 
-from graphingwiki.editing import get_revisions, getmetas
+from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
-    if isinstance(request, RequestModPy):
-        request.setHttpHeader('Content-type: image/png')
-        del request.mpyreq.headers_out['Vary']
-    else:
-        request.write("Content-type: image/png\n\n")
+    request.emit_http_headers(['Content-Type: image/png'])
 
 def cairo_not_found():
-    request.setHttpHeader('Content-type: text/plain')
+    request.emit_http_headers(['Content-Type: text/plain'])
     request.write(_("ERROR: Cairo Python extensions not installed. " +\
                        "Not performing layout."))
-    raise MoinMoinNoFooter
 
 def write_surface(surface):
     # Output a PNG file
     tmp_fileno, tmp_name = mkstemp()
-    surface.write_to_png(tmp_name)
-    surface.finish()
-    
-    f = file(tmp_name)
-    data = f.read()
-    os.close(tmp_fileno)
-    os.remove(tmp_name)
+    try:
+        surface.write_to_png(tmp_name)
+        surface.finish()
+
+        f = file(tmp_name)
+        data = f.read()
+        os.close(tmp_fileno)
+    finally:
+        os.remove(tmp_name)
 
     return data
 
@@ -231,7 +226,9 @@ def plot_sparkline(results, text=True):
     
     return data
 
-def plot_error():
+def plot_error(request):
+    image_headers(request)
+
     # Just return an error message
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  56, 20)
@@ -245,7 +242,7 @@ def plot_error():
     
     ctx.set_source_rgb(0, 0, 0)
     ctx.move_to(0, 20)
-    ctx.show_text("No data")
+    ctx.show_text(request.getText("No data"))
     data = write_surface(surface)
     
     return data
@@ -253,6 +250,7 @@ def plot_error():
 def execute(pagename, request):
     if not cairo_found:
        cairo_not_found()
+       return
 
     image_headers(request)
 
@@ -273,17 +271,17 @@ def execute(pagename, request):
 
     # Show error if args on page and key are not passed
     if not params['page'] or not params['key']:
-        request.write(plot_error())
-        raise MoinMoinNoFooter
+        request.write(plot_error(request))
+        return
 
     # Get revision data
     page = Page(request, params['page'])
-    globaldata, pagelist, metakeys = get_revisions(request, page)
+    pagelist, metakeys = get_revisions(request, page)
 
     # Show error if no data on key
     if not params['key'] in metakeys:
-        request.write(plot_error())
-        raise MoinMoinNoFooter
+        request.write(plot_error(request))
+        return
 
     # If number of data points to graph are limited
     end_pts = 0
@@ -294,10 +292,9 @@ def execute(pagename, request):
     data = []
     key = params["key"]
     for page in pagelist[-1:end_pts:-1]:
-        metas = getmetas(request, globaldata, page,
-                         metakeys, display=False,
-                         checkAccess=False)
-        val = ''.join([x for x, y in metas.get(key, ('', ''))])
+        metas = get_metas(request, page, metakeys, checkAccess=False)
+                         
+        val = ''.join(metas.get(key, str()))
         try:
             val = float(val)
             data.append(val)
@@ -306,8 +303,8 @@ def execute(pagename, request):
 
     # Show error if no valid data
     if not data:
-        request.write(plot_error())
-        raise MoinMoinNoFooter
+        request.write(plot_error(request))
+        return
 
     if params['style'] == 'dot':
         request.write(plot_sparkdots(data))
@@ -315,4 +312,4 @@ def execute(pagename, request):
         request.write(plot_sparkline(data, text=False))
     else:
         request.write(plot_sparkline(data))
-    raise MoinMoinNoFooter
+
