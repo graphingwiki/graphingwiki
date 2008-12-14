@@ -44,7 +44,7 @@ class TestSetMeta(GwikiTests):
         for md in self.metaData:
             # Check that all metadata is there
             findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, md))
-            self.assert_(findMeta.search(res))
+            self.assert_(findMeta.search(res), "%s:: %s in '%s'" % (self.metaKey, md, res))
         GwikiTests.tearDown(self)
 
     def testAdd1(self):
@@ -60,35 +60,35 @@ class TestSetMeta(GwikiTests):
 
     def testReplace1(self):
         self.metaData = ["desdi", "dadaa"]
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace2(self):
         server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace3(self):
-        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'replace')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'repl')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace4(self):
         self.metaKey = "testi foo"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace5(self):
         self.metaKey = "testi:foo"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace6(self):
         self.metaKey = u"☠☠☠☠☠☠☃☃☃☃☃äääöööÄÄÄÖÖÖ€€€¶‰"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace7(self):
         self.metaKey = u"“بسملة”"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testAddCategories1(self):
         server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', False, 'add', ['CategoryUnitTest'])
