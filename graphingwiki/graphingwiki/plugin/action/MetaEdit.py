@@ -316,3 +316,10 @@ def execute(pagename, request):
         show_queryform(wr, request, pagename)
 
         _exit_page(request, pagename)
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()

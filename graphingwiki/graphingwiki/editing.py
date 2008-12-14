@@ -1157,6 +1157,8 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
         pass
     class Object(object):
         pass
+    class Cache(object):
+        pass
     class GraphData(dict):
         def getpage(self, page):
             return self.get(page, dict())
@@ -1164,8 +1166,8 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     request = Request()
     request.cfg = Config()
     request.cfg.cache = Cache()
+    request.cfg.page_category_regex = u'^Category[A-Z]'
     request.cfg.cache.page_category_regex = re.compile(u'^Category[A-Z]', re.UNICODE)
-
     request.graphdata = GraphData(graphdata)
 
     request.user = Object()
