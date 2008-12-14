@@ -3,3 +3,7 @@
         from graphingwiki.securitypolicy import SecurityPolicy
     except ImportError:
         pass
+    # enable xmlrpc:
+    xmlrpc_putpage_enabled = True
+    # anonymous users get to put stuff in your wiki over xmlrpc:
+    xmlrpc_putpage_trusted_only = False
