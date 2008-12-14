@@ -12,7 +12,7 @@ from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 from graphingwiki.patterns import encode
-from graphingwiki.editing import process_edit, save_template
+from graphingwiki.editing import save_template
 
 
 # Gets data in the same format as process_edit
@@ -61,10 +61,9 @@ def execute(xmlrpcobj, page, input, action='add',
     # default to add category
     else:
         added[page].setdefault('gwikicategory', list()).extend(catlist)
-
     if template:
         added[page]['gwikitemplate'] = template
-    
+   
     _, msg = set_metas(request, cleared, discarded, added)
     
     return msg
