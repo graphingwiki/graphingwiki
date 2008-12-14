@@ -287,14 +287,17 @@ def execute(pagename, request):
         raise MoinMoinNoFooter
 
     # If number of data points to graph are limited
-    end_pts = 0
+    end_pts = len(pagelist)
     if params['points']:
         end_pts = len(pagelist) - params['points']
 
     # Pagelist is reversed, go from history to current
     data = []
     key = params["key"]
-    for page in pagelist[-1:end_pts:-1]:
+    for i, page in enumerate(reversed(pagelist)):
+        if i == end_pts:
+            break
+
         metas = get_metas(request, page, metakeys, checkAccess=False)
                          
         val = ''.join(metas.get(key, str()))

@@ -47,9 +47,11 @@ from MoinMoin.Page import Page
 
 from graphingwiki.graph import Graph
 
+SEPARATOR = '-gwikiseparator-'
+
 # Get action name
 def actionname(request, pagename):
-    return '%s/%s' % (request.getScriptname(), pagename)
+    return '%s/%s' % (request.getScriptname(), url_escape(pagename))
 
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)

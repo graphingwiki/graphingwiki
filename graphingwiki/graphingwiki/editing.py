@@ -65,7 +65,7 @@ def get_revisions(request, page):
 
     pagename = page.page_name
     for rev in page.getRevList():
-        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
+        revlink = '%s-gwikirevision-%d' % (pagename, rev)
 
         # Data about revisions is now cached to the graphdata
         # at the same time this is used.
@@ -79,8 +79,9 @@ def get_revisions(request, page):
         alldata = parse_text(request, revpage, text)
         if alldata.has_key(pagename):
             alldata[pagename].setdefault('meta', 
-                                         dict())[u'#rev'] = [unicode(rev)]
-            # Do the cache. 
+                                         dict())[u'gwikirevision'] = \
+                                         [unicode(rev)]
+            # Do the cache.
             request.graphdata.cacheset(revlink, alldata[pagename])
 
             # Add revision as meta so that it is shown in the table
@@ -225,6 +226,7 @@ def edit_categories(request, savetext, action, catlist):
     >>> edit_categories(request, s, 'set', ['CategoryEi'])
     u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryEi\\n'
     """
+
     # Filter out anything that is not a category
     catlist = filter_categories(request, catlist)
     lines, confirmed = parse_categories(request, savetext)
@@ -947,7 +949,7 @@ def metatable_parseargs(request, args,
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in (x for x in get_keys(request, name) 
+                for key in (x for x in get_keys(request, name)
                             if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 

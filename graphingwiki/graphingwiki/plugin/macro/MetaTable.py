@@ -37,7 +37,7 @@ from graphingwiki.patterns import encode, format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style=dict()):
+def t_cell(macro, vals, head=0, style=dict(), rev=''):
     out = macro.request
 
     if not style.has_key('class'):
@@ -63,11 +63,8 @@ def t_cell(macro, vals, head=0, style=dict()):
 
         if head:
             kw = dict()
-            if '?action=recall' in data:
-                data = data.split('?')
-                query = '?'.join(data[1:])
-                data = data[0]
-                kw['querystr'] = query
+            if rev:
+                kw['querystr'] = '?action=recall&rev=' + rev
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
             out.write(macro.formatter.pagelink(0))
@@ -127,13 +124,21 @@ def construct_table(macro, pagelist, metakeys,
     tmp_page = request.page
 
     for page in pagelist:
+
+        if '-gwikirevision-' in page:
+            metas = get_metas(request, page, metakeys, 
+                              checkAccess=checkAccess)
+            page, revision = page.split('-gwikirevision-')
+        else:
+            metas = get_metas(request, page, metakeys, 
+                              checkAccess=checkAccess)
+            revision = ''
+
         pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
 
         row = row + 1
-        metas = get_metas(request, page, metakeys, 
-                          checkAccess=checkAccess)
 
         if row % 2:
             request.write(macro.formatter.table_row(1, {'rowclass':
@@ -141,7 +146,7 @@ def construct_table(macro, pagelist, metakeys,
         else:
             request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-even-row'}))
-        t_cell(macro, [page], head=1)
+        t_cell(macro, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
@@ -189,7 +194,7 @@ def execute(macro, args):
 
     def action_link(action, linktext, args):
         req_url = request.getScriptname() + \
-                  '/' + request.page.page_name + \
+                  '/' + url_escape(request.page.page_name) + \
                   '?action=' + action + '&args=' + url_escape(args)
         return '<a href="%s" id="footer">[%s]</a>\n' % \
                (request.getQualifiedURL(req_url), _(linktext))

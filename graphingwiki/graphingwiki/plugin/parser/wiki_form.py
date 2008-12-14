@@ -11,6 +11,8 @@ import cgi
  
 from MoinMoin.parser.wiki import Parser as wikiParser
 
+from graphingwiki.patterns import SEPARATOR
+
 def htmlquote(s):
     return cgi.escape(s, 1)
 
@@ -58,7 +60,8 @@ class Parser(wikiParser):
 
         return apply(wikiParser._dl_repl, (self, match)) + \
                '\n<input class="metavalue" type="text" name="' + \
-               htmlquote('%s?%s' % (self.pagename, dt)) + '" value="'
+               htmlquote('%s%s%s' % (self.pagename, SEPARATOR, dt)) + \
+                         '" value="'
 
     def _url_repl(self, word):
         if self.in_dd:
