@@ -52,18 +52,23 @@ def execute(xmlrpcobj, page, input, action='add',
         for key in input:
             cleared[page].add(key)
             added[page][key] = input[key]
+    else:
+        raise ValueError("action must be one of add, set, repl")
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
         cleared[page].add("gwikicategory")
         added[page].setdefault('gwikicategory', list()).extend(catlist)
-    # default to add category
-    else:
+    elif  category_edit == 'add':
         added[page].setdefault('gwikicategory', list()).extend(catlist)
+    else:
+        raise ValueError("category_edit must be one of add, del, set")
+
     if template:
         added[page]['gwikitemplate'] = template
    
     _, msg = set_metas(request, cleared, discarded, added)
     
+
     return msg
