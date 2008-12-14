@@ -378,18 +378,12 @@ def edit_meta(request, pagename, oldmeta, newmeta):
     for key in pre_replace:
         text = text.replace(key, pre_replace[key])
 
-    graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
-
     # PageEditor.saveText doesn't allow empty texts
     if not text:
         text = u" "
 
     try:
         msg = page.saveText(text, 0)
-        # This used to be here too, causing double page saves. It
-        # probably isn't what we want:
-        #  graphsaver(pagename, request, text, p.getPagePath(), p)
-
     except page.Unchanged:
         msg = u'Unchanged'
 
