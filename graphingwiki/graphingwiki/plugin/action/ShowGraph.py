@@ -522,53 +522,7 @@ class GraphShower(object):
             if outgraph.nodes.get(objname):
                 continue
 
-            # Node filters
-            for filt, doby in [(self.filterorder, self.orderby),
-                               (self.filtercolor, self.colorby)]:
-
-                # If no filters, continue
-                if not doby or not filt:
-                    continue
-
-                # Filtering of untyped nodes
-                if not getattr(obj, doby, list()) and NO_TYPE in filt:
-                    obj.gwikiremove = True
-                    break
-                # If filter is not relevant to this node
-                elif not getattr(obj, doby, list()):
-                    continue
-                
-                # Filtering by metadata values
-                target = set(getattr(obj, doby))
-                for rule in set(filt):
-
-                    if rule in target:
-                        # Filter only the metadata values filtered
-                        target.remove(rule)
-                        setattr(obj, doby, list(target))
-
-                # If all values of object were filtered, filter object
-                if not target:
-                    obj.gwikiremove = True
-                    break
-
-            # If object marked as removed from graph while filtering
-            if hasattr(obj, 'gwikiremove'):
-                continue
-
-            cats = set(obj.gwikicategory)
-            filtered = False
-
-            # Filter pages by category
-            for filt in self.filtercats:
-                if filt in cats:
-                    cats.remove(filt)
-                    obj.gwikicategory = list(cats)
-                    filtered = True
-
-            if filtered and not cats:
-                obj.gwikiremove = True
-                continue
+            obj = self.node_filters(obj)
 
             if not hasattr(obj, 'gwikiremove'):
                 # Not filtered - add node
@@ -1236,13 +1190,69 @@ class GraphShower(object):
 
         return formatter
 
+    def node_filters(self, obj):
+        # Node filters
+        for filt, doby in [(self.filterorder, self.orderby),
+                           (self.filtercolor, self.colorby)]:
+
+            # If no filters, continue
+            if not doby or not filt:
+                continue
+
+            # Filtering of untyped nodes
+            if not getattr(obj, doby, list()) and NO_TYPE in filt:
+                obj.gwikiremove = True
+                break
+            # If filter is not relevant to this node
+            elif not getattr(obj, doby, list()):
+                continue
+
+            # Filtering by metadata values
+            target = set(getattr(obj, doby))
+            for rule in set(filt):
+
+                if rule in target:
+                    # Filter only the metadata values filtered
+                    target.remove(rule)
+                    setattr(obj, doby, list(target))
+
+            # If all values of object were filtered, filter object
+            if not target:
+                obj.gwikiremove = True
+                break
+
+        # If object marked as removed from graph while filtering
+        if hasattr(obj, 'gwikiremove'):
+            return obj
+
+        cats = set(obj.gwikicategory)
+        filtered = False
+
+        # Filter pages by category
+        for filt in self.filtercats:
+            if filt in cats:
+                cats.remove(filt)
+                obj.gwikicategory = list(cats)
+                filtered = True
+
+        if filtered and not cats:
+            obj.gwikiremove = True
+
+        return obj
+
     def traverse(self, outgraph, nodes):
         newnodes = nodes
 
         # Add startpages, even if unconnected
         for node in nodes:
-            nodeitem = outgraph.nodes.add(node)
             oldnode = self.graphdata.nodes.get(node)
+
+            # Check if a startnode is filtered
+            oldnode = self.node_filters(oldnode)
+            if hasattr(oldnode, 'gwikiremove'):
+                continue
+
+            nodeitem = outgraph.nodes.add(node)
             if oldnode:
                 nodeitem.update(oldnode)
     

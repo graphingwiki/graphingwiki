@@ -620,6 +620,10 @@ def execute(pagename, request, text, pagedir, page):
             linktype, src = edge
             shelve_add_in(request.graphdata, [src, page], linktype)
 
+    # Remove deleted pages from the shelve
+    if not pageitem.exists():
+        del request.graphdata[pagename]
+
     # Clear cache
 
     # delete pagelinks
