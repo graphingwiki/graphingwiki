@@ -29,14 +29,12 @@
 """
 import re
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
+from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin import wikiutil
-from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import encode, actionname
+from graphingwiki.patterns import actionname, form_escape
 
 regexp_re = re.compile('^/.+/$')
 
@@ -45,7 +43,7 @@ def elemlist(request, formatter, elems, text):
     if not elems:
         return
     request.write(formatter.paragraph(1))
-    request.write(formatter.text(_("The following") + " %s " % text
+    request.write(formatter.text(_("The following") + " %s " % form_escape(text)
                                  + _("found")))
     request.write(formatter.paragraph(0))
     request.write(formatter.bullet_list(1))
@@ -94,7 +92,7 @@ def execute(pagename, request):
                   ''.join(request.form['action']))
 
     request.write(u'<input type="text" name="q" size=50 value="%s">' %
-                  q.replace('"', '&#x22;'))
+                  (form_escape(q)))
     request.write(u'<input type=submit value="' + _('Search') +
                   '">' + u'\n</form>\n')
 
@@ -104,14 +102,7 @@ def execute(pagename, request):
                 page_re = re.compile("%s" % q[1:-1])
                 q = ''
             except:
-                request.write(formatter.paragraph(1))
-                request.write(formatter.text(_("Bad regexp!")))
-                request.write(formatter.paragraph(0))
-
-                # End content
-                request.write(formatter.endContent()) # end content div
-                # Footer
-                request.theme.send_footer(pagename)
+                request.write(_sysmsg % ('error', _("Bad regexp!")))
                 
         graphdata = request.graphdata
         graphdata.reverse_meta()
@@ -122,13 +113,13 @@ def execute(pagename, request):
         keys = set([])
         for key in keys_on_pages:
             if q:
-                if key == url_quote(encode(q)):
+                if key == q:
                     keyhits.update(keys_on_pages[key])
-                    keys.add(unicode(url_unquote(key), config.charset))
+                    keys.add(key)
             else:
-                if page_re.match(unicode(url_unquote(key), config.charset)):
+                if page_re.match(key):
                     keyhits.update(keys_on_pages[key])
-                    keys.add(unicode(url_unquote(key), config.charset))
+                    keys.add(key)
 
         valhits = set([])
         vals = set([])
@@ -152,7 +143,10 @@ def execute(pagename, request):
 
         request.write(formatter.bullet_list(1))
         for page in sorted(keyhits):
-            page = unicode(url_unquote(page), config.charset)
+            # Do not include revisions etc so far, enabling this as per request
+            if not graphdata[page].has_key(u'saved'):
+                continue
+
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))
@@ -166,7 +160,10 @@ def execute(pagename, request):
         request.write(formatter.paragraph(0))
         request.write(formatter.bullet_list(1))
         for page in sorted(valhits):
-            page = unicode(url_unquote(page), config.charset)
+            # Do not include revisions etc so far, enabling this as per request
+            if not graphdata[page].has_key(u'saved'):
+                continue
+
             request.write(formatter.listitem(1))
             request.write(formatter.pagelink(1, page))
             request.write(formatter.text(page))
