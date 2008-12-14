@@ -19,7 +19,7 @@ from graphingwiki.editing import save_template
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
 def execute(xmlrpcobj, page, input, action='add',
-            createpage=True, category_edit='', catlist=[],
+            createpage=True, category_edit='add', catlist=[],
             template=''):
 
     request = xmlrpcobj.request
@@ -53,7 +53,7 @@ def execute(xmlrpcobj, page, input, action='add',
             cleared[page].add(key)
             added[page][key] = input[key]
     else:
-        raise ValueError("action must be one of add, set, repl")
+        raise ValueError("action must be one of add, set, repl (got %s)" % repr(action))
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
@@ -63,7 +63,7 @@ def execute(xmlrpcobj, page, input, action='add',
     elif  category_edit == 'add':
         added[page].setdefault('gwikicategory', list()).extend(catlist)
     else:
-        raise ValueError("category_edit must be one of add, del, set")
+        raise ValueError("category_edit must be one of add, del, set (got %s)" % repr(category_edit))
 
     if template:
         added[page]['gwikitemplate'] = template
