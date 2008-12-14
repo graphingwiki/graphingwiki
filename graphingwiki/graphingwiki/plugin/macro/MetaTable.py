@@ -63,7 +63,7 @@ def t_cell(macro, vals, head=0, style=dict()):
 
         if head:
             kw = dict()
-            if '?' in data:
+            if '?action=recall' in data:
                 data = data.split('?')
                 query = '?'.join(data[1:])
                 data = data[0]
