@@ -3,7 +3,7 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import get_metas
-from graphingwiki.editing import getkeys
+from graphingwiki.editing import get_keys
 from graphingwiki.editing import set_metas
 from graphingwiki.editing import metatable_parseargs
 
@@ -403,7 +403,7 @@ def editcourse(request, coursepage=None):
                     pointdata["next"].append(addlink(nextcp))
 
                 if pageexists(request, coursepoint):
-                    oldkeys = getkeys(request, coursepoint)
+                    oldkeys = get_keys(request, coursepoint)
                     remove = {coursepoint: oldkeys}
                 else:
                     remove = dict()
@@ -436,7 +436,7 @@ def editcourse(request, coursepage=None):
                 coursedata[u'start'].append(addlink(cp))
 
         if pageexists(request, coursepage):
-            oldkeys = getkeys(request, coursepage)
+            oldkeys = get_keys(request, coursepage)
             remove = {coursepage: oldkeys}
         else:
             remove = dict()

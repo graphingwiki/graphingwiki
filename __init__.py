@@ -6,7 +6,7 @@ from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import get_metas
 from graphingwiki.editing import set_metas
-from graphingwiki.editing import getkeys
+from graphingwiki.editing import get_keys
 
 raippacategories = {"statuscategory": "CategoryStatus",
                     "coursecategory": "CategoryCourse",
@@ -469,7 +469,7 @@ class Question:
             history = self.gethistory(user, course)
             if history:
                 historypage = history[3]
-                oldkeys = getkeys(self.request, historypage).keys()
+                oldkeys = get_keys(self.request, historypage).keys()
                 remove = {historypage: oldkeys}
                 break
         else:

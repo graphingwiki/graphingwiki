@@ -10,7 +10,7 @@ from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import list_attachments
 from graphingwiki.editing import get_metas
 from graphingwiki.editing import set_metas
-from graphingwiki.editing import getkeys
+from graphingwiki.editing import get_keys
 
 from raippa import addlink, randompage, pageexists, revert
 from raippa import raippacategories
@@ -576,7 +576,7 @@ def save_question(request, questiondata, questionpage=None):
 
     #save questionpage
     if questionpage not in newpages:
-        oldkeys = getkeys(request, questionpage).keys()
+        oldkeys = get_keys(request, questionpage).keys()
         remove = {questionpage: oldkeys}
     else:
         remove = dict()
@@ -715,7 +715,7 @@ def save_question(request, questiondata, questionpage=None):
         
         #save answer
         if answerpage not in newpages:
-            oldkeys = getkeys(request, answerpage).keys()
+            oldkeys = get_keys(request, answerpage).keys()
             remove = {answerpage: oldkeys}
         else:
             remove = dict()
@@ -752,7 +752,7 @@ def save_question(request, questiondata, questionpage=None):
         #save tip
         if tip:
             if tippage not in newpages:
-                oldkeys = getkeys(request, tippage).keys()
+                oldkeys = get_keys(request, tippage).keys()
                 remove = {tippage: oldkeys}
             else:
                 remove = dict()
