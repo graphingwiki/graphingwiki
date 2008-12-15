@@ -512,6 +512,22 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u""]))
     u' test:: 1\n'
 
+    Regression test empty categories should not be saved.
+
+    >>> replace_metas(request,
+    ...               u" test:: 1\n----\nCategoryFoo", 
+    ...               {u'gwikicategory': [u'CategoryFoo']},
+    ...               {u'gwikicategory': [u' ']})
+    u' test:: 1\n'
+
+    Regression on a metaformedit bug
+    
+    >>> replace_metas(request,
+    ...               u' aa:: k\n ab:: a\n ab:: a\n----\nCategoryFoo\n',
+    ...               {u'aa': [u'k'], u'ab': [u'a', u'a']},
+    ...               {u'aa': [u'k'], u'ab': [u'', u'', u' ']})
+    u' aa:: k\n----\nCategoryFoo'
+
     Regression test, bug #527: If the meta-to-be-replaced is not
     the first one on the page, it should still be replaced.
     
@@ -565,8 +581,12 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
 
     added = filter_categories(request, newcategories)
     discarded = filter_categories(request, oldcategories)
-    
+
     for index, value in reversed(list(enumerate(newcategories))):
+        # Strip empty categories left by metaedit et al
+        if not value.strip():
+            del newcategories[index]
+
         if value not in added:
             continue
 
@@ -613,6 +633,10 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
         for value in values:
+            # Empty values again supplied by metaedit and metaformedit
+            if not value.strip():
+                continue
+
             inclusion = " %s:: %s\n" % (key, value)
             oldtext = add_meta_regex(request, inclusion, value, oldtext)
 
