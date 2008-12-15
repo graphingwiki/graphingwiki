@@ -12,11 +12,12 @@ import socket
 import optparse
 import ConfigParser
 import subprocess
-from sets import Set
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from subprocess import Popen
-#from opencollab.util.network import dns_blist
+from opencollab.util.network import dns_blacklist
+dns_name = re.compile('\w\.\w')
+asn = re.compile('^(as|AS)\d{1,}$')
 
 def import_identities():
     pass
@@ -44,33 +45,32 @@ def resolve_requests(expanded,mresolve):
     return sout, err
 
 def generate_requests(resolved,new):
-    dns_name = re.compile('\w\.\w')
-    asn = re.compile('^(as|AS)\d{1,}$')
     expanded = []
     rr_type = re.compile(';TYPE;')
     for triplet in new.split('\n'):
+        if triplet:
+            subj, pred, obj = triplet.split(';')
+            if subj in dns_blacklist:
+                continue
         if rr_type.search(triplet):
             if triplet not in resolved:
-                rr, pred, type = triplet.split(';')
                 try:
-                    socket.inet_aton(rr)
+                    socket.inet_aton(subj)
                 except socket.error:
-                    if dns_name.search(rr):
-                        expand_name(rr,expanded)
-                    elif asn.search(rr):
-                        expand_as(rr,expanded)
+                    if dns_name.search(subj):
+                        expand_name(subj,expanded)
+                    elif asn.search(subj):
+                        expand_as(subj,expanded)
                     else:
                         pass
                 else:
-                    expand_ipv4(rr,expanded)
+                    expand_ipv4(subj,expanded)
         resolved.add(triplet)
     return expanded, resolved
 
 def seed_initial(new): 
-    dns_name = re.compile('\w\.\w')
-    asn = re.compile('^(as|AS)\d{1,}$')
     expanded = []
-    resolved = Set([])
+    resolved = set([])
     for rr in new:
         try:
             socket.inet_aton(rr)
