@@ -1225,6 +1225,10 @@ class GraphShower(object):
         if hasattr(obj, 'gwikiremove'):
             return obj
 
+        # If not categories to filter, bail out
+        if not hasattr(obj, 'gwikicategory'):
+            return obj
+
         cats = set(obj.gwikicategory)
         filtered = False
 
@@ -1245,12 +1249,16 @@ class GraphShower(object):
 
         # Add startpages, even if unconnected
         for node in nodes:
+            # Make sure that startnodes get loaded
+            load_node(self.request, self.graphdata, node, self.urladd)
+
             oldnode = self.graphdata.nodes.get(node)
 
-            # Check if a startnode is filtered
-            oldnode = self.node_filters(oldnode)
-            if hasattr(oldnode, 'gwikiremove'):
-                continue
+            # Check that (existing) startnode are properly filtered
+            if oldnode:
+                oldnode = self.node_filters(oldnode)
+                if hasattr(oldnode, 'gwikiremove'):
+                    continue
 
             nodeitem = outgraph.nodes.add(node)
             if oldnode:
