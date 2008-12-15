@@ -35,6 +35,9 @@ tld = ["ac", "ad", "ae", "af", "ag", "ai", "al", "am", "an", "ao",
 
 ## Regular expressions
 
+# Autonomous systems
+as_re = re.compile('^(as|AS)\d{1,}$')
+
 # This regexp is supposed to cover handles...
 # No : in parentheses to avoid times to be grasped
 handle_re  = re.compile(r'(?:\(|\w+Handle:\s+)([^\s:)]+\-[^\s:)]+)')
