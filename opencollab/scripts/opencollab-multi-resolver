@@ -43,7 +43,7 @@ def expand_ipv4(rr,new):
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
 
 def expand_as(rr,new):
-    new.append(rr + ".asn.cymru.com;TXT")
+    new.append(rr.upper() + ".asn.cymru.com;TXT")
 
 def expand_name(rr,new):
     new.append(rr + ";A")
@@ -93,7 +93,7 @@ def seed_initial(new):
                 resolved.add(rr + ";TYPE;NAME")
                 expand_name(rr,expanded)
             elif as_re.search(rr):
-                resolved.add(rr + ";TYPE;AS")
+                resolved.add(rr.upper() + ";TYPE;AS")
                 expand_as(rr,expanded)
             else:
                 pass
@@ -139,7 +139,7 @@ def main():
         url, mresolve = args
         collab = CLIWiki(url)
 
-    template = "CategoryIdentity"
+    template = "IdentityTemplate"
     new = read_input()
     expanded,resolved = seed_initial(new)
     while expanded:

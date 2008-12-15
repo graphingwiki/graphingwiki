@@ -40,7 +40,8 @@ mr_attributes = set(["SOA-REFRESH",
 "REGISTRY",
 "ALLOCATED",
 "REGISTRY",
-"CC"
+"CC",
+"AS-NAME"
 ])
 
 country_tld = {"Afghanistan": "AF", 
