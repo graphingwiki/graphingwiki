@@ -34,10 +34,12 @@ def getgrouphtml(request, groups):
         usershtml += u'</table>'
 
     selecthtml += u'</select><br>\n'
-
+    
+    html += u'<form method="post">'
     html += selecthtml
     html += u'<input type="text" name="groupname" size="20"/>'
     html += usershtml
+    html += u'</form>'
 
     return html
 
