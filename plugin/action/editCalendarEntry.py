@@ -11,7 +11,7 @@ from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
-from graphingwiki.editing import get_keys
+from graphingwiki.editing import getkeys
 from graphingwiki.editing import set_metas
 
 def _enter_page(request, pagename):
@@ -83,7 +83,7 @@ def savedata(request):
 
     if edit:
         pagename = edit
-        oldkeys = get_keys(request, pagename)
+        oldkeys = getkeys(request, pagename)
         remove = {pagename: oldkeys}
     else:
         remove = dict()
