@@ -42,7 +42,6 @@ mr_attributes = set(["SOA-REFRESH",
 "REGISTRY",
 "CC",
 "AS-NAME",
-"AS",
 "ISP"
 ])
 
