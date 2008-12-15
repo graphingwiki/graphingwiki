@@ -1,7 +1,7 @@
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 
-from graphingwiki.edting import get_metas
+from graphingwiki.editing import get_metas
 
 from raippa import removelink
 
