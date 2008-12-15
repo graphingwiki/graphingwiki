@@ -7,6 +7,7 @@
 import os
 import re
 import sys
+import csv
 import string
 import socket
 import optparse
@@ -19,8 +20,16 @@ from opencollab.util.network import dns_blacklist
 dns_name = re.compile('\w\.\w')
 asn = re.compile('^(as|AS)\d{1,}$')
 
-def import_identities():
+def import_identities(collab,collab_metas):
     pass
+
+def shred_triplets(resolved): 
+    collab_metas = Metas()
+    for triplet in resolved:
+        if(triplet):
+            subj, pred, obj = triplet.split(';')
+            collab_metas[subj][pred] = obj
+    return collab_metas
 
 def expand_ipv4(rr,new):
     new.append(rr + ";PTR")
@@ -125,13 +134,13 @@ def main():
         url, mresolve = args
         collab = CLIWiki(url)
 
-    collab_metas = Metas()
     new = read_input()
     expanded,resolved = seed_initial(new)
     while expanded:
         new,err = resolve_requests(expanded,mresolve)
         expanded,resolved = generate_requests(resolved,new)
-    print resolved
+    collab_metas = shred_triplets(resolved)
+    import_identities(collab,collab_metas)
 
 if __name__ == "__main__":
     try:
