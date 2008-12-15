@@ -41,7 +41,9 @@ mr_attributes = set(["SOA-REFRESH",
 "ALLOCATED",
 "REGISTRY",
 "CC",
-"AS-NAME"
+"AS-NAME",
+"AS",
+"ISP"
 ])
 
 country_tld = {"Afghanistan": "AF", 
