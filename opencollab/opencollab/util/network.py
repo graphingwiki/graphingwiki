@@ -31,13 +31,16 @@ dns_blacklist = set(["gtld-servers.net",
 "m.root-servers.net"])
 
 # multi-resolver primary objects
-mr_objectss = set(["SOA",
-"NS",
-"A",
-"BGP-PREFIX",
-"CC",
-"AS",
-"PTR"])
+mr_attributes = set(["SOA-REFRESH",
+"SOA-RETRY",
+"SOA-EXPIRE",
+"SOA-MINIMUM",
+"SOA-SERIAL",
+"TYPE",
+"REGISTRY",
+"ALLOCATED",
+"REGISTRY",
+])
 
 country_tld = {"Afghanistan": "AF", 
 "Albania": "AL", 

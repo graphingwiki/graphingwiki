@@ -16,7 +16,7 @@ import subprocess
 from subprocess import Popen
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
-from opencollab.util.network import dns_blacklist, mr_objects
+from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
 
 def import_identities(collab,collab_metas,template,verbose):
@@ -30,10 +30,10 @@ def shred_triplets(resolved):
     for triplet in resolved:
         if(triplet):
             subj, pred, obj = triplet.split(';')
-            if pred in mr_objects:
-                collab_metas[subj][pred] = '["%s"]' % obj
-            else:
+            if pred in mr_attributes:
                 collab_metas[subj][pred] = obj
+            else:
+                collab_metas[subj][pred] = '["%s"]' % obj
     return collab_metas
 
 def expand_ipv4(rr,new):
