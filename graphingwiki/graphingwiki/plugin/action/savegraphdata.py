@@ -620,9 +620,20 @@ def execute(pagename, request, text, pagedir, page):
             linktype, src = edge
             shelve_add_in(request.graphdata, [src, page], linktype)
 
-    # Remove deleted pages from the shelve
-    if not pageitem.exists():
+    ## Remove deleted pages from the shelve
+    # 1. Removing data at the moment of deletion
+    # Deleting == saving a revision with the text 'deletec/n', then 
+    # removing the revision. This seems to be the only way to notice.
+    if text == 'deleted\n':
         del request.graphdata[pagename]
+    else:
+        # 2. Removing data when rehashing. 
+        # New pages do not exist, but return a revision of 99999999 ->
+        # Check these both to avoid deleting new pages.
+        pf, rev, exists = pageitem.get_rev() 
+        if rev != 99999999:
+            if not exists:
+                del request.graphdata[pagename]
 
     # Clear cache
 
