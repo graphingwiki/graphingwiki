@@ -5,7 +5,7 @@ from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import get_metas
 from graphingwiki.editing import set_metas
-from graphingwiki.editing import getkeys
+from graphingwiki.editing import get_keys
 from graphingwiki.editing import metatable_parseargs
 
 from raippa import addlink, randompage, revert, getflow, pageexists
@@ -627,7 +627,7 @@ def save_task(request, taskdata, taskpage=None):
                     "gwikicategory": [raippacategories["taskcategory"]]}
             data = {taskpage: data}
             
-            oldkeys = getkeys(request, taskpage)
+            oldkeys = get_keys(request, taskpage)
             remove = {taskpage: oldkeys}
 
             backup[taskpage] = Page(request, taskpage).get_real_rev()
@@ -682,7 +682,7 @@ def save_task(request, taskdata, taskpage=None):
                     data["recap"] = addlink(recaptask)
 
                 if pageexists(request, taskpoint):
-                    oldkeys = getkeys(request, taskpoint)
+                    oldkeys = get_keys(request, taskpoint)
                     remove = {taskpoint: oldkeys}
                     backup[taskpoint] = Page(request, taskpoint).get_real_rev()
                 else:
@@ -707,7 +707,7 @@ def save_task(request, taskdata, taskpage=None):
                     "gwikicategory": [raippacategories["taskcategory"]]}
             data = {taskpage: data}
 
-            oldkeys = getkeys(request, taskpage)
+            oldkeys = get_keys(request, taskpage)
             remove = {taskpage: oldkeys}
 
             backup[taskpage] = Page(request, taskpage).get_real_rev()
