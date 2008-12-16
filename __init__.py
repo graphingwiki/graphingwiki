@@ -7,6 +7,7 @@ from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import get_metas
 from graphingwiki.editing import set_metas
 from graphingwiki.editing import get_keys
+from graphingwiki.editing import metatable_parseargs
 
 raippacategories = {"statuscategory": "CategoryStatus",
                     "coursecategory": "CategoryCourse",
@@ -68,6 +69,22 @@ class RaippaUser:
                 return True 
 
         return False
+
+    def getcourses(self):
+        courselist, keys, s = metatable_parseargs(self.request, raippacategories["coursecategory"], checkAccess=False)
+
+        userscourses = list()
+        for coursepage in courselist:
+            course = self.request.graphdata.getpage(coursepage)
+            linking_in = course.get('in', dict())
+            pagelist = linking_in.get("course", list())
+            for page in pagelist:
+                metas = get_metas(self.request, page, ["gwikicategory", "user"], display=True, checkAccess=False)
+                if raippacategories["historycategory"] in metas["gwikicategory"] and self.user in metas["user"]:
+                    userscourses.append(coursepage)
+                    break
+ 
+        return userscourses
 
     def canDo(self, page, course):
         _ = self.request.getText
