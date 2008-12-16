@@ -79,7 +79,7 @@ def get_revisions(request, page):
 
     pagename = page.page_name
     for rev in page.getRevList():
-        revlink = '%s?action=recall&rev=%d' % (pagename, rev)
+        revlink = '%s-gwikirevision-%d' % (pagename, rev)
 
         # Data about revisions is now cached to the graphdata
         # at the same time this is used.
@@ -93,8 +93,9 @@ def get_revisions(request, page):
         alldata = parse_text(request, revpage, text)
         if alldata.has_key(pagename):
             alldata[pagename].setdefault('meta', 
-                                         dict())[u'#rev'] = [unicode(rev)]
-            # Do the cache. 
+                                         dict())[u'gwikirevision'] = \
+                                         [unicode(rev)]
+            # Do the cache.
             request.graphdata.cacheset(revlink, alldata[pagename])
 
             # Add revision as meta so that it is shown in the table
@@ -224,6 +225,7 @@ def edit_categories(request, savetext, action, catlist):
     >>> edit_categories(request, s, 'set', ['CategoryEi'])
     u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryEi\\n'
     """
+
     # Filter out anything that is not a category
     catlist = filter_categories(request, catlist)
     lines, confirmed = parse_categories(request, savetext)
@@ -418,18 +420,12 @@ def edit_meta(request, pagename, oldmeta, newmeta):
     for key in pre_replace:
         text = text.replace(key, pre_replace[key])
 
-    graphsaver = wikiutil.importPlugin(request.cfg, 'action', 'savegraphdata')
-
     # PageEditor.saveText doesn't allow empty texts
     if not text:
         text = u" "
 
     try:
         msg = page.saveText(text, 0)
-        # This used to be here too, causing double page saves. It
-        # probably isn't what we want:
-        #  graphsaver(pagename, request, text, p.getPagePath(), p)
-
     except page.Unchanged:
         msg = u'Unchanged'
 
@@ -558,6 +554,22 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(test=[u"1", u""]))
     u' test:: 1\n'
 
+    Regression test empty categories should not be saved.
+
+    >>> replace_metas(request,
+    ...               u" test:: 1\n----\nCategoryFoo", 
+    ...               {u'gwikicategory': [u'CategoryFoo']},
+    ...               {u'gwikicategory': [u' ']})
+    u' test:: 1\n'
+
+    Regression on a metaformedit bug
+    
+    >>> replace_metas(request,
+    ...               u' aa:: k\n ab:: a\n ab:: a\n----\nCategoryFoo\n',
+    ...               {u'aa': [u'k'], u'ab': [u'a', u'a']},
+    ...               {u'aa': [u'k'], u'ab': [u'', u'', u' ']})
+    u' aa:: k\n----\nCategoryFoo'
+
     Regression test, bug #527: If the meta-to-be-replaced is not
     the first one on the page, it should still be replaced.
     
@@ -611,8 +623,12 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
 
     added = filter_categories(request, newcategories)
     discarded = filter_categories(request, oldcategories)
-    
+
     for index, value in reversed(list(enumerate(newcategories))):
+        # Strip empty categories left by metaedit et al
+        if not value.strip():
+            del newcategories[index]
+
         if value not in added:
             continue
 
@@ -659,6 +675,10 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
         for value in values:
+            # Empty values again supplied by metaedit and metaformedit
+            if not value.strip():
+                continue
+
             inclusion = " %s:: %s\n" % (key, value)
             oldtext = add_meta_regex(request, inclusion, value, oldtext)
 
@@ -989,7 +1009,7 @@ def metatable_parseargs(request, args,
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in (x for x in get_keys(request, name) 
+                for key in (x for x in get_keys(request, name)
                             if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 

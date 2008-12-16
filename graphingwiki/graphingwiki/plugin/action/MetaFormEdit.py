@@ -16,7 +16,7 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.patterns import encode, actionname, form_escape
+from graphingwiki.patterns import encode, actionname, form_escape, SEPARATOR
 
 from savegraphdata import parse_text
 
@@ -140,11 +140,12 @@ def execute(pagename, request):
     def repl_subfun(mo):
         pagekey, val = mo.groups()
 
-        msg = ''
-        key = pagekey.split('?')[1]
+        msg = ""
+        key = pagekey.split(SEPARATOR)[1]
+
         # Placeholder key key
         if key in vals_on_keys:
-            msg = wr('<select name="%s">', pagekey)
+            msg += wr('<select name="%s">', pagekey)
             msg += wr('<option value=" ">%s</option>', _("None"))
 
             for keyval in sorted(vals_on_keys[key]):
@@ -161,6 +162,7 @@ def execute(pagename, request):
 
         msg += wr('<input class="metavalue" type="text" ' + \
                       'name="%s" value="">', pagekey)
+
         return msg
 
     data = out.getvalue()

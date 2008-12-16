@@ -30,8 +30,10 @@ def execute(xmlrpcobj, page, input, action='add',
     if not request.user.may.write(page):
         return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
 
+    page = page.strip()
+
     # Fault at empty pagenames
-    if not page.strip():
+    if not page:
         return xmlrpclib.Fault(2, _("No page name entered"))
 
     # Pre-create page if it does not exist, using the template specified

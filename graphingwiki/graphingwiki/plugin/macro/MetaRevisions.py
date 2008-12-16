@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-"
 """
-    LinkedIn macro plugin to MoinMoin/Graphingwiki
-     - Shows pages in which the current page has been linked in
+    MetaRevisions macro plugin to MoinMoin/Graphingwiki
+     - Outputs a table of metadata as seen in the page's history.
+       Takes metatable arguments.
 
-    @copyright: 2006 by Juhani Eronen <exec@iki.fi>
+    @copyright: 2008 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person

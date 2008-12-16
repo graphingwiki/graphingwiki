@@ -63,7 +63,6 @@ def execute(pagename, request):
     request.http_headers()
     _ = request.getText
 
-
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
@@ -83,8 +82,6 @@ def execute(pagename, request):
     q = ''
     if request.form.has_key('q'):
         q = ''.join(request.form['q'])
-
-    pagename = '../' * pagename.count('/') + pagename
 
     request.write(u'<form method="GET" action="%s">\n' %
                   actionname(request, pagename))

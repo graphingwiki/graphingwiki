@@ -9,12 +9,15 @@
 
 action_name = 'MetaEdit'
 
+from urllib import unquote as url_unquote
+
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import get_metas, set_metas
 from graphingwiki.editing import metatable_parseargs, edit_meta
-from graphingwiki.patterns import actionname, form_escape, decode_page, encode_page
+from graphingwiki.patterns import actionname, form_escape, SEPARATOR, \
+    decode_page
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
@@ -62,11 +65,14 @@ def parse_editform(request, form):
     # Value changes
     for pageAndKey, newValues in form.iteritems():
         # At least the key 'save' may be there and should be ignored
-        if not '?' in pageAndKey:
+        if not SEPARATOR in pageAndKey:
             continue
 
         # Form keys not autodecoded from utf-8
-        page, oldKey = pageAndKey.split('?', 1)
+        page, oldKey = pageAndKey.split(SEPARATOR, 1)
+
+        # Decoding pagename
+        page = url_unquote(page)
         newKey = keys.get(oldKey, oldKey)
 
         if not request.user.may.write(page):
@@ -178,8 +184,7 @@ def show_editform(wr, request, pagename, args):
                 wr(formatter.table_row(1))
 
             for key in metakeys + ['']:
-                
-                inputname = frompage + u'?' + key
+                inputname = frompage + SEPARATOR + key
 
                 if len(values[frompage][key]) >= (i + 1):
                     val = values[frompage][key][i]
@@ -259,11 +264,11 @@ def execute(pagename, request):
                 added[pagename]['gwikitemplate'] = template
 
             # Ignore form clutter
-            keys = [x.split('?')[1] for x in form if '?' in x]
+            keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
             old = get_metas(request, pagename, keys)
             for key in keys:
-                oldkey = pagename + '?' + key
+                oldkey = pagename + SEPARATOR + key
                 discarded[pagename][key] = old.get(key, list())
                 added[pagename][key] = form[oldkey]
 
