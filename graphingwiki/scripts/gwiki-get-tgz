@@ -1,15 +1,33 @@
-
-#!/bin/sh
+#!/usr/bin/env bash
 set -e
 
-repourl=http://svn.graphingwiki.python-hosting.com/trunk
+function usage {
+    echo usage: get-gwiki-tgz '<revision>' '[branch]'
+    echo "To see latest revision, use svn info '$repobase'. If branch is omitted, trunk is assumed."
+    exit 1
+}
 
-if [ $# != 1 ]; then
-    echo usage: get-gwiki-tgz '<revision>'
-    echo "(to see latest revision, use svn info $repourl using a recent enough snv)"
-    exit 0
+repobase=http://svn.graphingwiki.python-hosting.com
+
+if [ "$1" = "-h" ]; then
+   usage
 fi
-d=`mktemp -d`
-svn co -r $1 $repourl $d/graphingwiki-$1 || exit 1
-(cd $d && tar -cf - graphingwiki-$1) | gzip > graphingwiki-$1.tgz 
-rm -fr $d
+
+if [ "$#" = 1 ]; then
+   repobase=$repobase/trunk
+   branch_id=trunk
+elif [ "$#" = 2 ]; then
+   repobase=$repobase/branches/$2
+   branch_id=$2
+else
+   usage
+fi
+
+
+
+d=`mktemp -d /tmp/gwiki-get-tgz.XXXXX`
+trap "echo deleting temp dir >&2; rm -rf -fr $d" 0
+pkgname=graphingwiki-$branch_id-$1
+svn co -r $1 $repobase $d/$pkgname || exit 1
+tar -C $d -czf $pkgname.tgz $pkgname
+
