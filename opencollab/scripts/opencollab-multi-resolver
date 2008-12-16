@@ -21,7 +21,8 @@ from opencollab.util.regexp import *
 
 def import_identities(collab,collab_metas,template,verbose):
     for page,pmeta in collab_metas.iteritems():
-        status = collab.setMeta(page,pmeta,template=template,replace=True)
+        if(page):
+            status = collab.setMeta(page,pmeta,template=template,replace=True)
     if verbose:
         print status
 
