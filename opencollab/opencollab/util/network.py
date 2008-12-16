@@ -32,6 +32,7 @@ dns_blacklist = set(["gtld-servers.net",
 
 # multi-resolver primary objects
 mr_attributes = set(["SOA-REFRESH",
+"ATTRIBUTION",
 "SOA-RETRY",
 "SOA-EXPIRE",
 "SOA-MINIMUM",
