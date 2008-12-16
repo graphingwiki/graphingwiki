@@ -41,7 +41,7 @@ from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin import config
 
-from graphingwiki.securitypolicy import underlay_to_pages
+from graphingwiki.editing import underlay_to_pages
 
 # securitypolicy does magic monkey-patching of Moin's Request class on import
 import graphingwiki.securitypolicy
