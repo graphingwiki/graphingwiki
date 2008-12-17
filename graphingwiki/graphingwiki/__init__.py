@@ -53,6 +53,7 @@ def graphdata_save(self, *args, **keys):
     graphsaver(self.page_name, self.request, text, path, self)
 
 def graphdata_delete(self, *args, **keys):
+    self.request.graphdata.writelock()
     self.request.graphdata.pop(self.page_name, None)
 
 # Main function for injecting graphingwiki extensions straight into
