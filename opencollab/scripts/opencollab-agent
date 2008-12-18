@@ -44,7 +44,7 @@ def readData(*fds):
  
     return datas
 
-def runOneTask(agentId, wiki, interval=10.0, dieAfter=10*60.0):
+def runOneTask(agentId, wiki, interval=60.0, dieAfter=10*60.0):
     while True:
         print "Fetching a new task"
         try:
