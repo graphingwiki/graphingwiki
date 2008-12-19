@@ -740,19 +740,12 @@ def savetext(request, pagename, newtext):
 
     """
 
-    raise Exception("this function should either be deleted or updated")
+    page = PageEditor(request, pagename)
 
-    def replace_metas(pagename, oldtext):
-        return newtext
-
-    # For some reason when saving a page with RequestCLI,
-    # the pagelinks will present problems with patterns
-    # unless explicitly cached
-    msg, p = edit(pagename, replace_metas, {}, {}, request)
-    if msg != u'Unchanged':
-        req = p.request
-        req.page = p
-        p.getPageLinks(req)
+    try:
+        msg = page.saveText(newtext, 0)
+    except page.Unchanged:
+        msg = u'Unchanged'
 
     return msg
 
