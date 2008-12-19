@@ -475,7 +475,7 @@ def add_meta_regex(request, inclusion, newval, oldtext):
     pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
     newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
     if not repls:
-        oldtext = oldtext.rstrip('\n')
+        oldtext = oldtext.strip('\n')
         oldtext += '\n%s\n' % (inclusion)
     else:
         oldtext = newtext
@@ -515,7 +515,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               u"This is just filler\nYeah",
     ...               dict(test=[]),
     ...               dict(test=[u"1", u"2"]))
-    u'This is just filler\nYeah\n test:: 1\n test:: 2\n\n'
+    u'This is just filler\nYeah\n test:: 1\n test:: 2\n'
     >>> replace_metas(request,
     ...               u"This is just filler\n test:: 1\nYeah",
     ...               dict(test=[u"1"]),
@@ -528,7 +528,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               u"",
     ...               dict(),
     ...               dict(gwikicategory=[u"test"]))
-    u'\n gwikicategory:: test\n\n'
+    u'\n gwikicategory:: test\n'
     >>> replace_metas(request,
     ...               u"",
     ...               dict(),
@@ -578,6 +578,12 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(foo=[u"2"]),
     ...               dict(foo=[u""]))
     u' bar:: 1\n'
+
+    replace_metas(request, 
+    ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
+    ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
+    ...           {'status': [u'', 'pending'], 'heartbeat': [u'', '1229625590.17'], 'agent': [u'', '127.0.0.1-4124520965']})
+    u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
     """
 
     oldtext = oldtext.rstrip()
@@ -679,7 +685,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             if not value.strip():
                 continue
 
-            inclusion = " %s:: %s\n" % (key, value)
+            inclusion = " %s:: %s" % (key, value)
             oldtext = add_meta_regex(request, inclusion, value, oldtext)
 
     return oldtext
@@ -776,19 +782,12 @@ def savetext(request, pagename, newtext):
 
     """
 
-    raise Exception("this function should either be deleted or updated")
+    page = PageEditor(request, pagename)
 
-    def replace_metas(pagename, oldtext):
-        return newtext
-
-    # For some reason when saving a page with RequestCLI,
-    # the pagelinks will present problems with patterns
-    # unless explicitly cached
-    msg, p = edit(pagename, replace_metas, {}, {}, request)
-    if msg != u'Unchanged':
-        req = p.request
-        req.page = p
-        p.getPageLinks(req)
+    try:
+        msg = page.saveText(newtext, 0)
+    except page.Unchanged:
+        msg = u'Unchanged'
 
     return msg
 
