@@ -43,8 +43,8 @@ from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
 
-# securitypolicy does magic monkey-patching of Moin's Request class on import
-import graphingwiki.securitypolicy
+from graphingwiki import install_hooks
+install_hooks()
 
 usage = "usage: %prog <path-to-wiki> [pagename]\n"
 parser = OptionParser(usage=usage)
