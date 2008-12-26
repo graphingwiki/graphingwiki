@@ -24,7 +24,7 @@ Preconditions:
 1. Install the python extension
    % python setup.py install
 
-2. Install SecurityPolicy to be used with GraphingWiki
+2. Install Hooks to be used with GraphingWiki
    % cat wikiconfig-add.txt >> /WIKIDIR/config/wikiconfig.py
 
 3. Install plugins to wiki
