@@ -50,7 +50,7 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.patterns import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape
+from graphingwiki.patterns import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node
 from graphingwiki.editing import ordervalue
 
 import math
