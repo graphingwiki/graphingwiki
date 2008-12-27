@@ -14,12 +14,12 @@ def ignore(*args, **keys):
     pass
 
 def monkey_patch(original, on_success=ignore, always=ignore):
-    def _patched(*args, **keys):
+    def _patched(self, *args, **keys):
         try:
-            result = original(*args, **keys)
+            result = original(self, *args, **keys)
         finally:
-            always(*args, **keys)
-        on_success(*args, **keys)
+            always(self)
+        on_success(self, result)
         return result
     return _patched
 
@@ -32,12 +32,12 @@ def graphdata_getter(self):
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
 
-def graphdata_close(self, *args, **keys):
+def graphdata_close(self):
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
         graphdata.closedb()
 
-def graphdata_save(self, *args, **keys):
+def graphdata_save(self, result):
     # Save to graph file if plugin available.
     try:
         graphsaver = importPlugin(self.request.cfg, "action", "savegraphdata")
@@ -52,7 +52,9 @@ def graphdata_save(self, *args, **keys):
 
     graphsaver(self.page_name, self.request, text, path, self)
 
-def graphdata_delete(self, *args, **keys):
+def graphdata_delete(self, (success, _)):
+    if not success:
+        return
     self.request.graphdata.writelock()
     self.request.graphdata.pop(self.page_name, None)
 
