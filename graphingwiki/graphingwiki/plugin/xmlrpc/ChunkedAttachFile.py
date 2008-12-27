@@ -69,10 +69,7 @@ def load(request, pagename, filename, start, end):
 def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
     _ = request.getText
 
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
+    if not request.user.trusted:
         return xmlrpclib.Fault(1, _("You are not allowed to attach a "+
                                     "file to this page"))
 
@@ -103,7 +100,7 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
             stream.close()
 
         # Fail if the file doesn't match and we don't want to overwrite.
-        if overwrite:
+        if not overwrite:
             return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
 
     # If there are missing chunks, just return them.
@@ -143,13 +140,13 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         delete_attachfile(request, pagename, bite)
 
     # On success signal that there were no missing chunks.
-    if success is True:
+    if success:
         return list()
     
     if overwrite == False:
         return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
 
-    return xmlrpclib.Fault(3, _("Unknown error while attaching file"))
+    return xmlrpclib.Fault(2, _("Attachment not saved"))
 
 def execute(xmlrpcobj, page, file, action='info', start=None, end=None):
     request = xmlrpcobj.request
@@ -167,4 +164,4 @@ def execute(xmlrpcobj, page, file, action='info', start=None, end=None):
     else:
         success = xmlrpclib.Fault(3, _("No method specified or invalid span"))
 
-    return map(unicode, success)
+    return success
