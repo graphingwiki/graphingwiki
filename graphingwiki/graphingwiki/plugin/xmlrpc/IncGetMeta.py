@@ -77,4 +77,5 @@ def inc_get_metas(request, args, handle=None):
     return [incremental, handle, diff(previous, current)]
 
 def execute(xmlrpcobj, query, handle=None):
+    request = xmlrpcobj.request
     return inc_get_metas(request, query, handle)

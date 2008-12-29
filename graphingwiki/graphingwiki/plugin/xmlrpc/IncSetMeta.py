@@ -7,4 +7,5 @@
 from graphingwiki.editing import set_metas
 
 def execute(xmlrpcobj, cleared, discarded, added):
+    request = xmlrpcobj.request
     return set_metas(request, cleared, discarded, added)
