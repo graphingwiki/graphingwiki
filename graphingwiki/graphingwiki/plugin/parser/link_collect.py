@@ -171,7 +171,7 @@ class Parser(WikiParser):
         target = self._fix_attach_uri(target)
 
         # Add extended links, where applicable
-        if ': ' in desc and not self.in_dd:
+        if desc and ': ' in desc and not self.in_dd:
             key = desc.split(': ')[0]
             self.definitions.setdefault(key, list()).append(('wikilink',
                                                              (raw, target)))
