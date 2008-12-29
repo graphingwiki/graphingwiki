@@ -5,7 +5,7 @@ from MoinMoin.formatter import FormatterBase
 class Formatter(FormatterBase):
     """ Collect text (metadata text values) and format nothing :-) """
     def __init__(self, request, **kw):
-        self.textstorage = ''
+        self.textstorage = list()
         FormatterBase.__init__(self, request, **kw)
     
     # Whenever collecting text, remind the parser about having done so
