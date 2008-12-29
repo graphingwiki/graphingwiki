@@ -9,6 +9,8 @@ import optparse
 import ConfigParser
 import getpass
 import imaplib
+import email
+from email.Iterators import body_line_iterator
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.regexp import *
@@ -33,10 +35,13 @@ def read_spam(imap_server,imap_user):
     mailbox = imaplib.IMAP4_SSL(imap_server) 
     mailbox.login(imap_user,getpass.getpass())
     mailbox.select()
-    typ, data = mailbox.search(None, 'ALL')
+    typ, data = mailbox.search(None, 'NEW')
     for num in data[0].split():
         typ, data = mailbox.fetch(num, '(RFC822)')
-        print 'Message %s\n%s\n' % (num, data[0][1])
+        msg = email.message_from_string(data[0][1])
+        for line in body_line_iterator(msg):
+            if url_all_re.search(line):
+                print line.strip()
     mailbox.close()
     mailbox.logout()
 
