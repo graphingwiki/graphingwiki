@@ -148,8 +148,12 @@ class Parser(WikiParser):
         return [(x, y) for x, y in groups.iteritems() if y]
 
     def _fix_attach_uri(self, target):
-        if target.split(':')[0] in ['attachment', 'inline', 'drawing']:
-            scheme, att = target.split(':')
+        split = target.split(":", 1)
+        if len(split) != 2:
+            return target
+
+        scheme, att = split
+        if scheme in ('attachment', 'inline', 'drawing'):
             if len(att.split('/')) == 1:
                 target = "%s:%s/%s" % (scheme, self.pagename, att)
 
