@@ -6,7 +6,6 @@ from xml.dom.minidom import Document
 
 from MoinMoin.Page import Page
 from MoinMoin import config
-from MoinMoin.util import MoinMoinNoFooter
 
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.patterns import format_wikitext
@@ -40,8 +39,8 @@ def execute(pagename, request):
 
     args = ', '.join(x for x in request.form.get('arg', list()))
 
-    request.http_headers(["Content-type: application/xml;charset=%s" %
-                          config.charset])
+    request.emit_http_headers(["Content-type: application/xml;charset=%s" %
+                               config.charset])
 
     doc = Document()
     data = doc.createElement('data')
@@ -86,5 +85,3 @@ def execute(pagename, request):
         event.appendChild(ptext)
 
     request.write(doc.toprettyxml(indent='  '))
-
-    raise MoinMoinNoFooter

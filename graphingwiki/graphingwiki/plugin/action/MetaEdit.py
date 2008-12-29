@@ -241,6 +241,7 @@ def _exit_page(request, pagename):
     request.write(request.page.formatter.endContent()) # end content div
     # Footer
     request.theme.send_footer(pagename)
+    request.theme.send_closing_html()
 
 def execute(pagename, request):
     _ = request.getText

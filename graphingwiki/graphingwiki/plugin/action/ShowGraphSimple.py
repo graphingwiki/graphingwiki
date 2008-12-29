@@ -100,8 +100,7 @@ class GraphShowerSimple(GraphShower):
         if self.do_form:
             if self.format == 'dot':
                 self.send_gv(gr)
-                # Cleanup
-                raise MoinMoinNoFooter
+                return
             else:
                 self.send_form()
 
@@ -255,7 +254,7 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(_(\
                         "ERROR: Graphviz Python extensions not installed. " +\
                         "Not performing layout.")))
-            raise MoinMoinNoFooter
+            return
         
         formatcontent = self.format
 
@@ -278,16 +277,10 @@ class GraphShowerSimple(GraphShower):
             outgraph = self.get_graph()
             gr = self.generate_layout(outgraph)
             self.send_graph(gr)
-            # Cleanup
-            raise MoinMoinNoFooter
-
         else:
-
             outgraph = self.get_graph()
             gr = self.generate_layout(outgraph)
             self.send_legend()
-            # Cleanup
-            raise MoinMoinNoFooter
 
     def execute(self):
         self.form_args()

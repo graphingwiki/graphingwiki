@@ -31,7 +31,7 @@
 from graphingwiki.editing import metatable_parseargs, getmetas
 
 def execute(pagename, request):
-    request.http_headers()
+    request.emit_http_headers()
     _ = request.getText
 
     args = request.form.get('args', [None])[0]

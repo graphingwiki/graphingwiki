@@ -60,7 +60,7 @@ def elemlist(request, formatter, elems, text):
     request.write(formatter.bullet_list(0))
 
 def execute(pagename, request):
-    request.http_headers()
+    request.emit_http_headers()
     _ = request.getText
 
     # This action generate data using the user language
@@ -174,3 +174,5 @@ def execute(pagename, request):
 
     # Footer
     request.theme.send_footer(pagename)
+
+    request.theme.send_closing_html()

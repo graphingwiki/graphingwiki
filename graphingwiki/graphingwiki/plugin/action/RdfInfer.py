@@ -52,7 +52,7 @@ query = ur'\s*{' + lfact + ur'}\s*->\s*\[\]\s*\.\s*'
 rule = ur'\s*{' + fact + "+" + lfact + ur'}\s*->\s*{' + lfact + ur'}\s*\.\s*'
 
 def execute(pagename, request):
-    request.http_headers()
+    request.emit_http_headers()
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
@@ -136,3 +136,5 @@ def execute(pagename, request):
     request.write(formatter.endContent()) # end content div
     # Footer
     request.theme.send_footer(pagename)
+
+    request.theme.send_closing_html()
