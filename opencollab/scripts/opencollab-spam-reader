@@ -34,7 +34,7 @@ def parse_config(cpath, args):
 
 def read_spam(imap_server,imap_user):
     href = re.compile('\w+=\"')
-    tag = re.compile('\">.*$')
+    tag = re.compile('\">?.*$')
     mailbox = imaplib.IMAP4_SSL(imap_server) 
     mailbox.login(imap_user,getpass.getpass())
     mailbox.select()
