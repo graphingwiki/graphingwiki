@@ -4,15 +4,11 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os
 import re
-import sys
-import csv
-import string
 import socket
 import optparse
-import ConfigParser
 import subprocess
+import ConfigParser
 from subprocess import Popen
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func

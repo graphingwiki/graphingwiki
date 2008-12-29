@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re
+import optparse
+import ConfigParser
+import getpass
+import imaplib
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Metas, Meta, Func
+from opencollab.util.regexp import *
+
+def import_identities(collab,collab_metas,template,verbose):
+    for page,pmeta in collab_metas.iteritems():
+        if(page):
+            status = collab.setMeta(page,pmeta,template=template,replace=True)
+    if verbose:
+        print status
+
+def parse_config(cpath, args):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    section = dict( configparser.items("spam-reader") )
+    imap_uri = section.pop("imap_server")
+    imap_user = section.pop("imap_user")
+    imap_pass = section.pop("imap_pass")
+    return imap_server, imap_user, imap_pass
+
+def read_spam(imap_server,imap_user):
+    mailbox = imaplib.IMAP4_SSL(imap_server) 
+    mailbox.login(imap_user,getpass.getpass())
+    mailbox.select()
+    typ, data = mailbox.search(None, 'ALL')
+    for num in data[0].split():
+        typ, data = mailbox.fetch(num, '(RFC822)')
+        print 'Message %s\n%s\n' % (num, data[0][1])
+    mailbox.close()
+    mailbox.logout()
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="cpath",
+        help="Config file path.")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] COLLAB_URL IMAPS_SERVER IMAP_USER")
+
+    options, args = parser.parse_args()
+    if options.cpath:
+        if len(args) == 0:
+            imap_server,imap_user,imap_pass = parse_config(options.cpath, args)
+        elif len(args) == 1:
+            imap_user = args.pop()
+            imap_server,_,imap_pass = parse_config(options.cpath, args)
+        elif len(args) == 2:
+            imap_server,imap_user = args.pop()
+            _,_,imap_pass = parse_config(options.cpath, args)
+        collab = CLIWiki(config=options.cpath)
+    elif len(args) != 3:
+        parser.error("Collab URL, IMAPS4 server and IMAP_USER need to be defined.")
+    else:
+        url, imap_uri, imap_user = args
+        collab = CLIWiki(url)
+
+    template = "SpamTemplate"
+    collab_metas = Metas()
+    read_spam(imap_uri,imap_user)
+    import_identities(collab,collab_metas,template,options.verbose)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
