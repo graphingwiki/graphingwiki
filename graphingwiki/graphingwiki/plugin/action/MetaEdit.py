@@ -222,7 +222,9 @@ def show_editform(wr, request, pagename, args):
 
 def _enter_page(request, pagename):
     _ = request.getText
-    
+
+    request.emit_http_headers()
+
     title = _('Metatable editor')
     request.theme.send_title(title,
                         pagename=pagename)
