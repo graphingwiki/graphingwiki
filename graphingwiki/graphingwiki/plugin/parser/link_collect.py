@@ -169,13 +169,21 @@ class Parser(WikiParser):
     def _link_repl(self, word, groups):
         raw = groups.get('link', '')
         target = groups.get('link_target', '')
+        desc = groups.get('link_desc', '')
 
+        # If we're in dd and there has been prior text, do not go forward
         if self.__add_link(raw, groups):
             return u""
 
         target = self._fix_attach_uri(target)
 
-        self.currentitems.append(('wikilink', (raw, target)))
+        # Add extended links, where applicable
+        if ': ' in desc and not self.in_dd:
+            key = desc.split(': ')[0]
+            self.definitions.setdefault(key, list()).append(('wikilink',
+                                                             (raw, target)))
+        else:
+            self.currentitems.append(('wikilink', (raw, target)))
         return u''
     _link_target_repl = _link_repl
     _link_desc_repl = _link_repl
@@ -212,7 +220,6 @@ class Parser(WikiParser):
     _comment_repl = __add_meta
     _entity_repl = __add_meta
     _heading_repl = __add_meta
-    _macro_repl = __add_meta
     _remark_repl = __add_meta
     _sgml_entity_repl = __add_meta
     _sub_repl = __add_meta
