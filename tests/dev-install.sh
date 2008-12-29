@@ -49,8 +49,6 @@ function makewiki {
     sed < $template/server/moin.py > $gwdata/moin.py \
       "s!docs = os.path.join(moinpath, 'wiki', 'htdocs')!docs = '$gwinstall/share/moin/htdocs'!"
     cp $template/config/wikiconfig.py $gwdata/wikiconfig.py
-    echo "    actions_excluded = []" >> $gwdata/wikiconfig.py
-    echo "    xmlrpc_putpage_trusted_only = 0" >> $gwdata/wikiconfig.py
     echo "    acl_rights_before = u\"All:read,write,delete,revert,admin\"" >> $gwdata/wikiconfig.py
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
     python $gwinstall/bin/gwiki-install -v $gwdata
