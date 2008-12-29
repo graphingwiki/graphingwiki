@@ -43,22 +43,18 @@ class Parser(WikiParser):
             return ''
 
         if self.in_dd:
-            if not self.new_item:
-                lasttype, items = self.currentitems.pop()
-
-                if lasttype != 'meta':
-                    items = items[0] + self.formatter.textstorage + word
-                else:
-                    newitems = self.formatter.textstorage + word
-                    items = items + newitems
-
-                self.currentitems.append(('meta', items))
-            else:
-                self.currentitems.append(('meta', 
-                                          self.formatter.textstorage +
-                                          word))
-            
-            self.formatter.textstorage = ''
+            # If there were eg. links before the text currently being
+            # added, they have been gathered in self.formatter.currentitems.
+            # Add them now before the text currently being processed.
+            while self.currentitems:
+                _, items = self.currentitems.pop()
+                # The item zero contains the raw form of the item,
+                # further ones contain parsed stuff for saevgraphdata
+                self.formatter.textstorage.append(items[0])
+                # Add space after link, they're omitted
+                self.formatter.textstorage.append(' ')
+                
+            self.formatter.textstorage.append(word)
             self.new_item = False
 
         return ''
@@ -228,7 +224,7 @@ class Parser(WikiParser):
         if self.in_pre:
             return u''
 
-        # Flush pre-dd:s
+        # Flush pre-dd links and previous dd:s not undented
         if self.currentitems and not self.curdef:
             self.definitions.setdefault('_notype', 
                                         []).extend(self.currentitems)
@@ -243,7 +239,7 @@ class Parser(WikiParser):
         self._close_item(result)
         self.in_dd = 1
         
-        self.formatter.textstorage=''
+        self.formatter.textstorage = list()
 
         definition = match[1:-3].strip(' ')
         if definition != "":
@@ -259,9 +255,9 @@ class Parser(WikiParser):
 
             if self.currentitems:
                 curkey.extend(self.currentitems)
-            elif self.formatter.textstorage.strip():
-                curkey.append(('meta', self.formatter.textstorage))
-                self.formatter.textstorage = ''
+            elif self.formatter.textstorage:
+                curkey.append(('meta', ''.join(self.formatter.textstorage)))
+                self.formatter.textstorage = list()
         else:
             self.definitions.setdefault('_notype', 
                                         []).extend(self.currentitems)

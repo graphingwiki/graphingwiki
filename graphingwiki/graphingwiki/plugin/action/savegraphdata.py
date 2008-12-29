@@ -221,6 +221,7 @@ def parse_text(request, page, text):
     lcpage.formatter = myformatter(newreq)
     lcpage.formatter.page = lcpage
     p = parserclass(lcpage.get_raw_body(), newreq, formatter=lcpage.formatter)
+    lcpage.parser = p
     lcpage.format(p)
     
     # These are the match types that really should be noted

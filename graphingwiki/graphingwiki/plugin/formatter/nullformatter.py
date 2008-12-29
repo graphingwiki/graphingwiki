@@ -8,8 +8,10 @@ class Formatter(FormatterBase):
         self.textstorage = ''
         FormatterBase.__init__(self, request, **kw)
     
+    # Whenever collecting text, remind the parser about having done so
     def text(self, *args, **kw):
-        self.textstorage += args[0]
+        self.request.page.parser.new_item = False
+        self.textstorage.append(args[0])
         return self.null()
         
     def null(self, *args, **kw):
