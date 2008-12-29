@@ -1,7 +1,5 @@
-    # enable xmlrpc:
-    xmlrpc_putpage_enabled = True
-    # anonymous users get to put stuff in your wiki over xmlrpc:
-    xmlrpc_putpage_trusted_only = False
+    # allow xmlrpc put (enable with care)
+    actions_excluded = []
 
     from graphingwiki import install_hooks
     install_hooks()
