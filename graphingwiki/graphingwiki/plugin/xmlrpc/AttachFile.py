@@ -48,11 +48,6 @@ def load(request, pagename, filename):
 
 def delete(request, pagename, filename):
     _ = request.getText
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # check ACLs
     if not request.user.may.delete(pagename):
@@ -69,11 +64,6 @@ def delete(request, pagename, filename):
 
 def save(request, pagename, filename, content, overwrite):
     _ = request.getText
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # also check ACLs
     if not request.user.may.write(pagename):

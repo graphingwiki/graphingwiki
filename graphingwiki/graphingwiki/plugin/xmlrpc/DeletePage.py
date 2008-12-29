@@ -15,17 +15,12 @@ from MoinMoin import config
 
 def delete(request, pagename, comment = None):
     _ = request.getText
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to delete this page"))
     
     # check ACLs
     if not request.user.may.delete(pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to delete this page"))
     
-    #Deletes pages
+    # Deletes pages
 
     page = PageEditor(request, pagename, do_editor_backup=0)
     if not page.exists():

@@ -69,10 +69,6 @@ def load(request, pagename, filename, start, end):
 def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
     _ = request.getText
 
-    if not request.user.trusted:
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a "+
-                                    "file to this page"))
-
     # Also check ACLs
     if not request.user.may.write(pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to attach a "+
