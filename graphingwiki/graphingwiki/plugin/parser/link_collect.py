@@ -141,16 +141,9 @@ class Parser(WikiParser):
     _url_scheme_repl = _url_repl
 
     def _macro_repl(self, word, groups):
-        """Handle macros."""
-        macro_name = groups.get('macro_name')
-        macro_args = groups.get('macro_args')
-        self.inhibit_p = 0 # 1 fixes UserPreferences, 0 fixes paragraph formatting for macros
-
-        # create macro instance
-        if self.macro is None:
-            self.macro = macro.Macro(self)
-        self.currentitems.append(('macro', (macro_name, macro_args, groups.get('macro'))))
-        return u''
+        """Handle macros.
+        All that really seems to be needed is to pass the raw markup. """
+        return self.__add_meta(groups.get('macro'), {})
 
     _macro_name_repl = _macro_repl
     _macro_args_repl = _macro_repl
