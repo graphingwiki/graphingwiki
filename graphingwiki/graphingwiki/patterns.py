@@ -231,9 +231,6 @@ class GraphData(UserDict.DictMixin):
         self.request = request
 
         # Category, Template matching regexps
-        self.cat_re = re.compile(request.cfg.page_category_regex)
-        self.temp_re = re.compile(request.cfg.page_template_regex)
-
         self.graphshelve = os.path.join(request.cfg.data_dir, 
                                         'graphdata.shelve')
 
@@ -251,11 +248,10 @@ class GraphData(UserDict.DictMixin):
             db.close()
 
         self.db = None
-        self.cache = dict()
-
-        self.opened = False
-        self.writing = False
         self.lock = None
+
+        self.cache = dict()
+        self.writing = False
         
         self.readlock()
 
@@ -299,40 +295,39 @@ class GraphData(UserDict.DictMixin):
             self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
             self.lock.acquire()
 
-        if not self.opened:
+        if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "r")
-            self.opened = True
             self.writing = False
 
     def writelock(self):
-        if self.opened and not self.writing:
+        if self.db is not None and not self.writing:
             self.db.close()
-            self.opened = False
+            self.db = None
         
         if (self.lock is not None and self.lock.isLocked() and 
             isinstance(self.lock, ReadLock)):
             self.lock.release()
+            self.lock = None
+
         if self.lock is None or not self.lock.isLocked():
             self.lock = WriteLock(self.request.cfg.data_dir, 
                                   readlocktimeout=60.0)
             self.lock.acquire()
 
-        if not self.opened or not self.writing:
+        if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "c")
             self.writing = True
-            self.opened = True
 
     def closedb(self):
-        if not self.opened:
-            return
-
         if self.lock is not None and self.lock.isLocked():
             self.lock.release()
-        self.db.close()
+            self.lock = None
 
-        self.db = None
+        if self.db is not None:
+            self.db.close()
+            self.db = None
+
         self.cache.clear()
-        self.opened = False
         self.writing = False
 
     def getpage(self, pagename):
@@ -427,6 +422,9 @@ class GraphData(UserDict.DictMixin):
         if not self.request.user.may.read(pagename):
             return None
 
+        cat_re = re.compile(self.request.cfg.page_category_regex)
+        temp_re = re.compile(self.request.cfg.page_template_regex)
+
         page = self.getpage(pagename)
         if not page:
             return None
@@ -443,8 +441,7 @@ class GraphData(UserDict.DictMixin):
         for type in links:
             for src in links[type]:
                 # Filter Category, Template pages
-                if self.cat_re.search(src) or \
-                       self.temp_re.search(src):
+                if cat_re.search(src) or temp_re.search(src):
                     continue
                 # Add page and its metadata
                 # Currently pages can have links in them only
@@ -458,8 +455,7 @@ class GraphData(UserDict.DictMixin):
         for type in links:
             for i, dst in enumerate(links[type]):
                 # Filter Category, Template pages
-                if self.cat_re.search(dst) or \
-                       self.temp_re.search(dst):
+                if cat_re.search(dst) or temp_re.search(dst):
                     continue
 
                 # Fix links to everything but pages

@@ -27,7 +27,6 @@ def monkey_patch(original, on_success=ignore, always=ignore):
 
 def graphdata_getter(self):
     from graphingwiki.patterns import GraphData
-
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
@@ -75,6 +74,10 @@ def install_hooks():
     RequestBase.graphdata = property(graphdata_getter)
     RequestBase.finish = monkey_patch(RequestBase.finish, 
                                       always=graphdata_close)
+    # Patch RequestBase.run too, just in case finally might not get
+    # called in case of a crash.
+    RequestBase.run = monkey_patch(RequestBase.run, 
+                                   always=graphdata_close)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
