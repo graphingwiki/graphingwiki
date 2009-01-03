@@ -23,6 +23,26 @@ def monkey_patch(original, on_success=ignore, always=ignore):
         return result
     return _patched
 
+# FIXME: A ugly, ugly hack to fix ugly hacks suck as copy(request).
+# Should be removed by removing request copying and such.
+
+def request_copy(self):
+    from copy import copy
+
+    graphdata = self.graphdata
+    self._graphdata = None
+
+    del RequestBase.__copy__
+
+    new_request = copy(self)
+    new_request._graphdata = graphdata
+
+    RequestBase.__copy__ = request_copy
+
+    self._graphdata = graphdata
+    return new_request
+RequestBase.__copy__ = request_copy
+
 # Functions for properly opening, closing, saving and deleting graphdata.
 
 def graphdata_getter(self):
