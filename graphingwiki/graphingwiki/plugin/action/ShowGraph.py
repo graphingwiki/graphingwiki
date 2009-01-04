@@ -594,7 +594,7 @@ class GraphShower(object):
             # Shapefiles
             if getattr(obj, 'gwikishapefile', None):
                 # Enter file path for attachment shapefiles
-                value = obj.gwikishapefile[11:]
+                value = obj.gwikishapefile[13:-2]
                 components = value.split('/')
                 if len(components) == 1:
                     page = objname
