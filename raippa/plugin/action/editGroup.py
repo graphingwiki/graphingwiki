@@ -22,7 +22,7 @@ def getgroups(request, parentpage):
     return groups
 
 def getgroup(request, pagename):
-    raw = Page(request, page).getPageText()
+    raw = Page(request, pagename).getPageText()
     group = list()
     for line in raw.split("\n"):
         if line.startswith(" * "):
@@ -122,17 +122,20 @@ def execute(pagename, request):
                     Page(request, pagename).send_page(msg=u"Group '%s' already exists." % name)
                     return None
 
-        pageform = u'%s/%s' % (course, groupname)
+        pageform = u'%s/%s_Group' % (course, groupname)
         grouppage = pageform
         index = 0
         while Page(request, grouppage).exists():
             grouppage = pageform + u'_%i' % index
             index += 1
 
-        content = u' * [[%s]]' % user
+        content = u' * [[%s]]\n' % user
+        content = u' name :: %s\n' % groupname
+        content += u' course :: [[%s]]' % course
+
         page = PageEditor(request, grouppage)
         try:
-            msg = page.saveText(newcontent, page.get_real_rev())
+            msg = page.saveText(content, page.get_real_rev())
             Page(request, pagename).send_page(msg=u'Group created successfully.')
         except:
             Page(request, pagename).send_page(msg=u'Failed to create group.')
