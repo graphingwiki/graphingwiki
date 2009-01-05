@@ -3,12 +3,43 @@ import MoinMoin.wikiutil as wikiutil
 
 from graphingwiki.editing import get_metas
 
-def getgrouphtml(request, groups):
+def getgrouphtml(request, groups, parentpage):
+    course = parentpage
     html = u'Select group from the list or create new.<br>\n'
+    html += u'<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>' %request.cfg.url_prefix_static
+    html += u''' 
+    <script type="text/javascript">
+addLoadEvent(function(){
+var gsel = $('groupsel');
 
+if(gsel){
+    gsel.addEvent('change', function(){
+        $$('table[id^=groupActions_').addClass('hidden');
+        var new_group = $('new_group');
+        new_group.addClass('hidden');
+
+        var acttab = $('groupActions_'+ this.value);
+
+        if(this.value == ""){
+            new_group.removeClass('hidden');
+        }else if(acttab){
+            acttab.removeClass('hidden');
+        }
+    });
+    gsel.addEvent('keyup', function(){
+        this.fireEvent('change');
+    });
+    gsel.fireEvent('change');
+    if(gsel.value){
+        gsel.addClass('hidden');    
+    }
+}
+});
+    </script>
+    '''
     usershtml = unicode()
-    selecthtml = u'<select name=grouppage>\n'
-    selecthtml += u'<option>Create new</option>\n'
+    selecthtml = u'<select id="groupsel" name=grouppage class="maxwidth">\n'
+    selecthtml += u'<option value="" selected>Create new</option>\n'
 
     for group in groups:
         meta = get_metas(request, group, ["name"])
@@ -23,23 +54,34 @@ def getgrouphtml(request, groups):
             selecthtml += u'<option value="%s">%s</option>\n' % (group, groupname)
 
         #create user tables
-        usershtml += u'<table border="1">\n'
-        usershtml += u'<tr><th>%s</th></tr>\n' % groupname
+        usershtml += u'<table id="groupActions_%s" border="1" class="hidden" style="width:99%%">\n' % group
+        usershtml += u'<tr class=maxwidth><th>%s</th></tr>\n' % groupname
+        usershtml += u'<tr><td>'
         for user in groups[group]:
-            usershtml += u'<tr><th>%s</th></tr>\n' % user
+            usershtml += u'%s<br>\n' % user
+
+        usershtml += u'</td></tr>'
+
         if request.user.name in groups[group]:
-            usershtml += u'<tr><th>leave buttton</th></tr>\n'
+            usershtml += u'<tr><td><input type="submit" name="leave" value="leave">\n'
         else:
-            usershtml += u'<tr><th>join buttton</th></tr>\n'
+            usershtml += u'<tr><td><input type="submit" name="join" value="join">\n'
+
+        usershtml += u'<input type="submit" name="delete" value="delete" onclick="return confirm(\'This will delete group\')"></td></tr>'
         usershtml += u'</table>'
 
     selecthtml += u'</select><br>\n'
     
-    html += u'<form method="post">'
+    html += u'<div style="width: 150px"><form method="post">'
+    html += u'<input type="hidden" name="action" value="editGroup">'
     html += selecthtml
-    html += u'<input type="text" name="groupname" size="20"/>'
+    html += u'''<div id="new_group">
+<input id="new_group_name" class="maxwidth" type="text" name="groupname" size="20"/><br>
+<input type="submit" name="create" value="create">
+</div>'''
+    html += u'<input type="hidden" name="course" value="%s">' % course 
     html += usershtml
-    html += u'</form>'
+    html += u'</form></div>'
 
     return html
 
@@ -56,5 +98,5 @@ def execute(macro, text):
     getgroups = wikiutil.importPlugin(request.cfg, "action", 'editGroup', 'getgroups')
     groups = getgroups(request, parentpage)
     
-    html += getgrouphtml(request, groups)
+    html += getgrouphtml(request, groups, parentpage)
     return html
