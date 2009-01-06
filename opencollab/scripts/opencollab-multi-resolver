@@ -30,7 +30,7 @@ def shred_triplets(resolved):
             if pred in mr_attributes:
                 collab_metas[subj][pred] = obj
             else:
-                collab_metas[subj][pred] = '["%s"]' % obj
+                collab_metas[subj][pred] = '[[%s]]' % obj
     return collab_metas
 
 def expand_ipv4(rr,new):

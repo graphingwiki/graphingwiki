@@ -59,7 +59,7 @@ def handledir( collab, testplan_page, path ):
     testrun_page = hashfile(os.path.join(path,'summary.xml'))
     template = "TestRunTemplate"
     xmldoc = minidom.parse(os.path.join(path,'summary.xml'))
-    metas["Test plan"].add( '["%s"]' % testplan_page )
+    metas["Test plan"].add('[[%s]]' % testplan_page)
 
     for fact in xmldoc.getElementsByTagName("fact"):
         label = fact.getAttribute("label")
@@ -72,7 +72,7 @@ def handledir( collab, testplan_page, path ):
 
     for label, file in [['Log', 'main.log.gz'], ['Settings', 'run.set'], ['Settings', 'runinfo'], ['Statistics', 'statistics.csv'], ['Summary', 'summary.txt'], ['Summary', 'summary.xml']]:
         if label:
-            metas[label].add("See attachment:" + file)
+            metas[label].add("[[attachment:" + file + "]]")
             uploadFile(collab, testrun_page, file, os.path.join(path,file))
 
     for collection in xmldoc.getElementsByTagName("collection"):

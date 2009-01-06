@@ -41,7 +41,7 @@ def add_soa(metas, rr, soa):
         email = soadata[1].replace('.', '@', 1)
         serial, ref, ret, ex, min  = soadata[2:]
 
-        metas[rr]['SOA'].add( '["%s"]' % soa )
+        metas[rr]['SOA'].add('[[%s]]' % soa)
         metas[rr]['SOA-EMAIL'].add(  email )
         metas[rr]['SOA-SERIAL'].add( serial )
         metas[rr]['SOA-REFRESH'].add( ref )
@@ -108,25 +108,25 @@ def parse_mresolved_data( fname, metas ):
 
             # A
             if not ip == 'UNRESOLVED':
-                metas[dname]['A'].add( '["%s"]' % ip )
+                metas[dname]['A'].add( '[[%s]]' % ip )
 
             # mx
             if not mx == 'UNRESOLVED':
                 for case in mx.split(','):
                     srv, pri = case.split(':')
-                    metas[dname]['MX%s' % (pri) ].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['MX%s' % (pri)].add('[[%s]]' % (srv.rstrip('.')))
                     metas[dname]['MX-TIMESTAMP'].add( epoch )
 
             # cname
             if not cname == 'UNRESOLVED':
                 for srv in cname.split(','):
-                    metas[dname]['CNAME'].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['CNAME'].add('[[%s]]' % (srv.rstrip('.')))
                     metas[dname]['CNAME-TIMESTAMP'].add( epoch )
 
             # ns
             if not ns == 'UNRESOLVED':
                 for srv in ns.split(','):
-                    metas[dname]['NS'].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['NS'].add('[[%s]]' % (srv.rstrip('.')))
                     metas[dname]['NS-TIMESTAMP'].add( epoch )
 
             # All DNS names have subdomain
@@ -135,7 +135,7 @@ def parse_mresolved_data( fname, metas ):
             for key in names:
                 if key != 'UNRESOLVED':
                     subdomain = '.'.join(key.split('.')[1:])
-                    metas[key]['SUBDOMAIN'].add( '["%s"]' % subdomain )
+                    metas[key]['SUBDOMAIN'].add('[[%s]]' % subdomain)
 
             if not soa_put:
                 metas, soa_put = add_soa(metas, dname, soa)
@@ -146,14 +146,14 @@ def parse_mresolved_data( fname, metas ):
             # IP attributes
             metas[ip]['CC'].add( cc )
             metas[ip]['AS-NAME'].add( nick )
-            metas[ip]['AS'].add( '["%s"]' % (asn) )
+            metas[ip]['AS'].add('[[%s]]' % (asn))
             metas[ip]['REGISTRY'].add( registry )
             if ptr != 'UNRESOLVED':
-                metas[ip]['PTR'].add( '["%s"]' % (ptr) )
+                metas[ip]['PTR'].add('[[%s]]' % (ptr))
                 metas[ip]['PTR-TIMESTAMP'].add( epoch )
 
                 if not soa_put:
-                    metas[ip]['PTR'].add( '["%s"]' % (ptr) )
+                    metas[ip]['PTR'].add('[[%s]]' % (ptr))
                     metas, soa_put = add_soa(metas, ptr, soa)
 
             if not soa_put:
