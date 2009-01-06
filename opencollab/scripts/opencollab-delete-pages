@@ -1,0 +1,51 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Jani Kenttälä
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import opencollab.wiki
+
+import os
+import sys
+import optparse
+
+from urllib import quote
+
+def main():
+
+    parser = optparse.OptionParser()
+
+    parser.add_option("-n", "--dry-run",
+                      dest="dryrun",
+                      action="store_true",
+                      default=False,
+                      help="show what would have been deleted")
+
+    options, args = parser.parse_args()
+    if len(args) != 2:
+        parser.error("wiki url and pagename have to be defined")
+
+    url, searchstring  = args
+
+    wiki = opencollab.wiki.CLIWiki(url)
+
+    metas = wiki.getMeta(searchstring)
+    for k,v in metas.iteritems():
+        print "Deleting %r..." % (k),
+        if not options.dryrun:
+            try:
+                wiki.deletePage(k)
+                print "[ok].",
+            except opencollab.wiki.WikiFailure, (strerror):
+                print "[failed]: %s"  % (strerror),
+        print
+    print
+    
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

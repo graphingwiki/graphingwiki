@@ -1,0 +1,200 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 by Jani Kenttälä
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import opencollab.wiki
+
+import os
+import sys
+import optparse
+
+import md5
+
+from urllib import quote
+from urllib import unquote
+
+def main():
+
+    parser = optparse.OptionParser()
+
+    parser.add_option("-n", "--dry-run",
+                      dest="dryrun",
+                      action="store_true",
+                      default=False,
+                      help="show what would have been cloned")
+
+    parser.add_option("-m", "--move",
+                      dest="move",
+                      action="store_true",
+                      default=False,
+                      help="move (delete source page)")
+
+    parser.add_option("-o", "--output",
+                      dest="output",
+                      default=None,
+                      metavar="OUTPUT",
+                      help="save the file to name OUTPUT in the wiki")
+    
+    options, args = parser.parse_args()
+    if len(args) != 3:
+        parser.error("wiki src url, wiki dst url and pagename have to be defined")
+
+    if options.output is None:
+        basePath = os.getcwd()
+    else:
+        basePath = options.output
+        
+    url_src, url_dst, searchstring  = args
+
+    wiki_src = opencollab.wiki.CLIWiki(url_src)
+    wiki_dst = opencollab.wiki.CLIWiki(url_dst)
+
+    try:
+        searchstring = unicode(searchstring, 'utf-8')
+    except UnicodeDecodeError:
+        searchstring = unicode(searchstring, 'iso-8859-1')
+    except UnicodeDecodeError:
+        sys.stdout.write("Could not understand system default encoding")
+        sys.exit(1)
+
+    metas = wiki_src.getMeta(searchstring)
+
+    for page, v in metas.iteritems():
+        content = ""
+        sys.stdout.write("%r;" % (page))
+        if not options.dryrun:
+            try:
+                content = wiki_src.getPage(page)
+                sys.stdout.write("[getPage:ok];")
+            except opencollab.wiki.WikiFailure, (strerror):
+                sys.stdout.write("[getPage:failed] %s;" % (strerror))
+                continue
+
+            attachments = wiki_src.listAttachments(page)
+            for num, attachment in enumerate(attachments):
+                downloadFile(wiki_src, page,attachment, basePath , num+1, len(attachments))
+            try:
+                wiki_dst.putPage(page,content)
+                sys.stdout.write("[putPage:ok];")
+            except opencollab.wiki.WikiFailure, (strerror):
+                sys.stdout.write( "[putPage:failed]: %s;" % (strerror))
+                continue
+            for num, wikiname in enumerate(attachments):
+                uploadFile(wiki_dst, page, wikiname, os.path.join(page,wikiname))
+                
+            if options.move:
+                try:
+                    wiki_src.deletePage(page)
+                    sys.stdout.write("[deletePage:ok];")
+                except opencollab.wiki.WikiFailure, (strerror):
+                    sys.stdout.write("[deletePage:failed]: %s;" % (strerror))
+                    continue
+            print
+
+    print
+
+#stolen from opencollab-downloader, module material?
+
+def uploadFile(wiki, page, filename, path):
+    file = open(path, "rb")
+
+    for current, total in wiki.putAttachmentChunked(page, filename, file):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+
+        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
+        sys.stdout.flush()
+
+    sys.stdout.write("done\n")
+    sys.stdout.flush()
+
+    file.close()
+
+#stolen from opencollab-downloader, module material?
+#slight modification to enable attachment downloads to <page>/<attachment>
+
+def downloadFile(wiki, page, quotedFile, basePath, num, count):
+    # Canonize the file path
+    attachment = quotedFile
+    filePath = unquote(quotedFile)
+    filePath = os.path.join(page,filePath)
+    filePath = os.path.abspath(filePath)
+
+    # Canonize the base path
+    basePath = os.path.abspath(basePath)
+
+    # Check that the file path starts with the base path
+    directory, _ = os.path.split(filePath)
+    directory = os.path.join(directory, "")
+    basePath = os.path.join(basePath, "")
+    if not directory.startswith(basePath):
+        raise IOError("file path '%s' not under the base path" % filePath)
+
+    shortName = filePath[len(basePath):]
+
+    # Check whether the file actually already exists
+    if fileExists(wiki, page, quotedFile, filePath):
+        status = num, count, shortName
+        sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
+        sys.stdout.flush()
+        return
+    print "DIR", repr(directory)
+
+    print "filePath", repr(filePath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    file = open(filePath, "wb")
+    sys.stdout.write("%d/%d downloading %s\n" % (num, count, repr(shortName)))
+    sys.stdout.write("\rstarting download...")
+    sys.stdout.flush()
+
+    for data, current, total in wiki.getAttachmentChunked(page, attachment):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+
+        file.write(data)
+
+        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.flush()
+
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+    file.close()
+
+def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
+    if not os.path.exists(filename):
+        return False
+
+    digest, size = wiki.getAttachmentInfo(page, attachment)
+    opened = open(filename, "rb")
+    hashed = md5.new()
+    total = 0
+
+    while True:
+        data = opened.read(chunkSize)
+        if not data:
+            break
+
+        total += len(data)
+        hashed.update(data)
+
+    opened.close()
+    
+    if total != size:
+        return False
+
+    if hashed.hexdigest() != digest:
+        return False
+
+    return True
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

@@ -1,0 +1,201 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    The purpose if this script is to wautomate multi-resolver output.
+    multi-resolver is available at 
+    http://sourceforge.net/projects/multi-resolver
+    The Debian/Ubuntu packages are available at:
+    http://debian.huttu.net/
+
+    @copyright: 2008 Lari Huttunen, Juhani Eronen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+"""
+import sys
+import os
+import csv
+import optparse
+import ConfigParser
+import collections
+
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Meta
+from opencollab.util.regexp import dig_soaref_re, utctimestamp
+from opencollab.util.network import country_tld
+
+def import_metas( wiki, metas, template, verbose ):
+    for page, pmeta in metas.iteritems():
+        status = wiki.setMeta( page, pmeta, template=template, replace=True )
+        if verbose:
+            print status
+
+def add_soa(metas, rr, soa):
+    soa_put = False
+
+    # soa
+    soa = dig_soaref_re.search(soa)
+    if soa:
+        soa_put = True
+        soadata = soa.groups()
+        soa = soadata[0].rstrip('.')
+        email = soadata[1].replace('.', '@', 1)
+        serial, ref, ret, ex, min  = soadata[2:]
+
+        metas[rr]['SOA'].add( '["%s"]' % soa )
+        metas[rr]['SOA-EMAIL'].add(  email )
+        metas[rr]['SOA-SERIAL'].add( serial )
+        metas[rr]['SOA-REFRESH'].add( ref )
+        metas[rr]['SOA-RETRY'].add( ret )
+        metas[rr]['SOA-EXPIRE'].add( ex )
+        metas[rr]['SOA-MINIMUM'].add( min )
+
+    return metas, soa_put
+
+def parse_mresolved_data( fname, metas ):
+    # Possible data:
+    # IP;ASN;CC;NICK;REGISTRY;ALLOCATED;ROUTE;PTR;DNAME;CNAME;NS;MX;SOA;EPOCH
+    reader = csv.reader(open(fname, "r"), delimiter=';',
+                        quoting=csv.QUOTE_NONE)
+
+        
+    # Skip header row
+    reader.next()
+
+    for row in reader:
+        if len(row) == 15:
+            # New format
+            # IP;ASN;CC;NICK;REGISTRY;ALLOCATED;ROUTE;PTR;DNAME;CNAME;NS;MX;SOA;EPOCH
+            ip, asn, cc, nick, registry, allocated, route, \
+                ptr, dname, cname, ns, mx, soa, epoch = row[:-1]
+
+            epoch = int(epoch)
+
+        elif len(row) in [9, 10]:
+            # Old format
+            # IP;PTR;DNAME;ASN;ROUTE;REGISTRY;ALLOCATED;NICK;COUNTRY
+
+            if len(row) == 9:
+                # Old format, without EPOCH -> get tz from file
+                statinfo = os.stat(fname)
+                epoch = statinfo.st_ctime
+            else:
+                epoch = int(row[-1])
+                row = row[:-1]
+
+            ip, ptr, dname, asn, route, registry, \
+                allocated, nick, cc = row
+
+            # Zero out 
+            cname, ns, mx, soa = 'UNRESOLVED' * 4
+
+            if cc != 'UNRESOLVED':
+                cc = country_tld[cc]
+        else:
+            sys.stderr.write("ERROR! Error in file: %s\n" % fname)
+            continue
+
+        # Trailing dots from names
+        ptr = ptr.rstrip('.')
+
+        asn = "AS%s" % (asn)
+        epoch = utctimestamp(epoch)
+
+        soa_put = False
+
+        # dname specific
+        if dname != 'UNRESOLVED':
+            metas[dname]['Attribution'].add( epoch )
+
+            # A
+            if not ip == 'UNRESOLVED':
+                metas[dname]['A'].add( '["%s"]' % ip )
+
+            # mx
+            if not mx == 'UNRESOLVED':
+                for case in mx.split(','):
+                    srv, pri = case.split(':')
+                    metas[dname]['MX%s' % (pri) ].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['MX-TIMESTAMP'].add( epoch )
+
+            # cname
+            if not cname == 'UNRESOLVED':
+                for srv in cname.split(','):
+                    metas[dname]['CNAME'].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['CNAME-TIMESTAMP'].add( epoch )
+
+            # ns
+            if not ns == 'UNRESOLVED':
+                for srv in ns.split(','):
+                    metas[dname]['NS'].add( '["%s"]' % (srv.rstrip('.')) )
+                    metas[dname]['NS-TIMESTAMP'].add( epoch )
+
+            # All DNS names have subdomain
+            names = [x for x in [dname, ptr] if x != 'UNRESOLVED']
+            names.extend(x for x in cname.split(',') if x != 'UNRESOLVED')
+            for key in names:
+                if key != 'UNRESOLVED':
+                    subdomain = '.'.join(key.split('.')[1:])
+                    metas[key]['SUBDOMAIN'].add( '["%s"]' % subdomain )
+
+            if not soa_put:
+                metas, soa_put = add_soa(metas, dname, soa)
+
+        if ip != 'UNRESOLVED':
+            metas[ip]['Attribution'].add( epoch )
+
+            # IP attributes
+            metas[ip]['CC'].add( cc )
+            metas[ip]['AS-NAME'].add( nick )
+            metas[ip]['AS'].add( '["%s"]' % (asn) )
+            metas[ip]['REGISTRY'].add( registry )
+            if ptr != 'UNRESOLVED':
+                metas[ip]['PTR'].add( '["%s"]' % (ptr) )
+                metas[ip]['PTR-TIMESTAMP'].add( epoch )
+
+                if not soa_put:
+                    metas[ip]['PTR'].add( '["%s"]' % (ptr) )
+                    metas, soa_put = add_soa(metas, ptr, soa)
+
+            if not soa_put:
+                metas, soa_put = add_soa(metas, ip, soa)
+
+        if asn != 'UNRESOLVED':
+            metas[asn]['Attribution'].add( epoch )
+            # AS attrs
+            metas[asn]['AS-NAME'].add( nick )
+            metas[asn]['BGP-PREFIX'].add( route )
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="cpath",
+        help="Config file path.")
+    parser.add_option("-v", 
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." ) 
+    parser.set_usage("%prog [options] WIKIURL FILENAME")
+
+    options, args = parser.parse_args()
+    if options.cpath:
+        if( len(args) != 1 ):
+            parser.error("File name has to be defined")
+        fname = args.pop()
+        wiki = CLIWiki( config=options.cpath )
+    elif len(args) != 2:
+        parser.error("wiki url and file name have to be defined")
+    else:
+        url, fname = args
+        wiki = CLIWiki( url )
+
+    metas = collections.defaultdict( Meta )
+    template = "MresolveTemplate"
+    parse_mresolved_data( fname, metas )
+    import_metas( wiki, metas, template, options.verbose ) 
+        
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

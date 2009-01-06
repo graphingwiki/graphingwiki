@@ -1,0 +1,160 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import string
+import re
+import md5
+import optparse
+import ConfigParser
+import collections
+import xml.etree.ElementTree as et
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Meta, Func
+
+def parse_config( cpath ):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    uris = dict( configparser.items("interfaces") )
+    path = uris.pop("path")
+    return path
+
+def store_names( flist, dname, names ):
+    for name in names:
+        flist.append( os.path.join( dname, name ) )
+
+def enum_dir( path ):
+   files = [] 
+   os.path.walk( path, store_names, files )
+   return files
+
+def hash_file( filename, verbose ):
+    if verbose:
+        print "Hashing" + filename
+    f = file(filename,'rb')     
+    hash = md5.new(f.read()).hexdigest()
+    f.close();
+    return hash
+
+def upload_file(collab, nmaprun_page, filename, path):
+    try:
+       file = open(path, "rb")
+    except IOError:
+       print path + " does not exist."
+       return
+
+    for current, total in collab.putAttachmentChunked(nmaprun_page, filename, file):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+
+        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
+        sys.stdout.flush()
+
+    sys.stdout.write("done\n")
+    sys.stdout.flush()
+
+    file.close()
+
+def get_addr( host ):
+    for element in host:
+        if element.keys():
+            addr = repr( element.get('addr') )
+            if re.search( '\d\.\d', addr ):
+                ip = re.sub( '\'', '', addr )
+            elif re.search( '[0-9a-fA-F]:[0-9a-fA-F]', addr ):
+                mac = re.sub( '\'', '', addr )
+    if ip:
+        return ip,mac
+    else:
+        return None, None
+
+def parse_xml( path, file, nmaprun_page, metas ):
+    xml_doc = et.parse( os.path.join(path, file) )
+    doc_root = xml_doc.getroot()
+    nmaprun = doc_root.items()
+    for k,v in nmaprun:
+        metas[nmaprun_page][k].add( v )
+    scaninfo = xml_doc.getiterator('scaninfo')
+    for k in scaninfo[0].attrib:
+        metas[nmaprun_page][k].add( scaninfo[0].get(k) )
+    hosts = xml_doc.getiterator("host")
+    for host in hosts:
+        ip, mac = get_addr( host )
+        if ip is not None:
+            ip_page = ip + "/nmap"
+            metas[nmaprun_page]['IPv4 Address'].add( '["%s"]' % ip )
+            metas[ip_page]['MAC Address'].add( '["%s"]' % mac )
+            for element in host:
+                if element.keys():
+                    for k, v in element.items():
+                        if re.search( 'addr', k ):
+                           continue 
+                        metas[ip_page][k].add(v)
+                #else:
+                #    ports = element.getchildren()
+                #    for port in ports:
+                #        for p in port.items():
+                #            k, v = p
+                #            metas[ip_page][k].add(v)
+                #        for services in port.getchildren():
+                #            for service in  services:
+                #                service, state = service.items()
+        else:
+           print "Parsing ", host, " information failed!" 
+    metas[nmaprun_page]["XML File"].add( "attachment:" + file )
+
+def import_metas( collab, metas, template, verbose ):
+    for page, pmeta in metas.iteritems():
+        pmeta["category"].add("CategoryNmapRun")
+        status = collab.setMeta( page, pmeta, template=template, replace=True )
+        if verbose:
+            print status
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="cpath",
+        help="Config file path.")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] WIKIURL DIRNAME")
+
+    options, args = parser.parse_args()
+    if options.cpath:
+        if len(args) == 0:
+            path = parse_config(options.cpath)
+        elif len(args) == 1:
+            path = args.pop()
+        collab = CLIWiki( config=options.cpath )
+        if len(args) == 2:
+            url, path = args
+            collab = CLIWiki( url, options.cpath )
+    elif len(args) != 2:
+        parser.error("Collab URL and pagename have to be defined.")
+    else:
+        url, path = args
+        collab = CLIWiki(url)
+
+    template = "NmapTemplate"
+    nmap_files = enum_dir( path )
+    for file in nmap_files:
+        metas = collections.defaultdict( Meta )
+        if re.search( '\.(xml|XML)', file ):
+            xml_page = hash_file( os.path.join( path, file ), options.verbose )
+            parse_xml( path, file, xml_page, metas )
+            #upload_file(  collab, xml_page, file, os.path.join(path,file) )
+            import_metas( collab, metas, template, options.verbose )
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

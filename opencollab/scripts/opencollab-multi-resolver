@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re
+import socket
+import optparse
+import subprocess
+import ConfigParser
+from subprocess import Popen
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Metas, Meta, Func
+from opencollab.util.network import dns_blacklist, mr_attributes
+from opencollab.util.regexp import *
+
+def import_identities(collab,collab_metas,template,verbose):
+    for page,pmeta in collab_metas.iteritems():
+        if(page):
+            status = collab.setMeta(page,pmeta,template=template,replace=True)
+    if verbose:
+        print status
+
+def shred_triplets(resolved): 
+    collab_metas = Metas()
+    for triplet in resolved:
+        if(triplet):
+            subj, pred, obj = triplet.split(';')
+            if pred in mr_attributes:
+                collab_metas[subj][pred] = obj
+            else:
+                collab_metas[subj][pred] = '["%s"]' % obj
+    return collab_metas
+
+def expand_ipv4(rr,new):
+    new.append(rr + ";PTR")
+    rev = re.split('\.', rr) 
+    rev.reverse()
+    new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
+
+def expand_as(rr,new):
+    new.append(rr.upper() + ".asn.cymru.com;TXT")
+
+def expand_name(rr,new):
+    new.append(rr + ";A")
+    new.append(rr + ";MX")
+    new.append(rr + ";SOA")
+
+def resolve_requests(expanded,mresolve):
+    mr = Popen(mresolve, shell=True, stdin=subprocess.PIPE, 
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
+    for rr in expanded:
+        mr.stdin.write(rr + '\n')
+    (sout, err) = mr.communicate()
+    return sout, err
+
+def generate_requests(resolved,new):
+    expanded = []
+    rr_type = re.compile(';TYPE;')
+    for triplet in new.split('\n'):
+        if triplet:
+            subj, pred, obj = triplet.split(';')
+            if subj in dns_blacklist:
+                continue
+        if rr_type.search(triplet):
+            if triplet not in resolved:
+                try:
+                    socket.inet_aton(subj)
+                except socket.error:
+                    if dns_re.search(subj):
+                        expand_name(subj,expanded)
+                    elif as_re.search(subj):
+                        expand_as(subj,expanded)
+                    else:
+                        pass
+                else:
+                    expand_ipv4(subj,expanded)
+        resolved.add(triplet)
+    return expanded, resolved
+
+def seed_initial(new): 
+    expanded = []
+    resolved = set([])
+    for rr in new:
+        try:
+            socket.inet_aton(rr)
+        except socket.error:
+            if dns_re.search(rr):
+                resolved.add(rr + ";TYPE;NAME")
+                expand_name(rr,expanded)
+            elif as_re.search(rr):
+                resolved.add(rr.upper() + ";TYPE;AS")
+                expand_as(rr,expanded)
+            else:
+                pass
+        else:
+            resolved.add(rr + ";TYPE;IPv4")
+            expand_ipv4(rr,expanded)
+    return expanded, resolved
+
+def read_input():
+    new = []
+    for line in sys.stdin:
+        new.append(line.strip())
+    return new
+
+def parse_config(cpath, args):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    uris = dict( configparser.items("multi-resolver") )
+    mresolve = uris.pop("path")
+    return mresolve
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="cpath",
+        help="Config file path.")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] COLLAB_URL MRESOLVE_PATH")
+
+    options, args = parser.parse_args()
+    if options.cpath:
+        if len(args) == 0:
+            mresolve = parse_config(options.cpath, args)
+        elif len(args) == 1:
+            mresolve = args.pop()
+        collab = CLIWiki(config=options.cpath)
+    elif len(args) != 2:
+        parser.error("Collab URL and mresolve path need to be defined.")
+    else:
+        url, mresolve = args
+        collab = CLIWiki(url)
+
+    template = "IdentityTemplate"
+    new = read_input()
+    expanded,resolved = seed_initial(new)
+    while expanded:
+        new,err = resolve_requests(expanded,mresolve)
+        expanded,resolved = generate_requests(resolved,new)
+    collab_metas = shred_triplets(resolved)
+    import_identities(collab,collab_metas,template,options.verbose)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."

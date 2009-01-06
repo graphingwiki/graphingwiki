@@ -1,0 +1,166 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    The purpose of this script is to create an object oriented wiki image
+    gallery utilizing a file system based image repository as a source.
+    The path names are turned into categories, which classify a given
+    image.
+
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import os
+import sys
+import md5
+import ConfigParser
+import EXIF
+from optparse import OptionParser
+from PIL import Image
+from opencollab.meta import Meta
+from opencollab.wiki import CLIWiki, WikiFailure
+
+def parse_config( cpath ):
+    configparser = ConfigParser.ConfigParser()
+    configparser.readfp( open(cpath) )
+    uris = dict( configparser.items('dbs') )
+    spath = uris.pop("spath")
+    return spath
+
+def store_names( flist, dname, names ): 
+    for name in names:
+        flist.append( os.path.join( dname, name ) )
+
+def scale_image( f, imeta ):
+    """
+    Aspect ratio calculation from:
+    http://osdir.com/ml/python.image/2006-01/msg00010.html
+    """
+    maxw = 800
+    maxtw = 128
+    maxh = 600
+    maxth = 128
+    oaspect = float(maxw) / float(maxh)
+    path, file = os.path.split(f)
+    fname, ext = os.path.splitext(file)
+    try:
+        img = Image.open( f )
+        iaspect = float(img.size[0])/float(img.size[1])
+        if iaspect >= oaspect:
+           resimg = img.resize(( maxw , int(float(maxw/iaspect) + 0.5)), Image.ANTIALIAS) 
+           resthumb = img.resize(( maxtw , int(float(maxtw/iaspect) + 0.5)), Image.ANTIALIAS) 
+        else:
+           resimg = img.resize(( int(float(maxh*iaspect) + 0.5), maxh), Image.ANTIALIAS) 
+           resthumb = img.resize(( int(float(maxth*iaspect) + 0.5), maxth), Image.ANTIALIAS) 
+        try:
+            tpath = "/tmp/"
+            tfile = fname + ext
+            webnail = fname + ".webnail" + ext
+            thumb = fname + ".thumb.png"
+            imeta["origfile"].add( f )
+            imeta["webfile"].add( tpath + webnail )
+            imeta["thumbfile"].add( tpath + thumb )
+            imeta["origname"].add( file )
+            imeta["webname"].add( webnail )
+            imeta["thumbname"].add( thumb )
+            imeta["image"].add( "[attachment:" + file + " " + file + "]" )
+            imeta["webnail"].add( "attachment:" + webnail )
+            imeta["gwikishapefile"].add( "attachment:" + thumb )
+            resimg.save( tpath + webnail, img.format ) 
+            resthumb.save( tpath + thumb ) 
+        except IOError:
+            print "Temporary image save failed!"
+            return False
+        return True
+    except IOError: 
+        return False
+
+def read_exif( f, imeta ):
+    """
+    Use EXIF.py.
+    """
+    try:
+        fh = open(f, 'rb')
+        exif = EXIF.process_file( fh, details=False )
+        for key, value in exif.items():
+            try:
+                imeta[key].add( unicode(value) )
+            except UnicodeDecodeError:
+                pass
+    except IOError:
+        pass
+
+def upload_image( collab, pname, fn, fh, verbose ):
+    for current, total in collab.putAttachmentChunked( pname, fn, fh ):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+        if verbose:
+            sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
+            sys.stdout.flush()
+    if verbose:
+        sys.stdout.write("\ndone\n")
+        sys.stdout.flush()
+
+def push_image( collab, imeta, verbose ):
+    template = "PhotoTemplate"
+    imeta["category"].add("CategoryPhoto")
+    origfile = imeta.pop("origfile").single()
+    webfile = imeta.pop("webfile").single()
+    thumbfile = imeta.pop("thumbfile").single()
+    origname = imeta.pop("origname").single()
+    webname = imeta.pop("webname").single()
+    thumbname = imeta.pop("thumbname").single()
+    try:
+        fh = file( origfile, 'rb' )
+        pname = md5.new( fh.read() ).hexdigest()
+    except IOError:
+        raise
+    status = collab.setMeta( pname, imeta, template=template, replace=True )
+    if verbose:
+        print status
+    try:
+        fh = file( origfile, 'rb' )
+        upload_image( collab, pname, origname, fh, verbose )
+    except IOError:
+        raise
+    try:
+        fh = file( webfile, 'rb' )
+        upload_image( collab, pname, webname, fh, verbose )
+    except IOError:
+        raise
+    try:
+        fh = file( thumbfile, 'rb' )
+        upload_image( collab, pname, thumbname, fh, verbose )
+    except IOError:
+        raise
+
+def main():
+    usage = "usage: %prog [-v] -c CPATH"
+    parser = OptionParser(usage=usage)
+    parser.add_option( "-c", 
+        action="store", type="string", dest="cpath",
+        help="Config file path." )
+    parser.add_option("-v", 
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." ) 
+    ( options, args ) = parser.parse_args()
+    if options.cpath:
+        flist = []
+        wiki = ""
+        spath = parse_config( options.cpath )
+        collab = CLIWiki(wiki, config=options.cpath)
+        os.path.walk( spath, store_names, flist ) 
+        for f in flist:
+            imeta = Meta()
+            image = scale_image( f, imeta )
+            if image:
+                read_exif( f, imeta )
+                push_image( collab, imeta, options.verbose )
+    else:
+        parser.error("Option -c is mandatory. Use -h for help.")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+
