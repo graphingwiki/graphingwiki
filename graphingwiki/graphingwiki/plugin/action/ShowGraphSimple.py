@@ -116,7 +116,7 @@ class GraphShowerSimple(GraphShower):
                      self.urladd.replace('&inline=Inline', '')
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
-            self.request.write('[[InlineGraph(%s)]]' % urladd)
+            self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
 
         elif not self.format:
             self.test_graph(outgraph)
