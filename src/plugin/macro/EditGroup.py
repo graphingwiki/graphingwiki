@@ -14,7 +14,7 @@ var gsel = $('groupsel');
 
 if(gsel){
     gsel.addEvent('change', function(){
-        $$('table[id^=groupActions_').addClass('hidden');
+        $$('table[id^=groupActions_]').addClass('hidden');
         var new_group = $('new_group');
         new_group.addClass('hidden');
 
