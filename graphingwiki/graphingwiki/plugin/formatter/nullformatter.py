@@ -10,8 +10,12 @@ class Formatter(FormatterBase):
     
     # Whenever collecting text, remind the parser about having done so
     def text(self, *args, **kw):
-        self.request.page.parser.new_item = False
-        self.textstorage.append(args[0])
+        ## FIXME? for now, only accept entries on the same line for 
+        ## meta value to minimise surprise
+        if self.request.page.parser.lineno == self.request.page.parser.ddline:
+            self.request.page.parser.new_item = False
+            self.textstorage.append(args[0])
+
         return self.null()
         
     def null(self, *args, **kw):

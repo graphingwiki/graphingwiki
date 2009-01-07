@@ -18,9 +18,9 @@ class Parser(WikiParser):
         self.pagename = request.page.page_name
         self.new_item = True
         self.definitions = {} 
-        self.interesting=[]
         self.curdef = ''
         self.prevdef = ''
+        self.ddline = 0
 
         # Cannot use super as the Moin classes are old-style
         apply(WikiParser.__init__, (self, raw, request), kw)
@@ -43,6 +43,11 @@ class Parser(WikiParser):
             return ''
 
         if self.in_dd:
+        ## FIXME? for now, only accept entries on the same line for 
+        ## meta value to minimise surprise
+            if not self.ddline == self.lineno:
+                return ''
+
             # If there were eg. links before the text currently being
             # added, they have been gathered in self.formatter.currentitems.
             # Add them now before the text currently being processed.
@@ -220,8 +225,6 @@ class Parser(WikiParser):
     _tt_bt_repl = __add_meta
     _tt_repl = __add_meta
     _u_repl = __add_meta
-    _li_none_repl = __add_meta
-    _li_repl = __add_meta
 
     def _dl_repl(self, match, groups):
         """Handle definition lists."""
@@ -233,11 +236,21 @@ class Parser(WikiParser):
             self.definitions.setdefault('_notype', 
                                         []).extend(self.currentitems)
         elif self.currentitems:
-            self.definitions.setdefault(self.curdef, 
-                                        []).extend(self.currentitems)
+            # If we have a dd with non-empty text after a single link
+            if ''.join(self.formatter.textstorage).strip():
+                type, content = self.currentitems[0]
+                raw = content[0]
+                # The item came before the text
+                self.formatter.textstorage.insert(0, raw)
+                # Only add this to stored text, not self.definitions -
+                # undent will handle the insertion of this meta later
+            else:
+                self.definitions.setdefault(self.curdef, 
+                                            []).extend(self.currentitems)
 
         self.currentitems=[]
         self.new_item = True
+        self.ddline = self.lineno
 
         result = []
         self._close_item(result)
@@ -257,15 +270,17 @@ class Parser(WikiParser):
         if self.in_dd:
             curkey = self.definitions.setdefault(self.curdef, [])
 
-            if self.currentitems:
-                curkey.extend(self.currentitems)
-            elif self.formatter.textstorage:
+            if self.formatter.textstorage:
                 curkey.append(('meta', ''.join(self.formatter.textstorage)))
                 self.formatter.textstorage = list()
+            elif self.currentitems:
+                curkey.extend(self.currentitems)
         else:
             self.definitions.setdefault('_notype', 
                                         []).extend(self.currentitems)
 
+        # self.ddline is not reset here, as the last 
+        # items on line may be added after the undent
         self.in_dd = 0
         self.new_item = True
         self.prevdef = self.curdef
