@@ -89,6 +89,10 @@ def execute(macro, text):
     request = macro.request
     pagename = request.page.page_name 
     parentpage = text
+
+    if not request.user.name:
+        return u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.'
+
     html = u'<h2>Group selector</h2>'
 
     if not Page(request, parentpage).exists():

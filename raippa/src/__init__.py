@@ -36,7 +36,7 @@ class RaippaUser:
 
         if user:
             self.user = user
-            meta = get_metas(request, user, ["name"])
+            meta = get_metas(request, user, ["name"], checkAccess=False)
             if meta["name"]:
                 self.name = meta["name"]
             else:
@@ -85,6 +85,25 @@ class RaippaUser:
                     break
  
         return userscourses
+
+    def gettimetrack(self, course):
+        page = self.request.graphdata.getpage(self.user)
+        linking_in = page.get('in', {})
+        pagelist = linking_in.get("user", [])
+        timetracklist = dict()
+        for page in pagelist:
+            keys = ["course", "gwikicategory", "start", "end", "description", "date"]
+            metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
+            if raippacategories["timetrackcategory"] in metas["gwikicategory"]:
+                if metas["course"] and course == metas["course"].pop():
+                    if metas["date"] and metas["start"] and metas["end"] and metas["description"]:
+                        date = metas["date"].pop()
+                        start = metas["start"].pop()
+                        end = metas["end"].pop()
+                        description = metas["description"].pop()
+                        key = u'%s %s' % (date, start)
+                        timetracklist[key] = [date, start, end, description]
+        return timetracklist
 
     def canDo(self, page, course):
         _ = self.request.getText
