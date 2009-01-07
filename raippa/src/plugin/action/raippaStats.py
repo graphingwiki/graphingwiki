@@ -33,16 +33,16 @@ def draw_taskstats(request, task, course=None, user=None):
         title = unicode()
         reporterror(request, "%s doesn't have title meta." % task)
 
-    if metas["description"]:
-        description = metas["description"].pop()
-    else:
-        description = unicode()
-        reporterror(request, "%s doesn't have description meta." % task)
+#    if metas["description"]:
+#        description = metas["description"].pop()
+#    else:
+#        description = unicode()
+#        reporterror(request, "%s doesn't have description meta." % task)
 
     html = u'''
 Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
 <h1>%s</h1>
-%s''' % (request.getBaseURL(), task, task, request.getBaseURL(), task, title, description)
+''' % (request.getBaseURL(), task, task, request.getBaseURL(), task, title)
 
     return html
 
@@ -59,7 +59,7 @@ def execute(pagename, request):
     if username != currentuser.user and not currentuser.isTeacher():
         return u'You are not allowed to view users (%s) statistics.' % username
         
-    getcourses = wikiutil.importPlugin(request.cfg, "macro", 'UserStats', 'getcourses')
+    getcourses = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'getcourses')
 
     if username:
         user = RaippaUser(request, username)
@@ -86,8 +86,8 @@ def execute(pagename, request):
     else:
         compress = False
 
-    draw_stats = wikiutil.importPlugin(request.cfg, "macro", 'UserStats', 'draw_coursestats')
-    draw_courselist = wikiutil.importPlugin(request.cfg, "macro", 'UserStats', 'draw_courselist')
+    draw_stats = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_coursestats')
+    draw_courselist = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_courselist')
 
     if username:
         if taskpage:

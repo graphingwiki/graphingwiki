@@ -63,13 +63,13 @@ Error is reported to the admins. Please come back later.'''
                     reporterror(request, exceptionargs)
 
                 if task:
-                    url = "../%s?action=userStats&course=%s&user=%s&task=%s" % (pagename, course, str(user.user), task)
+                    url = "../%s?action=raippaStats&course=%s&user=%s&task=%s" % (pagename, course, str(user.user), task)
                     gv.setv(nodeobject, 'URL', url)
             else:
                #TODO: user count here
                 gv.setv(nodeobject, 'fillcolor', "darkolivegreen4")
                 if task:
-                    url = "../%s?action=userStats&course=%s&task=%s" % (pagename, course, task)
+                    url = "../%s?action=raippaStats&course=%s&task=%s" % (pagename, course, task)
                     gv.setv(nodeobject, 'URL', url)
 
             gv.setv(nodeobject, 'style', "filled")
@@ -105,7 +105,7 @@ def draw_courselist(request, courses, user=None, selected=None, compress=True, s
 
     html = u'''
 <form method="POST" enctype="multipart/form-data" id="courses" action="%s">
-<input type="hidden" name="action" value="userStats" onsubmit="return false;">
+<input type="hidden" name="action" value="raippaStats" onsubmit="return false;">
 <select name="course">
 ''' % (request.page.page_name.split("/")[-1])
 
