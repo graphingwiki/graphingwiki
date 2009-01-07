@@ -12,13 +12,7 @@ def getgroups(request, parentpage):
     groups = dict()
     for page in pagelist:
         if page.endswith("Group"):
-            groups[page] = list()
-            raw = Page(request, page).getPageText()
-            for line in raw.split("\n"):
-                if line.startswith(" * "):
-                    user_in_line = removelink(line[3:].rstrip())
-                    #user can only be in one group/course
-                    groups[page].append(user_in_line)
+            groups[page] = getgroup(request, page) 
     return groups
 
 def getgroup(request, pagename):
@@ -84,7 +78,7 @@ def execute(pagename, request):
     if request.form.has_key("leave") and grouppage:
         group = getgroup(request, grouppage)
         if user not in group:
-            meta = get_metas(request, group, ["name"])
+            meta = get_metas(request, group, ["name"], checkAccess=False)
             if meta["name"]:
                 groupname = meta["name"].pop()
             else:
