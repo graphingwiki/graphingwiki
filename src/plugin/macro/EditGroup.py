@@ -13,7 +13,12 @@ addLoadEvent(function(){
 var gsel = $('groupsel');
 
 if(gsel){
-    gsel.addEvent('change', function(){
+    
+    if(gsel.value && $(gsel.value+ '_preselected')){
+        gsel.addClass('hidden');    
+    }
+
+gsel.addEvent('change', function(){
         $$('table[id^=groupActions_]').addClass('hidden');
         var new_group = $('new_group');
         new_group.addClass('hidden');
@@ -30,9 +35,7 @@ if(gsel){
         this.fireEvent('change');
     });
     gsel.fireEvent('change');
-    if(gsel.value){
-        gsel.addClass('hidden');    
-    }
+
 }
 });
     </script>
@@ -50,11 +53,12 @@ if(gsel){
 
         if request.user.name in groups[group]:
             selecthtml += u'<option value="%s" selected>%s</option>\n' % (group, groupname)
+            html += u'<div class="hidden" id="%s_preselected"></div>' % group
         else:
             selecthtml += u'<option value="%s">%s</option>\n' % (group, groupname)
 
         #create user tables
-        usershtml += u'<table id="groupActions_%s" border="1" class="hidden" style="width:99%%">\n' % group
+        usershtml += u'<table id="groupActions_%s" border="1" style="width:99%%">\n' % group
         usershtml += u'<tr class=maxwidth><th>%s</th></tr>\n' % groupname
         usershtml += u'<tr><td>'
         for user in groups[group]:
