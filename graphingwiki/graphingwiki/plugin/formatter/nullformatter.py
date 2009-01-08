@@ -31,6 +31,6 @@ class Formatter(FormatterBase):
     heading = table = null
     table_row = table_cell = attachment_link = attachment_image = attachment_drawing = null
     transclusion = transclusion_param = null
-    definition_term = definition_list = null
-    pagelink = definition_desc = null
-    macro=null
+    definition_term = definition_list = definition_desc = null
+    pagelink = macro = null
+

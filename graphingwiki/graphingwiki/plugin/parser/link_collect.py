@@ -226,6 +226,17 @@ class Parser(WikiParser):
     _tt_repl = __add_meta
     _u_repl = __add_meta
 
+    def __single_link_before_text(self):
+        """ 
+        Corner case: If we have a dd with non-empty text after a
+        single link, it will not be added as text automatically, and
+        has to be dealt with separately.
+        """
+        type, content = self.currentitems[0]
+        raw = content[0]
+        # The item came before the text
+        self.formatter.textstorage.insert(0, raw)
+
     def _dl_repl(self, match, groups):
         """Handle definition lists."""
         if self.in_pre:
@@ -236,17 +247,15 @@ class Parser(WikiParser):
             self.definitions.setdefault('_notype', 
                                         []).extend(self.currentitems)
         elif self.currentitems:
-            # If we have a dd with non-empty text after a single link
+            curkey = self.definitions.setdefault(self.curdef, [])
+
+            # Only account for non-empty text
             if ''.join(self.formatter.textstorage).strip():
-                type, content = self.currentitems[0]
-                raw = content[0]
-                # The item came before the text
-                self.formatter.textstorage.insert(0, raw)
+                self.__single_link_before_text()
                 # Only add this to stored text, not self.definitions -
                 # undent will handle the insertion of this meta later
             else:
-                self.definitions.setdefault(self.curdef, 
-                                            []).extend(self.currentitems)
+                curkey.extend(self.currentitems)
 
         self.currentitems=[]
         self.new_item = True
@@ -270,9 +279,11 @@ class Parser(WikiParser):
         if self.in_dd:
             curkey = self.definitions.setdefault(self.curdef, [])
 
-            # Sometimes end-of-line spaces get here, otherwise textstorage
-            # should be empty
+            # Only account for non-empty text
             if ''.join(self.formatter.textstorage).strip():
+                if self.currentitems:
+                    self.__single_link_before_text()
+                # Add the metas, prepare to populate next key
                 curkey.append(('meta', ''.join(self.formatter.textstorage)))
                 self.formatter.textstorage = list()
             elif self.currentitems:
