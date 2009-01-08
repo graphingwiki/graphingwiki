@@ -45,7 +45,7 @@ gsel.addEvent('change', function(){
     selecthtml += u'<option value="" selected>Create new</option>\n'
 
     for group in groups:
-        meta = get_metas(request, group, ["name"])
+        meta = get_metas(request, group, ["name"], checkAccess=False)
         if meta["name"]:
             groupname = meta["name"].pop()
         else:
