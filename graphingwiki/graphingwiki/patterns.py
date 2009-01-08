@@ -44,13 +44,6 @@ from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
 
-# Fixes failure modes in scripts that have not initialised a request
-from MoinMoin import i18n
-if i18n.wikiLanguages() is None: 
-    i18n.wikiLanguages = lambda: ["en"]
-
-from MoinMoin.parser.text_moin_wiki import Parser
-
 from graphingwiki.graph import Graph
 
 SEPARATOR = '-gwikiseparator-'
@@ -114,17 +107,6 @@ def resolve_iw_url(request, wiki, page):
         
     return iw_url 
 
-# Ripped off from Parser
-url_pattern = u'|'.join(config.url_schemas)
-
-url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
-    'url_guard': u'(^|(?<!\w))',
-    'url': url_pattern,
-    'punct': Parser.punct_pattern,
-}
-
-url_re = re.compile(url_rule)
-
 ATTACHMENT_SCHEMAS = ["attachment", "drawing"]
 
 def encode_page(page):
@@ -135,7 +117,7 @@ def decode_page(page):
 
 def node_type(request, nodename):
     if ':' in nodename:
-        if url_re.search(nodename):
+        if request.graphdata.url_re.search(nodename):
             return 'url'
 
         start = nodename.split(':')[0]
@@ -176,6 +158,8 @@ def get_url_ns(request, pagename, link):
         return '../' * subrank + './Property' + link
 
 def format_wikitext(request, data):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     request.page.formatter = request.formatter
     request.formatter.page = request.page
     parser = Parser(data, request)
@@ -254,6 +238,19 @@ class GraphData(UserDict.DictMixin):
         self.writing = False
         
         self.readlock()
+
+        from MoinMoin.parser.text_moin_wiki import Parser
+
+        # Ripped off from Parser
+        url_pattern = u'|'.join(config.url_schemas)
+
+        url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
+            'url_guard': u'(^|(?<!\w))',
+            'url': url_pattern,
+            'punct': Parser.punct_pattern,
+        }
+
+        self.url_re = re.compile(url_rule)
 
     def __getitem__(self, item):
         page = encode_page(item)

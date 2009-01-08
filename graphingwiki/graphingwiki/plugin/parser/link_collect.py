@@ -270,7 +270,9 @@ class Parser(WikiParser):
         if self.in_dd:
             curkey = self.definitions.setdefault(self.curdef, [])
 
-            if self.formatter.textstorage:
+            # Sometimes end-of-line spaces get here, otherwise textstorage
+            # should be empty
+            if ''.join(self.formatter.textstorage).strip():
                 curkey.append(('meta', ''.join(self.formatter.textstorage)))
                 self.formatter.textstorage = list()
             elif self.currentitems:
