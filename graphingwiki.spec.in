@@ -39,12 +39,12 @@ Group:		Applications/Internet
 %description raippa
 RAIPPA
 
-#%package opencollab
-#Summary:        OpenCollab SDK
-#Group:          Applications/Internet
+%package opencollab
+Summary:        OpenCollab SDK
+Group:          Applications/Internet
 
-#%description opencollab
-#OpenCollab SDK
+%description opencollab
+OpenCollab SDK
 
 %prep
 %setup -q -n MYDIR
@@ -53,7 +53,7 @@ RAIPPA
 # Remove CFLAGS=... for noarch packages (unneeded)
 cd graphingwiki; %{__python} setup.py build; cd ..
 
-#cd opencollab; %{__python} setup.py build
+cd opencollab; %{__python} setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -64,8 +64,8 @@ cd ..
 mkdir $RPM_BUILD_ROOT/%{python_sitelib}/raippa
 cp -r raippa/* $RPM_BUILD_ROOT/%{python_sitelib}/raippa
 
-#cd opencollab
-#%{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
+cd opencollab
+%{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
 
 rm -f $RPM_BUILD_ROOT%{_bindir}/mm2gwiki*
 
@@ -86,9 +86,9 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{python_sitelib}/raippa/*
 
-#%files opencollab
-#%defattr(-,root,root,-)
-#%{_bindir}/opencollab-*
-#%{python_sitelib}/opencollab/*
-
+%files opencollab
+%defattr(-,root,root,-)
+%{_bindir}/opencollab-*
+%{python_sitelib}/opencollab/*
+%{python_sitelib}/opencollab-*
 %changelog
