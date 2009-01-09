@@ -2,6 +2,7 @@ from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from graphingwiki.editing import get_metas
 from raippa import RaippaUser
+import time
 
 def calculate_hours(timetrack_entries):
     users_hours = [0,0]
@@ -62,6 +63,68 @@ def execute(macro, text):
         return html
 
     user = RaippaUser(request)
+    date_now = time.strftime("%Y-%m-%d")
+    url_prefix = request.cfg.url_prefix_static
+    tt_form_html = ''' 
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
+<script type="text/javascript" src="%s/raippajs/calendar.js"></script>
+<script type="text/javascript">
+addLoadEvent(function(){
+if($('ttDate')){
+  var calCss = new Asset.css("%s/raippa/css/calendar.css");
+  var cal = new Calendar({
+    ttDate : 'Y-m-d'
+    },{
+      direction : -1,
+      draggable : false
+      });
+  $('tt_form').addClass('hidden');
+}
+});
+function clearText(el){
+    if(el.defaultValue == el.value){
+        el.value = "";
+        }
+    }
+</script>
+
+    ''' % (url_prefix, url_prefix, url_prefix, url_prefix)
+    tt_form_html += '''
+    <div id="tt_form">
+    <form method="post" action="">
+    <input type="hidden" name="action" value="editTimetrack">
+    <input type="hidden" name="course" value="%s">
+    <table class="no_border">
+    <tr>
+        <th>Date:</th>
+        <td><input id="ttDate" name="date" value="%s"></td>
+    </tr>
+    <tr>
+        <th>Start time:</th>
+        <td><input name="start" value="HH:MM" maxlength="5" size=5"
+        onfocus="clearText(this)"></td>
+    </tr>
+    <tr>
+        <th>End time:</td>
+        <td><input name="end" value="HH:MM" maxlength="5" size=5"
+        onfocus="clearText(this)"></td>
+    </tr>
+    <tr>
+        <th>Description:</th>
+        <td><input name="description"></td>
+    </tr>
+    <tr>
+        <th></th>
+        <td><input type="submit" value="save" name="save"></td>
+    </tr>
+    </table>
+    </form>
+    </div>
+    <a class="jslink" onclick="$('tt_form').toggleClass('hidden')">add new event</a>
+    <br><br>
+    ''' % (coursepage, date_now)
+    html += tt_form_html
     user_entries = user.gettimetrack(coursepage)
 
 #    html += u'<table border="1">\n'
