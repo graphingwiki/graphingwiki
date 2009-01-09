@@ -106,7 +106,7 @@ function clearText(el){
         onfocus="clearText(this)"></td>
     </tr>
     <tr>
-        <th>End time:</td>
+        <th>End time:</th>
         <td><input name="end" value="HH:MM" maxlength="5" size=5"
         onfocus="clearText(this)"></td>
     </tr>
