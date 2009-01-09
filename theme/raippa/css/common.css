@@ -392,6 +392,10 @@ div.tip-text {
 
 /* MetaMonthCalendar css*/
 
+th.calendar-month {
+	background-color: #DEDEDE;
+	border: solid 1px #ADB9CC;
+}
 td.calendar-today {
     border-width: 2pt;
     border-color: #8470FF;
@@ -450,6 +454,7 @@ div#task_infodiv {
 	width: 200px;
 	border: solid black 1px;
 	background: #F0FFFF;
+	margin: 5px 0 0 0;
 }
 
 /* Qestion editor answer table*/
