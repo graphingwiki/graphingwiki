@@ -94,6 +94,11 @@ def execute(macro, args):
     now = now.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
     year = now.year
     month = now.month
+    
+    if 'm' and 'y' in macro.form:
+        month = int(macro.form['m'][0])
+        year = int(macro.form['y'][0])
+ 
     cal = calendar.monthcalendar(year, month)
 
     try:
@@ -103,7 +108,7 @@ def execute(macro, args):
 
     # counting week numbers
 
-    first_date = now.replace(day = 1)
+    first_date = now.replace(day = 1, year = year, month = month)
 
     weeknum = first_date.isocalendar()[1]
 
@@ -237,6 +242,23 @@ var dates = new Hash();
 
     output += macro.formatter.table_row(1)
 
+    prev_month = month -1
+    prev_year = year
+    next_month = month +1
+    next_year = year
+
+    if month == 12:
+        next_month = 1
+        next_year = year +1
+    elif month == 1:
+        prev_month = 12
+        prev_year = year - 1
+
+    output += macro.formatter.rawHTML('<th colspan="8" class="calendar-month"><a href="?y=%s&m=%s"><</a> %s / %s <a href="?y=%s&m=%s">></a></th>' % (prev_year, prev_month, year, month, next_year, next_month))
+    output += macro.formatter.table_row(0)
+
+    output += macro.formatter.table_row(1)
+
     output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
     output += macro.formatter.table_cell(0)
 
@@ -258,7 +280,7 @@ var dates = new Hash();
         weeknum += 1
 
         for i,day in enumerate(week):
-            if day and str(day) == str(now.day):
+            if day and str(day) == str(now.day) and now.month == month and now.year == year:
                 output += macro.formatter.table_cell(1, {'class' : 'calendar-today'})
             elif not day:
                 output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
