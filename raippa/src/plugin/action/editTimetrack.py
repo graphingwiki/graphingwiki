@@ -35,6 +35,7 @@ def execute(pagename, request):
         end = request.form.get("end", [None])[0]
         description = request.form.get("description", [None])[0]
         old_entry = request.form.get("entry", [None])[0]
+        type = request.form.get("type", [None])[0]
 
         if old_entry:
             metas = get_metas(request, old_entry, ["user"], display=True, checkAccess=False)
@@ -43,13 +44,14 @@ def execute(pagename, request):
                 return None
 
         msg = None
-        if date and start and end and course and description:
+        if date and start and end and course and description and type:
             data = {"user": [addlink(request.user.name)],
                     "course": [addlink(course)],
                     "date": [date],
                     "start": [start],
                     "end": [end],
                     "description": [description],
+                    "type": [type],
                     "gwikicategory": [raippacategories["timetrackcategory"]]}
 
             if old_entry:
