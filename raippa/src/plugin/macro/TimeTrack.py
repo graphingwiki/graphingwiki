@@ -127,20 +127,14 @@ function clearText(el){
     html += tt_form_html
     user_entries = user.gettimetrack(coursepage)
 
-#    html += u'<table border="1">\n'
-    for key, info in user_entries.iteritems():
-#        html += u'''
-#<tr>
-#  <td>%s</td>
-#  <td>%s-%s</td>
-#  <td>%s</td>
-#</tr>\n''' % (info[0], info[1], info[2], info[3])
+    dates = user_entries.keys()
+    dates.sort()
+    for key in dates:
+        info = user_entries[key]
         html += "%s %s %s %s<br>\n" % (info[0], info[1], info[2], info[3])
 
     users_hours = calculate_hours(user_entries)
     html += "Total: %dh %dmin<br>\n" % (users_hours[0], users_hours[1])
-#    html += u'<tr><td>Total:</td><td>%dh %dmin</td></tr>\n' % (users_hours[0], users_hours[1])
-#    html += u'</table>\n'
 
     getgroups = wikiutil.importPlugin(request.cfg, "action", 'editGroup', 'getgroups')
     groups = getgroups(request, coursepage)
@@ -154,17 +148,17 @@ function clearText(el){
             else:
                 group_name = group
             
-            html += u'<br>%s group<br>\n' % group_name
+            html += u'<br><b>%s group</b><br>\n' % group_name
             for group_member in users:
                 if group_member != user.user:
                     member = RaippaUser(request, group_member)
                     member_entries = member.gettimetrack(coursepage)
                     member_hours = calculate_hours(member_entries)
-                    html += u'%s %dh %dmin<br>\n' % (group_member, member_hours[0], member_hours[1])
+                    html += u'%s: %dh %dmin<br>\n' % (group_member, member_hours[0], member_hours[1])
                     group_hours[0] += member_hours[0]
                     group_hours[1] += member_hours[1]
                 else:
-                    html += u'%s %dh %dmin<br>\n' % (user.user, users_hours[0], users_hours[1])
+                    html += u'%s: %dh %dmin<br>\n' % (user.user, users_hours[0], users_hours[1])
                 
             if group_hours[1]/60 > 0:
                 group_hours[0] += (group_hours[1]/60)
