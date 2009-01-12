@@ -576,7 +576,7 @@ def save_question(request, questiondata, questionpage=None):
 
     #save questionpage
     if questionpage not in newpages:
-        oldkeys = get_keys(request, questionpage).keys()
+        oldkeys = get_keys(request, questionpage)
         remove = {questionpage: oldkeys}
     else:
         remove = dict()
@@ -715,7 +715,7 @@ def save_question(request, questiondata, questionpage=None):
         
         #save answer
         if answerpage not in newpages:
-            oldkeys = get_keys(request, answerpage).keys()
+            oldkeys = get_keys(request, answerpage)
             remove = {answerpage: oldkeys}
         else:
             remove = dict()
@@ -752,7 +752,7 @@ def save_question(request, questiondata, questionpage=None):
         #save tip
         if tip:
             if tippage not in newpages:
-                oldkeys = get_keys(request, tippage).keys()
+                oldkeys = get_keys(request, tippage)
                 remove = {tippage: oldkeys}
             else:
                 remove = dict()
