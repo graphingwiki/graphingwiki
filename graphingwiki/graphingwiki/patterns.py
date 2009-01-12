@@ -370,6 +370,15 @@ class GraphData(UserDict.DictMixin):
             else:
                 node.__setattr__(key, val)
 
+        # Add links as metadata
+        for key, val in page.get('out', dict()).iteritems():
+            if key == NO_TYPE:
+                continue
+            if key in SPECIAL_ATTRS:
+                node.__setattr__(key, ''.join(val))
+            else:
+                node.__setattr__(key, val)
+
         # Shapefile is an extra special case
         for shape in page.get('lit', dict()).get('gwikishapefile', list()):
             node.gwikishapefile = shape
