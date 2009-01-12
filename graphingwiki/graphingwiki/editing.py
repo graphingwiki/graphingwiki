@@ -750,6 +750,10 @@ def savetext(request, pagename, newtext):
     return msg
 
 def string_aton(value):
+    # Regression: without this, '\d+ ' is an IP according to this func
+    if not '.' in value:
+        raise TypeError
+
     value = value.lstrip('[').rstrip(']').strip('"')
 
     # 00 is stylistic to avoid this: 
