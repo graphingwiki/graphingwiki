@@ -564,7 +564,7 @@ class GraphShower(object):
                     continue
 
             # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(nonguaranteeds_p(obj))
+            self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(obj))
             n = outgraph.nodes.get(objname)
             n.update(obj)
 
