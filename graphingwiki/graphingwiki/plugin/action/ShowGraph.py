@@ -50,7 +50,7 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.patterns import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node
+from graphingwiki.patterns import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page
 from graphingwiki.editing import ordervalue
 
 import math
@@ -563,7 +563,7 @@ class GraphShower(object):
                     continue
 
             # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(nonguaranteeds_p(obj))
+            self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(obj))
             n = outgraph.nodes.get(objname)
             n.update(obj)
 
