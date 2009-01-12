@@ -89,6 +89,5 @@ rm -rf $RPM_BUILD_ROOT
 %files opencollab
 %defattr(-,root,root,-)
 %{_bindir}/opencollab-*
-%{python_sitelib}/opencollab/*
-%{python_sitelib}/opencollab-*
+%{python_sitelib}/opencollab*
 %changelog
