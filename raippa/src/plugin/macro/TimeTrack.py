@@ -50,7 +50,8 @@ def calculate_hours(timetrack_entries):
 def execute(macro, text):
     request = macro.request
     pagename = request.page.page_name 
-    coursepage = text
+    args = text.split(',')
+    coursepage = args[0]
 
     html = u'<h2>TimeTrack</h2>\n'
 
@@ -65,7 +66,17 @@ def execute(macro, text):
     user = RaippaUser(request)
     date_now = time.strftime("%Y-%m-%d")
     url_prefix = request.cfg.url_prefix_static
-    tt_form_html = ''' 
+    types_html = u''
+
+    if len(args) > 1 :
+        types = args[1].split('||')
+        types_html = u'<tr><th>type:</th><td><select name="type">'
+        for type in types:
+            types_html += u'<option value="%s">%s</option>' % (type, type)
+
+        types_html += u'</select></td></tr>'
+
+    tt_form_html = u''' 
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
@@ -88,9 +99,8 @@ function clearText(el){
         }
     }
 </script>
-
     ''' % (url_prefix, url_prefix, url_prefix, url_prefix)
-    tt_form_html += '''
+    tt_form_html += u'''
     <div id="tt_form">
     <form method="post" action="">
     <input type="hidden" name="action" value="editTimetrack">
@@ -102,18 +112,19 @@ function clearText(el){
     </tr>
     <tr>
         <th>Start time:</th>
-        <td><input name="start" value="HH:MM" maxlength="5" size=5"
+        <td><input name="start" value="HH:MM" maxlength="5" size="6"
         onfocus="clearText(this)"></td>
     </tr>
     <tr>
         <th>End time:</th>
-        <td><input name="end" value="HH:MM" maxlength="5" size=5"
+        <td><input name="end" value="HH:MM" maxlength="5" size="6"
         onfocus="clearText(this)"></td>
     </tr>
     <tr>
         <th>Description:</th>
         <td><input name="description"></td>
     </tr>
+    %s
     <tr>
         <th></th>
         <td><input type="submit" value="save" name="save"></td>
@@ -123,7 +134,7 @@ function clearText(el){
     </div>
     <a class="jslink" onclick="$('tt_form').toggleClass('hidden')">add new event</a>
     <br><br>
-    ''' % (coursepage, date_now)
+    ''' % (coursepage, date_now, types_html)
     html += tt_form_html
     user_entries = user.gettimetrack(coursepage)
 
