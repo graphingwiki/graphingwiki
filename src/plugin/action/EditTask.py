@@ -35,7 +35,10 @@ def taskform(request, task=None):
 
         subjects = metas["subject"]
 
-        flow = getflow(request, task)
+        try:
+            flow = getflow(request, task)
+        except:
+            flow = dict()
         recapdict = dict()
         questions = list()
         for taskpoint, questionpage in flow:
@@ -573,9 +576,11 @@ def save_task(request, taskdata, taskpage=None):
         data = {"title": [title],
                 "description": [description],
                 "type": [tasktype],
-                "start": [addlink(taskpoint)],
                 "subject": subjects,
                 "gwikicategory": [raippacategories["taskcategory"]]}
+
+        if len(flowlist) > 0:
+            data["start"] = [addlink(taskpoint)]
 
         data = {taskpage: data}
         newpages.append(taskpage)
@@ -611,20 +616,25 @@ def save_task(request, taskdata, taskpage=None):
         return u'Thank you for your changes. Your attention to detail is appreciated.'
 
     else:
-        oldflow = getflow(request, taskpage)
+        try:
+            oldflow = getflow(request, taskpage)
+        except:
+            oldflow = dict()
         oldquestions = list()
         for taskpoint, questionpage in oldflow:
             oldquestions.append(questionpage)
 
         #save just taskpage if flow haven't changed
-        if oldquestions == flowlist or not recapdict:
+        if oldquestions == flowlist and not recapdict:
             startmeta = get_metas(request, taskpage, ["start"])
             data = {"title": [title],
                     "description": [description],
                     "type": [tasktype],
                     "subject": subjects,
-                    "start": startmeta["start"],
                     "gwikicategory": [raippacategories["taskcategory"]]}
+
+            if startmeta["start"]:
+                data["start"] = startmeta["start"]
             data = {taskpage: data}
             
             oldkeys = get_keys(request, taskpage)
@@ -701,10 +711,11 @@ def save_task(request, taskdata, taskpage=None):
             #handle taskpage datas
             data = {"title": [title],
                     "description": [description],
-                    "type": [type],
+                    "type": [tasktype],
                     "subject": subjects,
-                    "start": [addlink(newflow[0][1])],
                     "gwikicategory": [raippacategories["taskcategory"]]}
+            if len(newflow) > 0:
+                data["start"] = [addlink(newflow[0][0])]
             data = {taskpage: data}
 
             oldkeys = get_keys(request, taskpage)
@@ -781,7 +792,7 @@ def execute(pagename, request):
         taskpage = request.form.get("task", [None]).pop()
         taskdata = {"title": request.form.get("title", [None])[0],
                     "description": request.form.get("description", [unicode()])[0].rstrip(),
-                    "type": request.form.get('type', [None])[0],
+                    "type": request.form.get('type', ["basic"])[0],
                     "subject": request.form.get("subject", list()),
                     "flowlist": request.form.get("flowlist", list())}
 
