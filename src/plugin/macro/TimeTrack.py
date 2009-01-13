@@ -154,7 +154,7 @@ function clearText(el){
     <br><br>
     ''' % (coursepage, date_now, types_html)
 
-    if username and request.user.name == username:
+    if (not username and request.user.name) or (request.user.name == username):
         html += tt_form_html
 
     user_entries = user.gettimetrack(coursepage)
