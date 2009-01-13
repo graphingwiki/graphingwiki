@@ -498,14 +498,20 @@ class Question:
 
         return overallvalue, successdict, tips
 
-    def writehistory(self, users, course, task, overallvalue, successdict, file=False):
+    def writehistory(self, users, course, task, overallvalue, successdict, file=False, usedtime=None):
         _ = self.request.getText
 
+        oldtime = 0.0
         for user in users:
             history = self.gethistory(user, course)
             if history:
                 historypage = history[3]
-                oldkeys = get_keys(self.request, historypage).keys()
+                oldkeys = get_keys(self.request, historypage)
+                if "usedtime" in oldkeys:
+                    meta = get_metas(self.request, historypage, ["usedtime"], checkAccess=False)
+                    if meta["usedtime"]:
+                        oldtime = meta["usedtime"].pop()
+                        oldtime = float(oldtime)
                 remove = {historypage: oldkeys}
                 break
         else:
@@ -524,6 +530,15 @@ class Question:
                        "useragent": [self.request.getUserAgent()],
                        "time": [time.strftime("%Y-%m-%d %H:%M:%S")],
                        "gwikicategory": [raippacategories["historycategory"]]}
+
+        if usedtime:
+            total_t = oldtime + usedtime
+            if total_t > 30:
+                total_t = u'30'
+            else:
+                total_t = u'%.2f' % total_t
+            
+            historydata["usedtime"] = [total_t]
 
         if overallvalue == "recap":
             meta = get_metas(self.request, task, ["recap"], checkAccess=False)
