@@ -1,181 +1,152 @@
 from MoinMoin.Page import Page
-from MoinMoin import wikiutil
+from MoinMoin.PageEditor import PageEditor
+
 from graphingwiki.editing import get_metas
-from raippa import RaippaUser
-import time
+from graphingwiki.editing import set_metas
 
-def calculate_hours(timetrack_entries):
-    users_hours = [0,0]
-    for key, info in timetrack_entries.iteritems():
-        start = info[1].split(":")
-        start[0] = int(start[0])
-        start[1] = int(start[1])
+from raippa import removelink
 
-        end = info[2].split(":")
-        end[0] = int(end[0])
-        end[1] = int(end[1])
+def getgroups(request, parentpage):
+    linkedpage = request.graphdata.getpage(parentpage)
+    linking_in = linkedpage.get('in', {})
+    pagelist = linking_in.get("course", [])
+    groups = dict()
+    for page in pagelist:
+        if page.endswith("Group"):
+            groups[page] = getgroup(request, page) 
+    return groups
 
-        if start[0] < end[0]:
-            if start[1] > end[1]:
-                hours = end[0] - start[0] - 1
-                minutes = (60 - start[1]) + end[1]
+def getgroup(request, pagename):
+    raw = Page(request, pagename).getPageText()
+    group = list()
+    for line in raw.split("\n"):
+        if line.startswith(" * "):
+            user_in_line = removelink(line[3:].rstrip())
+            group.append(user_in_line)
+
+    return group
+
+def removeuser(request, group, user):
+    raw = Page(request, group).getPageText()
+    newcontent = list()
+    for line in raw.split("\n"):
+        if line.startswith(" * ") and removelink(line[3:].rstrip()) == user:
+            continue
+        newcontent.append(line)
+
+    newcontent = "\n".join(newcontent)
+
+    page = PageEditor(request, group)
+    try:
+        msg = page.saveText(newcontent, page.get_real_rev())
+        return True
+    except:
+        return False
+
+def adduser(request, group, user):
+    oldcontent = Page(request, group).getPageText().split("\n")
+    newcontent = list()
+    if len(oldcontent) > 0:
+        if oldcontent[0].startswith("#acl"):
+            newcontent.append(oldcontent[0])
+
+    newcontent.append(" * [[%s]]" % user)
+
+    for line in oldcontent:
+        if not line.startswith("#acl"):
+            newcontent.append(line)
+
+    newcontent = "\n".join(newcontent)
+
+    page = PageEditor(request, group)
+    try:
+        msg = page.saveText(newcontent, page.get_real_rev())
+        return True
+    except:
+        return False
+        
+
+def execute(pagename, request):
+    course = request.form.get("course", [None])[0]
+    grouppage = request.form.get("grouppage", [None])[0]
+    groupname = request.form.get("groupname", [None])[0]
+    user = request.form.get("user", [request.user.name])[0]
+
+    if not course:
+        Page(request, pagename).send_page(msg=u'Missing course page.')
+        return None
+
+    if request.form.has_key("leave") and grouppage:
+        group = getgroup(request, grouppage)
+        if user not in group:
+            meta = get_metas(request, group, ["name"], checkAccess=False)
+            if meta["name"]:
+                groupname = meta["name"].pop()
             else:
-                hours = end[0] - start[0]
-                minutes = end[1] - start[1]
-
-        elif start[0] == end[0]:
-            if start[1] <= end[1]:
-                hours = 0
-                minutes = end[1] - start[1]
-            else:
-                hours = 23
-                minutes = (60 - start[1]) + end[1]
+                groupname = group
+            Page(request, pagename).send_page(msg=u'User %s not in group %s' % (user, groupname))
         else:
-            if start[1] <= end[1]:
-                hours = (24 - start[0]) + end[0]
-                minutes = end[1] - start[1]
+            if removeuser(request, grouppage, user):
+                Page(request, pagename).send_page(msg=u'User removed successfully.')
             else:
-                hours = (23 - start[0]) + end[0]
-                minutes = (60 - start[1]) + end[1]
+                Page(request, pagename).send_page(msg=u'Failed to remove user.')
 
-        users_hours[0] += hours
-        users_hours[1] += minutes
+    elif request.form.has_key("join") and grouppage:
+        removed = list()
+        groups = getgroups(request, course)
+        for group, users in groups.iteritems():
+            if group != grouppage and user in users:
+                if removeuser(request, group, user):
+                    removed.append(group)
+            elif group == grouppage and user in users:
+                Page(request, pagename).send_page(msg=u'User already in the group.')
+                return None
+        
+        if adduser(request, grouppage, user):
+            Page(request, pagename).send_page(msg=u'User added successfully.')
+        else:
+            Page(request, pagename).send_page(msg=u'Failed to remove user.')
 
-    if users_hours[1]/60 > 0:
-        users_hours[0] += (users_hours[1]/60)
-        users_hours[1] = users_hours[1] - ((users_hours[1]/60) * 60)
+    elif request.form.has_key("create") and groupname:
+        groups = getgroups(request, course)
+        for group in groups:
+            meta = get_metas(request, group, ["name"])
+            if meta["name"]:
+                name = meta["name"].pop() 
+                if name == groupname:
+                    Page(request, pagename).send_page(msg=u"Group '%s' already exists." % name)
+                    return None
 
-    return users_hours
+        pageform = u'%s/%s_Group' % (course, groupname)
+        grouppage = pageform
+        index = 0
+        while Page(request, grouppage).exists():
+            grouppage = pageform + u'_%i' % index
+            index += 1
 
-def execute(macro, text):
-    request = macro.request
-    pagename = request.page.page_name 
-    args = text.split(',')
-    coursepage = args[0]
+        content = u' * [[%s]]\n' % user
+        content = u' name :: %s\n' % groupname
+        content += u' course :: [[%s]]' % course
 
-    html = u'<h2>TimeTrack</h2>\n'
+        page = PageEditor(request, grouppage)
+        try:
+            msg = page.saveText(content, page.get_real_rev())
+            Page(request, pagename).send_page(msg=u'Group created successfully.')
+        except:
+            Page(request, pagename).send_page(msg=u'Failed to create group.')
 
-    if not request.user.name:
-        html += u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.'
-        return html
+        set_metas(request, dict(), dict(), {grouppage: {"gwikicategory": ["CategoryGroup"]}})
 
-    if not Page(request, coursepage).exists():
-        html += u'%s doesn\'t exist.' % coursepage
-        return html
+    elif request.form.has_key("delete") and grouppage:
+        try:
+            success, msg = PageEditor(request, grouppage, do_editor_backup=0).deletePage()
+        except:
+            success = False
 
-    user = RaippaUser(request)
-    date_now = time.strftime("%Y-%m-%d")
-    url_prefix = request.cfg.url_prefix_static
-    types_html = u''
+        if success:
+            Page(request, pagename).send_page(msg=u'Group deleted successfully.')
+        else:
+            Page(request, pagename).send_page(msg=u'Failed to delete group.')
 
-    if len(args) > 1 :
-        types = args[1].split('||')
-        types_html = u'<tr><th>type:</th><td><select name="type">'
-        for type in types:
-            types_html += u'<option value="%s">%s</option>' % (type, type)
-
-        types_html += u'</select></td></tr>'
-
-    tt_form_html = u''' 
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
-<script type="text/javascript" src="%s/raippajs/calendar.js"></script>
-<script type="text/javascript">
-addLoadEvent(function(){
-if($('ttDate')){
-  var calCss = new Asset.css("%s/raippa/css/calendar.css");
-  var cal = new Calendar({
-    ttDate : 'Y-m-d'
-    },{
-      direction : -1,
-      draggable : false
-      });
-  $('tt_form').addClass('hidden');
-}
-});
-function clearText(el){
-    if(el.defaultValue == el.value){
-        el.value = "";
-        }
-    }
-</script>
-    ''' % (url_prefix, url_prefix, url_prefix, url_prefix)
-    tt_form_html += u'''
-    <div id="tt_form">
-    <form method="post" action="">
-    <input type="hidden" name="action" value="editTimetrack">
-    <input type="hidden" name="course" value="%s">
-    <table class="no_border">
-    <tr>
-        <th>Date:</th>
-        <td><input id="ttDate" name="date" value="%s"></td>
-    </tr>
-    <tr>
-        <th>Start time:</th>
-        <td><input name="start" value="HH:MM" maxlength="5" size="6"
-        onfocus="clearText(this)"></td>
-    </tr>
-    <tr>
-        <th>End time:</th>
-        <td><input name="end" value="HH:MM" maxlength="5" size="6"
-        onfocus="clearText(this)"></td>
-    </tr>
-    <tr>
-        <th>Description:</th>
-        <td><input name="description"></td>
-    </tr>
-    %s
-    <tr>
-        <th></th>
-        <td><input type="submit" value="save" name="save"></td>
-    </tr>
-    </table>
-    </form>
-    </div>
-    <a class="jslink" onclick="$('tt_form').toggleClass('hidden')">add new event</a>
-    <br><br>
-    ''' % (coursepage, date_now, types_html)
-    html += tt_form_html
-    user_entries = user.gettimetrack(coursepage)
-
-    dates = user_entries.keys()
-    dates.sort()
-    for key in dates:
-        info = user_entries[key]
-        html += "%s %s %s %s<br>\n" % (info[0], info[1], info[2], info[3])
-
-    users_hours = calculate_hours(user_entries)
-    html += "Total: %dh %dmin<br>\n" % (users_hours[0], users_hours[1])
-
-    getgroups = wikiutil.importPlugin(request.cfg, "action", 'editGroup', 'getgroups')
-    groups = getgroups(request, coursepage)
-
-    for group, users in groups.iteritems():
-        if user.user in users:
-            group_hours = users_hours[:]
-            metas = get_metas(request, group, ["name"], checkAccess=False)
-            if metas["name"]:
-                group_name = metas["name"].pop()
-            else:
-                group_name = group
-            
-            html += u'<br><b>%s group</b><br>\n' % group_name
-            for group_member in users:
-                if group_member != user.user:
-                    member = RaippaUser(request, group_member)
-                    member_entries = member.gettimetrack(coursepage)
-                    member_hours = calculate_hours(member_entries)
-                    html += u'%s: %dh %dmin<br>\n' % (group_member, member_hours[0], member_hours[1])
-                    group_hours[0] += member_hours[0]
-                    group_hours[1] += member_hours[1]
-                else:
-                    html += u'%s: %dh %dmin<br>\n' % (user.user, users_hours[0], users_hours[1])
-                
-            if group_hours[1]/60 > 0:
-                group_hours[0] += (group_hours[1]/60)
-                group_hours[1] = group_hours[1] - ((group_hours[1]/60) * 60)
-
-            html += u'Total: %dh %dmin<br>\n' % (group_hours[0], group_hours[1])
-            break
-    
-    return html
+    else:
+        Page(request, pagename).send_page(msg=u'Invalid input.')
