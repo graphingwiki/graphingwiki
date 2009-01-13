@@ -1,6 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 import os
 import random
+import time
 
 from MoinMoin.Page import Page
 import MoinMoin.wikiutil as wikiutil
@@ -203,6 +204,7 @@ def drawtaskpointpage(request, questionpage, taskpoint, course, ruser=False, rec
     wr(u'<input type="hidden" name="action" value="flowRider">\n')
     wr(u'<input type="hidden" name="current" value="%s">\n' % taskpoint)
     wr(u'<input type="hidden" name="course" value="%s">\n' % course)
+    wr(u'<input type="hidden" name="stime" value="%s">\n' % time.time())
     if recap:
         wr(u'<input type="hidden" name="recap" value="%s">\n' % recap)
     drawanswerinput(request, question)
@@ -552,6 +554,17 @@ def execute(pagename, request):
             return None
         else:
             useranswer = request.form.get("answer", list())
+
+            totaltime = 0.0
+            try:
+                starttime = float(request.form.get("stime", [None])[0])
+                totaltime = float()
+                if starttime:
+                    current_time = time.time()
+                    totaltime = (current_time - starttime)/60
+            except:
+                pass
+
             if tasktype != "exam" and not useranswer:
                 _enter_page(request, pagename)
                 drawtip(request, "noanswer") 
@@ -609,7 +622,7 @@ def execute(pagename, request):
                         pass
 
                 else:
-                    if not question.writehistory(users, coursepage, currentpage, overall,success):
+                    if not question.writehistory(users, coursepage, currentpage, overall,success, usedtime=totaltime):
                         #TODO: should be message?
                         request.write(u'Answer writing failed.')
                         return None
@@ -655,7 +668,7 @@ def execute(pagename, request):
                             #TODO: report missing recappage
                     else:
                         #if no recap found, just save
-                        succ = question.writehistory(users, coursepage, currentpage, overall, success)
+                        succ = question.writehistory(users, coursepage, currentpage, overall, success, usedtime=totaltime)
                         if not succ:
                             #TODO: should be message?
                             request.write(u'Answer writing failed.')
