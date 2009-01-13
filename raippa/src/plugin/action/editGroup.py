@@ -2,6 +2,7 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.editing import get_metas
+from graphingwiki.editing import set_metas
 
 from raippa import removelink
 
@@ -133,6 +134,8 @@ def execute(pagename, request):
             Page(request, pagename).send_page(msg=u'Group created successfully.')
         except:
             Page(request, pagename).send_page(msg=u'Failed to create group.')
+
+        set_metas(request, dict(), dict(), {grouppage: {"gwikicategory": ["CategoryGroup"]}})
 
     elif request.form.has_key("delete") and grouppage:
         try:
