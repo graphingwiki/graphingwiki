@@ -1,5 +1,6 @@
 import random
 import time
+import datetime
 
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
@@ -501,7 +502,7 @@ class Question:
     def writehistory(self, users, course, task, overallvalue, successdict, file=False, usedtime=None):
         _ = self.request.getText
 
-        oldtime = 0.0
+        oldtime = unicode() 
         for user in users:
             history = self.gethistory(user, course)
             if history:
@@ -511,7 +512,6 @@ class Question:
                     meta = get_metas(self.request, historypage, ["usedtime"], checkAccess=False)
                     if meta["usedtime"]:
                         oldtime = meta["usedtime"].pop()
-                        oldtime = float(oldtime)
                 remove = {historypage: oldkeys}
                 break
         else:
@@ -532,11 +532,13 @@ class Question:
                        "gwikicategory": [raippacategories["historycategory"]]}
 
         if usedtime:
-            total_t = oldtime + usedtime
-            if total_t > 30:
-                total_t = u'30'
+            fmt = "%H:%M:%S"
+            if oldtime:
+                t = time.strptime(oldtime, fmt)
+                oldtime = datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
+                total_t = time.strftime(fmt, time.gmtime(oldtime + usedtime))
             else:
-                total_t = u'%.2f' % total_t
+                total_t = time.strftime(fmt, time.gmtime(usedtime))
             
             historydata["usedtime"] = [total_t]
 

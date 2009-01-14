@@ -555,13 +555,14 @@ def execute(pagename, request):
         else:
             useranswer = request.form.get("answer", list())
 
-            totaltime = 0.0
+            utime = 0.0
             try:
-                starttime = float(request.form.get("stime", [None])[0])
-                totaltime = float()
-                if starttime:
+                start_time = float(request.form.get("stime", [None])[0])
+                if start_time:
                     current_time = time.time()
-                    totaltime = (current_time - starttime)/60
+                    utime = current_time - start_time
+                    if utime > 1800:
+                        utime = 1800
             except:
                 pass
 
@@ -622,7 +623,7 @@ def execute(pagename, request):
                         pass
 
                 else:
-                    if not question.writehistory(users, coursepage, currentpage, overall,success, usedtime=totaltime):
+                    if not question.writehistory(users, coursepage, currentpage, overall,success, usedtime=utime):
                         #TODO: should be message?
                         request.write(u'Answer writing failed.')
                         return None
@@ -668,7 +669,7 @@ def execute(pagename, request):
                             #TODO: report missing recappage
                     else:
                         #if no recap found, just save
-                        succ = question.writehistory(users, coursepage, currentpage, overall, success, usedtime=totaltime)
+                        succ = question.writehistory(users, coursepage, currentpage, overall, success, usedtime=utime)
                         if not succ:
                             #TODO: should be message?
                             request.write(u'Answer writing failed.')
