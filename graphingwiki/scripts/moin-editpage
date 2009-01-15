@@ -32,7 +32,7 @@ if __name__ == '__main__':
     pagename = args[1]
 
     # Make a new request for the page
-    req = request.RequestCLI(pagename)
+    req = RequestCLI(pagename)
 
     # Auth
     if options.auth:
