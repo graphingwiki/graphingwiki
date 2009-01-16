@@ -46,7 +46,7 @@ class RaippaUser:
             self.user = self.request.user.name
             self.name = self.request.user.aliasname
             if not pageexists(self.request, self.user) and self.name:
-                data = {self.user: {"name": [self.name]}}
+                data = {self.user: {"name": [self.name], "gwikicategory": [raippacategories["usercategory"]]}}
                 result, msg = set_metas(request, dict(), dict(), data)
                 if not result:
                     reporterror(request, "failed to write %s to page %s" % (self.name, self.user))
@@ -350,7 +350,7 @@ class Question:
             categories = get_metas(self.request, temp, ["gwikicategory"], checkAccess=False)
 
             if raippacategories["historycategory"] in categories["gwikicategory"]:
-                keys = ["user", "course", "overallvalue", "task", "true", "false"]
+                keys = ["user", "course", "overallvalue", "task", "true", "false", "usedtime"]
                 metas = get_metas(self.request, temp, keys, display=True, checkAccess=False)
 
                 if not metas["user"]:
@@ -369,13 +369,18 @@ class Question:
                     else:
                         task = unicode()
 
+                    if metas["usedtime"]:
+                        usedtime = metas["usedtime"].pop()
+                    else:
+                        usedtime = unicode()
+
                     useranswers = dict()
                     for true in metas["true"]:
                         useranswers[true] = "true"
                     for false in metas["false"]:
                         useranswers[false] = "false"
 
-                    return [overallvalue, useranswers, task, temp]
+                    return [overallvalue, useranswers, task, temp, usedtime]
 
         return False
 
@@ -387,8 +392,8 @@ class Question:
         pagelist = linking_in.get("question", [])
 
         for page in pagelist:
-            keys = ["gwikicategory", "task", "user", "course", "overallvalue", "true", "false"]
-            metas = get_metas(request, node, keys, display=True, checkAccess=False)
+            keys = ["gwikicategory", "task", "user", "course", "overallvalue", "true", "false", "usedtime"]
+            metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
 
             categories = metas["gwikicategory"]
 
@@ -415,6 +420,11 @@ class Question:
                     task = metas["task"].pop()
                 else:
                     task = unicode()
+
+                if metas["usedtime"]:
+                    usedtime = metas["usedtime"].pop()
+                else:
+                    usedtime = unicode()
                 
                 useranswers = dict()
                 for true in metas["true"]:
@@ -423,8 +433,7 @@ class Question:
                     useranswers[false] = "false"
                 
                 course = courses.pop()
-                user = users.pop()
-                histories.append([user, overallvalue, useranswers, course, task, page])
+                histories.append([users, overallvalue, useranswers, course, task, page, usedtime])
 
         return histories
 
@@ -667,6 +676,22 @@ def pageexists(request, pagename):
         return False
     else:
         return True
+
+def getcourseusers(request, coursepage):
+    users = list()
+
+    course = request.graphdata.getpage(coursepage)
+    linking_in = course.get('in', {})
+    pagelist = linking_in.get("course", [])
+
+    for page in pagelist:
+        keys = ["gwikicategory", "user"]
+        metas = get_metas(request, page, keys, display=True, checkAccess=False)
+        if raippacategories["historycategory"] in metas["gwikicategory"]:
+            for user in metas["user"]:
+                if user not in users:
+                    users.append(user)
+    return users
 
 def getflow(request, pagename):
     keys = ["gwikicategory", "start", "task"]
