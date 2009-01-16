@@ -1,10 +1,14 @@
+import time
+import datetime 
+
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
 from graphingwiki.editing import get_metas
 
 from raippa import RaippaUser
-from raippa import raippacategories, removelink, getflow
+from raippa import Question
+from raippa import raippacategories, removelink, getcourseusers, getflow
 
 def _enter_page(request, pagename):
     request.http_headers()
@@ -22,9 +26,7 @@ def _exit_page(request, pagename):
 
 def draw_taskstats(request, task, course=None, user=None):
     currentuser = RaippaUser(request, request.user.name)
-    if currentuser.isTeacher():
-        pass
-        #TODO: draw link and edit link
+    isteacher = currentuser.isTeacher()
 
     metas = get_metas(request, task, ["title", "description"], display=True, checkAccess=False)
     if metas["title"]:
@@ -33,16 +35,76 @@ def draw_taskstats(request, task, course=None, user=None):
         title = unicode()
         reporterror(request, "%s doesn't have title meta." % task)
 
-#    if metas["description"]:
-#        description = metas["description"].pop()
-#    else:
-#        description = unicode()
-#        reporterror(request, "%s doesn't have description meta." % task)
-
-    html = u'''
+    html = unicode()
+    if isteacher:
+        html += u'''
 Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
-<h1>%s</h1>
-''' % (request.getBaseURL(), task, task, request.getBaseURL(), task, title)
+''' % (request.getBaseURL(), task, task, request.getBaseURL(), task)
+
+    html += u'<h1>%s</h1>' % title
+
+    if not user: 
+        courseusers = getcourseusers(request, course)
+    else:
+        courseusers = list()
+
+    taskflow = getflow(request, task)
+    for taskpoint, questionpage in taskflow:
+        question = Question(request, questionpage)
+        html += "\n%s " % question.question
+
+        if isteacher:
+            html += u'<a href="%s/%s?action=EditQuestion">[edit]</a>' % (request.getBaseURL(), questionpage)
+
+        if user:
+            history = question.gethistory(user.user, course)
+            if history:
+                if history[0] not in ["False", "pending", "picked", "recap"]:
+                    html += u'''
+<ul><li>Passed with %d tries, in time %s</li></ul>
+''' % (Page(request, history[3]).get_real_rev(), history[4])
+            else:
+                html += u'<ul><li>No answers for this question</li></ul>'
+
+        else:
+            histories = question.gethistories(coursefilter=course, taskfilter=taskpoint)
+            users = list()
+            has_passed = int()
+            average_tries = float()
+            average_time = float()
+           
+            for history in histories:
+                h_users = history[0]
+                for h_user in h_users:
+                    if h_user not in users:
+                        users.append(h_user)
+               
+                if history[1] not in ["False", "pending", "picked", "recap"]:
+                    has_passed += 1
+
+                average_tries += Page(request, history[5]).get_real_rev()
+                if history[6]:
+                    t = time.strptime(history[6], "%H:%M:%S")
+                    average_time += datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
+
+            if len(users) > 0:
+                average_tries = average_tries/len(histories)
+                average_time = int("%.f" % (average_time/average_tries))
+                iso_time = time.strftime("%H:%M:%S", time.gmtime(average_time)) 
+                html += u'<ul>\n'
+                if len(users) == has_passed:
+                    html += u'''
+<li>%d of %d students have tried and passed.</li>\n''' % (has_passed, len(courseusers))
+                else:
+                    html += u'''
+<li>%d of %d students have tried, %d of them have passed.</li>\n''' % (len(users), len(courseusers), has_passed)
+
+                html += u'''
+<li>Average of %.2f tries and %s time used per try.</li>
+</ul>
+''' % (average_tries, iso_time)
+            else:
+                html += u'<ul><li>No answers for this question</li></ul>'
 
     return html
 
