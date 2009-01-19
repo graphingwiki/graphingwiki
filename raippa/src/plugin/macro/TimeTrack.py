@@ -109,6 +109,7 @@ def execute(macro, text):
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript">
 addLoadEvent(function(){
+//window.addEvent('domready', function(){
 if($('ttDate')){
   var calCss = new Asset.css("%s/raippa/css/calendar.css");
   var cal = new Calendar({
@@ -117,8 +118,29 @@ if($('ttDate')){
       direction : -1,
       draggable : false
       });
-  $('tt_form').addClass('hidden');
-}
+  
+  $(document.body).getElements('div.tt_form').each(function(el){
+     el.addClass('hidden');
+      el.getElement('form').addEvent('submit', function(){
+
+            var desc = this.getElement('input.desc');
+            if(!desc.value || desc.value.length == 0){
+                alert('Missing description!');
+                return false;
+                }
+ 
+            var inputs = this.getElements('.time');
+            for(i=0; i < 2; i++){
+                    var val = inputs[i].value;
+                    if(/\d\d\:\d\d/.test(val) == false){
+                        alert('Invalid start/end time!');
+                        return false;
+                        }
+                }
+
+         });
+      });
+  }
 });
 function clearText(el){
     if(el.defaultValue == el.value){
@@ -128,7 +150,7 @@ function clearText(el){
 </script>
     ''' % (url_prefix, url_prefix, url_prefix, url_prefix)
     tt_form_html += u'''
-    <div id="tt_form">
+    <div class="tt_form">
     <form method="post" action="">
     <input type="hidden" name="action" value="editTimetrack">
     <input type="hidden" name="course" value="%s">
@@ -139,17 +161,17 @@ function clearText(el){
     </tr>
     <tr>
         <th>Start time:</th>
-        <td><input name="start" value="HH:MM" maxlength="5" size="6"
+        <td><input name="start" class="time" value="HH:MM" maxlength="5" size="6"
         onfocus="clearText(this)"></td>
     </tr>
     <tr>
         <th>End time:</th>
-        <td><input name="end" value="HH:MM" maxlength="5" size="6"
+        <td><input class="time" name="end" value="HH:MM" maxlength="5" size="6"
         onfocus="clearText(this)"></td>
     </tr>
     <tr>
         <th>Description:</th>
-        <td><input name="description"></td>
+        <td><input class="desc" name="description"></td>
     </tr>
     %s
     <tr>
@@ -159,7 +181,7 @@ function clearText(el){
     </table>
     </form>
     </div>
-    <a class="jslink" onclick="$('tt_form').toggleClass('hidden')">add new event</a>
+    <a class="jslink" onclick="$(this).getPrevious('div').toggleClass('hidden')">add new event</a>
     <br><br>
     ''' % (coursepage, date_now, types_html)
 
