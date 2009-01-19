@@ -70,27 +70,35 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
             histories = question.gethistories(coursefilter=course, taskfilter=taskpoint)
             users = list()
             has_passed = int()
-            average_tries = float()
-            average_time = float()
+            try_count = float()
+            total_time = float()
            
             for history in histories:
                 h_users = history[0]
+                overallvalue = history[1]
+                historypage = history[5]
                 for h_user in h_users:
                     if h_user not in users:
                         users.append(h_user)
                
-                if history[1] not in ["False", "pending", "picked", "recap"]:
-                    has_passed += 1
+                        if overallvalue not in ["False", "pending", "picked", "recap"]:
+                            has_passed += 1
 
-                average_tries += Page(request, history[5]).get_real_rev()
-                if history[6]:
-                    t = time.strptime(history[6], "%H:%M:%S")
-                    average_time += datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
+                        try_count += Page(request, historypage).get_real_rev()
+
+                        if history[6]:
+                            t = time.strptime(history[6], "%H:%M:%S")
+                            total_time += datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
 
             if len(users) > 0:
-                average_tries = average_tries/len(histories)
-                average_time = int("%.f" % (average_time/average_tries))
-                iso_time = time.strftime("%H:%M:%S", time.gmtime(average_time)) 
+                average_tries = try_count/len(users)
+
+                average_try_time = int("%.f" % (total_time/average_tries))
+                iso_try_time = time.strftime("%H:%M:%S", time.gmtime(average_try_time)) 
+
+                average_time = int("%.f" % (average_tries*average_try_time))
+                iso_time = time.strftime("%H:%M:%S", time.gmtime(average_time))
+                
                 html += u'<ul>\n'
                 if len(users) == has_passed:
                     html += u'''
@@ -100,9 +108,9 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
 <li>%d of %d students have tried, %d of them have passed.</li>\n''' % (len(users), len(courseusers), has_passed)
 
                 html += u'''
-<li>Average of %.2f tries and %s time used per try.</li>
+<li>Average of %.2f tries and %s time used per try, %s used per question.</li>
 </ul>
-''' % (average_tries, iso_time)
+''' % (average_tries, iso_try_time, iso_time)
             else:
                 html += u'<ul><li>No answers for this question</li></ul>'
 
