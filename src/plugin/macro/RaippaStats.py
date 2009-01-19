@@ -65,12 +65,16 @@ Error is reported to the admins. Please come back later.'''
                 if task:
                     url = "../%s?action=raippaStats&course=%s&user=%s&task=%s" % (pagename, course, str(user.user), task)
                     gv.setv(nodeobject, 'URL', url)
+                    tooltip = "../%s?action=drawchart&course=%s&task=%s&user=%s" % (pagename, course, task, str(user.user))
+                    gv.setv(nodeobject, 'tooltip', tooltip)
             else:
                #TODO: user count here
                 gv.setv(nodeobject, 'fillcolor', "darkolivegreen4")
                 if task:
                     url = "../%s?action=raippaStats&course=%s&task=%s" % (pagename, course, task)
                     gv.setv(nodeobject, 'URL', url)
+                    tooltip = "../%s?action=drawchart&course=%s&task=%s" % (pagename, course, task)
+                    gv.setv(nodeobject, 'tooltip', tooltip)
 
             gv.setv(nodeobject, 'style', "filled")
         gv.setv(nodeobject, 'label', "")
@@ -206,12 +210,19 @@ def execute(macro, text):
         selected = coursepage
 
     if username:
-        html = draw_courselist(request, courses, user, selected)
-        if selected:
-            html += draw_coursestats(request, selected, user)
+        p_user = user
     else:
-        html = draw_courselist(request, courses, selected=selected)
-        if selected:
-            html += draw_coursestats(request, selected)
+        p_user = None
+
+    html = draw_courselist(request, courses, user=p_user, selected=selected)
+    if selected:
+        html += u'''
+<table border="1">
+<tr>
+  <td>%s</td>
+  <td>200</td>
+</tr>
+</table>
+''' % (draw_coursestats(request, selected, user=p_user))
 
     return html 

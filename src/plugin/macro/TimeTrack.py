@@ -2,18 +2,27 @@ from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from graphingwiki.editing import get_metas
 from raippa import RaippaUser
+from raippa import reporterror
 import time
 
 def calculate_hours(timetrack_entries):
     users_hours = [0,0]
     for key, info in timetrack_entries.iteritems():
-        start = info[1].split(":")
-        start[0] = int(start[0])
-        start[1] = int(start[1])
+        try:
+            start = info[1].split(":")
+            start[0] = int(start[0])
+            start[1] = int(start[1])
+        except:
+            reporterror(request, "Invalid start time in page %s." % info[4])
+            continue
 
-        end = info[2].split(":")
-        end[0] = int(end[0])
-        end[1] = int(end[1])
+        try:
+            end = info[2].split(":")
+            end[0] = int(end[0])
+            end[1] = int(end[1])
+        except:
+            reporterror(request, "Invalid end time in page %s." % info[4])
+            continue
 
         if start[0] < end[0]:
             if start[1] > end[1]:
@@ -154,7 +163,7 @@ function clearText(el){
     <br><br>
     ''' % (coursepage, date_now, types_html)
 
-    if (not username and request.user.name) or (request.user.name == username):
+    if username and request.user.name == username:
         html += tt_form_html
 
     user_entries = user.gettimetrack(coursepage)
