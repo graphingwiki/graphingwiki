@@ -101,6 +101,15 @@ class RaippaUser:
                         date = metas["date"].pop()
                         start = metas["start"].pop()
                         end = metas["end"].pop()
+                        try:
+                            int(start.split(":")[0])
+                            int(start.split(":")[1])
+                            int(end.split(":")[0])
+                            int(end.split(":")[1])
+                        except:
+                            reporterror(self.request, "Invalid start time in page %s." % page)
+                            continue
+
                         description = metas["description"].pop()
                         key = u'%s %s' % (date, start)
                         timetracklist[key] = [date, start, end, description, page]
