@@ -5,7 +5,7 @@ from raippa import RaippaUser
 from raippa import reporterror
 import time
 
-def calculate_hours(timetrack_entries):
+def calculate_hours(request, timetrack_entries):
     users_hours = [0,0]
     for key, info in timetrack_entries.iteritems():
         try:
@@ -180,7 +180,7 @@ function clearText(el){
 
         html += "%s %s-%s %s: %s<br>\n" % (info[0], info[1], info[2], type, info[3])
 
-    users_hours = calculate_hours(user_entries)
+    users_hours = calculate_hours(request, user_entries)
     html += "Total: %dh %dmin<br>\n" % (users_hours[0], users_hours[1])
 
     getgroups = wikiutil.importPlugin(request.cfg, "action", 'editGroup', 'getgroups')
@@ -200,7 +200,7 @@ function clearText(el){
                 if group_member != user.user:
                     member = RaippaUser(request, group_member)
                     member_entries = member.gettimetrack(coursepage)
-                    member_hours = calculate_hours(member_entries)
+                    member_hours = calculate_hours(request, member_entries)
                     html += u'%s: %dh %dmin<br>\n' % (group_member, member_hours[0], member_hours[1])
                     group_hours[0] += member_hours[0]
                     group_hours[1] += member_hours[1]
