@@ -132,6 +132,8 @@ if($('ttDate')){
             var inputs = this.getElements('.time');
             for(i=0; i < 2; i++){
                     var val = inputs[i].value;
+                    val = val.replace(".",":");
+                    inputs[i].value = val;
                     if(/\d\d\:\d\d/.test(val) == false){
                         alert('Invalid start/end time!');
                         return false;
