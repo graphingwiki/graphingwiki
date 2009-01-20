@@ -111,10 +111,44 @@ def draw_ui(request, courses, course=None, user=None, compress=True, show_compre
     currentuser = RaippaUser(request, request.user.name)
 
     html = u'''
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
+<script type="text/javascript">
+window.addEvent('domready', function(){
+    //get every area element with drawchart action as title
+    var areas = $(document.body).getElements('area').filter(function(el){
+        var tip = el.title;
+        return /action=drawchart/.test(tip);
+        });
+    
+    var stat_td = $('stat_td');
+    //load image from title to td
+    areas.addEvent('mouseover',function(){
+        stat_td.addClass('ajax_loading');
+        var url = this.title;
+        
+        var stat_img = new Asset.image(url, {
+            onload: function(){
+                stat_td.removeClass('ajax_loading');
+                stat_td.empty();
+                stat_td.grab(this);
+            },
+            onerror: function(){
+                stat_td.removeClass('ajax_loading');
+                stat_td.empty();    
+                stat_td.grab(new Element('p',{
+                    'text': 'Could not load image!'
+                    }));
+                }
+            });
+        });
+
+});
+</script>
 <form method="POST" enctype="multipart/form-data" id="courses" action="%s">
 <input type="hidden" name="action" value="raippaStats" onsubmit="return false;">
 <select name="course">
-''' % (request.page.page_name.split("/")[-1])
+''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.page.page_name.split("/")[-1])
 
     for coursepage, coursename in courses.iteritems():
         if coursepage == course:
@@ -216,7 +250,7 @@ def execute(macro, text):
 <table border="1">
 <tr>
   <td>%s</td>
-  <td><img src="http://dev.raippa.fi/ecode/statistics?action=drawchart&&course=Course/521267A&task=Task/26271"/></td>
+  <td id="stat_td"></td>
 </tr>
 </table>
 ''' % (draw_coursestats(request, courses.keys()[0]))
