@@ -101,6 +101,7 @@ def walk_dirs(path):
     for root, dirs, files in os.walk(path):
         for dir in dirs:
            dlist.append(os.path.join(root,dir)) 
+        dlist.append(path)
     return dlist
 
 def parse_config(cpath, args):
@@ -129,6 +130,7 @@ def main():
         help="Enable verbose output." )
     parser.set_usage("%prog [options] WIKIURL DIRNAME")
 
+    testplan_page = None
     options, args = parser.parse_args()
     if options.cpath:
         if len(args) == 0:
@@ -148,8 +150,6 @@ def main():
         collab = CLIWiki(url)
     if(options.testplan_page):
         testplan_page = options.testplan_page
-    if not testplan_page:
-        testplan_page = None
     dlist=[]
     dlist = walk_dirs(path)
     handle_path(collab,testplan_page,dlist)
