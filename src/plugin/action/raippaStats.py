@@ -24,7 +24,7 @@ def _exit_page(request, pagename):
     request.write(request.page.formatter.endContent())
     request.theme.send_footer(pagename)
 
-def draw_taskstats(request, task, course=None, user=None):
+def draw_taskstats(request, task, course, user=None):
     currentuser = RaippaUser(request, request.user.name)
     isteacher = currentuser.isTeacher()
 
@@ -117,74 +117,84 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
     return html
 
 def execute(pagename, request):
-#    for key, values in request.form.iteritems():
-#        request.write("%s: %s<br>\n" % (key, ", ".join(values)))
+
+    if not request.user.name:
+        _enter_page(request, pagename)
+        request.write(u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.')
+        _exit_page(request, pagename)
+        return None
 
     coursepage = request.form.get("course", [None])[0]
     username = request.form.get("user", [None])[0]
     taskpage = request.form.get("task", [None])[0]
-    html = unicode()
-
-    currentuser = RaippaUser(request, request.user.name)
-    if username != currentuser.user and not currentuser.isTeacher():
-        return u'You are not allowed to view users (%s) statistics.' % username
-        
-    getcourses = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'getcourses')
-
-    if username:
-        user = RaippaUser(request, username)
-        courses = getcourses(request, user)
-    else:
-        courses = getcourses(request)
-
-    if coursepage and coursepage not in courses.keys():
-        return u'%s not in courselist.' % coursepage
-    elif coursepage:
-        if not Page(request, coursepage).exists():
-            message = u'%s does not exist.' % coursepage
-            Page(request, pagename).send_page(msg=message)
-            return None
-
-        metas = get_metas(request, coursepage, ["gwikicategory"], display=True, checkAccess=False)
-        if raippacategories["coursecategory"] not in metas["gwikicategory"]:
-            message = u'%s is not coursepage.' % coursepage
-            Page(request, pagename).send_page(msg=message)
-            return None
-
     if request.form.has_key("compress"):
         compress = True
     else:
         compress = False
 
-    draw_stats = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_coursestats')
-    draw_courselist = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_courselist')
+    currentuser = RaippaUser(request, request.user.name)
+    if username and username != "none":
+        if username != currentuser.user and not currentuser.isTeacher():
+            _enter_page(request, pagename)
+            request.write(u'You are not allowed to view users (%s) statistics.' % username)
+            _exit_page(request, pagename)
+            return None
+        else:
+            user = RaippaUser(request, username)
+    else:
+        if currentuser.isTeacher():
+            user = None
+        else:
+            user = RaippaUser(request, request.user.name)
+        
+    getcourses = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'getcourses')
+    courses = getcourses(request, user)
 
-    if username:
-        if taskpage:
-            if coursepage:
-                html += draw_courselist(request, courses, user, coursepage, show_compress=False)
+    draw_ui = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_ui')
+    if user and len(courses) < 1:
+        html = draw_ui(request, courses, user=user, compress=compres)
+        html += u'User %s not in any course.<br>\n' % (user.user)
+    elif not user and len(courses) < 1:
+        html = draw_ui(request, courses, compress=compress)
+        html += u'No courses in Raippa.<br>\n'
+    else:
+        if coursepage:
+            if not Page(request, coursepage).exists():
+                message = u'%s does not exist.' % coursepage
+                Page(request, pagename).send_page(msg=message)
+                return None
+
+            metas = get_metas(request, coursepage, ["gwikicategory"], display=True, checkAccess=False)
+            if raippacategories["coursecategory"] not in metas["gwikicategory"]:
+                message = u'%s is not coursepage.' % coursepage
+                Page(request, pagename).send_page(msg=message)
+                return None
+        else:
+            coursepage = courses.keys()[0]
+
+        draw_stats = wikiutil.importPlugin(request.cfg, "macro", 'RaippaStats', 'draw_coursestats')
+        if user:
+            if taskpage:
+                html = draw_ui(request, courses, coursepage, user, show_compress=False)
                 html += draw_taskstats(request, taskpage, coursepage, user)
             else:
-                html += draw_taskstats(request, taskpage, user=user)
-        else:
-            if coursepage:
-                html += draw_courselist(request, courses, user, coursepage, compress)
+                html = draw_ui(request, courses, coursepage, user, compress=compress)
                 html += draw_stats(request, coursepage, user, compress)
-            else:
-                html += draw_courselist(request, courses, user, compress)
-    else:
-        if taskpage:
-            if coursepage:
-                html += draw_courselist(request, courses,selected=coursepage, show_compress=False)
+        else:
+            html = draw_ui(request, courses, coursepage, compress=compress)
+            if taskpage:
+                html = draw_ui(request, courses, coursepage, show_compress=False)
                 html += draw_taskstats(request, taskpage, coursepage)
             else:
-                html += draw_taskstats(request, taskpage)
-        else:
-            if coursepage:
-                html += draw_courselist(request, courses, selected=coursepage, compress=compress)
-                html += draw_stats(request, coursepage, compress=compress)
-            else:
-                html += draw_courselist(request, courses, compress=compress)
+                html = draw_ui(request, courses, coursepage, compress=compress)
+                html += u'''
+<table border="1">
+<tr>
+  <td>%s</td>
+  <td><img src="http://dev.raippa.fi/ecode/statistics?action=drawchart&&course=Course/521267A&task=Task/26271"/></td>
+</tr>
+</table>
+''' % (draw_stats(request, coursepage, compress=compress))
 
     _enter_page(request, pagename)
     request.write(html)

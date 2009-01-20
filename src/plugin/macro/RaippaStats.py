@@ -9,7 +9,8 @@ from graphingwiki.editing import get_metas
 from graphingwiki.editing import metatable_parseargs
 
 from raippa import RaippaUser
-from raippa import raippacategories, getflow, reporterror
+from raippa import raippacategories
+from raippa import getcourseusers, getflow, reporterror
 
 def draw_coursestats(request, course, user=None, compress=True):
     pagename = str(request.page.page_name)
@@ -105,7 +106,9 @@ Error is reported to the admins. Please come back later.'''
 ''' % (img, course, map)
     return html
 
-def draw_courselist(request, courses, user=None, selected=None, compress=True, show_compress=True):
+def draw_ui(request, courses, course=None, user=None, compress=True, show_compress=True):
+
+    currentuser = RaippaUser(request, request.user.name)
 
     html = u'''
 <form method="POST" enctype="multipart/form-data" id="courses" action="%s">
@@ -114,27 +117,50 @@ def draw_courselist(request, courses, user=None, selected=None, compress=True, s
 ''' % (request.page.page_name.split("/")[-1])
 
     for coursepage, coursename in courses.iteritems():
-        if selected == coursepage:
+        if coursepage == course:
             html += u'<option selected value="%s">%s</option>\n' % (coursepage, coursename)
         else:
             html += u'<option value="%s">%s</option>\n' % (coursepage, coursename)
 
-    html += u'''
-</select>
-<input type="submit" name="send" value="Show Graph"><br>
-'''
+    html += u'</select>\n<input type="submit" name="send" value="Select course"><br>\n'
 
-    if user:
-        html += u'<input type="hidden" name="user" value="%s">' % user.user
+    if currentuser.isTeacher():
+        if user:
+            html += u'<select name="user">\n<option value="none">All</option>\n'
+        else:
+            html += u'<select name="user">\n<option selected value="none">All</option>\n'
+
+        if course and course in courses.keys():
+            coursepage = course
+
+        for c_user in getcourseusers(request, coursepage):
+            metas = get_metas(request, c_user, ["name"], checkAccess=False)
+            if metas["name"]:
+                username = u'- %s' % metas["name"].pop()
+            else:
+                username = unicode()
+
+            if user and c_user == user.user: 
+                html += u'<option selected value="%s">%s %s</option>\n' % (c_user, c_user, username)
+            else:
+                html += u'<option value="%s">%s %s</option>\n' % (c_user, c_user, username)
+        html += u'</select>\n'
+    else:
+        html += u'<input type="hidden" name="user" value="%s">\n' % user.user
+
+    html += u'<input type="submit" name="send" value="Select user"><br>\n'
 
     if show_compress:
         if compress:
             checked = u'checked'
         else:
             checked = unicode()
-        html += u'Compress graph: <input type="checkbox" name="compress" %s onclick="this.form.submit();">\n' % checked
+        html += u'''
+Compress graph: <input type="checkbox" name="compress" %s onclick="this.form.submit();">\n
+''' % checked
 
-    html += u'</form>\n'
+    html += u'''
+</form>\n'''
 
     return html
 
@@ -164,65 +190,35 @@ def getcourses(request, user=None):
 def execute(macro, text):
     request = macro.request
     pagename = request.page.page_name 
+
+    if not request.user.name:
+        return u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.'
     
-    username = None
-    taskpage = None
-    coursepage = None
-
-    for arg in text.split(","):
-        if arg.strip().startswith("user="):
-            username = arg.split("=")[1]
-        elif arg.strip().startswith("course="):
-            coursepage = arg.split("=")[1]
-
-            if not Page(request, coursepage).exists():
-                message = u'%s does not exist.' % coursepage
-                Page(request, pagename).send_page(msg=message)
-                return None
-
-            metas = get_metas(request, coursepage, ["gwikicategory"], display=True, checkAccess=False)
-            if raippacategories["coursecategory"] not in metas["gwikicategory"]:
-                message = u'%s is not coursepage.' % coursepage
-                Page(request, pagename).send_page(msg=message)
-                return None
-
-        elif arg.strip().startswith("task"):
-            taskpage = arg.split("=")[1]
-
     currentuser = RaippaUser(request, request.user.name)
-    if currentuser.user != username and not currentuser.isTeacher():
-        return u'You are not allowed to view users (%s) statistics.' % username
+    if not currentuser.isTeacher():
+        user = RaippaUser(request, request.user.name)
+    elif currentuser.isTeacher():
+        user = None
 
-    if username:
-        user = RaippaUser(request, username)
-        courses = getcourses(request, user)
-    else:
-        courses = getcourses(request)
+    courses = getcourses(request, user)
 
-    if coursepage and coursepage not in courses.keys():
-        return u'%s not in courselist.' % coursepage
-    elif not coursepage:
-        if len(courses.keys()) > 0:
-            selected = courses.keys()[0]
+    html = draw_ui(request, courses, user=user)
+
+    if user and len(courses) < 1:
+        html += u'User %s not in any course.<br>\n' % (user.user)
+    elif not user and len(courses) < 1:
+        html += u'No courses in Raippa.<br>\n'
+    else: 
+        if user:
+            html += draw_coursestats(request, courses.keys()[0], user)
         else:
-            selected = None
-    else:
-        selected = coursepage
-
-    if username:
-        p_user = user
-    else:
-        p_user = None
-
-    html = draw_courselist(request, courses, user=p_user, selected=selected)
-    if selected:
-        html += u'''
+            html += u'''
 <table border="1">
 <tr>
   <td>%s</td>
-  <td>200</td>
+  <td><img src="http://dev.raippa.fi/ecode/statistics?action=drawchart&&course=Course/521267A&task=Task/26271"/></td>
 </tr>
 </table>
-''' % (draw_coursestats(request, selected, user=p_user))
+''' % (draw_coursestats(request, courses.keys()[0]))
 
     return html 
