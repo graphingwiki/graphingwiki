@@ -80,7 +80,7 @@ def execute(macro, text):
         return html
 
     if not request.user.name and not username:
-        html += u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.'
+        html += u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.'
         return html
 
     if not Page(request, coursepage).exists():

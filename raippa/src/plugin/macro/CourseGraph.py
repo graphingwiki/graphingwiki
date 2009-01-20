@@ -176,7 +176,7 @@ def execute(macro, text):
         return u'Missing course page.'
 
     if not request.user.name:
-        return u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.'
+        return u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.'
 
     course = text
     if pageexists(request, course):

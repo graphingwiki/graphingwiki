@@ -378,7 +378,7 @@ def execute(pagename, request):
 
     if not request.user.name:
         _enter_page(request, pagename)
-        request.write(u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.')
+        request.write(u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.')
         _exit_page(request, pagename)
         return None
 

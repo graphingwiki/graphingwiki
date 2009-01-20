@@ -312,7 +312,7 @@ def execute(macro, text):
     request = macro.request
 
     if not request.user.name:
-        return u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.'
+        return u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.'
 
     ruser = RaippaUser(request)
     if not ruser.isTeacher():
