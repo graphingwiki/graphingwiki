@@ -54,8 +54,8 @@ def uploadFile(collab,page_name,filename,path):
 def handle_path(collab,testplan_page,dlist):
     flist=[]
     page_metas=Meta()
-    page_metas["category"].add("CategoryTestRun")
     template = "TestRunTemplate"
+    page_metas["category"].add("CategoryTestRun")
     for dir in dlist:
         flist = os.listdir(dir)
         if('summary.xml' in flist):
@@ -95,6 +95,7 @@ def handle_path(collab,testplan_page,dlist):
                 page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
             page_metas=Meta()
+            page_metas["category"].add("CategoryTestRun")
 
 def walk_dirs(path):
     dlist=[]
