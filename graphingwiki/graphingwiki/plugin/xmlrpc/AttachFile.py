@@ -74,7 +74,7 @@ def save(request, pagename, filename, content, overwrite):
     try:
         tmpfd, tmp = mkstemp(dir = path)
         os.write(tmpfd, content)
-        os.close(tmpfd, content)
+        os.close(tmpfd)
     except Exception, e:
         desc = "Unknown error"
         #there has been some problems with xmlrpclib and str() .. so this try: ... is for em
