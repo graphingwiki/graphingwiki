@@ -19,7 +19,7 @@ from opencollab.meta import Meta, Func
 from gzip import GzipFile
 
 def hashfile(filename):
-    print "Hashing" + filename;
+    print "Hashing " + filename;
     f = file(filename,'rb')     
     hash = md5.new(f.read()).hexdigest();
     f.close();
@@ -92,7 +92,7 @@ def handle_path(collab,testplan_page,dlist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
             if(testplan_page is not None): 
-                page_metas["Test plan"].add('[[%s]]' % testplan_page)
+                page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
             page_metas=Meta()
 
@@ -101,7 +101,7 @@ def walk_dirs(path):
     for root, dirs, files in os.walk(path):
         for dir in dirs:
            dlist.append(os.path.join(root,dir)) 
-        dlist.append(path)
+    dlist.append(path)
     return dlist
 
 def parse_config(cpath, args):
