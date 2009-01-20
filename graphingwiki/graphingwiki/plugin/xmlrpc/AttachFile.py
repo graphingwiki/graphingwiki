@@ -72,10 +72,9 @@ def save(request, pagename, filename, content, overwrite):
     # Create a temp file where to decode the data
     path = mkdtemp()
     try:
-        _, tmp = mkstemp(dir = path)
-        tmpf = file(tmp, 'wb')
-        tmpf.write(content)
-        tmpf.close()
+        tmpfd, tmp = mkstemp(dir = path)
+        os.write(tmpfd, content)
+        os.close(tmpfd, content)
     except Exception, e:
         desc = "Unknown error"
         #there has been some problems with xmlrpclib and str() .. so this try: ... is for em
