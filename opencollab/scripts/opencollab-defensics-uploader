@@ -89,9 +89,9 @@ def handle_path(collab,testplan_page,dlist):
                 page_metas["Statistics"].add('[[attachment:statistics.csv]]')
                 uploadFile(collab,testrun_page,'statistics.csv',dir)
             if('summary.txt' in flist):
-                page_metas["Statistics"].add('{{attachment:summary.txt}}')
+                page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
-            if(test_plan is not None): 
+            if(testplan_page is not None): 
                 page_metas["Test plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
             page_metas=Meta()
@@ -152,7 +152,6 @@ def main():
         testplan_page = None
     dlist=[]
     dlist = walk_dirs(path)
-    print dlist
     handle_path(collab,testplan_page,dlist)
 
 if __name__ == "__main__":
