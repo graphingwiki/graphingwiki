@@ -85,7 +85,7 @@ def handle_path(collab,testplan_page,dlist):
             if('runinfo' in flist):
                 page_metas["Settings"].add('[[attachment:runinfo]]')
                 uploadFile(collab,testrun_page,'runinfo',dir)
-            if('statictics.csv' in flist):
+            if('statistics.csv' in flist):
                 page_metas["Statistics"].add('[[attachment:statistics.csv]]')
                 uploadFile(collab,testrun_page,'statistics.csv',dir)
             if('summary.txt' in flist):
