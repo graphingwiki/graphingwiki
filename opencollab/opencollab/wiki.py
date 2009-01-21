@@ -182,7 +182,7 @@ import getpass
 from meta import Meta 
 
 class GraphingWiki(Wiki):
-    DEFAULT_CHUNK = 256 * 1024**2
+    DEFAULT_CHUNK = 256 * 1024
 
     def getPage(self, page):
         return self.request("getPage", page)
