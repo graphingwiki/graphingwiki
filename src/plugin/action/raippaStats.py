@@ -191,7 +191,7 @@ def execute(pagename, request):
 <table border="1">
 <tr>
   <td>%s</td>
-  <td><img src="http://dev.raippa.fi/ecode/statistics?action=drawchart&&course=Course/521267A&task=Task/26271"/></td>
+  <td id="stat_td"></td>
 </tr>
 </table>
 ''' % (draw_stats(request, coursepage, compress=compress))
