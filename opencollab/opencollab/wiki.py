@@ -80,21 +80,12 @@ class Wiki(object):
         self._creds = None
         self._proxy = None
 
-    def setUrl(self, url):
-        url = urlQuote(url)
-
-        if self.url == url:
-            return
-
-        self.url = url
-        self._proxy = None
-
     def _getProxy(self, creds=None):
         if self._proxy is not None:
             return self._proxy
 
         action = "action=xmlrpc2"
-        scheme, netloc, path, _, _, _ = urlparse.urlparse(self.url)
+        scheme, netloc, path, _, _, _ = urlparse.urlparse(self._url)
 
         if creds:
             username, password = map(urlQuote, creds)
@@ -188,7 +179,7 @@ import sys
 import random
 import getpass
 
-from meta import Meta
+from meta import Meta 
 
 class GraphingWiki(Wiki):
     DEFAULT_CHUNK = 256 * 1024**2
