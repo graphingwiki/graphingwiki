@@ -188,6 +188,8 @@ import sys
 import random
 import getpass
 
+from meta import Meta
+
 class GraphingWiki(Wiki):
     DEFAULT_CHUNK = 256 * 1024**2
 
