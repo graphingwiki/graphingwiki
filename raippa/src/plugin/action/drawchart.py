@@ -7,6 +7,8 @@ from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
+from graphingwiki.editing import get_metas
+
 from raippa import Question
 from raippa import getflow
 
@@ -16,7 +18,7 @@ def drawchart(request, coursepage, taskpage, user=None):
     theme.reinitialize()
 
     data = list()
-    max = int()
+    max = 1
 
     taskflow = getflow(request, taskpage)
     for index, point in enumerate(taskflow):
@@ -50,12 +52,18 @@ def drawchart(request, coursepage, taskpage, user=None):
         if index == len(taskflow)-1:
             data.append(["/14End", has_passed])
 
+    metas = get_metas(request, taskpage, ["title"], checkAccess=False)
+    if metas["title"]:
+        tasktitle = metas["title"].pop()
+    else:
+        tasktitle = taskpage
+
     ar = area.T(y_range=(0, max),
                 legend = None,
                 size=(350, 250),
                 x_coord=category_coord.T(data, 0),
                 y_axis = axis.Y(label="/14Users in question"),
-                x_axis = axis.X(label="/14Questions"))
+                x_axis = axis.X(label="/14%s" % tasktitle))
  
     ar.add_plot(bar_plot.T(hcol=1, cluster=(0, 1), data=data))
 
