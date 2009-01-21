@@ -118,7 +118,7 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         buffer.write(data)
 
     # Attach the decoded file.
-    success = save_attachfile(request, pagename, buffer.getvalue(), filename, overwrite)
+    success = save_attachfile(request, pagename, buffer.getvalue(), filename, overwrite, True)
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:

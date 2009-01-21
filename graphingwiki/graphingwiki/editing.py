@@ -18,7 +18,7 @@ import getpass
 import copy
 import md5
 
-from MoinMoin.action.AttachFile import getAttachDir, getFilename
+from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
@@ -1070,7 +1070,7 @@ def check_attachfile(request, pagename, aname):
 
     return fpath, False
 
-def save_attachfile(request, pagename, content, aname, overwrite=False):
+def save_attachfile(request, pagename, content, aname, overwrite=False, log=False):
     try:
         fpath, exists = check_attachfile(request, pagename, aname)
         if not overwrite and exists:
@@ -1080,6 +1080,9 @@ def save_attachfile(request, pagename, content, aname, overwrite=False):
         stream = open(fpath, 'wb')
         stream.write(content)
         stream.close()
+
+        if log:
+            _addLogEntry(request, 'ATTNEW', pagename, aname)
     except:
         return False
 
