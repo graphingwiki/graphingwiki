@@ -106,30 +106,18 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         return missing
 
     # Reassembly the file from the chunks into a temp file.
-    tmpDir = mkdtemp()
-    tmpPath = os.path.join(tmpDir, filename)
-    try:
-        tmp = file(tmpPath, 'wb')
-    except:
-        return xmlrpclib.Fault(3, _("Could not create temp file"))
+    buffer = ""
     
-    try:
-        for bite in digests:
-            data = load_attachfile(request, pagename, bite)
-            if not data:
-                return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting "+
-                                                        "attachment"),
-                                                      filename))
-            tmp.write(data)
-    except:
-        tmp.close()
-        return xmlrpclib.Fault(3, _("Unknown error"))
-
-    tmp.close()
+    for bite in digests:
+        data = load_attachfile(request, pagename, bite)
+        if not data:
+            return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting "+
+                                                    "attachment"),
+                                                  filename))
+        buffer += data
 
     # Attach the decoded file.
-    success = save_attachfile(request, pagename, tmpPath, filename, overwrite)
-    rmtree(tmpDir)
+    success = save_attachfile(request, pagename, buffer, filename, overwrite)
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:

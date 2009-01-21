@@ -1070,18 +1070,15 @@ def check_attachfile(request, pagename, aname):
 
     return fpath, False
 
-def save_attachfile(request, pagename, srcname, aname, overwrite=False):
+def save_attachfile(request, pagename, content, aname, overwrite=False):
     try:
         fpath, exists = check_attachfile(request, pagename, aname)
         if not overwrite and exists:
             return False
 
-        # Read the contents of the file
-        filecontent = file(srcname).read()
-
         # Save the data to a file under the desired name
         stream = open(fpath, 'wb')
-        stream.write(filecontent)
+        stream.write(content)
         stream.close()
     except:
         return False
