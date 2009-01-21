@@ -4,6 +4,7 @@ import md5
 
 from tempfile import mkdtemp
 from shutil import rmtree
+from cStringIO import StringIO
 
 from graphingwiki.editing import save_attachfile
 from graphingwiki.editing import load_attachfile
@@ -106,7 +107,7 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         return missing
 
     # Reassembly the file from the chunks into a temp file.
-    buffer = ""
+    buffer = StringIO()
     
     for bite in digests:
         data = load_attachfile(request, pagename, bite)
@@ -114,10 +115,10 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
             return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting "+
                                                     "attachment"),
                                                   filename))
-        buffer += data
+        buffer.write(data)
 
     # Attach the decoded file.
-    success = save_attachfile(request, pagename, buffer, filename, overwrite)
+    success = save_attachfile(request, pagename, buffer.getvalue(), filename, overwrite)
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:
