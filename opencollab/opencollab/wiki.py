@@ -345,7 +345,7 @@ class CLIWiki(GraphingWiki):
         if config is not None:
             configparser = ConfigParser.ConfigParser()
 
-            if configparser.read(filenames):
+            if configparser.read(config):
                 try:
                     url = configparser.get(section, "url")
                 except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
