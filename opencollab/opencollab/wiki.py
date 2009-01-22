@@ -339,7 +339,7 @@ class CLIWiki(GraphingWiki):
     # usage. Automatically asks url, username and password should the
     # wiki need it.
 
-    def __init__(self, url=None, config=None, **keys):
+    def __init__(self, url=None, config=None, configSection="creds", **keys):
         creds = None
 
         if config is not None:
@@ -347,13 +347,13 @@ class CLIWiki(GraphingWiki):
 
             if configparser.read(config):
                 try:
-                    url = configparser.get(section, "url")
+                    url = configparser.get(configSection, "url")
                 except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                     pass
 
                 try:
-                    username = configparser.get(section, "username")
-                    password = configparser.get(section, "password")
+                    username = configparser.get(configSection, "username")
+                    password = configparser.get(configSection, "password")
                     creds = username, password
                 except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                     pass
