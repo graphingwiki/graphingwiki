@@ -19,6 +19,7 @@ def drawchart(request, coursepage, taskpage, user=None):
 
     data = list()
     max = 1
+    passed = dict()
 
     taskflow = getflow(request, taskpage)
     for index, point in enumerate(taskflow):
@@ -40,6 +41,9 @@ def drawchart(request, coursepage, taskpage, user=None):
 
                     if overallvalue not in ["False", "pending", "picked", "recap"]:
                         has_passed += 1
+                        if not passed.has_key(h_user):
+                            passed[h_user] = list()
+                        passed[h_user].append(questionpage)
 
         if len(users) > 0:
             users_in_question = len(users) - has_passed
@@ -49,8 +53,15 @@ def drawchart(request, coursepage, taskpage, user=None):
         else:
             data.append(["/14Q%d" % index, 0])
 
-        if index == len(taskflow)-1:
-            data.append(["/14End", has_passed])
+    has_passed = 0 
+    for user, questions in passed.iteritems():
+        if len(questions) >= len(taskflow):
+            has_passed += 1
+
+    if has_passed > max:
+        max = has_passed
+
+    data.append(["/14End", has_passed])
 
     metas = get_metas(request, taskpage, ["title"], checkAccess=False)
     if metas["title"]:
@@ -62,7 +73,7 @@ def drawchart(request, coursepage, taskpage, user=None):
                 legend = None,
                 size=(350, 250),
                 x_coord=category_coord.T(data, 0),
-                y_axis = axis.Y(label="/14Users in question"),
+                y_axis = axis.Y(label="/14Users in question", tic_interval=1),
                 x_axis = axis.X(label="/14%s" % tasktitle))
  
     ar.add_plot(bar_plot.T(hcol=1, cluster=(0, 1), data=data))
