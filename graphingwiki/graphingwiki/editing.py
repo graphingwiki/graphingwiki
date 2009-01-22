@@ -890,7 +890,7 @@ def metatable_parseargs(request, args,
             # else strip the //:s
             elif len(val) > 1:
                 val = val[1:-1]
-            limitregexps.setdefault(key, set()).add(re.compile(val, re.I))
+            limitregexps.setdefault(key, set()).add(re.compile(val, re.IGNORECASE | re.UNICODE))
             continue
 
         # order spec
