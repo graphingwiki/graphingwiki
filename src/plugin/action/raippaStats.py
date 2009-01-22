@@ -60,16 +60,21 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
             history = question.gethistory(user.user, course)
             if history:
                 if history[0] not in ["False", "pending", "picked", "recap"]:
-                    html += u'''
-<ul><li>Passed with %d tries, in time %s</li></ul>
+                    if history[4]:
+                        html += u'''
+<ul><li>Passed with %d tries, in time %s.</li></ul>
 ''' % (Page(request, history[3]).get_real_rev(), history[4])
+                    else:
+                        html += u'''
+<ul><li>Passed with %d tries.</li></ul>
+''' % (Page(request, history[3]).get_real_rev())
             else:
-                html += u'<ul><li>No answers for this question</li></ul>'
+                html += u'<ul><li>No answers for this question.</li></ul>'
 
         else:
             histories = question.gethistories(coursefilter=course, taskfilter=taskpoint)
             users = list()
-            has_passed = int()
+            passed = {True: list(), False: list()}
             try_count = float()
             total_time = float()
            
@@ -82,7 +87,9 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                         users.append(h_user)
                
                         if overallvalue not in ["False", "pending", "picked", "recap"]:
-                            has_passed += 1
+                            passed[True].append(h_user)
+                        else:
+                            passed[False].append(h_user)
 
                         try_count += Page(request, historypage).get_real_rev()
 
@@ -90,6 +97,7 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                             t = time.strptime(history[6], "%H:%M:%S")
                             total_time += datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
 
+            html += u'<ul>\n'
             if len(users) > 0:
                 average_tries = try_count/len(users)
 
@@ -99,20 +107,47 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                 average_time = int("%.f" % (average_tries*average_try_time))
                 iso_time = time.strftime("%H:%M:%S", time.gmtime(average_time))
                 
-                html += u'<ul>\n'
-                if len(users) == has_passed:
+                if len(users) == len(passed[True]):
                     html += u'''
-<li>%d of %d students have tried and passed.</li>\n''' % (has_passed, len(courseusers))
+<li>%d of %d students have tried and passed.</li>\n''' % (len(passed[True]), len(courseusers))
                 else:
                     html += u'''
-<li>%d of %d students have tried, %d of them have passed.</li>\n''' % (len(users), len(courseusers), has_passed)
+<li>%d of %d students have tried, %d of them have passed.</li>\n''' % (len(users), len(courseusers), len(passed[True]))
 
                 html += u'''
 <li>Average of %.2f tries and %s time used per try, %s used per question.</li>
-</ul>
 ''' % (average_tries, iso_try_time, iso_time)
+
+                if len(passed[True]) > 0:
+                    html += u'<li>Users who have passed this question:</li>\n<ul>\n'
+                    
+                    for p_user in passed[True]:
+                        meta = get_metas(request, p_user, ["name"], checkAccess=False)
+                        if meta["name"]:
+                            p_username = u'%s - %s' % (p_user, meta["name"].pop())
+                        else:
+                            p_username = p_user
+                        html += u'''
+<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
+''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
+                    html += u'</ul>\n'
+
+                if len(passed[False]) > 0:
+                    html += u'<li>Users who haven\'t passed this question:</li>\n<ul>\n'
+
+                    for p_user in passed[False]:
+                        meta = get_metas(request, p_user, ["name"], checkAccess=False)
+                        if meta["name"]:
+                            p_username = u'%s - %s' % (p_user, meta["name"].pop())
+                        else:
+                            p_username = p_user
+                        html += u'''
+<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
+''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
+                    html += u'</ul>\n'
             else:
-                html += u'<ul><li>No answers for this question</li></ul>'
+                html += u'<li>No answers for this question.</li>'
+            html += u'</ul>\n'
 
     return html
 
