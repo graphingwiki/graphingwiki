@@ -114,24 +114,40 @@ def draw_ui(request, courses, course=None, user=None, compress=True, show_compre
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript">
-window.addEvent('domready', function(){
-    //get every area element with drawchart action as title
+//window.addEvent('domready', function(){
+addLoadEvent(function(){
+ //get every area element with drawchart action as title
     var areas = $(document.body).getElements('area').filter(function(el){
         var tip = el.title;
         return /action=drawchart/.test(tip);
         });
     
     var stat_td = $('stat_td');
+    if(stat_td){
+    
+    stat_td.setStyle('vertical-align', 'top');
+    var max_margin = Math.max(0, stat_td.getCoordinates().height - 20);
     //load image from title to td
-    areas.addEvent('mouseover',function(){
+    areas.addEvent('mouseover',function(event){
         stat_td.addClass('ajax_loading');
         var url = this.title;
-        
+
+       
         var stat_img = new Asset.image(url, {
             onload: function(){
                 stat_td.removeClass('ajax_loading');
                 stat_td.empty();
                 stat_td.grab(this);
+
+                /* Find right position for stat image*/
+                var ypos = event.client.y + window.getScroll().y;
+                var img_height = this.getCoordinates().height;
+                var topmargin = ypos - stat_td.getPosition().y -
+                (img_height/2).round(); 
+ 
+                topmargin = topmargin.round(-2).limit(0, Math.max(0,max_margin -
+                img_height)); 
+                this.setStyle('margin-top', topmargin +'px');
             },
             onerror: function(){
                 stat_td.removeClass('ajax_loading');
@@ -142,6 +158,8 @@ window.addEvent('domready', function(){
                 }
             });
         });
+    }
+
 
 });
 </script>

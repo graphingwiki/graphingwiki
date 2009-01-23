@@ -11,8 +11,9 @@ def coursesform(request):
         html += u'''
   <script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
-window.addEvent('domready', function(){
-  var qtypesel = $('qtypesel');
+//window.addEvent('domready', function(){
+ addLoadEvent(function(){
+ var qtypesel = $('qtypesel');
   qtypesel.addEvent('change', function(){
       checkType(qtypesel);
     });
@@ -26,7 +27,7 @@ window.addEvent('domready', function(){
 
     checkType(ttypesel);
 
-  });
+  });//onload end
 
 
 function checkType(sel){
