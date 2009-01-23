@@ -52,10 +52,11 @@ def uploadFile(collab,page_name,filename,path):
     file.close()
 
 def handle_path(collab,testplan_page,dlist):
+    at = re.compile('@')
     flist=[]
     page_metas=Meta()
     template = "TestRunTemplate"
-    page_metas["category"].add("CategoryTestRun")
+    page_metas["category"].add("CategoryCodenomiconArena")
     for dir in dlist:
         flist = os.listdir(dir)
         if('summary.xml' in flist):
@@ -93,7 +94,7 @@ def handle_path(collab,testplan_page,dlist):
             if('summary.txt' in flist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
-            if(testplan_page is not None): 
+            if(testplan_page is not None):
                 page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
             page_metas=Meta()
