@@ -69,11 +69,15 @@ def drawchart(request, coursepage, taskpage, user=None):
     else:
         tasktitle = taskpage
 
+    y_interval = max/10
+    if y_interval <= 0:
+        y_interval = 1
+
     ar = area.T(y_range=(0, max),
                 legend = None,
                 size=(350, 250),
                 x_coord=category_coord.T(data, 0),
-                y_axis = axis.Y(label="/14Users in question", tic_interval=1),
+                y_axis = axis.Y(label="/14Users in question", tic_interval=y_interval),
                 x_axis = axis.X(label="/14%s" % tasktitle))
  
     ar.add_plot(bar_plot.T(hcol=1, cluster=(0, 1), data=data))
