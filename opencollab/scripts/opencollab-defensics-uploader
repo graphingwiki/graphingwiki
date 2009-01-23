@@ -73,7 +73,9 @@ def handle_path(collab,testplan_page,dlist):
                 label = collection.getAttribute("label")
                 for fact in collection.getElementsByTagName("fact"):
                     page_metas[label].add(getText(fact.childNodes))
-            if('main.log' in flist):
+            if('main.log.gz' in flist):
+                pass
+            elif('main.log' in flist):
                 page_metas["Main Log"].add('[[attachment:main.log.gz]]')
                 gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                 gzipped.write(open(os.path.join(dir, "main.log")).read())
