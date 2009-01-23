@@ -39,7 +39,11 @@ def draw_taskstats(request, task, course, user=None):
     if isteacher:
         html += u'''
 Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
-''' % (request.getBaseURL(), task, task, request.getBaseURL(), task)
+<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+<script type="text/javascript">
+
+</script>
+''' % (request.getBaseURL(), task, task, request.getBaseURL(), task, request.cfg.url_prefix_static)
 
     html += u'<h1>%s</h1>' % title
 
@@ -119,7 +123,7 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
 ''' % (average_tries, iso_try_time, iso_time)
 
                 if len(passed[True]) > 0:
-                    html += u'<li>Users who have passed this question:</li>\n<ul>\n'
+                    html += u'<li>Users who have passed this question:</li>\n<ul class="hidden">\n'
                     
                     for p_user in passed[True]:
                         meta = get_metas(request, p_user, ["name"], checkAccess=False)
@@ -127,13 +131,13 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                             p_username = u'%s - %s' % (p_user, meta["name"].pop())
                         else:
                             p_username = p_user
-                        html += u'''
-<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
+                        html += u'''<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
 ''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
-                    html += u'</ul>\n'
+                    html += u'''</ul><a class="jslink"
+                    onclick="$(this).getPrevious('ul').toggleClass('hidden')">show</a>\n'''
 
                 if len(passed[False]) > 0:
-                    html += u'<li>Users who haven\'t passed this question:</li>\n<ul>\n'
+                    html += u'<li>Users who haven\'t passed this question:</li>\n<ul class="hidden">\n'
 
                     for p_user in passed[False]:
                         meta = get_metas(request, p_user, ["name"], checkAccess=False)
@@ -144,7 +148,8 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                         html += u'''
 <li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
 ''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
-                    html += u'</ul>\n'
+                    html += u'''
+                    </ul><a class="jslink" onclick="$(this).getPrevious('ul').toggleClass('hidden')">show</a>\n'''
             else:
                 html += u'<li>No answers for this question.</li>'
             html += u'</ul>\n'
