@@ -129,7 +129,8 @@ Error is reported to the admins. Please come back later.'''
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript">
-window.addEvent('domready', function(){
+addLoadEvent(function(){
+//window.addEvent('domready', function(){
 var links = $$('area');
 var tips = new Tips(links);
 if($('ttDate')){
