@@ -7,6 +7,7 @@
 
 import os
 import sys
+import re
 import string
 import md5
 import optparse
@@ -95,7 +96,11 @@ def handle_path(collab,testplan_page,dlist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
             if(testplan_page is not None):
-                page_metas["Test Plan"].add('[[%s]]' % testplan_page)
+                if(at.search(testplan_page)):
+                    tmp = at.sub('', testplan_page) 
+                    page_metas["Test Plan"].add('[[%s]]' % page_metas[tmp])
+                else:
+                    page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
             page_metas=Meta()
             page_metas["category"].add("CategoryTestRun")
@@ -127,7 +132,8 @@ def main():
         type="string", dest="cpath",
         help="Config file path.")
     parser.add_option("-i",
-        action="store_true", dest="testplan_page", default=False,
+        action="store",
+        type="string", dest="testplan_page", default=None,
         help="Specify a test plan page name to link the test runs to." )
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
