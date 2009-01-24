@@ -98,7 +98,8 @@ def handle_path(collab,testplan_page,dlist):
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
                     tmp = at.sub('', testplan_page) 
-                    page_metas["Test Plan"].add('[[%s]]' % page_metas[tmp])
+                    testplan_page = tmp
+                    page_metas["Test Plan"].add('[[%s]]' % page_metas[testplan_page])
                 else:
                     page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             collab.setMeta(testrun_page, page_metas, template=template, replace=True)
