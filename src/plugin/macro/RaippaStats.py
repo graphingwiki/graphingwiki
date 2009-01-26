@@ -131,23 +131,26 @@ addLoadEvent(function(){
     areas.addEvent('mouseover',function(event){
         stat_td.addClass('ajax_loading');
         var url = this.title;
-
        
         var stat_img = new Asset.image(url, {
             onload: function(){
                 stat_td.removeClass('ajax_loading');
                 stat_td.empty();
                 stat_td.grab(this);
+                var img = this;
 
-                /* Find right position for stat image*/
-                var ypos = event.client.y + window.getScroll().y;
-                var img_height = this.getCoordinates().height;
-                var topmargin = ypos - stat_td.getPosition().y -
-                (img_height/2).round(); 
+                window.addEvent('scroll', function(){
+                /* Moving stat picture to the center of window when scrolling*/
+                    var y_center = window.getCoordinates().height /2 + window.getScroll().y;
+                    var img_height = img.getCoordinates().height;
+                    var topmargin = y_center - stat_td.getPosition().y -
+                        (img_height/2).round(); 
  
-                topmargin = topmargin.round(-2).limit(0, Math.max(0,max_margin -
-                img_height)); 
-                this.setStyle('margin-top', topmargin +'px');
+                    topmargin = topmargin.round(-1).limit(0, Math.max(0,max_margin -
+                        img_height)); 
+                    img.setStyle('margin-top', topmargin +'px');
+                });
+                window.fireEvent('scroll');
             },
             onerror: function(){
                 stat_td.removeClass('ajax_loading');
