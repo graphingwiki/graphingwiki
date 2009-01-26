@@ -52,6 +52,21 @@ def uploadFile(collab,page_name,filename,path):
     sys.stdout.flush()
     file.close()
 
+def parse_tool_options(page_metas):
+    options = []
+    tmp = []
+    for opt in page_metas["Options"]:
+        tmp.append(opt)
+    opt_str = tmp.pop()
+    options = opt_str.split('--')
+    for opt in options:
+        tmp = opt.split()
+        if(tmp):
+            opt_key = "Option "
+            opt_key = opt_key + " ".join(tmp[0:1])
+            opt_value = " ".join(tmp[1:])
+            page_metas[opt_key].add('{{{%s}}}' % opt_value)
+
 def handle_path(collab,testplan_page,dlist):
     at = re.compile('@')
     flist=[]
@@ -75,6 +90,7 @@ def handle_path(collab,testplan_page,dlist):
                 label = collection.getAttribute("label")
                 for fact in collection.getElementsByTagName("fact"):
                     page_metas[label].add(getText(fact.childNodes))
+            parse_tool_options(page_metas)
             if('main.log.gz' in flist):
                 pass
             elif('main.log' in flist):
