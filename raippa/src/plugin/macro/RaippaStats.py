@@ -197,10 +197,9 @@ addLoadEvent(function(){
             else:
                 html += u'<option value="%s">%s %s</option>\n' % (c_user, c_user, username)
         html += u'</select>\n'
+        html += u'<input type="submit" name="send" value="Select user"><br>\n'
     else:
         html += u'<input type="hidden" name="user" value="%s">\n' % user.user
-
-    html += u'<input type="submit" name="send" value="Select user"><br>\n'
 
     if show_compress:
         if compress:
