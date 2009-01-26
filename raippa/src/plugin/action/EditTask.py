@@ -432,7 +432,11 @@ function submitCheck(button){
 }
 
 </script>
+'''
+    if task:
+        pagehtml += u'Page: <a href="%s/%s">%s</a><br>\n' % (request.getBaseURL(), task, task)
 
+    pagehtml += u'''
 select questions:<br>
 <form method="POST" action="%s" onsubmit="saveTaskData();">
     <input type="hidden" name="action" value="EditQuestion">
@@ -442,7 +446,7 @@ select questions:<br>
 <table border="0">
 <tr><td colspan="4" id="info">
 </td></tr>
-\n''' % request.request_uri.split("?")[0]
+''' % request.request_uri.split("?")[0]
     pagelist, keys, styles = metatable_parseargs(request, raippacategories["questioncategory"])
     typedict = {None:list()}
     for page in pagelist:
