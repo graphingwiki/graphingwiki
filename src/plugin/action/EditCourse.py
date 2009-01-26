@@ -65,6 +65,8 @@ src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript"
 src="%s/raippajs/dragui.js"></script>\n''' % (request.cfg.url_prefix_static,
 request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static,request.cfg.url_prefix_static)
+    if course:
+        pagehtml += u'Page: <a href="%s/%s">%s</a>\n' % (request.getBaseURL(), course, course)
     pagehtml += u'''
 <form method="POST" action="%s">
     <input type="hidden" name="action" value="EditTask">
