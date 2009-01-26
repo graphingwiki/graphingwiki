@@ -72,7 +72,7 @@ def handle_path(collab,testplan_page,dlist):
     flist=[]
     page_metas=Meta()
     template = "TestRunTemplate"
-    page_metas["category"].add("CategoryCodenomiconArena")
+    page_metas["category"].add("CategoryTestRun")
     for dir in dlist:
         flist = os.listdir(dir)
         if('summary.xml' in flist):

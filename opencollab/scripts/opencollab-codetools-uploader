@@ -77,7 +77,7 @@ def upload_files(collab,arena_dirs):
         page_name = "/".join(tmp[1:3])
         #page_template = tmp[2].capitalize() + "ToolTemplate"
         page_template = "CodenomiconArenaTemplate"
-        page_metas["category"].add("CategoryTestTool")
+        page_metas["category"].add("CategoryCodenomiconArena")
         if('release.txt' in flist):
             fname = dir + "/release.txt"
             #content = read_file(fname)
