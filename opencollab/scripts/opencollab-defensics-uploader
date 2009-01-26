@@ -65,7 +65,7 @@ def parse_tool_options(page_metas):
             opt_key = "Option "
             opt_key = opt_key + " ".join(tmp[0:1])
             opt_value = " ".join(tmp[1:])
-            page_metas[opt_key].add('{{{%s}}}' % opt_value)
+            page_metas[opt_key].add(opt_value)
 
 def handle_path(collab,testplan_page,dlist):
     at = re.compile('@')
