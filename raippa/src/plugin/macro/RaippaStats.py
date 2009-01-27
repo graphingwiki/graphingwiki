@@ -24,6 +24,11 @@ def draw_coursestats(request, course, user=None, compress=True):
 <h2>An Error Has Occurred</h2>
 Error is reported to the admins. Please come back later.'''
 
+    if user:
+        users = [user]
+    else:
+        users = getcourseusers(request, course)
+
     G = gv.digraph(course)
     gv.setv(G, 'rankdir', 'TB')
     gv.setv(G, 'bgcolor', 'transparent')
@@ -41,9 +46,11 @@ Error is reported to the admins. Please come back later.'''
                 nodes[nextnode] = gv.node(G, str(nextnode))
             gv.edge(nodes[node], nodes[nextnode])
 
+    passed = dict()
     for node, nodeobject in nodes.iteritems():
         if node == "end" or node == "start":
             gv.setv(nodeobject, 'shape', "doublecircle")
+            gv.setv(nodeobject, 'label', "")
         else:
             metas = get_metas(request, node, ["task"], display=True, checkAccess=False)
             if metas["task"]:
@@ -66,19 +73,32 @@ Error is reported to the admins. Please come back later.'''
                 if task:
                     url = "../%s?action=raippaStats&course=%s&user=%s&task=%s" % (pagename, course, str(user.user), task)
                     gv.setv(nodeobject, 'URL', url)
-                    tooltip = "../%s?action=drawchart&course=%s&task=%s&user=%s" % (pagename, course, task, str(user.user))
-                    gv.setv(nodeobject, 'tooltip', tooltip)
+                    gv.setv(nodeobject, 'label', "")
             else:
-               #TODO: user count here
+                not_passed = list()
+                has_tried = list()
+ #               for course_user in users:
+ #                   ruser = RaippaUser(request, course_user)
+ #                   value, reason = ruser.hasDone(task, course)
+ #                   if not value and reason != "nohistory":
+ #                       not_passed.append(ruser.user)
+ #                       has_tried.append(ruser.user)
+ #                   elif value:
+ #                       if not passed.has_key(ruser.user):
+ #                           passed[ruser.user] = list()
+ #                       passed[ruser.user].append(task)
+ #                       has_tried.append(ruser.user)
+
                 gv.setv(nodeobject, 'fillcolor', "darkolivegreen4")
                 if task:
                     url = "../%s?action=raippaStats&course=%s&task=%s" % (pagename, course, task)
                     gv.setv(nodeobject, 'URL', url)
                     tooltip = "../%s?action=drawchart&course=%s&task=%s" % (pagename, course, task)
                     gv.setv(nodeobject, 'tooltip', tooltip)
+                    label = "%d/%d" % (len(not_passed), len(has_tried))
+                    gv.setv(nodeobject, 'label', label)
 
             gv.setv(nodeobject, 'style', "filled")
-        gv.setv(nodeobject, 'label', "")
 
     gv.layout(G, 'dot')
 
@@ -131,8 +151,9 @@ addLoadEvent(function(){
     //load image from title to td
     areas.addEvent('mouseover',function(event){
         stat_td.addClass('ajax_loading');
-        var url = this.retrieve('tip');
-        this.title = "";       
+        var url = this.retrieve('tip'); 
+ 	this.title = "";
+       
         var stat_img = new Asset.image(url, {
             onload: function(){
                 stat_td.removeClass('ajax_loading');
