@@ -566,6 +566,7 @@ def save_task(request, taskdata, taskpage=None):
     flowlist = taskdata.get("flowlist", list())
     subjects = taskdata.get("subject", list())
     recapdict = taskdata.get("recap", dict())
+    redolist = taskdata.get("redo", list())
 
     if not title:
         return "Missing task title."
@@ -601,6 +602,9 @@ def save_task(request, taskdata, taskpage=None):
             if recaptask:
                 pointdata["recap"] = addlink(recaptask)
 
+            if questionpage in redolist:
+                pointdata["option"] = ["redo"]
+
             if index >= len(flowlist)-1:
                 nexttaskpoint = unicode()
                 pointdata["next"] = ["end"]
@@ -629,7 +633,7 @@ def save_task(request, taskdata, taskpage=None):
             oldquestions.append(questionpage)
 
         #save just taskpage if flow haven't changed
-        if oldquestions == flowlist and not recapdict:
+        if oldquestions == flowlist and not recapdict and not redolist:
             startmeta = get_metas(request, taskpage, ["start"])
             data = {"title": [title],
                     "description": [description],
@@ -694,6 +698,9 @@ def save_task(request, taskdata, taskpage=None):
                 recaptask = recapdict.get(question, None)
                 if recaptask:
                     data["recap"] = addlink(recaptask)
+
+                if question in redolist:
+                    data["option"] = ["redo"]
 
                 if pageexists(request, taskpoint):
                     oldkeys = get_keys(request, taskpoint)
@@ -801,14 +808,22 @@ def execute(pagename, request):
                     "flowlist": request.form.get("flowlist", list())}
 
         recapdict = dict()
+        redolist = list()
         for key in request.form:
             if key.endswith("_recap"):
                 question = key.split("_")[0]
                 recaptask = request.form.get(key, [None])[0]
                 if recaptask:
                     recapdict[question] = recaptask
+            elif key.endswith("_redo"):
+                question = key.split("_")[0]
+                redo_value = request.form.get(key, [None])[0]
+                if redo_value and redo_value == "true":
+                    redolist.append(question)
+
 
         taskdata["recap"] = recapdict
+        taskdata["redo"] = redolist
 
         message = save_task(request, taskdata, taskpage)
         Page(request, pagename).send_page(msg=message)
