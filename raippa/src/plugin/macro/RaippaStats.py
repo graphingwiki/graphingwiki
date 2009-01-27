@@ -119,6 +119,7 @@ addLoadEvent(function(){
  //get every area element with drawchart action as title
     var areas = $(document.body).getElements('area').filter(function(el){
         var tip = el.title;
+        el.store('tip', tip);
         return /action=drawchart/.test(tip);
         });
     
@@ -130,8 +131,8 @@ addLoadEvent(function(){
     //load image from title to td
     areas.addEvent('mouseover',function(event){
         stat_td.addClass('ajax_loading');
-        var url = this.title;
-       
+        var url = this.retrieve('tip');
+        this.title = "";       
         var stat_img = new Asset.image(url, {
             onload: function(){
                 stat_td.removeClass('ajax_loading');
