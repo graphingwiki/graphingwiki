@@ -930,7 +930,9 @@ def execute(pagename, request):
 
         question = request.form.get("question", list())
         if len(question) > 0:
-            questiondata["question"] = question.pop().rstrip()
+            q_temp = question.pop()
+            q_temp = q_temp.strip().replace("\n"," ").replace("\r"," ")
+            questiondata["question"] = q_temp
         else:
             Page(request, pagename).send_page(msg=u'Missing question.')
             return None
@@ -943,7 +945,9 @@ def execute(pagename, request):
 
         note = request.form.get("note", list())
         if len(note) > 0:
-            questiondata["note"] = note.pop().rstrip()
+            n_temp = note.pop()
+            n_temp = n_temp.strip().replace("\n"," ").replace("\r"," ")
+            questiondata["note"] = n_temp
         else:
             questiondata["note"] = unicode()
 
@@ -955,9 +959,12 @@ def execute(pagename, request):
 
         for key in request.form:
             if key != "answertype" and key.startswith("answer"):
-                answer = request.form.get(key, [unicode()])[0].rstrip()
+                a_temp = request.form.get(key, [unicode()])[0]
+                answer = a_temp.strip().replace("\n"," ").replace("\r"," ")
+
                 if not answer:
                     continue
+
                 answernumber = key[6:]
                 if questiondata["answertype"] == "file":
                     value = u'true'
