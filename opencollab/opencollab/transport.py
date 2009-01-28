@@ -43,7 +43,8 @@ class CustomTransport(xmlrpclib.Transport):
             h.set_debuglevel(1)
 
         self.send_request(h, handler, request_body)
-        self.send_host(h, host)
+        # XXX send_host results in duplicate host: headers?
+        #self.send_host(h, host)
         self.send_user_agent(h)
         self.send_content(h, request_body)
 
