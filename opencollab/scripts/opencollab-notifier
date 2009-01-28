@@ -30,15 +30,20 @@ def main():
                       default=None,
                       metavar="CONFIG",
                       help=("Read configurable variables from CONFIG."))
+    parser.add_option("-a", "--arguments",
+                      dest="meta_args",
+                      default=None,
+                      metavar="ARGUMENTS",
+                      help=("Metatable search ARGUMENTS."))
     options, args = parser.parse_args()
 
     url = ''
-    arg = 'CategoryCodenomiconArena'
+    meta_args = ''
     if args:
         url = args[0]
     collab = CLIWiki(url, config=options.config)
     pages = Metas() 
-    pages = collab.getMeta(arg)
+    pages = collab.getMeta(meta_args)
     for page in pages:
         get_page_html(collab, page)
 
