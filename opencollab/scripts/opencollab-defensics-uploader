@@ -62,6 +62,7 @@ def parse_tool_options(page_metas):
     for opt in options:
         tmp = opt.split()
         if(tmp):
+            print tmp
             opt_key = "Option "
             opt_key = opt_key + " ".join(tmp[0:1])
             opt_value = " ".join(tmp[1:])
