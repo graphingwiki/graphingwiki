@@ -42,9 +42,9 @@ class CustomTransport(xmlrpclib.Transport):
         if verbose:
             h.set_debuglevel(1)
 
-        self.send_request(h, handler, request_body)
+        self.send_request(h, handler)
         # XXX send_host results in duplicate host: headers?
-        #self.send_host(h, host)
+        self.send_host(h, host)
         self.send_user_agent(h)
         self.send_content(h, request_body)
 
@@ -53,12 +53,16 @@ class CustomTransport(xmlrpclib.Transport):
         if response.status != 200:
             raise xmlrpclib.ProtocolError(
                 host + handler,
-                response.status, response.reason, response.getheaders()
-                )
+                response.status, 
+                response.reason, 
+                response.getheaders())
 
         self.verbose = verbose
 
         return self.parse_response(response)
+
+    def send_request(self, connection, handler):
+        connection.putrequest("POST", handler, skip_host=True)
 
     def make_connection(self, host):
         if self.connection is None:
