@@ -139,8 +139,14 @@ addLoadEvent(function(){
  //get every area element with drawchart action as title
     var areas = $(document.body).getElements('area').filter(function(el){
         var tip = el.title;
-        el.store('tip', tip);
-        return /action=drawchart/.test(tip);
+        if(/action=drawchart/.test(tip)){
+            el.store('tip', tip);
+            el.store('link', el.href);
+            el.title = "";
+            el.href = "";
+            return true;
+        }
+        return false;
         });
     
     var stat_td = $('stat_td');
@@ -149,16 +155,19 @@ addLoadEvent(function(){
     stat_td.setStyle('vertical-align', 'top');
     var max_margin = Math.max(0, stat_td.getCoordinates().height - 20);
     //load image from title to td
-    areas.addEvent('mouseover',function(event){
+    areas.addEvent('click',function(event){
+        event.stop();
         stat_td.addClass('ajax_loading');
         var url = this.retrieve('tip'); 
- 	this.title = "";
+ 	    var link = this.retrieve('link');
        
         var stat_img = new Asset.image(url, {
             onload: function(){
                 stat_td.removeClass('ajax_loading');
                 stat_td.empty();
-                stat_td.grab(this);
+                stat_td.grab(new Element('a', {
+                        'href' : link
+                    }).grab(this));
                 var img = this;
 
                 window.addEvent('scroll', function(){
