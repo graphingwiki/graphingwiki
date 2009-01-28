@@ -187,6 +187,9 @@ class GraphingWiki(Wiki):
     def getPage(self, page):
         return self.request("getPage", page)
 
+    def getPageHTML(self, page):
+        return self.request("getPageHTML", page)
+
     def putPage(self, page, content):
         return self.request("putPage", page, content)
 
