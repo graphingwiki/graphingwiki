@@ -40,27 +40,26 @@ class WikiFault(WikiFailure):
         WikiFailure.__init__(self, message)
         self.fault = fault
 
-def wrapped(func):
-    def _wrapped(*args, **keys):
-        try:
-            result = func(*args, **keys)
-        except xmlrpclib.Fault, f:
-            raise WikiFault(f)
-        except xmlrpclib.ProtocolError, e:
-            if e.errcode == 401:
-                raise HttpAuthenticationFailed(e.errmsg)
-            raise WikiFailure(e.errmsg)
-        except (socket.gaierror, socket.error), (code, msg):
-            raise WikiFailure(msg)
-        except httplib.HTTPException, msg:
-            raise WikiFailure(msg)
+def runWrapped(func, *args, **keys):
+    try:
+        result = func(*args, **keys)
+    except xmlrpclib.Fault, f:
+        if f.faultCode == "INVALID":
+            raise WikiAuthenticationFailed(f.faultString)
+        raise WikiFault(f)
+    except xmlrpclib.ProtocolError, e:
+        if e.errcode == 401:
+            raise HttpAuthenticationFailed(e.errmsg)
+        raise WikiFailure(e.errmsg)
+    except (socket.gaierror, socket.error), (code, msg):
+        raise WikiFailure(msg)
+    except httplib.HTTPException, msg:
+        raise WikiFailure(msg)
 
-        if isinstance(result, dict) and "faultString" in result:
-            faultString = result["faultString"]
-            raise WikiFailure(faultString)
-
-        return result        
-    return _wrapped
+    if isinstance(result, dict) and "faultString" in result:
+        faultString = result["faultString"]
+        raise WikiFailure(faultString)
+    return result
 
 def urlQuote(string):
     if isinstance(string, unicode):
@@ -76,19 +75,19 @@ class Wiki(object):
         self.sslPeerVerify = sslPeerVerify
 
         self._url = urlQuote(url)
-        self._token = None
-        self._creds = None
+        self._httpCreds = None
+        self._wikiCreds = None
         self._proxy = None
 
-    def _getProxy(self, creds=None):
+    def _getProxy(self):
         if self._proxy is not None:
             return self._proxy
 
         action = "action=xmlrpc2"
         scheme, netloc, path, _, _, _ = urlparse.urlparse(self._url)
 
-        if creds:
-            username, password = map(urlQuote, creds)
+        if self._httpCreds:
+            username, password = map(urlQuote, self._httpCreds)
             netloc = "%s:%s@%s" % (username, password, netloc)
         url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
 
@@ -104,23 +103,25 @@ class Wiki(object):
             raise WikiFailure(msg)
 
         return self._proxy
+
+    def _doWikiAuth(self, username, password):
+        token = self._getProxy().getAuthToken(username, password)
+        if not token:
+            raise WikiAuthenticationFailed("wiki authentication failed")
+        return token
     
     def _authenticate(self, username, password):
         self._proxy = None
-        self._token = None
-        self._creds = None
+        self._wikiCreds = None
+        self._httpCreds = None
 
         try:
             try:
-                proxy = self._getProxy()
-                whoami = wrapped(proxy.WhoAmI)()
+                whoami = runWrapped(self._getProxy().WhoAmI)
             except HttpAuthenticationFailed:
                 self._proxy = None
-
-                proxy = self._getProxy((username, password))
-                whoami = wrapped(proxy.WhoAmI)()
-                
-                self._creds = username, password
+                self._httpCreds = username, password
+                whoami = runWrapped(self._getProxy().WhoAmI)
 
             match = self.WHOAMI_FORMAT.match(whoami)
             if match is None:
@@ -128,43 +129,40 @@ class Wiki(object):
 
             valid, trusted = match.groups()
             if valid == "0":
-                token = wrapped(self._getProxy(self._creds).getAuthToken)(username, password)
-                
-                if not token:
-                    raise WikiAuthenticationFailed("wiki authentication failed")
-                self._token = token
+                token = runWrapped(self._doWikiAuth, username, password)
+                self._wikiCreds = token, username, password
         except:
-            self._token = None
-            self._creds = None
             self._proxy = None
-
+            self._wikiCreds = None
+            self._httpCreds = None
             raise
 
     def _multiCall(self, name, *args):
-        multiCall = xmlrpclib.MultiCall(self._getProxy(self._creds))
+        multiCall = xmlrpclib.MultiCall(self._getProxy())
         
-        if self._token:
-            multiCall.applyAuthToken(self._token)
+        if self._wikiCreds:
+            token, username, password = self._wikiCreds
+            multiCall.applyAuthToken(token)
+
         method = getattr(multiCall, name)
         method(*args)
+        results = multiCall()
 
-        return multiCall()        
-
-    @wrapped
-    def request(self, name, *args):
-        results = self._multiCall(name, *args)
-        if not self._token:
+        if not self._wikiCreds:
             return results[0]
-
         if results[0] == "SUCCESS":
             return results[1]
 
-        self._authenticate(*self._creds)
-
-        results = self._multiCall(name, *args)
-        if results[0] == "SUCCESS":
-            return results[1]
         raise WikiAuthenticationFailed(results[0]["failureString"])
+
+    def request(self, name, *args):
+        try:
+            return runWrapped(self._multiCall, name, *args)
+        except WikiAuthenticationFailed:
+            _, username, password = self._wikiCreds
+            token = runWrapped(self._doWikiAuth, username, password)
+            self._wikiCreds = token, username, password
+        return runWrapped(self._multiCall, name, *args)
 
     def authenticate(self, username, password):
         try:
@@ -380,7 +378,7 @@ class CLIWiki(GraphingWiki):
         while True:
             try:
                 return super(CLIWiki, self).request(name, *args)
-            except AuthenticationFailed:
+            except AuthenticationFailed, f:
                 while True:
                     print >> sys.stderr, "Authorization required."
                     if self.authenticate():
