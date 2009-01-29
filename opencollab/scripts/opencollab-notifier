@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import smtplib
+import optparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from opencollab.meta import Meta, Metas
@@ -22,7 +23,7 @@ def get_page_html(collab, page):
     else:
         return content
 
-def send_content(url,page_content,recipient):
+def send_content(url,collab,page_content,recipient,page_marker):
     sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
     counter = 2 
     msg = MIMEMultipart()
@@ -39,49 +40,63 @@ def send_content(url,page_content,recipient):
         content += "\n</body>\n</html>"
         msg.attach(MIMEText(content, "HTML", "UTF-8"))
         counter+=2
+        collab.setMeta(page,page_marker,replace=True)
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
     s.close()
 
 def main():
-    import optparse
-
     parser = optparse.OptionParser()
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      default=None,
-                      metavar="CONFIG",
-                      help=("Read configurable variables from CONFIG."))
     parser.add_option("-a", "--arguments",
                       dest="meta_args",
                       default=None,
                       metavar="ARGUMENTS",
                       help=("Metatable search ARGUMENTS."))
+    parser.add_option("-c", "--config",
+                      dest="config",
+                      default=None,
+                      metavar="CONFIG",
+                      help=("Read configurable variables from CONFIG."))
+    parser.add_option("-m", "--marker",
+                      dest="marker",
+                      default=None,
+                      metavar="MARKER",
+                      help=("Notify MARKER key=value pair."))
     parser.add_option("-r", "--recipient",
                       dest="recipient",
                       default=None,
                       metavar="RECIPIENT",
-                      help=("Metatable search RECIPIENT."))
+                      help=("Email notify RECIPIENT."))
     options, args = parser.parse_args()
 
     url = ''
     meta_args=''
     recipient=''
+    marker='Notified=True'
     page_content = {}
     if args:
         url = args[0]
     collab = CLIWiki(url, config=options.config)
     pages = Metas() 
+    page_marker = Meta()
     if(options.meta_args):
         meta_args = options.meta_args
+    if(options.marker):
+        marker=options.marker
+    k,v = marker.split('=')
+    page_marker[k] = v
     pages = collab.getMeta(meta_args)
     for page in pages:
-        page_html = get_page_html(collab, page)
-        page_content[page] = page_html
+        if(pages[page][k] == page_marker[k]):
+            pass
+        else:
+            page_html = get_page_html(collab, page)
+            page_content[page] = page_html
     if(options.recipient):
         recipient = options.recipient
-    send_content(url,page_content,recipient)
+    if(page_content):
+        send_content(url,collab,page_content,recipient,page_marker)
 
 if __name__ == "__main__":
     try:
