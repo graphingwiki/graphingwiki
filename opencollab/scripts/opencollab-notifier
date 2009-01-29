@@ -4,11 +4,12 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import sys
 import re
-
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -19,7 +20,22 @@ def get_page_html(collab, page):
     except WikiFailure, msg:
         print "WikiFailure: ", msg
     else:
-        print content
+        return content
+
+def send_content(url,page_content,recipient):
+    sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
+    msg = MIMEMultipart()
+    msg['Subject'] = "Changes at: " + url
+    msg['From'] = sender
+    msg['To'] = recipient
+    msg.preamble = "Recent changes at: " + url
+    for page in page_content:
+        content = url + page + "\n\n" + MIMEText(page)
+        msg.attach(content)
+    s = smtplib.SMTP()
+    s.connect()
+    s.sendmail(sender, recipient, msg.as_string())
+    s.close()
 
 def main():
     import optparse
@@ -35,17 +51,28 @@ def main():
                       default=None,
                       metavar="ARGUMENTS",
                       help=("Metatable search ARGUMENTS."))
+    parser.add_option("-r", "--recipient",
+                      dest="recipient",
+                      default=None,
+                      metavar="RECIPIENT",
+                      help=("Metatable search RECIPIENT."))
     options, args = parser.parse_args()
 
     url = ''
-    meta_args = ''
+    meta_args=''
+    recipient=''
+    page_content = {}
     if args:
         url = args[0]
     collab = CLIWiki(url, config=options.config)
     pages = Metas() 
+    if(options.meta_args):
+        meta_args = options.meta_args
     pages = collab.getMeta(meta_args)
     for page in pages:
-        get_page_html(collab, page)
+        page_html = get_page_html(collab, page)
+        page_content[page] = page_html
+    send_content(url,page_content,recipient)
 
 if __name__ == "__main__":
     try:
