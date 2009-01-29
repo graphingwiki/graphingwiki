@@ -24,14 +24,21 @@ def get_page_html(collab, page):
 
 def send_content(url,page_content,recipient):
     sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
+    counter = 2 
     msg = MIMEMultipart()
     msg['Subject'] = "Changes at: " + url
     msg['From'] = sender
     msg['To'] = recipient
-    msg.preamble = "Recent changes at: " + url
+    content = "Recent changes at: " + url
+    msg.attach(MIMEText(content))
     for page in page_content:
-        content = url + page + "\n\n" + MIMEText(page)
-        msg.attach(content)
+        content = "Attachment" + str(counter) + ":\n" + url + page
+        msg.attach(MIMEText(content))
+        content = "<html>\n<head>\n<title></title>\n</head>\n<body>"
+        content += page_content[page]
+        content += "\n</body>\n</html>"
+        msg.attach(MIMEText(content, "HTML", "UTF-8"))
+        counter+=2
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
@@ -72,6 +79,8 @@ def main():
     for page in pages:
         page_html = get_page_html(collab, page)
         page_content[page] = page_html
+    if(options.recipient):
+        recipient = options.recipient
     send_content(url,page_content,recipient)
 
 if __name__ == "__main__":
