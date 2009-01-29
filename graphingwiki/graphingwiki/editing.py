@@ -389,36 +389,31 @@ def get_pages(request):
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
     preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
-    pre_replace = dict()
-    def get_hashkey(val):
-        return md5.new(repr(val)).hexdigest()
 
-    # Enumerate preformatted areas
-    for val in preformatted_re.findall(text):
-        key = get_hashkey(val)
-        pre_replace[key] = val
+    keys_to_markers = dict()
+    markers_to_keys = dict()
 
     # Replace with unique format strings per preformatted area
     def replace_preformatted(mo):
-        val = mo.group(0)
-        key = get_hashkey(val)
-        return '%s' % (key)
+        key = mo.group(0)
 
+        marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
+        while marker in text:
+            marker = "%d-%s" % (mo.start(), md5.new(marker).hexdigest())
+
+        keys_to_markers[key] = marker
+        markers_to_keys[marker] = key
+
+        return marker
     text = preformatted_re.sub(replace_preformatted, text)
 
-    return text, pre_replace
+    return text, keys_to_markers, markers_to_keys
 
 def edit_meta(request, pagename, oldmeta, newmeta):
     page = PageEditor(request, pagename)
 
     text = page.get_raw_body()
-    text, pre_replace = remove_preformatted(text)
-
     text = replace_metas(request, text, oldmeta, newmeta)
-
-    # Metas have been set, insert preformatted areas back
-    for key in pre_replace:
-        text = text.replace(key, pre_replace[key])
 
     # PageEditor.saveText doesn't allow empty texts
     if not text:
@@ -482,7 +477,7 @@ def add_meta_regex(request, inclusion, newval, oldtext):
 
     return oldtext
 
-def replace_metas(request, oldtext, oldmeta, newmeta):
+def replace_metas(request, text, oldmeta, newmeta):
     r"""
     >>> request = _doctest_request()
 
@@ -579,6 +574,15 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(foo=[u""]))
     u' bar:: 1\n'
 
+    Regression test, bug #594: Metas with preformatted values caused
+    corruption.
+    
+    >>> replace_metas(request,
+    ...               u" foo:: {{{a}}}\n",
+    ...               dict(foo=[u"{{{a}}}"]),
+    ...               dict(foo=[u"b"]))
+    u' foo:: b\n'
+
     replace_metas(request, 
     ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
     ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
@@ -586,10 +590,22 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
     """
 
-    oldtext = oldtext.rstrip()
+    text = text.rstrip()
     # Annoying corner case with dl:s
-    if oldtext.endswith('::'):
-        oldtext = oldtext + " \n"
+    if text.endswith('::'):
+        text = text + " \n"
+
+    # Work around the metas whose values are preformatted fields (of
+    # form {{{...}}})
+    text, keys_to_markers, markers_to_keys = remove_preformatted(text)
+
+    replaced_metas = dict()
+    for key, values in oldmeta.iteritems():
+        replaced_values = list()
+        for value in values:
+            replaced_values.append(keys_to_markers.get(value, value))
+        replaced_metas[key] = replaced_values
+    oldmeta = replaced_metas
 
     # Replace the values we can
     def dl_subfun(mo):
@@ -620,7 +636,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             return ""
 
         return " %s:: %s\n" % (key, newval)
-    oldtext = dl_re.sub(dl_subfun, oldtext)
+    text = dl_re.sub(dl_subfun, text)
 
     # Handle the magic duality between normal categories (CategoryBah)
     # and meta style categories
@@ -643,9 +659,9 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         del newcategories[index]
 
     if discarded:
-        oldtext = edit_categories(request, oldtext, "del", discarded)
+        text = edit_categories(request, text, "del", discarded)
     if added:
-        oldtext = edit_categories(request, oldtext, "add", added)
+        text = edit_categories(request, text, "add", added)
 
     # Fill in the prototypes
     def dl_fillfun(mo):
@@ -660,7 +676,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             return ""
 
         return " %s:: %s\n" % (key, newval)
-    oldtext = dl_proto_re.sub(dl_fillfun, oldtext)
+    text = dl_proto_re.sub(dl_fillfun, text)
 
     # Add clustered values
     def dl_clusterfun(mo):
@@ -676,7 +692,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
 
         newmeta[key] = list()
         return all
-    oldtext = dl_re.sub(dl_clusterfun, oldtext)
+    text = dl_re.sub(dl_clusterfun, text)
 
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
@@ -686,9 +702,13 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
                 continue
 
             inclusion = " %s:: %s" % (key, value)
-            oldtext = add_meta_regex(request, inclusion, value, oldtext)
+            text = add_meta_regex(request, inclusion, value, text)
 
-    return oldtext
+    # Metas have been set, insert preformatted areas back
+    for key in markers_to_keys:
+        text = text.replace(key, markers_to_keys[key])
+
+    return text
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
