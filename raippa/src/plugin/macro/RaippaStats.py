@@ -32,9 +32,14 @@ Error is reported to the admins. Please come back later.'''
     G = gv.digraph(course)
     gv.setv(G, 'rankdir', 'TB')
     gv.setv(G, 'bgcolor', 'transparent')
+
     if compress:
         gv.setv(G, 'ratio', "compress")
-        gv.setv(G, 'size', "7.0, 6.0")
+        gv.setv(G, 'size', "10.0, 10.0")
+    else:
+        gv.setv(G, 'ratio', "compress")
+        gv.setv(G, 'size', "10.0, 15.0")
+
     nodes = dict()
 
     for node, nextlist in flow.iteritems():
