@@ -12,6 +12,15 @@ import optparse
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 
+try: 
+    from email.mime.text import MIMEText
+except:
+    from email.MIMEText import MIMEText
+try:
+    from email.mime.multipart import MIMEMultipart
+except:
+    from email.MIMEMultipart import MIMEMultipart
+
 
 def get_page_html(collab, page):
     content = ""
@@ -69,14 +78,6 @@ def main():
                       help=("Email notify RECIPIENT."))
     options, args = parser.parse_args()
 
-    try: 
-        from email.mime.text import MIMEText
-    except:
-        from email import MIMEText
-    try:
-        from email.mime.multipart import MIMEMultipart
-    except:
-        from email import MIMEMultipart
 
     url = ''
     meta_args=''
