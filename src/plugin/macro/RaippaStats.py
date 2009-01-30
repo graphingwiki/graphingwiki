@@ -82,17 +82,17 @@ Error is reported to the admins. Please come back later.'''
             else:
                 not_passed = list()
                 has_tried = list()
- #               for course_user in users:
- #                   ruser = RaippaUser(request, course_user)
- #                   value, reason = ruser.hasDone(task, course)
- #                   if not value and reason != "nohistory":
- #                       not_passed.append(ruser.user)
- #                       has_tried.append(ruser.user)
- #                   elif value:
- #                       if not passed.has_key(ruser.user):
- #                           passed[ruser.user] = list()
- #                       passed[ruser.user].append(task)
- #                       has_tried.append(ruser.user)
+                for course_user in users:
+                    ruser = RaippaUser(request, course_user)
+                    value, reason = ruser.hasDone(task, course)
+                    if not value and reason != "nohistory":
+                        not_passed.append(ruser.user)
+                        has_tried.append(ruser.user)
+                    elif value:
+                        if not passed.has_key(ruser.user):
+                            passed[ruser.user] = list()
+                        passed[ruser.user].append(task)
+                        has_tried.append(ruser.user)
 
                 gv.setv(nodeobject, 'fillcolor', "darkolivegreen4")
                 if task:
