@@ -76,6 +76,22 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                 html += u'<ul><li>No answers for this question.</li></ul>'
 
         else:
+            th_html = unicode()
+            td_html = unicode()
+            html = u'''<script type="text/javascript"
+    src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+    <script type="text/javascript">
+    function toggle(el){
+        var part_list = $(el).getParent('p').getNext('div');
+        part_list.toggleClass('hidden');
+        if(el.get('text') == 'hide'){
+            el.set('text', 'show');
+        }else{
+            el.set('text', 'hide');    
+        }
+    }
+    </script>
+    '''% request.cfg.url_prefix_static 
             histories = question.gethistories(coursefilter=course, taskfilter=taskpoint)
             users = list()
             passed = {True: list(), False: list()}
@@ -101,7 +117,6 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                             t = time.strptime(history[6], "%H:%M:%S")
                             total_time += datetime.timedelta(hours=t[3], minutes=t[4], seconds=t[5]).seconds
 
-            html += u'<ul>\n'
             if len(users) > 0:
                 average_tries = try_count/len(users)
 
@@ -111,19 +126,15 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                 average_time = int("%.f" % (average_tries*average_try_time))
                 iso_time = time.strftime("%H:%M:%S", time.gmtime(average_time))
                 
-                if len(users) == len(passed[True]):
-                    html += u'''
-<li>%d of %d students have tried and passed.</li>\n''' % (len(passed[True]), len(courseusers))
-                else:
-                    html += u'''
-<li>%d of %d students have tried, %d of them have passed.</li>\n''' % (len(users), len(courseusers), len(passed[True]))
-
-                html += u'''
-<li>Average of %.2f tries and %s time used per try, %s used per question.</li>
-''' % (average_tries, iso_try_time, iso_time)
+                th_html += u'<th>Average tries:</th><th>Time per try:</th><th>Time per question:</th>'
+                td_html += u'''<td>%.2f</td><td>%s</td><td>%s</td>''' % (average_tries, iso_try_time, iso_time)
 
                 if len(passed[True]) > 0:
-                    html += u'<li>Users who have passed this question:</li>\n<ul class="hidden">\n'
+                    th_html += u'<th>Users who have passed this question:</th>'
+                    td_html += u'''<td><p><span style="float:left;">%s /
+               <b>%s</b></span><span style="float:right;margin-left:5px;"><a class="jslink" 
+               onclick="toggle(this);">show</a></span><br
+               clear="all"></p><div class="hidden">\n''' % (len(passed[True]), len(courseusers))
                     
                     for p_user in passed[True]:
                         meta = get_metas(request, p_user, ["name"], checkAccess=False)
@@ -131,13 +142,17 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                             p_username = u'%s - %s' % (p_user, meta["name"].pop())
                         else:
                             p_username = p_user
-                        html += u'''<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
+                        td_html += u'''<a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a><br>
 ''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
-                    html += u'''</ul><a class="jslink"
-                    onclick="$(this).getPrevious('ul').toggleClass('hidden')">show</a>\n'''
+                    td_html += u'</div>\n'
 
                 if len(passed[False]) > 0:
-                    html += u'<li>Users who haven\'t passed this question:</li>\n<ul class="hidden">\n'
+                    th_html += u'<th>Users who haven\'t passed this question:</th>' 
+                    td_html += u'''<td><p><span style="float:left;">%s /
+               <b>%s</b></span><span style="float:right;margin-left:5px;"><a class="jslink" 
+               onclick="toggle(this);">show</a></span><br
+               clear="all"></p><div class="hidden">\n''' % (len(passed[False]), len(courseusers))
+                    
 
                     for p_user in passed[False]:
                         meta = get_metas(request, p_user, ["name"], checkAccess=False)
@@ -145,14 +160,12 @@ Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
                             p_username = u'%s - %s' % (p_user, meta["name"].pop())
                         else:
                             p_username = p_user
-                        html += u'''
-<li><a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a></li>
+                        td_html += u'''<a href="%s/%s?action=raippaStats&course=%s&task=%s&user=%s">%s</a><br>
 ''' % (request.getBaseURL(), request.page.page_name, course, task, p_user, p_username)
-                    html += u'''
-                    </ul><a class="jslink" onclick="$(this).getPrevious('ul').toggleClass('hidden')">show</a>\n'''
+                    td_html += u'</div>\n'
             else:
-                html += u'<li>No answers for this question.</li>'
-            html += u'</ul>\n'
+                th_html += u'<th>No answers for this question.</th>'
+            html += u'<table><thead><tr>%s</tr></thead><tbody><tr>%s</tr></tbody></table' % (th_html, td_html)
 
     return html
 
