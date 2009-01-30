@@ -499,7 +499,7 @@ class GraphData(UserDict.DictMixin):
                 elif nodetype == 'interwiki':
                     # Get effective URL:s to interwiki URL:s
                     iwname = dst.split(':')
-                    iw_list = wikiutil.load_wikimap(request)
+                    iw_list = wikiutil.load_wikimap(self.request)
 
                     gwikiurl = iw_list[iwname[0]] + iwname[1]
                     tooltip = iwname[1] + ' ' + \
