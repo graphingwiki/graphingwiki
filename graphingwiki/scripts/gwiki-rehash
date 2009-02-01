@@ -66,8 +66,9 @@ try:
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
-    from wikiconfig import Config
-    datadir = Config.data_dir
+    from MoinMoin.request.request_cli import Request as RequestCLI
+    req = RequestCLI()
+    datadir = req.cfg.data_dir
     pagesdir = os.path.join(datadir, 'pages')
     if len(args) > 1:
         pagename = unicode(args[1], sys.getfilesystemencoding())
