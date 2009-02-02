@@ -44,6 +44,7 @@ done
 [ -z "$refin" ] && fail "reference stdin must be specified using -o"
 
 pout=`mktemp /tmp/ctestXXXXXX`
+trap "rm -v $pout" EXIT SIGHUP SIGTERM SIGQUIT SIGINT
 (ulimit -t 15; ulimit -f 10000; $prog < $refin > $pout 2>&1)
 pass=yes
 if diff -wy $refout $pout; then
