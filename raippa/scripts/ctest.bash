@@ -45,8 +45,15 @@ done
 
 pout=`mktemp /tmp/ctestXXXXXX`
 trap "rm -v $pout" EXIT SIGHUP SIGTERM SIGQUIT SIGINT
-(ulimit -t 15; ulimit -f 10000; $prog < $refin > $pout 2>&1)
+rm -f core
+(ulimit -c unlimited; ulimit -t 15; ulimit -f 10000; $prog < $refin > $pout 2>&1)
 pass=yes
+
+if [ -f core ]; then
+    echo crash detected, stack trace from debugger follows:
+    gdb --quiet --ex where -batch --core core --args $prog 2>/dev/null
+    pass=no
+fi
 if diff -wy $refout $pout; then
     echo stdout matches reference, good
 else
