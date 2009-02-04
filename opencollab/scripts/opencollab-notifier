@@ -39,16 +39,24 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
+    html_head = "<html>\n<head>\n<title></title>\n</head>\n<body>"
+    html_foot = "\n</body>\n</html>"
     if(header is not None):
-        msg.attach(MIMEText(header, "HTML", "UTF-8"))
+        content = html_head
+        content += header
+        content += html_foot
+        msg.attach(MIMEText(content, "HTML", "UTF-8"))
     for page in page_content:
-        content = "<html>\n<head>\n<title></title>\n</head>\n<body>"
+        content = html_head
         content += page_content[page]
         content += "\n</body>\n</html>"
         msg.attach(MIMEText(content, "HTML", "UTF-8"))
         collab.setMeta(page,page_marker,replace=True)
     if(footer is not None):
-        msg.attach(MIMEText(footer, "HTML", "UTF-8"))
+        content = html_head
+        content += footer
+        content += html_foot
+        msg.attach(MIMEText(content, "HTML", "UTF-8"))
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
