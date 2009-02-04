@@ -134,17 +134,17 @@ def main():
     collab = CLIWiki(url, config=options.config)
     if(options.sender):
         sender = options.sender
-    elif(iopts["sender"]):
+    elif(iopts.has_key("sender")):
         sender = iopts["sender"]
     pages = Metas() 
     page_marker = Meta()
     if(options.meta_args):
         meta_args = options.meta_args
-    elif(iopts["meta_args"]):
+    elif(iopts.has_key("meta_args")):
         meta_args = iopts["meta_args"]
     if(options.marker):
         marker=options.marker
-    elif(iopts["marker"]):
+    elif(iopts.has_key("marker")):
         marker=iopts["marker"]
     k,v = marker.split('=')
     page_marker[k] = v
@@ -162,22 +162,22 @@ def main():
     if(options.header):
         page_html = get_page_html(collab,options.header)
         header = page_html
-    elif(iopts["header"]):
+    elif(iopts.has_key("header")):
         page_html = get_page_html(collab,iopts["header"])
         header = page_html
     if(options.footer):
         page_html = get_page_html(collab,options.footer)
         footer = page_html
-    elif(iopts["header"]):
+    elif(iopts.has_key("header")):
         page_html = get_page_html(collab,iopts["footer"])
         footer = page_html
     if(options.recipient):
         recipient = options.recipient
-    elif(iopts["recipient"]):
+    elif(iopts.has_key("recipient")):
         recipient = iopts["recipient"]
     if(options.subject):
         subject = options.subject
-    elif(iopts["subject"]):
+    elif(iopts.has_key("subject")):
         subject = iopts["subject"]
     if(page_content):
         if(options.verbose):
