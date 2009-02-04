@@ -31,10 +31,13 @@ def get_page_html(collab, page):
     else:
         return content
 
-def send_content(url,collab,page_content,sender,recipient,page_marker):
+def send_content(url,collab,page_content,sender,recipient,subject,page_marker):
     counter = 2 
     msg = MIMEMultipart()
-    msg['Subject'] = "Changes at: " + url
+    if(subject == None):
+        msg['Subject'] = "Changes at: " + url
+    else:
+        msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     content = "Recent changes at: " + url
@@ -80,6 +83,11 @@ def main():
                       default=None,
                       metavar="RECIPIENT",
                       help=("Email notify RECIPIENT."))
+    parser.add_option("-s", "--subject",
+                      dest="subject",
+                      default=None,
+                      metavar="SUBJECT",
+                      help=("Notify email SUBJECT."))
     parser.add_option("-v", "--verbose",
                       dest="verbose",
                       default=None,
@@ -93,6 +101,7 @@ def main():
     recipient=''
     meta_args=''
     marker='Notified=True'
+    subject=None
     page_content = {}
     if args:
         url = args[0]
@@ -120,10 +129,12 @@ def main():
             page_content[page] = page_html
     if(options.recipient):
         recipient = options.recipient
+    if(options.subject):
+        subject = options.subject
     if(page_content):
         if(options.verbose):
             print "Notifying " + recipient + " via email."
-        send_content(url,collab,page_content,sender,recipient,page_marker)
+        send_content(url,collab,page_content,sender,recipient,subject,page_marker)
 
 if __name__ == "__main__":
     try:
