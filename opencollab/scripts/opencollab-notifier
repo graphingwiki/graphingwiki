@@ -28,7 +28,7 @@ def get_page_html(collab, page):
     try:
         content = collab.getPageHTML(page)
     except WikiFailure, msg:
-        print "WikiFailure: ", msg
+        print "WikiFailure: ", page, " ",  msg
     else:
         return content
 
