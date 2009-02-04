@@ -72,7 +72,7 @@ def parse_config(cpath, args):
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-a", "--arguments",
-                      dest="meta_args",
+                      dest="selection",
                       default=None,
                       metavar="ARGUMENTS",
                       help=("Metatable search ARGUMENTS."))
@@ -121,7 +121,7 @@ def main():
     url = ''
     sender = 'opencollab-notifier@do.not.respond.to.me.INVALID'
     recipient=''
-    meta_args=''
+    selection=''
     marker='Notified=True'
     subject=None
     header=None
@@ -138,10 +138,10 @@ def main():
         sender = iopts["sender"]
     pages = Metas() 
     page_marker = Meta()
-    if(options.meta_args):
-        meta_args = options.meta_args
-    elif(iopts.has_key("meta_args")):
-        meta_args = iopts["meta_args"]
+    if(options.selection):
+        selection = options.selection
+    elif(iopts.has_key("selection")):
+        selection = iopts["selection"]
     if(options.marker):
         marker=options.marker
     elif(iopts.has_key("marker")):
@@ -150,7 +150,7 @@ def main():
     page_marker[k] = v
     if(options.verbose):
         print "Getting " + marker + " from: "  + url
-    pages = collab.getMeta(meta_args)
+    pages = collab.getMeta(selection)
     for page in pages:
         if(pages[page][k] == page_marker[k]):
             pass
