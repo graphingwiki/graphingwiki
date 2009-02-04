@@ -80,6 +80,11 @@ def main():
                       default=None,
                       metavar="RECIPIENT",
                       help=("Email notify RECIPIENT."))
+    parser.add_option("-v", "--verbose",
+                      dest="verbose",
+                      default=None,
+                      metavar="VERBOSE",
+                      help=("VERBOSE output."))
     options, args = parser.parse_args()
 
 
@@ -102,16 +107,22 @@ def main():
         marker=options.marker
     k,v = marker.split('=')
     page_marker[k] = v
+    if(options.verbose):
+        print "Getting " + marker + " from: "  + url
     pages = collab.getMeta(meta_args)
     for page in pages:
         if(pages[page][k] == page_marker[k]):
             pass
         else:
+            if(options.verbose):
+                print "Rendering " + page + " to HTML"
             page_html = get_page_html(collab, page)
             page_content[page] = page_html
     if(options.recipient):
         recipient = options.recipient
     if(page_content):
+        if(options.verbose):
+            print "Notifying " + recipient + " via email."
         send_content(url,collab,page_content,sender,recipient,page_marker)
 
 if __name__ == "__main__":
