@@ -9,6 +9,7 @@ import sys
 import re
 import smtplib
 import optparse
+import ConfigParser
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -111,10 +112,9 @@ def main():
                       metavar="SUBJECT",
                       help=("Notify email SUBJECT."))
     parser.add_option("-v", "--verbose",
-                      dest="verbose",
-                      default=None,
-                      metavar="VERBOSE",
-                      help=("VERBOSE output."))
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+
     options, args = parser.parse_args()
 
     iopts = {}
