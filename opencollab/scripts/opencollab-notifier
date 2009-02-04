@@ -149,7 +149,7 @@ def main():
     k,v = marker.split('=')
     page_marker[k] = v
     if(options.verbose):
-        print "Getting " + marker + " from: "  + url
+        print "Getting " + marker
     pages = collab.getMeta(selection)
     for page in pages:
         if(pages[page][k] == page_marker[k]):
@@ -159,18 +159,6 @@ def main():
                 print "Rendering " + page + " to HTML"
             page_html = get_page_html(collab, page)
             page_content[page] = page_html
-    if(options.header):
-        page_html = get_page_html(collab,options.header)
-        header = page_html
-    elif(iopts.has_key("header")):
-        page_html = get_page_html(collab,iopts["header"])
-        header = page_html
-    if(options.footer):
-        page_html = get_page_html(collab,options.footer)
-        footer = page_html
-    elif(iopts.has_key("header")):
-        page_html = get_page_html(collab,iopts["footer"])
-        footer = page_html
     if(options.recipient):
         recipient = options.recipient
     elif(iopts.has_key("recipient")):
@@ -180,6 +168,18 @@ def main():
     elif(iopts.has_key("subject")):
         subject = iopts["subject"]
     if(page_content):
+        if(options.header):
+            page_html = get_page_html(collab,options.header)
+            header = page_html
+        elif(iopts.has_key("header")):
+            page_html = get_page_html(collab,iopts["header"])
+            header = page_html
+        if(options.footer):
+            page_html = get_page_html(collab,options.footer)
+            footer = page_html
+        elif(iopts.has_key("footer")):
+            page_html = get_page_html(collab,iopts["footer"])
+            footer = page_html
         if(options.verbose):
             print "Notifying " + recipient + " via email."
         send_content(url,collab,page_content,sender,recipient,subject,header,footer,page_marker)
