@@ -90,7 +90,7 @@ def main():
                       help=("Read configurable variables from CONFIG."))
     parser.add_option("-f", "--from",
                       dest="sender",
-                      default=None,
+                      default= "opencollab-notifier@do.not.respond.to.me.INVALID"
                       metavar="SENDER",
                       help=("Email SENDER address."))
     parser.add_option("-F", "--FOOTER",
@@ -105,7 +105,7 @@ def main():
                       help=("Read email attachemnt #1 from page name HEADER."))
     parser.add_option("-m", "--marker",
                       dest="marker",
-                      default=None,
+                      default="Notified=Yes"
                       metavar="MARKER",
                       help=("Notify MARKER key=value pair."))
     parser.add_option("-r", "--recipient",
@@ -126,13 +126,6 @@ def main():
 
     iopts = {}
     url = None
-    sender = 'opencollab-notifier@do.not.respond.to.me.INVALID'
-    recipient=''
-    selection=''
-    marker='Notified=True'
-    subject=None
-    header=None
-    footer=None
     page_content = {}
     if(args):
         url = args[0]
