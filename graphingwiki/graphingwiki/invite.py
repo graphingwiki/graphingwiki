@@ -60,7 +60,7 @@ def invite_user_by_email(request, page, email, new_template, old_template,
     if not user_may_invite(request.user, page):
         raise InviteException("No permissions to invite to page '%s'." % page)
 
-    page_url = Page(request, page).url(request)
+    page_url = Page(request, page).url(request, relative=False)
     page_url = request.getQualifiedURL(page_url)
 
     mail_from = request.user.name
