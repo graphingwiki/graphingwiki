@@ -66,7 +66,14 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
 def parse_config(cpath, args):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
-    iopts = dict( configparser.items("notifier") )
+    creds = dict(configparser.items("creds"))
+    iopts = dict(configparser.items("notifier"))
+    if(creds.has_key("url")):
+        iopts["url"] = creds["url"]
+    if(creds.has_key("username")):
+        iopts["username"] = creds["username"]
+    if(creds.has_key("password")):
+        iopts["password"] = creds["password"]
     return iopts
 
 def main():
@@ -118,7 +125,7 @@ def main():
     options, args = parser.parse_args()
 
     iopts = {}
-    url = ''
+    url = None
     sender = 'opencollab-notifier@do.not.respond.to.me.INVALID'
     recipient=''
     selection=''
@@ -132,6 +139,7 @@ def main():
     if(options.config):
         iopts = parse_config(options.config,args)
         collab = CLIWiki(url, config=options.config)
+        url = iopts["url"]
     elif(len(args) != 1):
         parser.error("Collab url has to be specified.")
     else:
@@ -153,7 +161,7 @@ def main():
     k,v = marker.split('=')
     page_marker[k] = v
     if(options.verbose):
-        print "Getting " + marker
+        print "Getting " + marker + " from " + url
     pages = collab.getMeta(selection)
     for page in pages:
         if(pages[page][k] == page_marker[k]):
