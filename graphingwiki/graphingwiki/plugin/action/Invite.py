@@ -11,7 +11,7 @@ NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"
 OLD_TEMPLATE_VARIABLE = "invite_old_template"
 OLD_TEMPLATE_DEFAULT = "InviteOldTemplate"
 
-class InviteTest(ActionBase):
+class Invite(ActionBase):
     def __init__(self, pagename, request):
         ActionBase.__init__(self, pagename, request)
         self.getText = request.getText
@@ -86,4 +86,4 @@ class InviteTest(ActionBase):
 
 def execute(pagename, request):
     """ Glue code for actions """
-    InviteTest(pagename, request).render()
+    Invite(pagename, request).render()
