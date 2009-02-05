@@ -131,7 +131,11 @@ def main():
         url = args[0]
     if(options.config):
         iopts = parse_config(options.config,args)
-    collab = CLIWiki(url, config=options.config)
+        collab = CLIWiki(url, config=options.config)
+    elif(len(args) != 1):
+        parser.error("Collab url has to be specified.")
+    else:
+        collab = CLIWiki(url)
     if(options.sender):
         sender = options.sender
     elif(iopts.has_key("sender")):
