@@ -203,5 +203,6 @@ def execute(macro, args):
         request.write(action_link('MetaEdit', 'edit', args))
 
     request.write(action_link('metaCSV', 'csv', args))
+    request.write(action_link('metaPackage', 'zip', args))
 
     return ""
