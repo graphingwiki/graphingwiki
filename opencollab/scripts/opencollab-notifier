@@ -50,7 +50,7 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
     for page in page_content:
         content = html_head
         content += page_content[page]
-        content += "\n</body>\n</html>"
+        content += html_foot
         msg.attach(MIMEText(content, "HTML", "UTF-8"))
         collab.setMeta(page,page_marker,replace=True)
     if(footer is not None):
