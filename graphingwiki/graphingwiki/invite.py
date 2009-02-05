@@ -63,7 +63,7 @@ def invite_user_by_email(request, page, email, new_template, old_template,
     page_url = Page(request, page).url(request, relative=False)
     page_url = request.getQualifiedURL(page_url)
 
-    mail_from = request.user.name
+    mail_from = request.user.email
     if "@" not in mail_from:
         mail_from += "@" + request.cfg.invite_sender_default_domain
 
