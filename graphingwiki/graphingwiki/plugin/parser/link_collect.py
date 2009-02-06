@@ -202,6 +202,9 @@ class Parser(WikiParser):
     _transclude_params_repl = _transclude_repl
 
     def _email_repl(self, word, groups):
+        if self.__add_link(word, groups):
+            return u""
+
         self.currentitems.append(('wikilink', (word, 'mailto:%s' % word)))
         return u''
 
