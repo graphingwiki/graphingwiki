@@ -36,6 +36,9 @@ from MoinMoin import wikiutil
 THRESHOLD = 60*5
 
 def parseArgs(args):
+    if not args:
+        return THRESHOLD
+
     args = args.strip()
     if len(args) == 0:
         return THRESHOLD
