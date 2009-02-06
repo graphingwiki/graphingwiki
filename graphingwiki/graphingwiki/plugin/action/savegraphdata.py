@@ -231,7 +231,7 @@ def parse_text(request, page, text):
     new_data = {}
 
     # Add the page categories as links too
-    _, categories = parse_categories(request, text)
+    categories, _, _ = parse_categories(request, text)
     
     for metakey, value in p.definitions.iteritems():
         for type, item in value:

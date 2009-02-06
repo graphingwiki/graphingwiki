@@ -145,58 +145,76 @@ def getmeta_to_table(input):
 
 def parse_categories(request, text):
     r"""
-    Parse category names from the page. Return a list of the preceding
-    text lines and a list of parsed categories.
+    Parse category names from the page. Return a list of parsed categories,
+    list of the preceding text lines and a list of the lines with categories.
 
     >>> request = _doctest_request()
     >>> parse_categories(request, "CategoryTest")
-    ([], ['CategoryTest'])
+    (['CategoryTest'], [], ['CategoryTest'])
 
     Take into account only the categories that come after all other text
     (excluding whitespaces):
 
     >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
-    (['Blah', 'CategoryNot blah'], ['CategoryTest'])
+    (['CategoryTest'], ['Blah', 'CategoryNot blah'], ['CategoryTest', ''])
+
+    The line lists are returned in a way that the original text can be
+    easily reconstructed from them.
+
+    >>> original_text = "Blah\nCategoryNot blah\n--------\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> tail[0] == "--------"
+    True
+    >>> "\n".join(head + tail) == original_text
+    True
+
+    >>> original_text = "Blah\nCategoryNot blah\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> "\n".join(head + tail) == original_text
+    True
 
     Regression test, bug #540: Pages with only categories (or whitespaces) 
     on several lines don't get parsed correctly:
 
     >>> parse_categories(request, "\nCategoryTest")
-    ([], ['CategoryTest'])
+    (['CategoryTest'], [''], ['CategoryTest'])
     """
 
-    # We want to parse only the last non-empty line of the text
-    lines = text.rstrip().splitlines()
-    if not lines:
-        return lines, list()
+    other_lines = text.splitlines()
+    if text.endswith("\n"):
+        other_lines.append("")
 
-    # All the categories on the multiple ending lines of 
-    total_confirmed = list()
+    categories = list()
+    category_lines = list()
+    unknown_lines = list()
+
     # Start looking at lines from the end to the beginning
-    while lines:
-        confirmed = list()
-        # Skip empty lines, comments
-        if not lines[-1].strip() or lines[-1].startswith('##'):
-            lines.pop()
+    while other_lines:
+        if not other_lines[-1].strip() or other_lines[-1].startswith("##"):
+            unknown_lines.insert(0, other_lines.pop())
             continue
 
         # TODO: this code is broken, will not work for extended links
         # categories, e.g ["category hebrew"]
-        candidates = lines[-1].split()
-        confirmed.extend(filter_categories(request, candidates))
+        candidates = other_lines[-1].split()
+        confirmed = filter_categories(request, candidates)
 
         # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
             # The line was not a category line
             break
 
-        # It was a category line - add the categories
-        total_confirmed.extend(confirmed)
+        categories.extend(confirmed)
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+        unknown_lines = list()
 
-        # Remove the category line
-        lines.pop()
-
-    return lines, total_confirmed
+    if other_lines and re.match("^\s*-{4,}\s*$", other_lines[-1]):
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+    else:
+        other_lines.extend(unknown_lines)
+    return categories, other_lines, category_lines
 
 def edit_categories(request, savetext, action, catlist):
     """
@@ -228,7 +246,7 @@ def edit_categories(request, savetext, action, catlist):
 
     # Filter out anything that is not a category
     catlist = filter_categories(request, catlist)
-    lines, confirmed = parse_categories(request, savetext)
+    confirmed, lines, _ = parse_categories(request, savetext)
 
     # Remove the empty lines from the end
     while lines and not lines[-1].strip():
@@ -248,18 +266,8 @@ def edit_categories(request, savetext, action, catlist):
             if category not in categories:
                 categories.append(category)
 
-    # Check whether the last line is a separator; add and remove it if needed
-    if not lines:
-        if categories:
-            lines.append(u"----")
-    elif not (len(lines[-1]) >= 4 and set(lines[-1].strip()) == set("-")):
-        if categories:
-            lines.append(u"----")
-    else:
-        if not categories:
-            lines.pop()
-        
     if categories:
+        lines.append(u"----")
         lines.append(" ".join(categories))
 
     return u"\n".join(lines) + u"\n"
