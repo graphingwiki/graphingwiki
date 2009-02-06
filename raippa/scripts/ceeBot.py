@@ -1,4 +1,4 @@
-import os, sys, time, datetime, subprocess, tempfile
+import os, sys, time, datetime, subprocess, tempfile, shutil
 
 from optparse import OptionParser
 
@@ -23,7 +23,7 @@ class testCase(object):
         value += '%s ' % str(self.outfiles) 
         return value
 
-def runtests(tests):
+def runtests(tests, scriptpath):
     success, total = 0, 0
     report = str()
     for test in tests:
@@ -41,9 +41,7 @@ def runtests(tests):
         else:
             output = '/dev/null'
 
-        command = './ctest.bash -p "./program %s" -i %s -o test.txt' % (test.cmdline, output)
-        
-        print command
+        command = os.path.join(scriptpath, 'ctest.bash -p "./program %s" -i %s -o test.txt' % (test.cmdline, output))
         
         ctestprocess = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
         report += ctestprocess.stdout.read()
@@ -90,7 +88,6 @@ def parsecontent(content):
 def compile(code, switches):
 
     path = tempfile.mkdtemp()
-    path= '.'
     os.chdir(path)
     
     open('file.c', 'w').write(code)
@@ -103,9 +100,9 @@ def compile(code, switches):
     process.wait()
 
     if process.returncode != 0:
-        return False, report
+        return path, False, report
 
-    return True, report
+    return path, True, report
 
 def main():
     parser = OptionParser()
@@ -138,6 +135,8 @@ def main():
     else:
         wiki = CLIWiki(options.url, config = options.file)
 
+
+    scriptpath = os.getcwd()
     while True:
         
         pages = wiki.getMeta('CategoryHistory, overallvalue=pending, course=%s' % course)
@@ -163,7 +162,7 @@ def main():
             content = wiki.getPage(answer)
             switches, tests = parsecontent(content)
 
-            success, report = compile(sourcecode, switches)
+            path, success, report = compile(sourcecode, switches)
             
             if not success:
                 info('Compilation FAILED')
@@ -178,7 +177,7 @@ def main():
             report = "#FORMAT plain\nCOMPILATION WAS SUCCESSFULL:\n" + report
             report += '----\n'
             
-            success, total, testreport = runtests(tests)
+            success, total, testreport = runtests(tests, scriptpath)
             info('score: %d/%d' % (success, total))
             report += testreport
 
@@ -188,6 +187,7 @@ def main():
                 info('no change')
 
             wiki.setMeta(page, {'overallvalue' : ['%d/%d' % (success, total)]}, True)
+            shutil.rmtree(path)
 
 if __name__ == '__main__':
     try:
