@@ -31,12 +31,11 @@
 import shelve
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
+from MoinMoin.wikiutil import load_wikimap
 
 from MoinMoin import config
 
-from graphingwiki.patterns import getgraphdata
-
-from ShowGraph import nonguaranteeds_p, get_interwikilist, get_selfname
+from graphingwiki.patterns import nonguaranteeds_p, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''
@@ -51,7 +50,7 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
             out = out + formatfunc(selfname,
                                    (pagename, prop, value))
 
-    for edge in pagegraph.edges.getall():
+    for edge in pagegraph.edges:
         edgegraph = pagegraph.edges.get(*edge)
         for linktype in getattr(edgegraph, 'linktype', 'Link'):
             if not isinstance(linktype, unicode):
@@ -78,22 +77,20 @@ def graph_to_yield(pagegraph, pagename, formatfunc):
             for data in formatfunc((pagename, prop, value)):
                 yield data
 
-    for edge in pagegraph.edges.getall():
+    for edge in pagegraph.edges:
         edgegraph = pagegraph.edges.get(*edge)
         linktype = getattr(edgegraph, 'linktype', 'Link')
         for data in formatfunc((edge[0], linktype, edge[1])):
             yield data
 
 def get_page_n3(request, pagename):
-    graphdata = getgraphdata(request)
-    
-    pagegraph = graphdata.load_with_links(pagename)
+    pagegraph = request.graphdata.load_graph(pagename, '')
     selfname = get_selfname(request)
 
     return graph_to_format(pagegraph, pagename, selfname, wikins_n3triplet)
 
 def get_page_fact(request, pagename, graphdata):
-    pagegraph = graphdata.load_with_links(pagename)
+    pagegraph = graphdata.load_graph(pagename, '')
     if isinstance(pagename, unicode):
         pagename = unicode(url_quote(pagename), config.charset)
 
@@ -107,7 +104,7 @@ def get_all_facts(request, graphdata):
         request.cfg.data_underlay_dir = None
 
     for pagename in request.rootpage.getPageList():
-        pagegraph = graphdata.load_with_links(pagename)
+        pagegraph = graphdata.load_graph(pagename, '')
         if isinstance(pagename, unicode):
             pagename = unicode(url_quote(pagename), config.charset)
 
@@ -158,7 +155,7 @@ def n3dump(request, pages):
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
 """
 
-    for iw, iw_url in get_interwikilist(request).items():
+    for iw, iw_url in load_wikimap(request).items():
         outstr = (outstr + '@prefix '+ iw + ': <' + 
                   iw_url + '> .' + "\n")
 
