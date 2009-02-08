@@ -56,7 +56,9 @@ def execute(pagename, request):
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
-             _('Save Changes')) + '</p></div>'
+             _('Save Changes')) + \
+             wr('<input type=submit name=cancel value="%s">',
+                _('Cancel')) +'</p></div>'
 
     # Template to use for any new pages
     template = request.form.get('template', [''])[0]

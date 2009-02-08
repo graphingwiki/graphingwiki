@@ -218,6 +218,7 @@ def show_editform(wr, request, pagename, args):
 
     wr(formatter.table(0))
     wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
+    wr(u'<input type="submit" name="cancel" value="%s">\n', _('Cancel'))
     wr(u'</form>\n')
 
 def _enter_page(request, pagename):
@@ -256,7 +257,14 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
     form = fix_form(request.form)
 
-    if form.has_key('save') or form.has_key('saveform'):
+    if form.has_key('cancel'):
+        request.reset()
+        backto = form.get('backto', [None])[0]
+        if backto:
+            request.page = Page(request, backto)
+        
+        request.page.send_page()
+    elif form.has_key('save') or form.has_key('saveform'):
         # MetaFormEdit is much closer to set_meta in function
         if form.has_key('saveform'):
             added, discarded = {pagename: dict()}, {pagename: dict()}

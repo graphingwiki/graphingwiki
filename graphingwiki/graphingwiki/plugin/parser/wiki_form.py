@@ -92,6 +92,10 @@ class Parser(wikiParser):
 
         return apply(wikiParser._word_repl, (self, word, groups))
 
+    _word_bang_repl = _word_repl
+    _word_name_repl = _word_repl
+    _word_anchor_repl = _word_repl
+
     def _link_repl(self, word, groups):
         if self.in_dd:
             raw = groups.get('link', '')
