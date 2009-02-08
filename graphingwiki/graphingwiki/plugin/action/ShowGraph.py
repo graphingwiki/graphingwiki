@@ -1421,7 +1421,10 @@ class GraphShower(object):
         self.request.write("%s: " % _('Density'))
         nroedges = float(len(outgraph.edges))
         nronodes = float(len(outgraph.nodes))
-        self.request.write(str(nroedges / (nronodes*nronodes-1)))
+        if nronodes == 0 or (nronodes-1 == 0):
+            self.request.write('0')
+        else:
+            self.request.write(str(nroedges / (nronodes*nronodes-1)))
         self.request.write(formatter.paragraph(0))
 
     # IE versions of some relevant functions

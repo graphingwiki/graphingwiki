@@ -56,12 +56,17 @@ def graphdata_close(self):
     if graphdata is not None:
         graphdata.closedb()
 
-def graphdata_save(self, result):
+def _get_save_plugin(self):
     # Save to graph file if plugin available.
     try:
         graphsaver = importPlugin(self.request.cfg, "action", "savegraphdata")
     except PluginMissingError:
         return
+
+    return graphsaver
+
+def graphdata_save(self, result):
+    graphsaver = _get_save_plugin(self)
 
     if not graphsaver:
         return
@@ -76,6 +81,17 @@ def graphdata_delete(self, (success, _)):
         return
     self.request.graphdata.writelock()
     self.request.graphdata.pop(self.page_name, None)
+
+def graphdata_rename(self, (success, _)):
+    if not success:
+        return
+
+    graphsaver = _get_save_plugin(self)
+    path = underlay_to_pages(self.request, self)
+
+    graphsaver(self.page_name, self.request, '', path, self)
+
+    graphdata_delete(self, (success, ''))
 
 # Main function for injecting graphingwiki extensions straight into
 # Moin's beating heart.
@@ -109,6 +125,6 @@ def install_hooks():
     PageEditor.deletePage = monkey_patch(PageEditor.deletePage, 
                                          graphdata_delete)
     PageEditor.renamePage = monkey_patch(PageEditor.renamePage, 
-                                         graphdata_delete)
+                                         graphdata_rename)
 
     _hooks_installed = True
