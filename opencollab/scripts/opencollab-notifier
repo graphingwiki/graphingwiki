@@ -34,6 +34,7 @@ def get_page_html(collab, page):
 
 def send_content(url,collab,page_content,sender,recipient,subject,header,footer,page_marker):
     msg = MIMEMultipart()
+    part = ''
     if(subject == None):
         msg['Subject'] = "Changes at: " + url
     else:
@@ -46,18 +47,24 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         content = html_head
         content += header
         content += html_foot
-        msg.attach(MIMEText(content, "HTML", "UTF-8"))
+        part=MIMEText(content, "HTML", "UTF-8")
+        part.add_header('Content-Disposition', 'inline')
+        msg.attach(part)
     for page in page_content:
         content = html_head
         content += page_content[page]
         content += html_foot
-        msg.attach(MIMEText(content, "HTML", "UTF-8"))
+        part=MIMEText(content, "HTML", "UTF-8")
+        part.add_header('Content-Disposition', 'inline')
+        msg.attach(part)
         collab.setMeta(page,page_marker,replace=True)
     if(footer is not None):
         content = html_head
         content += footer
         content += html_foot
-        msg.attach(MIMEText(content, "HTML", "UTF-8"))
+        part=MIMEText(content, "HTML", "UTF-8")
+        part.add_header('Content-Disposition', 'inline')
+        msg.attach(part)
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
@@ -90,7 +97,7 @@ def main():
                       help=("Read configurable variables from CONFIG."))
     parser.add_option("-f", "--from",
                       dest="sender",
-                      default= "opencollab-notifier@do.not.respond.to.me.INVALID"
+                      default= "opencollab-notifier@do.not.respond.to.me.INVALID",
                       metavar="SENDER",
                       help=("Email SENDER address."))
     parser.add_option("-F", "--FOOTER",
@@ -105,7 +112,7 @@ def main():
                       help=("Read email attachemnt #1 from page name HEADER."))
     parser.add_option("-m", "--marker",
                       dest="marker",
-                      default="Notified=Yes"
+                      default="Notified=Yes",
                       metavar="MARKER",
                       help=("Notify MARKER key=value pair."))
     parser.add_option("-r", "--recipient",
@@ -127,6 +134,8 @@ def main():
     iopts = {}
     url = None
     page_content = {}
+    header=None
+    footer=None
     if(args):
         url = args[0]
     if(options.config):
