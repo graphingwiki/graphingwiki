@@ -92,7 +92,7 @@ def construct_table(macro, pagelist, metakeys,
     # Start table
     request.write(macro.formatter.linebreak() +
                   u'<div class="metatable">' +
-                  macro.formatter.table(1))
+                  macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
 
     if metakeys:
         # Give a class to headers to make it customisable
@@ -118,7 +118,8 @@ def construct_table(macro, pagelist, metakeys,
         else:
             t_cell(macro, [key], style=headerstyle)
 
-    request.write(macro.formatter.table_row(0))
+    if metakeys:
+        request.write(macro.formatter.table_row(0))
 
     tmp_page = request.page
 
