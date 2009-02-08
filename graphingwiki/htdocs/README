@@ -8,8 +8,8 @@ USABILITY ADDON INSTALLATION
 
 html_head = '' # omit if you already have something
 for script in ['sorttable.js']:
-	html_head += '<script src="%s/%s/%s" type="text/javascript"></script>' \
-		% (url_prefix_static + '/gwikicommon/js/' + script)
+    html_head += '<script src="%s" type="text/javascript"></script>' \
+		 % (url_prefix_static + '/gwikicommon/js/' + script)
 
 DESCRIPTION
 
