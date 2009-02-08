@@ -134,8 +134,8 @@ class GraphShowerSimple(GraphShower):
 
             self.request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
-                (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
+                'archive="%s/gwikicommon/zgrviewer/zvtm.jar,%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
+                (self.request.cfg.url_prefix_static, self.request.cfg.url_prefix_static)+\
                 'width="%s" height="%s">' % (self.width, self.height)+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
