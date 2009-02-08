@@ -1,0 +1,26 @@
+USABILITY ADDON INSTALLATION
+
+ 1. Copy gwikicommon directory under your moin/htdocs directory. E.g.
+
+ cp -r gwikicommon /usr/share/moin/htdocs/
+
+ 1. Add to html_head of your wikiconfig:
+
+html_head = ''		# omit if you already have something
+for script in ['sortable.js']:
+	html_head += '<script src="%s/%s/%s" type="text/javascript"></script>' \
+		% (url_prefix_static, 'gwikicommon/js', script)
+
+DESCRIPTION
+
+ zgrviewer::
+   Java applets to browser graphs produced by ZGR
+   output format of ShowGraphSimple action
+
+ simile::
+   You can use the excellent MIT SIMILE javascript widgets with
+   Graphingwiki for data visualisation with RecentChangesTimeline
+   and MetaTimeLine macros.
+
+ js::
+   Usability javascript such as sorttable.js for sortable MetaTables.
