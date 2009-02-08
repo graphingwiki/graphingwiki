@@ -108,7 +108,7 @@ class GraphShowerSimple(GraphShower):
         # Add a random component to the image URL:s to avoid caching by browser
         img_url = self.request.getQualifiedURL() + \
                   self.request.request_uri + \
-                  "random=%s&image=" % str(random())[2:]
+                  "&random=%s&image=" % str(random())[2:]
 
         legend = None
         if (self.coloredges or self.colornodes) and gv_found:
