@@ -28,6 +28,7 @@
 """
 
 from urllib import quote as url_quote
+from random import random
 
 from MoinMoin.wikiutil import unquoteWikiname
 from MoinMoin.request.request_modpython import Request as RequestModPy
@@ -104,8 +105,10 @@ class GraphShowerSimple(GraphShower):
             else:
                 self.send_form()
 
+        # Add a random component to the image URL:s to avoid caching by browser
         img_url = self.request.getQualifiedURL() + \
-                  self.request.request_uri + "&image="
+                  self.request.request_uri + \
+                  "random=%s&image=" % str(random())[2:]
 
         legend = None
         if (self.coloredges or self.colornodes) and gv_found:
