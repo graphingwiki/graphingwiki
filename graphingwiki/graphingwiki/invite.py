@@ -3,18 +3,15 @@ import random
 import re
 
 from MoinMoin import user
+from MoinMoin import wikiutil
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.mail.sendmail import encodeAddress
-from MoinMoin import config
+
+from graphingwiki.editing import parse_categories
 
 class InviteException(Exception):
     pass
-
-class AmbiguousInvite(InviteException):
-    def __init__(self, found):
-        message = "Found several possible users to invite." % len(found)
-        super(AmbiguousInvite, self).__init__(message)
-        self.found = found
 
 def user_may_invite(myuser, page):
     if not hasattr(myuser.may, "invite"):
@@ -38,20 +35,40 @@ def generate_password(length=8):
     characters = string.letters + string.digits
     return u"".join([random.choice(characters) for _ in range(length)])
 
-def find_users_by_email(request, email):
-    email = email.lower()
-    found = list()
+class GroupException(Exception):
+    pass
 
-    for uid in user.getUserList(request):
-        myuser = user.User(request, uid)
-        myuser.load_from_id()
-        if not (myuser.valid and user.isValidName(request, myuser.name)):
+def add_user_to_group(request, myuser, group, create_link=False):
+    if not wikiutil.isGroupPage(request, group):
+        raise GroupException("Page '%s' is not a group page." % group)
+    if not (request.user.may.read(group) and request.user.may.write(group)):
+        raise GroupException("No permissions to write to page '%s'." % group)
+
+    member_rex = re.compile(ur"^ \* +(?:\[\[)?(.+?)(?:\]\])? *$", re.UNICODE)
+    page = PageEditor(request, group)
+    text = page.get_raw_body()
+
+    _, head, tail = parse_categories(request, text)
+
+    insertion_point = len(head)
+    for lineno, line in enumerate(head):
+        match = member_rex.match(line)
+        if not match:
             continue
 
-        if email == myuser.email.lower():
-            found.append(myuser)
+        if match.group(1).lower() == myuser.name.lower():
+            return
 
-    return found
+        insertion_point = lineno + 1
+
+    if create_link:
+        template = " * [[%s]]"
+    else:
+        template = " * %s"
+    head.insert(insertion_point, template % myuser.name)
+
+    text = "\n".join(head + tail)
+    page.saveText(text, 0)
 
 def invite_user_by_email(request, page, email, new_template, old_template, 
                          **extra_variables):
@@ -74,30 +91,28 @@ def invite_user_by_email(request, page, email, new_template, old_template,
                      INVITERUSER=request.user.name,
                      INVITEREMAIL=mail_from)
 
-    found = find_users_by_email(request, email)
-    if len(found) > 1:
-        raise AmbiguousInvite(found)
-
-    if found:
-        old_user = found[0]
+    old_user = user.get_by_email_address(request, email)
+    if old_user:
         variables.update(INVITEDUSER=old_user.name,
                          INVITEDEMAIL=old_user.email)
         sendmail(request, old_template, variables)
-    else:
-        password = generate_password()        
+        return old_user
 
-        # FIXME: should we do "if user.isValidName(email)"?
-        new_user = user.User(request, None, email, password)
-        new_user.email = email
-        new_user.aliasname = ""
-        new_user.password = password
+    password = generate_password()        
 
-        variables.update(INVITEDUSER=new_user.name,
-                         INVITEDEMAIL=new_user.email,
-                         INVITEDPASSWORD=password)        
-        sendmail(request, new_template, variables)
+    # FIXME: should we do "if user.isValidName(email)"?
+    new_user = user.User(request, None, email, password)
+    new_user.email = email
+    new_user.aliasname = ""
+    new_user.password = password
+
+    variables.update(INVITEDUSER=new_user.name,
+                     INVITEDEMAIL=new_user.email,
+                     INVITEDPASSWORD=password)        
+    sendmail(request, new_template, variables)
         
-        new_user.save()
+    new_user.save()
+    return new_user
 
 def replace_variables(text, variables):
     text = text.encode("utf-8")
@@ -118,6 +133,8 @@ def encode_address_field(message, key, charset):
         message[key] = value
 
 def sendmail(request, template, variables):
+    # Lifted and varied from Moin 1.6 code.
+
     import os, smtplib, socket
     from email import message_from_string
     from email.Message import Message

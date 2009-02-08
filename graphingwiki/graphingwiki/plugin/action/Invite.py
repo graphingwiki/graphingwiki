@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from graphingwiki.invite import invite_user_by_email, check_inviting_enabled, user_may_invite, InviteException
+from graphingwiki.invite import *
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -55,9 +55,20 @@ class Invite(ActionBase):
             new_template = self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
             old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
             
-            return False, invite_user_by_email(self.request, pagename, email, new_template, old_template)
+            myuser = invite_user_by_email(self.request, pagename, email, new_template, old_template)
         except InviteException, ie:
             return False, unicode(ie)
+
+        if wikiutil.isGroupPage(self.request, pagename):
+            try:
+                add_user_to_group(self.request, myuser, pagename)
+            except GroupException, ge:
+                tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
+                return True, tmp % (email, pagename, unicode(ge))
+            tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
+            return True, tmp % (email, pagename)
+            
+        return True, "User invitation mail sent to address '%s'." % email
 
     def get_form_html(self, buttons_html):
         d = {
