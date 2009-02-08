@@ -41,6 +41,7 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
+    msg.add_header('Content-Disposition', 'inline')
     html_head = "<html>\n<head>\n<title></title>\n</head>\n<body>"
     html_foot = "\n</body>\n</html>"
     if(header is not None):
