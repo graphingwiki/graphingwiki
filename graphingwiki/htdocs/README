@@ -6,10 +6,12 @@ USABILITY ADDON INSTALLATION
 
  1. Add to html_head of your wikiconfig:
 
-html_head = '' # omit if you already have something
-for script in ['sorttable.js']:
-    html_head += '<script src="%s" type="text/javascript"></script>' \
-		 % (url_prefix_static + '/gwikicommon/js/' + script)
+    html_head = '' # omit if you already have something
+    for script in ['js/sorttable.js', \
+                   'simile/ajax/simile-ajax-api.js', \
+                   'simile/timeline/timeline-api.js']:
+        html_head += '<script src="%s" type="text/javascript"></script>' \
+                     % (url_prefix_static + '/gwikicommon/' + script)
 
 DESCRIPTION
 
