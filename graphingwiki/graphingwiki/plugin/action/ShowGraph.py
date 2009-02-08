@@ -57,18 +57,16 @@ import math
 import colorsys
 
 # Header stuff for IE
-msie_header = """Content-type: message/rfc822
-
-From: <Graphingwiki>
+msie_header = """From: <Graphingwiki>
 Subject: A graph
 Date: Sat, 8 Apr 2006 23:57:55 +0300
 MIME-Version: 1.0
-Content-Type: multipart/related; boundary="partboundary"; type="text/html"
+Content-Type: multipart/related; boundary="partboundary1AuwCgrY/3/JaRKh"; type="text/html"
 
---partboundary
-Content-Type: text/html
+--partboundary1AuwCgrY/3/JaRKh
+Content-Type: text/html; charset="%s"
 
-"""
+""" % config.charset
 
 def add_mime_part(name, type, data):
     basdata = ''
@@ -77,7 +75,7 @@ def add_mime_part(name, type, data):
     basdata = basdata + data[x*64:]
 
     return """
---partboundary
+--partboundary1AuwCgrY/3/JaRKh
 Content-Location: %s
 Content-Type: %s
 Content-Transfer-Encoding: base64
@@ -85,7 +83,7 @@ Content-Transfer-Encoding: base64
 %s
 """ % (name, type, basdata)
 
-msie_end = "\n--partboundary--\n\n"
+msie_end = "\n--partboundary1AuwCgrY/3/JaRKh--\n\n"
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
@@ -1313,7 +1311,7 @@ class GraphShower(object):
             
         return outgraph
 
-    def execute(self):        
+    def execute(self):
         cl.start('execute')
         _ = self.request.getText
 
@@ -1473,7 +1471,7 @@ class GraphShower(object):
                                    'image/' + self.format,
                                    b64encode(img)))
             
-                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'
+                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n' %
                                    (filename, _('visualisation'), legend.name))
                 self.send_map(legend)
 
@@ -1486,6 +1484,7 @@ class GraphShower(object):
         pagename = self.pagename
 
         if self.format != 'dot' or not gv_found:
+            request.emit_http_headers(["Content-type: message/rfc822"])
             request.write(msie_header)
             _ = request.getText
 
