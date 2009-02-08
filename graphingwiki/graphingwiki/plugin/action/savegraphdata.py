@@ -312,18 +312,19 @@ def changed_meta(request, pagename, old_data, new_data):
 
             # check if the link i has changed
             else:
+                val_lit = old_data[u'lit'][key][i]
+                new_val_lit = new_data[pagename][u'lit'][key][i]
+
+                if val_lit == new_val_lit:
+                    continue
+
                 val = old_data[u'out'][key][i]
                 new_val = new_data[pagename][u'out'][key][i]
 
-                if val == new_val:
-                    continue
-
                 # link changed, replace old link with new
-                lit = new_data[pagename][u'lit'][key][i]                
-
                 # add and del out-links
                 add_out[pagename].append((key, new_val))
-                lit_out[pagename].append(lit)
+                lit_out[pagename].append(new_val_lit)
 
                 del_out[pagename].append((key, val))
 
