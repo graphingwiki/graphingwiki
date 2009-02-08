@@ -396,7 +396,7 @@ def get_pages(request):
 
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
-    preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
+    preformatted_re = re.compile('({{{.*?}}})', re.M|re.S)
 
     keys_to_markers = dict()
     markers_to_keys = dict()
@@ -591,13 +591,20 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               dict(foo=[u"b"]))
     u' foo:: b\n'
 
+    Regression test, bug #596: Replacing with empty breaks havoc
+
+    >>> replace_metas(request,
+    ...               u" a:: {{{}}}\n b:: {{{Password}}}",
+    ...               {'a': [u'{{{}}}']},
+    ...               {'a': [u'']})
+    u' b:: {{{Password}}}'
+
     replace_metas(request, 
     ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
     ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
     ...           {'status': [u'', 'pending'], 'heartbeat': [u'', '1229625590.17'], 'agent': [u'', '127.0.0.1-4124520965']})
     u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
     """
-
     text = text.rstrip()
     # Annoying corner case with dl:s
     if text.endswith('::'):
