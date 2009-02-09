@@ -1,0 +1,8 @@
+1233938320000000	00000001	SAVENEW	Case602(2f)RenameBugger	127.0.0.1	localhost			
+1233938457000000	00000002	SAVE/RENAME	Case602(2f)RenameBuggerRenamed	127.0.0.1	localhost		Case602/RenameBugger	
+1233938861000000	00000003	SAVE/RENAME	Case602(2f)RenameBuggerRenamed2	127.0.0.1	localhost		Case602/RenameBuggerRenamed	
+1233939793683253	00000004	SAVE	Case602(2f)RenameBuggerRenamed2	127.0.0.1	localhost			
+1233941420000000	00000005	SAVENEW	Case602(2f)RenameBuggerRenamed2	127.0.0.1	localhost			
+1233941478000000	00000006	SAVE/RENAME	Case602(2f)RenameBuggerRenamed3	127.0.0.1	localhost		Case602/RenameBuggerRenamed2	
+1233941726000000	00000007	SAVE/RENAME	Case602(2f)RenameBuggerRenamed4	127.0.0.1	localhost		Case602/RenameBuggerRenamed3	
+1233941783000000	00000008	SAVE/RENAME	Case602(2f)RenameBuggerRenamed5	127.0.0.1	localhost		Case602/RenameBuggerRenamed4	
