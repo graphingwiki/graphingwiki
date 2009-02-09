@@ -168,7 +168,7 @@ class TestParsing(unittest.TestCase):
 """
         server.putPage(self.pageName, pageContents)
         res = server.GetMeta(self.pageName, True)
-        self.assert_(not res)
+        self.assert_(not res[0])
 
     def testMetaData1(self):
         '''Parse link in meta data'''
