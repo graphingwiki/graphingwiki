@@ -50,24 +50,23 @@ class Invite(ActionBase):
             return False, "Please specify an email address."
 
         pagename = self.pagename
-
         try:
             new_template = self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
             old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
             
-            myuser = invite_user_by_email(self.request, pagename, email, new_template, old_template)
+            if wikiutil.isGroupPage(self.request, pagename):
+                myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template) 
+                try:
+                    add_user_to_group(self.request, myuser, pagename)
+                except GroupException, ge:
+                    tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
+                    return True, tmp % (email, pagename, unicode(ge))
+                tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
+                return True, tmp % (email, pagename)           
+
+            invite_user_to_page(self.request, pagename, email, new_template, old_template)
         except InviteException, ie:
             return False, unicode(ie)
-
-        if wikiutil.isGroupPage(self.request, pagename):
-            try:
-                add_user_to_group(self.request, myuser, pagename)
-            except GroupException, ge:
-                tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
-                return True, tmp % (email, pagename, unicode(ge))
-            tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
-            return True, tmp % (email, pagename)
-            
         return True, "User invitation mail sent to address '%s'." % email
 
     def get_form_html(self, buttons_html):
