@@ -10,8 +10,6 @@
 import cgi
  
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
-from graphingwiki.patterns import form_escape
-
 from graphingwiki.patterns import SEPARATOR
 
 def htmlquote(s):
