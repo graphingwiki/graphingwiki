@@ -434,8 +434,8 @@ class GraphData(UserDict.DictMixin):
         if not self.request.user.may.read(pagename):
             return None
 
-        cat_re = category_regex(request)
-        temp_re = template_regex(request)
+        cat_re = category_regex(self.request)
+        temp_re = template_regex(self.request)
 
         page = self.getpage(pagename)
         if not page:
@@ -608,7 +608,7 @@ def delete_moin_caches(request, pageitem):
 
     # delete pagelinks
     if MOIN_VERSION > 1.6:
-        arena = pageitem.page_name
+        arena = wikiutil.quoteWikinameFS(pageitem.page_name)
     else:
         arena = pageitem
 
@@ -630,22 +630,42 @@ def delete_moin_caches(request, pageitem):
         cache = caching.CacheEntry(request, arena, key)
         cache.remove()
 
-def template_regex(request):
+def template_regex(request, act=False):
+    if act and hasattr(request.cfg.cache, 'page_template_regexact'):
+        return request.cfg.cache.page_template_regexact
+
+    if hasattr(request.cfg.cache, 'page_template_regex'):
+        return request.cfg.cache.page_template_regex
+
     if MOIN_VERSION > 1.6:
-        return re.compile(request.cfg.page_template_regexact)
+        if not hasattr(request.cfg, 'page_template_regex'):
+            request.cfg.page_template_regex = ur'(?P<all>(?P<key>\S+)Template)'
+        if act:
+            request.cfg.page_template_regexact = re.compile(u'^%s$' % self.page_template_regex, re.UNICODE)
+            return re.compile(request.cfg.page_template_regexact, re.UNICODE)
     else:
-        return re.compile(request.cfg.page_template_regex)
-
-def category_regex(request):
-    if MOIN_VERSION > 1.6:
         # For editing.py unittests
-        if not hasattr(request.cfg, 'page_category_regexact'):
-            request.cfg.page_category_regexact = u'^Category[A-Z]'
+        if not hasattr(request.cfg, 'page_template_regex'):
+            request.cfg.page_template_regex = u'[a-z]Template$'
 
-        return re.compile(request.cfg.page_category_regexact)
+    return re.compile(request.cfg.page_template_regex, re.UNICODE)
+
+def category_regex(request, act=False):
+    if act and hasattr(request.cfg.cache, 'page_category_regexact'):
+        return request.cfg.cache.page_category_regexact
+
+    if hasattr(request.cfg.cache, 'page_category_regex'):
+        return request.cfg.cache.page_category_regex
+
+    if MOIN_VERSION > 1.6:
+        if not hasattr(request.cfg, 'page_category_regex'):
+            request.cfg.page_category_regex = ur'(?P<all>Category(?P<key>(?!Template)\S+))'
+        if act:
+            request.cfg.page_category_regex = re.compile(u'^%s$' % self.page_category_regex, re.UNICODE)
+            return re.compile(request.cfg.page_category_regexact, re.UNICODE)
     else:
         # For editing.py unittests
         if not hasattr(request.cfg, 'page_category_regex'):
             request.cfg.page_category_regex = u'^Category[A-Z]'
 
-        return re.compile(request.cfg.page_category_regex)
+    return re.compile(request.cfg.page_category_regex, re.UNICODE)

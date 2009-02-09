@@ -29,7 +29,9 @@ from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
-from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, category_regex
+from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
+from graphingwiki.util import category_regex, template_regex
+
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -874,8 +876,8 @@ def metatable_parseargs(request, args,
             args = req_page.page_name
 
     # Category, Template matching regexps
-    cat_re = re.compile(request.cfg.page_category_regex)
-    temp_re = re.compile(request.cfg.page_template_regex)
+    cat_re = category_regex(request)
+    temp_re = template_regex(request)
 
     # Arg placeholders
     argset = set([])
@@ -984,7 +986,7 @@ def metatable_parseargs(request, args,
 
             for newpage in newpages:
                 # Check that the page is not a category or template page
-                if cat_re.match(newpage) or temp_re.search(newpage):
+                if cat_re.search(newpage) or temp_re.search(newpage):
                     continue
                 if not is_saved(newpage):
                     continue
@@ -1239,7 +1241,8 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     request = Request()
     request.cfg = Config()
     request.cfg.cache = Cache()
-    request.cfg.cache.page_category_regexact = category_regex(request)
+    request.cfg.cache.page_category_regex = category_regex(request)
+    request.cfg.cache.page_category_regexact = category_regex(request, act=True)
     request.graphdata = GraphData(graphdata)
 
     request.user = Object()
