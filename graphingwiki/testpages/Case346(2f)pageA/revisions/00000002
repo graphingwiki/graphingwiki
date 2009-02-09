@@ -1,0 +1,5 @@
+ kj value:: ["valueA"]
+ kj value:: ["valueB"]
+ key space:: ["key1"]
+----
+CategoryAccessLog

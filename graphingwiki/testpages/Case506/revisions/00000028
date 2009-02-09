@@ -1,0 +1,19 @@
+= Alex Vasiliev =
+
+ Subject Alias:: 
+ gwikishapefile:: attachment:SubjectPresets/profile.png
+ Subject Name:: ["Alex Vasiliev"]
+ Subject Email:: ["alexvasiliev1987@gmail.com"]
+ Subject Email:: ["alexvasiliev1987@cocainmail.com"]
+ Subject Telephone:: +7.3834427722
+ Subject Title:: 
+ Subject Education:: 
+ Works for:: 
+ OSINT URL:: http://example.com
+[[MetaTable(Subject Name=/.+/)]]
+----
+ Template:: ssfim
+----
+[[LinkedIn]]
+----
+CategoryIdentity CategoryTarget
