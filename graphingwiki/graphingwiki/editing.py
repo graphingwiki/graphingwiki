@@ -922,7 +922,6 @@ def metatable_parseargs(request, args,
             pages.add(name)
 
     pagelist = set([])
-
     for page in pages:
         clear = True
         # Filter by regexps (if any)
