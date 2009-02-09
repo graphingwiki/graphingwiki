@@ -35,7 +35,7 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
-from graphingwiki.patterns import url_construct
+from graphingwiki.util import url_construct
 
 from MetaRadarChart import radarchart_args
 

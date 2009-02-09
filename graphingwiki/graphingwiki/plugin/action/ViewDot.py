@@ -40,7 +40,7 @@ from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
-from graphingwiki.patterns import actionname
+from graphingwiki.util import actionname
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):

@@ -35,7 +35,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki.patterns import form_escape, url_construct
+from graphingwiki.util import form_escape, url_construct
 
 Dependencies = ['metadata']
 

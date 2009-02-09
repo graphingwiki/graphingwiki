@@ -11,7 +11,7 @@ import xmlrpclib
 from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
-from graphingwiki.patterns import encode
+from graphingwiki.util import encode
 from graphingwiki.editing import save_template
 
 

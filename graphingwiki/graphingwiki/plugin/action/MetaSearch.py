@@ -34,7 +34,7 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import actionname, form_escape
+from graphingwiki.util import actionname, form_escape
 
 regexp_re = re.compile('^/.+/$')
 

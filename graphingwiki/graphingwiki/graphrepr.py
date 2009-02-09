@@ -33,7 +33,7 @@
 import sys
 import os
 
-from graphingwiki.patterns import encode_page, decode_page, get_url_ns
+from graphingwiki.util import encode_page, decode_page, get_url_ns
 from graphingwiki.editing import ordervalue
 
 gv_found = True

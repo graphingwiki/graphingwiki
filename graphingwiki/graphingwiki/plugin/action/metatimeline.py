@@ -8,7 +8,7 @@ from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.patterns import format_wikitext
+from graphingwiki.util import format_wikitext
 
 time_format = "%b %d %Y %H:%M:%S +0000"
 

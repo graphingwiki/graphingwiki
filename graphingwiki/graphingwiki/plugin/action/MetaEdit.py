@@ -16,7 +16,7 @@ from MoinMoin.Page import Page
 
 from graphingwiki.editing import get_metas, set_metas
 from graphingwiki.editing import metatable_parseargs, edit_meta
-from graphingwiki.patterns import actionname, form_escape, SEPARATOR, \
+from graphingwiki.util import actionname, form_escape, SEPARATOR, \
     decode_page
 
 def fix_form(form):

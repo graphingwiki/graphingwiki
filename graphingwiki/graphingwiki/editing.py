@@ -27,9 +27,9 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.patterns import nonguaranteeds_p, decode_page, encode_page
-from graphingwiki.patterns import absolute_attach_name, filter_categories
-from graphingwiki.patterns import NO_TYPE, SPECIAL_ATTRS
+from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
+from graphingwiki.util import absolute_attach_name, filter_categories
+from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"

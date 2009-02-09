@@ -38,7 +38,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import actionname
+from graphingwiki.util import actionname
 
 from unifier import Unifier
 

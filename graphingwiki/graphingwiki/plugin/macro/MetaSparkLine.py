@@ -29,7 +29,7 @@
 """
 from urllib import quote as url_quote
 
-from graphingwiki.patterns import encode
+from graphingwiki.util import encode
 
 Dependencies = ['metadata']
 

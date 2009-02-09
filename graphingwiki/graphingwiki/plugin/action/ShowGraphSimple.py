@@ -36,7 +36,7 @@ from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.action import AttachFile
 
 from graphingwiki.graphrepr import gv_found
-from graphingwiki.patterns import form_escape
+from graphingwiki.util import form_escape
 from ShowGraph import *
 
 class GraphShowerSimple(GraphShower):

@@ -27,7 +27,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from graphingwiki.patterns import NO_TYPE
+from graphingwiki.util import NO_TYPE
 
 Dependencies = ['pagelinks']
 

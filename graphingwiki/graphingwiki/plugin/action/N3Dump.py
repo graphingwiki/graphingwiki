@@ -35,7 +35,7 @@ from MoinMoin.wikiutil import load_wikimap
 
 from MoinMoin import config
 
-from graphingwiki.patterns import nonguaranteeds_p, get_selfname
+from graphingwiki.util import nonguaranteeds_p, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''

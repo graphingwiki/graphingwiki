@@ -7,7 +7,7 @@ import csv
 
 from MoinMoin import wikiutil
 from graphingwiki.editing import getmeta_to_table
-from graphingwiki.patterns import encode_page
+from graphingwiki.util import encode_page
 
 def execute(pagename, request):
     # Strip non-ascii chars in header

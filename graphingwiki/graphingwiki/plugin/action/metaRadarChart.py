@@ -41,7 +41,7 @@ from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
-from graphingwiki.patterns import SPECIAL_ATTRS
+from graphingwiki.util import SPECIAL_ATTRS
 
 from metasparkline import draw_path, cairo_not_found, \
     write_surface, image_headers, plot_error

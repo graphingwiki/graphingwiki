@@ -10,7 +10,7 @@ from pprint import pprint
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname
 
 from graphingwiki.graph import Graph
-from graphingwiki.patterns import encode
+from graphingwiki.util import encode
 
 class Parser:
 

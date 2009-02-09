@@ -41,7 +41,7 @@ from MoinMoin import caching
 from MoinMoin.Page import Page 
 
 # graphlib imports
-from graphingwiki.patterns import node_type, SPECIAL_ATTRS, NO_TYPE
+from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
 from graphingwiki.editing import parse_categories
 
 # Add in-links from current node to local nodes

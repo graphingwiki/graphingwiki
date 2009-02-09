@@ -31,7 +31,7 @@
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.patterns import format_wikitext, url_escape
+from graphingwiki.util import format_wikitext, url_escape
 
 Dependencies = ['metadata']
 

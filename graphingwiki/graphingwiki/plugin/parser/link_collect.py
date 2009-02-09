@@ -8,7 +8,7 @@ from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
 from string import rsplit
 
-from graphingwiki.patterns import resolve_iw_url
+from graphingwiki.util import resolve_iw_url
 from wiki_form import Parser as listParser
 
 Dependencies = []

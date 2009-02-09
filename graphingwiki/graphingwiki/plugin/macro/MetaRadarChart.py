@@ -32,7 +32,7 @@ from copy import copy
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
-from graphingwiki.patterns import url_construct
+from graphingwiki.util import url_construct
 
 Dependencies = ['metadata']
 

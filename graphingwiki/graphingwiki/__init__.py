@@ -46,7 +46,7 @@ RequestBase.__copy__ = request_copy
 # Functions for properly opening, closing, saving and deleting graphdata.
 
 def graphdata_getter(self):
-    from graphingwiki.patterns import GraphData
+    from graphingwiki.util import GraphData
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]

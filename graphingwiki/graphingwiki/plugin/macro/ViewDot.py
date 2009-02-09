@@ -35,7 +35,7 @@ from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from MoinMoin import config
 
-from graphingwiki.patterns import encode
+from graphingwiki.util import encode
 
 Dependencies = ['attachments']
 

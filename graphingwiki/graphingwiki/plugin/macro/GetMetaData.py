@@ -12,7 +12,7 @@ Dependencies = ['metadata']
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.editing import get_metas
-from graphingwiki.patterns import format_wikitext
+from graphingwiki.util import format_wikitext
 
 def execute(macro, args):
     request = macro.request

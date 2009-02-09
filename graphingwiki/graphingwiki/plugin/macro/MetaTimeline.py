@@ -1,4 +1,4 @@
-from graphingwiki.patterns import url_construct
+from graphingwiki.util import url_construct
 
 from time import strptime, strftime, localtime
 

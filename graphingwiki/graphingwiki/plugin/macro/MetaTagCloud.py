@@ -12,7 +12,7 @@
 import re
 
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.patterns import NO_TYPE
+from graphingwiki.util import NO_TYPE
 
 Dependencies = ["namespace"]
 

@@ -30,7 +30,7 @@
 
 from copy import copy, deepcopy
 
-from graphingwiki.patterns import getgraphdata
+from graphingwiki.util import getgraphdata
 
 from N3Dump import get_page_fact, get_all_facts
 
