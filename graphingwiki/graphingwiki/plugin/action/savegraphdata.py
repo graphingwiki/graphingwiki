@@ -37,11 +37,10 @@ from copy import copy
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
-from MoinMoin import caching
 from MoinMoin.Page import Page 
 
 # graphlib imports
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
+from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, delete_moin_caches
 from graphingwiki.editing import parse_categories
 
 # Add in-links from current node to local nodes
@@ -478,27 +477,8 @@ def execute(pagename, request, text, pagedir, page):
             if not exists:
                 del request.graphdata[pagename]
 
-    # Clear cache
 
-    # delete pagelinks
-    arena = pageitem
-    key = 'pagelinks'
-    cache = caching.CacheEntry(request, arena, key)
-    cache.remove()
-
-    # forget in-memory page text
-    pageitem.set_raw_body(None)
-
-    # clean the in memory acl cache
-    pageitem.clean_acl_cache()
-
-    request.graphdata.cache = dict()
-
-    # clean the cache
-    for formatter_name in ['text_html']:
-        key = formatter_name
-        cache = caching.CacheEntry(request, arena, key)
-        cache.remove()
+    delete_moin_caches(request, pageitem)
 
     request.graphdata.readlock()
 

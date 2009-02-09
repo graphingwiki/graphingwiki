@@ -1175,6 +1175,8 @@ class GraphShower(object):
             else:
                 formatter = request.formatter
 
+            formatter.page = request.page
+
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
             request.write(formatter.startContent("content"))

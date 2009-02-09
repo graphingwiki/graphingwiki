@@ -12,15 +12,19 @@ Dependencies = ["language"]
 
 actioninput = '<input type="hidden" name="editfunc" value="%s">\n<input'
 
-def execute(macro, args):
-    NewPage.arguments.append('editAction')
+def macro_NewPage(macro, template=u'', button_label=u'', parent_page=u'', 
+                  name_template=u'%s', edit_action=''):
 
-    newpage = NewPage(macro, args)
+    newpage = NewPage(macro, template=u'', button_label=u'',
+                      parent_page=u'', name_template=u'%s')
     macrotext = newpage.renderInPage()
 
-    # Editaction allows for arbitrary action to be used for editing target page
-    editfunc = newpage.args.get('editAction', '')
-
-    macrotext = macrotext.replace('<input', actioninput % editfunc, 1)
+    if edit_action:
+        macrotext = macrotext.replace('<input', actioninput % edit_action, 1)
 
     return macrotext
+
+def execute(macro, *args):
+    NewPage.arguments.append('edit_action')
+
+    macro_NewPage(macro, *args)

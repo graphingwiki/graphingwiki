@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    patterns class
+    Utils for graph generation, compatibility between MoinMoin versions
+    etc.
 
-    @copyright: 2006-2008 by Joachim Viide and
+    @copyright: 2006-2009 by Joachim Viide and
                              Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
@@ -38,11 +39,13 @@ import cgi
 
 from codecs import getencoder
 
+from MoinMoin import caching
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
+from MoinMoin.version import release
 
 from graphingwiki.graph import Graph
 
@@ -596,3 +599,30 @@ def load_parents(request, graph, child, urladd):
         parents.add(parent)
 
     return parents
+
+def delete_moin_caches(request, pageitem):
+    # Clear cache
+
+    # delete pagelinks
+    if release.startswith('1.8'):
+        arena = pageitem.page_name
+    else:
+        arena = pageitem
+
+    key = 'pagelinks'
+    cache = caching.CacheEntry(request, arena, key)
+    cache.remove()
+
+    # forget in-memory page text
+    pageitem.set_raw_body(None)
+
+    # clean the in memory acl cache
+    pageitem.clean_acl_cache()
+
+    request.graphdata.cache = dict()
+
+    # clean the cache
+    for formatter_name in ['text_html']:
+        key = formatter_name
+        cache = caching.CacheEntry(request, arena, key)
+        cache.remove()
