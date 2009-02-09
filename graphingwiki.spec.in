@@ -25,8 +25,8 @@ Graphingwiki
 %package gwiki
 Summary:        Semantical extensions for MoinMoin
 Group:          Applications/Internet
-Requires:	moin > 1.6
-Requires: 	moin < 1.7
+Requires:	moin > 1.8
+Requires: 	moin < 1.9
 
 %description gwiki
 Graphingwiki, a MoinMoin extension to augment Wiki pages with
