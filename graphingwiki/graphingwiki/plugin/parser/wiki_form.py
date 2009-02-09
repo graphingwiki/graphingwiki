@@ -10,7 +10,6 @@
 import cgi
  
 from MoinMoin.parser.wiki import Parser as wikiParser
-from graphingwiki.patterns import form_escape
 
 from graphingwiki.patterns import SEPARATOR
 
