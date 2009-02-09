@@ -53,11 +53,16 @@ class Parser(WikiParser):
             # Add them now before the text currently being processed.
             while self.currentitems:
                 _, items = self.currentitems.pop()
+
+                next = ''
+                if self.formatter.textstorage:
+                    next = self.formatter.textstorage.pop()
+
                 # The item zero contains the raw form of the item,
                 # further ones contain parsed stuff for saevgraphdata
                 self.formatter.textstorage.append(items[0])
-                # Add space after link, they're omitted
-                self.formatter.textstorage.append(' ')
+                if next:
+                    self.formatter.textstorage.append(next)
                 
             self.formatter.textstorage.append(word)
             self.new_item = False
