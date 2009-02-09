@@ -39,15 +39,18 @@ import cgi
 
 from codecs import getencoder
 
+import MoinMoin.version
+
 from MoinMoin import caching
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
-from MoinMoin.version import release
 
 from graphingwiki.graph import Graph
+
+MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
 
 SEPARATOR = '-gwikiseparator-'
 
@@ -431,8 +434,8 @@ class GraphData(UserDict.DictMixin):
         if not self.request.user.may.read(pagename):
             return None
 
-        cat_re = re.compile(self.request.cfg.page_category_regex)
-        temp_re = re.compile(self.request.cfg.page_template_regex)
+        cat_re = category_regex(request)
+        temp_re = template_regex(request)
 
         page = self.getpage(pagename)
         if not page:
@@ -604,7 +607,7 @@ def delete_moin_caches(request, pageitem):
     # Clear cache
 
     # delete pagelinks
-    if release.startswith('1.8'):
+    if MOIN_VERSION > 1.6:
         arena = pageitem.page_name
     else:
         arena = pageitem
@@ -626,3 +629,23 @@ def delete_moin_caches(request, pageitem):
         key = formatter_name
         cache = caching.CacheEntry(request, arena, key)
         cache.remove()
+
+def template_regex(request):
+    if MOIN_VERSION > 1.6:
+        return re.compile(request.cfg.page_template_regexact)
+    else:
+        return re.compile(request.cfg.page_template_regex)
+
+def category_regex(request):
+    if MOIN_VERSION > 1.6:
+        # For editing.py unittests
+        if not hasattr(request.cfg, 'page_category_regexact'):
+            request.cfg.page_category_regexact = u'^Category[A-Z]'
+
+        return re.compile(request.cfg.page_category_regexact)
+    else:
+        # For editing.py unittests
+        if not hasattr(request.cfg, 'page_category_regex'):
+            request.cfg.page_category_regex = u'^Category[A-Z]'
+
+        return re.compile(request.cfg.page_category_regex)

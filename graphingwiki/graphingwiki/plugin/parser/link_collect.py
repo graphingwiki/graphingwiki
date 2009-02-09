@@ -8,7 +8,7 @@ from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
 from string import rsplit
 
-from graphingwiki.util import resolve_iw_url
+from graphingwiki.util import resolve_iw_url, category_regex
 from wiki_form import Parser as listParser
 
 Dependencies = []
@@ -27,7 +27,7 @@ class Parser(WikiParser):
         
         self.currentitems = []
         self.in_dd = 0
-        self.cat_re=re.compile(request.cfg.page_category_regex)
+        self.cat_re=category_regex(request)
 
     def __add_textmeta(self, word, groups):
         val = ''

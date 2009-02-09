@@ -50,7 +50,7 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page
+from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex
 from graphingwiki.editing import ordervalue
 
 import math
@@ -255,8 +255,8 @@ class GraphShower(object):
         self.oftype_p = lambda x: x != NO_TYPE
  
         # Category, Template matching regexps
-        self.cat_re = re.compile(request.cfg.page_category_regex)
-        self.temp_re = re.compile(request.cfg.page_template_regex)
+        self.cat_re = category_regex(request)
+        self.temp_re = template_regex(request)
 
     def wrap_color_func(self, func):
         def color_func(string, darknessFactor=1.0):
@@ -1175,6 +1175,7 @@ class GraphShower(object):
             else:
                 formatter = request.formatter
 
+            # fix for moin 1.8
             formatter.page = request.page
 
             # Start content - IMPORTANT - without content div, there is no

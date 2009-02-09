@@ -29,7 +29,7 @@ from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
-from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
+from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, category_regex
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -1239,8 +1239,7 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     request = Request()
     request.cfg = Config()
     request.cfg.cache = Cache()
-    request.cfg.page_category_regex = u'^Category[A-Z]'
-    request.cfg.cache.page_category_regex = re.compile(u'^Category[A-Z]', re.UNICODE)
+    request.cfg.cache.page_category_regexact = category_regex(request)
     request.graphdata = GraphData(graphdata)
 
     request.user = Object()
