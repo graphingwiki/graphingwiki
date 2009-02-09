@@ -15,6 +15,13 @@ time_format = "%b %d %Y %H:%M:%S +0000"
 
 # A method for 
 def timestamp(text):
+    # First, try another time format
+    try:
+        return strftime(time_format, 
+                        strptime(text.split('.')[0], "%Y%m%d %H:%M:%S"))
+    except ValueError:
+        pass
+
     format = "%b %d %Y %H:%M:%S"
 
     tz = text.split()[-1]
