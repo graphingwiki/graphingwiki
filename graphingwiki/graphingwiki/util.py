@@ -641,7 +641,9 @@ def template_regex(request, act=False):
         if not hasattr(request.cfg, 'page_template_regex'):
             request.cfg.page_template_regex = ur'(?P<all>(?P<key>\S+)Template)'
         if act:
-            request.cfg.page_template_regexact = re.compile(u'^%s$' % self.page_template_regex, re.UNICODE)
+            request.cfg.page_template_regexact = \
+                re.compile(u'^%s$' % request.cfg.page_template_regex, 
+                           re.UNICODE)
             return re.compile(request.cfg.page_template_regexact, re.UNICODE)
     else:
         # For editing.py unittests
@@ -659,9 +661,12 @@ def category_regex(request, act=False):
 
     if MOIN_VERSION > 1.6:
         if not hasattr(request.cfg, 'page_category_regex'):
-            request.cfg.page_category_regex = ur'(?P<all>Category(?P<key>(?!Template)\S+))'
+            request.cfg.page_category_regex = \
+                ur'(?P<all>Category(?P<key>(?!Template)\S+))'
         if act:
-            request.cfg.page_category_regex = re.compile(u'^%s$' % self.page_category_regex, re.UNICODE)
+            request.cfg.page_category_regexact = \
+                re.compile(u'^%s$' % request.cfg.page_category_regex, 
+                           re.UNICODE)
             return re.compile(request.cfg.page_category_regexact, re.UNICODE)
     else:
         # For editing.py unittests
