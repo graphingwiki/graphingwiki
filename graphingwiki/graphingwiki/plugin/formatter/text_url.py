@@ -102,15 +102,16 @@ class Formatter(FormatterBase):
 
     def url(self, on, url=None, css=None, **kw):
         if url is not None and on:
-            # Anchor links to self
             if url[0][0] == '#':
-                kw['local'] = self.page.page_name
-
-            # No idea what the url mappings function is used for
-            # Seems basically quite harmless, so keeping it
+                url = "." + self.request.request_uri.split('?')[0] + url
+                kw['local'] = wikiutil.quoteWikinameURL(self.page.page_name)
             esc_url = wikiutil.mapURL(self.request, url)
             if kw.has_key('local'):
-                return [kw['local']]
+                # Anchor links are unicode
+                if not isinstance(esc_url, unicode):
+                    esc_url = unicode(url_unquote(esc_url),
+                                      config.charset).replace(u'_', ' ')
+                return [esc_url, kw['local']]
             else:
                 return [esc_url]
 
@@ -133,16 +134,13 @@ class Formatter(FormatterBase):
 
         kw['local'] = pagename
 
-        # This basically hands the URL back to the url function above
-        # page.linkto -> wikiutil.link_tag -> formatter.url
         return page.link_to(self.request, on=on, **kw)
 
     def interwikilink(self, on, interwiki='', pagename='', **kw):
         if not on:
             return []
 
-        wikitag, wikiurl, wikitail, wikitag_bad = \
-            wikiutil.resolve_wiki(self.request, '%s:%s' % (interwiki, pagename))
+        wikitag, wikiurl, wikitail, wikitag_bad = wikiutil.resolve_wiki(self.request, '%s:%s' % (interwiki, pagename))
         wikiurl = wikiutil.mapURL(self.request, wikiurl)
 
         if wikitag == 'Self': # for own wiki, do simple links
@@ -152,12 +150,8 @@ class Formatter(FormatterBase):
                 wikitail, kw['anchor-removed'] = wikitail.split('#', 1)
             wikitail = urllib.unquote(wikitail)
             kw['local'] = self.page.page_name
-
-            # return the link via pagelink via url
-            return apply(self.pagelink, 
-                         (on, wikiutil.AbsPageName(self.request,
-                                                   self.page.page_name, 
-                                                   wikitail)), kw)
+            return apply(self.pagelink, (on, wikiutil.AbsPageName(self.request,
+self.page.page_name, wikitail)), kw)
         else: # return InterWiki hyperlink
             href = wikiutil.join_wiki(wikiurl, wikitail)
 
@@ -171,17 +165,25 @@ class Formatter(FormatterBase):
         # [inline:HooPoo/imsi.dot koo: joo]
         # This is what the text parameter is for
 
-        # attachment:koo.txt -> attachment:Page/koo.txt
+        # attachment:koo.txt
         if not '/' in url:
             page = self.page.page_name
-            url = "%s/%s" % (page, url)
-
-        url = 'attachment:%s' % (url)
-
+            pageurl = "%s/%s" % (page, url)
+        # attachment:ExamplePage/koo.txt
+        else:
+            parts = url.split('/')
+            page = '/'.join(parts[:-1])
+            pageurl = url
+            url = parts[-1]
+            
         if text.strip():
-            return [url, text]
+            return self.url(True, './' + page + \
+                            '?action=AttachFile&do=get&target=' + url,
+                            kw='local') + [pageurl, url, text]
 
-        return [url]
+        return self.url(True, './' + page + \
+                        '?action=AttachFile&do=get&target=' + url,
+                        kw='local') + [pageurl, url, pageurl]
 
     def attachment_image(self, url, **kw):
         return self.attachment_link(url, '', **kw)

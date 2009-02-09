@@ -30,7 +30,7 @@
 """
 import StringIO
 
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas

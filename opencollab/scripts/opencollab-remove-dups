@@ -7,34 +7,41 @@
 import optparse
 from opencollab.wiki import CLIWiki
 
-parser = optparse.OptionParser()
-parser.set_usage("%prog [options] WIKIURL METAQUERY")
-options, args = parser.parse_args()
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] WIKIURL METAQUERY")
+    options, args = parser.parse_args()
 
-if len(args) != 2:
-    parser.error("wiki url and meta query have to be defined")
+    if len(args) != 2:
+        parser.error("wiki url and meta query have to be defined")
 
-url, query = args
-wiki = CLIWiki(url)
+    url, query = args
+    wiki = CLIWiki(url)
 
-print "Fetching pages for duplicate meta removal."
-pages = wiki.getMeta(query)
+    print "Fetching pages for duplicate meta removal."
+    pages = wiki.getMeta(query)
 
-print "Found %d pages." % len(pages)
+    print "Found %d pages." % len(pages)
 
-cleared = dict()
-added = dict()
-for page, metas in pages.iteritems():
-    cleared[page] = list(metas)
-    added[page] = dict()
+    cleared = dict()
+    added = dict()
+    for page, metas in pages.iteritems():
+        cleared[page] = list(metas)
+        added[page] = dict()
 
-    for key, values in metas.iteritems():
-        added[page][key] = list(values)
+        for key, values in metas.iteritems():
+            added[page][key] = list(values)
 
-# clear everything
-print "Removing the metas. If you quit now, your wiki will suffer."
-wiki.request("IncSetMeta", cleared, dict(), dict())
+    # clear everything
+    print "Removing the metas. If you quit now, your wiki will suffer."
+    wiki.request("IncSetMeta", cleared, dict(), dict())
 
-# add everything back
-print "Adding the metas back. If you quit now, your wiki will suffer more."
-wiki.request("IncSetMeta", dict(), dict(), added)
+    # add everything back
+    print "Adding the metas back. If you quit now, your wiki will suffer more."
+    wiki.request("IncSetMeta", dict(), dict(), added)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."

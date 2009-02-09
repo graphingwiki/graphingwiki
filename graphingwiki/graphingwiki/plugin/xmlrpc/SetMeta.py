@@ -11,21 +11,24 @@ import xmlrpclib
 from graphingwiki.editing import set_metas
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
-# To be deprecated, now mimics the original interface with its quirks
+from graphingwiki.patterns import encode
+from graphingwiki.editing import save_template
+
+
+# Gets data in the same format as process_edit
+# i.e. input is a hash that has page!key as keys
+# and a list of values. All input is plain unicode.
 def execute(xmlrpcobj, page, input, action='add',
-            createpage=True, category_edit='', catlist=[],
+            createpage=True, category_edit='add', catlist=[],
             template=''):
 
     request = xmlrpcobj.request
     _ = request.getText
     request.formatter = TextFormatter(request)
 
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        message = "You are not allowed to edit pages by XML-RPC"
-        return xmlrpclib.Fault(1, _(message))
+    #Could this be removed?
+    if not request.user.may.write(page):
+        return xmlrpclib.Fault(1, _("You are not allowed to edit this page"))
 
     page = page.strip()
 
@@ -33,13 +36,16 @@ def execute(xmlrpcobj, page, input, action='add',
     if not page:
         return xmlrpclib.Fault(2, _("No page name entered"))
 
+    # Pre-create page if it does not exist, using the template specified
+    if createpage:
+        save_template(request, page, template)
+
+    #this is from the trunk (1.5) I think...
     if action == 'repl':
         action = 'set'
-    # Just to be on the safe side, I don't think this was used
-    if category_edit == 'repl':
-        category_edit = 'set'
 
     cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
+
 
     if action == 'add':
         for key in input:
@@ -48,19 +54,23 @@ def execute(xmlrpcobj, page, input, action='add',
         for key in input:
             cleared[page].add(key)
             added[page][key] = input[key]
+    else:
+        raise ValueError("action must be one of add, set, repl (got %s)" % repr(action))
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
     elif category_edit == 'set':
         cleared[page].add("gwikicategory")
         added[page].setdefault('gwikicategory', list()).extend(catlist)
-    # default to add category
-    else:
+    elif  category_edit == 'add':
         added[page].setdefault('gwikicategory', list()).extend(catlist)
+    else:
+        raise ValueError("category_edit must be one of add, del, set (got %s)" % repr(category_edit))
 
     if template:
         added[page]['gwikitemplate'] = template
-
+   
     _, msg = set_metas(request, cleared, discarded, added)
+    
 
     return msg

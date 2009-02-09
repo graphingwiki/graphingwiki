@@ -29,12 +29,13 @@
 """
 
 import shelve
+from urllib import quote as url_quote
+from urllib import unquote as url_unquote
+from MoinMoin.wikiutil import load_wikimap
 
 from MoinMoin import config
-from MoinMoin.util import MoinMoinNoFooter
 
-from graphingwiki.patterns import nonguaranteeds_p
-from graphingwiki.patterns import get_interwikilist, get_selfname
+from graphingwiki.patterns import nonguaranteeds_p, get_selfname
 
 def graph_to_format(pagegraph, pagename, selfname, formatfunc):
     out = ''
@@ -42,15 +43,24 @@ def graph_to_format(pagegraph, pagename, selfname, formatfunc):
 
     for prop in nonguaranteeds_p(nodegraph):
         for value in getattr(nodegraph, prop):
+            if not isinstance(prop, unicode):
+                prop = unicode(prop, config.charset)
+            if not isinstance(value, unicode):
+                value = unicode(value, config.charset)
             out = out + formatfunc(selfname,
                                    (pagename, prop, value))
 
     for edge in pagegraph.edges:
         edgegraph = pagegraph.edges.get(*edge)
-        linktype = getattr(edgegraph, 'linktype', 'Link')
-        dst = edge[1]
-        out = out + formatfunc(selfname,
-                               (edge[0], linktype, dst))
+        for linktype in getattr(edgegraph, 'linktype', 'Link'):
+            if not isinstance(linktype, unicode):
+                linktype = unicode(linktype, config.charset)
+            if not isinstance(edge[1], unicode):
+                dst = unicode(edge[1], config.charset)
+            else:
+                dst = edge[1]
+            out = out + formatfunc(selfname,
+                                   (edge[0], linktype, dst))
 
     return out
 
@@ -81,6 +91,8 @@ def get_page_n3(request, pagename):
 
 def get_page_fact(request, pagename, graphdata):
     pagegraph = graphdata.load_graph(pagename, '')
+    if isinstance(pagename, unicode):
+        pagename = unicode(url_quote(pagename), config.charset)
 
     for data in graph_to_yield(pagegraph, pagename, wikins_fact):
         yield data, pagename
@@ -92,7 +104,9 @@ def get_all_facts(request, graphdata):
         request.cfg.data_underlay_dir = None
 
     for pagename in request.rootpage.getPageList():
-        pagegraph = graphdata.load_with_links(pagename)
+        pagegraph = graphdata.load_graph(pagename, '')
+        if isinstance(pagename, unicode):
+            pagename = unicode(url_quote(pagename), config.charset)
 
         for data in graph_to_yield(pagegraph, pagename, wikins_fact):
             yield data, pagename
@@ -140,9 +154,8 @@ def n3dump(request, pages):
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
 """
-    get_interwikilist(request)
 
-    for iw, iw_url in request.iwlist.items():
+    for iw, iw_url in load_wikimap(request).items():
         outstr = (outstr + '@prefix '+ iw + ': <' + 
                   iw_url + '> .' + "\n")
 
@@ -152,10 +165,9 @@ def n3dump(request, pages):
     return outstr
     
 def execute(pagename, request):
-    request.http_headers(["Content-type: text/plain;charset=%s" %
-                          config.charset])
+    request.emit_http_headers(["Content-type: text/plain;charset=%s" %
+                               config.charset])
 
     n3 = n3dump(request, [pagename])
 
     request.write(n3)
-    raise MoinMoinNoFooter

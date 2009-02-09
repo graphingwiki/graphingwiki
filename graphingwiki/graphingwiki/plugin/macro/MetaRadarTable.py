@@ -31,7 +31,6 @@ from copy import copy
 import StringIO
 from urllib import quote as url_quote
 
-from MoinMoin import wikiutil
 from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.Page import Page
 

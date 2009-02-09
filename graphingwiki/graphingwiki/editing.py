@@ -18,9 +18,9 @@ import getpass
 import copy
 import md5
 
-from MoinMoin.parser.wiki import Parser
-from MoinMoin.action.AttachFile import getAttachDir, getFilename
+from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
@@ -34,6 +34,21 @@ from graphingwiki.patterns import NO_TYPE, SPECIAL_ATTRS
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
 
+def underlay_to_pages(req, p):
+    underlaydir = req.cfg.data_underlay_dir
+    pagedir = os.path.join(req.cfg.data_dir, 'pages')
+
+    pagepath = p.getPagePath()
+
+    # If the page has not been created yet, create its directory and
+    # save the stuff there
+    if underlaydir in pagepath:
+        pagepath = pagepath.replace(underlaydir, pagepath)
+        if not os.path.exists(pagepath):
+            os.makedirs(pagepath)
+
+    return pagepath
+
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
 
@@ -43,7 +58,7 @@ regexp_re = re.compile('^/.+/$')
 # Dl_re includes newlines, if available, and will replace them
 # in the sub-function
 dl_re = re.compile('(^\s+(.+?):: (.+)$\n?)', re.M)
-# From Parser, slight modification due to multiline usag
+# From Parser, slight modification due to multiline usage
 dl_proto_re = re.compile('(^\s+(.+?)::\s*$\n?)', re.M)
 # Regex for adding new
 dl_add = '^(\\s+?%s::\\s.+?)$'
@@ -53,7 +68,6 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
-
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
                               'action',
@@ -99,21 +113,6 @@ def get_revisions(request, page):
 
     return pagelist, metakeys
 
-def underlay_to_pages(req, p):
-    underlaydir = req.cfg.data_underlay_dir
-    pagedir = os.path.join(req.cfg.data_dir, 'pages')
-
-    pagepath = p.getPagePath()
-
-    # If the page has not been created yet,
-    # create its directory and save the stuff there
-    if underlaydir in pagepath:
-        pagepath = pagepath.replace(underlaydir, pagepath)
-        if not os.path.exists(pagepath):
-            os.makedirs(pagepath)
-
-    return pagepath
-
 def getmeta_to_table(input):
     keyoccur = dict()
 
@@ -146,58 +145,76 @@ def getmeta_to_table(input):
 
 def parse_categories(request, text):
     r"""
-    Parse category names from the page. Return a list of the preceding
-    text lines and a list of parsed categories.
+    Parse category names from the page. Return a list of parsed categories,
+    list of the preceding text lines and a list of the lines with categories.
 
     >>> request = _doctest_request()
     >>> parse_categories(request, "CategoryTest")
-    ([], ['CategoryTest'])
+    (['CategoryTest'], [], ['CategoryTest'])
 
     Take into account only the categories that come after all other text
     (excluding whitespaces):
 
     >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
-    (['Blah', 'CategoryNot blah'], ['CategoryTest'])
+    (['CategoryTest'], ['Blah', 'CategoryNot blah'], ['CategoryTest', ''])
+
+    The line lists are returned in a way that the original text can be
+    easily reconstructed from them.
+
+    >>> original_text = "Blah\nCategoryNot blah\n--------\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> tail[0] == "--------"
+    True
+    >>> "\n".join(head + tail) == original_text
+    True
+
+    >>> original_text = "Blah\nCategoryNot blah\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> "\n".join(head + tail) == original_text
+    True
 
     Regression test, bug #540: Pages with only categories (or whitespaces) 
     on several lines don't get parsed correctly:
 
     >>> parse_categories(request, "\nCategoryTest")
-    ([], ['CategoryTest'])
+    (['CategoryTest'], [''], ['CategoryTest'])
     """
 
-    # We want to parse only the last non-empty line of the text
-    lines = text.rstrip().splitlines()
-    if not lines:
-        return lines, list()
+    other_lines = text.splitlines()
+    if text.endswith("\n"):
+        other_lines.append("")
 
-    # All the categories on the multiple ending lines of 
-    total_confirmed = list()
+    categories = list()
+    category_lines = list()
+    unknown_lines = list()
+
     # Start looking at lines from the end to the beginning
-    while lines:
-        confirmed = list()
-        # Skip empty lines, comments
-        if not lines[-1].strip() or lines[-1].startswith('##'):
-            lines.pop()
+    while other_lines:
+        if not other_lines[-1].strip() or other_lines[-1].startswith("##"):
+            unknown_lines.insert(0, other_lines.pop())
             continue
 
         # TODO: this code is broken, will not work for extended links
         # categories, e.g ["category hebrew"]
-        candidates = lines[-1].split()
-        confirmed.extend(filter_categories(request, candidates))
+        candidates = other_lines[-1].split()
+        confirmed = filter_categories(request, candidates)
 
         # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
             # The line was not a category line
             break
 
-        # It was a category line - add the categories
-        total_confirmed.extend(confirmed)
+        categories.extend(confirmed)
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+        unknown_lines = list()
 
-        # Remove the category line
-        lines.pop()
-
-    return lines, total_confirmed
+    if other_lines and re.match("^\s*-{4,}\s*$", other_lines[-1]):
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+    else:
+        other_lines.extend(unknown_lines)
+    return categories, other_lines, category_lines
 
 def edit_categories(request, savetext, action, catlist):
     """
@@ -229,7 +246,7 @@ def edit_categories(request, savetext, action, catlist):
 
     # Filter out anything that is not a category
     catlist = filter_categories(request, catlist)
-    lines, confirmed = parse_categories(request, savetext)
+    confirmed, lines, _ = parse_categories(request, savetext)
 
     # Remove the empty lines from the end
     while lines and not lines[-1].strip():
@@ -249,23 +266,15 @@ def edit_categories(request, savetext, action, catlist):
             if category not in categories:
                 categories.append(category)
 
-    # Check whether the last line is a separator; add and remove it if needed
-    if not lines:
-        if categories:
-            lines.append(u"----")
-    elif not (len(lines[-1]) >= 4 and set(lines[-1].strip()) == set("-")):
-        if categories:
-            lines.append(u"----")
-    else:
-        if not categories:
-            lines.pop()
-        
     if categories:
+        lines.append(u"----")
         lines.append(" ".join(categories))
 
     return u"\n".join(lines) + u"\n"
 
 def formatting_rules(request, parser):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     rules = parser.formatting_rules.replace('\n', '|')
 
     if request.cfg.bang_meta:
@@ -280,6 +289,47 @@ def formatting_rules(request, parser):
 
     return re.compile(rules, re.UNICODE)
 
+
+def link_to_attachment(globaldata, target):
+    if isinstance(target, unicode):
+        target = url_quote(encode(target))
+    
+    try:
+        targetPage = globaldata.getpage(target)
+    except KeyError:
+        pass
+    else:
+        targetMeta = targetPage.get("meta", dict())
+        url = targetMeta.get("gwikiURL", set([""]))
+        if url:
+            url = url.pop()
+            # If the URL attribute of the target looks like the
+            # target is a local attachment, correct the link
+            if 'AttachFile' in url and url.startswith('".'):
+                target = 'attachment:' + target.replace(' ', '_')
+
+    target = target.strip('"')
+    if not target.startswith('attachment:'):
+        target = unicode(url_unquote(target), config.charset)
+    else:
+        target = unicode(target, config.charset)
+    target = target.replace('\\"', '"')
+
+    return target
+
+def absolute_attach_name(quoted, target):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
+    abs_method = target.split(':')[0]
+
+    # Pages from MetaRevisions may have ?action=recall, breaking attach links
+    if '?' in quoted:
+        quoted = quoted.split('?', 1)[0]
+
+    if abs_method in ["attachment", "drawing"] and not '/' in target:
+        target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
+
+    return target
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, 
@@ -346,37 +396,32 @@ def get_pages(request):
 
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
-    preformatted_re = re.compile('({{{.+?}}})', re.M|re.S)
-    pre_replace = dict()
-    def get_hashkey(val):
-        return md5.new(repr(val)).hexdigest()
+    preformatted_re = re.compile('({{{.*?}}})', re.M|re.S)
 
-    # Enumerate preformatted areas
-    for val in preformatted_re.findall(text):
-        key = get_hashkey(val)
-        pre_replace[key] = val
+    keys_to_markers = dict()
+    markers_to_keys = dict()
 
     # Replace with unique format strings per preformatted area
     def replace_preformatted(mo):
-        val = mo.group(0)
-        key = get_hashkey(val)
-        return '%s' % (key)
+        key = mo.group(0)
 
+        marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
+        while marker in text:
+            marker = "%d-%s" % (mo.start(), md5.new(marker).hexdigest())
+
+        keys_to_markers[key] = marker
+        markers_to_keys[marker] = key
+
+        return marker
     text = preformatted_re.sub(replace_preformatted, text)
 
-    return text, pre_replace
+    return text, keys_to_markers, markers_to_keys
 
 def edit_meta(request, pagename, oldmeta, newmeta):
     page = PageEditor(request, pagename)
 
     text = page.get_raw_body()
-    text, pre_replace = remove_preformatted(text)
-
     text = replace_metas(request, text, oldmeta, newmeta)
-
-    # Metas have been set, insert preformatted areas back
-    for key in pre_replace:
-        text = text.replace(key, pre_replace[key])
 
     # PageEditor.saveText doesn't allow empty texts
     if not text:
@@ -440,7 +485,7 @@ def add_meta_regex(request, inclusion, newval, oldtext):
 
     return oldtext
 
-def replace_metas(request, oldtext, oldmeta, newmeta):
+def replace_metas(request, text, oldmeta, newmeta):
     r"""
     >>> request = _doctest_request()
 
@@ -537,17 +582,45 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
     ...               dict(foo=[u""]))
     u' bar:: 1\n'
 
+    Regression test, bug #594: Metas with preformatted values caused
+    corruption.
+    
+    >>> replace_metas(request,
+    ...               u" foo:: {{{a}}}\n",
+    ...               dict(foo=[u"{{{a}}}"]),
+    ...               dict(foo=[u"b"]))
+    u' foo:: b\n'
+
+    Regression test, bug #596: Replacing with empty breaks havoc
+
+    >>> replace_metas(request,
+    ...               u" a:: {{{}}}\n b:: {{{Password}}}",
+    ...               {'a': [u'{{{}}}']},
+    ...               {'a': [u'']})
+    u' b:: {{{Password}}}'
+
     replace_metas(request, 
     ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
     ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
     ...           {'status': [u'', 'pending'], 'heartbeat': [u'', '1229625590.17'], 'agent': [u'', '127.0.0.1-4124520965']})
     u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
     """
-
-    oldtext = oldtext.rstrip()
+    text = text.rstrip()
     # Annoying corner case with dl:s
-    if oldtext.endswith('::'):
-        oldtext = oldtext + " \n"
+    if text.endswith('::'):
+        text = text + " \n"
+
+    # Work around the metas whose values are preformatted fields (of
+    # form {{{...}}})
+    text, keys_to_markers, markers_to_keys = remove_preformatted(text)
+
+    replaced_metas = dict()
+    for key, values in oldmeta.iteritems():
+        replaced_values = list()
+        for value in values:
+            replaced_values.append(keys_to_markers.get(value, value))
+        replaced_metas[key] = replaced_values
+    oldmeta = replaced_metas
 
     # Replace the values we can
     def dl_subfun(mo):
@@ -578,7 +651,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             return ""
 
         return " %s:: %s\n" % (key, newval)
-    oldtext = dl_re.sub(dl_subfun, oldtext)
+    text = dl_re.sub(dl_subfun, text)
 
     # Handle the magic duality between normal categories (CategoryBah)
     # and meta style categories
@@ -601,9 +674,9 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
         del newcategories[index]
 
     if discarded:
-        oldtext = edit_categories(request, oldtext, "del", discarded)
+        text = edit_categories(request, text, "del", discarded)
     if added:
-        oldtext = edit_categories(request, oldtext, "add", added)
+        text = edit_categories(request, text, "add", added)
 
     # Fill in the prototypes
     def dl_fillfun(mo):
@@ -618,7 +691,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
             return ""
 
         return " %s:: %s\n" % (key, newval)
-    oldtext = dl_proto_re.sub(dl_fillfun, oldtext)
+    text = dl_proto_re.sub(dl_fillfun, text)
 
     # Add clustered values
     def dl_clusterfun(mo):
@@ -634,7 +707,7 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
 
         newmeta[key] = list()
         return all
-    oldtext = dl_re.sub(dl_clusterfun, oldtext)
+    text = dl_re.sub(dl_clusterfun, text)
 
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
@@ -644,9 +717,13 @@ def replace_metas(request, oldtext, oldmeta, newmeta):
                 continue
 
             inclusion = " %s:: %s" % (key, value)
-            oldtext = add_meta_regex(request, inclusion, value, oldtext)
+            text = add_meta_regex(request, inclusion, value, text)
 
-    return oldtext
+    # Metas have been set, insert preformatted areas back
+    for key in markers_to_keys:
+        text = text.replace(key, markers_to_keys[key])
+
+    return text
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
@@ -786,7 +863,7 @@ def ordervalue(value):
 def metatable_parseargs(request, args,
                         get_all_keys=False,
                         get_all_pages=False,
-                        checkAccess = True):
+                        checkAccess=True):
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -848,7 +925,7 @@ def metatable_parseargs(request, args,
             # else strip the //:s
             elif len(val) > 1:
                 val = val[1:-1]
-            limitregexps.setdefault(key, set()).add(re.compile(val))
+            limitregexps.setdefault(key, set()).add(re.compile(val, re.IGNORECASE | re.UNICODE))
             continue
 
         # order spec
@@ -892,7 +969,7 @@ def metatable_parseargs(request, args,
     if not pageargs and not argset:
         pages = filter(is_saved, request.graphdata)
         if checkAccess:
-            # Filter nonexisting pages and the pages the user may not read
+            # Filter out the pages the user may not read
             pages = filter(can_be_read, pages)
         pages = set(pages)
     # Otherwise check out the wanted pages
@@ -904,6 +981,7 @@ def metatable_parseargs(request, args,
         for arg in categories:
             page = request.graphdata.getpage(arg)
             newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
+
             for newpage in newpages:
                 # Check that the page is not a category or template page
                 if cat_re.match(newpage) or temp_re.search(newpage):
@@ -921,7 +999,7 @@ def metatable_parseargs(request, args,
                 continue
             pages.add(name)
 
-    pagelist = set([])
+    pagelist = set()
     for page in pages:
         clear = True
         # Filter by regexps (if any)
@@ -1027,19 +1105,19 @@ def check_attachfile(request, pagename, aname):
 
     return fpath, False
 
-def save_attachfile(request, pagename, srcname, aname, overwrite=False):
+def save_attachfile(request, pagename, content, aname, overwrite=False, log=False):
     try:
         fpath, exists = check_attachfile(request, pagename, aname)
         if not overwrite and exists:
             return False
 
-        # Read the contents of the file
-        filecontent = file(srcname).read()
-
         # Save the data to a file under the desired name
         stream = open(fpath, 'wb')
-        stream.write(filecontent)
+        stream.write(content)
         stream.close()
+
+        if log:
+            _addLogEntry(request, 'ATTNEW', pagename, aname)
     except:
         return False
 
@@ -1152,14 +1230,17 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
         pass
     class Object(object):
         pass
+    class Cache(object):
+        pass
     class GraphData(dict):
         def getpage(self, page):
             return self.get(page, dict())
     
     request = Request()
     request.cfg = Config()
+    request.cfg.cache = Cache()
     request.cfg.page_category_regex = u'^Category[A-Z]'
-
+    request.cfg.cache.page_category_regex = re.compile(u'^Category[A-Z]', re.UNICODE)
     request.graphdata = GraphData(graphdata)
 
     request.user = Object()

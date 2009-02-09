@@ -35,9 +35,10 @@ from time import time
 from copy import copy
 
 # MoinMoin imports
-from MoinMoin.parser.wiki import Parser
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin
 from MoinMoin import caching
+from MoinMoin.Page import Page 
 
 # graphlib imports
 from graphingwiki.patterns import node_type, SPECIAL_ATTRS, NO_TYPE
@@ -196,50 +197,6 @@ def add_include(new_data, pagename, hit):
     temp.setdefault(u'include', list()).append(pagearg)
     new_data[pagename] = temp
 
-def parse_link(wikiparse, hit, type):
-    replace = getattr(wikiparse, '_' + type + '_repl')
-    attrs = replace(hit)
-
-    nodename = attrs[0]
-    linktype = ''
-
-    # Bracketed links and attachments may return extra data 
-    # (funnily enough, both with linktype url_bracket),
-    # which may include linktype [:Page:LinkType: text].
-    # This method of specifying linktype is considered quite 
-    # deprecated, and support for it may later be removed.
-    if type == 'url_bracket' and len(attrs) > 1:
-        linktype = attrs[1]
-
-    # Change name for different type of interwikilinks
-    if type == 'interwiki':
-        if not hit.startswith('Self'):
-            nodename = hit
-    elif type == 'url_bracket':
-        # Interwikilink in brackets?
-        iw = re.search(r'\[(?P<iw>.+?)[\] ]',
-                       hit).group('iw')
-
-        if iw.split(":")[0] == 'wiki':
-            iw = iw.split(None, 1)[0]
-            iw = iw[5:].replace('/', ':', 1)
-            nodename = iw
-
-        # Bracket URL:s with linktype [:PaGe:Ooh: PaGe]
-        linktype = [x.strip() for x in linktype.split(': ')]
-        if len(linktype) > 1:
-            linktype = linktype[0]
-        else:
-            linktype = ''
-
-    # Interwikilink turned url?
-    elif type == 'url':
-        if hit.split(":")[0] == 'wiki':
-            iw = hit[5:].replace('/', ':', 1)
-            nodename = iw
-
-    return nodename, linktype
-
 def add_link(new_data, pagename, nodename, linktype, hit):
     edge = [pagename, nodename]
 
@@ -247,170 +204,55 @@ def add_link(new_data, pagename, nodename, linktype, hit):
     shelve_add_out(new_data, edge, linktype, hit)
 
 def parse_text(request, page, text):
-    new_data = {}
     pagename = page.page_name
-
-    # import text_url -formatter
-    try:
-        Formatter = importPlugin(request.cfg, 'formatter',
-                                 'text_url', "Formatter")
-    except:
-        # default to plain text
-        from MoinMoin.formatter.text_plain import Formatter
-
-    urlformatter = Formatter(request)
-
-    # Get formatting rules from Parser/wiki
-    # Regexps used below are also from there
-    wikiparse = Parser(text, request)
-    wikiparse.formatter = urlformatter
-    urlformatter.setPage(page)
-
-    rules = wikiparse.formatting_rules.replace('\n', '|')
-
-    if request.cfg.bang_meta:
-        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
-            'word_rule': wikiparse.word_rule,
-            'rules': rules,
-            }
-
-    # For versions with the deprecated config variable allow_extended_names
-    if not '?P<wikiname_bracket>' in rules:
-        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
-
-    all_re = re.compile(rules, re.UNICODE)
-    eol_re = re.compile(r'\r?\n', re.UNICODE)
-    # end space removed from heading_re, it means '\n' in parser/wiki
-    heading_re = re.compile(r'\s*(?P<hmarker>=+)\s.*\s(?P=hmarker)',
-                            re.UNICODE)
-
+    
+    from copy import copy
+    newreq = copy(request)
+    newreq.cfg = copy(request.cfg)
+    newreq.page = lcpage = LinkCollectingPage(newreq, pagename, text)
+    newreq.theme = copy(request.theme)
+    newreq.theme.request = newreq
+    newreq.theme.cfg = newreq.cfg
+    parserclass = importPlugin(request.cfg, "parser",
+                                   'link_collect', "Parser")
+    import MoinMoin.wikiutil as wikiutil
+    myformatter = wikiutil.importPlugin(request.cfg, "formatter",
+                                      'nullformatter', "Formatter")
+    lcpage.formatter = myformatter(newreq)
+    lcpage.formatter.page = lcpage
+    p = parserclass(lcpage.get_raw_body(), newreq, formatter=lcpage.formatter)
+    lcpage.parser = p
+    lcpage.format(p)
+    
     # These are the match types that really should be noted
-    linktypes = ["wikiname_bracket", "word",
-                  "interwiki", "url", "url_bracket"]
-
-    # Get lines of raw wiki markup
-    lines = eol_re.split(text)
-
-    # status: are we in preprocessed areas?
-    inpre = False
-    pretypes = ["pre", "processor"]
-
-    # status: have we just entered a link with dict,
-    # we should not enter it again
-    dicturl = False
-
-    in_processing_instructions = True
-
-    for line in lines:
-
-        # Have to handle the whole processing instruction shebang
-        # in order to handle ACL:s correctly
-        if in_processing_instructions:
-            found = False
-            for pi in ("##", "#format", "#refresh", "#redirect", "#deprecated",
-                       "#pragma", "#form", "#acl", "#language"):
-                if line.lower().startswith(pi):
-                    found = True
-                    if pi == '#acl':
-                        temp = new_data.get(pagename, {})
-                        temp[u'acl'] = line[5:]
-                        new_data[pagename] = temp
-
-            if not found:
-                in_processing_instructions = False
-            else:
-                continue
-
-        # Comments not processed
-        if line[0:2] == "##":
-            continue
-
-        # Headings not processed
-        if heading_re.match(line):
-            continue
-        for match in all_re.finditer(line):
-            for type, hit in match.groupdict().items():
-                #if hit:
-                #    print hit, type
-
-                # Skip empty hits
-                if hit is None:
-                    continue
-
-                # We don't want to handle anything inside preformatted
-                if type in pretypes:
-                    inpre = not inpre
-                    #print inpre
-
-                # Handling of MetaData- and Include-macros
-                elif type == 'macro' and not inpre:
-                    if hit.startswith('[[Include'):
-                        add_include(new_data, pagename, hit)
-
-                # Handling of links
-                elif type in linktypes and not inpre:
-                    # If we just came from a dict, which saved a typed
-                    # link, do not save it again
-                    if dicturl:
-                        dicturl = False
-                        continue
-
-                    name, linktype = parse_link(wikiparse, hit, type)
-
-                    if name:
-                        add_link(new_data, pagename, name, linktype, hit)
-
-                # Links and metadata defined in a definition list
-                elif type == 'dl' and not inpre:
-                    data = line.split('::')
-                    key, val = data[0], '::'.join(data[1:])
-                    key = key.lstrip()
-
-                    if not key:
-                        continue
-
-                    # Try to find if the value points to a link
-                    matches = all_re.match(val.lstrip())
-                    if matches:
-                        # Take all matches if hit non-empty
-                        # and hit type in linktypes
-                        match = [(type, hit) for type, hit in
-                                 matches.groupdict().iteritems()
-                                 if hit is not None \
-                                 and type in linktypes]
-
-                        # If link, 
-                        if match:
-                            type, hit = match[0]
-
-                            # and nothing but link, save as link
-                            if hit == val.strip():
-
-                                name, _ = parse_link(wikiparse,
-                                                     hit, type)
-
-                                if name:
-                                    add_link(new_data, pagename, 
-                                             name, key, hit)
-
-                                    # The val will also be parsed by
-                                    # Moin's link parser -> need to
-                                    # have state in the loop that this
-                                    # link has already been saved
-                                    dicturl = True
-
-                    if dicturl:
-                        continue
-
-                    # If it was not link, save as metadata. 
-                    add_meta(new_data, pagename, (key, val))
+    linktypes = ["wikiname_bracket", "word",                  
+                 "interwiki", "url", "url_bracket"]
+    
+    new_data = {}
 
     # Add the page categories as links too
-    _, categories = parse_categories(request, text)
-    for category in categories:
-        name, linktype = parse_link(wikiparse, category, "word")
-        if name:
-            add_link(new_data, pagename, name, u"gwikicategory", category)
+    categories, _, _ = parse_categories(request, text)
+    
+    for metakey, value in p.definitions.iteritems():
+        for type, item in value:
+            # print metakey, type, item
+            dnode=None
+
+            if  type in ['url', 'wikilink', 'interwiki', 'email']:
+                dnode = item[1]
+                hit = item[0]
+            elif type == 'category':
+                # print "adding cat", item, repr(categories)
+                dnode = item
+                hit = item
+                if item in categories:
+                    add_link(new_data, pagename, dnode, 
+                             u"gwikicategory", item)
+            elif type == 'meta':
+                add_meta(new_data, pagename, (metakey, item))
+
+            if dnode:
+                add_link(new_data, pagename, dnode, metakey, hit)
 
     return new_data
 
@@ -470,18 +312,19 @@ def changed_meta(request, pagename, old_data, new_data):
 
             # check if the link i has changed
             else:
+                val_lit = old_data[u'lit'][key][i]
+                new_val_lit = new_data[pagename][u'lit'][key][i]
+
+                if val_lit == new_val_lit:
+                    continue
+
                 val = old_data[u'out'][key][i]
                 new_val = new_data[pagename][u'out'][key][i]
 
-                if val == new_val:
-                    continue
-
                 # link changed, replace old link with new
-                lit = new_data[pagename][u'lit'][key][i]                
-
                 # add and del out-links
                 add_out[pagename].append((key, new_val))
-                lit_out[pagename].append(lit)
+                lit_out[pagename].append(new_val_lit)
 
                 del_out[pagename].append((key, val))
 
@@ -658,3 +501,26 @@ def execute(pagename, request, text, pagedir, page):
         cache.remove()
 
     request.graphdata.readlock()
+
+# - code below lifted from MetaFormEdit -
+
+# Override Page.py to change the parser. This method has the advantage
+# that it works regardless of any processing instructions written on
+# page, including the use of other parsers
+class LinkCollectingPage(Page):
+
+    def __init__(self, request, page_name, content, **keywords):
+        # Cannot use super as the Moin classes are old-style
+        apply(Page.__init__, (self, request, page_name), keywords)
+        self.set_raw_body(content)
+
+    # It's important not to cache this, as the wiki thinks we are
+    # using the default parser
+    def send_page_content(self, request, notparser, body, format_args='',
+                          do_cache=0, **kw):
+        self.parser = wikiutil.importPlugin(request.cfg, "parser",
+                                       'link_collect', "Parser")
+
+        kw['format_args'] = format_args
+        kw['do_cache'] = 0
+        apply(Page.send_page_content, (self, request, self.parser, body), kw)

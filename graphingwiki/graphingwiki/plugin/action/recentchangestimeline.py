@@ -4,7 +4,7 @@ from time import strftime, time
 from xml.dom.minidom import Document
 
 from MoinMoin import config
-from MoinMoin.util import MoinMoinNoFooter, rangelist
+from MoinMoin.util import rangelist
 from MoinMoin.logfile import editlog
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -103,8 +103,8 @@ def execute(pagename, request):
     _ = request.getText
     log = editlog.EditLog(request)
 
-    request.http_headers(["Content-type: application/xml;charset=%s" %
-                          config.charset])
+    request.emit_http_headers(["Content-type: application/xml;charset=%s" %
+                               config.charset])
 
     doc = Document()
     data = doc.createElement('data')
@@ -140,5 +140,3 @@ def execute(pagename, request):
         pages.setdefault(line.pagename, []).append(line)
 
     request.write(doc.toprettyxml(indent='  '))
-
-    raise MoinMoinNoFooter

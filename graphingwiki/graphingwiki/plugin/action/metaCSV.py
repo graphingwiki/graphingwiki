@@ -6,7 +6,6 @@ import urllib
 import csv
 
 from MoinMoin import wikiutil
-from MoinMoin.util import MoinMoinNoFooter
 from graphingwiki.editing import getmeta_to_table
 from graphingwiki.patterns import encode_page
 
@@ -15,9 +14,9 @@ def execute(pagename, request):
     pagename_header = '%s.csv' % (pagename)
     pagename_header = pagename_header.encode('ascii', 'ignore')
     
-    request.http_headers(['Content-Type: text/csv; charset=UTF-8',
-                          'Content-Disposition: attachment; ' +
-                          'filename="%s"' % pagename_header])
+    request.emit_http_headers(['Content-Type: text/csv; charset=UTF-8',
+                               'Content-Disposition: attachment; ' +
+                               'filename="%s"' % pagename_header])
     GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta')
     class x: pass
     x.request = request
@@ -37,5 +36,3 @@ def execute(pagename, request):
 
     for row in table:
         writer.writerow(map(encode_page, row))
-	
-    raise MoinMoinNoFooter

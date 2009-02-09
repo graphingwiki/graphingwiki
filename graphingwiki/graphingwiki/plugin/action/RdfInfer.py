@@ -30,14 +30,15 @@
 
 import os
 import re
+from urllib import quote as url_quote
 from savegraphdata import encode
 
+from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.patterns import actionname, form_escape
+from graphingwiki.patterns import actionname
 
 from unifier import Unifier
 
@@ -51,12 +52,12 @@ query = ur'\s*{' + lfact + ur'}\s*->\s*\[\]\s*\.\s*'
 rule = ur'\s*{' + fact + "+" + lfact + ur'}\s*->\s*{' + lfact + ur'}\s*\.\s*'
 
 def execute(pagename, request):
-    request.http_headers()
+    request.emit_http_headers()
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, request.getText('Inference'),
+    request.theme.send_title(request.getText('Inference'),
                         pagename=pagename)
 
     # fix for moin 1.3.5
@@ -79,7 +80,7 @@ def execute(pagename, request):
                   ''.join(request.form['action']))
 
     request.write(u'<input type="text" name="infer" size=50 value="%s">' %
-                  form_escape(infer))
+                  infer)
     request.write(u'<input type=submit value="Infer from these pages">' + \
                   u'\n</form>\n')
 
@@ -111,7 +112,7 @@ def execute(pagename, request):
                     for heureka in engine.solve(list(q.groups())):
                         answers.add(' '.join(heureka[0]) + ".")
                     for once in answers:
-                        request.write(form_escape(once))
+                        print once
             elif '->' in line:
                 r = rule_re.match(line)
                 if r:
@@ -134,4 +135,6 @@ def execute(pagename, request):
     # End content
     request.write(formatter.endContent()) # end content div
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)
+
+    request.theme.send_closing_html()

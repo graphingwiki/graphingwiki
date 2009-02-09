@@ -9,13 +9,6 @@ import urllib
 import socket
 import httplib
 import re
-import md5
-import sys
-import random
-import getpass
-import ConfigParser
-
-from meta import Meta
 
 try:
     from curltransport import CURLTransport as CustomTransport
@@ -25,98 +18,85 @@ except ImportError:
 class WikiFailure(Exception):
     pass
 
-class AuthorizationRequired(WikiFailure):
+class AuthenticationFailed(WikiFailure):
     pass
 
-class UrlRequired(WikiFailure):
+class WikiAuthenticationFailed(AuthenticationFailed):
     pass
 
-DEFAULT_CHUNK = 256 * 1024
+class HttpAuthenticationFailed(AuthenticationFailed):
+    pass
+
+class WikiFault(WikiFailure):
+    def __init__(self, fault):
+        faultString = fault.faultString.strip()
+        faultLines = fault.faultString.split("\n")
+
+        if faultLines:
+            message = "There was an error in the wiki side (%s)" % faultLines[0]
+        else:
+            message = "There was an error in the wiki side"
+
+        WikiFailure.__init__(self, message)
+        self.fault = fault
+
+def runWrapped(func, *args, **keys):
+    try:
+        result = func(*args, **keys)
+    except xmlrpclib.Fault, f:
+        if f.faultCode == "INVALID":
+            raise WikiAuthenticationFailed(f.faultString)
+        raise WikiFault(f)
+    except xmlrpclib.ProtocolError, e:
+        if e.errcode == 401:
+            raise HttpAuthenticationFailed(e.errmsg)
+        raise WikiFailure(e.errmsg)
+    except (socket.gaierror, socket.error), (code, msg):
+        raise WikiFailure(msg)
+    except httplib.HTTPException, msg:
+        raise WikiFailure(msg)
+
+    if isinstance(result, dict) and "faultString" in result:
+        faultString = result["faultString"]
+        raise WikiFailure(faultString)
+    return result
 
 def urlQuote(string):
     if isinstance(string, unicode):
         string = string.encode("utf-8")
     return urllib.quote(string, "/:")
                                
-def mangleFaultString(faultString):
-    return faultString
-    faultString = faultString.strip()
-    faultLines = faultString.split("\n")
-    if faultLines:
-        faultString = faultLines[0]
-    else:
-        faultString = ""
-    message = "There was an error in the wiki side (%s)" % faultString
-    return message
+class Wiki(object):
+    WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?), trusted=(.+?).$", re.I)
 
-class GraphingWiki(object):
-    def __init__(self, url, username=None, password=None,
-                 sslPeerVerify=False, config=None):
+    def __init__(self, url=None, sslPeerVerify=False):
         object.__init__(self)
 
         self.sslPeerVerify = sslPeerVerify
+
+        self._url = urlQuote(url)
+        self._httpCreds = None
+        self._wikiCreds = None
         self._proxy = None
-
-        if config is not None:
-            self.loadConfig(config)
-
-        if not hasattr(self, 'url'):
-            self.setUrl(url)
-
-        if not hasattr(self, 'username'):
-            self.username = username
-
-        if not hasattr(self, 'password'):
-            self.password = password
-
-    def setUrl(self, url):
-        if not url:
-            raise UrlRequired
-
-        self.url = urlQuote(url)
-        self._proxy = None
-
-    def loadConfig(self, filenames, section="creds"):
-        configparser = ConfigParser.ConfigParser()
-        if not configparser.read(filenames):
-            return False
-
-        self._proxy = None
-
-        try:
-            self.username = configparser.get(section, "username")
-            self.password = configparser.get(section, "password")
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-            pass
-
-        try:
-            url = configparser.get(section, "url")
-            self.setUrl(url)
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-            pass
-        except UrlRequired:
-            pass
-
-        return True
 
     def _getProxy(self):
         if self._proxy is not None:
             return self._proxy
 
         action = "action=xmlrpc2"
-        scheme, netloc, path, _, _, _ = urlparse.urlparse(self.url)
+        scheme, netloc, path, _, _, _ = urlparse.urlparse(self._url)
 
-        if scheme.lower() == "https":
+        if self._httpCreds:
+            username, password = map(urlQuote, self._httpCreds)
+            netloc = "%s:%s@%s" % (username, password, netloc)
+        url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
+
+        if scheme == "http":
+            transport = CustomTransport(CustomTransport.HTTP)
+        else:
             transport = CustomTransport(CustomTransport.HTTPS,
                                         sslPeerVerify=self.sslPeerVerify)
-            if None not in (self.username, self.password):
-                netloc = "%s:%s@%s" % (urlQuote(self.username), 
-                                       urlQuote(self.password), 
-                                       netloc)
-        else:
-            transport = CustomTransport(CustomTransport.HTTP)
-        
-        url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
+
         try:
             self._proxy = xmlrpclib.ServerProxy(url, transport, allow_none=True)
         except IOError, msg:
@@ -124,31 +104,89 @@ class GraphingWiki(object):
 
         return self._proxy
 
-    def request(self, name, *args):
-        proxy = self._getProxy()
-        method = getattr(proxy, name)
+    def _doWikiAuth(self, username, password):
+        token = self._getProxy().getAuthToken(username, password)
+        if not token:
+            raise WikiAuthenticationFailed("wiki authentication failed")
+        return token
+    
+    def _authenticate(self, username, password):
+        self._proxy = None
+        self._wikiCreds = None
+        self._httpCreds = None
 
         try:
-            result = method(*args)
-        except xmlrpclib.Fault, f:
-            raise WikiFailure(mangleFaultString(f.faultString))
-        except xmlrpclib.ProtocolError, e:
-            if e.errcode == 401:
-                raise AuthorizationRequired(e.errmsg)
-            raise WikiFailure(e.errmsg)
-        except (socket.gaierror, socket.error), (code, msg):
-            raise WikiFailure(msg)
-        except httplib.HTTPException, msg:
-            raise WikiFailure(msg)
+            try:
+                whoami = runWrapped(self._getProxy().WhoAmI)
+            except HttpAuthenticationFailed:
+                self._proxy = None
+                self._httpCreds = username, password
+                whoami = runWrapped(self._getProxy().WhoAmI)
 
-        if isinstance(result, dict) and "faultString" in result:
-            faultString = result["faultString"]
-            raise WikiFailure(faultString)
+            match = self.WHOAMI_FORMAT.match(whoami)
+            if match is None:
+                raise WikiFailure("WhoAmI action returned invalid data")
 
-        return result
+            valid, trusted = match.groups()
+            if valid == "0":
+                token = runWrapped(self._doWikiAuth, username, password)
+                self._wikiCreds = token, username, password
+        except:
+            self._proxy = None
+            self._wikiCreds = None
+            self._httpCreds = None
+            raise
+
+    def _multiCall(self, name, *args):
+        multiCall = xmlrpclib.MultiCall(self._getProxy())
+        
+        if self._wikiCreds:
+            token, username, password = self._wikiCreds
+            multiCall.applyAuthToken(token)
+
+        method = getattr(multiCall, name)
+        method(*args)
+        results = multiCall()
+
+        if not self._wikiCreds:
+            return results[0]
+        if results[0] == "SUCCESS":
+            return results[1]
+
+        raise WikiAuthenticationFailed(results[0]["failureString"])
+
+    def request(self, name, *args):
+        try:
+            return runWrapped(self._multiCall, name, *args)
+        except WikiAuthenticationFailed:
+            _, username, password = self._wikiCreds
+            token = runWrapped(self._doWikiAuth, username, password)
+            self._wikiCreds = token, username, password
+        return runWrapped(self._multiCall, name, *args)
+
+    def authenticate(self, username, password):
+        try:
+            self._authenticate(username, password)
+        except AuthenticationFailed:
+            return False
+        return True
+
+import re
+import md5
+import sys
+import random
+import getpass
+
+from meta import Meta 
+
+class GraphingWiki(Wiki):
+    DEFAULT_CHUNK = 256 * 1024
 
     def getPage(self, page):
         return self.request("getPage", page)
+
+    def getPageHTML(self, page):
+        return self.request("getPageHTML", page)
 
     def putPage(self, page, content):
         return self.request("putPage", page, content)
@@ -286,40 +324,62 @@ class GraphingWiki(object):
                             createPageOnDemand, categoryMode, categories,
                             template)
 
+import ConfigParser
+
+def redirected(func, *args, **keys):
+    oldStdout = sys.stdout
+    sys.stdout = sys.stderr
+
+    try:
+        return func(*args, **keys)
+    finally:
+        sys.stdout = oldStdout
+
 class CLIWiki(GraphingWiki):
     # A version of the GraphingWiki class intended for command line
-    # usage. Automatically asks username and password should the wiki
-    # need it.
+    # usage. Automatically asks url, username and password should the
+    # wiki need it.
 
-    def __init__(self, name='', *args, **kw):
-        while True:
-            try:
-                super(CLIWiki, self).__init__(name, *args, **kw)
-            except UrlRequired:
-                # Redirecting stdout to stderr for these queries
-                oldStdout = sys.stdout
-                sys.stdout = sys.stderr
+    def __init__(self, url=None, config=None, configSection="creds", **keys):
+        creds = None
 
-                name = raw_input("Wiki:")
+        if config is not None:
+            configparser = ConfigParser.ConfigParser()
 
-                sys.stdout = oldStdout
-            else:
-                return
+            if configparser.read(config):
+                try:
+                    url = configparser.get(configSection, "url")
+                except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+                    pass
+
+                try:
+                    username = configparser.get(configSection, "username")
+                    password = configparser.get(configSection, "password")
+                    creds = username, password
+                except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+                    pass
+
+        if url is None:
+            url = redirected(raw_input, "Wiki:")
+
+        super(CLIWiki, self).__init__(url, **keys)
+
+        if creds is not None:
+            self.authenticate(*creds)
+
+    def authenticate(self, username=None, password=None):
+        if username is None:
+            username = redirected(raw_input, "Username:")
+        if password is None:
+            password = redirected(getpass.getpass, "Password:")
+        return super(CLIWiki, self).authenticate(username, password)
 
     def request(self, name, *args):
         while True:
             try:
-                result = GraphingWiki.request(self, name, *args)
-            except AuthorizationRequired:
-                # Redirecting stdout to stderr for these queries
-                oldStdout = sys.stdout
-                sys.stdout = sys.stderr
-
-                if not getattr(self, 'username', ''):
-                  self.username = raw_input("Username:")
-                self.password = getpass.getpass("Password:")
-                self._proxy = None
-
-                sys.stdout = oldStdout
-            else:
-                return result
+                return super(CLIWiki, self).request(name, *args)
+            except AuthenticationFailed, f:
+                while True:
+                    print >> sys.stderr, "Authorization required."
+                    if self.authenticate():
+                        break

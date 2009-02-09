@@ -8,7 +8,7 @@
 
 import unittest
 import re
-from xmlrpclib import ServerProxy, Error
+from xmlrpclib import ServerProxy, Error, Binary
 
 # Server URL
 server = ServerProxy("http://localhost:8080/?action=xmlrpc2")
@@ -44,7 +44,7 @@ class TestSetMeta(GwikiTests):
         for md in self.metaData:
             # Check that all metadata is there
             findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, md))
-            self.assert_(findMeta.search(res))
+            self.assert_(findMeta.search(res), "%s:: %s in '%s'" % (self.metaKey, md, res))
         GwikiTests.tearDown(self)
 
     def testAdd1(self):
@@ -60,35 +60,35 @@ class TestSetMeta(GwikiTests):
 
     def testReplace1(self):
         self.metaData = ["desdi", "dadaa"]
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace2(self):
         server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace3(self):
-        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'replace')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'repl')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace4(self):
         self.metaKey = "testi foo"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace5(self):
         self.metaKey = "testi:foo"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace6(self):
         self.metaKey = u"☠☠☠☠☠☠☃☃☃☃☃äääöööÄÄÄÖÖÖ€€€¶‰"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace7(self):
         self.metaKey = u"“بسملة”"
         server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'replace')
+        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testAddCategories1(self):
         server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', False, 'add', ['CategoryUnitTest'])
@@ -178,7 +178,27 @@ class TestParsing(unittest.TestCase):
         server.putPage(self.pageName, pageContents)
         res = server.GetMeta(self.pageName, True)
         self.assert_(res)
+
+
+class TestAttachFile(GwikiTests):
+    '''Tests for AttachFile(...) call.'''
+    
+    #Syntax:  AttachFile(<pagename>, <attachment name>, <action> = ("delete" |  "save" | "list" | "load"), <content>, <overwrite> = (True | False) )
+    def testSaveLoadDeleteWithNiceData(self):
+        niceData = "jee\n"
+        response1 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+        exception = None
+        try:
+            response1_2 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+        except Exception, e:
+            exception = e
+        response1_3 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), True)
+
+        response2 = server.AttachFile(self.pageName, "niceData", "load",Binary(""), False)
+        response3 = server.AttachFile(self.pageName, "niceData", "delete",Binary(""), False)
         
+        self.assertEqual(response2, niceData)
+        self.assert_(exception != None)        
 
 # class TestRandomPages(unittest.TestCase):
 #     def setUp(self):

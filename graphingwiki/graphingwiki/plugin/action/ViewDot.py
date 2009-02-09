@@ -29,16 +29,18 @@
 import os
 from tempfile import mkstemp
 from urllib import quote as url_quote
+from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
+from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
-from MoinMoin.request import RequestModPy, RequestStandAlone
-from MoinMoin.util import MoinMoinNoFooter
-from MoinMoin.macro.Include import _sysmsg
+from MoinMoin.request.request_modpython import Request as RequestModPy
+from MoinMoin.request.request_standalone import Request as RequestStandAlone
+from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
-from graphingwiki.patterns import actionname, form_escape
+from graphingwiki.patterns import actionname
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
@@ -70,30 +72,29 @@ class ViewDot(object):
 
         # format
         if request.form.has_key('format'):
-            format = request.form['format'][0]
+            format = [encode(x) for x in request.form['format']][0]
             if format in self.available_formats:
                 self.format = format
 
-        # view
+        # format
         if request.form.has_key('view'):
-            if ''.join(request.form['view']):
+            if ''.join([x for x in request.form['view']]).strip():
                 self.inline = False
 
         # format
         if request.form.has_key('help'):
-            if ''.join(request.form['help']):
-                del request.form['help']
+            if ''.join([x for x in request.form['help']]).strip():
                 self.help = True
 
         # graphengine
         if request.form.has_key('graphengine'):
-            graphengine = request.form['graphengine'][0]
+            graphengine = [encode(x) for x in request.form['graphengine']][0]
             if graphengine in self.available_graphengines:
                 self.graphengine = graphengine
 
         # format
         if request.form.has_key('attachment'):
-            self.attachment = ''.join(request.form['attachment'])
+            self.attachment = ''.join([x for x in request.form['attachment']])
 
     def sendForm(self):
         request = self.request
@@ -114,18 +115,18 @@ class ViewDot(object):
         for type in self.available_formats:
             request.write(u'<input type="radio" name="format" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (form_escape(type),
+                          (type,
                            type == self.format and " checked>" or ">",
-                           form_escape(type)))
+                           type))
 
         # graphengine
         request.write(u"<td>\n" + _('Output graphengine') + u"<br>\n")
         for type in self.available_graphengines:
             request.write(u'<input type="radio" name="graphengine" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (form_escape(type),
+                          (type,
                            type == self.graphengine and " checked>" or ">",
-                           form_escape(type)))
+                           type))
 
         # dotfile
         dotfile = self.dotfile
@@ -147,10 +148,8 @@ class ViewDot(object):
                       'value="%s"><br>\n' % _('Inline'))
         request.write(u'</form>\n')
 
-    def fail(self, fault = ''):
-        self.request.setHttpHeader('Content-type: text/plain')
-        self.request.write(fault)
-        raise MoinMoinNoFooter
+    def fail(self, fault = u""):
+        raise InternalError(fault)
 
     def execute(self):
         self.formargs()
@@ -164,7 +163,7 @@ class ViewDot(object):
             else:
                 formatter = request.formatter
 
-            request.http_headers()
+            request.emit_http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
 
@@ -175,23 +174,31 @@ class ViewDot(object):
             request.write(formatter.startContent("content"))
             formatter.setPage(request.page)
 
-            wikiutil.send_title(request, title, pagename=self.pagename)
+            request.theme.send_title(title, pagename=self.pagename)
 
             self.sendForm()
 
             if self.help:
                 # This is the URL addition to the nodes that have graph data
-                self.urladd = url_parameters(request.form)
-                request.write('[[ViewDot(' + self.urladd + ')]]')
+                self.urladd = '?'
+                for key in request.form:
+                    if key == 'help':
+                        continue
+                    for val in request.form[key]:
+                        self.urladd = (self.urladd + url_quote(encode(key)) +
+                                       '=' + url_quote(encode(val)) + '&')
+                self.urladd = self.urladd[:-1]
+                request.write('<<ViewDot(' + self.urladd + ')>>')
 
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
+            self.request.theme.send_closing_html()
             return 
 
         if not self.attachment[:10].lower() == 'attachment':
-            fault = _('No attachment defined') + '\n'
+            fault = _(u'No attachment defined') + u'\n'
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
@@ -208,16 +215,15 @@ class ViewDot(object):
         try:
             data = file(fpath, 'r').read()
         except IOError:
-            fault = _sysmsg % ('error', _('Attachment not found at') + 
-                               ' %s\n' % repr(fpath))
+            fault = _(u'Attachment not found at') + u' %s\n' % repr(fpath)
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
             self.fail(fault)
 
         if not gv_found:
-            fault = _("ERROR: Graphviz Python extensions not installed. " +\
-                      "Not performing layout.")
+            fault = _(u"ERROR: Graphviz Python extensions not installed. " +\
+                      u"Not performing layout.")
             if self.inline:
                 self.request.write(self.request.formatter.text(fault))
                 return
@@ -233,7 +239,7 @@ class ViewDot(object):
 
         if not self.inline:
             if self.format == 'zgr':
-                request.http_headers()
+                request.emit_http_headers()
                 request.write('<html><body>')
             elif isinstance(self.request, RequestModPy):
                 request.setHttpHeader('Content-type: image/%s' %
@@ -254,10 +260,9 @@ class ViewDot(object):
 
             request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
-                (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
-                'width="%s" height="%s">' % (form_escape(self.width), 
-                                             form_escape(self.height))+\
+                'archive="%s/gwikicommon/zgrviewer/zvtm.jar,%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
+                (self.request.cfg.url_prefix_static, self.request.cfg.url_prefix_static)+\
+                'width="%s" height="%s">' % (self.width, self.height)+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
                 '<param name="scriptable" value="false" />' +\
@@ -273,9 +278,9 @@ class ViewDot(object):
 
             params = ""
             if self.height:
-                params += 'height="%s" ' % form_escape(self.height)
+                params += 'height="%s" ' % self.height
             if self.width:
-                params += 'width="%s"' % form_escape(self.width)
+                params += 'width="%s"' % self.width
 
             page = ('<img src="%s" %s alt="%s"><br>\n' %
                     (img_url, _('visualisation'), params))
@@ -285,11 +290,9 @@ class ViewDot(object):
 
         if not self.inline and self.format == 'zgr':
             request.write('</html></body>')
-        elif self.inline:
-            return
         else:
-            raise MoinMoinNoFooter
-
+            pass # No footer
+            
     def getLayoutInFormat(self, graphviz, format):
         tmp_fileno, tmp_name = mkstemp()
         graphviz.layout(file=tmp_name, format=format)

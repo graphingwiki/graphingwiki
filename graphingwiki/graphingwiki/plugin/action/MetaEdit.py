@@ -218,13 +218,16 @@ def show_editform(wr, request, pagename, args):
 
     wr(formatter.table(0))
     wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
+    wr(u'<input type="submit" name="cancel" value="%s">\n', _('Cancel'))
     wr(u'</form>\n')
 
 def _enter_page(request, pagename):
     _ = request.getText
-    
+
+    request.emit_http_headers()
+
     title = _('Metatable editor')
-    wikiutil.send_title(request, title,
+    request.theme.send_title(title,
                         pagename=pagename)
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -240,10 +243,10 @@ def _exit_page(request, pagename):
     # End content
     request.write(request.page.formatter.endContent()) # end content div
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)
+    request.theme.send_closing_html()
 
 def execute(pagename, request):
-    request.http_headers()
     _ = request.getText
 
     def wr(fmt, *args):
@@ -254,7 +257,14 @@ def execute(pagename, request):
     request.setContentLanguage(request.lang)
     form = fix_form(request.form)
 
-    if form.has_key('save') or form.has_key('saveform'):
+    if form.has_key('cancel'):
+        request.reset()
+        backto = form.get('backto', [None])[0]
+        if backto:
+            request.page = Page(request, backto)
+        
+        request.page.send_page()
+    elif form.has_key('save') or form.has_key('saveform'):
         # MetaFormEdit is much closer to set_meta in function
         if form.has_key('saveform'):
             added, discarded = {pagename: dict()}, {pagename: dict()}
@@ -295,7 +305,7 @@ def execute(pagename, request):
         if backto:
             request.page = Page(request, backto)
         
-        request.page.send_page(request, msg=msg)
+        request.page.send_page(msg=msg)
     elif form.has_key('args'):
         _enter_page(request, pagename)
         formatter = request.page.formatter
@@ -322,3 +332,10 @@ def execute(pagename, request):
         show_queryform(wr, request, pagename)
 
         _exit_page(request, pagename)
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()

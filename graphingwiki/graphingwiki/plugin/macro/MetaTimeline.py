@@ -29,7 +29,7 @@ def execute(macro, args):
 
     return """
     <div id="recentchangestimeline" style="height: 400px; margin: 2em;">
-      <script type="text/javascript" src="%s/simile/recentchangestimeline.js"></script>
+      <script type="text/javascript" src="%s/gwikicommon/simile/recentchangestimeline.js"></script>
 
       <input type="hidden" id="recentchangestimelinefocus" value="%s" />
       <input type="hidden" id="recentchangestimelinesource" value="%s" />
@@ -38,4 +38,4 @@ def execute(macro, args):
         <p>No JavaScript</p>
       </noscript>
     </div>
-""" % (macro.request.cfg.url_prefix, focus, source_url)
+""" % (macro.request.cfg.url_prefix_static, focus, source_url)

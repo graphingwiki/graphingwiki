@@ -50,9 +50,9 @@ def parse_input_file( metas, path ):
         id = title.split('.')
         sname = ' '.join( id )
         metas[line]["Attribution"].add(epoch)
-        metas[line]["SMTP Domain"].add( '["%s"]' % domain )
+        metas[line]["SMTP Domain"].add('[[%s]]' % domain)
         metas[line]["SMTP Local Part"].add(local)
-        metas[line]["See Also"].add( '["%s"]' % sname )
+        metas[line]["See Also"].add('[[%s]]' % sname)
 
 def import_metas( collab, metas, template, verbose ):
     for page, pmeta in metas.iteritems():

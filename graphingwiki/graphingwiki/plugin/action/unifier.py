@@ -30,6 +30,8 @@
 
 from copy import copy, deepcopy
 
+from graphingwiki.patterns import getgraphdata
+
 from N3Dump import get_page_fact, get_all_facts
 
 class Term(object):
@@ -46,7 +48,7 @@ class Unifier(object):
     def __init__(self, request):
         self.request = request
         if request:
-            self.graphdata = request.graphdata
+            self.graphdata = getgraphdata(request)
         self.loaded = []
         self.all_loaded = 0
         self.backlog = []

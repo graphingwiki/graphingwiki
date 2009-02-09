@@ -365,8 +365,13 @@ class Graphviz:
             raise "No graph element or element type specified"
 
         for key, elem in attrs.iteritems():
-            key, elem = map(encode_page, [key, elem])
-            gv.setv(item, key, elem)
+            if isinstance(elem, set):
+                for e in elem:
+                    key, e = map(encode_page, [key, e])
+                    gv.setv(item, key, e)
+            else:
+                key, elem = map(encode_page, [key, elem])
+                gv.setv(item, key, elem)
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
     def _iterattrs(self, handle=""):

@@ -4,6 +4,7 @@ import md5
 
 from tempfile import mkdtemp
 from shutil import rmtree
+from cStringIO import StringIO
 
 from graphingwiki.editing import save_attachfile
 from graphingwiki.editing import load_attachfile
@@ -69,12 +70,6 @@ def load(request, pagename, filename, start, end):
 def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
     _ = request.getText
 
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a "+
-                                    "file to this page"))
-
     # Also check ACLs
     if not request.user.may.write(pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to attach a "+
@@ -112,29 +107,18 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         return missing
 
     # Reassembly the file from the chunks into a temp file.
-    tmpDir = mkdtemp()
-    tmpPath = os.path.join(tmpDir, filename)
-    try:
-        tmp = file(tmpPath, 'wb')
-    except:
-        return xmlrpclib.Fault(3, _("Could not create temp file"))
+    buffer = StringIO()
     
-    try:
-        for bite in digests:
-            data = load_attachfile(request, pagename, bite)
-            if not data:
-                return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
-                                                      filename))
-            tmp.write(data)
-    except:
-        tmp.close()
-        return xmlrpclib.Fault(3, _("Unknown error"))
-
-    tmp.close()
+    for bite in digests:
+        data = load_attachfile(request, pagename, bite)
+        if not data:
+            return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting "+
+                                                    "attachment"),
+                                                  filename))
+        buffer.write(data)
 
     # Attach the decoded file.
-    success = save_attachfile(request, pagename, tmpPath, filename, overwrite)
-    rmtree(tmpDir)
+    success = save_attachfile(request, pagename, buffer.getvalue(), filename, overwrite, True)
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:
@@ -143,6 +127,9 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
     # On success signal that there were no missing chunks.
     if success:
         return list()
+    
+    if overwrite == False:
+        return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
 
     return xmlrpclib.Fault(2, _("Attachment not saved"))
 

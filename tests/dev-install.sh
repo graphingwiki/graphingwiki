@@ -9,21 +9,34 @@
 
 # (darwinports moin and graphviz aren't good enough)
 
+# Warning!:
+#    $gwdata and $gwinstall directories are removed before new install. 
+#    So if you have some data there, it will be lost 
+#    This is done because you might have there something that does not work
 
-moinsrc=$PWD/moin-1.6.1
-gwsrc=$PWD/gwiki-1.6-branch
+
+PWD=/Users/prikula/asennukset
+
+moinsrc=$PWD/moin-1.6.4
+gwsrc=$PWD/branches/moin-1.6-branch/graphingwiki
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
 
 
 
 function installmoin {
+    
+    echo 'installing moinmoin'
+    echo $gwinstall
+    mkdir -p $gwinstall
     (cd $moinsrc &&
     python setup.py install --prefix=$gwinstall)
 }
 
 function installgw {
+
     mkdir -p $gwdata 
+    
     (cd $gwsrc &&
     python setup.py install --prefix=$gwinstall)
 }
@@ -36,16 +49,24 @@ function makewiki {
     sed < $template/server/moin.py > $gwdata/moin.py \
       "s!docs = os.path.join(moinpath, 'wiki', 'htdocs')!docs = '$gwinstall/share/moin/htdocs'!"
     cp $template/config/wikiconfig.py $gwdata/wikiconfig.py
-    echo "    actions_excluded = []" >> $gwdata/wikiconfig.py
-    echo "    xmlrpc_putpage_trusted_only = 0" >> $gwdata/wikiconfig.py
     echo "    acl_rights_before = u\"All:read,write,delete,revert,admin\"" >> $gwdata/wikiconfig.py
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
     python $gwinstall/bin/gwiki-install -v $gwdata
 }
 
+#remove this, if you do not want to erase $gwinstall before every install
+rm -rf $gwinstall
+
+#remove this, if you do not want to erase $gwdata before every install
+rm -rf $gwdata 
+
 installmoin
 spdir=`echo $gwinstall/lib/python?.*/site-packages`
-export PYTHONPATH=$spdir:$gwdata
+
+#this is for mac install
+gvdir=/usr/local/lib/graphviz/python
+
+export PYTHONPATH=$spdir:$gvdir:$gwdata
 echo set PYTHONPATH to $PYTHONPATH
 installgw
 makewiki
@@ -53,3 +74,6 @@ sleep 1
 echo start command:
 echo "cd $gwdata; env PYTHONPATH=$PYTHONPATH python moin.py"
 (cd $gwdata; python moin.py)
+
+
+

@@ -43,7 +43,6 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.util import MoinMoinNoFooter
 from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin.request import Clock
@@ -51,25 +50,23 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.patterns import *
+from graphingwiki.patterns import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page
 from graphingwiki.editing import ordervalue
 
 import math
 import colorsys
 
 # Header stuff for IE
-msie_header = """Content-type: message/rfc822
-
-From: <Graphingwiki>
+msie_header = """From: <Graphingwiki>
 Subject: A graph
 Date: Sat, 8 Apr 2006 23:57:55 +0300
 MIME-Version: 1.0
-Content-Type: multipart/related; boundary="partboundary"; type="text/html"
+Content-Type: multipart/related; boundary="partboundary1AuwCgrY/3/JaRKh"; type="text/html"
 
---partboundary
-Content-Type: text/html
+--partboundary1AuwCgrY/3/JaRKh
+Content-Type: text/html; charset="%s"
 
-"""
+""" % config.charset
 
 def add_mime_part(name, type, data):
     basdata = ''
@@ -78,7 +75,7 @@ def add_mime_part(name, type, data):
     basdata = basdata + data[x*64:]
 
     return """
---partboundary
+--partboundary1AuwCgrY/3/JaRKh
 Content-Location: %s
 Content-Type: %s
 Content-Transfer-Encoding: base64
@@ -86,7 +83,7 @@ Content-Transfer-Encoding: base64
 %s
 """ % (name, type, basdata)
 
-msie_end = "\n--partboundary--\n\n"
+msie_end = "\n--partboundary1AuwCgrY/3/JaRKh--\n\n"
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
@@ -595,7 +592,7 @@ class GraphShower(object):
             # Shapefiles
             if getattr(obj, 'gwikishapefile', None):
                 # Enter file path for attachment shapefiles
-                value = obj.gwikishapefile[11:]
+                value = obj.gwikishapefile[13:-2]
                 components = value.split('/')
                 if len(components) == 1:
                     page = objname
@@ -608,7 +605,7 @@ class GraphShower(object):
                 # get attach file path, empty label
                 if exists:
                     n.gwikishapefile = shapefile
-                    
+                
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
                     # of box shape, so the default peripheries value is 1
@@ -1114,6 +1111,7 @@ class GraphShower(object):
         mappi = self.get_layout(graphviz, 'cmapx')
 
         # Dot output is utf-8
+        # XXX so why does this use config.charset?
         self.request.write(unicode(mappi, config.charset) + '\n')
 
     def send_gv(self, gr):
@@ -1153,9 +1151,8 @@ class GraphShower(object):
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(self.request, self.pagename)
-        else:
-            raise MoinMoinNoFooter
+            self.request.theme.send_footer(self.pagename)
+            self.request.theme.send_closing_html()
 
     def send_headers(self):
         request = self.request
@@ -1163,14 +1160,14 @@ class GraphShower(object):
         _ = request.getText
 
         if self.format != 'dot' or not gv_found:
-            request.http_headers()
+            request.emit_http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
   
             title = _(u'Wiki linkage as seen from') + \
                     '"%s"' % pagename
 
-            wikiutil.send_title(request, title, pagename=pagename)
+            request.theme.send_title(title, pagename=pagename)
 
             # fix for moin 1.3.5
             if not hasattr(request, 'formatter'):
@@ -1183,8 +1180,8 @@ class GraphShower(object):
             request.write(formatter.startContent("content"))
             formatter.setPage(self.request.page)
         else:
-            request.http_headers(["Content-type: text/plain;charset=%s" %
-                                  config.charset])
+            request.emit_http_headers(["Content-type: text/plain;charset=%s" %
+                                       config.charset])
             formatter = TextFormatter(request)
             formatter.setPage(self.request.page)
 
@@ -1287,7 +1284,8 @@ class GraphShower(object):
         formatter = self.send_headers()
         self.request.write(_sysmsg % ('error', reason))
         self.request.write(self.request.formatter.endContent())
-        wikiutil.send_footer(self.request, self.pagename)
+        self.request.theme.send_footer(self.pagename)
+        self.request.theme.send_closing_html()
 
     def edge_tooltips(self, outgraph):
         for edge in outgraph.edges:
@@ -1313,7 +1311,7 @@ class GraphShower(object):
             
         return outgraph
 
-    def execute(self):        
+    def execute(self):
         cl.start('execute')
         _ = self.request.getText
 
@@ -1368,7 +1366,7 @@ class GraphShower(object):
                      self.urladd.replace('&inline=Inline', '')
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
-            self.request.write('[[InlineGraph(%s)]]' % urladd)
+            self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
         elif self.format in ['svg', 'dot', 'png']:
             if not gv_found:
                 self.send_form()
@@ -1421,7 +1419,10 @@ class GraphShower(object):
         self.request.write("%s: " % _('Density'))
         nroedges = float(len(outgraph.edges))
         nronodes = float(len(outgraph.nodes))
-        self.request.write(str(nroedges / (nronodes*nronodes-1)))
+        if nronodes == 0 or (nronodes-1 == 0):
+            self.request.write('0')
+        else:
+            self.request.write(str(nroedges / (nronodes*nronodes-1)))
         self.request.write(formatter.paragraph(0))
 
     # IE versions of some relevant functions
@@ -1470,7 +1471,7 @@ class GraphShower(object):
                                    'image/' + self.format,
                                    b64encode(img)))
             
-                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n'
+                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n' %
                                    (filename, _('visualisation'), legend.name))
                 self.send_map(legend)
 
@@ -1483,12 +1484,13 @@ class GraphShower(object):
         pagename = self.pagename
 
         if self.format != 'dot' or not gv_found:
+            request.emit_http_headers(["Content-type: message/rfc822"])
             request.write(msie_header)
             _ = request.getText
 
             title = _('Wiki linkage as seen from') + \
                     '"%s"' % pagename
-            wikiutil.send_title(request, title, pagename=pagename)
+            request.theme.send_title(title, pagename=pagename)
 
             # Start content - IMPORTANT - without content div, there is no
             # direction support!
@@ -1496,8 +1498,8 @@ class GraphShower(object):
             request.write(formatter.startContent("content"))
             formatter.setPage(self.request.page)
         else:
-            request.http_headers(["Content-type: text/plain;charset=%s" %
-                                  config.charset])
+            request.emit_http_headers(["Content-type: text/plain;charset=%s" %
+                                       config.charset])
             formatter = TextFormatter(request)
             formatter.setPage(self.request.page)
 
@@ -1508,12 +1510,11 @@ class GraphShower(object):
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
-            wikiutil.send_footer(self.request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
             self.request.write('</body>\n</html>\n')
             self.send_parts_ie()
             self.request.write(msie_end)
 
-        raise MoinMoinNoFooter
 
 def execute(pagename, request):
     graphshower = GraphShower(pagename, request)

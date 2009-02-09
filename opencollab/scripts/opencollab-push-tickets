@@ -37,13 +37,13 @@ def handle_unknown( odata, object, tracker, oname, target, key ):
 def handle_link( odata, object, tracker, oname, target, key ):
     if object is not None:
         if re.search('@', object):
-            odata[oname].add(link)
+            odata[oname].add(link)   ## this does not make sense? Where does 'link' come from?
         else:
-            odata[oname].add( '["' + tracker + '/' + target + object + '"]' )
+            odata[oname].add('[[' + tracker + '/' + target + object + ']]')
 
 def handle_multilink( odata, object, tracker, oname, target, key ):
     if object is not None:
-        links = map( lambda x: '["' + tracker + '/' + target + '%s"]' % x, object )
+        links = map(lambda x: '[[' + tracker + '/' + target + '%s]]' % x, object)
         for t in links:
             odata[oname].add( t )
 
@@ -114,7 +114,7 @@ def push_object( odata, pname, collab, tracker, category, verbose ):
             else:
                 fname = "raw"
             fcontent = cStringIO.StringIO( odata.pop("content").single() )
-            odata["content"].add( "inline:" + fname )
+            odata["content"].add("[[attachment:" + fname + "]]")
             for current, total in collab.putAttachmentChunked( pname, fname, fcontent ):
                 percent = 100.0 * current / float(max(total, 1))
                 status = current, total, percent

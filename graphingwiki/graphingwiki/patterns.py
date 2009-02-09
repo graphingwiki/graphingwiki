@@ -2,8 +2,8 @@
 """
     patterns class
 
-    @copyright: 2006 by Joachim Viide and
-                        Juhani Eronen <exec@iki.fi>
+    @copyright: 2006-2008 by Joachim Viide and
+                             Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -41,7 +41,6 @@ from codecs import getencoder
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
-from MoinMoin.parser.wiki import Parser
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
 
@@ -98,16 +97,17 @@ nonguaranteeds_p = lambda node: filter(lambda y: y not in
 
 NO_TYPE = u'_notype'
 
-# Ripped off from Parser
-url_pattern = u'|'.join(config.url_schemas)
+# FIXME: Is this needed?
+def resolve_iw_url(request, wiki, page): 
+    res = wikiutil.resolve_interwiki(request, wiki, page) 
+    if res[3] == False: 
+        iw_url = res[1] + res[2] 
+    else: 
+        iw_url = './InterWiki' 
+        
+    return iw_url 
 
-url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
-    'url_guard': u'(^|(?<!\w))',
-    'url': url_pattern,
-    'punct': Parser.punct_pattern,
-}
-
-url_re = re.compile(url_rule)
+ATTACHMENT_SCHEMAS = ["attachment", "drawing"]
 
 def encode_page(page):
     return encode(page)
@@ -117,15 +117,15 @@ def decode_page(page):
 
 def node_type(request, nodename):
     if ':' in nodename:
-        if url_re.search(nodename):
+        if request.graphdata.url_re.search(nodename):
             return 'url'
 
         start = nodename.split(':')[0]
-        if start in Parser.attachment_schemas:
+        if start in ATTACHMENT_SCHEMAS:
             return 'attachment'
 
-        get_interwikilist(request)
-        if request.iwlist.has_key(start):
+        iw_list = wikiutil.load_wikimap(request)
+        if iw_list.has_key(start):
             return 'interwiki'
 
     return 'page'
@@ -133,23 +133,21 @@ def node_type(request, nodename):
 def filter_categories(request, candidates):
     # Let through only the candidates that are both valid category
     # names and WikiWords
-    wordRex = re.compile("^" + Parser.word_rule + "$", re.UNICODE)
 
-    candidates = wikiutil.filterCategoryPages(request, candidates)
-    candidates = filter(wordRex.match, candidates)
+    # Nah, the word rules in 1.6 were not for the feint for heart,
+    # just use the wikiutil function until further notice
 
-    return candidates
+    return wikiutil.filterCategoryPages(request, candidates)
 
 def get_url_ns(request, pagename, link):
     # Find out subpage level to adjust URL:s accordingly
     subrank = pagename.count('/')
     # Namespaced names
     if ':' in link:
-        if not hasattr(request, 'iwlist'):
-            get_interwikilist(request)
+        iw_list = wikiutil.load_wikimap(request)
         iwname = link.split(':')
-        if request.iwlist.has_key(iwname[0]):
-            return request.iwlist[iwname[0]] + iwname[1]
+        if iw_list.has_key(iwname[0]):
+            return iw_list[iwname[0]] + iwname[1]
         else:
             return '../' * subrank + './InterWiki'
     # handle categories as ordernodes different
@@ -160,6 +158,8 @@ def get_url_ns(request, pagename, link):
         return '../' * subrank + './Property' + link
 
 def format_wikitext(request, data):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     request.page.formatter = request.formatter
     request.formatter.page = request.page
     parser = Parser(data, request)
@@ -191,29 +191,10 @@ def absolute_attach_name(name, target):
     if '?' in name:
         name = name.split('?', 1)[0]
 
-    if abs_method in Parser.attachment_schemas and not '/' in target:
+    if abs_method in ATTACHMENT_SCHEMAS and not '/' in target:
         target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
 
     return target 
-
-def get_interwikilist(request):
-    # request.cfg._interwiki_list is gathered by wikiutil
-    # the first time resolve_wiki is called
-    wikiutil.resolve_wiki(request, 'Dummy:Testing')
-
-    iwlist = dict()
-    selfname = get_selfname(request)
-
-    # Add interwikinames to namespaces
-    for iw in request.cfg._interwiki_list:
-        iw_url = request.cfg._interwiki_list[iw]
-        if iw_url.startswith('/'):
-            if iw != selfname:
-                continue
-            iw_url = get_wikiurl(request)
-        iwlist[iw] = iw_url
-
-    request.iwlist = iwlist
 
 def get_selfname(request):
     if request.cfg.interwikiname:
@@ -234,24 +215,42 @@ class GraphData(UserDict.DictMixin):
         self.request = request
 
         # Category, Template matching regexps
-        self.cat_re = re.compile(request.cfg.page_category_regex)
-        self.temp_re = re.compile(request.cfg.page_template_regex)
-
-        self.graphshelve = os.path.join(request.cfg.data_dir,
+        self.graphshelve = os.path.join(request.cfg.data_dir, 
                                         'graphdata.shelve')
 
+        self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
+        if self.use_sq_dict:
+            import sq_dict
+            self.shelveopen = sq_dict.shelve
+        else:
+            self.shelveopen = shelve.open
+
+        # XXX (falsely) assumes shelve.open creates file with same name;
+        # it happens to work with the bsddb backend.
         if not os.path.exists(self.graphshelve):
-            self.db = shelve.open(self.graphshelve, 'c')
-            self.db.close()
+            db = self.shelveopen(self.graphshelve, 'c')
+            db.close()
 
         self.db = None
-        self.opened = False
-        self.writing = False
         self.lock = None
+
+        self.cache = dict()
+        self.writing = False
         
         self.readlock()
 
-        self.cache = dict()
+        from MoinMoin.parser.text_moin_wiki import Parser
+
+        # Ripped off from Parser
+        url_pattern = u'|'.join(config.url_schemas)
+
+        url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
+            'url_guard': u'(^|(?<!\w))',
+            'url': url_pattern,
+            'punct': Parser.punct_pattern,
+        }
+
+        self.url_re = re.compile(url_rule)
 
     def __getitem__(self, item):
         page = encode_page(item)
@@ -293,34 +292,40 @@ class GraphData(UserDict.DictMixin):
             self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
             self.lock.acquire()
 
-        if not self.opened:
-            self.db = shelve.open(self.graphshelve, "r")
-            self.opened = True
+        if self.db is None:
+            self.db = self.shelveopen(self.graphshelve, "r")
             self.writing = False
 
     def writelock(self):
-        if self.opened and not self.writing:
+        if self.db is not None and not self.writing:
             self.db.close()
-            self.opened = False
+            self.db = None
         
-        if self.lock is not None and self.lock.isLocked() \
-                and isinstance(self.lock, ReadLock):
+        if (self.lock is not None and self.lock.isLocked() and 
+            isinstance(self.lock, ReadLock)):
             self.lock.release()
+            self.lock = None
+
         if self.lock is None or not self.lock.isLocked():
             self.lock = WriteLock(self.request.cfg.data_dir, 
-                                  readlocktimeout=10.0)
+                                  readlocktimeout=60.0)
             self.lock.acquire()
 
-        if not self.opened or not self.writing:
-            self.db = shelve.open(self.graphshelve, "c")
+        if self.db is None:
+            self.db = self.shelveopen(self.graphshelve, "c")
             self.writing = True
-            self.opened = True
 
     def closedb(self):
-        self.opened = False
-        if self.lock and self.lock.isLocked():
+        if self.lock is not None and self.lock.isLocked():
             self.lock.release()
-        self.db.close()
+            self.lock = None
+
+        if self.db is not None:
+            self.db.close()
+            self.db = None
+
+        self.cache.clear()
+        self.writing = False
 
     def getpage(self, pagename):
         # Always read data here regardless of user rights,
@@ -392,10 +397,20 @@ class GraphData(UserDict.DictMixin):
 
         if page.has_key('saved'):
             node.gwikiURL += urladd
-        # try to be helpful and add editlinks to non-underlay pages
+            # FIXME: Is this needed?
+            # node.gwikiURL = './' + node.gwikiURL
         elif Page(self.request, pagename).isStandardPage():
+            # try to be helpful and add editlinks to non-underlay pages
             node.gwikiURL += u"?action=edit"
             node.gwikitooltip = self.request.getText('Add page')
+
+        if node.gwikiURL.startswith('attachment:'):
+            pagefile = node.gwikiURL.split(':')[1]
+            page, file = attachment_pagefile(pagefile, pagename)
+
+            node.gwikilabel = encode(file)
+            node.gwikiURL = encode(actionname(self.request, page) + \
+                '?action=AttachFile&do=get&target=' + file)
 
         return graph
 
@@ -413,6 +428,9 @@ class GraphData(UserDict.DictMixin):
         if not self.request.user.may.read(pagename):
             return None
 
+        cat_re = re.compile(self.request.cfg.page_category_regex)
+        temp_re = re.compile(self.request.cfg.page_template_regex)
+
         page = self.getpage(pagename)
         if not page:
             return None
@@ -429,8 +447,7 @@ class GraphData(UserDict.DictMixin):
         for type in links:
             for src in links[type]:
                 # Filter Category, Template pages
-                if self.cat_re.search(src) or \
-                       self.temp_re.search(src):
+                if cat_re.search(src) or temp_re.search(src):
                     continue
                 # Add page and its metadata
                 # Currently pages can have links in them only
@@ -444,8 +461,7 @@ class GraphData(UserDict.DictMixin):
         for type in links:
             for i, dst in enumerate(links[type]):
                 # Filter Category, Template pages
-                if self.cat_re.search(dst) or \
-                       self.temp_re.search(dst):
+                if cat_re.search(dst) or temp_re.search(dst):
                     continue
 
                 # Fix links to everything but pages
@@ -483,7 +499,9 @@ class GraphData(UserDict.DictMixin):
                 elif nodetype == 'interwiki':
                     # Get effective URL:s to interwiki URL:s
                     iwname = dst.split(':')
-                    gwikiurl = self.request.iwlist[iwname[0]] + iwname[1]
+                    iw_list = wikiutil.load_wikimap(self.request)
+
+                    gwikiurl = iw_list[iwname[0]] + iwname[1]
                     tooltip = iwname[1] + ' ' + \
                         self.request.getText('page on') + \
                         ' ' + iwname[0] + ' ' + \

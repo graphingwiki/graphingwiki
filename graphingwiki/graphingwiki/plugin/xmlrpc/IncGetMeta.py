@@ -11,7 +11,6 @@ import base64
 import shelve
 import xmlrpclib
 
-from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
 
 def diff(previous, current):
@@ -55,8 +54,7 @@ def inc_get_metas(request, args, handle=None):
     current = dict()
     for page in pages:
         # metatable_parseargs checks read permissions, no need to do it again
-        metas = get_metas(request, page, keys, 
-                          checkAccess=False)
+        metas = get_metas(request, page, keys, checkAccess=False)
 
         current[page] = dict()
         for key in keys:
@@ -80,6 +78,4 @@ def inc_get_metas(request, args, handle=None):
 
 def execute(xmlrpcobj, query, handle=None):
     request = xmlrpcobj.request
-    request.formatter = TextFormatter(request)
-
     return inc_get_metas(request, query, handle)

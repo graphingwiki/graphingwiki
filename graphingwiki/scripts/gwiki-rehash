@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
     gwiki-rehash
@@ -37,12 +37,14 @@ from codecs import getencoder
 from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
-from MoinMoin import request
+from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
-import graphingwiki.securitypolicy
+
+from graphingwiki import install_hooks
+install_hooks()
 
 usage = "usage: %prog <path-to-wiki> [pagename]\n"
 parser = OptionParser(usage=usage)
@@ -64,8 +66,9 @@ try:
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
-    from wikiconfig import Config
-    datadir = Config.data_dir
+    from MoinMoin.request.request_cli import Request as RequestCLI
+    req = RequestCLI()
+    datadir = req.cfg.data_dir
     pagesdir = os.path.join(datadir, 'pages')
     if len(args) > 1:
         pagename = unicode(args[1], sys.getfilesystemencoding())
@@ -107,15 +110,15 @@ total = len(pages)
 padding = len(str(total))
 count = 1
 
-# Just init request
-req = request.RequestCLI()
+# Just init one request
+req = RequestCLI()
 
 for pagename in pages:
     page_enc = _e(pagename)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
     count += 1
-    # Make a new request for the page, initiate graphdata
-
+    # Implant relevant bits for this page into our recycleable req
+    
     pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
     picklefile = os.path.join(pagedir, 
@@ -130,7 +133,7 @@ for pagename in pages:
     pagepath = underlay_to_pages(req, p)
     text = p.get_raw_body()
 
-    # Apply the graphsaver-action to the page
+    # Apply the graphsaver action to the page
     graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pagename, req, text, pagepath, p)
 

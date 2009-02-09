@@ -87,8 +87,8 @@ def parse_xml( path, file, nmaprun_page, metas ):
         ip, mac = get_addr( host )
         if ip is not None:
             ip_page = ip + "/nmap"
-            metas[nmaprun_page]['IPv4 Address'].add( '["%s"]' % ip )
-            metas[ip_page]['MAC Address'].add( '["%s"]' % mac )
+            metas[nmaprun_page]['IPv4 Address'].add('[[%s]]' % ip)
+            metas[ip_page]['MAC Address'].add('[[%s]]' % mac)
             for element in host:
                 if element.keys():
                     for k, v in element.items():
@@ -106,7 +106,7 @@ def parse_xml( path, file, nmaprun_page, metas ):
                 #                service, state = service.items()
         else:
            print "Parsing ", host, " information failed!" 
-    metas[nmaprun_page]["XML File"].add( "attachment:" + file )
+    metas[nmaprun_page]["XML File"].add("[[attachment:" + file + "]]")
 
 def import_metas( collab, metas, template, verbose ):
     for page, pmeta in metas.iteritems():

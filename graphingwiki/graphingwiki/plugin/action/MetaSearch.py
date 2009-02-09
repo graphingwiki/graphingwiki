@@ -60,13 +60,13 @@ def elemlist(request, formatter, elems, text):
     request.write(formatter.bullet_list(0))
 
 def execute(pagename, request):
-    request.http_headers()
+    request.emit_http_headers()
     _ = request.getText
 
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
-    wikiutil.send_title(request, request.getText('Search by metadata'),
+    request.theme.send_title(request.getText('Search by metadata'),
                         pagename=pagename)
 
     # Start content - IMPORTANT - without content div, there is no
@@ -173,4 +173,6 @@ def execute(pagename, request):
     request.write(formatter.endContent()) # end content div
 
     # Footer
-    wikiutil.send_footer(request, pagename)
+    request.theme.send_footer(pagename)
+
+    request.theme.send_closing_html()

@@ -1,0 +1,146 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    hacked up from opencollab-import-mresolved
+    
+    @copyright: 2008 Lari Huttunen, Juhani Eronen, Erno Kuusela
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+"""
+import sys
+import os
+import csv
+import optparse
+import ConfigParser
+import collections
+
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Meta
+## from opencollab.util.regexp import dig_soaref_re, utctimestamp
+## from opencollab.util.network import country_tld
+ 
+def import_metas( wiki, metas, template, verbose ):
+    for page, pmeta in metas.iteritems():
+        status = wiki.setMeta( page, pmeta, template=template, replace=True )
+        if verbose:
+            print status
+
+def parse_nvd_data(fname, metas):
+    from lxml import objectify
+    objectify.enable_recursive_str()
+    tree = objectify.parse(open(fname))
+    e = tree.getroot().entry
+    do_nvd_entry(e, metas)
+    while 1:
+        e = e.getnext()
+        if e is None:
+            break
+        do_nvd_entry(e, metas)
+
+def do_nvd_entry(e, metas):
+    cveid = e.get('id')
+    m = metas[cveid]
+
+    for s in 'published-datetime', 'last-modified-datetime', 'security-protection', 'summary', 'severity':
+        try:
+            x = e['{http://scap.nist.gov/schema/vulnerability/0.4}' + s]
+            m[s] = unicode(x)
+            #print s, x.encode('ascii', 'replace')
+        except AttributeError:
+            pass
+
+    try:
+        vs = e['{http://scap.nist.gov/schema/vulnerability/0.4}vulnerable-software-list']
+    except AttributeError:
+        vs = []
+    for s in vs:
+        #print 'vulnerable-software', s['{http://scap.nist.gov/schema/vulnerability/0.4}product']
+        m['vulnerable-software'] = unicode(s['{http://scap.nist.gov/schema/vulnerability/0.4}product'])
+                   
+
+    try:
+        refs = e['{http://scap.nist.gov/schema/vulnerability/0.4}references']
+    except AttributeError:
+        refs = []
+
+    for r in refs:
+        #print 'ref',
+        #print r['{http://scap.nist.gov/schema/vulnerability/0.4}source'],
+        #print r['{http://scap.nist.gov/schema/vulnerability/0.4}reference'].get('href')
+        m['reference'] = unicode(r['{http://scap.nist.gov/schema/vulnerability/0.4}source']) + u' ' + unicode(r['{http://scap.nist.gov/schema/vulnerability/0.4}reference'].get('href'))
+    
+    metric = lambda x: e['{http://scap.nist.gov/schema/vulnerability/0.4}cvss']['{http://scap.nist.gov/schema/cvss-v2/0.2}base_metrics']['{http://scap.nist.gov/schema/cvss-v2/0.2}' + x]
+    
+    for mn in 'score', 'access-vector', 'access-complexity', 'availability-impact', 'confidentiality-impact', 'integrity-impact':
+        try:
+            z =  metric(mn)
+            #print 'cvss-'+mn, z
+        except AttributeError:
+            pass
+        else:
+            m['cvss-' + mn] = unicode(z)
+    m['gwikicategory'] = ['CategoryVulnerability']
+
+def parse_cve_data( fname, metas ):
+    # Possible data:
+    # CVE-1999-0008,Entry,"Buffer overflow in NIS+, in Sun's rpc.nisd program.","CERT:CA-98.06.nisd   |   SUN:00170   |   URL:http://sunsolve.sun.com/pub-cgi/retrieve.pl?doctype=coll&doc=secbull/170   |   ISS:June10,1998   |   XF:nisd-bo-check",,,
+    reader = csv.reader(open(fname))
+        
+    # Get header row
+    reader.next()
+    reader.next()
+    fieldnames = reader.next()
+
+    # fast forward until blank
+    for row in reader:
+        if not row[0]:
+            break
+
+    for row in reader:
+        for k, v in zip(fieldnames, row):
+            metas[row[0]][k].add(v)
+            
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="cpath",
+        help="Config file path.")
+    parser.add_option("-v", 
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." ) 
+    parser.set_usage("%prog [options] WIKIURL FILENAME")
+
+    options, args = parser.parse_args()
+    if options.cpath:
+        if( len(args) != 1 ):
+            parser.error("File name has to be defined")
+        fname = args.pop()
+        wiki = CLIWiki( config=options.cpath )
+    elif len(args) != 2:
+        parser.error("wiki url and file name have to be defined")
+    else:
+        url, fname = args
+        wiki = CLIWiki( url )
+
+    metas = collections.defaultdict( Meta )
+    template = "CveTemplate"
+    print 'parsing data'
+    #parse_nvd_data( fname, metas )
+    parse_nvd_data( fname, metas )
+    if 1:
+        print 'import metas'
+        import_metas( wiki, metas, template, options.verbose )
+    else:
+        s = set()
+        for k in metas.keys():
+            for kk in metas[k].keys():
+                s.add(kk)
+        print sorted(s)
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

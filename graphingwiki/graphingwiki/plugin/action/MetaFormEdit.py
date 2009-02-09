@@ -34,21 +34,18 @@ class FormPage(Page):
 
     # It's important not to cache this, as the wiki thinks we are
     # using the default parser
-    def send_page_content(self, request, Parser, body, format_args='',
+    def send_page_content(self, request, body, format_args='',
                           do_cache=0, **kw):
-        parser = wikiutil.importPlugin(request.cfg, "parser",
-                                       'wiki_form', "Parser")
-
+        kw['format'] = 'wiki_form'
         kw['format_args'] = format_args
         kw['do_cache'] = 0
-        apply(Page.send_page_content, (self, request, parser, body), kw)
+        apply(Page.send_page_content, (self, request, body), kw)
 
 def wr(fmt, *args):
     args = tuple(map(form_escape, args))
     return fmt % args
 
 def execute(pagename, request):
-    request.http_headers()
     _ = request.getText
 
     formpage = '../' * pagename.count('/') + pagename
@@ -59,7 +56,9 @@ def execute(pagename, request):
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
-             _('Save Changes')) + '</p></div>'
+             _('Save Changes')) + \
+             wr('<input type=submit name=cancel value="%s">',
+                _('Cancel')) +'</p></div>'
 
     # Template to use for any new pages
     template = request.form.get('template', [''])[0]
@@ -99,7 +98,7 @@ def execute(pagename, request):
             editor.user = newreq.user
             text = editor.get_raw_body()
             editor.page_name = pagename
-            newreq.page._raw_body = editor._expand_variables(text)
+            newreq.page.set_raw_body(editor._expand_variables(text))
             newreq.page.exists = lambda **kw: True
             newreq.page.lastEditInfo = lambda: {}
             newpage = True
@@ -120,7 +119,7 @@ def execute(pagename, request):
     # page is not sent as it is
     out = StringIO.StringIO()
     newreq.redirect(out)
-    newreq.page.send_page(newreq)
+    newreq.page.send_page()
     newreq.redirect()
 
     graphdata = request.graphdata
@@ -130,7 +129,7 @@ def execute(pagename, request):
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
-        data = parse_text(newreq, newreq.page, newreq.page._raw_body)
+        data = parse_text(newreq, newreq.page, newreq.page.get_raw_body())
         for page in data:
             for key in data[page].get('meta', dict()):
                 for val in data[page]['meta'][key]:

@@ -37,9 +37,8 @@ except ImportError:
     pass
 
 from MoinMoin import wikiutil
-from MoinMoin.parser.wiki import Parser
-from MoinMoin.util import MoinMoinNoFooter
-from MoinMoin.request import RequestModPy
+from MoinMoin.parser.text_moin_wiki import Parser
+from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.patterns import SPECIAL_ATTRS
@@ -144,7 +143,7 @@ def execute(pagename, request):
     # If no keys, print nothing
     if not pagelist:
         request.write(plot_error(request))
-        raise MoinMoinNoFooter
+        return
 
 
     # Populate data to the radar chart
@@ -178,7 +177,7 @@ def execute(pagename, request):
     # Refuse to draw if no values for any key
     if not len(values):
         request.write(plot_error(request))
-        raise MoinMoinNoFooter
+        return
 
     no_values = len(values) + 1
     per_value = radius / no_values
@@ -246,4 +245,3 @@ def execute(pagename, request):
     image_headers(request)
         
     request.write(data)
-    raise MoinMoinNoFooter

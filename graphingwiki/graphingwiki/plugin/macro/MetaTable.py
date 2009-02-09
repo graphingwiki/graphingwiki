@@ -29,11 +29,10 @@
 """
 import re
 
-from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.patterns import encode, format_wikitext, url_escape
+from graphingwiki.patterns import format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
@@ -93,7 +92,7 @@ def construct_table(macro, pagelist, metakeys,
     # Start table
     request.write(macro.formatter.linebreak() +
                   u'<div class="metatable">' +
-                  macro.formatter.table(1))
+                  macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
 
     if metakeys:
         # Give a class to headers to make it customisable
@@ -119,7 +118,8 @@ def construct_table(macro, pagelist, metakeys,
         else:
             t_cell(macro, [key], style=headerstyle)
 
-    request.write(macro.formatter.table_row(0))
+    if metakeys:
+        request.write(macro.formatter.table_row(0))
 
     tmp_page = request.page
 
@@ -204,5 +204,6 @@ def execute(macro, args):
         request.write(action_link('MetaEdit', 'edit', args))
 
     request.write(action_link('metaCSV', 'csv', args))
+    request.write(action_link('metaPackage', 'zip', args))
 
     return ""

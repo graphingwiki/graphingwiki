@@ -1,5 +1,5 @@
-    # Use graphingwiki if installed
-    try:
-        from graphingwiki.securitypolicy import SecurityPolicy
-    except ImportError:
-        pass
+    # allow xmlrpc put (enable with care)
+    actions_excluded = []
+
+    from graphingwiki import install_hooks
+    install_hooks()

@@ -28,9 +28,11 @@
 """
 
 from urllib import quote as url_quote
+from random import random
 
 from MoinMoin.wikiutil import unquoteWikiname
-from MoinMoin.request import RequestModPy, RequestStandAlone
+from MoinMoin.request.request_modpython import Request as RequestModPy
+from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.action import AttachFile
 
 from graphingwiki.graphrepr import gv_found
@@ -79,7 +81,7 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(
                 _("No graph data available.")))
             self.request.write(formatter.endContent())
-            wikiutil.send_footer(self.request, self.pagename)
+            self.request.theme.send_footer(self.pagename)
             return
 
         self.execute_graphs()
@@ -99,13 +101,14 @@ class GraphShowerSimple(GraphShower):
         if self.do_form:
             if self.format == 'dot':
                 self.send_gv(gr)
-                # Cleanup
-                raise MoinMoinNoFooter
+                return
             else:
                 self.send_form()
 
+        # Add a random component to the image URL:s to avoid caching by browser
         img_url = self.request.getQualifiedURL() + \
-                  self.request.request_uri + "&image="
+                  self.request.request_uri + \
+                  "&random=%s&image=" % str(random())[2:]
 
         legend = None
         if (self.coloredges or self.colornodes) and gv_found:
@@ -116,7 +119,7 @@ class GraphShowerSimple(GraphShower):
                      self.urladd.replace('&inline=Inline', '')
             urladd = urladd.replace('action=ShowGraph',
                                     'action=ShowGraphSimple')
-            self.request.write('[[InlineGraph(%s)]]' % urladd)
+            self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
 
         elif not self.format:
             self.test_graph(outgraph)
@@ -134,8 +137,8 @@ class GraphShowerSimple(GraphShower):
 
             self.request.write(
                 '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="%s/zvtm.jar,%s/zgrviewer.jar" ' % \
-                (self.request.cfg.url_prefix, self.request.cfg.url_prefix)+\
+                'archive="%s/gwikicommon/zgrviewer/zvtm.jar,%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
+                (self.request.cfg.url_prefix_static, self.request.cfg.url_prefix_static)+\
                 'width="%s" height="%s">' % (self.width, self.height)+\
                 '<param name="type" ' +\
                 'value="application/x-java-applet;version=1.4" />' +\
@@ -254,7 +257,7 @@ class GraphShowerSimple(GraphShower):
             self.request.write(formatter.text(_(\
                         "ERROR: Graphviz Python extensions not installed. " +\
                         "Not performing layout.")))
-            raise MoinMoinNoFooter
+            return
         
         formatcontent = self.format
 
@@ -277,16 +280,10 @@ class GraphShowerSimple(GraphShower):
             outgraph = self.get_graph()
             gr = self.generate_layout(outgraph)
             self.send_graph(gr)
-            # Cleanup
-            raise MoinMoinNoFooter
-
         else:
-
             outgraph = self.get_graph()
             gr = self.generate_layout(outgraph)
             self.send_legend()
-            # Cleanup
-            raise MoinMoinNoFooter
 
     def execute(self):
         self.form_args()

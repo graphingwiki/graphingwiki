@@ -48,11 +48,6 @@ def load(request, pagename, filename):
 
 def delete(request, pagename, filename):
     _ = request.getText
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # check ACLs
     if not request.user.may.delete(pagename):
@@ -69,37 +64,14 @@ def delete(request, pagename, filename):
 
 def save(request, pagename, filename, content, overwrite):
     _ = request.getText
-    # Using the same access controls as in MoinMoin's xmlrpc_putPage
-    # as defined in MoinMoin/wikirpc.py
-    if (request.cfg.xmlrpc_putpage_trusted_only and
-        not request.user.trusted):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # also check ACLs
     if not request.user.may.write(pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
-    # Create a temp file where to decode the data
-    path = mkdtemp()
-    try:
-        _, tmp = mkstemp(dir = path)
-        tmpf = file(tmp, 'wb')
-        tmpf.write(content)
-        tmpf.close()
-    except Exception, e:
-        desc = "Unknown error"
-        #there has been some problems with xmlrpclib and str() .. so this try: ... is for em
-        try:
-            desc = traceback.format_exc()
-        except:
-            pass
-        return xmlrpclib.Fault(3, _(desc))
-
     # Attach the decoded file
-    success = save_attachfile(request, pagename, tmp, filename, overwrite)
+    success = save_attachfile(request, pagename, content, filename, overwrite)
     
-    rmtree(path)
-
     if success is True:
         return success
     elif overwrite == False:
