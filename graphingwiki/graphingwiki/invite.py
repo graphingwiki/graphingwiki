@@ -38,7 +38,7 @@ def generate_password(length=8):
 class GroupException(Exception):
     pass
 
-def add_user_to_group(request, myuser, group, create_link=False):
+def add_user_to_group(request, myuser, group, create_link=True):
     if not wikiutil.isGroupPage(request, group):
         raise GroupException("Page '%s' is not a group page." % group)
     if not (request.user.may.read(group) and request.user.may.write(group)):
@@ -70,27 +70,35 @@ def add_user_to_group(request, myuser, group, create_link=False):
     text = "\n".join(head + tail)
     page.saveText(text, 0)
 
-def invite_user_by_email(request, page, email, new_template, old_template, 
-                         **extra_variables):
+def invite_user_to_wiki(request, page, email, new_template, old_template):
     check_inviting_enabled(request)
-
     if not user_may_invite(request.user, page):
-        raise InviteException("No permissions to invite to page '%s'." % page)
+        raise InviteException("No permissions to invite from '%s'." % page)
+
+    page_url = request.getBaseURL()    
+    return _invite(request, page_url, email, new_template, old_template)
+
+def invite_user_to_page(request, page, email, new_template, old_template):
+    check_inviting_enabled(request)
+    if not user_may_invite(request.user, page):
+        raise InviteException("No permissions to invite from '%s'." % page)
 
     page_url = Page(request, page).url(request, relative=False)
     page_url = request.getQualifiedURL(page_url)
+    return _invite(request, page_url, email, new_template, old_template)
 
+def _invite(request, page_url, email, new_template, old_template):
     mail_from = request.user.email
     if "@" not in mail_from:
         mail_from += "@" + request.cfg.invite_sender_default_domain
 
-    variables = dict(extra_variables)
-    variables.update(PAGENAME=page, 
-                     PAGEURL=page_url,
+    # We used to have variable "PAGENAME", but it didn't work
+    # trivially when page == None.
+    variables = dict(PAGEURL=page_url,
                      ADMINEMAIL=request.cfg.mail_from,
                      INVITERUSER=request.user.name,
                      INVITEREMAIL=mail_from)
-
+    
     old_user = user.get_by_email_address(request, email)
     if old_user:
         variables.update(INVITEDUSER=old_user.name,
