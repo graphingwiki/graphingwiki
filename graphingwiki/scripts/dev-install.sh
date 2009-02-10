@@ -9,8 +9,8 @@
 # (darwinports moin and graphviz aren't good enough)
 
 
-moinsrc=$PWD/moin-1.6.4
-gwsrc=$PWD/gw-svn/branches/moin-1.6-branch/graphingwiki
+moinsrc=$PWD/moin-1.8.2
+gwsrc=$PWD/gw-svn/trunk/graphingwiki
 #gwsrc=$PWD/gw-svn
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
@@ -29,13 +29,14 @@ function installgw {
 function makewiki {
     template=$gwinstall/share/moin
     cp -r $template/{data,underlay} $gwdata/
-    sed < $moinsrc/moin.py > $gwdata/moin.py \
-        "s!docs = os.path.join.*!docs = '$gwinstall/share/moin/htdocs'!"
-    cp $template/config/wikiconfig.py $gwdata/wikiconfig.py 
-
-    cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiconfig.py
-    echo "    actions_excluded = []" >> $gwdata/wikiconfig.py
-    echo '    acl_rights_before = u"All:read,write,delete,revert,admin"' >> $gwdata/wikiconfig.py
+    cp $moinsrc/wikiserver{,config}.py $gwdata/
+    echo "    docs = '$gwinstall/share/moin/htdocs'" >> $gwdata/wikiserverconfig.py
+    cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiserverconfig.py
+#     echo "    actions_excluded = []" >> $gwdata/wikiserverconfig.py
+#     echo '    acl_rights_before = u"All:read,write,delete,revert,admin"' >> $gwdata/wikiconfig.py
+    cp $moinsrc/wikiconfig.py $gwdata/
+    ln -s . $gwdata/wiki
+    find $gwdata/data/plugin -type l | xargs --no-run-if-empty rm
     python $gwinstall/bin/gwiki-install -v $gwdata
 
     # replace plugins with symlinks pointing at code
@@ -46,6 +47,8 @@ function makewiki {
 
 }
 
+set -e
+
 installmoin
 spdir=`echo $gwinstall/lib/python?.*/site-packages`
 
@@ -55,5 +58,5 @@ installgw
 makewiki
 sleep 1
 echo start command:
-echo "cd $gwdata; env PYTHONPATH=$PYTHONPATH python moin.py"
-(cd $gwdata; python moin.py)
+echo "cd $gwdata; env PYTHONPATH=$PYTHONPATH python wikiserver.py"
+(cd $gwdata; python wikiserver.py)
