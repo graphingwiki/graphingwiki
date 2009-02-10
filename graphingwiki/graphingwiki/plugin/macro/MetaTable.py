@@ -36,8 +36,11 @@ from graphingwiki.util import format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style=dict(), rev=''):
+def t_cell(macro, vals, head=0, style=None, rev=''):
     out = macro.request
+
+    if style is None:
+	style = dict()
 
     if not style.has_key('class'):
         if head:
@@ -61,6 +64,14 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
                       macro.formatter.linebreak())
 
         if head:
+            if out.user.may.write(data):
+                img = out.theme.make_icon('edit')
+                page = Page(out, data)
+                out.write(macro.formatter.span(1, css_class="meta_editicon"))
+                out.write(page.link_to_raw(out, img,
+                                           querystr={'action': 'edit'},
+                                           rel='nofollow'))
+                out.write(macro.formatter.span(0))
             kw = dict()
             if rev:
                 kw['querystr'] = '?action=recall&rev=' + rev
@@ -81,6 +92,8 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
     if cellstyle == 'list':
         out.write(macro.formatter.bullet_list(1))
 
+    out.write(macro.formatter.table_cell(0))        
+
 def construct_table(macro, pagelist, metakeys, 
                     legend='', checkAccess=True, styles=dict()):
     request = macro.request
@@ -88,10 +101,11 @@ def construct_table(macro, pagelist, metakeys,
     _ = request.getText
 
     row = 0
+    divfmt = { 'class': "metatable" }
 
     # Start table
     request.write(macro.formatter.linebreak() +
-                  u'<div class="metatable">' +
+		  macro.formatter.div(1, **divfmt) +
                   macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
 
     if metakeys:
@@ -158,7 +172,7 @@ def construct_table(macro, pagelist, metakeys,
     request.formatter.page = tmp_page
 
     request.write(macro.formatter.table(0))
-    request.write(u'</div>')
+    request.write(macro.formatter.div(0))
 
 def execute(macro, args):
     if args is None:
