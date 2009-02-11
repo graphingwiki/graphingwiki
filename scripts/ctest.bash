@@ -13,9 +13,13 @@ Usage:
                 file1 is reference and file2 is path where
                 the program under test is expected to place its file
                 (can be specified multiple times)
+ -t waitmax     timeout in seconds, default 5
 EOF
     exit 1
 }
+
+
+waitmax=5
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -31,6 +35,10 @@ while [ $# -gt 0 ]; do
 	    refin="$2"
 	    shift
 	    ;;
+	-t)
+	    waitmax="$2"
+	    shift
+	    ;;
 	-f)
 	    aux="$aux $2 $3"
 	    shift; shift
@@ -44,9 +52,19 @@ done
 [ -z "$refin" ] && fail "reference stdin must be specified using -o"
 
 pout=`mktemp /tmp/ctestXXXXXX`
-trap "rm -v $pout" EXIT SIGHUP SIGTERM SIGQUIT SIGINT
+trap "rm -vf $pout" EXIT SIGHUP SIGTERM SIGQUIT SIGINT
 rm -f core
-(ulimit -c unlimited; ulimit -t 15; ulimit -f 10000; $prog < $refin > $pout 2>&1)
+(ulimit -c unlimited; ulimit -f 10000; exec $prog < $refin > $pout 2>&1) &
+startsecs=$SECONDS
+while sleep 0.2; do
+    kill -0 $! 2>/dev/null || break
+    if test $[$SECONDS - $startsecs > $waitmax] = 1; then
+	pass=no
+        echo "timeout at $waitmax secs"
+        kill -9 $!
+    fi
+done
+
 pass=yes
 
 if [ -f core ]; then
