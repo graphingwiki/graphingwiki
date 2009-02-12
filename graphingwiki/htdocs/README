@@ -7,7 +7,9 @@ USABILITY ADDON INSTALLATION
  1. Add to html_head of your wikiconfig:
 
     html_head = '' # omit if you already have something
-    for script in ['js/sorttable.js', \
+
+	for script in ['js/mootools-1.2.1-core-yc.js', \
+                   'js/sorttable-moo.js', \
                    'simile/ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline-api.js']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
