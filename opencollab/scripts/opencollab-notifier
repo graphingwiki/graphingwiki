@@ -44,28 +44,20 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
     msg.add_header('Content-Disposition', 'inline')
     html_head = "<html>\n<head>\n<title></title>\n</head>\n<body>"
     html_foot = "\n</body>\n</html>"
+    content = html_head
+
     if(header is not None):
-        content = html_head
         content += header
-        content += html_foot
-        part=MIMEText(content, "HTML", "UTF-8")
-        part.add_header('Content-Disposition', 'inline')
-        msg.attach(part)
     for page in page_content:
-        content = html_head
         content += page_content[page]
-        content += html_foot
-        part=MIMEText(content, "HTML", "UTF-8")
-        part.add_header('Content-Disposition', 'inline')
-        msg.attach(part)
         collab.setMeta(page,page_marker,replace=True)
     if(footer is not None):
-        content = html_head
         content += footer
-        content += html_foot
-        part=MIMEText(content, "HTML", "UTF-8")
-        part.add_header('Content-Disposition', 'inline')
-        msg.attach(part)
+
+    content += html_foot
+    part=MIMEText(content, "HTML", "UTF-8")
+    part.add_header('Content-Disposition', 'inline')
+    msg.attach(part)
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
@@ -98,7 +90,7 @@ def main():
                       help=("Read configurable variables from CONFIG."))
     parser.add_option("-f", "--from",
                       dest="sender",
-                      default= "opencollab-notifier@do.not.respond.to.me.INVALID",
+                      default= None,
                       metavar="SENDER",
                       help=("Email SENDER address."))
     parser.add_option("-F", "--FOOTER",
@@ -113,7 +105,7 @@ def main():
                       help=("Read email attachemnt #1 from page name HEADER."))
     parser.add_option("-m", "--marker",
                       dest="marker",
-                      default="Notified=Yes",
+                      default=None,
                       metavar="MARKER",
                       help=("Notify MARKER key=value pair."))
     parser.add_option("-r", "--recipient",
@@ -140,7 +132,7 @@ def main():
     if(args):
         url = args[0]
     if(options.config):
-        iopts = parse_config(options.config,args)
+        iopts = parse_config(options.config, args)
         collab = CLIWiki(url, config=options.config)
         url = iopts["url"]
     elif(len(args) != 1):
@@ -151,6 +143,8 @@ def main():
         sender = options.sender
     elif(iopts.has_key("sender")):
         sender = iopts["sender"]
+    else:
+        sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
     pages = Metas() 
     page_marker = Meta()
     if(options.selection):
@@ -161,10 +155,24 @@ def main():
         marker=options.marker
     elif(iopts.has_key("marker")):
         marker=iopts["marker"]
+    else:
+        marker="Notified=Yes"
     k,v = marker.split('=')
     page_marker[k] = v
+    if(options.recipient):
+        recipient = options.recipient
+    elif(iopts.has_key("recipient")):
+        recipient = iopts["recipient"]
+    if(options.subject):
+        subject = options.subject
+    elif(iopts.has_key("subject")):
+        subject = iopts["subject"]
     if(options.verbose):
-        print "Getting " + marker + " from " + url
+        print "NOTE: URL is " + url
+        print "NOTE: Marker to set is " + marker
+        print "NOTE: sender is " + sender
+        print "NOTE: Recipient is " + recipient
+        print "NOTE: Subject is '" + subject + "'"
     pages = collab.getMeta(selection)
     for page in pages:
         if(pages[page][k] == page_marker[k]):
@@ -174,14 +182,6 @@ def main():
                 print "Rendering " + page + " to HTML"
             page_html = get_page_html(collab, page)
             page_content[page] = page_html
-    if(options.recipient):
-        recipient = options.recipient
-    elif(iopts.has_key("recipient")):
-        recipient = iopts["recipient"]
-    if(options.subject):
-        subject = options.subject
-    elif(iopts.has_key("subject")):
-        subject = iopts["subject"]
     if(page_content):
         if(options.header):
             page_html = get_page_html(collab,options.header)
