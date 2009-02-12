@@ -15,12 +15,14 @@ from opencollab.meta import Metas, Meta, Func
 from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
 
-def import_identities(collab,collab_metas,template,verbose):
+def import_identities(collab,collab_metas,template,category,verbose):
     for page,pmeta in collab_metas.iteritems():
         if(page):
+            if(category is not None):
+                pmeta["category"].add(category)
             status = collab.setMeta(page,pmeta,template=template,replace=True)
-    if verbose:
-        print status
+            if(verbose):
+                print "Set meta for: " + page + "with status: " + status
 
 def shred_triplets(resolved): 
     collab_metas = Metas()
@@ -107,43 +109,93 @@ def read_input():
 
 def parse_config(cpath, args):
     configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("multi-resolver") )
-    mresolve = uris.pop("path")
-    return mresolve
+    configparser.readfp(open(cpath))
+    creds = dict(configparser.items("creds"))
+    iopts = dict(configparser.items("multi-resolver"))
+    if(creds.has_key("url")):
+        iopts["url"] = creds["url"]
+    if(creds.has_key("username")):
+        iopts["username"] = creds["username"]
+    if(creds.has_key("password")):
+        iopts["password"] = creds["password"]
+    return iopts
 
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
-        help="Config file path.")
+        type="string", dest="config",
+        metavar="CONFIG",
+        help="CONFIG file path.")
+    parser.add_option("-m", "--mresolve-path",
+                      dest="mresolve_path",
+                      default=None,
+                      metavar="MRESOLVE-PATH",
+                      help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
+    parser.add_option("-t", "--template",
+                      dest="template",
+                      default=None,
+                      metavar="TEMPLATE",
+                      help=("Optional TEMPLATE to use. Defaults to IdentityTemplate."))
+    parser.add_option("-w", "--wiki-category",
+                      dest="category",
+                      default=None,
+                      metavar="CATEGORY",
+                      help=("Optional CATEGORY to use, e.g. CategoryIdentity"))
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLAB_URL MRESOLVE_PATH")
-
+    parser.set_usage("%prog [options] COLLAB_URL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            mresolve = parse_config(options.cpath, args)
-        elif len(args) == 1:
-            mresolve = args.pop()
-        collab = CLIWiki(config=options.cpath)
-    elif len(args) != 2:
-        parser.error("Collab URL and mresolve path need to be defined.")
+    url=None
+    mresolve_path="/usr/bin/mresolve"
+    iopts={}
+    if(options.config):
+        iopts = parse_config(options.config,args)
+        collab = CLIWiki(url, config=options.config)
+        url = iopts["url"]
+    elif(len(args) != 1):
+        parser.error("Collab URL has to be specified.")
     else:
-        url, mresolve = args
+        url=args[0]
         collab = CLIWiki(url)
-
-    template = "IdentityTemplate"
+    if(options.mresolve_path):
+        mresolve_path=options.mresolve_path
+    elif(iopts.has_key("mresolve-path")):
+        mresolve_path=iopts["mresolve-path"]
+    else:
+        mresolve_path="/usr/bin/mresolve"
+    if(options.template):
+        template=options.template
+    elif(iopts.has_key("template")):
+        template=iopts["template"]
+    else:
+        template="IdentityTemplate"
+    if(options.category):
+        category=options.category
+    elif(iopts.has_key("category")):
+        category=iopts["category"]
+    else:
+        category=None
+    if(options.verbose):
+        print "Reading input identities from STDIN."
     new = read_input()
+    if(options.verbose):
+        print "Expanding initial requests."
     expanded,resolved = seed_initial(new)
+    if(options.verbose):
+        print "Resolving requests recursively."
     while expanded:
-        new,err = resolve_requests(expanded,mresolve)
+        new,err = resolve_requests(expanded,mresolve_path)
+        if(options.verbose):
+            print err
         expanded,resolved = generate_requests(resolved,new)
+    if(options.verbose):
+        print "Shredding resolved RDF triplets."
     collab_metas = shred_triplets(resolved)
-    import_identities(collab,collab_metas,template,options.verbose)
+    if(options.verbose):
+        print "Importing resolved identities to: " + url
+    import_identities(collab,collab_metas,template,category,options.verbose)
 
 if __name__ == "__main__":
     try:
