@@ -146,39 +146,57 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
+        type="string", dest="config",
         help="Config file path.")
-    parser.add_option("-i",
+    parser.add_option("-d", "--testrun-directory",
+                      dest="testrun_directory",
+                      default=None,
+                      metavar="TESTRUN-DIRECTORY",
+                      help=("Directory base to search for testrun directories."))
+    parser.add_option("-t", "--testplan-page",
         action="store",
         type="string", dest="testplan_page", default=None,
-        help="Specify a test plan page name to link the test runs to." )
+	metavar="TESTPLAN-PAGE",
+        help="Specify a TESTPLAN-PAGE name to link the test runs to." )
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
-    parser.set_usage("%prog [options] WIKIURL DIRNAME")
-
+        help="Enable verbose output.")
+    parser.set_usage("%prog [options] WIKIURL")
+    url = None
+    iopts={}
+    testrun_directory = None
     testplan_page = None
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            testplan_page, path = parse_config(options.cpath, args)
-        elif len(args) == 1:
-            testplan_page = parse_config(options.cpath, args)
-            path = args.pop()
-        elif len(args) == 2:
-            url, path = args
-            collab = CLIWiki(url, config=options.cpath)
-        if len(args) < 2:
-            collab = CLIWiki(config=options.cpath)
-    elif len(args) != 2:
-        parser.error("Collab url, and source directory name have to be defined.")
+    if options.config:
+        iopts = parse_config(options.config,args)
+        collab = CLIWiki(url,config=options.config)
+        url = iopts["url"]
+    elif(len(args) != 1):
+        parser.error("Collab URL has to be specified.")
     else:
-        url, path = args
+        url=args[0]
         collab = CLIWiki(url)
+    if(options.testrun_directory):
+        testrun_directory=options.testrun_directory 
+    elif(iopts.has_key("testrun-directory")):
+        testrun_directory=iopts["testrun-directory"] 
+    else:
+        testrun_directory=None
     if(options.testplan_page):
-        testplan_page = options.testplan_page
-    dlist=[]
-    dlist = walk_dirs(path)
+        testplan_page=options.testplan_page
+    elif(iopts.has_key("testplan-page")):
+        testplan_page=iopts["testplan-page"] 
+    else:
+        testplan_page=None
+    if(testrun_directory is not None):
+        dlist=[]
+        if(options.verbose):
+             print "Walking " + testrun_directory
+        dlist = walk_dirs(testrun_directory)
+    else:
+        parser.error("Testrun directory needs to be defined!")
+    if(options.verbose):
+        print "Handling: " + dlist
     handle_path(collab,testplan_page,dlist)
 
 if __name__ == "__main__":
