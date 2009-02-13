@@ -40,107 +40,30 @@ from MoinMoin.wikiutil import importPlugin
 from MoinMoin.Page import Page 
 
 # graphlib imports
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, delete_moin_caches
-from graphingwiki.editing import parse_categories
+import graphingwiki.util, graphingwiki.editing
 
 # Add in-links from current node to local nodes
-def shelve_add_in(new_data, (frm, to), linktype):
+def shelve_add_in(graphdata, (frm, to), linktype):
     if not linktype:
-        linktype = NO_TYPE
+        linktype = graphingwiki.util.NO_TYPE
 
-    temp = new_data.get(to, {})
+    temp = graphdata.getpagemeta(to)
 
-    if not temp.has_key(u'in'):
-        temp[u'in'] = {linktype: [frm]}
-    elif not temp[u'in'].has_key(linktype):
-        temp[u'in'][linktype] = [frm]
-    else:
-        temp[u'in'][linktype].append(frm)
+    temp.inlinks.add(linktype, frm)
         
     # Notification that the destination has changed
-    temp[u'mtime'] = time()
-
-    new_data[to] = temp
+    temp.mtime = time()
 
 # Add out-links from local nodes to current node
-def shelve_add_out(new_data, (frm, to), linktype, hit):
+def shelve_add_out(graphdata, (frm, to), linktype, hit):
     if not linktype:
-        linktype = NO_TYPE
+        linktype = graphingwiki.util.NO_TYPE
 
-    temp = new_data.get(frm, {})
-
+    temp = graphdata.getpagemeta(frm)
+    temp.outlinks.add(linktype, to)
     # Also add literal text (hit) for each link
     # eg, if out it SomePage, lit can be ["SomePage"]
-    if not temp.has_key(u'out'):
-        temp[u'out'] = {linktype: [to]}
-        temp[u'lit'] = {linktype: [hit]}
-    elif not temp[u'out'].has_key(linktype):
-        temp[u'out'][linktype] = [to]
-        temp[u'lit'][linktype] = [hit]
-    else:
-        temp[u'out'][linktype].append(to)
-        temp[u'lit'][linktype].append(hit)
-
-    new_data[frm] = temp
-
-# Respectively, remove in-links
-def shelve_remove_in(new_data, (frm, to), linktype):
-    # import sys
-    # sys.stderr.write('Starting to remove in\n')
-    temp = new_data.get(to, {})
-    if not temp.has_key(u'in'):
-        return
-
-    for type in linktype:
-        # sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
-        # eg. when the shelve is just started, it's empty
-        if not temp[u'in'].has_key(type):
-            # sys.stderr.write("No such type: %s\n" % type)
-            continue
-        if frm in temp[u'in'][type]:
-            temp[u'in'][type].remove(frm)
-
-            # Notification that the destination has changed
-            temp[u'mtime'] = time()
-            
-        if not temp[u'in'][type]:
-            del temp[u'in'][type]
-
-
-    # sys.stderr.write("Hey man, I think I did it!\n")
-    new_data[to] = temp
-
-# Respectively, remove out-links
-def shelve_remove_out(new_data, (frm, to), linktype):
-    # print 'Starting to remove out'
-    temp = new_data.get(frm, {})
-
-    if not temp.has_key(u'out'):
-        return 
-
-    for type in linktype:
-        # print "Removing %s %s %s" % (frm, to, linktype)
-        # eg. when the shelve is just started, it's empty
-        if not temp[u'out'].has_key(type):
-            # print "No such type: %s" % type
-            continue
-        if to in temp[u'out'][type]:
-            # As the literal text values for the links
-            # are added at the same time, they have the
-            # same index value
-            i = temp[u'out'][type].index(to)
-            del temp[u'out'][type][i]
-            del temp[u'lit'][type][i]
-
-            # print "removed %s" % (repr(to))
-
-        if not temp[u'out'][type]:
-            del temp[u'out'][type]
-            del temp[u'lit'][type]
-            # print "%s empty" % (type)
-            # print "Hey man, I think I did it!"
-
-    new_data[frm] = temp
+    temp.litlinks.add(linktype, hit)
 
 def strip_meta(key, val):
     key = key.strip()
@@ -148,24 +71,17 @@ def strip_meta(key, val):
         val = val.strip()
     return key, val
 
-def shelve_set_attribute(new_data, node, key, val):
+def shelve_set_attribute(graphdata, node, key, val):
     key, val = strip_meta(key, val)
 
-    temp = new_data.get(node, {})
+    temp = graphdata.getpagemeta(node)
 
-    if not temp.has_key(u'meta'):
-        temp[u'meta'] = {key: [val]}
-    elif not temp[u'meta'].has_key(key):
-        temp[u'meta'][key] = [val]
-    # a page can not have more than one label, shapefile etc
-    elif key in SPECIAL_ATTRS:
-        temp[u'meta'][key] = [val]
+    if key in graphingwiki.util.SPECIAL_ATTRS:
+        temp.unlinks.set_single(key, val)
     else:
-        temp[u'meta'][key].append(val)
+        temp.unlinks.add(key, val)
 
-    new_data[node] = temp
-
-def add_meta(new_data, pagename, (key, val)):
+def add_meta(graphdata, pagename, (key, val)):
 
     # Do not handle empty metadata, except empty labels
     if key != 'gwikilabel':
@@ -174,15 +90,15 @@ def add_meta(new_data, pagename, (key, val)):
         return
 
     # Values to be handled in graphs
-    if key in SPECIAL_ATTRS:
-        shelve_set_attribute(new_data, pagename, key, val)
+    if key in graphingwiki.util.SPECIAL_ATTRS:
+        shelve_set_attribute(graphdata, pagename, key, val)
         # If color defined, set page as filled
         if key == 'fillcolor':
-            shelve_set_attribute(new_data, pagename, 'style', 'filled')
+            shelve_set_attribute(graphdata, pagename, 'style', 'filled')
         return
 
     # Save to shelve's metadata list
-    shelve_set_attribute(new_data, pagename, key, val)
+    shelve_set_attribute(graphdata, pagename, key, val)
 
 def add_include(new_data, pagename, hit):
     hit = hit[11:-3]
@@ -196,11 +112,11 @@ def add_include(new_data, pagename, hit):
     temp.setdefault(u'include', list()).append(pagearg)
     new_data[pagename] = temp
 
-def add_link(new_data, pagename, nodename, linktype, hit):
+def add_link(graphdata, pagename, nodename, linktype, hit):
     edge = [pagename, nodename]
 
-    shelve_add_in(new_data, edge, linktype)
-    shelve_add_out(new_data, edge, linktype, hit)
+    shelve_add_in(graphdata, edge, linktype)
+    shelve_add_out(graphdata, edge, linktype, hit)
 
 def parse_text(request, page, text):
     pagename = page.page_name
@@ -227,10 +143,8 @@ def parse_text(request, page, text):
     linktypes = ["wikiname_bracket", "word",                  
                  "interwiki", "url", "url_bracket"]
     
-    new_data = {}
-
     # Add the page categories as links too
-    categories, _, _ = parse_categories(request, text)
+    categories, _, _ = graphingwiki.editing.parse_categories(request, text)
     
     for metakey, value in p.definitions.iteritems():
         for type, item in value:
@@ -245,168 +159,18 @@ def parse_text(request, page, text):
                 dnode = item
                 hit = item
                 if item in categories:
-                    add_link(new_data, pagename, dnode, 
+                    add_link(request.graphdata, pagename, dnode, 
                              u"gwikicategory", item)
             elif type == 'meta':
-                add_meta(new_data, pagename, (metakey, item))
+                add_meta(request.graphdata, pagename, (metakey, item))
 
             if dnode:
-                add_link(new_data, pagename, dnode, metakey, hit)
+                add_link(request.graphdata, pagename, dnode, metakey, hit)
 
-    return new_data
 
-def changed_meta(request, pagename, old_data, new_data):
-    add_out = dict()
-    lit_out = dict()
-    del_out = dict()
 
-    add_in = dict()
-    del_in = dict()
-
-    for page in new_data:
-        add_in.setdefault(page, list())
-        del_in.setdefault(page, list())
-
-    # Code for making our which edges have changed.
-    # We only want to save changes, not all the data,
-    # as edges have a larger time footprint while saving.
-
-    add_out.setdefault(pagename, list())
-    lit_out.setdefault(pagename, list())
-    del_out.setdefault(pagename, list())
-
-    old_keys = set(old_data.get(u'out', {}).keys())
-    new_keys = set(new_data.get(pagename, {}).get(u'out', {}).keys())
-    changed_keys = old_keys.intersection(new_keys)
-
-    # Changed edges == keys whose values have experienced changes
-    for key in changed_keys:
-        new_edges = len(new_data[pagename][u'out'][key])
-        old_edges = len(old_data[u'out'][key])
-
-        for i in range(max(new_edges, old_edges)):
-
-            # old data had more links, delete old
-            if new_edges <= i:
-                val = old_data[u'out'][key][i]
-                lit = old_data[u'lit'][key][i]
-
-                del_out[pagename].append((key, val))
-
-                # Only local pages will have edges and metadata
-                if node_type(request, val) == 'page':
-                    del_in.setdefault(val, list()).append((key, pagename))
-
-            # new data has more links, add new
-            elif old_edges <= i:
-                val = new_data[pagename][u'out'][key][i]
-                lit = new_data[pagename][u'lit'][key][i]
-
-                add_out[pagename].append((key, val))
-                lit_out[pagename].append(lit)
-
-                # Only save in-links to local pages, not eg. url or interwiki
-                if node_type(request, val) == 'page':
-                    add_in.setdefault(val, list()).append((key, pagename))
-
-            # check if the link i has changed
-            else:
-                val_lit = old_data[u'lit'][key][i]
-                new_val_lit = new_data[pagename][u'lit'][key][i]
-
-                if val_lit == new_val_lit:
-                    continue
-
-                val = old_data[u'out'][key][i]
-                new_val = new_data[pagename][u'out'][key][i]
-
-                # link changed, replace old link with new
-                # add and del out-links
-                add_out[pagename].append((key, new_val))
-                lit_out[pagename].append(new_val_lit)
-
-                del_out[pagename].append((key, val))
-
-                # Only save in-links to local pages, not eg. url or interwiki
-                if node_type(request, new_val) == 'page':
-                    add_in.setdefault(new_val, list()).append((key, pagename))
-                # Only save in-links to local pages, not eg. url or interwiki
-                if node_type(request, val) == 'page':
-                    del_in.setdefault(val, list()).append((key, pagename))
-
-    # Added edges of a new linktype
-    for key in new_keys.difference(old_keys):
-        for i, val in enumerate(new_data[pagename][u'out'][key]):
-            lit = new_data[pagename][u'lit'][key][i]
-
-            add_out[pagename].append((key, val))
-            lit_out[pagename].append(lit)
-
-            # Only save in-links to local pages, not eg. url or interwiki
-            if node_type(request, val) == 'page':
-                add_in.setdefault(val, list()).append((key, pagename))
-
-    # Deleted edges
-    for key in old_keys.difference(new_keys):
-        for val in old_data[u'out'][key]:
-
-            del_out[pagename].append((key, val))
-
-            # Only local pages will have edges and metadata
-            if node_type(request, val) == 'page':
-                del_in.setdefault(val, list()).append((key, pagename))
-
-    # Adding and removing in-links are the most expensive operation in a
-    # shelve, so we'll try to minimise them. Eg. if page TestPage is
-    #  a:: ["b"]\n a:: ["a"] 
-    # and it is resaved as
-    #  a:: ["a"]\n a:: ["b"]
-    # the ordering of out-links in TestPage changes, but we do not have
-    # to touch the in-links in pages a and b. This is possible because
-    # in-links do not have any sensible order.
-    for page in new_data:
-        #print repr(page), add_in[page], del_in[page]
-
-        changes = set(add_in[page] + del_in[page])
-
-        #print changes
-
-        for key, val in changes:
-            #print 'change', repr(key), repr(val)
-
-            add_count = add_in[page].count((key, val))
-            del_count = del_in[page].count((key, val))
-
-            if not add_count or not del_count:
-                #print "No changes"
-                #print
-                continue
-
-            change_count = add_count - del_count
-
-            # If in-links added and deleted as many times, 
-            # there are effectively no changes to be saved
-            if change_count == 0:
-                for x in range(add_count):
-                    add_in[page].remove((key, val))
-                    del_in[page].remove((key, val))
-                    #print "No changes"
-
-            elif change_count < 0:
-                for x in range(abs(change_count)):
-                    del_in[page].remove((key, val))
-                    #print "No need to delete %s from %s" % (val, page)
-
-            else:
-                for x in range(abs(change_count)):
-                    #print "No need to add %s to %s" % (val, page)
-                    add_in[page].remove((key, val))
-
-            #print
-
-    #print
-
-    return add_out, lit_out, del_out, add_in, del_in
+def save_triplet(e, a, v):
+    print e, a, v
 
 def execute(pagename, request, text, pagedir, page):
     # Skip MoinEditorBackups
@@ -415,59 +179,15 @@ def execute(pagename, request, text, pagedir, page):
 
     pageitem = page
 
-    # Get new data from parsing the page
-    new_data = parse_text(request, page, text)
-
-    # Get a copy of current data
-    old_data = request.graphdata.get(pagename, {})
-
-    add_out, lit_out, del_out, add_in, del_in = \
-        changed_meta(request, pagename, old_data, new_data)
-
-    # Insert metas and other stuff from parsed content
-    cur_time = time()
-
-    temp = request.graphdata.get(pagename, {})
-    temp[u'meta'] = new_data.get(pagename, dict()).get(u'meta', dict())
-    temp[u'acl'] = new_data.get(pagename, dict()).get(u'acl', '')
-    temp[u'include'] = new_data.get(pagename, dict()).get(u'include', list())
-    temp[u'mtime'] = cur_time
-    temp[u'saved'] = True
-
-    # Release ReadLock (from the previous reads), make WriteLock
-    request.graphdata.writelock()
-
-    request.graphdata[pagename] = temp
-    # Save the links that have truly changed
-    for page in del_out:
-        for edge in del_out[page]:
-            #print 'delout', repr(page), edge
-            linktype, dst = edge
-            shelve_remove_out(request.graphdata, [page, dst], [linktype])
-    for page in del_in:
-        for edge in del_in[page]:
-            #print 'delin', repr(page), edge
-            linktype, src = edge
-            shelve_remove_in(request.graphdata, [src, page], [linktype])
-
-    for page in add_out:
-        for i, edge in enumerate(add_out[page]):
-            linktype, dst = edge
-            #print 'addout', repr(page), edge
-            hit = lit_out[page][i]
-            shelve_add_out(request.graphdata, [page, dst], linktype, hit)
-    for page in add_in:
-        for edge in add_in[page]:
-            #print 'addin', repr(page), edge
-            linktype, src = edge
-            shelve_add_in(request.graphdata, [src, page], linktype)
+    # Parse the page and update graphdata
+    parse_text(request, page, text)
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
     # Deleting == saving a revision with the text 'deletec/n', then 
     # removing the revision. This seems to be the only way to notice.
     if text == 'deleted\n':
-        del request.graphdata[pagename]
+        request.graphdata.delpagemeta(pagename)
     else:
         # 2. Removing data when rehashing. 
         # New pages do not exist, but return a revision of 99999999 ->
@@ -475,14 +195,12 @@ def execute(pagename, request, text, pagedir, page):
         pf, rev, exists = pageitem.get_rev() 
         if rev != 99999999:
             if not exists:
-                del request.graphdata[pagename]
+                request.graphdata.delpagemeta(pagename)
 
 
-    delete_moin_caches(request, pageitem)
+    graphingwiki.util.delete_moin_caches(request, pageitem)
 
-    request.graphdata.readlock()
-
-# - code below lifted from MetaFormEdit -
+# - Code below lifted from MetaFormEdit -
 
 # Override Page.py to change the parser. This method has the advantage
 # that it works regardless of any processing instructions written on

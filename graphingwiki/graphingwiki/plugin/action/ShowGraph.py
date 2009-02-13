@@ -430,7 +430,7 @@ class GraphShower(object):
         pagename = self.pagename
 
         def get_categories(nodename):
-            pagedata = self.request.graphdata.getpage(nodename)
+            pagedata = self.request.graphdata.getpagemeta(nodename)
             return pagedata.get('out', dict()).get('gwikicategory', list())
 
         for nodename in self.otherpages:
@@ -451,7 +451,7 @@ class GraphShower(object):
             # Permissions
             if not self.request.user.may.read(cat):
                 continue
-            catpage = self.request.graphdata.getpage(cat)
+            catpage = self.request.graphdata.getpagemeta(cat)
             for type in catpage.get('in', dict()):
                 for newpage in catpage['in'][type]:
                     if not (self.cat_re.search(newpage) or
@@ -566,20 +566,20 @@ class GraphShower(object):
             n.update(obj)
 
             # User rights have been checked before, at traverse
-            pagedata = self.request.graphdata.getpage(objname)
+            pagedata = self.request.graphdata.getpagemeta(objname)
 
             # Add page categories to selection choices in the form
             # (for local pages only, ie. existing and saved)
-            if pagedata.get('saved', False):
+            if pagedata.saved:
                 self.categories_add(obj.gwikicategory)
 
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip
             pagemeta = dict()
-            for key in pagedata.get('meta', dict()):
-                pagemeta[key] = [x for x in pagedata['meta'][key]]
-            for key in pagedata.get('out', dict()):
-                pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
+            for key in pagedata.unlinks.keys():
+                pagemeta[key] = [x for x in pagedata.unlinks[key]]
+            for key in pagedata.outlinks.keys():
+                pagemeta.setdefault(key, list()).extend(pagedata.outlinks[key])
 
             if (pagemeta and not hasattr(obj, 'gwikitooltip')):
                 pagekeys = nonguaranteeds_p(pagemeta)

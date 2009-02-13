@@ -27,7 +27,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
+from graphingwiki.util import nonguaranteeds_p
 from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
 from graphingwiki.util import category_regex, template_regex
@@ -70,6 +70,7 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
+
 def get_revisions(request, page):
     parse_text = importPlugin(request.cfg,
                               'action',
@@ -297,12 +298,11 @@ def link_to_attachment(globaldata, target):
         target = url_quote(encode(target))
     
     try:
-        targetPage = globaldata.getpage(target)
+        targetPage = globaldata.getpagemeta(target)
     except KeyError:
         pass
     else:
-        targetMeta = targetPage.get("meta", dict())
-        url = targetMeta.get("gwikiURL", set([""]))
+        url = targetPage.unlinks.get("gwikiURL", set([""]))
         if url:
             url = url.pop()
             # If the URL attribute of the target looks like the
@@ -343,29 +343,26 @@ def get_metas(request, name, metakeys,
         if not request.user.may.read(name):
             return pageMeta
 
-    loadedPage = request.graphdata.getpage(name)
-    loadedMeta = loadedPage.get("meta", dict())
+    loadedPage = request.graphdata.getpagemeta(name)
 
     # Add values and their sources
-    for key in metakeys & set(loadedMeta):
-        for value in loadedMeta[key]:
+    for key in metakeys & set(loadedPage.unlinks):
+        for value in loadedPage.unlinks[key]:
             pageMeta[key].append(value)
 
     # Link values are in a list as there can be more than one edge
     # between two pages.
     if display:
         # Making things nice to look at.
-        loadedOuts = loadedPage.get("out", dict())
-        for key in metakeys & set(loadedOuts):
-            for target in loadedOuts[key]:
+        for key in metakeys & set(loadedPage.outlinks):
+            for target in loadedPage.outlinks[key]:
 
                 pageMeta[key].append(target)
     else:
         # Showing things as they are
-        loadedLits = loadedPage.get("lit", dict())
 
-        for key in metakeys & set(loadedLits):
-            for target in loadedLits[key]:
+        for key in metakeys & set(loadedPage.litlinks):
+            for target in loadedPage.litlinks[key]:
                 if abs_attach:
                     target = absolute_attach_name(name, target)
 
@@ -378,12 +375,15 @@ def get_keys(request, name):
     Return the complete set of page's meta keys.
     """
 
-    page = request.graphdata.getpage(name)
-    keys = set(page.get('meta', dict()))
+    page = request.graphdata.getpagemeta(name)
+    keys = set(page.unlinks)
 
     # Non-typed links are not included
-    keys.update([x for x in page.get('out', dict()) if x != NO_TYPE])
+    keys.update([x for x in page.outlinks if x != NO_TYPE])
     return keys
+
+
+
 
 def get_pages(request):
     def filter(name):
@@ -957,52 +957,53 @@ def metatable_parseargs(request, args,
             continue
 
         # Get all pages, check which of them match to the supplied regexp
-        for page in request.graphdata:
+        for page in request.graphdata.pagenames():
             if page_re.match(page):
                 argset.add(page)
-
-    def is_saved(name):
-        return request.graphdata.getpage(name).has_key('saved')
 
     def can_be_read(name):
         return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pages = filter(is_saved, request.graphdata)
-        if checkAccess:
-            # Filter out the pages the user may not read
-            pages = filter(can_be_read, pages)
-        pages = set(pages)
+        pagenames = []
+        for pn in request.graphdata.pagenames():
+            if not request.graphdata.getpagemeta(pn).saved:
+                continue
+            if checkAccess and not can_be_read(pn):
+                continue
+            pagenames.append(pn)
+                
     # Otherwise check out the wanted pages
     else:
-        pages = set()
+        pagenames = []
         categories = set(filter_categories(request, argset))
         other = argset - categories
 
         for arg in categories:
-            page = request.graphdata.getpage(arg)
-            newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
+            page = request.graphdata.getpagemeta(arg)
+            newpages = page.inlinks.get(CATEGORY_KEY, list())
 
             for newpage in newpages:
                 # Check that the page is not a category or template page
                 if cat_re.search(newpage) or temp_re.search(newpage):
                     continue
-                if not is_saved(newpage):
+                if not request.graphdata.getpagemeta(newpage).saved:
                     continue
                 if checkAccess and not can_be_read(newpage):
                     continue
-                pages.add(newpage)
+                pagenames.append(newpage)
 
         for name in other:
-            if not is_saved(name):
+            if not request.graphdata.getpagemeta(name).saved:
                 continue
             if checkAccess and not can_be_read(name):
                 continue
-            pages.add(name)
+            pagenames.append(name)
 
+    print 'npagenames', len(pagenames)
     pagelist = set()
-    for page in pages:
+    for page in pagenames:
         clear = True
         # Filter by regexps (if any)
         if limitregexps:

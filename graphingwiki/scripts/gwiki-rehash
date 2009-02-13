@@ -81,21 +81,6 @@ except UserInputException:
     parser.print_help()
     sys.exit(2)
 
-if not pages:
-    pass
-    for file in os.listdir(datadir):
-        if file == 'graphdata.shelve':
-            sys.stderr.write('Removed graphdata (%s)\n' % file)
-            os.unlink(os.path.join(datadir, file))
-else:
-    for file in os.listdir(datadir):
-        if file.startswith('read_lock') or file.startswith('write_lock'):
-            sys.stderr.write("Found lockfile (%s), \n" % file + \
-                             "database may be corrupted. \n" + \
-                             "Rehash entire db or remove lock " + \
-                             "and rehash the crashed pages.\n")
-            sys.exit(1)
-
 os.chdir(pagesdir)
 
 if not pages:
@@ -112,7 +97,7 @@ count = 1
 
 # Just init one request
 req = RequestCLI()
-
+req.graphdata.clear_db()
 for pagename in pages:
     page_enc = _e(pagename)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)

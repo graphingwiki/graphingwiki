@@ -33,10 +33,12 @@ import re
 import os
 import shelve
 import itertools
-import UserDict
 import StringIO
 import cgi
-
+import durus.client_storage, durus.connection
+from durus.persistent_dict import PersistentDict
+from durus.persistent_list import PersistentList
+from durus.persistent import Persistent
 from codecs import getencoder
 
 import MoinMoin.version
@@ -114,12 +116,6 @@ def resolve_iw_url(request, wiki, page):
     return iw_url 
 
 ATTACHMENT_SCHEMAS = ["attachment", "drawing"]
-
-def encode_page(page):
-    return encode(page)
-
-def decode_page(page):
-    return unicode(page, config.charset)
 
 def node_type(request, nodename):
     if ':' in nodename:
@@ -216,35 +212,44 @@ def attachment_file(request, page, file):
                                                    
     return att_file, os.path.isfile(att_file)
 
-class GraphData(UserDict.DictMixin):
+
+class Metas(PersistentDict):
+    def add(self, typ, val):
+        try:
+            l = self[typ]
+        except KeyError:
+            l = self[typ] = PersistentList()
+        l.append(val)
+
+    def set_single(self, typ, val):
+        self.warez[typ] = PersistentList([val])
+
+    def get_single(self, typ, val, default=None):
+        val = self.warez[typ]
+        if len(val) > 1:
+            raise ValueError, typ, 'has multiple values'
+        return val[0]
+
+
+class PageMeta(Persistent):
+    def __init__(self):
+        self.outlinks = Metas()
+        self.inlinks = Metas()
+        self.unlinks = Metas()
+        self.litlinks = Metas()
+        self.mtime = 0
+        self.saved = True
+
+class GraphData:
     def __init__(self, request):
         self.request = request
 
-        # Category, Template matching regexps
-        self.graphshelve = os.path.join(request.cfg.data_dir, 
-                                        'graphdata.shelve')
-
-        self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
-        if self.use_sq_dict:
-            import sq_dict
-            self.shelveopen = sq_dict.shelve
-        else:
-            self.shelveopen = shelve.open
-
-        # XXX (falsely) assumes shelve.open creates file with same name;
-        # it happens to work with the bsddb backend.
-        if not os.path.exists(self.graphshelve):
-            db = self.shelveopen(self.graphshelve, 'c')
-            db.close()
-
-        self.db = None
-        self.lock = None
-
-        self.cache = dict()
-        self.writing = False
-        
-        self.readlock()
-
+        self.durus_storage = durus.client_storage.ClientStorage('localhost')
+        self.durus_conn = durus.connection.Connection(self.durus_storage)
+        self.dbroot = self.durus_conn.get_root()
+        if 'pages' not in self.dbroot:
+            self.clear_db()
+            self.durus_conn.commit()
         from MoinMoin.parser.text_moin_wiki import Parser
 
         # Ripped off from Parser
@@ -258,139 +263,63 @@ class GraphData(UserDict.DictMixin):
 
         self.url_re = re.compile(url_rule)
 
-    def __getitem__(self, item):
-        page = encode_page(item)
 
-        if page not in self.cache:
-            self.cache[page] = self.db[page]
+    def pagenames(self):
+         return self.dbroot['pages'].iterkeys()
 
-        return self.cache[page]
+    def allpagemetas(self):
+        return self.dbroot['pages'].itervalues()
 
-    def __setitem__(self, item, value):
-        page = encode_page(item)
+    def clear_db(self):
+        self.dbroot.clear()
+        self.dbroot['pages'] = PersistentDict()
 
-        self.db[page] = value
-        self.cache[page] = value
-
-    def cacheset(self, item, value):
-        page = encode_page(item)
-
-        self.cache[page] = value
-
-    def __delitem__(self, item):
-        page = encode_page(item)
-
-        del self.db[page]
-        self.cache.pop(page, None)
-
-    def keys(self):
-        return map(decode_page, self.db.keys())
-
-    def __iter__(self):
-        return itertools.imap(decode_page, self.db)
-
-    def __contains__(self, item):
-        page = encode_page(item)
-        return page in self.cache or page in self.db
-
-    def readlock(self):
-        if self.lock is None or not self.lock.isLocked():
-            self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
-            self.lock.acquire()
-
-        if self.db is None:
-            self.db = self.shelveopen(self.graphshelve, "r")
-            self.writing = False
-
-    def writelock(self):
-        if self.db is not None and not self.writing:
-            self.db.close()
-            self.db = None
-        
-        if (self.lock is not None and self.lock.isLocked() and 
-            isinstance(self.lock, ReadLock)):
-            self.lock.release()
-            self.lock = None
-
-        if self.lock is None or not self.lock.isLocked():
-            self.lock = WriteLock(self.request.cfg.data_dir, 
-                                  readlocktimeout=60.0)
-            self.lock.acquire()
-
-        if self.db is None:
-            self.db = self.shelveopen(self.graphshelve, "c")
-            self.writing = True
-
-    def closedb(self):
-        if self.lock is not None and self.lock.isLocked():
-            self.lock.release()
-            self.lock = None
-
-        if self.db is not None:
-            self.db.close()
-            self.db = None
-
-        self.cache.clear()
-        self.writing = False
-
-    def getpage(self, pagename):
+    def getpagemeta(self, pagename):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
-        return self.get(pagename, dict())
+        pd = self.dbroot['pages']
 
-    def reverse_meta(self):
-        self.keys_on_pages = dict()
-        self.vals_on_pages = dict()
-        self.vals_on_keys = dict()
+        if pagename not in pd:
+            pd[pagename] = PageMeta()
 
-        for page in self:
-            if page.endswith('Template'):
-                continue
-
-            value = self[page]
-
-            for key in value.get('meta', dict()):
-                self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in value['meta'][key]:
-                    self.vals_on_pages.setdefault(val, set()).add(page)
-                    self.vals_on_keys.setdefault(key, set()).add(val)
-
-            for key in value.get('lit', dict()):
-                self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in value['lit'][key]:
-                    self.vals_on_pages.setdefault(val, set()).add(page)
-                    self.vals_on_keys.setdefault(key, set()).add(val)
+        return pd[pagename]
+    
+    def delpagemeta(self, pagename):
+        try:
+            del self.dbroot['pages'][pagename]
+        except KeyError:
+            pass
 
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
         if graph.nodes.get(pagename):
             return graph
 
-        page = self.getpage(pagename)
+        page = self.getpagemeta(pagename)
 
         node = graph.nodes.add(pagename)
         # Add metadata
-        for key, val in page.get('meta', dict()).iteritems():
+        for key, val in page.unlinks.items():
             if key in SPECIAL_ATTRS:
-                node.__setattr__(key, ''.join(val))
+                node.__setattr__(key, u''.join(val))
             else:
                 node.__setattr__(key, val)
 
         # Add links as metadata
-        for key, val in page.get('out', dict()).iteritems():
+        for key, val in page.outlinks.items():
             if key == NO_TYPE:
                 continue
             if key in SPECIAL_ATTRS:
-                node.__setattr__(key, ''.join(val))
+                node.__setattr__(key, u''.join(val))
             else:
                 node.__setattr__(key, val)
 
         # Shapefile is an extra special case
-        for shape in page.get('lit', dict()).get('gwikishapefile', list()):
+        for shape in page.litlinks.get('gwikishapefile', list()):
             node.gwikishapefile = shape
         # so is category
         node.gwikicategory = \
-            page.get('out', dict()).get('gwikicategory', list())
+            page.outlinks.get('gwikicategory', list())
 
         # Configuration for local pages next, 
         # return known to be something else
@@ -401,7 +330,7 @@ class GraphData(UserDict.DictMixin):
         if not hasattr(node, 'gwikiURL'):
             node.gwikiURL = './' + pagename
 
-        if page.has_key('saved'):
+        if page.saved:
             node.gwikiURL += urladd
             # FIXME: Is this needed?
             # node.gwikiURL = './' + node.gwikiURL
@@ -437,7 +366,7 @@ class GraphData(UserDict.DictMixin):
         cat_re = category_regex(self.request)
         temp_re = template_regex(self.request)
 
-        page = self.getpage(pagename)
+        page = self.getpagemeta(pagename)
         if not page:
             return None
 
@@ -449,9 +378,9 @@ class GraphData(UserDict.DictMixin):
             adata.nodes.add(pagename)
 
         # Add links to page
-        links = page.get('in', dict())
-        for type in links:
-            for src in links[type]:
+
+        for type in page.inlinks:
+            for src in page.inlinks[type]:
                 # Filter Category, Template pages
                 if cat_re.search(src) or temp_re.search(src):
                     continue
@@ -462,10 +391,8 @@ class GraphData(UserDict.DictMixin):
                 adata = self._add_link(adata, (src, pagename), type)
 
         # Add links from page
-        links = page.get('out', dict())
-        lit_links = page.get('lit', dict())
-        for type in links:
-            for i, dst in enumerate(links[type]):
+        for type in page.outlinks:
+            for i, dst in enumerate(page.outlinks[type]):
                 # Filter Category, Template pages
                 if cat_re.search(dst) or temp_re.search(dst):
                     continue

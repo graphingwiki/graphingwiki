@@ -51,10 +51,11 @@ def graphdata_getter(self):
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
 
-def graphdata_close(self):
+def graphdata_commit(self):
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
-        graphdata.closedb()
+        graphdata.durus_conn.commit()
+        graphdata.durus_storage.close()
 
 def _get_save_plugin(self):
     # Save to graph file if plugin available.
@@ -109,11 +110,11 @@ def install_hooks():
     # finishes.
     RequestBase.graphdata = property(graphdata_getter)
     RequestBase.finish = monkey_patch(RequestBase.finish, 
-                                      always=graphdata_close)
+                                      always=graphdata_commit)
     # Patch RequestBase.run too, just in case finally might not get
     # called in case of a crash.
     RequestBase.run = monkey_patch(RequestBase.run, 
-                                   always=graphdata_close)
+                                   always=graphdata_commit)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
