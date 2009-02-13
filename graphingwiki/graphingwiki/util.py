@@ -222,10 +222,10 @@ class Metas(PersistentDict):
         l.append(val)
 
     def set_single(self, typ, val):
-        self.warez[typ] = PersistentList([val])
+        self[typ] = PersistentList([val])
 
     def get_single(self, typ, val, default=None):
-        val = self.warez[typ]
+        val = self[typ]
         if len(val) > 1:
             raise ValueError, typ, 'has multiple values'
         return val[0]
