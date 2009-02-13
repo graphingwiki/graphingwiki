@@ -34,7 +34,8 @@ function makewiki {
     cat $gwsrc/wikiconfig-add.txt >> $gwdata/wikiserverconfig.py
 #     echo "    actions_excluded = []" >> $gwdata/wikiserverconfig.py
 #     echo '    acl_rights_before = u"All:read,write,delete,revert,admin"' >> $gwdata/wikiconfig.py
-    cp $moinsrc/wikiconfig.py $gwdata/
+    sed -e "s!moinmoin_dir =.*!moinmoin_dir = '$gwdata'!" < $moinsrc/wikiconfig.py > $gwdata/wikiconfig.py
+    rm -f $gwdata/wiki || true
     ln -s . $gwdata/wiki
     find $gwdata/data/plugin -type l | xargs --no-run-if-empty rm
     python $gwinstall/bin/gwiki-install -v $gwdata
