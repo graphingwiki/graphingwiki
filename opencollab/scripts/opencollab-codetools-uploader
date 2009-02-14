@@ -167,8 +167,7 @@ def main():
         if "url" in iopts["creds"]:
             url = iopts["creds"]["url"]
         else:
-            error = "COLLABURL needs to be specified."
-            sys.exit(error)
+            parser.error("COLLABURL needs to be specified.")
         collab = CLIWiki(url, config=options.config)
     elif len(args) != 1:
         parser.error("COLLABURL needs to be specified.")
@@ -201,8 +200,7 @@ def main():
             print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
         arena_dirs = enum_dirs(arena_dir_glob, arena_user)
     else:
-        error = "Arena dir glob and user need to be specified."
-        sys.exit(error)
+        parser.error("Arena dir glob and user need to be specified.")
     if options.verbose:
         print "Uploading tool data from: " + str(arena_dirs) + " to " + url
     upload_files(collab, arena_dirs, marker)

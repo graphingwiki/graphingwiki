@@ -145,11 +145,10 @@ def main():
         if "url" in iopts["creds"]:
             url = iopts["creds"]["url"]
         else:
-            error = "COLLABURL needs to be specified."
-            sys.exit(error)
+            parser.error("COLLABURL has to be specified.")
         collab = CLIWiki(url, config=options.config)
     elif len(args) != 1:
-        parser.error("Collab URL has to be specified.")
+        parser.error("COLLABURL has to be specified.")
     else:
         url=args[0]
         collab = CLIWiki(url)
@@ -168,8 +167,7 @@ def main():
     if directory is not None:
         nmap_files = enum_dir(directory)
     else:
-        error = "Nmap results directory needs to be specified."
-        sys.exit(error)
+        parser.error("Nmap results directory needs to be specified.")
     for file in nmap_files:
         metas = Metas()
         if re.search( '\.(xml|XML)', file ):

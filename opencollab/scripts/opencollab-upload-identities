@@ -77,10 +77,9 @@ def main():
             url = iopts["creds"]["url"]
             collab = CLIWiki(url, config=options.config)
         else:
-            error = "COLLABURL needs to be specified."
-            sys.exit(error)
+            parser.error("COLLABURL needs to be specified.")
     elif len(args) != 1:
-        parser.error("Collab URL has to be specified.")
+        parser.error("COLLABURL has to be specified.")
     else:
         url=args[0]
         collab=CLIWiki(url)
@@ -102,8 +101,7 @@ def main():
             print "Parsing input file:", path
         parse_input_file(page_metas, path)
     else:
-        error = "Input file path needs to be specified."
-        sys.exit(error)
+        parsr.error("Input file path needs to be specified.")
     if options.verbose:
         print "Uploading identities to collab:", url
     import_metas(collab, page_metas, template, options.verbose) 

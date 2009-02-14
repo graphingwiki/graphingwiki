@@ -156,8 +156,7 @@ def main():
         if "url" in iopts["creds"]:
             url = iopts["creds"]["url"]
         else:
-            error = "COLLABURL needs to be specified."
-            sys.exit(error)
+            parser.error("COLLABURL needs to be specified.")
         collab = CLIWiki(url, config=options.config)
     elif len(args) != 1:
         parser.error("COLLABURL needs to be specified.")

@@ -120,11 +120,10 @@ def main():
         if "url" in iopts["creds"]:
             url = iopts["creds"]["url"]
         else:
-            error = "COLLABURL needs to be specified."
-            sys.exit(error)
+            parser.error("COLLABURL has to be specified.")
         collab = CLIWiki(url, config=options.config)
     elif len(args) != 1:
-        parser.error("Collab url has to be specified.")
+        parser.error("COLLABURL has to be specified.")
     else:
         collab = CLIWiki(url)
     if options.sender:
@@ -166,8 +165,7 @@ def main():
     if selection is not None:
         pages = collab.getMeta(selection)
     else:
-        error = "Meta argument selection needs to be specified."
-        sys.exit(error)
+        parser.error("Meta argument selection needs to be specified.")
     for page in pages:
         if pages[page][k] == page_marker[k]:
             pass
