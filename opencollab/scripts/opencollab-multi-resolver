@@ -8,8 +8,8 @@ import re
 import socket
 import optparse
 import subprocess
-import ConfigParser
 from subprocess import Popen
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.network import dns_blacklist, mr_attributes
@@ -17,17 +17,17 @@ from opencollab.util.regexp import *
 
 def import_identities(collab,collab_metas,template,category,verbose):
     for page,pmeta in collab_metas.iteritems():
-        if(page):
-            if(category is not None):
+        if page:
+            if category is not None:
                 pmeta["category"].add(category)
             status = collab.setMeta(page,pmeta,template=template,replace=True)
-            if(verbose):
+            if verbose:
                 print "Set meta for: " + page + "with status: " + status
 
 def shred_triplets(resolved): 
     collab_metas = Metas()
     for triplet in resolved:
-        if(triplet):
+        if triplet:
             subj, pred, obj = triplet.split(';')
             if pred in mr_attributes:
                 collab_metas[subj][pred] = obj
@@ -107,19 +107,6 @@ def read_input():
         new.append(line.strip())
     return new
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp(open(cpath))
-    creds = dict(configparser.items("creds"))
-    iopts = dict(configparser.items("multi-resolver"))
-    if(creds.has_key("url")):
-        iopts["url"] = creds["url"]
-    if(creds.has_key("username")):
-        iopts["username"] = creds["username"]
-    if(creds.has_key("password")):
-        iopts["password"] = creds["password"]
-    return iopts
-
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
@@ -150,50 +137,50 @@ def main():
     url=None
     mresolve_path="/usr/bin/mresolve"
     iopts={}
-    if(options.config):
-        iopts = parse_config(options.config,args)
+    if options.config:
+        iopts = parse_config(options.config, args)
         collab = CLIWiki(url, config=options.config)
-        url = iopts["url"]
-    elif(len(args) != 1):
+        url = iopts["creds"]["url"]
+    elif len(args) != 1:
         parser.error("Collab URL has to be specified.")
     else:
         url=args[0]
         collab = CLIWiki(url)
-    if(options.mresolve_path):
+    if options.mresolve_path:
         mresolve_path=options.mresolve_path
-    elif(iopts.has_key("mresolve-path")):
-        mresolve_path=iopts["mresolve-path"]
+    elif "multi-resolver" in iopts and "mresolve_path" in iopts["multi-resolver"]:
+        mresolve_path=iopts["multi-resolver"]["mresolve-path"]
     else:
         mresolve_path="/usr/bin/mresolve"
-    if(options.template):
+    if options.template:
         template=options.template
-    elif(iopts.has_key("template")):
+    elif "multi-resolver" in iopts and "template" in iopts["multi-resolver"]:
         template=iopts["template"]
     else:
         template="IdentityTemplate"
-    if(options.category):
+    if options.category:
         category=options.category
-    elif(iopts.has_key("category")):
-        category=iopts["category"]
+    elif "multi-resolver" in iopts and "category" in iopts["multi-resolver"]:
+        category=iopts["multi-resolver"]["category"]
     else:
         category=None
-    if(options.verbose):
+    if options.verbose:
         print "Reading input identities from STDIN."
     new = read_input()
-    if(options.verbose):
+    if options.verbose:
         print "Expanding initial requests."
     expanded,resolved = seed_initial(new)
-    if(options.verbose):
+    if options.verbose:
         print "Resolving requests recursively."
     while expanded:
         new,err = resolve_requests(expanded,mresolve_path)
-        if(options.verbose):
+        if options.verbose:
             print err
         expanded,resolved = generate_requests(resolved,new)
-    if(options.verbose):
+    if options.verbose:
         print "Shredding resolved RDF triplets."
     collab_metas = shred_triplets(resolved)
-    if(options.verbose):
+    if options.verbose:
         print "Importing resolved identities to: " + url
     import_identities(collab,collab_metas,template,category,options.verbose)
 

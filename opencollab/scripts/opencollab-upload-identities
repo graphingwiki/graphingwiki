@@ -14,33 +14,20 @@
 import sys
 import os
 import optparse
-import ConfigParser
-import collections
-
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
-from opencollab.meta import Meta
+from opencollab.meta import Meta, Metas
 from opencollab.util.regexp import utctimestamp
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("uploader") )
-    if len(args) == 0:
-        template = uris.pop("template")
-        path = uris.pop("path")
-        return template, path
-    else:
-        template = uris.pop("template")
-        return template
-
-def parse_input_file( metas, path ):
+def parse_input_file(page_metas, file):
     try:
         file = open(path, "r")
         lines = file.readlines()
         file.close()
     except IOError:
-        sys.exit(-1)
-    statinfo = os.stat(path)
+        error = "Input file: " + file + " doesn't exist."
+        sys.exit(error)
+    statinfo = os.stat(file)
     epoch = statinfo.st_ctime
     epoch = utctimestamp(epoch)
     for line in lines:
@@ -49,10 +36,10 @@ def parse_input_file( metas, path ):
         title = local.title()
         id = title.split('.')
         sname = ' '.join( id )
-        metas[line]["Attribution"].add(epoch)
-        metas[line]["SMTP Domain"].add('[[%s]]' % domain)
-        metas[line]["SMTP Local Part"].add(local)
-        metas[line]["See Also"].add('[[%s]]' % sname)
+        page_metas[line]["Attribution"].add(epoch)
+        page_metas[line]["SMTP Domain"].add('[[%s]]' % domain)
+        page_metas[line]["SMTP Local Part"].add(local)
+        page_metas[line]["See Also"].add('[[%s]]' % sname)
 
 def import_metas( collab, metas, template, verbose ):
     for page, pmeta in metas.iteritems():
@@ -64,38 +51,55 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
-        help="Config file path.")
+        type="string", dest="config",
+	default = None,
+	metavar="CONFIG",
+        help="CONFIG file path.")
+    parser.add_option("-f", "--file",
+                      dest="file",
+                      default=None,
+                      metavar="FILE",
+                      help=("Input FILE."))
+    parser.add_option("-t", "--template",
+                      dest="template",
+                      default=None,
+                      metavar="TEMPLATE",
+                      help=("Wiki TEMPLATE."))
     parser.add_option("-v", 
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." ) 
-    parser.set_usage("%prog [options] WIKIURL TEMPLATE FILENAME")
-
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            template, path = parse_config(options.cpath, args)
-        elif len(args) == 1:
-            template = parse_config(options.cpath, args)
-            path = args.pop()
-        elif len(args) == 2:
-            template, path = args
-        elif len(args) == 3:
-            url, template, path = args
-            collab = CLIWiki(url, config=options.cpath)
-        if len(args) < 3:
-            collab = CLIWiki(config=options.cpath)
-    elif len(args) != 3:
-        parser.error("Collab url, template name and input file name have to be defined.")
-    else:
-        url, template, path = args
-        collab = CLIWiki(url)
+    iopts={}
 
-    metas = collections.defaultdict( Meta )
-    parse_input_file( metas, path )
-    if not template:
+    if options.config:
+        iopts = parse_config(options.config, args)
+        collab = CLIWiki(url, config=options.config)
+        url = iopts["creds"]["url"]
+    elif len(args) != 1:
+        parser.error("Collab URL has to be specified.")
+    else:
+        url=args[0]
+        collab=CLIWiki(url)
+    if options.file:
+        file = options.file
+    elif "identity" in iopts and "input-file" in iopts["identity"]:
+        file = iopts["identity"]["input-file"]
+    else:
+        file = None
+    if options.template:
+        template = options.template
+    elif "identity" in iopts and "template" in iopts["identity"]:
+        template = iopts["identity"]["template"]
+    else:
         template = "IdentityTemplate"
-    import_metas( collab, metas, template, options.verbose ) 
+    page_metas = Metas()
+    if options.verbose:
+        print "Parsing input file:", file
+    parse_input_file(page_metas, file)
+    if options.verbose:
+        print "Uploading identities to collab:", url
+    import_metas(collab, metas, template, options.verbose) 
 
 if __name__ == "__main__":
     try:

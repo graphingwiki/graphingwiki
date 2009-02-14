@@ -6,37 +6,31 @@
 """
 import re
 import optparse
-import ConfigParser
 import getpass
 import imaplib
 import email
 import email.utils
 from email.Iterators import body_line_iterator
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.regexp import *
 
 def import_identities(collab,collab_metas,template,verbose):
     for page,pmeta in collab_metas.iteritems():
-        if(page):
+        if page:
             status = collab.setMeta(page,pmeta,template=template,replace=True)
     if verbose:
         print status
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    section = dict( configparser.items("spam-reader") )
-    imap_uri = section.pop("imap_server")
-    imap_user = section.pop("imap_user")
-    imap_pass = section.pop("imap_pass")
-    return imap_server, imap_user, imap_pass
-
-def read_spam(imap_server,imap_user):
+def read_spam(imaps_server,imaps_user,imaps_pass):
     href = re.compile('\w+=\"')
     tag = re.compile('\">?.*$')
-    mailbox = imaplib.IMAP4_SSL(imap_server) 
-    mailbox.login(imap_user,getpass.getpass())
+    mailbox = imaplib.IMAP4_SSL(imaps_server) 
+    if imaps_pass is None:
+        mailbox.login(imaps_user,getpass.getpass())
+    else:
+        mailbox.login(imaps_user,imaps_pass)
     mailbox.select()
     typ, data = mailbox.search(None, 'NEW')
     for num in data[0].split():
@@ -59,34 +53,69 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
-        help="Config file path.")
+        type="string", dest="config",
+        metavar="CONFIG",
+        help="CONFIG  file path.")
+    parser.add_option( "-i", "--imaps-server",
+        action="store",
+        type="string", dest="imaps_server",
+        metavar="IMAPS-SERVER",
+        help="IMAPS-SERVER name or IP address.")
+    parser.add_option( "-t", "--wiki-template",
+        action="store",
+        type="string", dest="wiki_template",
+        metavar="TEMPLATE",
+        help="Wiki TEMPLATE.")
+    parser.add_option( "-u", "--user",
+        action="store",
+        type="string", dest="imaps_user",
+        metavar="IMAPS-USERNAME",
+        help="IMAPS-USERNAME.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLAB_URL IMAPS_SERVER IMAP_USER")
-
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            imap_server,imap_user,imap_pass = parse_config(options.cpath, args)
-        elif len(args) == 1:
-            imap_user = args.pop()
-            imap_server,_,imap_pass = parse_config(options.cpath, args)
-        elif len(args) == 2:
-            imap_server,imap_user = args.pop()
-            _,_,imap_pass = parse_config(options.cpath, args)
-        collab = CLIWiki(config=options.cpath)
-    elif len(args) != 3:
-        parser.error("Collab URL, IMAPS4 server and IMAP_USER need to be defined.")
+    iopts={}
+    if options.config:
+        iopts = parse_config(options.config, args)
+        collab = CLIWiki(url, config=options.config)
+        url = iopts["creds"]["url"]
+    elif len(args) != 1:
+        parser.error("Collab URL has to be specified.")
     else:
-        url, imap_uri, imap_user = args
+        url=args[0]
         collab = CLIWiki(url)
-
-    template = "SpamTemplate"
+    if options.imaps_server:
+        imaps_server = options.imaps_server
+    elif "spam" in iopts and "imaps_server" in iopts["spam"]:
+        imaps_server = iopts["spam"]["imaps-server"]
+    else:
+        imaps_server = None
+    if options.imaps_user:
+        imaps_user = options.imaps_user
+    elif "spam" in iopts and "imaps-user" in iopts["spam"]:
+        imaps_server = iopts["spam"]["imaps-user"]
+    else:
+        imaps_user = None
+    if "spam" in iopts and "imaps-pass" in iopts["spam"]:
+        imaps_pass = iopts["spam"]["imaps-pass"]
+    else:
+        imaps_pass = None
+    if options.wiki_template:
+        wiki_template = options.wiki_template
+    elif "spam" in iopts and "wiki-template" in iopts["spam"]:
+        wiki_template = iopts["spam"]["wiki-template"]
+    else:
+        wiki_template = "SpamTemplate"
     collab_metas = Metas()
-    read_spam(imap_uri,imap_user)
-    import_identities(collab,collab_metas,template,options.verbose)
+    if options.verbose:
+        print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
+    if imaps_server is not None and imaps_user is not None:
+        read_spam(imaps_server,imaps_user,imaps_pass)
+    else:
+        sys.exit("You need to specify IMAPS-SERVER and IMAPS-USER.")
+    import_identities(collab,collab_metas,wiki_template)
 
 if __name__ == "__main__":
     try:

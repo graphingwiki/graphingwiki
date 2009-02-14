@@ -6,68 +6,77 @@
 """
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
-
+from opencollab.util.config import parse_config
 import os
 import sys
 import optparse
 import ConfigParser
-
 from urllib import quote
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("uploader") )
-    if len(args) == 0:
-        page = uris.pop("page")
-        path = uris.pop("path")
-        return page, path
-    else:
-        page = uris.pop("page")
-        return page
+def uploadFile(wiki, page, filename, path):
+    file = open(path, "rb")
+
+    for current, total in wiki.putAttachmentChunked(page, filename, file):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+
+        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
+        sys.stdout.flush()
+
+    sys.stdout.write("done\n")
+    sys.stdout.flush()
+
+    file.close()
 
 def main():
-
     parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+                      action="store",
+                      type="string", dest="config",
+                      metavar="CONFIG",
+                      help="CONFIG file path.")
+    parser.add_option("-f", "--file",
+                      dest="path",
+                      default=None,
+                      metavar="FILE",
+                      help="Input FILE or path.")
     parser.add_option("-o", "--output",
                       dest="output",
                       default=None,
                       metavar="OUTPUT",
-                      help="save the file to name OUTPUT in the wiki")
+                      help="Save the file to name OUTPUT in the wiki.")
     parser.add_option("-r", "--recursive",
                       action="store_true",
                       dest="recursive",
                       help="recursivly upload files")
-    parser.add_option( "-c", "--config",
-                      action="store",
-                      type="string", dest="cpath",
-                      help="Config file path.")
-
-    parser.set_usage("%prog [options] WIKIURL PAGENAME FILENAME")
+    parser.set_usage("%prog [options] WIKIURL")
 
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            page, path = parse_config(options.cpath, args)
-        elif len(args) == 1: 
-            page = parse_config(options.cpath, args)
-            path = args.pop()
-        elif len(args) == 2:
-            page, path = args
-        elif len(args) == 3:
-            url, page, path = args
-            wiki = CLIWiki(url, config=options.cpath)
-        if len(args) < 3:
-            wiki = CLIWiki(config=options.cpath)
-    elif len(args) != 3:
-        parser.error("wiki url, page name and file name have to be defined")
+    iopts={}
+    if options.config:
+        iopts = parse_config(options.config, args)
+        collab = CLIWiki(url, config=options.config)
+        url = iopts["creds"]["url"]
+    elif len(args) != 1:
+        parser.error("Collab URL has to be specified.")
     else:
-        url, page, path = args
-        wiki = CLIWiki(url)
+        url=args[0]
+        collab = CLIWiki(url)
+    if options.path:
+        path = options.file
+    elif "uploader" in iopts and "path" in iopts["uploader"]:
+        path = iopts["uploader"]["path"]
+    else:
+        path = None
+    if options.output:
+        output = options.output
+    elif "uploader" in iopts and "output" in iopts["uploader"]:
+        output = iopts["uploader"]["output"]
+    else:
+        output = None
 
     if options.recursive:
         filelist = list()
-
         if os.path.isfile(path):
             wikiname = quote(path, safe="")
             filelist.append((path, wikiname))
@@ -96,21 +105,6 @@ def main():
     sys.stdout.write("uploading %s as %s\n" % (path, filename)) 
     sys.stdout.flush()
     uploadFile(wiki, page, filename, path)
-
-def uploadFile(wiki, page, filename, path):
-    file = open(path, "rb")
-
-    for current, total in wiki.putAttachmentChunked(page, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.flush()
-
-    sys.stdout.write("done\n")
-    sys.stdout.flush()
-
-    file.close()
 
 if __name__ == "__main__":
     try:

@@ -9,7 +9,7 @@ import sys
 import re
 import glob
 import optparse
-import ConfigParser
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 
@@ -25,7 +25,7 @@ def read_file(htaccess):
 
 def htaccess(htaccess,arena_user):
     content = read_file(htaccess)
-    if(re.search(arena_user, content)):
+    if re.search(arena_user, content):
         return True
     else:
         return False
@@ -36,7 +36,7 @@ def enum_dirs(arena_dir_glob,arena_user):
     flist = glob.glob(arena_dir_glob)
     for f in flist:
         dir,file = (os.path.split(f))
-        if(htaccess(f, arena_user) == True):
+        if htaccess(f, arena_user) == True:
             arena_dirs.append(dir)
     return arena_dirs
 
@@ -51,7 +51,7 @@ def uploadFile(collab,page_name,filename,path):
         sys.stdout.write("of %s" % filename)
         sys.stdout.flush()
         parts_uploaded = True
-    if(parts_uploaded == True):
+    if parts_uploaded == True:
         sys.stdout.write("\n")
     else:
         sys.stdout.write("Already uploaded %s\n" % filename)
@@ -79,7 +79,7 @@ def upload_files(collab, arena_dirs, marker):
         changes = False
         page_template = "CodenomiconArenaTemplate"
         page_metas["category"].add("CategoryCodenomiconArena")
-        if('release.txt' in flist):
+        if 'release.txt' in flist:
             fname = dir + "/release.txt"
             page_metas["Release Notes"].add('{{attachment:release.txt}}')
             changes |= uploadFile(collab,page_name,"release.txt",dir)
@@ -133,17 +133,6 @@ def upload_files(collab, arena_dirs, marker):
         collab.setMeta(page_name, page_metas, template=page_template, replace=True)
         page_metas = Meta()
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp(open(cpath))
-    creds = dict(configparser.items("creds"))
-    iopts = dict(configparser.items("arena"))
-    if(creds.has_key("url")):
-        iopts["url"] = creds["url"]
-    if(creds.has_key("username")):
-        iopts["username"] = creds["username"]
-    return iopts
-
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-a", "--arena-dir-glob",
@@ -174,40 +163,40 @@ def main():
     iopts={}
     arena_dirs=[]
 
-    if(options.config):
+    if options.config:
         iopts = parse_config(options.config,args)
         collab = CLIWiki(url, config=options.config)
-        url = iopts["url"]
-    elif(len(args) != 1):
+        url = iopts["creds"]["url"]
+    elif len(args) != 1:
         parser.error("Collab URL has to be specified.")
     else:
         url=args[0]
         collab = CLIWiki(url)
-    if(options.arena_dir_glob):
+    if options.arena_dir_glob:
         arena_dir_glob=options.arena_dir_glob
-    elif(iopts.has_key("arena-dir-glob")):
-        arena_dir_glob=iopts["dir-glob"]
+    elif "arena-dir-glob" in iopts["arena-dir"]:
+        arena_dir_glob=iopts["arena"]["arena-dir-glob"]
     else:
         None
-    if(options.arena_user):
+    if options.arena_user:
         arena_user=options.arena_user
-    elif(iopts.has_key("arena-user")):
-        arena_user=iopts["arena-user"]
+    elif "arena-user" in iopts["arena-user"]:
+        arena_user=iopts["arena"]["arena-user"]
     else:
         None
-    if(options.marker):
+    if options.marker:
         marker = options.marker
-    elif(iopts.has_key("marker")):
-        marker = iopts["marker"]
+    elif "marker" in iopts["marker"]:
+        marker = iopts["arena"]["marker"]
     else:
         marker = None
-    if(marker is not None):
+    if marker is not None:
         print "Removing meta key <" + marker + \
               "> for pages with changes in attachments"
-    if(options.verbose):
+    if options.verbose:
         print "Enumerating Arena dirs from: " + arena_dir_glob + " for " + arena_user
     arena_dirs = enum_dirs(arena_dir_glob,arena_user)
-    if(options.verbose):
+    if options.verbose:
         print "Uploading tool data from: " + arena_dirs + " to " + url
     upload_files(collab,arena_dirs,marker)
 
