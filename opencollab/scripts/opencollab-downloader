@@ -126,6 +126,12 @@ def main():
         basePath = iopts["downloader"]["output"]
     else:
         basePath = os.getcwd()
+    if options.page:
+        page = options.page
+    elif options.config and "page" in iopts["downloader"]:
+        page = iopts["downloader"]["page"]
+    else:
+        parser.error("Page to download from needs to be specified.")
     if options.verbose:
         print "Enumerating attachments from collab: " + url + page
     attachments = collab.listAttachments(page)

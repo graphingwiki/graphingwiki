@@ -91,7 +91,7 @@ def main():
         collab = CLIWiki(url)
     if options.imaps_server:
         imaps_server = options.imaps_server
-    elif options.config and "imaps_server" in iopts["spam"]:
+    elif options.config and "imaps-server" in iopts["spam"]:
         imaps_server = iopts["spam"]["imaps-server"]
     else:
         imaps_server = None
@@ -106,11 +106,11 @@ def main():
     else:
         imaps_pass = None
     if options.wiki_template:
-        wiki_template = options.wiki_template
+        template = options.wiki_template
     elif options.config and "wiki-template" in iopts["spam"]:
-        wiki_template = iopts["spam"]["wiki-template"]
+        template = iopts["spam"]["wiki-template"]
     else:
-        wiki_template = "SpamTemplate"
+        template = "SpamTemplate"
     collab_metas = Metas()
     if options.verbose:
         print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
@@ -118,7 +118,7 @@ def main():
         read_spam(imaps_server,imaps_user,imaps_pass)
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    import_identities(collab,collab_metas,wiki_template)
+    import_identities(collab,collab_metas,template)
 
 if __name__ == "__main__":
     try:

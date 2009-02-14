@@ -142,7 +142,7 @@ def main():
     parser.add_option("-t", "--testplan-page",
         action="store",
         type="string", dest="testplan_page", default=None,
-	metavar="TESTPLAN-PAGE",
+        metavar="TESTPLAN-PAGE",
         help="Specify a TESTPLAN-PAGE name to link the test runs to." )
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,

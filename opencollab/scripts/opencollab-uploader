@@ -45,6 +45,11 @@ def main():
                       default=None,
                       metavar="OUTPUT",
                       help="Save the file to name OUTPUT in the wiki.")
+    parser.add_option("-p", "--page",
+                      dest="page",
+                      default=None,
+                      metavar="PAGE",
+                      help="Upload the file(s) to PAGE.")
     parser.add_option("-r", "--recursive",
                       action="store_true",
                       dest="recursive",
@@ -77,6 +82,12 @@ def main():
         output = iopts["uploader"]["output"]
     else:
         output = None
+    if options.page:
+        page = options.page
+    elif options.config and "page" in iopts["uploader"]:
+        page = iopts["uploader"]["page"]
+    else:
+        parser.error("Collab page to upload to needs to be specified.")
 
     if options.recursive:
         filelist = list()
