@@ -11,10 +11,8 @@ import re
 import string
 import md5
 import optparse
-import ConfigParser
-
 from xml.dom import minidom
-
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Func
 from gzip import GzipFile
@@ -130,18 +128,6 @@ def walk_dirs(path):
     dlist.append(path)
     return dlist
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("testrun") )
-    if len(args) == 0:
-        testplan_page = uris.pop("page")
-        path = uris.pop("path")
-        return testplan_page, path
-    else:
-        testplan_page = uris.pop("page")
-        return testplan_page
-
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
@@ -168,36 +154,40 @@ def main():
     testplan_page = None
     options, args = parser.parse_args()
     if options.config:
-        iopts = parse_config(options.config,args)
-        collab = CLIWiki(url,config=options.config)
-        url = iopts["url"]
-    elif(len(args) != 1):
-        parser.error("Collab URL has to be specified.")
+        iopts = parse_config(options.config, "creds", "defensics")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            error = "COLLABURL needs to be specified." 
+            sys.exit(error)
+        collab = CLIWiki(url, config=options.config)
+    elif len(args) != 1:
+        parser.error("COLLABURL needs to be specified.")
     else:
         url=args[0]
         collab = CLIWiki(url)
     if(options.testrun_directory):
         testrun_directory=options.testrun_directory 
-    elif(iopts.has_key("testrun-directory")):
-        testrun_directory=iopts["testrun-directory"] 
+    elif options.config and "testrun-results" in iopts["defensics"]:
+        testrun_results = iopts["defensics"]["testrun-results"] 
     else:
-        testrun_directory=None
-    if(options.testplan_page):
-        testplan_page=options.testplan_page
-    elif(iopts.has_key("testplan-page")):
-        testplan_page=iopts["testplan-page"] 
+        testrun_results = None
+    if options.testplan_page:
+        testplan_page = options.testplan_page
+    elif options.config and "testplan-page" in iopts["defensics"]:
+        testplan_page = iopts["defensics"]["testplan-page"] 
     else:
-        testplan_page=None
-    if(testrun_directory is not None):
+        testplan_page = None
+    if testrun_results is not None:
         dlist=[]
         if(options.verbose):
-             print "Walking " + testrun_directory
-        dlist = walk_dirs(testrun_directory)
+             print "Walking " + testrun_results
+        dlist = walk_dirs(testrun_results)
     else:
-        parser.error("Testrun directory needs to be defined!")
+        parser.error("Testrun directory needs to be defined.")
     if(options.verbose):
         print "Handling: " + dlist
-    handle_path(collab,testplan_page,dlist)
+    handle_path(collab, testplan_page, dlist)
 
 if __name__ == "__main__":
     try:

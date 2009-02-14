@@ -112,23 +112,24 @@ def main():
     options, args = parser.parse_args()
 
     iopts = {}
-    url = None
     page_content = {}
-    header=None
-    footer=None
     if args:
         url = args[0]
     if options.config:
-        iopts = parse_config(options.config, args)
+        iopts = parse_config(options.config, "creds", "notifier")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            error = "COLLABURL needs to be specified."
+            sys.exit(error)
         collab = CLIWiki(url, config=options.config)
-        url = iopts["creds"]["url"]
     elif len(args) != 1:
         parser.error("Collab url has to be specified.")
     else:
         collab = CLIWiki(url)
     if options.sender:
         sender = options.sender
-    elif "sender" in iopts["notifier"]:
+    elif options.config and "sender" in iopts["notifier"]:
         sender = iopts["notifier"]["sender"]
     else:
         sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
@@ -136,11 +137,13 @@ def main():
     page_marker = Meta()
     if options.selection:
         selection = options.selection
-    elif "selection" in iopts["selection"]:
+    elif options.config and "selection" in iopts["notifier"]:
         selection = iopts["notifier"]["selection"]
+    else:
+        selection = None
     if options.marker:
         marker=options.marker
-    elif "marker" in iopts["notifier"]:
+    elif options.config and "marker" in iopts["notifier"]:
         marker=iopts["notifier"]["marker"]
     else:
         marker="Notified=Yes"
@@ -148,11 +151,11 @@ def main():
     page_marker[k] = v
     if options.recipient:
         recipient = options.recipient
-    elif "recipient" in iopts["notifier"]:
+    elif options.config and "recipient" in iopts["notifier"]:
         recipient = iopts["notifier"]["recipient"]
     if options.subject:
         subject = options.subject
-    elif "subject" in iopts["notifier"]:
+    elif options.config and "subject" in iopts["notifier"]:
         subject = iopts["notifier"]["subject"]
     if options.verbose:
         print "NOTE: URL is " + url
@@ -160,7 +163,11 @@ def main():
         print "NOTE: sender is " + sender
         print "NOTE: Recipient is " + recipient
         print "NOTE: Subject is '" + subject + "'"
-    pages = collab.getMeta(selection)
+    if selection is not None:
+        pages = collab.getMeta(selection)
+    else:
+        error = "Meta argument selection needs to be specified."
+        sys.exit(error)
     for page in pages:
         if pages[page][k] == page_marker[k]:
             pass
@@ -173,15 +180,19 @@ def main():
         if options.header:
             page_html = get_page_html(collab,options.header)
             header = page_html
-        elif "header" in iopts["notifier"]:
+        elif options.config and "header" in iopts["notifier"]:
             page_html = get_page_html(collab,iopts["notifier"]["header"])
             header = page_html
+        else:
+            header = None
         if options.footer:
             page_html = get_page_html(collab,options.footer)
             footer = page_html
-        elif "footer" in iopts["notifier"]:
+        elif options.config and "footer" in iopts["notifier"]:
             page_html = get_page_html(collab,iopts["notifier"]["footer"])
             footer = page_html
+        else:
+            footer = None
         if options.verbose:
             print "Notifying " + recipient + " via email."
         send_content(url,collab,page_content,sender,recipient,subject,header,footer,page_marker)

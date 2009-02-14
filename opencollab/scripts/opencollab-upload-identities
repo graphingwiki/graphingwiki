@@ -19,7 +19,7 @@ from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Metas
 from opencollab.util.regexp import utctimestamp
 
-def parse_input_file(page_metas, file):
+def parse_input_file(page_metas, path):
     try:
         file = open(path, "r")
         lines = file.readlines()
@@ -56,10 +56,10 @@ def main():
 	metavar="CONFIG",
         help="CONFIG file path.")
     parser.add_option("-f", "--file",
-                      dest="file",
+                      dest="path",
                       default=None,
                       metavar="FILE",
-                      help=("Input FILE."))
+                      help=("Input FILE path."))
     parser.add_option("-t", "--template",
                       dest="template",
                       default=None,
@@ -71,35 +71,42 @@ def main():
     parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
     iopts={}
-
     if options.config:
-        iopts = parse_config(options.config, args)
-        collab = CLIWiki(url, config=options.config)
-        url = iopts["creds"]["url"]
+        iopts = parse_config(options.config, "creds", "identity")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+            collab = CLIWiki(url, config=options.config)
+        else:
+            error = "COLLABURL needs to be specified."
+            sys.exit(error)
     elif len(args) != 1:
         parser.error("Collab URL has to be specified.")
     else:
         url=args[0]
         collab=CLIWiki(url)
-    if options.file:
-        file = options.file
-    elif "identity" in iopts and "input-file" in iopts["identity"]:
-        file = iopts["identity"]["input-file"]
+    if options.path:
+        path = options.path
+    elif options.config and "input-file" in iopts["identity"]:
+        path = iopts["identity"]["input-file"]
     else:
-        file = None
+        path = None
     if options.template:
         template = options.template
-    elif "identity" in iopts and "template" in iopts["identity"]:
+    elif options.config and "template" in iopts["identity"]:
         template = iopts["identity"]["template"]
     else:
         template = "IdentityTemplate"
     page_metas = Metas()
-    if options.verbose:
-        print "Parsing input file:", file
-    parse_input_file(page_metas, file)
+    if path is not None:
+        if options.verbose:
+            print "Parsing input file:", path
+        parse_input_file(page_metas, path)
+    else:
+        error = "Input file path needs to be specified."
+        sys.exit(error)
     if options.verbose:
         print "Uploading identities to collab:", url
-    import_metas(collab, metas, template, options.verbose) 
+    import_metas(collab, page_metas, template, options.verbose) 
 
 if __name__ == "__main__":
     try:

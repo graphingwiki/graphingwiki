@@ -132,15 +132,18 @@ def main():
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLAB_URL")
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
     url=None
     mresolve_path="/usr/bin/mresolve"
     iopts={}
     if options.config:
-        iopts = parse_config(options.config, args)
+        iopts = parse_config(options.config, "creds", "multi-resolver")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            error = "COLLABURL needs to be specified."
         collab = CLIWiki(url, config=options.config)
-        url = iopts["creds"]["url"]
     elif len(args) != 1:
         parser.error("Collab URL has to be specified.")
     else:
@@ -148,19 +151,19 @@ def main():
         collab = CLIWiki(url)
     if options.mresolve_path:
         mresolve_path=options.mresolve_path
-    elif "multi-resolver" in iopts and "mresolve_path" in iopts["multi-resolver"]:
+    elif options.config and "mresolve_path" in iopts["multi-resolver"]:
         mresolve_path=iopts["multi-resolver"]["mresolve-path"]
     else:
         mresolve_path="/usr/bin/mresolve"
     if options.template:
         template=options.template
-    elif "multi-resolver" in iopts and "template" in iopts["multi-resolver"]:
+    elif options.config and "template" in iopts["multi-resolver"]:
         template=iopts["template"]
     else:
         template="IdentityTemplate"
     if options.category:
         category=options.category
-    elif "multi-resolver" in iopts and "category" in iopts["multi-resolver"]:
+    elif options.config and "category" in iopts["multi-resolver"]:
         category=iopts["multi-resolver"]["category"]
     else:
         category=None

@@ -78,9 +78,13 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     if options.config:
-        iopts = parse_config(options.config, args)
-        collab = CLIWiki(url, config=options.config)
-        url = iopts["creds"]["url"]
+        iopts = parse_config(options.config, "creds", "spam")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+            collab = CLIWiki(url, config=options.config)
+        else:
+            error = "COLLABURL needs to be specified."
+            sys.exit(error)
     elif len(args) != 1:
         parser.error("Collab URL has to be specified.")
     else:
@@ -88,23 +92,23 @@ def main():
         collab = CLIWiki(url)
     if options.imaps_server:
         imaps_server = options.imaps_server
-    elif "spam" in iopts and "imaps_server" in iopts["spam"]:
+    elif options.config and "imaps_server" in iopts["spam"]:
         imaps_server = iopts["spam"]["imaps-server"]
     else:
         imaps_server = None
     if options.imaps_user:
         imaps_user = options.imaps_user
-    elif "spam" in iopts and "imaps-user" in iopts["spam"]:
+    elif options.config and "imaps-user" in iopts["spam"]:
         imaps_server = iopts["spam"]["imaps-user"]
     else:
         imaps_user = None
-    if "spam" in iopts and "imaps-pass" in iopts["spam"]:
+    if options.config and "imaps-pass" in iopts["spam"]:
         imaps_pass = iopts["spam"]["imaps-pass"]
     else:
         imaps_pass = None
     if options.wiki_template:
         wiki_template = options.wiki_template
-    elif "spam" in iopts and "wiki-template" in iopts["spam"]:
+    elif options.config and "wiki-template" in iopts["spam"]:
         wiki_template = iopts["spam"]["wiki-template"]
     else:
         wiki_template = "SpamTemplate"

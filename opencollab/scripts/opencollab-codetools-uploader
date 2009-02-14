@@ -162,43 +162,50 @@ def main():
     url=None
     iopts={}
     arena_dirs=[]
-
     if options.config:
-        iopts = parse_config(options.config,args)
+        iopts = parse_config(options.config, "creds", "arena")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            error = "COLLABURL needs to be specified."
+            sys.exit(error)
         collab = CLIWiki(url, config=options.config)
-        url = iopts["creds"]["url"]
     elif len(args) != 1:
-        parser.error("Collab URL has to be specified.")
+        parser.error("COLLABURL needs to be specified.")
     else:
         url=args[0]
         collab = CLIWiki(url)
     if options.arena_dir_glob:
         arena_dir_glob=options.arena_dir_glob
-    elif "arena" in iopts and "arena-dir-glob" in iopts["arena"]:
-        arena_dir_glob=iopts["arena"]["arena-dir-glob"]
+    elif options.config and "arena-dir-glob" in iopts["arena"]:
+        arena_dir_glob = iopts["arena"]["arena-dir-glob"]
     else:
-        None
+        arena_dir_glob = None
     if options.arena_user:
-        arena_user=options.arena_user
-    elif "arena" in iopts and "arena-user" in iopts["arena"]:
-        arena_user=iopts["arena"]["arena-user"]
+        arena_user = options.arena_user
+    elif options.config and "arena-user" in iopts["arena"]:
+        arena_user = iopts["arena"]["arena-user"]
     else:
-        None
+        arena_user = None
     if options.marker:
         marker = options.marker
-    elif "arena" in iopts and "marker" in iopts["arena"]:
+    elif options.config and "marker" in iopts["arena"]:
         marker = iopts["arena"]["marker"]
     else:
         marker = None
-    if marker is not None:
-        print "Removing meta key <" + marker + \
-              "> for pages with changes in attachments"
-    if options.verbose:
-        print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
-    arena_dirs = enum_dirs(arena_dir_glob,arena_user)
+    if arena_dir_glob is not None and arena_user is not None:
+        if marker is not None:
+            print "Removing meta key <" + marker + \
+                "> for pages with changes in attachments"
+        if options.verbose:
+            print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
+        arena_dirs = enum_dirs(arena_dir_glob, arena_user)
+    else:
+        error = "Arena dir glob and user need to be specified."
+        sys.exit(error)
     if options.verbose:
         print "Uploading tool data from: " + str(arena_dirs) + " to " + url
-    upload_files(collab,arena_dirs,marker)
+    upload_files(collab, arena_dirs, marker)
 
 if __name__ == "__main__":
     try:
