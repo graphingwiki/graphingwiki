@@ -138,7 +138,7 @@ def main():
     parser.add_option("-a", "--arena-dir-glob",
                       dest="arena_dir_glob",
                       default=None,
-                      metavar="ARENA-DIR_GLOB",
+                      metavar="ARENA-DIR-GLOB",
                       help=("ARENA-DIR-GLOB, i.e. /path/to/arena/*/*/.htaccess"))
     parser.add_option( "-c", "--config",
         action="store",
@@ -174,13 +174,13 @@ def main():
         collab = CLIWiki(url)
     if options.arena_dir_glob:
         arena_dir_glob=options.arena_dir_glob
-    elif "arena-dir-glob" in iopts["arena-dir"]:
+    elif "arena" in iopts and "arena-dir-glob" in iopts["arena"]:
         arena_dir_glob=iopts["arena"]["arena-dir-glob"]
     else:
         None
     if options.arena_user:
         arena_user=options.arena_user
-    elif "arena-user" in iopts["arena-user"]:
+    elif "arena" in iopts and "arena-user" in iopts["arena"]:
         arena_user=iopts["arena"]["arena-user"]
     else:
         None
@@ -194,10 +194,10 @@ def main():
         print "Removing meta key <" + marker + \
               "> for pages with changes in attachments"
     if options.verbose:
-        print "Enumerating Arena dirs from: " + arena_dir_glob + " for " + arena_user
+        print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
     arena_dirs = enum_dirs(arena_dir_glob,arena_user)
     if options.verbose:
-        print "Uploading tool data from: " + arena_dirs + " to " + url
+        print "Uploading tool data from: " + str(arena_dirs) + " to " + url
     upload_files(collab,arena_dirs,marker)
 
 if __name__ == "__main__":
