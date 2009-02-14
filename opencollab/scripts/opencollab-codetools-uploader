@@ -186,7 +186,7 @@ def main():
         None
     if options.marker:
         marker = options.marker
-    elif "marker" in iopts["marker"]:
+    elif "arena" in iopts and "marker" in iopts["arena"]:
         marker = iopts["arena"]["marker"]
     else:
         marker = None
