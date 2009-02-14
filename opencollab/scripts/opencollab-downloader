@@ -8,54 +8,10 @@ import os
 import sys
 import md5
 import optparse
-import ConfigParser
-
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 from urllib import unquote
-
-def parse_config(cpath):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("downloader") )
-    page = uris.pop("page")
-    return page
-
-def main():
-    parser = optparse.OptionParser()
-    parser.add_option("-o", "--output",
-                      dest="output",
-                      default=None,
-                      metavar="OUTPUT",
-                      help="Save the downloaded files under PATH instead of CWD.")
-    parser.add_option( "-c", "--config",
-                      action="store",
-                      type="string", dest="cpath",
-                      help="Config file path."
-    )
-    parser.set_usage("%prog [options] WIKIURL PAGENAME")
-    options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            page = parse_config(options.cpath)
-        else: 
-            page = args[0]
-        wiki = CLIWiki( config=options.cpath )
-    elif len(args) != 2:
-        parser.error("wiki url and pagename have to be defined")
-    else:
-        url, page = args
-        wiki = CLIWiki(url)
-
-    if options.output is None:
-        basePath = os.getcwd()
-    else:
-        basePath = options.output
-
-    print "Connecting to wiki..."
-    attachments = wiki.listAttachments(page)
-    for num, attachment in enumerate(attachments):
-        downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
 
 def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
     if not os.path.exists(filename):
@@ -128,6 +84,56 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     sys.stdout.flush()
 
     file.close()
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="config",
+        metavar = "CONFIG",                    
+        help = "CONFIG file path.")
+    parser.add_option("-o", "--output",
+        dest="output",
+        default=None,
+        metavar="PATH",
+        help="Save the downloaded files under PATH instead of CWD.")
+    parser.add_option( "-p", "--download-from-page",
+        action="store",
+        type="string", dest="page",
+        metavar = "PAGE",                    
+        help = "PAGE to download attachments from.")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] COLLABURL")
+    options, args = parser.parse_args()
+    iopts={}
+    if options.config:
+        iopts = parse_config(options.config, "creds", "downloader")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+            collab = CLIWiki(url, config=options.config)
+        else:
+            error = "COLLABURL needs to be specified."
+            sys.exit(error)
+    elif len(args) != 1:
+        parser.error("COLLABURL has to be specified.")
+    else:
+        url=args[0]
+        collab=CLIWiki(url)
+    if options.output:
+        basePath = options.output
+    elif options.config and "output" in iopts["downloader"]:
+        basePath = iopts["downloader"]["output"]
+    else:
+        basePath = os.getcwd()
+    if options.verbose:
+        print "Enumerating attachments from collab: " + url + page
+    attachments = collab.listAttachments(page)
+    if options.verbose:
+       print "Downloading attachments from:", page
+    for num, attachment in enumerate(attachments):
+        downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
 
 if __name__ == "__main__":
     try:
