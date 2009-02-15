@@ -9,7 +9,7 @@ import sys
 import re
 import glob
 import optparse
-import ConfigParser
+from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 
@@ -25,7 +25,7 @@ def read_file(htaccess):
 
 def htaccess(htaccess,arena_user):
     content = read_file(htaccess)
-    if(re.search(arena_user, content)):
+    if re.search(arena_user, content):
         return True
     else:
         return False
@@ -36,7 +36,7 @@ def enum_dirs(arena_dir_glob,arena_user):
     flist = glob.glob(arena_dir_glob)
     for f in flist:
         dir,file = (os.path.split(f))
-        if(htaccess(f, arena_user) == True):
+        if htaccess(f, arena_user) == True:
             arena_dirs.append(dir)
     return arena_dirs
 
@@ -51,7 +51,7 @@ def uploadFile(collab,page_name,filename,path):
         sys.stdout.write("of %s" % filename)
         sys.stdout.flush()
         parts_uploaded = True
-    if(parts_uploaded == True):
+    if parts_uploaded == True:
         sys.stdout.write("\n")
     else:
         sys.stdout.write("Already uploaded %s\n" % filename)
@@ -77,12 +77,10 @@ def upload_files(collab, arena_dirs, marker):
         tmp = dir.rsplit('/', 2) 
         page_name = "/".join(tmp[1:3])
         changes = False
-        #page_template = tmp[2].capitalize() + "ToolTemplate"
         page_template = "CodenomiconArenaTemplate"
         page_metas["category"].add("CategoryCodenomiconArena")
-        if('release.txt' in flist):
+        if 'release.txt' in flist:
             fname = dir + "/release.txt"
-            #content = read_file(fname)
             page_metas["Release Notes"].add('{{attachment:release.txt}}')
             changes |= uploadFile(collab,page_name,"release.txt",dir)
         else:
@@ -135,68 +133,76 @@ def upload_files(collab, arena_dirs, marker):
         collab.setMeta(page_name, page_metas, template=page_template, replace=True)
         page_metas = Meta()
 
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("codetools") )
-    if(uris.has_key("marker")):
-        marker = uris["marker"]
-    else:
-        marker = None
-    if len(args) == 0:
-        arena_user = uris.pop("arena_user")
-        arena_dir_glob = uris.pop("arena_dir_glob")
-        return arena_dir_glob, arena_user, marker
-    else:
-        arena_dir_glob = uris.pop("arena_dir_glob")
-        return arena_dir_glob, marker
-
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-a", "--arena-dir-glob",
+                      dest="arena_dir_glob",
+                      default=None,
+                      metavar="ARENA-DIR-GLOB",
+                      help=("ARENA-DIR-GLOB, i.e. /path/to/arena/*/*/.htaccess"))
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
+        type="string", dest="config",
         help="Config file path.")
     parser.add_option( "-m", "--marker",
                        action="store",
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
+    parser.add_option("-u", "--arena-user",
+                      dest="arena_user",
+                      default=None,
+                      metavar="ARENA-USER",
+                      help=("ARENA-USER user name."))
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] WIKIURL ARENA-DIR-GLOB TOOL-USER ")
-
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            arena_dir_glob, arena_user, marker = \
-                            parse_config(options.cpath, args)
-        elif len(args) == 1:
-            arena_dir_glob, marker = parse_config(options.cpath, args)
-            arena_user = args.pop()
-        elif len(args) == 2:
-            arena_dir_glob, arena_user = args
-        elif len(args) == 3:
-            url, arena_dir_glob, arena_user = args
-            collab = CLIWiki(url, config=options.cpath)
-        if len(args) < 3:
-            collab = CLIWiki(config=options.cpath)
-    elif len(args) != 3:
-        parser.error("Collab url, arena directory glob and tool username have to be defined.")
+    url=None
+    iopts={}
+    arena_dirs=[]
+    if options.config:
+        iopts = parse_config(options.config, "creds", "arena")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            parser.error("COLLABURL needs to be specified.")
+        collab = CLIWiki(url, config=options.config)
+    elif len(args) != 1:
+        parser.error("COLLABURL needs to be specified.")
     else:
-        url, arena_dir_glob, path = args
+        url=args[0]
         collab = CLIWiki(url)
-
+    if options.arena_dir_glob:
+        arena_dir_glob=options.arena_dir_glob
+    elif options.config and "arena-dir-glob" in iopts["arena"]:
+        arena_dir_glob = iopts["arena"]["arena-dir-glob"]
+    else:
+        arena_dir_glob = None
+    if options.arena_user:
+        arena_user = options.arena_user
+    elif options.config and "arena-user" in iopts["arena"]:
+        arena_user = iopts["arena"]["arena-user"]
+    else:
+        arena_user = None
     if options.marker:
         marker = options.marker
-
-    if marker:
-        print "Removing meta key <" + marker + \
-              "> for pages with changes in attachments"
-    
-    arena_dirs=[]
-    arena_dirs = enum_dirs(arena_dir_glob, arena_user)
+    elif options.config and "marker" in iopts["arena"]:
+        marker = iopts["arena"]["marker"]
+    else:
+        marker = None
+    if arena_dir_glob is not None and arena_user is not None:
+        if marker is not None:
+            print "Removing meta key <" + marker + \
+                "> for pages with changes in attachments"
+        if options.verbose:
+            print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
+        arena_dirs = enum_dirs(arena_dir_glob, arena_user)
+    else:
+        parser.error("Arena dir glob and user need to be specified.")
+    if options.verbose:
+        print "Uploading tool data from: " + str(arena_dirs) + " to " + url
     upload_files(collab, arena_dirs, marker)
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ import sys
 import re
 import smtplib
 import optparse
-import ConfigParser
+from opencollab.util.config import parse_config
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -35,7 +35,7 @@ def get_page_html(collab, page):
 def send_content(url,collab,page_content,sender,recipient,subject,header,footer,page_marker):
     msg = MIMEMultipart()
     part = ''
-    if(subject == None):
+    if subject == None:
         msg['Subject'] = "Changes at: " + url
     else:
         msg['Subject'] = subject
@@ -46,12 +46,12 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
     html_foot = "\n</body>\n</html>"
     content = html_head
 
-    if(header is not None):
+    if header is not None:
         content += header
     for page in page_content:
         content += page_content[page]
         collab.setMeta(page,page_marker,replace=True)
-    if(footer is not None):
+    if footer is not None:
         content += footer
 
     content += html_foot
@@ -62,19 +62,6 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
     s.connect()
     s.sendmail(sender, recipient, msg.as_string())
     s.close()
-
-def parse_config(cpath, args):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    creds = dict(configparser.items("creds"))
-    iopts = dict(configparser.items("notifier"))
-    if(creds.has_key("url")):
-        iopts["url"] = creds["url"]
-    if(creds.has_key("username")):
-        iopts["username"] = creds["username"]
-    if(creds.has_key("password")):
-        iopts["password"] = creds["password"]
-    return iopts
 
 def main():
     parser = optparse.OptionParser()
@@ -125,77 +112,86 @@ def main():
     options, args = parser.parse_args()
 
     iopts = {}
-    url = None
     page_content = {}
-    header=None
-    footer=None
-    if(args):
+    if args:
         url = args[0]
-    if(options.config):
-        iopts = parse_config(options.config, args)
+    if options.config:
+        iopts = parse_config(options.config, "creds", "notifier")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            parser.error("COLLABURL has to be specified.")
         collab = CLIWiki(url, config=options.config)
-        url = iopts["url"]
-    elif(len(args) != 1):
-        parser.error("Collab url has to be specified.")
+    elif len(args) != 1:
+        parser.error("COLLABURL has to be specified.")
     else:
         collab = CLIWiki(url)
-    if(options.sender):
+    if options.sender:
         sender = options.sender
-    elif(iopts.has_key("sender")):
-        sender = iopts["sender"]
+    elif options.config and "sender" in iopts["notifier"]:
+        sender = iopts["notifier"]["sender"]
     else:
         sender = "opencollab-notifier@do.not.respond.to.me.INVALID"
     pages = Metas() 
     page_marker = Meta()
-    if(options.selection):
+    if options.selection:
         selection = options.selection
-    elif(iopts.has_key("selection")):
-        selection = iopts["selection"]
-    if(options.marker):
+    elif options.config and "selection" in iopts["notifier"]:
+        selection = iopts["notifier"]["selection"]
+    else:
+        selection = None
+    if options.marker:
         marker=options.marker
-    elif(iopts.has_key("marker")):
-        marker=iopts["marker"]
+    elif options.config and "marker" in iopts["notifier"]:
+        marker=iopts["notifier"]["marker"]
     else:
         marker="Notified=Yes"
     k,v = marker.split('=')
     page_marker[k] = v
-    if(options.recipient):
+    if options.recipient:
         recipient = options.recipient
-    elif(iopts.has_key("recipient")):
-        recipient = iopts["recipient"]
-    if(options.subject):
+    elif options.config and "recipient" in iopts["notifier"]:
+        recipient = iopts["notifier"]["recipient"]
+    if options.subject:
         subject = options.subject
-    elif(iopts.has_key("subject")):
-        subject = iopts["subject"]
-    if(options.verbose):
+    elif options.config and "subject" in iopts["notifier"]:
+        subject = iopts["notifier"]["subject"]
+    if options.verbose:
         print "NOTE: URL is " + url
         print "NOTE: Marker to set is " + marker
         print "NOTE: sender is " + sender
         print "NOTE: Recipient is " + recipient
         print "NOTE: Subject is '" + subject + "'"
-    pages = collab.getMeta(selection)
+    if selection is not None:
+        pages = collab.getMeta(selection)
+    else:
+        parser.error("Meta argument selection needs to be specified.")
     for page in pages:
-        if(pages[page][k] == page_marker[k]):
+        if pages[page][k] == page_marker[k]:
             pass
         else:
-            if(options.verbose):
+            if options.verbose:
                 print "Rendering " + page + " to HTML"
             page_html = get_page_html(collab, page)
             page_content[page] = page_html
-    if(page_content):
-        if(options.header):
+    if page_content:
+        if options.header:
             page_html = get_page_html(collab,options.header)
             header = page_html
-        elif(iopts.has_key("header")):
-            page_html = get_page_html(collab,iopts["header"])
+        elif options.config and "header" in iopts["notifier"]:
+            page_html = get_page_html(collab,iopts["notifier"]["header"])
             header = page_html
-        if(options.footer):
+        else:
+            header = None
+        if options.footer:
             page_html = get_page_html(collab,options.footer)
             footer = page_html
-        elif(iopts.has_key("footer")):
-            page_html = get_page_html(collab,iopts["footer"])
+        elif options.config and "footer" in iopts["notifier"]:
+            page_html = get_page_html(collab,iopts["notifier"]["footer"])
             footer = page_html
-        if(options.verbose):
+        else:
+            footer = None
+        if options.verbose:
             print "Notifying " + recipient + " via email."
         send_content(url,collab,page_content,sender,recipient,subject,header,footer,page_marker)
 

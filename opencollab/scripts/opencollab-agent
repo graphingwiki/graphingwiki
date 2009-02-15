@@ -13,7 +13,8 @@ import signal
 import pickle
 import random
 import select
-
+import optparse
+from opencollab.util.config import parse_config
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -175,8 +176,6 @@ def runOneTask(agentId, wiki, interval=60.0, dieAfter=10*60.0):
         print "Task ended"
 
 def main():
-    import optparse
-
     parser = optparse.OptionParser()
     parser.add_option("-n", "--name",
                       dest="name",
@@ -190,13 +189,23 @@ def main():
                       help=("read the username and password from the "+
                             "config file CONFIG"))
     options, args = parser.parse_args()
-
-    url = ''
-    if args:
-        url = args[0]
-    wiki = CLIWiki(url, config=options.config)
-
-    name = options.name
+    iopts = {}
+    if options.config:
+        iopts = parse_config(options.config, "creds", "agent")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            parser.error("COLLABURL needs to be specified.")
+        collab = CLIWiki(url, config=options.config)
+    elif len(args) != 1:
+        parser.error("COLLABURL needs to be specified.")
+    else:
+        url=args[0]
+        collab = CLIWiki(url)
+    if options.name:
+        name = options.name
+    elif options.config and "name" in iopts["agent"]:
+        name = iopts["agent"]["name"]
     if name is None:
         name = socket.gethostbyname(socket.gethostname())
     name += "-%d" % random.randint(0, 2**32)
@@ -204,7 +213,7 @@ def main():
     print "Getting tasks from %s as agent %s" % (url, name)
 
     while True:
-        runOneTask(name, wiki)
+        runOneTask(name, collab)
 
 if __name__ == "__main__":
     try:
