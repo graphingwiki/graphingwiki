@@ -118,12 +118,10 @@ class Wiki(object):
         try:
             try:
                 whoami = runWrapped(self._getProxy().WhoAmI)
-                print whoami
             except HttpAuthenticationFailed:
                 self._proxy = None
                 self._httpCreds = username, password
                 whoami = runWrapped(self._getProxy().WhoAmI)
-                print whoami
 
             match = self.WHOAMI_FORMAT.match(whoami)
             if match is None:
