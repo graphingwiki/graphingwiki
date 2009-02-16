@@ -14,6 +14,7 @@ import ConfigParser
 import cStringIO
 from optparse import OptionParser
 from roundup import instance
+from opencollab.util.config import parse_config
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -153,23 +154,58 @@ def transfer_data( db, tracker, collab, verbose ):
             odata = Meta()
 
 def main():
-    usage = "usage: %prog [-v] -c CPATH"
-    parser = OptionParser(usage=usage)
-    parser.add_option( "-c", 
-        action="store", type="string", dest="cpath",
-        help="Config file path." )
-    parser.add_option("-v", 
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="config",
+        default = None,
+        metavar="CONFIG",
+        help="CONFIG file path.")
+    parser.add_option("-n", "--tracker-name",
+                      dest="name",
+                      default=None,
+                      metavar="NAME",
+                      help=("Tracker NAME."))
+    parser.add_option("-p", "--tracker-path",
+                      dest="path",
+                      default=None,
+                      metavar="PATH",
+                      help=("Tracker directory PATH."))
+    parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." ) 
-    ( options, args ) = parser.parse_args()
-    if options.cpath:
-        tracker, tpath = parse_config( options.cpath )
-        db = open_db( tpath )
-        collab = CLIWiki(wiki, config=options.cpath)
-        transfer_data( db, tracker, collab, options.verbose )
-        db.close()
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] COLLABURL")
+    options, args = parser.parse_args()
+    iopts={}
+    if options.config:
+        iopts = parse_config(options.config, "creds", "push-tickets")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+            collab = CLIWiki(url, config=options.config)
+        else:
+            parser.error("COLLABURL has to be specified.")
+    elif len(args) != 1:
+        parser.error("COLLABURL has to be specified.")
     else:
-        parser.error("Option -c is mandatory. Use -h for help.")
+        url=args[0]
+        collab=CLIWiki(url)
+    if options.name:
+        tracker = options.name
+    elif options.config and "name" in iopts["push-tickets"]:
+        tracker = iopts["push-tickets"]["name"]
+    else:
+        parser.error("Tracker name needs to be specified.")
+    if options.path:
+        path = options.path
+    elif options.config and "path" in iopts["push-tickets"]:
+        path = iopts["push-tickets"]["path"]
+    else:
+        parser.error("Tracker path needs to be specified.")
+    db = open_db( path )
+    if options.verbose:
+        print "Transfering ticker from:", tracker, "to", url
+    transfer_data(db, tracker, collab, options.verbose)
+    db.close()
 
 if __name__ == "__main__":
     try:

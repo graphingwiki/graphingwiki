@@ -11,11 +11,11 @@ import string
 import re
 import md5
 import optparse
-import ConfigParser
 import collections
 import xml.etree.ElementTree as et
+from opencollab.utils.config import parse_config
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Func
+from opencollab.meta import Meta, Func, Metas
 
 def parse_config( cpath ):
     configparser = ConfigParser.ConfigParser()
@@ -118,39 +118,63 @@ def import_metas( collab, metas, template, verbose ):
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="cpath",
-        help="Config file path.")
+        action="store", type="string", 
+        dest="config",
+        metavar = "CONFIG",
+        help="CONFIG file path.")
+    parser.add_option( "-d", "--nmap-results-directory",
+        action="store", type="string", 
+        dest="directory",
+        metavar = "NMAP-RESULTS",
+        help="NMAP-RESULTS directory path.")
+    parser.add_option( "-t", "--wiki-template",
+        action="store", type="string", 
+        dest="template",
+        metavar = "TEMPLATE",
+        help="Wiki TEMPLATE, e.g. NmapTemplate.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] WIKIURL DIRNAME")
-
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if len(args) == 0:
-            path = parse_config(options.cpath)
-        elif len(args) == 1:
-            path = args.pop()
-        collab = CLIWiki( config=options.cpath )
-        if len(args) == 2:
-            url, path = args
-            collab = CLIWiki( url, options.cpath )
-    elif len(args) != 2:
-        parser.error("Collab URL and pagename have to be defined.")
+    iopts={}
+    iopts["creds"] = None
+    iopts["nmap"] = None
+    if options.config:
+        iopts = parse_config(options.config, "creds", "nmap")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            parser.error("COLLABURL has to be specified.")
+        collab = CLIWiki(url, config=options.config)
+    elif len(args) != 1:
+        parser.error("COLLABURL has to be specified.")
     else:
-        url, path = args
+        url=args[0]
         collab = CLIWiki(url)
-
-    template = "NmapTemplate"
-    nmap_files = enum_dir( path )
+    if options.directory:
+        directory = options.directory
+    elif "directory" in iopts["nmap"]:
+        directory = iopts["nmap"]["directory"]
+    else:
+        directory = None
+    if options.template:
+        directory = options.template
+    elif "template" in iopts["nmap"]:
+        template = iopts["nmap"]["template"]
+    else:
+        template = None
+    if directory is not None:
+        nmap_files = enum_dir(directory)
+    else:
+        parser.error("Nmap results directory needs to be specified.")
     for file in nmap_files:
-        metas = collections.defaultdict( Meta )
+        metas = Metas()
         if re.search( '\.(xml|XML)', file ):
-            xml_page = hash_file( os.path.join( path, file ), options.verbose )
-            parse_xml( path, file, xml_page, metas )
+            xml_page = hash_file(os.path.join(path, file), options.verbose)
+            parse_xml(path, file, xml_page, metas)
             #upload_file(  collab, xml_page, file, os.path.join(path,file) )
-            import_metas( collab, metas, template, options.verbose )
+            import_metas(collab, metas, template, options.verbose)
 
 if __name__ == "__main__":
     try:

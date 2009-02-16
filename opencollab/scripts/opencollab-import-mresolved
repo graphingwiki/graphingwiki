@@ -15,11 +15,9 @@ import sys
 import os
 import csv
 import optparse
-import ConfigParser
-import collections
-
-from opencollab.wiki import CLIWiki
-from opencollab.meta import Meta
+from opencollab.util.config import parse_config
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Meta, Metas
 from opencollab.util.regexp import dig_soaref_re, utctimestamp
 from opencollab.util.network import country_tld
 
@@ -169,29 +167,57 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
         action="store",
-        type="string", dest="cpath",
-        help="Config file path.")
-    parser.add_option("-v", 
+        type="string", dest="config",
+        default = None,
+        metavar="CONFIG",
+        help="CONFIG file path.")
+    parser.add_option("-f", "--file",
+                      dest="path",
+                      default=None,
+                      metavar="FILE",
+                      help=("Input FILE path."))
+    parser.add_option("-t", "--wiki-template",
+                      dest="template",
+                      default=None,
+                      metavar="TEMPLATE",
+                      help=("Wiki TEMPLATE."))
+    parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." ) 
-    parser.set_usage("%prog [options] WIKIURL FILENAME")
-
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] COLLABURL")
     options, args = parser.parse_args()
-    if options.cpath:
-        if( len(args) != 1 ):
-            parser.error("File name has to be defined")
-        fname = args.pop()
-        wiki = CLIWiki( config=options.cpath )
-    elif len(args) != 2:
-        parser.error("wiki url and file name have to be defined")
+    iopts={}
+    page_metas = Metas()
+    if options.config:
+        iopts = parse_config(options.config, "creds", "import-mresolved")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+            collab = CLIWiki(url, config=options.config)
+        else:
+            parser.error("COLLABURL has to be specified.")
+    elif len(args) != 1:
+        parser.error("COLLABURL has to be specified.")
     else:
-        url, fname = args
-        wiki = CLIWiki( url )
-
-    metas = collections.defaultdict( Meta )
-    template = "MresolveTemplate"
-    parse_mresolved_data( fname, metas )
-    import_metas( wiki, metas, template, options.verbose ) 
+        url=args[0]
+        collab=CLIWiki(url)
+    if options.path:
+        path = options.path
+    elif options.config and "path" in iopts["import-mresolved"]:
+        path = iopts["import-mresolved"]["path"]
+    else:
+        parser.error("Input file path neeeds to be specified.")
+    if options.template:
+        template = options.template
+    elif options.config and "template" in iopts["import-mresolved"]:
+        template = iopts["import-mresolved"]["template"]
+    else:
+        template = "MresolveTemplate"
+    if options.verbose:
+        print "Parsing input file:", path
+    parse_mresolved_data(path, page_metas)
+    if options.verbose:
+        print "Importing results to:", url
+    import_metas(collab, page_metas, template, options.verbose) 
         
 if __name__ == "__main__":
     try:

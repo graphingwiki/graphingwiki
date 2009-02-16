@@ -12,10 +12,10 @@
 import os
 import sys
 import md5
-import ConfigParser
-import EXIF
-from optparse import OptionParser
+#import EXIF
+import optparse
 from PIL import Image
+from opencollab.util.config import parse_config
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -134,29 +134,55 @@ def push_image( collab, imeta, verbose ):
         raise
 
 def main():
-    usage = "usage: %prog [-v] -c CPATH"
-    parser = OptionParser(usage=usage)
-    parser.add_option( "-c", 
-        action="store", type="string", dest="cpath",
-        help="Config file path." )
-    parser.add_option("-v", 
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="config",
+        help="Config file path.")
+    parser.add_option("-d", "--image-directory",
+                      dest="image_directory",
+                      default=None,
+                      metavar="IMAGE-DIRECTORY",
+                      help=("IMAGE-DIRECTORY."))
+    parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." ) 
-    ( options, args ) = parser.parse_args()
-    if options.cpath:
-        flist = []
-        wiki = ""
-        spath = parse_config( options.cpath )
-        collab = CLIWiki(wiki, config=options.cpath)
-        os.path.walk( spath, store_names, flist ) 
+        help="Enable verbose output.")
+    parser.set_usage("%prog [options] WIKIURL")
+    options, args = parser.parse_args()
+    iopts={}
+    flist = []
+    if options.config:
+        iopts = parse_config(options.config, "creds", "gallery")
+        if "url" in iopts["creds"]:
+            url = iopts["creds"]["url"]
+        else:
+            parser.error("COLLABURL needs to be specified.")
+        collab = CLIWiki(url, config=options.config)
+    elif len(args) != 1:
+        parser.error("COLLABURL needs to be specified.")
+    else:
+        url=args[0]
+        collab = CLIWiki(url)
+    if options.image_directory:
+        path = options.image_directory
+    elif options.config and "path" in iopts["gallery"]:
+        path = iopts["gallery"]["path"]
+    else:
+        path = None
+    if path is not None:
+        if options.verbose:
+            print "Walking image directory: ", path
+        os.path.walk(path, store_names, flist) 
         for f in flist:
             imeta = Meta()
             image = scale_image( f, imeta )
             if image:
                 read_exif( f, imeta )
-                push_image( collab, imeta, options.verbose )
+                if options.verbose:
+                    print "Uploading image: ", f
+                push_image(collab, imeta, options.verbose)
     else:
-        parser.error("Option -c is mandatory. Use -h for help.")
+        parser.error("Image directory path needs to be specified.")
 
 if __name__ == "__main__":
     try:
