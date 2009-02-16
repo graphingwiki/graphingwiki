@@ -15,8 +15,8 @@ actioninput = '<input type="hidden" name="editfunc" value="%s">\n<input'
 def macro_NewPage(macro, template=u'', button_label=u'', parent_page=u'', 
                   name_template=u'%s', edit_action=''):
 
-    newpage = NewPage(macro, template=u'', button_label=u'',
-                      parent_page=u'', name_template=u'%s')
+    newpage = NewPage(macro, template, button_label,
+                      parent_page, name_template)
     macrotext = newpage.renderInPage()
 
     if edit_action:
