@@ -67,7 +67,7 @@ def urlQuote(string):
     return urllib.quote(string, "/:")
                                
 class Wiki(object):
-    WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?), trusted=(.+?).$", re.I)
+    WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?)[\,\.]$", re.I)
 
     def __init__(self, url=None, sslPeerVerify=False):
         object.__init__(self)
@@ -118,16 +118,18 @@ class Wiki(object):
         try:
             try:
                 whoami = runWrapped(self._getProxy().WhoAmI)
+                print whoami
             except HttpAuthenticationFailed:
                 self._proxy = None
                 self._httpCreds = username, password
                 whoami = runWrapped(self._getProxy().WhoAmI)
+                print whoami
 
             match = self.WHOAMI_FORMAT.match(whoami)
             if match is None:
                 raise WikiFailure("WhoAmI action returned invalid data")
 
-            valid, trusted = match.groups()
+            valid = match.groups(1)
             if valid == "0":
                 token = runWrapped(self._doWikiAuth, username, password)
                 self._wikiCreds = token, username, password
