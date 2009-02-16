@@ -36,8 +36,8 @@ from graphingwiki.util import format_wikitext, url_escape
 
 Dependencies = ['metadata']
 
-def t_cell(request, vals, head=0, style=None, rev=''):
-    out = request
+def t_cell(macro, vals, head=0, style=None, rev=''):
+    out = macro.request
 
     if style is None:
 	style = dict()
@@ -48,11 +48,11 @@ def t_cell(request, vals, head=0, style=None, rev=''):
         else:
             style['class'] = 'meta_cell'
 
-    out.write(request.formatter.table_cell(1, attrs=style))
+    out.write(macro.formatter.table_cell(1, attrs=style))
     cellstyle = style.get('gwikistyle', '').strip('"')
 
     if cellstyle == 'list':
-        out.write(request.formatter.bullet_list(1))
+        out.write(macro.formatter.bullet_list(1))
 
     first_val = True
 
@@ -60,42 +60,43 @@ def t_cell(request, vals, head=0, style=None, rev=''):
 
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
-            out.write(request.formatter.text(',') + \
-                      request.formatter.linebreak())
+            out.write(macro.formatter.text(',') + \
+                      macro.formatter.linebreak())
 
         if head:
             if out.user.may.write(data):
                 img = out.theme.make_icon('edit')
                 page = Page(out, data)
-                out.write(request.formatter.span(1, css_class="meta_editicon"))
+                out.write(macro.formatter.span(1, css_class="meta_editicon"))
                 out.write(page.link_to_raw(out, img,
                                            querystr={'action': 'edit'},
                                            rel='nofollow'))
-                out.write(request.formatter.span(0))
+                out.write(macro.formatter.span(0))
             kw = dict()
             if rev:
                 kw['querystr'] = '?action=recall&rev=' + rev
-            out.write(request.formatter.pagelink(1, data, **kw))
-            out.write(request.formatter.text(data))
-            out.write(request.formatter.pagelink(0))
+            out.write(macro.formatter.pagelink(1, data, **kw))
+            out.write(macro.formatter.text(data))
+            out.write(macro.formatter.pagelink(0))
         elif data.strip():
             if cellstyle == 'list':
-                out.write(request.formatter.listitem(1))
+                out.write(macro.formatter.listitem(1))
 
             out.write(format_wikitext(out, data))
 
             if cellstyle == 'list':
-                out.write(request.formatter.listitem(0))
+                out.write(macro.formatter.listitem(0))
 
         first_val = False
 
     if cellstyle == 'list':
-        out.write(request.formatter.bullet_list(1))
+        out.write(macro.formatter.bullet_list(1))
 
-    out.write(request.formatter.table_cell(0))        
+    out.write(macro.formatter.table_cell(0))        
 
-def construct_table(request, pagelist, metakeys, 
+def construct_table(macro, pagelist, metakeys, 
                     legend='', checkAccess=True, styles=dict()):
+    request = macro.request
     request.page.formatter = request.formatter
     _ = request.getText
 
@@ -103,16 +104,16 @@ def construct_table(request, pagelist, metakeys,
     divfmt = { 'class': "metatable" }
 
     # Start table
-    request.write(request.formatter.linebreak() +
-		  request.formatter.div(1, **divfmt) +
-                  request.formatter.table(1, attrs={'tableclass': 'metatable'}))
+    request.write(macro.formatter.linebreak() +
+		  macro.formatter.div(1, **divfmt) +
+                  macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
 
     if metakeys:
         # Give a class to headers to make it customisable
-        request.write(request.formatter.table_row(1, {'rowclass':
+        request.write(macro.formatter.table_row(1, {'rowclass':
                                                     'meta_header'}))
         # Upper left cell is empty or has the desired legend
-        t_cell(request, [legend])
+        t_cell(macro, [legend])
 
     for key in metakeys:
         style = styles.get(key, dict())
@@ -127,12 +128,12 @@ def construct_table(request, pagelist, metakeys,
                 headerstyle[st] = style[st]
 
         if name:
-            t_cell(request, [name], style=headerstyle)
+            t_cell(macro, [name], style=headerstyle)
         else:
-            t_cell(request, [key], style=headerstyle)
+            t_cell(macro, [key], style=headerstyle)
 
     if metakeys:
-        request.write(request.formatter.table_row(0))
+        request.write(macro.formatter.table_row(0))
 
     tmp_page = request.page
 
@@ -154,31 +155,28 @@ def construct_table(request, pagelist, metakeys,
         row = row + 1
 
         if row % 2:
-            request.write(request.formatter.table_row(1, {'rowclass':
+            request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-odd-row'}))
         else:
-            request.write(request.formatter.table_row(1, {'rowclass':
+            request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-even-row'}))
-        t_cell(request, [page], head=1, rev=revision)
+        t_cell(macro, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
-            t_cell(request, metas[key], style=style)
+            t_cell(macro, metas[key], style=style)
 
-        request.write(request.formatter.table_row(0))
+        request.write(macro.formatter.table_row(0))
 
     request.page = tmp_page
     request.formatter.page = tmp_page
 
-    request.write(request.formatter.table(0))
-    request.write(request.formatter.div(0))
+    request.write(macro.formatter.table(0))
+    request.write(macro.formatter.div(0))
 
 def execute(macro, args):
     if args is None:
         args = ''
-
-    request = macro.request
-    _ = request.getText
 
     editlink = True
 
@@ -187,22 +185,25 @@ def execute(macro, args):
         args = ','.join(args.split(',')[:-1])
 
     # Note, metatable_parseargs deals with permissions
-    pagelist, metakeys, styles = metatable_parseargs(request, args,
+    pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
                                                      get_all_keys=True)
+
+    request = macro.request
+    _ = request.getText
 
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        request.write(request.formatter.linebreak() +
+        request.write(macro.formatter.linebreak() +
                       u'<div class="metatable">' +
-                      request.formatter.table(1))
-        t_cell(request, ["%s (%s)" % (_("Metatable has no contents"), args)])
-        request.write(request.formatter.table(0) + 
+                      macro.formatter.table(1))
+        t_cell(macro, ["%s (%s)" % (_("Metatable has no contents"), args)])
+        request.write(macro.formatter.table(0) + 
                       u'</div>')
 
         return ""
 
     # We're sure the user has the access to the page, so don't check
-    construct_table(request, pagelist, metakeys,
+    construct_table(macro, pagelist, metakeys,
                     checkAccess=False, styles=styles)
 
     def action_link(action, linktext, args):
