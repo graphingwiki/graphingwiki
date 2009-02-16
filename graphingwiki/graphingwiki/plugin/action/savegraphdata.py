@@ -168,19 +168,18 @@ def parse_text(request, page, text):
                 add_link(request.graphdata, pagename, dnode, metakey, hit)
 
 
-
-def save_triplet(e, a, v):
-    print e, a, v
-
 def execute(pagename, request, text, pagedir, page):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
 
     pageitem = page
-
+    
     # Parse the page and update graphdata
     parse_text(request, page, text)
+    request.graphdata.index_pagename(pagename)
+    # XXX nothing cleans up dangling inlinks now, I think.
+    # probably best to remove per-pagemeta inlinks altogether
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
@@ -196,7 +195,6 @@ def execute(pagename, request, text, pagedir, page):
         if rev != 99999999:
             if not exists:
                 request.graphdata.delpagemeta(pagename)
-
 
     graphingwiki.util.delete_moin_caches(request, pageitem)
 

@@ -951,6 +951,7 @@ def metatable_parseargs(request, args,
         # Ok, it's a page regexp
 
         # if there's something wrong with the regexp, ignore it and move on
+        # XXX should probably let the user know something is amiss?
         try:
             page_re = re.compile("%s" % arg[1:-1])
         except:
@@ -966,13 +967,15 @@ def metatable_parseargs(request, args,
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pagenames = []
-        for pn in request.graphdata.pagenames():
-            if not request.graphdata.getpagemeta(pn).saved:
-                continue
-            if checkAccess and not can_be_read(pn):
-                continue
-            pagenames.append(pn)
+        def gen_pagenames():
+            for pn in request.graphdata.pagenames():
+                if not request.graphdata.getpagemeta(pn).saved:
+                    continue
+                if checkAccess and not can_be_read(pn):
+                    continue
+                yield pn
+        
+        pagenames = gen_pagenames()
                 
     # Otherwise check out the wanted pages
     else:
@@ -1001,7 +1004,6 @@ def metatable_parseargs(request, args,
                 continue
             pagenames.append(name)
 
-    print 'npagenames', len(pagenames)
     pagelist = set()
     for page in pagenames:
         clear = True

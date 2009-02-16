@@ -10,7 +10,7 @@
 
 
 moinsrc=$PWD/moin-1.8.2
-gwsrc=$PWD/gw-svn/trunk/graphingwiki
+gwsrc=$PWD/gw-svn/branches/durus-branch/graphingwiki
 #gwsrc=$PWD/gw-svn
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install
@@ -45,7 +45,7 @@ function makewiki {
     for pluginsubdir in action macro formatter parser xmlrpc; do
         ln -sf $gwsrc/graphingwiki/plugin/$pluginsubdir/*.py $gwdata/data/plugin/$pluginsubdir/
     done
-
+    
 }
 
 set -e

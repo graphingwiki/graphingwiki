@@ -38,6 +38,7 @@ import cgi
 import durus.client_storage, durus.connection
 from durus.persistent_dict import PersistentDict
 from durus.persistent_list import PersistentList
+from durus.btree import BTree as DurusBTree
 from durus.persistent import Persistent
 from codecs import getencoder
 
@@ -247,9 +248,8 @@ class GraphData:
         self.durus_storage = durus.client_storage.ClientStorage('localhost')
         self.durus_conn = durus.connection.Connection(self.durus_storage)
         self.dbroot = self.durus_conn.get_root()
-        if 'pages' not in self.dbroot:
+        if not self.dbroot.has_key('pagemeta_by_pagename'):
             self.clear_db()
-            self.durus_conn.commit()
         from MoinMoin.parser.text_moin_wiki import Parser
 
         # Ripped off from Parser
@@ -263,32 +263,62 @@ class GraphData:
 
         self.url_re = re.compile(url_rule)
 
+    pagemeta_by_pagename = property(lambda self: self.dbroot['pagemeta_by_pagename'])
+    pagemeta_by_metakey = property(lambda self: self.dbroot['pagemeta_by_metakey'])
+    pagemeta_by_metaval = property(lambda self: self.dbroot['pagemeta_by_metaval'])
+
+
 
     def pagenames(self):
-         return self.dbroot['pages'].iterkeys()
+         return self.pagemeta_by_pagename.iterkeys()
 
     def allpagemetas(self):
-        return self.dbroot['pages'].itervalues()
+        return self.pagemeta_by_pagename.itervalues()
 
     def clear_db(self):
         self.dbroot.clear()
-        self.dbroot['pages'] = PersistentDict()
+        indices = 'pagemeta_by_pagename', 'pagemeta_by_metakey', 'pagemeta_by_metaval'
+        for i in indices:
+            self.dbroot[i] = DurusBTree()
 
     def getpagemeta(self, pagename):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
-        pd = self.dbroot['pages']
-
-        if pagename not in pd:
-            pd[pagename] = PageMeta()
-
-        return pd[pagename]
+        return self.pagemeta_by_pagename.setdefault(pagename, PageMeta())
     
     def delpagemeta(self, pagename):
         try:
-            del self.dbroot['pages'][pagename]
+            pm = self.pagemeta_by_pagename[pagename]
         except KeyError:
-            pass
+            return
+        
+        ol, ul = pm.outlinks, pm.unlinks
+        for metakey in ol.keys() + ul.keys():
+            self.pagemeta_by_metakey.get(metakey, []).remove(pagename)
+
+            for val in ol.get(metakey, []) + ul.get(metakey, []):
+                self.pagemeta_by_metaval[val].remove(pagename)
+
+        del self.pagemeta_by_pagename[pagename]
+
+    def index_pagename(self, pagename):
+        pm = self.getpagemeta(pagename)
+        ol, ul = pm.outlinks, pm.unlinks
+
+        for metakey in pm.outlinks.keys() + pm.unlinks.keys():
+            pl = self.pagemeta_by_metakey.setdefault(metakey, PersistentList())
+
+            # add page to metakey index
+            if pagename not in pl:
+                pl.append(pagename)
+
+            # add page to metaval index
+            for val in ol.get(metakey, []) + ul.get(metakey, []):
+                self.pagemeta_by_metaval.setdefault(
+                    val, PersistentList()).append(pagename)
+
+        # XXX 1) inlinks left to rot
+        # XXX 2) handle removed meta keys/vals
 
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
