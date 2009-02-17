@@ -733,7 +733,9 @@ def replace_metas(request, text, oldmeta, newmeta):
     for key in markers_to_keys:
         text = text.replace(key, markers_to_keys[key])
 
-    return text
+    # Add enter to the end of the line, as it was removed in the
+    # beginning of this function, not doing so causes extra edits.
+    return text.rstrip() + '\n'
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
