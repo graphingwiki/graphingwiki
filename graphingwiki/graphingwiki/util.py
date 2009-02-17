@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ # -*- coding: utf-8 -*-
 """
     Utils for graph generation, compatibility between MoinMoin versions
     etc.
@@ -40,7 +40,6 @@ from durus.persistent_dict import PersistentDict
 from durus.persistent_list import PersistentList
 from durus.btree import BTree as DurusBTree
 from durus.persistent import Persistent
-from codecs import getencoder
 
 import MoinMoin.version
 
@@ -61,10 +60,15 @@ SEPARATOR = '-gwikiseparator-'
 def actionname(request, pagename):
     return '%s/%s' % (request.getScriptname(), url_escape(pagename))
 
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
+def toutf8(unistr):
+    return unistr.encode(config.charset, 'replace')
+
+def fromutf8(bytestr):
+    return unicode(bytestr, config.charset)
+
+# compat names
+encode_page, decode_page = toutf8, fromutf8
+
 
 def url_escape(text):
     # Escape characters that break links in html values fields, 
@@ -301,11 +305,57 @@ class GraphData:
 
         del self.pagemeta_by_pagename[pagename]
 
+    def set_attribute(self, pagename, key, val):
+        key = key.strip()
+        if key in SPECIAL_ATTRS:
+            pm.unlinks.set_single(key, val)
+        else:
+            pm.unlinks.add(key, val)
+
+    def add_link(self, pagename, frompage, topage, key, lit):
+        if not key:
+            key = NO_TYPE
+        # inlink
+        self.getpagemeta(topage).inlinks.add(key, frompage)
+
+        # outlink
+        pm = self.getpagemeta(frompage)
+        pm.outlinks.add(key, topage)
+
+        # litlink, literal text (lit) for each link
+        # eg, if out it SomePage, lit can be ["SomePage"]
+        pm.litlinks.add(key, lit)
+        
+    def clearpagemeta(self, pagename):
+        # savegraphdata uses this, first clear and then add metas
+        pm = self.getpagemeta(pagename)
+        ol, ul = pm.outlinks, pm.unlinks
+
+        # set-ify to eliminate dups
+        for metakey in set(pm.outlinks.keys() + pm.unlinks.keys()):
+            # remove page from metakey index
+            pl = self.pagemeta_by_metakey[metakey]
+            pl.remove(pagename)
+
+            # add page to metaval index
+            for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
+                l = self.pagemeta_by_metaval[val]
+                l.remove(pagename)
+
+        # remove this page from other pages' inlinks
+        for otherpm in map(self.getpagemeta, pm.outlinks.items()):
+            otherpm.inlinks.remove(pagename)
+        # finally empty this page's links
+        pm.outlinks.clear()
+        pm.unlinks.clear()
+        # leave inlinks alone, as they're other pages' business
+
     def index_pagename(self, pagename):
         pm = self.getpagemeta(pagename)
         ol, ul = pm.outlinks, pm.unlinks
 
-        for metakey in pm.outlinks.keys() + pm.unlinks.keys():
+        # set-ify to eliminate dups
+        for metakey in set(pm.outlinks.keys() + pm.unlinks.keys()):
             pl = self.pagemeta_by_metakey.setdefault(metakey, PersistentList())
 
             # add page to metakey index
@@ -313,12 +363,9 @@ class GraphData:
                 pl.append(pagename)
 
             # add page to metaval index
-            for val in ol.get(metakey, []) + ul.get(metakey, []):
+            for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
                 self.pagemeta_by_metaval.setdefault(
                     val, PersistentList()).append(pagename)
-
-        # XXX 1) inlinks left to rot
-        # XXX 2) handle removed meta keys/vals
 
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
@@ -373,8 +420,8 @@ class GraphData:
             pagefile = node.gwikiURL.split(':')[1]
             page, file = attachment_pagefile(pagefile, pagename)
 
-            node.gwikilabel = encode(file)
-            node.gwikiURL = encode(actionname(self.request, page) + \
+            node.gwikilabel = toutf8(file)
+            node.gwikiURL = toutf8(actionname(self.request, page) + \
                 '?action=AttachFile&do=get&target=' + file)
 
         return graph

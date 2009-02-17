@@ -29,7 +29,6 @@
 
 import re
 import os
-import shelve
 
 from time import time
 from copy import copy
@@ -42,45 +41,6 @@ from MoinMoin.Page import Page
 # graphlib imports
 import graphingwiki.util, graphingwiki.editing
 
-# Add in-links from current node to local nodes
-def shelve_add_in(graphdata, (frm, to), linktype):
-    if not linktype:
-        linktype = graphingwiki.util.NO_TYPE
-
-    temp = graphdata.getpagemeta(to)
-
-    temp.inlinks.add(linktype, frm)
-        
-    # Notification that the destination has changed
-    temp.mtime = time()
-
-# Add out-links from local nodes to current node
-def shelve_add_out(graphdata, (frm, to), linktype, hit):
-    if not linktype:
-        linktype = graphingwiki.util.NO_TYPE
-
-    temp = graphdata.getpagemeta(frm)
-    temp.outlinks.add(linktype, to)
-    # Also add literal text (hit) for each link
-    # eg, if out it SomePage, lit can be ["SomePage"]
-    temp.litlinks.add(linktype, hit)
-
-def strip_meta(key, val):
-    key = key.strip()
-    if key != 'gwikilabel':
-        val = val.strip()
-    return key, val
-
-def shelve_set_attribute(graphdata, node, key, val):
-    key, val = strip_meta(key, val)
-
-    temp = graphdata.getpagemeta(node)
-
-    if key in graphingwiki.util.SPECIAL_ATTRS:
-        temp.unlinks.set_single(key, val)
-    else:
-        temp.unlinks.add(key, val)
-
 def add_meta(graphdata, pagename, (key, val)):
 
     # Do not handle empty metadata, except empty labels
@@ -91,14 +51,14 @@ def add_meta(graphdata, pagename, (key, val)):
 
     # Values to be handled in graphs
     if key in graphingwiki.util.SPECIAL_ATTRS:
-        shelve_set_attribute(graphdata, pagename, key, val)
+        graphdata.set_attribute(pagename, key, val)
         # If color defined, set page as filled
         if key == 'fillcolor':
-            shelve_set_attribute(graphdata, pagename, 'style', 'filled')
+            graphdata.set_attribute(pagename, 'style', 'filled')
         return
 
-    # Save to shelve's metadata list
-    shelve_set_attribute(graphdata, pagename, key, val)
+    # Save in pagemeta's unlinks list
+    graphdata.set_attribute(pagename, key, val)
 
 def add_include(new_data, pagename, hit):
     hit = hit[11:-3]
@@ -111,12 +71,6 @@ def add_include(new_data, pagename, hit):
     temp = new_data.get(pagename, {})
     temp.setdefault(u'include', list()).append(pagearg)
     new_data[pagename] = temp
-
-def add_link(graphdata, pagename, nodename, linktype, hit):
-    edge = [pagename, nodename]
-
-    shelve_add_in(graphdata, edge, linktype)
-    shelve_add_out(graphdata, edge, linktype, hit)
 
 def parse_text(request, page, text):
     pagename = page.page_name
@@ -159,13 +113,13 @@ def parse_text(request, page, text):
                 dnode = item
                 hit = item
                 if item in categories:
-                    add_link(request.graphdata, pagename, dnode, 
-                             u"gwikicategory", item)
+                    request.graphdata.add_link(pagename, dnode, 
+                                               u"gwikicategory", item)
             elif type == 'meta':
                 add_meta(request.graphdata, pagename, (metakey, item))
 
             if dnode:
-                add_link(request.graphdata, pagename, dnode, metakey, hit)
+                request.graphdata.add_link(pagename, dnode, metakey, hit)
 
 
 def execute(pagename, request, text, pagedir, page):
@@ -175,8 +129,11 @@ def execute(pagename, request, text, pagedir, page):
 
     pageitem = page
     
-    # Parse the page and update graphdata
+    # clear page metas from indexes and other pages' inlinks
+    request.graphdata.clearpagemeta(pagename)
+    # Parse the page and update graphdata, add inlinks to other pages
     parse_text(request, page, text)
+    # re-add index
     request.graphdata.index_pagename(pagename)
     # XXX nothing cleans up dangling inlinks now, I think.
     # probably best to remove per-pagemeta inlinks altogether
