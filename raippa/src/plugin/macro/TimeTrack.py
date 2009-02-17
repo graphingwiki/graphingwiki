@@ -93,7 +93,9 @@ def execute(macro, text):
         user = RaippaUser(request)
 
     date_now = time.strftime("%Y-%m-%d")
+    url_prefix = u''
     url_prefix = request.cfg.url_prefix_static
+    print url_prefix
     types_html = u''
 
     if types:
@@ -104,7 +106,6 @@ def execute(macro, text):
         types_html += u'</select></td></tr>'
 
     tt_form_html = u''' 
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript">
@@ -150,7 +151,7 @@ function clearText(el){
         }
     }
 </script>
-    ''' % (url_prefix, url_prefix, url_prefix, url_prefix)
+    ''' % (url_prefix, url_prefix, url_prefix)
     tt_form_html += u'''
     <div class="tt_form">
     <form method="post" action="">
