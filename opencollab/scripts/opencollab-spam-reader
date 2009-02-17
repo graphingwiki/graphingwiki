@@ -35,7 +35,7 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
     else:
         mailbox.login(imaps_user,imaps_pass)
     mailbox.select()
-    typ, data = mailbox.search(None, 'NEW')
+    typ, data = mailbox.search(None, 'UNSEEN')
     for num in data[0].split():
         typ, data = mailbox.fetch(num, '(RFC822)')
         msg = email.message_from_string(data[0][1])
