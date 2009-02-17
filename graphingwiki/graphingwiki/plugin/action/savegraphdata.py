@@ -408,15 +408,24 @@ def changed_meta(request, pagename, old_data, new_data):
 
     return add_out, lit_out, del_out, add_in, del_in
 
-def execute(pagename, request, text, pagedir, page):
+def _clear_page(request, pagename):
+    # Do not delete in-links! It will break graphs, categories and whatnot
+    if not request.graphdata[pagename].get('in', {}):
+        del request.graphdata[pagename]
+    else:
+        request.graphdata[pagename][u'saved'] = False
+        del request.graphdata[pagename][u'mtime']
+        del request.graphdata[pagename][u'include']
+        del request.graphdata[pagename][u'acl']
+        del request.graphdata[pagename][u'meta']
+
+def execute(pagename, request, text, pagedir, pageitem):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    pageitem = page
-
     # Get new data from parsing the page
-    new_data = parse_text(request, page, text)
+    new_data = parse_text(request, pageitem, text)
 
     # Get a copy of current data
     old_data = request.graphdata.get(pagename, {})
@@ -464,10 +473,10 @@ def execute(pagename, request, text, pagedir, page):
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
-    # Deleting == saving a revision with the text 'deletec/n', then 
+    # Deleting == saving a revision with the text 'deleted/n', then 
     # removing the revision. This seems to be the only way to notice.
     if text == 'deleted\n':
-        del request.graphdata[pagename]
+        _clear_page(request, pagename)
     else:
         # 2. Removing data when rehashing. 
         # New pages do not exist, but return a revision of 99999999 ->
@@ -475,8 +484,7 @@ def execute(pagename, request, text, pagedir, page):
         pf, rev, exists = pageitem.get_rev() 
         if rev != 99999999:
             if not exists:
-                del request.graphdata[pagename]
-
+                _clear_page(request, pagename)
 
     delete_moin_caches(request, pageitem)
 

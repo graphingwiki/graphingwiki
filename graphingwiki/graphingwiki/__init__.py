@@ -76,12 +76,6 @@ def graphdata_save(self, result):
 
     graphsaver(self.page_name, self.request, text, path, self)
 
-def graphdata_delete(self, (success, _)):
-    if not success:
-        return
-    self.request.graphdata.writelock()
-    self.request.graphdata.pop(self.page_name, None)
-
 def graphdata_rename(self, (success, _)):
     if not success:
         return
@@ -90,8 +84,6 @@ def graphdata_rename(self, (success, _)):
     path = underlay_to_pages(self.request, self)
 
     graphsaver(self.page_name, self.request, '', path, self)
-
-    graphdata_delete(self, (success, ''))
 
 # Main function for injecting graphingwiki extensions straight into
 # Moin's beating heart.
@@ -122,8 +114,6 @@ def install_hooks():
     # metas need to be deleted explicitly.
     PageEditor.saveText = monkey_patch(PageEditor.saveText, 
                                        graphdata_save)
-    PageEditor.deletePage = monkey_patch(PageEditor.deletePage, 
-                                         graphdata_delete)
     PageEditor.renamePage = monkey_patch(PageEditor.renamePage, 
                                          graphdata_rename)
 

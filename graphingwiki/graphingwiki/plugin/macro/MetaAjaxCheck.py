@@ -71,7 +71,7 @@ def execute(macro, args):
 
     html = unicode()
     html += u'''
-  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+  <script type="text/javascript" src="%s/gwikicommon/js/mootools-core-yc.js"></script>
     ''' % request.cfg.url_prefix_static
 
     html += '''
