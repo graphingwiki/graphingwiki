@@ -149,7 +149,6 @@ def printEntries(entries, date, pagename, request):
 
 def execute(pagename, request):
 
-    request.http_headers()
     
     _enter_page(request, pagename)
 

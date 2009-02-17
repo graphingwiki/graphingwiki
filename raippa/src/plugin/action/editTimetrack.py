@@ -56,7 +56,7 @@ def execute(pagename, request):
 
             if old_entry:
                 timetrackpage = old_entry
-                oldkeys = getkeys(requst, timetrackpage).keys()
+                oldkeys = get_keys(requst, timetrackpage).keys()
                 remove = {old_entry: oldkeys}
             else:
                 timetrackpage = randompage(request, "TimeTrack")
