@@ -6,7 +6,6 @@ from graphingwiki.editing import get_metas
 def getgrouphtml(request, groups, parentpage):
     course = parentpage
     html = u'Select group from the list or create new.<br>\n'
-    html += u'<script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>' %request.cfg.url_prefix_static
     html += u''' 
     <script type="text/javascript">
 addLoadEvent(function(){

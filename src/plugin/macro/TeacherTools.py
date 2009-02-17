@@ -9,7 +9,6 @@ def coursesform(request):
     courselist, metakeys, styles = metatable_parseargs(request,raippacategories["coursecategory"])
     if courselist:
         html += u'''
-  <script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
 //window.addEvent('domready', function(){
  addLoadEvent(function(){
@@ -137,7 +136,7 @@ form.grab(new Element('input', {
   }
 }
 
-</script>'''  % request.cfg.url_prefix_static
+</script>'''
     html += u'''
 <form method="post" id="course_form"  action="%s">
 <table class="no_border">
