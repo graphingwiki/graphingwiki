@@ -45,8 +45,14 @@ def execute(macro, args):
     # User rights are not checked here as the page will not be
     # displayed at all if user does not have rights
     pdata = request.graphdata.getpage(pagename)
+
     for type in pdata.get('in', {}):
         for page in pdata['in'][type]:
+
+            # User rights _ARE_ checked here!
+            if not request.user.may.read(page):
+                continue
+
             typeinfo = ''
             if meta and type != NO_TYPE:
                 typeinfo = " (%s)" % (type)

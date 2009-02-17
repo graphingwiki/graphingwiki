@@ -31,20 +31,20 @@ def parse_editform(request, form):
     >>> from graphingwiki.editing import _doctest_request
     >>> request = _doctest_request()
 
-    >>> parse_editform(request, {"Test?" : ["1", "2"], ":: " : ["a"]})
-    {u'Test': ({}, {'a': ['1', '2']})}
+    >>> parse_editform(request, {"Test-gwikiseparator-" : ["1", "2"], ":: " : ["a"]})
+    {'Test': ({}, {'a': ['1', '2']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> parse_editform(request, {"Test?a" : ["1", "2"], ":: a" : ["a"]})
-    {u'Test': ({u'a': ['x']}, {u'a': ['1', '2']})}
+    >>> parse_editform(request, {"Test-gwikiseparator-a" : ["1", "2"], ":: a" : ["a"]})
+    {'Test': ({'a': ['x']}, {'a': ['1', '2']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["x"]}}})
-    >>> parse_editform(request, {"Test?a" : ["x"], ":: a" : [""]})
-    {u'Test': ({u'a': ['x']}, {u'a': ['']})}
+    >>> parse_editform(request, {"Test-gwikiseparator-a" : ["x"], ":: a" : [""]})
+    {'Test': ({'a': ['x']}, {'a': ['']})}
 
     >>> request = _doctest_request({"Test" : {"meta" : {"a" : ["1", "2"]}}})
-    >>> parse_editform(request, {"Test?a" : ["1"], ":: a" : ["a"]})
-    {u'Test': ({u'a': ['1', '2']}, {u'a': ['1', '']})}
+    >>> parse_editform(request, {"Test-gwikiseparator-a" : ["1"], ":: a" : ["a"]})
+    {'Test': ({'a': ['1', '2']}, {'a': ['1', '']})}
     """
 
     keys = dict()
@@ -280,8 +280,20 @@ def execute(pagename, request):
             old = get_metas(request, pagename, keys)
             for key in keys:
                 oldkey = pagename + SEPARATOR + key
-                discarded[pagename][key] = old.get(key, list())
-                added[pagename][key] = form[oldkey]
+                oldvals = old.get(key, list())
+                if not oldvals:
+                    if pagename in discarded:
+                        del discarded[pagename]
+
+                    vals = [x.strip() for x in form[oldkey] 
+                            if x.strip()]
+                    if vals:
+                        added.setdefault(pagename, dict())[key] = vals
+                    elif pagename in added:
+                        del added[pagename]
+                else:
+                    discarded[pagename][key] = oldvals
+                    added[pagename][key] = form[oldkey]
 
             _, msgs = set_metas(request, dict(), discarded, added)
 
