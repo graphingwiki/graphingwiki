@@ -1,0 +1,5 @@
+<<Action(MetaFormEdit, push the button - change something & press save)>>
+the empty placeholders should not be removed
+ a:: 
+ b::
+ c:: 
