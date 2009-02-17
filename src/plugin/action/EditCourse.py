@@ -55,8 +55,6 @@ def courseform(request, course=None):
         tasks = dict()
     pagehtml = '''
 <script type="text/javascript"
-src="%s/raippajs/mootools-1.2-core-yc.js"></script>
-<script type="text/javascript"
 src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript"
 src="%s/raippajs/moocanvas.js"></script>
@@ -64,7 +62,7 @@ src="%s/raippajs/moocanvas.js"></script>
 src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript"
 src="%s/raippajs/dragui.js"></script>\n''' % (request.cfg.url_prefix_static,
-request.cfg.url_prefix_static, request.cfg.url_prefix_static,request.cfg.url_prefix_static,request.cfg.url_prefix_static)
+ request.cfg.url_prefix_static,request.cfg.url_prefix_static,request.cfg.url_prefix_static)
     if course:
         pagehtml += u'Page: <a href="%s/%s">%s</a>\n' % (request.getBaseURL(), course, course)
     pagehtml += u'''
@@ -476,7 +474,6 @@ def delete(request, pagename):
         return "Page doesn't exist!"
 
 def _enter_page(request, pagename):
-    request.http_headers()
     request.theme.send_title("Teacher Tools", formatted=False,
     html_head='''<link rel="stylesheet" type="text/css" charset="utf-8"
     media="all" href="%s/raippa/css/calendar.css">

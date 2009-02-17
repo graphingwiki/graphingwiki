@@ -10,7 +10,6 @@ from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
 
 def _enter_page(request, pagename):
-    request.http_headers()
     _ = request.getText
 	   
     title = _('Calendar')
@@ -167,7 +166,7 @@ def printEntries(entries, date, pagename, request):
 def execute(pagename, request):
     if not request.user.name:
         _enter_page(request, pagename)
-        request.write(u'<a href="?action=login">Login</a> or <a href="/UserPreferences">create user account</a>.')
+        request.write(u'<a href="?action=login">Login</a> or <a href="UserPreferences">create user account</a>.')
         _exit_page(request, pagename)
         return None
 
