@@ -42,7 +42,6 @@ from MoinMoin.Page import Page
 import graphingwiki.util, graphingwiki.editing
 
 def add_meta(graphdata, pagename, (key, val)):
-
     # Do not handle empty metadata, except empty labels
     if key != 'gwikilabel':
         val = val.strip()
@@ -59,18 +58,6 @@ def add_meta(graphdata, pagename, (key, val)):
 
     # Save in pagemeta's unlinks list
     graphdata.set_attribute(pagename, key, val)
-
-def add_include(new_data, pagename, hit):
-    hit = hit[11:-3]
-    pagearg = hit.split(',')[0]
-
-    # If no data, continue
-    if not pagearg:
-        return
-
-    temp = new_data.get(pagename, {})
-    temp.setdefault(u'include', list()).append(pagearg)
-    new_data[pagename] = temp
 
 def parse_text(request, page, text):
     pagename = page.page_name
