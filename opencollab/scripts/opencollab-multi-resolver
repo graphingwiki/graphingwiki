@@ -158,7 +158,7 @@ def main():
     if options.template:
         template=options.template
     elif options.config and "template" in iopts["multi-resolver"]:
-        template=iopts["template"]
+        template=iopts["multi-resolver"]["template"]
     else:
         template="IdentityTemplate"
     if options.category:
