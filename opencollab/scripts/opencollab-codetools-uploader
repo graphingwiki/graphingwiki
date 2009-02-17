@@ -139,7 +139,7 @@ def main():
                       dest="arena_dir_glob",
                       default=None,
                       metavar="ARENA-DIR-GLOB",
-                      help=("ARENA-DIR-GLOB, i.e. /path/to/arena/*/*/.htaccess"))
+                      help=("ARENA-DIR-GLOB, i.e. \"/path/to/arena/*/*/.htaccess\""))
     parser.add_option( "-c", "--config",
         action="store",
         type="string", dest="config",
@@ -168,7 +168,6 @@ def main():
             url = iopts["creds"]["url"]
         else:
             parser.error("COLLABURL needs to be specified.")
-        collab = CLIWiki(url, config=options.config)
     elif len(args) != 1:
         parser.error("COLLABURL needs to be specified.")
     else:
