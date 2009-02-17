@@ -89,7 +89,7 @@ def graphdata_rename(self, (success, _)):
 
     graphsaver = _get_save_plugin(self)
     path = underlay_to_pages(self.request, self)
-
+    # XXX what's the old name, how to change PageMeta.name
     graphsaver(self.page_name, self.request, '', path, self)
 
     graphdata_delete(self, (success, ''))

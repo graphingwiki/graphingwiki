@@ -233,13 +233,13 @@ class Metas(PersistentDict):
 
 
 class PageMeta(Persistent):
-    def __init__(self):
+    def __init__(self, name):
         self.outlinks = Metas()
-        self.inlinks = Metas()
         self.unlinks = Metas()
         self.litlinks = Metas()
         self.mtime = 0
         self.saved = True
+        self.name = name
 
 class GraphData:
     def __init__(self, request):
@@ -284,7 +284,7 @@ class GraphData:
     def getpagemeta(self, pagename):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
-        return self.pagemeta_by_pagename.setdefault(pagename, PageMeta())
+        return self.pagemeta_by_pagename.setdefault(pagename, PageMeta(pagename))
     
     def delpagemeta(self, pagename):
         try:
@@ -311,9 +311,6 @@ class GraphData:
     def add_link(self, pagename, frompage, topage, key, lit):
         if not key:
             key = NO_TYPE
-        # inlink
-        self.getpagemeta(topage).inlinks.add(key, frompage)
-
         # outlink
         pm = self.getpagemeta(frompage)
         pm.outlinks.add(key, topage)
@@ -338,13 +335,9 @@ class GraphData:
                 l = self.pagemeta_by_metaval[val]
                 l.remove(pagename)
 
-        # remove this page from other pages' inlinks
-        for otherpm in map(self.getpagemeta, pm.outlinks.items()):
-            otherpm.inlinks.remove(pagename)
         # finally empty this page's links
         pm.outlinks.clear()
         pm.unlinks.clear()
-        # leave inlinks alone, as they're other pages' business
 
     def index_pagename(self, pagename):
         pm = self.getpagemeta(pagename)
@@ -432,6 +425,15 @@ class GraphData:
             e.linktype.add(type)
         return adata
 
+    def getpageinlinks(self, pagename):
+        # mapping of metakey -> [frompage1, frompage2, ...]
+        inlinks = {}
+        for pm in self.pagemeta_by_metaval.get(pagename, []):
+            for k, vals in pm.outlinks:
+                if pagename in vals:
+                    inlinkssetdefault(k, []).append(pm.name)
+        return inlinks
+
     def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):
             return None
@@ -452,8 +454,9 @@ class GraphData:
 
         # Add links to page
 
-        for type in page.inlinks:
-            for src in page.inlinks[type]:
+        inlinks = self.getpageinlinks(pagename)
+        for type in inlinks:
+            for src in inlinks[type]:
                 # Filter Category, Template pages
                 if cat_re.search(src) or temp_re.search(src):
                     continue

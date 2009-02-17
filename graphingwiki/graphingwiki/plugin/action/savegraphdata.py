@@ -116,14 +116,12 @@ def execute(pagename, request, text, pagedir, page):
 
     pageitem = page
     
-    # clear page metas from indexes and other pages' inlinks
+    # clear page metas from indexes
     request.graphdata.clearpagemeta(pagename)
-    # Parse the page and update graphdata, add inlinks to other pages
+    # Parse the page and update graphdata
     parse_text(request, page, text)
     # re-add index
     request.graphdata.index_pagename(pagename)
-    # XXX nothing cleans up dangling inlinks now, I think.
-    # probably best to remove per-pagemeta inlinks altogether
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
