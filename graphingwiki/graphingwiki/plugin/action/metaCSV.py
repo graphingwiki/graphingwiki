@@ -7,7 +7,7 @@ import csv
 
 from MoinMoin import wikiutil
 from graphingwiki.editing import getmeta_to_table
-from graphingwiki.util import encode_page
+from graphingwiki.util import toutf8
 
 def execute(pagename, request):
     # Strip non-ascii chars in header
@@ -35,4 +35,4 @@ def execute(pagename, request):
     writer = csv.writer(request, delimiter=';')
 
     for row in table:
-        writer.writerow(map(encode_page, row))
+        writer.writerow(map(toutf8, row))

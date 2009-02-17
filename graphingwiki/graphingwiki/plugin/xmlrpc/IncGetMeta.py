@@ -11,7 +11,7 @@ import base64
 import shelve
 import xmlrpclib
 
-from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
+from graphingwiki.editing import get_metas, metatable_parseargs, fromutf8
 
 def diff(previous, current):
     removedPages = list()

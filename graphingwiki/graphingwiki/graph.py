@@ -29,17 +29,8 @@
     DEALINGS IN THE SOFTWARE.
 """
 
-from codecs import getencoder
-
 ## HACK
 from MoinMoin import config
-# Encoder from unicode to charset selected in config
-encoder = getencoder(config.charset)
-def encode(str):
-    return encoder(str, 'replace')[0]
-
-def encode_page(page):
-    return encode(page)
 
 class AttrBag(object):
     def __init__(self, **keys):
@@ -61,7 +52,7 @@ class AttrBag(object):
     def __setattr__(self, key, value):
         # HACK
         if isinstance(key, unicode):
-            key = encode_page(key)
+            key = key.encode(config.charset, 'replace')
         self.__dict__[key] = value
 
     def update(self, other):

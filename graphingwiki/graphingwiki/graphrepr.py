@@ -33,7 +33,7 @@
 import sys
 import os
 
-from graphingwiki.util import encode_page, decode_page, get_url_ns
+from graphingwiki.util import toutf8, fromutf8, get_url_ns
 from graphingwiki.editing import ordervalue
 
 gv_found = True
@@ -140,8 +140,8 @@ class GraphvizEdges(GraphvizItemGroup):
     def __iter__(self):
         cur = gv.firstedge(self.parent.handle)
         while gv.ok(cur):
-            yield (decode_page(gv.nameof(gv.tailof(cur))), 
-                   decode_page(gv.nameof(gv.headof(cur)))), \
+            yield (fromutf8(gv.nameof(gv.tailof(cur))), 
+                   fromutf8(gv.nameof(gv.headof(cur)))), \
                    dict(self.graph._iterattrs(cur))
             cur = gv.nextedge(self.parent.handle, cur)
 
@@ -185,12 +185,12 @@ class GraphvizItem(object):
         attr = gv.firstattr(self.handle)
         while gv.ok(attr):
             yield gv.nameof(attr), \
-                decode_page(gv.getv(self.handle, attr))
+                fromutf8(gv.getv(self.handle, attr))
             attr = gv.nextattr(self.handle, attr)
 
     def __str__(self):
         """ Returns item name. """
-        return "u'" + decode_page(gv.nameof(self.handle)) + "'"
+        return "u'" + fromutf8(gv.nameof(self.handle)) + "'"
 
     def __repr__(self):
         """ Returns item name and attributes.
@@ -211,7 +211,7 @@ class GraphvizItem(object):
         """ Finds the named attribute, returns its value """
         handle = self.__dict__['handle']
 
-        name = encode_page(name)
+        name = toutf8(name)
 
         retval = gv.getv(handle, gv.findattr(handle, name))
         # Needed mainly for dict() for work, getattribute excepts
@@ -219,7 +219,7 @@ class GraphvizItem(object):
         if not retval:
             object.__getattribute__(self, name)
 
-        return decode_page(retval)        
+        return fromutf8(retval)        
 
 # Subclasses, some overloading
 class GraphvizNode(GraphvizItem):
@@ -231,8 +231,8 @@ class GraphvizEdge(GraphvizItem):
         super(GraphvizEdge, self).__init__(graph, handle)
 
     def __str__(self):
-        return "(u'" + decode_page(gv.nameof(gv.tailof(self.handle))) + \
-               "', u'" + decode_page(gv.nameof(gv.headof(self.handle))) + "')"
+        return "(u'" + fromutf8(gv.nameof(gv.tailof(self.handle))) + \
+               "', u'" + fromutf8(gv.nameof(gv.headof(self.handle))) + "')"
 
     def __repr__(self):
         return "(" + str(self) + ", " + str(dict(self)) + ')'
@@ -258,7 +258,7 @@ class Graphviz:
             self._read(string=string)
         elif name:
             if strict in ["", "strict"] and type in ["graph", "digraph"]:
-                self.name = encode_page(name)
+                self.name = toutf8(name)
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
                 # print "g = gv.%s%s('%s')" % (strict, type, name)
             else:
@@ -288,7 +288,7 @@ class Graphviz:
     def layout(self, format="", file=""):
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
-        format, file = map(encode_page, [format, file])
+        format, file = map(toutf8, [format, file])
 
         if self.changed:
             # print "gv.layout(g, '%s')" % (self.engine)
@@ -337,7 +337,7 @@ class Graphviz:
         if edge:
             head, tail = edge
 
-        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+        node, head, tail, subg = map(toutf8, [node, head, tail, subg])
 
         self.changed = 1
 
@@ -367,10 +367,10 @@ class Graphviz:
         for key, elem in attrs.iteritems():
             if isinstance(elem, set):
                 for e in elem:
-                    key, e = map(encode_page, [key, e])
+                    key, e = map(toutf8, [key, e])
                     gv.setv(item, key, e)
             else:
-                key, elem = map(encode_page, [key, elem])
+                key, elem = map(toutf8, [key, elem])
                 gv.setv(item, key, elem)
             # print "gv.setv(item, '" + key + "', '" + elem + "')"
 
@@ -384,7 +384,7 @@ class Graphviz:
             handle = self.handle
         attr = gv.firstattr(handle)
         while gv.ok(attr):
-            yield gv.nameof(attr), decode_page(gv.getv(handle, attr))
+            yield gv.nameof(attr), fromutf8(gv.getv(handle, attr))
             attr = gv.nextattr(handle, attr)
 
     def _add(self, handle, node="", edge="", subg="", **attrs):
@@ -397,7 +397,7 @@ class Graphviz:
         if edge:
             head, tail = edge
 
-        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+        node, head, tail, subg = map(toutf8, [node, head, tail, subg])
 
         self.changed = 1
         if head and tail:
@@ -425,7 +425,7 @@ class Graphviz:
         if edge:
             head, tail = edge
 
-        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+        node, head, tail, subg = map(toutf8, [node, head, tail, subg])
 
         graphvizitem = None
         if head and tail:
@@ -455,7 +455,7 @@ class Graphviz:
         if edge:
             head, tail = edge
 
-        node, head, tail, subg = map(encode_page, [node, head, tail, subg])
+        node, head, tail, subg = map(toutf8, [node, head, tail, subg])
 
         self.changed = 1
         if head and tail:

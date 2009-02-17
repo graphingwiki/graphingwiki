@@ -17,14 +17,14 @@ from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas, set_metas
 from graphingwiki.editing import metatable_parseargs, edit_meta
 from graphingwiki.util import actionname, form_escape, SEPARATOR, \
-    decode_page
+    fromutf8
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
     # (Moin 1.5 request.form has its values - but not keys - decoded
     # into unicode, which tends to lead to hilarious situational
     # comedy).
-    return dict([(decode_page(key), value) for (key, value) in form.items()])
+    return dict([(fromutf8(key), value) for (key, value) in form.items()])
 
 def parse_editform(request, form):
     r"""

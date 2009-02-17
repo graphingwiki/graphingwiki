@@ -66,10 +66,6 @@ def toutf8(unistr):
 def fromutf8(bytestr):
     return unicode(bytestr, config.charset)
 
-# compat names
-encode_page, decode_page = toutf8, fromutf8
-
-
 def url_escape(text):
     # Escape characters that break links in html values fields, 
     # macros and urls with parameters
