@@ -308,7 +308,7 @@ class GraphData:
         else:
             pm.unlinks.add(key, val)
 
-    def add_link(self, pagename, frompage, topage, key, lit):
+    def add_link(self,frompage, topage, key, lit):
         if not key:
             key = NO_TYPE
         # outlink
