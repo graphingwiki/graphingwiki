@@ -28,7 +28,7 @@
 
 """
 import re
-
+from copy import copy
 from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin import wikiutil
@@ -80,17 +80,22 @@ def execute(pagename, request):
     request.write(formatter.startContent("content"))
 
     q = ''
+    mtabq = ''
     if request.form.has_key('q'):
-        q = ''.join(request.form['q'])
+        if request.form.has_key('mtab'):
+            mtabq = ''.join(request.form['q'])
+        else:
+            q = ''.join(request.form['q'])
 
     request.write(u'<form method="GET" action="%s">\n' %
                   actionname(request, pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
                   ''.join(request.form['action']))
 
-    request.write(u'<input type="text" name="q" size=50 value="%s">' %
+    request.write(u'<input type="text" name="q" size=50 value="%s"> ' %
                   (form_escape(q)))
-    request.write(u'<input type=submit value="' + _('Search') +
+    request.write(u'<input type="submit" name="mtab" value="Search as MetaTable">')
+    request.write(u'<input type="submit" value="' + _('Search') +
                   '">' + u'\n</form>\n')
 
     if q:
@@ -169,6 +174,20 @@ def execute(pagename, request):
                          
         request.write(formatter.bullet_list(0))
 
+    #mtabHTML = u''
+
+    if mtabq:
+        metatab = wikiutil.importPlugin(request.cfg, 'macro', 'MetaTable')
+        request.write("<br>") 
+        macro = copy(request)
+        formatter = HtmlFormatter(macro)
+        macro.formatter = formatter
+        macro.request = copy(request)
+        mtabHTML = metatab(macro,mtabq)
+        del macro.request
+        del macro
+    
+ 
     # End content
     request.write(formatter.endContent()) # end content div
 
