@@ -11,7 +11,6 @@ from raippa import Question
 from raippa import raippacategories, removelink, getcourseusers, getflow
 
 def _enter_page(request, pagename):
-    request.http_headers()
     request.theme.send_title(pagename)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
@@ -39,11 +38,10 @@ def draw_taskstats(request, task, course, user=None):
     if isteacher:
         html += u'''
 Page: <a href="%s/%s">%s</a> <a href="%s/%s?action=EditTask">[edit]</a>
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript">
 
 </script>
-''' % (request.getBaseURL(), task, task, request.getBaseURL(), task, request.cfg.url_prefix_static)
+''' % (request.getBaseURL(), task, task, request.getBaseURL(), task)
 
     html += u'<h1>%s</h1>' % title
 

@@ -15,7 +15,6 @@ from graphingwiki.editing import get_keys
 from graphingwiki.editing import set_metas
 
 def _enter_page(request, pagename):
-    request.http_headers()
     _ = request.getText
 
     title = _('Calendar entry editor')

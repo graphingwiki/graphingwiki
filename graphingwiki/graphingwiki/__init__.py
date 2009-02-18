@@ -86,8 +86,6 @@ def graphdata_rename(self, (success, _)):
 
     savegraphdata_plugin(self.page_name, self.request, '', path, self)
 
-    graphdata_delete(self, (success, ''))
-
 # Main function for injecting graphingwiki extensions straight into
 # Moin's beating heart.
 
@@ -117,8 +115,6 @@ def install_hooks():
     # metas need to be deleted explicitly.
     PageEditor.saveText = monkey_patch(PageEditor.saveText, 
                                        graphdata_save)
-    PageEditor.deletePage = monkey_patch(PageEditor.deletePage, 
-                                         graphdata_delete)
     PageEditor.renamePage = monkey_patch(PageEditor.renamePage, 
                                          graphdata_rename)
 

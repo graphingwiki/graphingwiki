@@ -888,10 +888,8 @@ def delete_question(request, pagename):
         return u'The page %s does not exist.' % pagename
 
 def _enter_page(request, pagename):
-    request.http_headers()
     
-    request.theme.send_title('Teacher Tools', formatted=False,
-	html_head='<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>' % request.cfg.url_prefix_static)
+    request.theme.send_title('Teacher Tools', formatted=False)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)
     else:

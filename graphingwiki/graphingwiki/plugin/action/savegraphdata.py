@@ -108,14 +108,11 @@ def parse_text(request, page, text):
             if dnode:
                 request.graphdata.add_link(pagename, dnode, metakey, hit)
 
-
 def execute(pagename, request, text, pagedir, page):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
 
-    pageitem = page
-    
     # clear page metas from indexes
     request.graphdata.clearpagemeta(pagename)
     # Parse the page and update graphdata
@@ -125,7 +122,7 @@ def execute(pagename, request, text, pagedir, page):
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
-    # Deleting == saving a revision with the text 'deletec/n', then 
+    # Deleting == saving a revision with the text 'deleted\n', then 
     # removing the revision. This seems to be the only way to notice.
     if text == 'deleted\n':
         request.graphdata.delpagemeta(pagename)

@@ -601,12 +601,21 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {'a': [u'']})
     u' b:: {{{Password}}}'
 
+    Regression test, bug #591 - empties erased
+
+    >>> replace_metas(request,
+    ...               u"blaa\n  a:: \n b:: \n c:: \n",
+    ...               {u'a': [], u'c': [], u'b': []},
+    ...               {u'a': [u'', u' '], u'c': [u'', u' '], u'b': [u'a', u' ']})
+    u'blaa\n a:: \n b:: a\n c:: \n'
+
     replace_metas(request, 
     ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
     ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
     ...           {'status': [u'', 'pending'], 'heartbeat': [u'', '1229625590.17'], 'agent': [u'', '127.0.0.1-4124520965']})
     u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
     """
+
     text = text.rstrip()
     # Annoying corner case with dl:s
     if text.endswith('::'):
@@ -686,11 +695,9 @@ def replace_metas(request, text, oldmeta, newmeta):
         key = key.strip()
 
         if key not in newmeta or not newmeta[key]:
-            return ""
+            return all
 
         newval = newmeta[key].pop(0).replace("\n", " ").strip()
-        if not newval:
-            return ""
 
         return " %s:: %s\n" % (key, newval)
     text = dl_proto_re.sub(dl_fillfun, text)
@@ -705,7 +712,8 @@ def replace_metas(request, text, oldmeta, newmeta):
 
         for value in newmeta[key]:
             value = value.replace("\n", " ").strip()
-            all += " %s:: %s\n" % (key, value)
+            if value:
+                all += " %s:: %s\n" % (key, value)
 
         newmeta[key] = list()
         return all
@@ -725,7 +733,9 @@ def replace_metas(request, text, oldmeta, newmeta):
     for key in markers_to_keys:
         text = text.replace(key, markers_to_keys[key])
 
-    return text
+    # Add enter to the end of the line, as it was removed in the
+    # beginning of this function, not doing so causes extra edits.
+    return text.rstrip() + '\n'
 
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)

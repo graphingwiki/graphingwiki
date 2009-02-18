@@ -169,7 +169,7 @@ class GraphShowerSimple(GraphShower):
             self.send_map(gr.graphviz)
             if legend:
                 self.request.write('<img src="%s" alt="%s" usemap="#%s">'%
-                                   (img_url + "2", _('legend'), legend.name))
+                                   (img_url + "2", _('Legend'), legend.name))
                 self.send_map(legend)
 
     def get_graph(self):

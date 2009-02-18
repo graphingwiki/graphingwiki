@@ -17,7 +17,6 @@ from raippa import raippacategories
 from raippa import addlink, removelink, pageexists, getflow, reporterror
 
 def _enter_page(request, pagename):
-    request.http_headers()
     request.theme.send_title(pagename)
     if not hasattr(request, 'formatter'):
         formatter = HtmlFormatter(request)

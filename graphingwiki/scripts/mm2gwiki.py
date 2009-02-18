@@ -7,6 +7,10 @@ import sys
 from xml.parsers import expat
 from pprint import pprint
 
+# add ../lib/pythonX.Y/site-packages to sys.path, in case we've been put into
+# $prefix/bin by setup.py install
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
+
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname
 
 from graphingwiki.graph import Graph

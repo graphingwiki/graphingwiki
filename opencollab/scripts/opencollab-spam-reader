@@ -9,12 +9,15 @@ import optparse
 import getpass
 import imaplib
 import email
-import email.utils
 from email.Iterators import body_line_iterator
 from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.regexp import *
+try:
+    import email.utils
+except:
+    import email.Utils
 
 def import_identities(collab,collab_metas,template,verbose):
     for page,pmeta in collab_metas.iteritems():
@@ -32,7 +35,7 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
     else:
         mailbox.login(imaps_user,imaps_pass)
     mailbox.select()
-    typ, data = mailbox.search(None, 'NEW')
+    typ, data = mailbox.search(None, 'UNSEEN')
     for num in data[0].split():
         typ, data = mailbox.fetch(num, '(RFC822)')
         msg = email.message_from_string(data[0][1])
@@ -45,7 +48,6 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
                 token = href.sub('', token)
                 token = tag.sub('', token)
                 print token
-            
     mailbox.close()
     mailbox.logout()
 
@@ -98,7 +100,7 @@ def main():
     if options.imaps_user:
         imaps_user = options.imaps_user
     elif options.config and "imaps-user" in iopts["spam"]:
-        imaps_server = iopts["spam"]["imaps-user"]
+        imaps_user = iopts["spam"]["imaps-user"]
     else:
         imaps_user = None
     if options.config and "imaps-pass" in iopts["spam"]:
@@ -112,13 +114,13 @@ def main():
     else:
         template = "SpamTemplate"
     collab_metas = Metas()
-    if options.verbose:
-        print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
     if imaps_server is not None and imaps_user is not None:
+        if options.verbose:
+            print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
         read_spam(imaps_server,imaps_user,imaps_pass)
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    import_identities(collab,collab_metas,template)
+    #import_identities(collab,collab_metas,template,options.verbose)
 
 if __name__ == "__main__":
     try:

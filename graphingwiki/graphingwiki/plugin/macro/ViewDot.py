@@ -126,4 +126,4 @@ def execute(macro, args):
     req_url = request.getScriptname() + '/' + uri
     req_url = join_params(req_url, args)
     return '<a href="%s&view=View" id="footer">[%s]</a>\n' % \
-           (graph_request.getQualifiedURL(req_url), _('view'))
+           (graph_request.getQualifiedURL(req_url), _('View'))

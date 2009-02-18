@@ -49,6 +49,7 @@ from MoinMoin import wikiutil
 from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki.graph import Graph
 
@@ -643,15 +644,11 @@ def load_parents(request, graph, child, urladd):
 
 def delete_moin_caches(request, pageitem):
     # Clear cache
+    arena = PageEditor(request, pageitem.page_name)
 
     # delete pagelinks
-    if MOIN_VERSION > 1.6:
-        arena = wikiutil.quoteWikinameFS(pageitem.page_name)
-    else:
-        arena = pageitem
-
     key = 'pagelinks'
-    cache = caching.CacheEntry(request, arena, key)
+    cache = caching.CacheEntry(request, arena, key, scope='item')
     cache.remove()
 
     # forget in-memory page text
@@ -663,9 +660,9 @@ def delete_moin_caches(request, pageitem):
     request.graphdata.cache = dict()
 
     # clean the cache
-    for formatter_name in ['text_html']:
+    for formatter_name in request.cfg.caching_formats:
         key = formatter_name
-        cache = caching.CacheEntry(request, arena, key)
+        cache = caching.CacheEntry(request, arena, key, scope='item')
         cache.remove()
 
 def template_regex(request, act=False):

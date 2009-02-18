@@ -136,7 +136,6 @@ def draw_ui(request, courses, course=None, user=None, compress=True, show_compre
     currentuser = RaippaUser(request, request.user.name)
 
     html = u'''
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-core-yc.js"></script>
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript">
 //window.addEvent('domready', function(){
@@ -205,7 +204,7 @@ addLoadEvent(function(){
 <form method="POST" enctype="multipart/form-data" id="courses" action="%s">
 <input type="hidden" name="action" value="raippaStats" onsubmit="return false;">
 <select name="course">
-''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.page.page_name.split("/")[-1])
+''' % (request.cfg.url_prefix_static, request.page.page_name.split("/")[-1])
 
     for coursepage, coursename in courses.iteritems():
         if coursepage == course:
