@@ -265,6 +265,7 @@ class GraphData:
     pagemeta_by_pagename = property(lambda self: self.dbroot['pagemeta_by_pagename'])
     pagename_by_metakey = property(lambda self: self.dbroot['pagename_by_metakey'])
     pagename_by_metaval = property(lambda self: self.dbroot['pagename_by_metaval'])
+    pagename_by_regexp = property(lambda self: self.dbroot['pagename_by_regexp'])
 
 
 
@@ -276,7 +277,7 @@ class GraphData:
 
     def clear_db(self):
         self.dbroot.clear()
-        indices = 'pagemeta_by_pagename', 'pagename_by_metakey', 'pagename_by_metaval'
+        indices = 'pagemeta_by_pagename', 'pagename_by_metakey', 'pagename_by_metaval', 'pagename_by_regexp'
         for i in indices:
             self.dbroot[i] = DurusBTree()
 
@@ -299,6 +300,9 @@ class GraphData:
                 self.pagename_by_metaval[val].remove(pagename)
 
         del self.pagemeta_by_pagename[pagename]
+        for restring, pnlist in self.pagename_by_regexp.items():
+            if pagename in pnlist:
+                pnlist.remove(pagename)
 
     def set_attribute(self, pagename, key, val):
         key = key.strip()
@@ -355,6 +359,11 @@ class GraphData:
             for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
                 self.pagename_by_metaval.setdefault(
                     val, PersistentList()).append(pagename)
+
+        for restring in self.pagename_by_regexp.keys():
+            rx = re.compile(restring, re.UNICODE|re.IGNORECASE)
+            if rx.search(pagename):
+                self.pagename_indices[restring].append(pagename)
 
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
@@ -433,6 +442,15 @@ class GraphData:
                 if pagename in vals:
                     inlinks.setdefault(k, []).append(pname)
         return inlinks
+
+    def get_pagenames_by_regexp(self, restring):
+        rx = re.compile(restring, re.UNICODE|re.IGNORECASE)
+        if restring not in self.pagename_index:
+            # index it. these are not cleaned up currently except on
+            # rehash, maybe some lru purging could be done.
+            self.pagename_by_regexp[restring] = PersistentList(
+                filter(rx.search, self.pagenames()))
+        return self.pagename_by_regexp[restring]
 
     def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):
@@ -537,6 +555,23 @@ class GraphData:
                     node.gwikitooltip = tooltip
 
         return adata
+
+def pagemeta_query(graphdata, metakey_querydict=None,
+                   pagenames=None, checkAccess=True):
+    for qk, qv in metakey_querydict.items():
+        for pn in graphdata.pagename_by_metakey.get(qk, []):
+            if pagenames and pn not in pagenames:
+                continue
+            # could also look up by metaval if its a string,
+            # could be faster if the metakey is common...
+            pm = graphdata.getpagemeta(pn)
+            for v in pm.outlinks.get(qk, []) + pm.unlinks.get(qk, []):
+                if isinstance(qv, basestring):
+                    if qv.lower() == v.lower():
+                        yield pn
+                else:
+                    if qv(v):
+                        yield pn
 
 # The load_ -functions try to minimise unnecessary reloading and overloading
 
