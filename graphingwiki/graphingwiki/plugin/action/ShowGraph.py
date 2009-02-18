@@ -1019,7 +1019,7 @@ class GraphShower(object):
         request.write(u'<td valign=top><table border="1" id="tab2"><tr>\n')
 
         # filter edges
-        request.write(u'<td valign=top>\n<u>' + _('Edges:') + u'</u><br>\n')
+        request.write(u'<td valign=top>\n<u>' + _("Edges:") + u'</u><br>\n')
         alledges = list(self.coloredges) + filter(self.oftype_p,
                                                   self.filteredges)
         alledges.sort()
@@ -1030,7 +1030,7 @@ class GraphShower(object):
 	# filter categories
         if allcategories:
             request.write(u"<td valign=top>\n<u>" + 
-                          _('Categories:') + u"</u><br>\n")
+                          _("Categories:") + u"</u><br>\n")
             
             form_optionlist(request, 'filtercats', allcategories, 
                             self.filtercats)
