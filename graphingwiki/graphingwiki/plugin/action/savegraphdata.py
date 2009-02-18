@@ -100,7 +100,7 @@ def parse_text(request, page, text):
                 dnode = item
                 hit = item
                 if item in categories:
-                    request.graphdata.add_link(pagename, dnode, 
+                    request.graphdata.add_link(pagename, dnode,
                                                u"gwikicategory", item)
             elif type == 'meta':
                 add_meta(request.graphdata, pagename, (metakey, item))

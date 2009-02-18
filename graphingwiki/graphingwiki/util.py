@@ -233,13 +233,12 @@ class Metas(PersistentDict):
 
 
 class PageMeta(Persistent):
-    def __init__(self, name):
+    def __init__(self):
         self.outlinks = Metas()
         self.unlinks = Metas()
         self.litlinks = Metas()
         self.mtime = 0
         self.saved = True
-        self.name = name
 
 class GraphData:
     def __init__(self, request):
@@ -264,8 +263,8 @@ class GraphData:
         self.url_re = re.compile(url_rule)
 
     pagemeta_by_pagename = property(lambda self: self.dbroot['pagemeta_by_pagename'])
-    pagemeta_by_metakey = property(lambda self: self.dbroot['pagemeta_by_metakey'])
-    pagemeta_by_metaval = property(lambda self: self.dbroot['pagemeta_by_metaval'])
+    pagename_by_metakey = property(lambda self: self.dbroot['pagename_by_metakey'])
+    pagename_by_metaval = property(lambda self: self.dbroot['pagename_by_metaval'])
 
 
 
@@ -277,14 +276,14 @@ class GraphData:
 
     def clear_db(self):
         self.dbroot.clear()
-        indices = 'pagemeta_by_pagename', 'pagemeta_by_metakey', 'pagemeta_by_metaval'
+        indices = 'pagemeta_by_pagename', 'pagename_by_metakey', 'pagename_by_metaval'
         for i in indices:
             self.dbroot[i] = DurusBTree()
 
     def getpagemeta(self, pagename):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
-        return self.pagemeta_by_pagename.setdefault(pagename, PageMeta(pagename))
+        return self.pagemeta_by_pagename.setdefault(pagename, PageMeta())
     
     def delpagemeta(self, pagename):
         try:
@@ -294,15 +293,16 @@ class GraphData:
         
         ol, ul = pm.outlinks, pm.unlinks
         for metakey in ol.keys() + ul.keys():
-            self.pagemeta_by_metakey.get(metakey, []).remove(pagename)
+            self.pagename_by_metakey.get(metakey, []).remove(pagename)
 
             for val in ol.get(metakey, []) + ul.get(metakey, []):
-                self.pagemeta_by_metaval[val].remove(pagename)
+                self.pagename_by_metaval[val].remove(pagename)
 
         del self.pagemeta_by_pagename[pagename]
 
     def set_attribute(self, pagename, key, val):
         key = key.strip()
+        pm = self.getpagemeta(pagename)
         if key in SPECIAL_ATTRS:
             pm.unlinks.set_single(key, val)
         else:
@@ -327,12 +327,12 @@ class GraphData:
         # set-ify to eliminate dups
         for metakey in set(pm.outlinks.keys() + pm.unlinks.keys()):
             # remove page from metakey index
-            pl = self.pagemeta_by_metakey[metakey]
+            pl = self.pagename_by_metakey[metakey]
             pl.remove(pagename)
 
             # add page to metaval index
             for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
-                l = self.pagemeta_by_metaval[val]
+                l = self.pagename_by_metaval[val]
                 l.remove(pagename)
 
         # finally empty this page's links
@@ -345,15 +345,15 @@ class GraphData:
 
         # set-ify to eliminate dups
         for metakey in set(pm.outlinks.keys() + pm.unlinks.keys()):
-            pl = self.pagemeta_by_metakey.setdefault(metakey, PersistentList())
+            pl = self.pagename_by_metakey.setdefault(metakey, PersistentList())
 
-            # add page to metakey index
+            # add page name to metakey index
             if pagename not in pl:
                 pl.append(pagename)
 
             # add page to metaval index
             for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
-                self.pagemeta_by_metaval.setdefault(
+                self.pagename_by_metaval.setdefault(
                     val, PersistentList()).append(pagename)
 
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
@@ -428,10 +428,10 @@ class GraphData:
     def getpageinlinks(self, pagename):
         # mapping of metakey -> [frompage1, frompage2, ...]
         inlinks = {}
-        for pm in self.pagemeta_by_metaval.get(pagename, []):
-            for k, vals in pm.outlinks:
+        for pname in self.pagename_by_metaval.get(pagename, []):
+            for k, vals in self.getpagemeta(pname).outlinks:
                 if pagename in vals:
-                    inlinkssetdefault(k, []).append(pm.name)
+                    inlinks.setdefault(k, []).append(pname)
         return inlinks
 
     def load_graph(self, pagename, urladd, load_origin=True):

@@ -58,13 +58,8 @@ def graphdata_commit(self):
         graphdata.durus_storage.close()
 
 def _get_save_plugin(self):
-    # Save to graph file if plugin available.
-    try:
-        graphsaver = importPlugin(self.request.cfg, "action", "savegraphdata")
-    except PluginMissingError:
-        return
-
-    return graphsaver
+    # Save to graph file
+    return importPlugin(self.request.cfg, "action", "savegraphdata")
 
 def graphdata_save(self, result):
     graphsaver = _get_save_plugin(self)
@@ -80,17 +75,16 @@ def graphdata_save(self, result):
 def graphdata_delete(self, (success, _)):
     if not success:
         return
-    self.request.graphdata.writelock()
-    self.request.graphdata.pop(self.page_name, None)
+    self.request.graphdata.delpagemeta(self.page_name)
 
 def graphdata_rename(self, (success, _)):
     if not success:
         return
 
-    graphsaver = _get_save_plugin(self)
+    savegraphdata_action = _get_save_plugin(self)
     path = underlay_to_pages(self.request, self)
-    # XXX what's the old name, how to change PageMeta.name
-    graphsaver(self.page_name, self.request, '', path, self)
+
+    savegraphdata_plugin(self.page_name, self.request, '', path, self)
 
     graphdata_delete(self, (success, ''))
 
