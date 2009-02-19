@@ -130,12 +130,12 @@ def execute(pagename, request, text, pagedir, page):
         # 2. Removing data when rehashing. 
         # New pages do not exist, but return a revision of 99999999 ->
         # Check these both to avoid deleting new pages.
-        pf, rev, exists = pageitem.get_rev() 
+        pf, rev, exists = page.get_rev() 
         if rev != 99999999:
             if not exists:
                 request.graphdata.delpagemeta(pagename)
 
-    graphingwiki.util.delete_moin_caches(request, pageitem)
+    graphingwiki.util.delete_moin_caches(request, page)
 
 # - Code below lifted from MetaFormEdit -
 
