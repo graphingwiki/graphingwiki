@@ -352,12 +352,15 @@ class CLIWiki(GraphingWiki):
                 except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                     pass
 
+                username = None
+                password = None
                 try:
                     username = configparser.get(configSection, "username")
                     password = configparser.get(configSection, "password")
-                    creds = username, password
                 except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
                     pass
+
+                creds = username, password
 
         if url is None:
             url = redirected(raw_input, "Wiki:")
