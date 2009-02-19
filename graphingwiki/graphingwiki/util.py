@@ -134,14 +134,6 @@ def node_type(request, nodename):
 
     return 'page'
 
-def filter_categories(request, candidates):
-    # Let through only the candidates that are both valid category
-    # names and WikiWords
-
-    # Nah, the word rules in 1.6 were not for the feint for heart,
-    # just use the wikiutil function until further notice
-
-    return wikiutil.filterCategoryPages(request, candidates)
 
 def get_url_ns(request, pagename, link):
     # Find out subpage level to adjust URL:s accordingly
@@ -187,18 +179,6 @@ def format_wikitext(request, data):
     request.redirect()
 
     return data.getvalue().strip()
-
-def absolute_attach_name(name, target):
-    abs_method = target.split(':')[0]
-
-    # Pages from MetaRevisions may have ?action=recall, breaking attach links
-    if '?' in name:
-        name = name.split('?', 1)[0]
-
-    if abs_method in ATTACHMENT_SCHEMAS and not '/' in target:
-        target = target.replace(':', ':%s/' % (name.replace(' ', '_')), 1)
-
-    return target 
 
 def get_selfname(request):
     if request.cfg.interwikiname:
@@ -441,12 +421,12 @@ class GraphData:
         # mapping of metakey -> [frompage1, frompage2, ...]
         inlinks = {}
         for pname in self.pagename_by_metaval.get(pagename, []):
-            for k, vals in self.getpagemeta(pname).outlinks:
+            for k, vals in self.getpagemeta(pname).outlinks.iteritems():
                 if pagename in vals:
                     inlinks.setdefault(k, []).append(pname)
         return inlinks
 
-    def get_pagenames_by_regexp(self, restring, check_access=True):
+    def get_pagenames_by_regexp(self, restring):
 
         # if there's something wrong with the regexp, ignore it and move on
         # XXX should probably let the user know something is amiss?
@@ -455,14 +435,12 @@ class GraphData:
         except re.error:
             return []
 
-        if restring not in self.pagename_index:
+        if restring not in self.pagename_by_regexp:
             # index it. these are not cleaned up currently except on
             # rehash, maybe some lru purging could be done.
             self.pagename_by_regexp[restring] = PersistentList(
                 filter(rx.search, self.pagenames()))
         r = self.pagename_by_regexp[restring]
-        if checkAccess:
-            r = filter(self.user.may.read, r)
         return r
 
     def load_graph(self, pagename, urladd, load_origin=True):
@@ -569,22 +547,22 @@ class GraphData:
 
         return adata
 
-def pagemeta_query(graphdata, metakey_querydict=None,
-                   pagenames=None, checkAccess=True):
-    for qk, qv in metakey_querydict.items():
-        for pn in graphdata.pagename_by_metakey.get(qk, []):
-            if pagenames and pn not in pagenames:
-                continue
-            # could also look up by metaval if its a string,
-            # could be faster if the metakey is common...
-            pm = graphdata.getpagemeta(pn)
-            for v in pm.outlinks.get(qk, []) + pm.unlinks.get(qk, []):
-                if isinstance(qv, basestring):
-                    if qv.lower() == v.lower():
-                        yield pn
-                else:
-                    if qv(v):
-                        yield pn
+    def pagemeta_query(self, metakey_querydict=None, pagenames=None):
+        for qk, qvals in metakey_querydict.items():
+            for qv in qvals:
+                for pn in self.pagename_by_metakey.get(qk, []):
+                    if pagenames and pn not in pagenames:
+                        continue
+                    # could also look up by metaval if its a string,
+                    # could be faster if the metakey is common...
+                    pm = self.getpagemeta(pn)
+                    for v in pm.outlinks.get(qk, []) + pm.unlinks.get(qk, []):
+                        if isinstance(qv, basestring):
+                            if qv.lower() == v.lower():
+                                yield pn
+                        else:
+                            if qv(v):
+                                yield pn
 
 # The load_ -functions try to minimise unnecessary reloading and overloading
 

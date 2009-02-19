@@ -25,13 +25,8 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki.util import nonguaranteeds_p
-from graphingwiki.util import absolute_attach_name, filter_categories
-from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
-from graphingwiki.util import category_regex, template_regex
-
+import graphingwiki.util
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -56,7 +51,6 @@ def macro_re(macroname):
 
 metadata_re = macro_re("MetaData")
 
-regexp_re = re.compile('^/.+/$')
 # Dl_re includes newlines, if available, and will replace them
 # in the sub-function
 dl_re = re.compile('(^\s+(.+?):: (.+)$\n?)', re.M)
@@ -72,7 +66,7 @@ linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
 
 def get_revisions(request, page):
-    parse_text = importPlugin(request.cfg,
+    parse_text = wikiutil.importPlugin(request.cfg,
                               'action',
                               'savegraphdata',
                               'parse_text')
@@ -200,7 +194,7 @@ def parse_categories(request, text):
         # TODO: this code is broken, will not work for extended links
         # categories, e.g ["category hebrew"]
         candidates = other_lines[-1].split()
-        confirmed = filter_categories(request, candidates)
+        confirmed = wikiutil.filterCategoryPages(request, candidates)
 
         # A category line is defined as a line that contains only categories
         if len(confirmed) < len(candidates):
@@ -248,7 +242,7 @@ def edit_categories(request, savetext, action, catlist):
     """
 
     # Filter out anything that is not a category
-    catlist = filter_categories(request, catlist)
+    catlist = wikiutil.filterCategoryPages(request, catlist)
     confirmed, lines, _ = parse_categories(request, savetext)
 
     # Remove the empty lines from the end
@@ -379,7 +373,7 @@ def get_keys(request, name):
     keys = set(page.unlinks)
 
     # Non-typed links are not included
-    keys.update([x for x in page.outlinks if x != NO_TYPE])
+    keys.update([x for x in page.outlinks if x != graphingwiki.util.NO_TYPE])
     return keys
 
 
@@ -669,8 +663,8 @@ def replace_metas(request, text, oldmeta, newmeta):
     oldcategories = oldmeta.get(CATEGORY_KEY, list())
     newcategories = newmeta.get(CATEGORY_KEY, list())
 
-    added = filter_categories(request, newcategories)
-    discarded = filter_categories(request, oldcategories)
+    added = wikiutil.filterCategoryPages(request, newcategories)
+    discarded = wikiutil.filterCategoryPages(request, oldcategories)
 
     for index, value in reversed(list(enumerate(newcategories))):
         # Strip empty categories left by metaedit et al
@@ -873,12 +867,11 @@ def ordervalue(value):
     return value
 
 
-def metatable_parsekeyspec(arg):
+def metatable_parsekeyspec(arg, keyspec):
     # take order, strip empty ones, look at styles
-    keyspec = []
 
-    if not arg.startswith('||') and arg.endswith('||'):
-        return keyspec
+    if not (arg.startswith('||') and arg.endswith('||')):
+        return False
 
     for key in arg.split('||'):
         if not key:
@@ -893,25 +886,30 @@ def metatable_parsekeyspec(arg):
                 styles[key] = style[0]
 
         keyspec.append(key.strip())
-    return keyspec
+    return True
 
 def metatable_parsevalmatch(arg, limitpats):
     if u'=' not in arg:
-        return None
+        return False
 
-    key, val = u'='.split(data, 1)
+    key, val = arg.split(u'=', 1)
 
-    # it's a regexp if it looks like /foo/
+    # it's a string literal by default
+    valpat = val
+    # but it's a regexp if it looks like /foo/ and it compiles
     if val.startswith(u'/') and val.endswith(u'/'):
-        valpat = re.compile(val[1:-1], re.IGNORECASE|re.UNICODE)
-    else:
-        valpat = val
-    limitpats.setdefault(key, set()).add(pat)
+        try:
+            valpat = re.compile(val[1:-1], re.IGNORECASE|re.UNICODE).search
+        except re.error:
+            pass
+    limitpats.setdefault(key, set()).add(valpat)
+    return True
 
 def metatable_parseargs(request, argstring,
                         get_all_keys=False,
                         get_all_pages=False,
                         checkAccess=True):
+    debug = True
     if not argstring:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -922,8 +920,8 @@ def metatable_parseargs(request, argstring,
             argstring = req_page.page_name
 
     # Category, Template matching regexps
-    cat_re = category_regex(request)
-    temp_re = template_regex(request)
+    cat_re = graphingwiki.util.category_regex(request)
+    temp_re = graphingwiki.util.template_regex(request)
 
     # Arg placeholders
     argset = set([])
@@ -939,37 +937,38 @@ def metatable_parseargs(request, argstring,
 
     # Regex preprocessing
     for arg in (x.strip() for x in argstring.split(',') if x.strip()):
-        x = metatable_parsekeyspec(arg)
-        if x:
-            # metadata key spec, move on
-            keyspec += x
+        if debug: print 'arg', arg,
+        if metatable_parsekeyspec(arg, keyspec):
+            # metadata key spec (like ||foo||)
+            if debug: print 'keyspec'
             continue
 
-        x = metatable_parsevalmatch(arg)
-        if x:
+        if metatable_parsevalmatch(arg, limitpats):
             # Metadata regexp, move on
-            # ...
+            if debug: print 'valmatch'
             continue
-
 
         # order spec
         if arg.startswith('>>') or arg.startswith('<<'):
             # eg. [('<<', 'koo'), ('>>', 'kk')]
             orderspec = arg[:2], arg[2:]
+            if debug: print 'orderspec'
             continue
 
+        if debug: print 'pageargs'
         # Ok, we have a page arg, i.e. a page or page regexp in args
         pageargs = True
-        
+        if debug: print 'got pageargs'
         if arg[0] == u'/' and arg[-1] == u'/':
-            matches = request.graphdata.get_pagenames_by_regexp(self, arg[1:-1])
+            matches = request.graphdata.get_pagenames_by_regexp(arg[1:-1])
+            if debug: print 'add regexp', arg, 'matches', len(matches)
             map(argset.add, matches)
             continue
         else:
             # If it's a subpage link eg. /Koo, we must add parent page
             if arg.startswith(u'/'):
                 arg = request.page.page_name + arg
-
+            if debug: print 'add literal page', arg
             argset.add(arg)
             continue
 
@@ -979,18 +978,17 @@ def metatable_parseargs(request, argstring,
             for pn in request.graphdata.pagenames():
                 if not request.graphdata.getpagemeta(pn).saved:
                     continue
-                if checkAccess and not request.user.may.read(pn):
-                    continue
                 yield pn
         
-        pagenames = gen_pagenames()
+        pagenames = set(gen_pagenames())
                 
     # Otherwise check out the wanted pages
     else:
-        pagenames = []
-        categories = set(filter_categories(request, argset))
+        pagenames = set()
+        categories = set(wikiutil.filterCategoryPages(request, argset))
         other = argset - categories
-
+        if debug: print 'other #', len(other)
+        if debug: print 'cat #', len(categories)
         for arg in categories:
             page = request.graphdata.getpagemeta(arg)
             newpages = request.graphdata.getpageinlinks(arg).get(CATEGORY_KEY, list())
@@ -1000,22 +998,26 @@ def metatable_parseargs(request, argstring,
                     continue
                 if not request.graphdata.getpagemeta(newpage).saved:
                     continue
-                if checkAccess and not can_be_read(newpage):
+                if checkAccess and not request.user.may.read(newpage):
                     continue
-                pagenames.append(newpage)
+                pagenames.add(newpage)
 
         for name in other:
             if not request.graphdata.getpagemeta(name).saved:
+                if debug: print 'dump unsaved'
                 continue
-            if checkAccess and not can_be_read(name):
+            if checkAccess and not request.user.may.read(name):
+                if debug: print 'dump unaccess'
                 continue
-            pagenames.append(name)
+            pagenames.add(name)
 
-    pagelist = graphdata.util.pagemeta_query(graphdata, pagenames, limitpats,
-                                             checkAccess=True)
-
+    
+    if limitpats:
+        pagelist = request.graphdata.pagemeta_query(
+            limitpats, pagenames)
+    else:
+        pagelist = list(pagenames)
     metakeys = set([])
-
     if not keyspec:
         for name in pagelist:
             # MetaEdit wants all keys by default
@@ -1025,13 +1027,13 @@ def metatable_parseargs(request, argstring,
             else:
                 # For MetaTable etc
                 for key in (x for x in get_keys(request, name)
-                            if not x in SPECIAL_ATTRS):
+                            if not x in graphingwiki.util.SPECIAL_ATTRS):
                     metakeys.add(key)
 
         metakeys = sorted(metakeys, key=ordervalue)
     else:
         metakeys = keyspec
-
+    if debug: print 'meta keys', metakeys, 'keyspec', keyspec
     # sorting pagelist
     if not orderspec:
         pagelist = sorted(pagelist, key=ordervalue)
@@ -1067,7 +1069,8 @@ def metatable_parseargs(request, argstring,
             return cmp(ordervalue(page1), ordervalue(page2))
 
         pagelist = sorted(pagelist, cmp=comparison)
-
+    
+    pagelist = filter(request.user.may.read, pagelist)
     return pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
@@ -1216,8 +1219,8 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     request = Request()
     request.cfg = Config()
     request.cfg.cache = Cache()
-    request.cfg.cache.page_category_regex = category_regex(request)
-    request.cfg.cache.page_category_regexact = category_regex(request, act=True)
+    request.cfg.cache.page_category_regex = graphingwiki.util.category_regex(request)
+    request.cfg.cache.page_category_regexact = graphingwiki.util.category_regex(request, act=True)
     request.graphdata = GraphData(graphdata)
 
     request.user = Object()
