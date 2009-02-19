@@ -271,9 +271,11 @@ class GraphData:
 
 
     def pagenames(self):
-         return self.pagemeta_by_pagename.iterkeys()
+        # XXX should we filter on .saved and/or checkAccess?
+        return self.pagemeta_by_pagename.iterkeys()
 
     def allpagemetas(self):
+        # XXX should we filter on .saved and/or checkAccess?
         return self.pagemeta_by_pagename.itervalues()
 
     def clear_db(self):
@@ -444,14 +446,24 @@ class GraphData:
                     inlinks.setdefault(k, []).append(pname)
         return inlinks
 
-    def get_pagenames_by_regexp(self, restring):
-        rx = re.compile(restring, re.UNICODE|re.IGNORECASE)
+    def get_pagenames_by_regexp(self, restring, check_access=True):
+
+        # if there's something wrong with the regexp, ignore it and move on
+        # XXX should probably let the user know something is amiss?
+        try:
+            rx = re.compile(restring, re.UNICODE|re.IGNORECASE)
+        except re.error:
+            return []
+
         if restring not in self.pagename_index:
             # index it. these are not cleaned up currently except on
             # rehash, maybe some lru purging could be done.
             self.pagename_by_regexp[restring] = PersistentList(
                 filter(rx.search, self.pagenames()))
-        return self.pagename_by_regexp[restring]
+        r = self.pagename_by_regexp[restring]
+        if checkAccess:
+            r = filter(self.user.may.read, r)
+        return r
 
     def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):

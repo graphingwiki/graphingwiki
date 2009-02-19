@@ -110,7 +110,7 @@ def get_revisions(request, page):
 
     metakeys = set()
     for page in pagelist:
-        for key in get_keys(request, page):
+        for key in request_keys(request, page):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=ordervalue)
 
@@ -872,18 +872,54 @@ def ordervalue(value):
             pass
     return value
 
-def metatable_parseargs(request, args,
+
+def metatable_parsekeyspec(arg):
+    # take order, strip empty ones, look at styles
+    keyspec = []
+
+    if not arg.startswith('||') and arg.endswith('||'):
+        return keyspec
+
+    for key in arg.split('||'):
+        if not key:
+            continue
+        # Grab styles
+        if key.startswith('<') and '>' in key:
+            style = wikiutil.parseAttributes(request,
+                                             key[1:], '>')
+            key = key[key.index('>') + 1:].strip()
+
+            if style:
+                styles[key] = style[0]
+
+        keyspec.append(key.strip())
+    return keyspec
+
+def metatable_parsevalmatch(arg, limitpats):
+    if u'=' not in arg:
+        return None
+
+    key, val = u'='.split(data, 1)
+
+    # it's a regexp if it looks like /foo/
+    if val.startswith(u'/') and val.endswith(u'/'):
+        valpat = re.compile(val[1:-1], re.IGNORECASE|re.UNICODE)
+    else:
+        valpat = val
+    limitpats.setdefault(key, set()).add(pat)
+
+def metatable_parseargs(request, argstring,
                         get_all_keys=False,
                         get_all_pages=False,
                         checkAccess=True):
-    if not args:
+    if not argstring:
         # If called from a macro such as MetaTable,
         # default to getting the current page
         req_page = request.page
         if get_all_pages or req_page is None or req_page.page_name is None:
-            args = ""
+            argstring = ""
         else:
-            args = req_page.page_name
+            argstring = req_page.page_name
 
     # Category, Template matching regexps
     cat_re = category_regex(request)
@@ -893,7 +929,7 @@ def metatable_parseargs(request, args,
     argset = set([])
     keyspec = []
     orderspec = []
-    limitregexps = {}
+    limitpats = {}
 
     # list styles
     styles = {}
@@ -902,78 +938,40 @@ def metatable_parseargs(request, args,
     pageargs = False
 
     # Regex preprocessing
-    for arg in (x.strip() for x in args.split(',') if x.strip()):
-        # metadata key spec, move on
-        if arg.startswith('||') and arg.endswith('||'):
-            # take order, strip empty ones, look at styles
-            #keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
-            keyspec = []
-            for key in arg.split('||'):
-                if not key:
-                    continue
-                # Grab styles
-                if key.startswith('<') and '>' in key:
-                    style = wikiutil.parseAttributes(request,
-                                                     key[1:], '>')
-                    key = key[key.index('>') + 1:].strip()
-
-                    if style:
-                        styles[key] = style[0]
-
-                keyspec.append(key.strip())
-
+    for arg in (x.strip() for x in argstring.split(',') if x.strip()):
+        x = metatable_parsekeyspec(arg)
+        if x:
+            # metadata key spec, move on
+            keyspec += x
             continue
 
-        # Metadata regexp, move on
-        if '=' in arg:
-            data = arg.split("=")
-            key = data[0]
-            val = '='.join(data[1:])
-
-            # Assume that value limits are regexps, if
-            # not, escape them into exact regexp matches
-            if not regexp_re.match(val):
-                val = "^%s$" % (re.escape(val))
-            # else strip the //:s
-            elif len(val) > 1:
-                val = val[1:-1]
-            limitregexps.setdefault(key, set()).add(re.compile(val, re.IGNORECASE | re.UNICODE))
+        x = metatable_parsevalmatch(arg)
+        if x:
+            # Metadata regexp, move on
+            # ...
             continue
+
 
         # order spec
         if arg.startswith('>>') or arg.startswith('<<'):
             # eg. [('<<', 'koo'), ('>>', 'kk')]
-            orderspec = re.findall('(?:(<<|>>)([^<>]+))', arg)
+            orderspec = arg[:2], arg[2:]
             continue
 
         # Ok, we have a page arg, i.e. a page or page regexp in args
         pageargs = True
-
-        # Normal pages, check perms, encode and move on
-        if not regexp_re.match(arg):
+        
+        if arg[0] == u'/' and arg[-1] == u'/':
+            matches = request.graphdata.get_pagenames_by_regexp(self, arg[1:-1])
+            map(argset.add, matches)
+            continue
+        else:
             # If it's a subpage link eg. /Koo, we must add parent page
-            if arg.startswith('/'):
+            if arg.startswith(u'/'):
                 arg = request.page.page_name + arg
 
             argset.add(arg)
             continue
-
-        # Ok, it's a page regexp
-
-        # if there's something wrong with the regexp, ignore it and move on
-        # XXX should probably let the user know something is amiss?
-        try:
-            page_re = re.compile("%s" % arg[1:-1])
-        except:
-            continue
-
-        # Get all pages, check which of them match to the supplied regexp
-        for page in request.graphdata.pagenames():
-            if page_re.match(page):
-                argset.add(page)
-
-    def can_be_read(name):
-        return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
@@ -981,7 +979,7 @@ def metatable_parseargs(request, args,
             for pn in request.graphdata.pagenames():
                 if not request.graphdata.getpagemeta(pn).saved:
                     continue
-                if checkAccess and not can_be_read(pn):
+                if checkAccess and not request.user.may.read(pn):
                     continue
                 yield pn
         
@@ -1013,43 +1011,8 @@ def metatable_parseargs(request, args,
                 continue
             pagenames.append(name)
 
-    pagelist = set()
-    for page in pagenames:
-        clear = True
-        # Filter by regexps (if any)
-        if limitregexps:
-            # We're sure we have access to read the page, don't check again
-            metas = get_metas(request, page, limitregexps, 
-                              display=True, checkAccess=False)
-                             
-            for key, re_limits in limitregexps.iteritems():
-
-                values = metas[key]
-                if not values:
-                    clear = False
-                    break
-
-                for re_limit in re_limits:
-                    clear = False
-
-                    # Iterate all the keys for the value for a match
-                    for value in values:
-                        if re_limit.search(value):
-                            clear = True
-                            # Single match is enough
-                            break
-
-                    # If one of the key's regexps did not match
-                    if not clear:
-                        break
-
-                # If all of the regexps for a single page did not match
-                if not clear:
-                    break
-
-        # Add page if all the regexps have matched
-        if clear:
-            pagelist.add(page)
+    pagelist = graphdata.util.pagemeta_query(graphdata, pagenames, limitpats,
+                                             checkAccess=True)
 
     metakeys = set([])
 

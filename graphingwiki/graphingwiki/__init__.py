@@ -73,6 +73,7 @@ def graphdata_save(self, result):
     graphsaver(self.page_name, self.request, text, path, self)
 
 def graphdata_delete(self, (success, _)):
+    # XXX this is no longer called, trunk removed it .. add back? 
     if not success:
         return
     self.request.graphdata.delpagemeta(self.page_name)
