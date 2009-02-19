@@ -909,7 +909,10 @@ def metatable_parseargs(request, argstring,
                         get_all_keys=False,
                         get_all_pages=False,
                         checkAccess=True):
-    debug = True
+    debug = False
+    if debug:
+        import time
+        start = time.time()
     if not argstring:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -972,18 +975,9 @@ def metatable_parseargs(request, argstring,
             argset.add(arg)
             continue
 
-    # If there were no page args, default to all pages
-    if not pageargs and not argset:
-        def gen_pagenames():
-            for pn in request.graphdata.pagenames():
-                if not request.graphdata.getpagemeta(pn).saved:
-                    continue
-                yield pn
-        
-        pagenames = set(gen_pagenames())
                 
-    # Otherwise check out the wanted pages
-    else:
+    # Check out the wanted pages, if specified
+    if pageargs and argset:
         pagenames = set()
         categories = set(wikiutil.filterCategoryPages(request, argset))
         other = argset - categories
@@ -1010,11 +1004,20 @@ def metatable_parseargs(request, argstring,
                 if debug: print 'dump unaccess'
                 continue
             pagenames.add(name)
+    else:
+        pagenames = None
 
-    
     if limitpats:
         pagelist = request.graphdata.pagemeta_query(
             limitpats, pagenames)
+        if debug: print 'called pagemeta_query'
+        #1/0
+    elif not pageargs:
+        if debug: print 'no limitpats -> no pagemeta_query'
+        pagelist = []
+        for pn in request.graphdata.pagenames():
+            if request.graphdata.getpagemeta(pn).saved:
+                pagelist.append(pn)
     else:
         pagelist = list(pagenames)
     metakeys = set([])
@@ -1071,6 +1074,8 @@ def metatable_parseargs(request, argstring,
         pagelist = sorted(pagelist, cmp=comparison)
     
     pagelist = filter(request.user.may.read, pagelist)
+    if debug:
+        print 'elapsed', time.time() - start
     return pagelist, metakeys, styles
 
 def check_attachfile(request, pagename, aname):

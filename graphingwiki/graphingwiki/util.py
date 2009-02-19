@@ -563,7 +563,6 @@ class GraphData:
                         else:
                             if qv(v):
                                 yield pn
-
 # The load_ -functions try to minimise unnecessary reloading and overloading
 
 def load_node(request, graph, node, urladd):
