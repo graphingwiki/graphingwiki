@@ -79,7 +79,6 @@ rm -rf $RPM_BUILD_ROOT
 %files gwiki
 %defattr(-,root,root,-)
 %{_bindir}/gwiki-*
-%{_bindir}/moin-*
 %{python_sitelib}/graphingwiki*
 
 %files raippa
