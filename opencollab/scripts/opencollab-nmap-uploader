@@ -8,105 +8,11 @@
 import os
 import sys
 import string
-import re
-import md5
 import optparse
-import collections
-import xml.etree.ElementTree as et
 from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Func, Metas
-
-def parse_config( cpath ):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("interfaces") )
-    path = uris.pop("path")
-    return path
-
-def store_names( flist, dname, names ):
-    for name in names:
-        flist.append( os.path.join( dname, name ) )
-
-def enum_dir( path ):
-   files = [] 
-   os.path.walk( path, store_names, files )
-   return files
-
-def hash_file( filename, verbose ):
-    if verbose:
-        print "Hashing" + filename
-    f = file(filename,'rb')     
-    hash = md5.new(f.read()).hexdigest()
-    f.close();
-    return hash
-
-def upload_file(collab, nmaprun_page, filename, path):
-    try:
-       file = open(path, "rb")
-    except IOError:
-       print path + " does not exist."
-       return
-
-    for current, total in collab.putAttachmentChunked(nmaprun_page, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.flush()
-
-    sys.stdout.write("done\n")
-    sys.stdout.flush()
-
-    file.close()
-
-def get_addr( host ):
-    for element in host:
-        if element.keys():
-            addr = repr( element.get('addr') )
-            if re.search( '\d\.\d', addr ):
-                ip = re.sub( '\'', '', addr )
-            elif re.search( '[0-9a-fA-F]:[0-9a-fA-F]', addr ):
-                mac = re.sub( '\'', '', addr )
-    if ip:
-        return ip,mac
-    else:
-        return None, None
-
-def parse_xml( path, file, nmaprun_page, metas ):
-    xml_doc = et.parse( os.path.join(path, file) )
-    doc_root = xml_doc.getroot()
-    nmaprun = doc_root.items()
-    for k,v in nmaprun:
-        metas[nmaprun_page][k].add( v )
-    scaninfo = xml_doc.getiterator('scaninfo')
-    for k in scaninfo[0].attrib:
-        metas[nmaprun_page][k].add( scaninfo[0].get(k) )
-    hosts = xml_doc.getiterator("host")
-    for host in hosts:
-        ip, mac = get_addr( host )
-        if ip is not None:
-            ip_page = ip + "/nmap"
-            metas[nmaprun_page]['IPv4 Address'].add('[[%s]]' % ip)
-            metas[ip_page]['MAC Address'].add('[[%s]]' % mac)
-            for element in host:
-                if element.keys():
-                    for k, v in element.items():
-                        if re.search( 'addr', k ):
-                           continue 
-                        metas[ip_page][k].add(v)
-                #else:
-                #    ports = element.getchildren()
-                #    for port in ports:
-                #        for p in port.items():
-                #            k, v = p
-                #            metas[ip_page][k].add(v)
-                #        for services in port.getchildren():
-                #            for service in  services:
-                #                service, state = service.items()
-        else:
-           print "Parsing ", host, " information failed!" 
-    metas[nmaprun_page]["XML File"].add("[[attachment:" + file + "]]")
+from opencollab.meta import Metas
 
 def import_metas( collab, metas, template, verbose ):
     for page, pmeta in metas.iteritems():
@@ -115,6 +21,9 @@ def import_metas( collab, metas, template, verbose ):
         if verbose:
             print status
 
+def parse_xml(file, nmaprun_page):
+    xml_doc = et.parse(file)
+
 def main():
     parser = optparse.OptionParser()
     parser.add_option( "-c", "--config",
@@ -122,11 +31,11 @@ def main():
         dest="config",
         metavar = "CONFIG",
         help="CONFIG file path.")
-    parser.add_option( "-d", "--nmap-results-directory",
+    parser.add_option( "-u", "--url",
         action="store", type="string", 
-        dest="directory",
-        metavar = "NMAP-RESULTS",
-        help="NMAP-RESULTS directory path.")
+        dest="url",
+        metavar = "COLLAB-URL",
+        help="COLLAB-URL")
     parser.add_option( "-t", "--wiki-template",
         action="store", type="string", 
         dest="template",
@@ -135,46 +44,45 @@ def main():
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options] NMAP-XML-FILES")
     options, args = parser.parse_args()
     iopts={}
+    nmap_file=[]
+    page_metas = Metas()
     iopts["creds"] = None
     iopts["nmap"] = None
+    if len(args) < 1:
+        parser.error("At least one XML input file path needs to be specified.")
     if options.config:
         iopts = parse_config(options.config, "creds", "nmap")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL has to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL has to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
-    if options.directory:
-        directory = options.directory
-    elif "directory" in iopts["nmap"]:
-        directory = iopts["nmap"]["directory"]
-    else:
-        directory = None
     if options.template:
         directory = options.template
-    elif "template" in iopts["nmap"]:
+    elif options.config and "template" in iopts["nmap"]:
         template = iopts["nmap"]["template"]
     else:
         template = None
-    if directory is not None:
-        nmap_files = enum_dir(directory)
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        collab = CLIWiki(url, config=options.config)
     else:
-        parser.error("Nmap results directory needs to be specified.")
+        parser.error("Collab URL needs to be specified.")
+    if options.verbose:
+        print "Processing input files."
+    for arg in args:
+        nmap_files.append(arg)
     for file in nmap_files:
-        metas = Metas()
-        if re.search( '\.(xml|XML)', file ):
-            xml_page = hash_file(os.path.join(path, file), options.verbose)
-            parse_xml(path, file, xml_page, metas)
-            #upload_file(  collab, xml_page, file, os.path.join(path,file) )
-            import_metas(collab, metas, template, options.verbose)
+        xml_page = hash_file(file, options.verbose)
+        if options.verbose:
+            print "Parsing", file
+        page_metas = parse_xml(file, xml_page)
+        if options.verbose:
+            print "Importing metas to", url
+        import_metas(collab, page_metas, template, options.verbose)
+        if options.verbose:
+            print "Uploading", file, "to", xml_page
+        uploadFile(collab, xml_page, file)
 
 if __name__ == "__main__":
     try:
