@@ -40,7 +40,7 @@ def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
 
     return True
 
-def downloadFile(wiki, page, quotedFile, basePath, num, count):
+def downloadFile(collab, page, quotedFile, basePath, num, count):
     # Canonize the file path
     filePath = unquote(quotedFile)
     filePath = os.path.abspath(filePath)
@@ -58,7 +58,7 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     shortName = filePath[len(basePath):]
 
     # Check whether the file actually already exists
-    if fileExists(wiki, page, quotedFile, filePath):
+    if fileExists(collab, page, quotedFile, filePath):
         status = num, count, shortName
         sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
         sys.stdout.flush()
@@ -71,7 +71,7 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
     sys.stdout.write("\rstarting download...")
     sys.stdout.flush()
 
-    for data, current, total in wiki.getAttachmentChunked(page, quotedFile):
+    for data, current, total in collab.getAttachmentChunked(page, quotedFile):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
 
@@ -102,24 +102,19 @@ def main():
         type="string", dest="page",
         metavar = "PAGE",                    
         help = "PAGE to download attachments from.")
+    parser.add_option( "-u", "--url",
+        action="store",
+        type="string", dest="url",
+        metavar = "COLLAB-URL",                    
+        help = "COLLAB-URL to connect to.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
     if options.config:
         iopts = parse_config(options.config, "creds", "downloader")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-            collab = CLIWiki(url, config=options.config)
-        else:
-            parser.error("COLLABURL needs to be specified.")
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab=CLIWiki(url)
     if options.output:
         basePath = options.output
     elif options.config and "output" in iopts["downloader"]:
@@ -131,7 +126,15 @@ def main():
     elif options.config and "page" in iopts["downloader"]:
         page = iopts["downloader"]["page"]
     else:
-        parser.error("Page to download from needs to be specified.")
+        parser.error("Page to download from needs to be specified. Use -h for help.")
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified.")
     if options.verbose:
         print "Enumerating attachments from collab: " + url + page
     attachments = collab.listAttachments(page)
