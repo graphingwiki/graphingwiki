@@ -135,19 +135,24 @@ def main():
         type="string", dest="config",
         help="Config file path.")
     parser.add_option("-d", "--testrun-directory",
-                      dest="testrun_directory",
-                      default=None,
-                      metavar="TESTRUN-DIRECTORY",
-                      help=("Directory base to search for testrun directories."))
+        dest="testrun_directory",
+        default=None,
+        metavar="TESTRUN-DIRECTORY",
+        help=("Directory base to search for testrun directories."))
     parser.add_option("-t", "--testplan-page",
         action="store",
         type="string", dest="testplan_page", default=None,
         metavar="TESTPLAN-PAGE",
         help="Specify a TESTPLAN-PAGE name to link the test runs to." )
+    parser.add_option("-u", "--url",
+        action="store",
+        type="string", dest="url", default=None,
+        metavar="COLLAB-URL",
+        help="COLLAB-URL to connect to.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output.")
-    parser.set_usage("%prog [options] WIKIURL")
+    parser.set_usage("%prog [options]")
     url = None
     iopts={}
     testrun_directory = None
@@ -155,16 +160,6 @@ def main():
     options, args = parser.parse_args()
     if options.config:
         iopts = parse_config(options.config, "creds", "defensics")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL needs to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if(options.testrun_directory):
         testrun_directory=options.testrun_directory 
     elif options.config and "testrun-results" in iopts["defensics"]:
@@ -177,6 +172,14 @@ def main():
         testplan_page = iopts["defensics"]["testplan-page"] 
     else:
         testplan_page = None
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
     if testrun_results is not None:
         dlist=[]
         if(options.verbose):
