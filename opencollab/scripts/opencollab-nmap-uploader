@@ -48,7 +48,7 @@ def parse_xml(file, nmaprun_page):
                     hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
                         hostname = hostNameElements[0].getAttribute('name')
-                        metas[hostname]['A'].add('[[%s]]' % host_ipv4)
+                        metas[hostname]['IPv4 Address'].add('[[%s]]' % host_ipv4)
                     hostPorts = host.getElementsByTagName('port')
                     if host_ipv4:
                         for hostPort in hostPorts:
