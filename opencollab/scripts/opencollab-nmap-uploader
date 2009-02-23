@@ -47,6 +47,7 @@ def parse_xml(file, nmaprun_page):
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                         if addressType == 'mac':
                             metas[address]['TYPE'] = 'MAC'
+                            metas[address]['Vendor'] = addressElement.getAttribute('vendor')
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                     hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
@@ -61,9 +62,15 @@ def parse_xml(file, nmaprun_page):
                                 portServiceElements = hostPort.getElementsByTagName('service')
                                 state = portStatusElements[0].getAttribute('state')
                                 port = hostPort.getAttribute('protocol').upper() + ":" + hostPort.getAttribute('portid').upper()
-                                metas[host_ipv4]['listens'].add('[[%s]]' % port)
+                                metas[host_ipv4]['listens to'].add('[[%s]]' % port)
                                 if len(portServiceElements) > 0:
-                                    service = portServiceElements[0].getAttribute('name') + ' on port ' + port
+                                    service = portServiceElements[0].getAttribute('name')
+                                    product = portServiceElements[0].getAttribute('product')
+                                    if product:
+                                        service += ' with ' + product
+                                        service += ' ' + portServiceElements[0].getAttribute('version')
+                                        service += ' ' +  portServiceElements[0].getAttribute('extrainfo')
+                                    service += ' on port ' + port
                                     metas[host_ipv4]['serves'].add(service)
                         hostOss = host.getElementsByTagName('osclass')
                         for hostOs in hostOss:
