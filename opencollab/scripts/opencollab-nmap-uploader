@@ -4,18 +4,71 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import sys
 import string
 import optparse
+import xml.dom.minidom
+from xml.dom.minidom import Node
 from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki
 from opencollab.util.config import parse_config
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
 
 def parse_xml(file, nmaprun_page):
-    xml_doc = et.parse(file)
+    """
+    xml.dom.minidom usage from
+    http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
+    """
+    metas = Metas()
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + repr(xml.parsers.expat.ExpatError)
+        sys.exit(error)
+    hosts = doc.getElementsByTagName('host')
+    for host in hosts:
+        if host.nodeType == Node.ELEMENT_NODE:
+            hostStatusElements = host.getElementsByTagName('status')
+            if hostStatusElements[0].hasAttribute('state'):
+                hostState = hostStatusElements[0].getAttribute('state')
+                if hostState == 'up':
+                    hostAddressElements = host.getElementsByTagName('address')
+                    for addressElement in hostAddressElements:
+                        addressType = addressElement.getAttribute('addrtype')
+                        address = iaddressElement.getAttribute('addr')
+                        if addressType == 'ipv4':
+                            metas[address]['TYPE'] = 'IPv4'
+                            host_ipv4 = address
+                            metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
+                        if addressType == 'mac':
+                            metas[address]['TYPE'] = 'MAC'
+                            metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
+                    hostNameElement = host.getElementsByTagName('hostname')
+                    if host_ipv4 and len(hostNameElements) > 0:
+                        hostname = hostNameElements[0].getAttribute('name')
+                        metas[hostname]['A'].add('[[%s]]' % host_ipv4)
+                    hostPorts = host.getElementsByTagName('port')
+                    if host_ipv4:
+                        for hostPort in hostPorts:
+                            portStatusElements = hostPort.getElementsByTagName('state')
+                            if portStatusElements[0].getAttribute('state').find("open") >= 0:
+                                portServiceElements = hostPort.getElementsByTagName('service')
+                                state = portStatusElements[0].getAttribute('state')
+                                port = hostPort.getAttribute('protocol') + ":" + hostPort.getAttribute('portid')
+                                metas[host_ipv4][state] = port
+                                if len(portServiceElements) > 0:
+                                    service = portServiceElements[0].getAttribute('name')
+                                    metas[host_ipv4]['serves'] = service + 'on port ' + port
+                        hostOss = host.getElementsByTagName('osclass')
+                        for hostOs in hostOss:
+                            metas[host_ipv4]['OS Type'] = hostOs.getAttribute('type')
+                            metas[host_ipv4]['OS Vendor'] = hostOs.getAttribute('vendor')
+                            metas[host_ipv4]['OS Family'] = hostOs.getAttribute('osfamily')
+                            metas[host_ipv4]['OS Generation'] = hostOs.getAttribute('osgen')
+                            metas[host_ipv4]['OS Accuracy'] = ostOs.getAttribute('accuracy')
+    return metas
 
 def main():
     parser = optparse.OptionParser()
@@ -46,7 +99,6 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     nmap_files=[]
-    metas = Metas()
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
@@ -70,8 +122,6 @@ def main():
         category = iopts["nmap"]["category"]
     else:
         category = None
-    if category is not None:
-        metas["category"].add(category)
     if options.verbose:
         print "Processing input files."
     for arg in args:
@@ -81,6 +131,9 @@ def main():
         if options.verbose:
             print "Parsing", file
         metas = parse_xml(file, xml_page)
+        if category is not None:
+            metas["category"].add(category)
+        metas[xml_page]['TYPE'] = 'NMAP Run'
         if options.verbose:
             print "Importing metas to:", url
         importMetas(collab, metas, template)

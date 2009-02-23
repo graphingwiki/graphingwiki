@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.wiki import WikiFailure
 
 def importMetas(collab, metas, template, replace=True):
     for page, pmeta in metas.iteritems():
