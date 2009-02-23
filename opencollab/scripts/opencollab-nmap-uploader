@@ -52,7 +52,7 @@ def parse_xml(file, nmaprun_page):
                     hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
                         hostname = hostNameElements[0].getAttribute('name')
-                        metas[hostname]['IPv4 Address'].add('[[%s]]' % host_ipv4)
+                        metas[host_ipv4]['PTR'].add('[[%s]]' % hostname)
                         metas[hostname]['TYPE'].add('NAME')
                     hostPorts = host.getElementsByTagName('port')
                     if host_ipv4:
@@ -88,9 +88,10 @@ def parse_xml(file, nmaprun_page):
     run_stats = doc.getElementsByTagName('finished') 
     metas[nmaprun_page]['Run Ended UNIX'] = run_stats[0].getAttribute('time')
     metas[nmaprun_page]['Run Ended'] = run_stats[0].getAttribute('timestr')
-    metas[nmaprun_page]['Hosts Up'] = run_stats[0].getAttribute('up')
-    metas[nmaprun_page]['Hosts Down'] = run_stats[0].getAttribute('down')
-    metas[nmaprun_page]['Hosts Total'] = run_stats[0].getAttribute('total')
+    hosts = doc.getElementsByTagName('hosts') 
+    metas[nmaprun_page]['Hosts Up'] = hosts[0].getAttribute('up')
+    metas[nmaprun_page]['Hosts Down'] = hosts[0].getAttribute('down')
+    metas[nmaprun_page]['Hosts Total'] = hosts[0].getAttribute('total')
     return metas
 
 def main():
