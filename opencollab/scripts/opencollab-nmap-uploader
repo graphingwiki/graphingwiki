@@ -114,6 +114,7 @@ def main():
         url = options.url
         collab = CLIWiki(url)
     elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
         collab = CLIWiki(url, config=options.config)
     else:
         parser.error("Collab URL needs to be specified.")
@@ -124,22 +125,22 @@ def main():
     else:
         category = None
     if options.verbose:
-        print "Processing input files."
+        print "NOTE: Processing input files."
     for arg in args:
         nmap_files.append(arg)
     for file in nmap_files:
         xml_page = hashFile(file)
         if options.verbose:
-            print "Parsing", file
+            print "NOTE: Parsing", file
         metas = parse_xml(file, xml_page)
         if category is not None:
             metas["category"].add(category)
         metas[xml_page]['TYPE'] = 'NMAP Run'
         if options.verbose:
-            print "Importing metas to:", url
+            print "NOTE: Importing metas to", url
         importMetas(collab, metas, template)
         if options.verbose:
-            print "Uploading", file, "to:", xml_page
+            print "NOTE: Uploading", file, "to", xml_page
         #uploadFile(collab, xml_page, file)
 
 if __name__ == "__main__":
