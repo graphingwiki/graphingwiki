@@ -71,7 +71,7 @@ def main():
         url=args[0]
         collab = CLIWiki(url)
     if options.path:
-        path = options.file
+        path = options.path
     elif options.config and "path" in iopts["uploader"]:
         path = iopts["uploader"]["path"]
     else:
