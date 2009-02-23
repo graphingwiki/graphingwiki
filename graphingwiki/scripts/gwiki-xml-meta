@@ -22,7 +22,7 @@ from optparse import OptionParser
 
 from MoinMoin import config
 
-from graphingwiki.patterns import encode_page
+from graphingwiki.util import encode_page
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, \
      xmlrpc_connect, getmeta_to_table, getuserpass
 
@@ -85,7 +85,7 @@ class ArgError(Exception):
 
 catlist = list()
 
-category_edit = str()
+category_edit = 'add'
 if options.cat_add:
     catlist = [unicode(x) for x in options.cat_add
                   if x.strip()]
