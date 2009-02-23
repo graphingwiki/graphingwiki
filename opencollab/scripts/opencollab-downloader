@@ -138,7 +138,7 @@ def main():
     if options.verbose:
        print "Downloading attachments from:", page
     for num, attachment in enumerate(attachments):
-        downloadFile(wiki, page, attachment, basePath, num+1, len(attachments))
+        downloadFile(collab, page, attachment, basePath, num+1, len(attachments))
 
 if __name__ == "__main__":
     try:

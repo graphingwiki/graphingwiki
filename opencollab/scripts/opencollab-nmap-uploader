@@ -67,7 +67,7 @@ def parse_xml(file, nmaprun_page):
                             metas[host_ipv4]['OS Vendor'] = hostOs.getAttribute('vendor')
                             metas[host_ipv4]['OS Family'] = hostOs.getAttribute('osfamily')
                             metas[host_ipv4]['OS Generation'] = hostOs.getAttribute('osgen')
-                            metas[host_ipv4]['OS Accuracy'] = ostOs.getAttribute('accuracy')
+                            metas[host_ipv4]['OS Accuracy'] = hostOs.getAttribute('accuracy')
     return metas
 
 def main():
