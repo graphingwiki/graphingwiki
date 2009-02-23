@@ -177,38 +177,38 @@ def runOneTask(agentId, wiki, interval=60.0, dieAfter=10*60.0):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-c", "--config",
+                      dest="config",
+                      metavar="CONFIG",
+                      help="CONFIG file path.")
     parser.add_option("-n", "--name",
                       dest="name",
                       default=None,
                       metavar="NAME",
                       help="force the agent's name to NAME")
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      default=None,
-                      metavar="CONFIG",
-                      help=("read the username and password from the "+
-                            "config file CONFIG"))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      metavar="COLLAB-URL",
+                      help="COLAB-URL to connect to.")
     options, args = parser.parse_args()
     iopts = {}
     if options.config:
         iopts = parse_config(options.config, "creds", "agent")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL needs to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.name:
         name = options.name
     elif options.config and "name" in iopts["agent"]:
         name = iopts["agent"]["name"]
-    if name is None:
+    else:
         name = socket.gethostbyname(socket.gethostname())
-    name += "-%d" % random.randint(0, 2**32)
+        name += "-%d" % random.randint(0, 2**32)
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
 
     print "Getting tasks from %s as agent %s" % (url, name)
 
