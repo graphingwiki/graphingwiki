@@ -141,7 +141,7 @@ def main():
         importMetas(collab, metas, template)
         if options.verbose:
             print "NOTE: Uploading", file, "to", xml_page
-        #uploadFile(collab, xml_page, file)
+        uploadFile(collab, xml_page, file)
 
 if __name__ == "__main__":
     try:
