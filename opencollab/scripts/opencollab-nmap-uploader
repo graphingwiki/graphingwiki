@@ -37,7 +37,7 @@ def parse_xml(file, nmaprun_page):
                     hostAddressElements = host.getElementsByTagName('address')
                     for addressElement in hostAddressElements:
                         addressType = addressElement.getAttribute('addrtype')
-                        address = iaddressElement.getAttribute('addr')
+                        address = addressElement.getAttribute('addr')
                         if addressType == 'ipv4':
                             metas[address]['TYPE'] = 'IPv4'
                             host_ipv4 = address
@@ -45,7 +45,7 @@ def parse_xml(file, nmaprun_page):
                         if addressType == 'mac':
                             metas[address]['TYPE'] = 'MAC'
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
-                    hostNameElement = host.getElementsByTagName('hostname')
+                    hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
                         hostname = hostNameElements[0].getAttribute('name')
                         metas[hostname]['A'].add('[[%s]]' % host_ipv4)
@@ -56,11 +56,11 @@ def parse_xml(file, nmaprun_page):
                             if portStatusElements[0].getAttribute('state').find("open") >= 0:
                                 portServiceElements = hostPort.getElementsByTagName('service')
                                 state = portStatusElements[0].getAttribute('state')
-                                port = hostPort.getAttribute('protocol') + ":" + hostPort.getAttribute('portid')
-                                metas[host_ipv4][state] = port
+                                port = hostPort.getAttribute('protocol').upper() + ":" + hostPort.getAttribute('portid').upper()
+                                metas[host_ipv4]['listens'].add('[[%s]]' % port)
                                 if len(portServiceElements) > 0:
-                                    service = portServiceElements[0].getAttribute('name')
-                                    metas[host_ipv4]['serves'] = service + 'on port ' + port
+                                    service = portServiceElements[0].getAttribute('name') + ' on port ' + port
+                                    metas[host_ipv4]['serves'].add(service)
                         hostOss = host.getElementsByTagName('osclass')
                         for hostOs in hostOss:
                             metas[host_ipv4]['OS Type'] = hostOs.getAttribute('type')
@@ -99,6 +99,7 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     nmap_files=[]
+    url = ''
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
@@ -139,7 +140,7 @@ def main():
         importMetas(collab, metas, template)
         if options.verbose:
             print "Uploading", file, "to:", xml_page
-        uploadFile(collab, xml_page, file)
+        #uploadFile(collab, xml_page, file)
 
 if __name__ == "__main__":
     try:
