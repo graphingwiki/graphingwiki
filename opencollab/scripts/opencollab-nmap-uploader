@@ -72,6 +72,18 @@ def parse_xml(file, nmaprun_page):
                             metas[host_ipv4]['OS Family'] = hostOs.getAttribute('osfamily')
                             metas[host_ipv4]['OS Generation'] = hostOs.getAttribute('osgen')
                             metas[host_ipv4]['OS Accuracy'] = hostOs.getAttribute('accuracy')
+    nmaprun = doc.getElementsByTagName('nmaprun') 
+    metas[nmaprun_page]['Run Arguments'] = nmaprun[0].getAttribute('args')
+    metas[nmaprun_page]['NMAP Version'] = nmaprun[0].getAttribute('version')
+    metas[nmaprun_page]['Run Started UNIX'] = nmaprun[0].getAttribute('start')
+    metas[nmaprun_page]['Run Started'] = nmaprun[0].getAttribute('startstr')
+    metas[nmaprun_page]['XML Output Version'] = nmaprun[0].getAttribute('xmloutputversion')
+    run_stats = doc.getElementsByTagName('finished') 
+    metas[nmaprun_page]['Run Ended UNIX'] = run_stats[0].getAttribute('time')
+    metas[nmaprun_page]['Run Ended'] = run_stats[0].getAttribute('timestr')
+    metas[nmaprun_page]['Hosts Up'] = run_stats[0].getAttribute('up')
+    metas[nmaprun_page]['Hosts Down'] = run_stats[0].getAttribute('down')
+    metas[nmaprun_page]['Hosts Total'] = run_stats[0].getAttribute('total')
     return metas
 
 def main():
