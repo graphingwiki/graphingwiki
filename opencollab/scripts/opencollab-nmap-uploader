@@ -20,6 +20,9 @@ def parse_xml(file, nmaprun_page):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
+    If you get and expat error from minidom, please refer to:
+    http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=154288
+    and complain to nmap developers. ;)
     """
     metas = Metas()
     try:
@@ -49,6 +52,7 @@ def parse_xml(file, nmaprun_page):
                     if host_ipv4 and len(hostNameElements) > 0:
                         hostname = hostNameElements[0].getAttribute('name')
                         metas[hostname]['IPv4 Address'].add('[[%s]]' % host_ipv4)
+                        metas[hostname]['TYPE'].add('NAME')
                     hostPorts = host.getElementsByTagName('port')
                     if host_ipv4:
                         for hostPort in hostPorts:
