@@ -9,17 +9,10 @@ import os
 import sys
 import string
 import optparse
+from opencollab.meta import Metas
 from opencollab.util.config import parse_config
 from opencollab.util.file import hashFile, uploadFile
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Metas
-
-def import_metas( collab, metas, template, verbose ):
-    for page, pmeta in metas.iteritems():
-        pmeta["category"].add("CategoryNmapRun")
-        status = collab.setMeta( page, pmeta, template=template, replace=True )
-        if verbose:
-            print status
+from opencollab.util.wiki import importMetas
 
 def parse_xml(file, nmaprun_page):
     xml_doc = et.parse(file)
@@ -31,26 +24,29 @@ def main():
         dest="config",
         metavar = "CONFIG",
         help="CONFIG file path.")
-    parser.add_option( "-u", "--url",
-        action="store", type="string", 
-        dest="url",
-        metavar = "COLLAB-URL",
-        help="COLLAB-URL")
     parser.add_option( "-t", "--wiki-template",
         action="store", type="string", 
         dest="template",
         metavar = "TEMPLATE",
         help="Wiki TEMPLATE, e.g. NmapTemplate.")
+    parser.add_option( "-u", "--url",
+        action="store", type="string", 
+        dest="url",
+        metavar = "COLLAB-URL",
+        help="COLLAB-URL")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
+    parser.add_option( "-w", "--wiki-category",
+        action="store", type="string", 
+        dest="category",
+        metavar = "CATEGORY",
+        help="Wiki CATEGORY, e.g. NmapRun.")
     parser.set_usage("%prog [options] NMAP-XML-FILES")
     options, args = parser.parse_args()
     iopts={}
-    nmap_file=[]
-    page_metas = Metas()
-    iopts["creds"] = None
-    iopts["nmap"] = None
+    nmap_files=[]
+    metas = Metas()
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
@@ -60,7 +56,7 @@ def main():
     elif options.config and "template" in iopts["nmap"]:
         template = iopts["nmap"]["template"]
     else:
-        template = None
+        template = "NmapTemplate"
     if options.url:
         url = options.url
         collab = CLIWiki(url)
@@ -68,20 +64,28 @@ def main():
         collab = CLIWiki(url, config=options.config)
     else:
         parser.error("Collab URL needs to be specified.")
+    if options.category:
+        category = options.category
+    elif options.config and "category" in iopts["nmap"]:
+        category = iopts["nmap"]["category"]
+    else:
+        category = None
+    if category is not None:
+        metas["category"].add(category)
     if options.verbose:
         print "Processing input files."
     for arg in args:
         nmap_files.append(arg)
     for file in nmap_files:
-        xml_page = hash_file(file, options.verbose)
+        xml_page = hashFile(file)
         if options.verbose:
             print "Parsing", file
-        page_metas = parse_xml(file, xml_page)
+        metas = parse_xml(file, xml_page)
         if options.verbose:
-            print "Importing metas to", url
-        import_metas(collab, page_metas, template, options.verbose)
+            print "Importing metas to:", url
+        importMetas(collab, metas, template)
         if options.verbose:
-            print "Uploading", file, "to", xml_page
+            print "Uploading", file, "to:", xml_page
         uploadFile(collab, xml_page, file)
 
 if __name__ == "__main__":
