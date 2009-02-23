@@ -144,31 +144,34 @@ def main():
                       default=None,
                       metavar="IMAGE-DIRECTORY",
                       help=("IMAGE-DIRECTORY."))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help=("COLLAB-URL to connect to."))
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output.")
-    parser.set_usage("%prog [options] WIKIURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
     flist = []
     if options.config:
         iopts = parse_config(options.config, "creds", "gallery")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL needs to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.image_directory:
         path = options.image_directory
     elif options.config and "path" in iopts["gallery"]:
         path = iopts["gallery"]["path"]
     else:
         path = None
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help")
     if path is not None:
         if options.verbose:
             print "Walking image directory: ", path
@@ -182,7 +185,7 @@ def main():
                     print "Uploading image: ", f
                 push_image(collab, imeta, options.verbose)
     else:
-        parser.error("Image directory path needs to be specified.")
+        parser.error("Image directory path needs to be specified. Use -h for help.")
 
 if __name__ == "__main__":
     try:
