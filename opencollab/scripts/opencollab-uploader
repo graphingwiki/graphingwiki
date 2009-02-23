@@ -54,22 +54,17 @@ def main():
                       action="store_true",
                       dest="recursive",
                       help="recursivly upload files")
-    parser.set_usage("%prog [options] WIKIURL")
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help="COLLAB-URL to connect to.")
+    parser.set_usage("%prog [options]")
 
     options, args = parser.parse_args()
     iopts={}
     if options.config:
         iopts = parse_config(options.config, "creds", "uploader")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-            collab = CLIWiki(url, config=options.config)
-        else:
-            parser.error("COLLABURL needs to specified.")
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.path:
         path = options.path
     elif options.config and "path" in iopts["uploader"]:
@@ -87,7 +82,15 @@ def main():
     elif options.config and "page" in iopts["uploader"]:
         page = iopts["uploader"]["page"]
     else:
-        parser.error("Collab page to upload to needs to be specified.")
+        parser.error("Collab page to upload to needs to be specified. Use -h for help.")
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to specified. Use -h for help.")
 
     if options.recursive:
         filelist = list()
