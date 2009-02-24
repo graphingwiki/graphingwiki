@@ -40,7 +40,7 @@ def read_spam(collab, imaps_server, imaps_user, imaps_pass):
         cpage = hashFile(msg_obj)
         epoch = int(time())
         metas[cpage]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
-        metas[cpage]["RFC822 Message"].add('[[attachment:%s]]' % cpage)
+        metas[cpage]["RFC822 MESSAGE"].add('[[attachment:%s]]' % cpage)
         metas[cpage]["TYPE"] = "SPAM"
         uploadFile(collab, cpage, data[0][1], cpage)
         body = ""
@@ -113,6 +113,8 @@ def main():
         template = iopts["spam"]["wiki-template"]
     else:
         template = "SpamTemplate"
+    if options.verbose:
+        print "Getting collab credentials."
     if options.url:
         url = options.url
         collab = CLIWiki(url)
