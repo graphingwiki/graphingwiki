@@ -9,24 +9,21 @@ import optparse
 import getpass
 import imaplib
 import email
+import cStringIO
 from email.Iterators import body_line_iterator
 from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import importMetas
 from opencollab.wiki import CLIWiki
-from opencollab.meta import Metas, Meta, Func
+from opencollab.meta import Metas
 from opencollab.util.regexp import *
 try:
     import email.utils
 except:
     import email.Utils
 
-def import_identities(collab,collab_metas,template,verbose):
-    for page,pmeta in collab_metas.iteritems():
-        if page:
-            status = collab.setMeta(page,pmeta,template=template,replace=True)
-    if verbose:
-        print status
-
-def read_spam(imaps_server,imaps_user,imaps_pass):
+def read_spam(collab, imaps_server, imaps_user, imaps_pass):
+    metas = Metas()
     href = re.compile('\w+=\"')
     tag = re.compile('\">?.*$')
     mailbox = imaplib.IMAP4_SSL(imaps_server) 
@@ -39,6 +36,10 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
     for num in data[0].split():
         typ, data = mailbox.fetch(num, '(RFC822)')
         msg = email.message_from_string(data[0][1])
+        msg_obj = cStringIO.StringIO(data[0][1])
+        cpage = hashFile(msg_obj)
+        metas[cpage]["RFC822 Message"].add('[[attachment:%s]]' % cpage)
+        uploadFile(collab, cpage, data[0][1], cpage)
         body = ""
         for line in body_line_iterator(msg, decode=True):
                 body+=line
@@ -47,9 +48,10 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
             if url_all_re.search(token):
                 token = href.sub('', token)
                 token = tag.sub('', token)
-                print token
+                metas[cpage]["SPAM URL"].add(token)
     mailbox.close()
     mailbox.logout()
+    return metas
 
 def main():
     parser = optparse.OptionParser()
@@ -116,14 +118,13 @@ def main():
         collab = CLIWiki(url, config=options.config)
     else:
         parser.error("Collab URL needs to be specified. Use -h for help.")
-    collab_metas = Metas()
     if imaps_server is not None and imaps_user is not None:
         if options.verbose:
             print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
-        read_spam(imaps_server,imaps_user,imaps_pass)
+        metas = read_spam(collab, imaps_server, imaps_user, imaps_pass)
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    #import_identities(collab,collab_metas,template,options.verbose)
+    importMetas(collab, metas, template)
 
 if __name__ == "__main__":
     try:

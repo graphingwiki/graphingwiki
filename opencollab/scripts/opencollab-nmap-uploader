@@ -152,6 +152,7 @@ def main():
         nmap_files.append(arg)
     for file in nmap_files:
         xml_page = hashFile(file)
+        fname = os.path.basename(file)
         if options.verbose:
             print "NOTE: Parsing", file
         metas = parse_xml(file, xml_page)
@@ -163,7 +164,7 @@ def main():
         importMetas(collab, metas, template)
         if options.verbose:
             print "NOTE: Uploading", file, "to", xml_page
-        uploadFile(collab, xml_page, file)
+        uploadFile(collab, xml_page, file, fname)
 
 if __name__ == "__main__":
     try:
