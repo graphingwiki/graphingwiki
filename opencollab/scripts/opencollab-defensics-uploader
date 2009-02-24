@@ -152,7 +152,7 @@ def main():
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output.")
-    parser.set_usage("%prog [options]")
+    parser.set_usage("%prog [options] 0..N optional input directories")
     url = None
     iopts={}
     testrun_directory = None
@@ -164,8 +164,13 @@ def main():
         testrun_directory=options.testrun_directory 
     elif options.config and "testrun-results" in iopts["defensics"]:
         testrun_results = iopts["defensics"]["testrun-results"] 
-    else:
+    elif len(args) > 0:
+        for arg in args:
+            dlist.append(arg)
         testrun_results = None
+    else:
+        parser.error("You need to specify a testrun directory base via -d or \n \
+                      via 1..N positional input directories. Use -h for help.")
     if options.testplan_page:
         testplan_page = options.testplan_page
     elif options.config and "testplan-page" in iopts["defensics"]:
@@ -185,8 +190,6 @@ def main():
         if(options.verbose):
              print "Walking " + testrun_results
         dlist = walk_dirs(testrun_results)
-    else:
-        parser.error("Testrun directory needs to be defined.")
     if(options.verbose):
         print "Handling: " + dlist
     handle_path(collab, testplan_page, dlist)
