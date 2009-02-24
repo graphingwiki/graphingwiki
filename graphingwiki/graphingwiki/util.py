@@ -221,9 +221,10 @@ class GraphData(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request
 
-        # Category, Template matching regexps
-        self.graphshelve = os.path.join(request.cfg.data_dir, 
-                                        'graphdata.shelve')
+        gddir = os.path.join(request.cfg.data_dir, 'graphdata')
+        if not os.path.isdir(gddir):
+            os.mkdir(gddir)
+        self.graphshelve = os.path.join(gddir, 'graphdata.shelve')
 
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         if self.use_sq_dict:

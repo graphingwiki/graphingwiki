@@ -29,12 +29,13 @@
 
 """
 
-import sys
-import os
+import os, sys
+
 # add ../lib/pythonX.Y/site-packages to sys.path, in case we've been put into
 # $prefix/bin by setup.py install
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..', 'lib', 'python%d.%d' % sys.version_info[:2], 'site-packages'))
 
+import shutil
 from codecs import getencoder
 from optparse import OptionParser
 
@@ -84,11 +85,10 @@ except UserInputException:
     sys.exit(2)
 
 if not pages:
-    pass
-    for file in os.listdir(datadir):
-        if file == 'graphdata.shelve':
-            sys.stderr.write('Removed graphdata (%s)\n' % file)
-            os.unlink(os.path.join(datadir, file))
+    gddir = os.path.join(datadir, 'graphdata')
+    if os.path.exists(gddir):
+        shutil.rmtree(gddir)
+        sys.stderr.write('Removed graphdata directory (%s)\n' % gddir)
 else:
     for file in os.listdir(datadir):
         if file.startswith('read_lock') or file.startswith('write_lock'):
