@@ -4,116 +4,127 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import sys
 import string
-import re
-import md5
 import optparse
-import collections
-import xml.etree.ElementTree as et
-from opencollab.utils.config import parse_config
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Func, Metas
+import xml.dom.minidom
+from xml.dom.minidom import Node, ProcessingInstruction
+from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki
+from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import importMetas
 
-def parse_config( cpath ):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items("interfaces") )
-    path = uris.pop("path")
-    return path
-
-def store_names( flist, dname, names ):
-    for name in names:
-        flist.append( os.path.join( dname, name ) )
-
-def enum_dir( path ):
-   files = [] 
-   os.path.walk( path, store_names, files )
-   return files
-
-def hash_file( filename, verbose ):
-    if verbose:
-        print "Hashing" + filename
-    f = file(filename,'rb')     
-    hash = md5.new(f.read()).hexdigest()
-    f.close();
-    return hash
-
-def upload_file(collab, nmaprun_page, filename, path):
+def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
     try:
-       file = open(path, "rb")
-    except IOError:
-       print path + " does not exist."
-       return
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + str(e) 
+        sys.exit(error)
 
-    for current, total in collab.putAttachmentChunked(nmaprun_page, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
+    stylesheet_nodes = []
 
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.flush()
+    for node in doc.childNodes:
+        if not isinstance(node, ProcessingInstruction):
+            continue
 
-    sys.stdout.write("done\n")
-    sys.stdout.flush()
+        if node.nodeName != 'xml-stylesheet':
+            continue
 
-    file.close()
+        stylesheet_nodes.append(node)
 
-def get_addr( host ):
-    for element in host:
-        if element.keys():
-            addr = repr( element.get('addr') )
-            if re.search( '\d\.\d', addr ):
-                ip = re.sub( '\'', '', addr )
-            elif re.search( '[0-9a-fA-F]:[0-9a-fA-F]', addr ):
-                mac = re.sub( '\'', '', addr )
-    if ip:
-        return ip,mac
-    else:
-        return None, None
+    if len(stylesheet_nodes) != 1:
+        return False
 
-def parse_xml( path, file, nmaprun_page, metas ):
-    xml_doc = et.parse( os.path.join(path, file) )
-    doc_root = xml_doc.getroot()
-    nmaprun = doc_root.items()
-    for k,v in nmaprun:
-        metas[nmaprun_page][k].add( v )
-    scaninfo = xml_doc.getiterator('scaninfo')
-    for k in scaninfo[0].attrib:
-        metas[nmaprun_page][k].add( scaninfo[0].get(k) )
-    hosts = xml_doc.getiterator("host")
+    node = stylesheet_nodes[0]
+
+    attributes = dict([item.split("=") for item in node.data.split()])
+
+    stylesheet = attributes["href"].strip('"')
+    stylesheet_data = open(stylesheet).read()
+
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nmap.xsl"'
+    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
+
+    xml_data = doc.toxml()
+
+    collab.putAttachment(xml_page, fname, xml_data, True)
+    collab.putAttachment(xml_page, "nmap.xsl", stylesheet_data, True)
+    return True
+
+def parse_xml(file, nmaprun_page):
+    """
+    xml.dom.minidom usage from
+    http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
+    """
+    metas = Metas()
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+    hosts = doc.getElementsByTagName('host')
     for host in hosts:
-        ip, mac = get_addr( host )
-        if ip is not None:
-            ip_page = ip + "/nmap"
-            metas[nmaprun_page]['IPv4 Address'].add('[[%s]]' % ip)
-            metas[ip_page]['MAC Address'].add('[[%s]]' % mac)
-            for element in host:
-                if element.keys():
-                    for k, v in element.items():
-                        if re.search( 'addr', k ):
-                           continue 
-                        metas[ip_page][k].add(v)
-                #else:
-                #    ports = element.getchildren()
-                #    for port in ports:
-                #        for p in port.items():
-                #            k, v = p
-                #            metas[ip_page][k].add(v)
-                #        for services in port.getchildren():
-                #            for service in  services:
-                #                service, state = service.items()
-        else:
-           print "Parsing ", host, " information failed!" 
-    metas[nmaprun_page]["XML File"].add("[[attachment:" + file + "]]")
-
-def import_metas( collab, metas, template, verbose ):
-    for page, pmeta in metas.iteritems():
-        pmeta["category"].add("CategoryNmapRun")
-        status = collab.setMeta( page, pmeta, template=template, replace=True )
-        if verbose:
-            print status
+        if host.nodeType == Node.ELEMENT_NODE:
+            hostStatusElements = host.getElementsByTagName('status')
+            if hostStatusElements[0].hasAttribute('state'):
+                hostState = hostStatusElements[0].getAttribute('state')
+                if hostState == 'up':
+                    hostAddressElements = host.getElementsByTagName('address')
+                    for addressElement in hostAddressElements:
+                        addressType = addressElement.getAttribute('addrtype')
+                        address = addressElement.getAttribute('addr')
+                        if addressType == 'ipv4':
+                            metas[address]['TYPE'] = 'IPv4'
+                            host_ipv4 = address
+                            metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
+                        if addressType == 'mac':
+                            metas[address]['TYPE'] = 'MAC'
+                            metas[address]['Vendor'] = addressElement.getAttribute('vendor')
+                            metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
+                    hostNameElements = host.getElementsByTagName('hostname')
+                    if host_ipv4 and len(hostNameElements) > 0:
+                        hostname = hostNameElements[0].getAttribute('name')
+                        metas[host_ipv4]['PTR'].add('[[%s]]' % hostname)
+                        metas[hostname]['TYPE'].add('NAME')
+                    hostPorts = host.getElementsByTagName('port')
+                    if host_ipv4:
+                        for hostPort in hostPorts:
+                            portStatusElements = hostPort.getElementsByTagName('state')
+                            if portStatusElements[0].getAttribute('state').find("open") >= 0:
+                                portServiceElements = hostPort.getElementsByTagName('service')
+                                state = portStatusElements[0].getAttribute('state')
+                                port = hostPort.getAttribute('protocol').upper() + ":" + hostPort.getAttribute('portid').upper()
+                                metas[host_ipv4]['listens to'].add('[[%s]]' % port)
+                                if len(portServiceElements) > 0:
+                                    service = portServiceElements[0].getAttribute('name')
+                                    product = portServiceElements[0].getAttribute('product')
+                                    if product:
+                                        service += ' with ' + product
+                                        service += ' ' + portServiceElements[0].getAttribute('version')
+                                        service += ' ' +  portServiceElements[0].getAttribute('extrainfo')
+                                    service += ' on port ' + port
+                                    metas[host_ipv4]['serves'].add(service)
+                        hostOss = host.getElementsByTagName('osclass')
+                        for hostOs in hostOss:
+                            metas[host_ipv4]['OS Type'] = hostOs.getAttribute('type')
+                            metas[host_ipv4]['OS Vendor'] = hostOs.getAttribute('vendor')
+                            metas[host_ipv4]['OS Family'] = hostOs.getAttribute('osfamily')
+                            metas[host_ipv4]['OS Generation'] = hostOs.getAttribute('osgen')
+                            metas[host_ipv4]['OS Accuracy'] = hostOs.getAttribute('accuracy')
+    nmaprun = doc.getElementsByTagName('nmaprun') 
+    metas[nmaprun_page]['Run Arguments'] = nmaprun[0].getAttribute('args')
+    metas[nmaprun_page]['NMAP Version'] = nmaprun[0].getAttribute('version')
+    metas[nmaprun_page]['Run Started'].add('<<DateTime(%s)>>' % nmaprun[0].getAttribute('start'))
+    metas[nmaprun_page]['XML Output Version'] = nmaprun[0].getAttribute('xmloutputversion')
+    run_stats = doc.getElementsByTagName('finished') 
+    metas[nmaprun_page]['Run Ended'].add('<<DateTime(%s)>>' % run_stats[0].getAttribute('time'))
+    hosts = doc.getElementsByTagName('hosts') 
+    metas[nmaprun_page]['Hosts Up'] = hosts[0].getAttribute('up')
+    metas[nmaprun_page]['Hosts Down'] = hosts[0].getAttribute('down')
+    metas[nmaprun_page]['Hosts Total'] = hosts[0].getAttribute('total')
+    return metas
 
 def main():
     parser = optparse.OptionParser()
@@ -122,59 +133,77 @@ def main():
         dest="config",
         metavar = "CONFIG",
         help="CONFIG file path.")
-    parser.add_option( "-d", "--nmap-results-directory",
-        action="store", type="string", 
-        dest="directory",
-        metavar = "NMAP-RESULTS",
-        help="NMAP-RESULTS directory path.")
     parser.add_option( "-t", "--wiki-template",
         action="store", type="string", 
         dest="template",
         metavar = "TEMPLATE",
         help="Wiki TEMPLATE, e.g. NmapTemplate.")
+    parser.add_option( "-u", "--url",
+        action="store", type="string", 
+        dest="url",
+        metavar = "COLLAB-URL",
+        help="COLLAB-URL")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.add_option( "-w", "--wiki-category",
+        action="store", type="string", 
+        dest="category",
+        metavar = "CATEGORY",
+        help="Wiki CATEGORY, e.g. NmapRun.")
+    parser.set_usage("%prog [options] NMAP-XML-FILES")
     options, args = parser.parse_args()
     iopts={}
-    iopts["creds"] = None
-    iopts["nmap"] = None
+    nmap_files=[]
+    url = ''
+    if len(args) < 1:
+        parser.error("At least one XML input file path needs to be specified.")
     if options.config:
         iopts = parse_config(options.config, "creds", "nmap")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL has to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL has to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
-    if options.directory:
-        directory = options.directory
-    elif "directory" in iopts["nmap"]:
-        directory = iopts["nmap"]["directory"]
-    else:
-        directory = None
     if options.template:
         directory = options.template
-    elif "template" in iopts["nmap"]:
+    elif options.config and "template" in iopts["nmap"]:
         template = iopts["nmap"]["template"]
     else:
-        template = None
-    if directory is not None:
-        nmap_files = enum_dir(directory)
+        template = "NmapTemplate"
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
     else:
-        parser.error("Nmap results directory needs to be specified.")
+        parser.error("Collab URL needs to be specified.")
+    if options.category:
+        category = options.category
+    elif options.config and "category" in iopts["nmap"]:
+        category = iopts["nmap"]["category"]
+    else:
+        category = None
+    if options.verbose:
+        print "NOTE: Processing input files."
+    for arg in args:
+        nmap_files.append(arg)
     for file in nmap_files:
-        metas = Metas()
-        if re.search( '\.(xml|XML)', file ):
-            xml_page = hash_file(os.path.join(path, file), options.verbose)
-            parse_xml(path, file, xml_page, metas)
-            #upload_file(  collab, xml_page, file, os.path.join(path,file) )
-            import_metas(collab, metas, template, options.verbose)
+        xml_page = hashFile(file)
+        fname = os.path.basename(file)
+        if options.verbose:
+            print "NOTE: Parsing", file
+        metas = parse_xml(file, xml_page)
+        if category is not None:
+            metas["category"].add(category)
+        metas[xml_page]['TYPE'] = 'NMAP Run'
+        if options.verbose:
+            print "NOTE: Importing metas to", url
+        importMetas(collab, metas, template)
+
+        if options.verbose:
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            if options.verbose:
+                print "NOTE: Uploading", file, "to", xml_page
+            uploadFile(collab, xml_page, file, fname)
 
 if __name__ == "__main__":
     try:

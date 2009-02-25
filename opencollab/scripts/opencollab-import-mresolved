@@ -181,31 +181,26 @@ def main():
                       default=None,
                       metavar="TEMPLATE",
                       help=("Wiki TEMPLATE."))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help=("COLLAB-URL to connect to."))
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
-    page_metas = Metas()
+    metas = Metas()
     if options.config:
         iopts = parse_config(options.config, "creds", "import-mresolved")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-            collab = CLIWiki(url, config=options.config)
-        else:
-            parser.error("COLLABURL has to be specified.")
-    elif len(args) != 1:
-        parser.error("COLLABURL has to be specified.")
-    else:
-        url=args[0]
-        collab=CLIWiki(url)
     if options.path:
         path = options.path
     elif options.config and "path" in iopts["import-mresolved"]:
         path = iopts["import-mresolved"]["path"]
     else:
-        parser.error("Input file path neeeds to be specified.")
+        parser.error("Input file path neeeds to be specified. Use -h for help.")
     if options.template:
         template = options.template
     elif options.config and "template" in iopts["import-mresolved"]:
@@ -214,10 +209,18 @@ def main():
         template = "MresolveTemplate"
     if options.verbose:
         print "Parsing input file:", path
-    parse_mresolved_data(path, page_metas)
+    if options.url:
+        url = options.url
+        CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
+    parse_mresolved_data(path, metas)
     if options.verbose:
         print "Importing results to:", url
-    import_metas(collab, page_metas, template, options.verbose) 
+    import_metas(collab, metas, template, options.verbose) 
         
 if __name__ == "__main__":
     try:

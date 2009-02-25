@@ -26,32 +26,34 @@ def main():
         metavar = "SEARCH-STRING",
         help="SEARCH-STRING for getMeta().")
     parser.add_option("-n", "--dry-run",
-                      dest="dryrun",
-                      action="store_true",
-                      default=False,
-                      help="show what would have been deleted")
+        dest="dryrun",
+        action="store_true",
+        default=False,
+        help="show what would have been deleted")
+    parser.add_option("-u", "--url",
+        dest="url",
+        action="store_true",
+        default=False,
+        metavar="COLLAB-URL",
+        help="COLLAB-URL to connect to.")
     options, args = parser.parse_args()
     iopts = {}
     if options.config:
         iopts = parse_config(options.config, "creds", "delete")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL needs to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.search_string:
         search_string = options.search_string
     elif options.config and "search-string" in iopts["delete"]:
         search_string = iopts["delete"]["search-string"]
     else:
-        search_string = None
-    if search_string is None:
-        parser.error("Search string needs to be specified.")
+        parser.error("Search string needs to be specified. Use -h for help.")
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab needs to be specified. Use -h for help.")
     metas = collab.getMeta(search_string)
     for k,v in metas.iteritems():
         print "Deleting %r..." % (k),

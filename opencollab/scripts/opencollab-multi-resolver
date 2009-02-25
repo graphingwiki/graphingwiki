@@ -124,6 +124,11 @@ def main():
                       default=None,
                       metavar="TEMPLATE",
                       help=("Optional TEMPLATE to use. Defaults to IdentityTemplate."))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help=("COLLAB-URL to connect to."))
     parser.add_option("-w", "--wiki-category",
                       dest="category",
                       default=None,
@@ -132,23 +137,13 @@ def main():
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     url=None
     mresolve_path="/usr/bin/mresolve"
     iopts={}
     if options.config:
         iopts = parse_config(options.config, "creds", "multi-resolver")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            error = "COLLABURL needs to be specified."
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.mresolve_path:
         mresolve_path=options.mresolve_path
     elif options.config and "mresolve_path" in iopts["multi-resolver"]:
@@ -161,6 +156,14 @@ def main():
         template=iopts["multi-resolver"]["template"]
     else:
         template="IdentityTemplate"
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
     if options.category:
         category=options.category
     elif options.config and "category" in iopts["multi-resolver"]:

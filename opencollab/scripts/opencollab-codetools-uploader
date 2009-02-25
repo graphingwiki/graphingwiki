@@ -144,35 +144,32 @@ def main():
         action="store",
         type="string", dest="config",
         help="Config file path.")
+    parser.add_option("-e", "--arena-user",
+                      dest="arena_user",
+                      default=None,
+                      metavar="ARENA-USER",
+                      help=("ARENA-USER username."))
     parser.add_option( "-m", "--marker",
                        action="store",
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
-    parser.add_option("-u", "--arena-user",
-                      dest="arena_user",
-                      default=None,
-                      metavar="ARENA-USER",
-                      help=("ARENA-USER user name."))
+    parser.add_option( "-u", "--url",
+                       action="store",
+                       default=None,
+                       metavar="COLLAB-URL",
+                       type="string", dest="url",
+                       help="COLLAB-URL to connect to.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     url=None
     iopts={}
     arena_dirs=[]
     if options.config:
         iopts = parse_config(options.config, "creds", "arena")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL needs to be specified.")
-    elif len(args) != 1:
-        parser.error("COLLABURL needs to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.arena_dir_glob:
         arena_dir_glob=options.arena_dir_glob
     elif options.config and "arena-dir-glob" in iopts["arena"]:
@@ -191,6 +188,14 @@ def main():
         marker = iopts["arena"]["marker"]
     else:
         marker = None
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab needs to be specified. Use -h for help.")
     if arena_dir_glob is not None and arena_user is not None:
         if marker is not None:
             print "Removing meta key <" + marker + \

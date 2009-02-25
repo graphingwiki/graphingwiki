@@ -1,6 +1,6 @@
 This is the GraphingWiki MoinMoin extension. 
 
-Note: Only MoinMoin versions 1.5+ supported.
+Note: Only MoinMoin versions 1.8+ supported.
 
 INSTALL
 =======
@@ -11,8 +11,7 @@ Preconditions:
    graphviz-python-<version>.rpm. Source installs need to be built
    with --enable-python.
 
- - MoinMoin 1.3.4+ installed. Graphingwiki has been tested with
-   MoinMoin versions 1.3.4, 1.3.5, 1.5.3 and 1.6.4.
+ - MoinMoin 1.8+ installed.
 
  - A MoinMoin wiki installed in directory WIKIDIR (with config
    directory in WIKIDIR/config and data in WIKIDIR/data)
@@ -24,7 +23,14 @@ Preconditions:
    % cat wikiconfig-add.txt >> /WIKIDIR/config/wikiconfig.py
 
 3. Install plugins to wiki
-   % gwiki-install WIKIDIR
+
+ EITHER add (or your equivalent for the Python installation) to wikiconfig
+
+  plugin_dirs = ['/usr/lib/python2.4/site-packages/graphingwiki/plugin']
+
+ OR run per instance
+
+  % gwiki-install WIKIDIR
 
 4. Populate the graph data of existing pages
    % gwiki-rehash WIKIDIR
@@ -53,7 +59,7 @@ gwiki-rehash
 gwiki-debuggraph
  * Debug: Shows a page's graph data in list and dot formats.
 
-moin-showpage
+gwiki-showpage
  * A general CLI interface to a MoinMoin wiki
 
 gwiki-showgraph

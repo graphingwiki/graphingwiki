@@ -105,6 +105,11 @@ def main():
                       default=None,
                       metavar="SUBJECT",
                       help=("Notify email SUBJECT."))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help=("COLLAB-URL to connect to."))
     parser.add_option("-v", "--verbose",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
@@ -117,15 +122,6 @@ def main():
         url = args[0]
     if options.config:
         iopts = parse_config(options.config, "creds", "notifier")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-        else:
-            parser.error("COLLABURL has to be specified.")
-        collab = CLIWiki(url, config=options.config)
-    elif len(args) != 1:
-        parser.error("COLLABURL has to be specified.")
-    else:
-        collab = CLIWiki(url)
     if options.sender:
         sender = options.sender
     elif options.config and "sender" in iopts["notifier"]:
@@ -156,6 +152,14 @@ def main():
         subject = options.subject
     elif options.config and "subject" in iopts["notifier"]:
         subject = iopts["notifier"]["subject"]
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
     if options.verbose:
         print "NOTE: URL is " + url
         print "NOTE: Marker to set is " + marker

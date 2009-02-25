@@ -9,24 +9,21 @@ import optparse
 import getpass
 import imaplib
 import email
+import cStringIO
 from email.Iterators import body_line_iterator
 from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import importMetas
 from opencollab.wiki import CLIWiki
-from opencollab.meta import Metas, Meta, Func
+from opencollab.meta import Metas
 from opencollab.util.regexp import *
 try:
     import email.utils
 except:
     import email.Utils
 
-def import_identities(collab,collab_metas,template,verbose):
-    for page,pmeta in collab_metas.iteritems():
-        if page:
-            status = collab.setMeta(page,pmeta,template=template,replace=True)
-    if verbose:
-        print status
-
-def read_spam(imaps_server,imaps_user,imaps_pass):
+def read_spam(collab, imaps_server, imaps_user, imaps_pass):
+    metas = Metas()
     href = re.compile('\w+=\"')
     tag = re.compile('\">?.*$')
     mailbox = imaplib.IMAP4_SSL(imaps_server) 
@@ -39,6 +36,13 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
     for num in data[0].split():
         typ, data = mailbox.fetch(num, '(RFC822)')
         msg = email.message_from_string(data[0][1])
+        msg_obj = cStringIO.StringIO(data[0][1])
+        cpage = hashFile(msg_obj)
+        epoch = int(time())
+        metas[cpage]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
+        metas[cpage]["RFC822 MESSAGE"].add('[[attachment:%s]]' % cpage)
+        metas[cpage]["TYPE"] = "SPAM"
+        uploadFile(collab, cpage, data[0][1], cpage)
         body = ""
         for line in body_line_iterator(msg, decode=True):
                 body+=line
@@ -47,9 +51,10 @@ def read_spam(imaps_server,imaps_user,imaps_pass):
             if url_all_re.search(token):
                 token = href.sub('', token)
                 token = tag.sub('', token)
-                print token
+                metas[cpage]["SPAM URL"].add(token)
     mailbox.close()
     mailbox.logout()
+    return metas
 
 def main():
     parser = optparse.OptionParser()
@@ -58,6 +63,11 @@ def main():
         type="string", dest="config",
         metavar="CONFIG",
         help="CONFIG  file path.")
+    parser.add_option( "-e", "--imaps-user",
+        action="store",
+        type="string", dest="imaps_user",
+        metavar="IMAPS-USERNAME",
+        help="IMAPS-USERNAME.")
     parser.add_option( "-i", "--imaps-server",
         action="store",
         type="string", dest="imaps_server",
@@ -68,29 +78,19 @@ def main():
         type="string", dest="wiki_template",
         metavar="TEMPLATE",
         help="Wiki TEMPLATE.")
-    parser.add_option( "-u", "--user",
+    parser.add_option( "-u", "--url",
         action="store",
-        type="string", dest="imaps_user",
-        metavar="IMAPS-USERNAME",
-        help="IMAPS-USERNAME.")
+        type="string", dest="url",
+        metavar="COLLAB-URL",
+        help="COLLAB-URL to connect to.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
-    parser.set_usage("%prog [options] COLLABURL")
+    parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
     if options.config:
         iopts = parse_config(options.config, "creds", "spam")
-        if "url" in iopts["creds"]:
-            url = iopts["creds"]["url"]
-            collab = CLIWiki(url, config=options.config)
-        else:
-            parser.error("COLLABURL has to be specified.")
-    elif len(args) != 1:
-        parser.error("COLLABURL has to be specified.")
-    else:
-        url=args[0]
-        collab = CLIWiki(url)
     if options.imaps_server:
         imaps_server = options.imaps_server
     elif options.config and "imaps-server" in iopts["spam"]:
@@ -113,14 +113,23 @@ def main():
         template = iopts["spam"]["wiki-template"]
     else:
         template = "SpamTemplate"
-    collab_metas = Metas()
+    if options.verbose:
+        print "Getting collab credentials."
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
     if imaps_server is not None and imaps_user is not None:
         if options.verbose:
             print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
-        read_spam(imaps_server,imaps_user,imaps_pass)
+        metas = read_spam(collab, imaps_server, imaps_user, imaps_pass)
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    #import_identities(collab,collab_metas,template,options.verbose)
+    importMetas(collab, metas, template)
 
 if __name__ == "__main__":
     try:

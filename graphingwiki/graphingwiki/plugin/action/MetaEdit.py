@@ -15,7 +15,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import get_metas, set_metas
-from graphingwiki.editing import metatable_parseargs, edit_meta
+from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import actionname, form_escape, SEPARATOR, \
     fromutf8
 
@@ -295,7 +295,14 @@ def execute(pagename, request):
                     discarded[pagename][key] = oldvals
                     added[pagename][key] = form[oldkey]
 
-            _, msgs = set_metas(request, dict(), discarded, added)
+            # If a new page was not edited in metaformedit,
+            # just save the template
+            if not Page(request, pagename).exists() and \
+                    (not discarded and not added) and \
+                    template:
+                msgs = save_template(request, pagename, template)
+            else:
+                _, msgs = set_metas(request, dict(), discarded, added)
 
         else:
             msgs = list()
