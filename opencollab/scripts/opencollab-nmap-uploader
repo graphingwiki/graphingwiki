@@ -9,26 +9,60 @@ import sys
 import string
 import optparse
 import xml.dom.minidom
-from xml.dom.minidom import Node
+from xml.dom.minidom import Node, ProcessingInstruction
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki
 from opencollab.util.config import parse_config
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
 
+def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+
+    stylesheet_nodes = []
+
+    for node in doc.childNodes:
+        if not isinstance(node, ProcessingInstruction):
+            continue
+
+        if node.nodeName != 'xml-stylesheet':
+            continue
+
+        stylesheet_nodes.append(node)
+
+    if len(stylesheet_nodes) != 1:
+        return False
+
+    node = stylesheet_nodes[0]
+
+    attributes = dict([item.split("=") for item in node.data.split()])
+
+    stylesheet = attributes["href"].strip('"')
+    stylesheet_data = open(stylesheet).read()
+
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nmap.xsl"'
+    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
+
+    xml_data = doc.toxml()
+
+    collab.putAttachment(xml_page, fname, xml_data, True)
+    collab.putAttachment(xml_page, "nmap.xsl", stylesheet_data, True)
+    return True
+
 def parse_xml(file, nmaprun_page):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
-    If you get and expat error from minidom, please refer to:
-    http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=154288
-    and complain to nmap developers. ;)
     """
     metas = Metas()
     try:
         doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError:
-        error = file + ": " + repr(xml.parsers.expat.ExpatError)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
         sys.exit(error)
     hosts = doc.getElementsByTagName('host')
     for host in hosts:
@@ -162,9 +196,14 @@ def main():
         if options.verbose:
             print "NOTE: Importing metas to", url
         importMetas(collab, metas, template)
+
         if options.verbose:
-            print "NOTE: Uploading", file, "to", xml_page
-        uploadFile(collab, xml_page, file, fname)
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            if options.verbose:
+                print "NOTE: Uploading", file, "to", xml_page
+            uploadFile(collab, xml_page, file, fname)
 
 if __name__ == "__main__":
     try:
