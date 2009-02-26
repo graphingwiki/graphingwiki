@@ -292,8 +292,8 @@ def execute(pagename, request):
                     elif pagename in added:
                         del added[pagename]
                 else:
-                    discarded[pagename][key] = oldvals
-                    added[pagename][key] = form[oldkey]
+                    discarded.setdefault(pagename, dict())[key] = oldvals
+                    added.setdefault(pagename, dict())[key] = form[oldkey]
 
             # If a new page was not edited in metaformedit,
             # just save the template
