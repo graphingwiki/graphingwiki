@@ -278,6 +278,7 @@ def execute(pagename, request):
             keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
             old = get_metas(request, pagename, keys)
+
             for key in keys:
                 oldkey = pagename + SEPARATOR + key
                 oldvals = old.get(key, list())
@@ -292,17 +293,15 @@ def execute(pagename, request):
                     elif pagename in added:
                         del added[pagename]
                 else:
-                    discarded.setdefault(pagename, dict())[key] = oldvals
-                    added.setdefault(pagename, dict())[key] = form[oldkey]
+                    discarded.setdefault(pagename, dict())[key].extend(oldvals)
+                    added.setdefault(pagename, dict())[key].extend(form[oldkey])
 
             # If a new page was not edited in metaformedit,
             # just save the template
-            if not Page(request, pagename).exists() and \
-                    (not discarded and not added) and \
-                    template:
+            if not Page(request, pagename).exists() and template:
                 msgs = save_template(request, pagename, template)
-            else:
-                _, msgs = set_metas(request, dict(), discarded, added)
+
+            _, msgs = set_metas(request, dict(), discarded, added)
 
         else:
             msgs = list()
