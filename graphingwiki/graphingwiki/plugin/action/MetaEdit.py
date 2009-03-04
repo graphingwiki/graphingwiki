@@ -298,7 +298,7 @@ def execute(pagename, request):
                     del discarded[pagename]
 
             pagenames = added.keys()
-            for pagename in added:
+            for pagename in pagenames:
                 if pagename in added and not added[pagename]:
                     del added[pagename]
 
