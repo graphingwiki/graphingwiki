@@ -22,7 +22,7 @@ def import_identities(collab,collab_metas,template,category,verbose):
                 pmeta["category"].add(category)
             status = collab.setMeta(page,pmeta,template=template,replace=True)
             if verbose:
-                print "Set meta for: " + page + "with status: " + status
+                print "Set meta for: " + repr(page) + "with status: " + repr(status)
 
 def shred_triplets(resolved): 
     collab_metas = Metas()
