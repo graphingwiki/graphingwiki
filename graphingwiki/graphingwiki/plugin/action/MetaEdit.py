@@ -278,31 +278,35 @@ def execute(pagename, request):
             keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
             old = get_metas(request, pagename, keys)
+
             for key in keys:
                 oldkey = pagename + SEPARATOR + key
                 oldvals = old.get(key, list())
                 if not oldvals:
-                    if pagename in discarded:
-                        del discarded[pagename]
-
-                    vals = [x.strip() for x in form[oldkey] 
+                    vals = [x.strip() for x in form[oldkey]
                             if x.strip()]
                     if vals:
-                        added.setdefault(pagename, dict())[key] = vals
-                    elif pagename in added:
-                        del added[pagename]
+                        added.setdefault(pagename, dict()).setdefault(key, list()).extend(vals)
                 else:
-                    discarded[pagename][key] = oldvals
-                    added[pagename][key] = form[oldkey]
+                    discarded.setdefault(pagename, dict()).setdefault(key, list()).extend(oldvals)
+                    added.setdefault(pagename, dict()).setdefault(key, list()).extend(form[oldkey])
 
-            # If a new page was not edited in metaformedit,
-            # just save the template
-            if not Page(request, pagename).exists() and \
-                    (not discarded and not added) and \
-                    template:
+            # Delete unneeded page keys in added/discarded
+            pagenames = discarded.keys()
+            for pagename in pagenames:
+                if pagename in discarded and not discarded[pagename]:
+                    del discarded[pagename]
+
+            pagenames = added.keys()
+            for pagename in pagenames:
+                if pagename in added and not added[pagename]:
+                    del added[pagename]
+
+            # Save the template if needed
+            if not Page(request, pagename).exists() and template:
                 msgs = save_template(request, pagename, template)
-            else:
-                _, msgs = set_metas(request, dict(), discarded, added)
+
+            _, msgs = set_metas(request, dict(), discarded, added)
 
         else:
             msgs = list()

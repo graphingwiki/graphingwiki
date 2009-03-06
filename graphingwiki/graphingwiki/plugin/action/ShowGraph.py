@@ -50,7 +50,7 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, fromutf8, template_regex, category_regex
+from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, fromutf8, toutf8, template_regex, category_regex
 from graphingwiki.editing import ordervalue
 
 import math
@@ -622,7 +622,7 @@ class GraphShower(object):
 
             # Ordernodes setup
             if self.orderby and self.orderby != '_hier':
-                value = getattr(obj, self.orderby, None)
+                value = getattr(obj, toutf8(self.orderby), None)
 
                 if value:
                     # Add to filterordervalues in the nonmodified form
@@ -685,7 +685,7 @@ class GraphShower(object):
         # the form (ie. variable colorby) and change their colors, plus
         # gather legend data
         def getcolors(obj):
-            rule = getattr(obj, colorby, None)
+            rule = getattr(obj, toutf8(colorby), None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
                 self.colorfiltervalues.update(rule)
@@ -697,7 +697,7 @@ class GraphShower(object):
                 self.colornodes.add(rule)
 
         def updatecolors(obj):
-            rule = getattr(obj, colorby, None)
+            rule = getattr(obj, toutf8(colorby), None)
             color = getattr(obj, 'fillcolor', None)
             if rule and not color:
                 rule = ', '.join(sorted(rule))
@@ -708,7 +708,7 @@ class GraphShower(object):
                 obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
                 obj.gwikistyle = 'filled'
 
-        nodes = filter(lambda x: hasattr(x, colorby), 
+        nodes = filter(lambda x: hasattr(x, toutf8(colorby)), 
                        map(outgraph.nodes.get, outgraph.nodes))
         for obj in nodes:
             getcolors(obj)
@@ -959,7 +959,11 @@ class GraphShower(object):
         # colorby
         request.write(u"<td valign=top>\n")
 	request.write(u"<u>" + _("Color by:") + u"</u><br>\n")
-        types = sortShuffle(self.nodeattrs)
+        types = set([x for x in self.nodeattrs])
+        if self.colorby:
+            types.add(self.colorby)
+
+        types = sortShuffle(types)
 
         form_optionlist(request, 'colorby', types, self.colorby, 
                         {'': _("no coloring")}, True)
@@ -984,7 +988,9 @@ class GraphShower(object):
         # orderby
         request.write(u"<td valign=top>\n")
 	request.write(u"<u>" + _("Order by:") + u"</u><br>\n")
-        types = sortShuffle(self.nodeattrs)
+        types = set([x for x in self.nodeattrs])
+        if self.orderby:
+            types.add(self.orderby)
 
         form_optionlist(request, 'orderby', types, self.orderby, 
                         {'': _("no ordering"), '_hier': _("hierarchical")},True)
@@ -1200,21 +1206,21 @@ class GraphShower(object):
                 continue
 
             # Filtering of untyped nodes
-            if not getattr(obj, doby, list()) and NO_TYPE in filt:
+            if not getattr(obj, toutf8(doby), list()) and NO_TYPE in filt:
                 obj.gwikiremove = True
                 break
             # If filter is not relevant to this node
-            elif not getattr(obj, doby, list()):
+            elif not getattr(obj, toutf8(doby), list()):
                 continue
 
             # Filtering by metadata values
-            target = set(getattr(obj, doby))
+            target = set(getattr(obj, toutf8(doby)))
             for rule in set(filt):
 
                 if rule in target:
                     # Filter only the metadata values filtered
                     target.remove(rule)
-                    setattr(obj, doby, list(target))
+                    setattr(obj, toutf8(doby), list(target))
 
             # If all values of object were filtered, filter object
             if not target:
