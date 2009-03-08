@@ -109,7 +109,7 @@ def main():
         n = 1
         for filename, wikiname in filelist:
             sys.stdout.write("%d/%d uploading %s as %s\n" % (n, total, filename, wikiname)) 
-            uploadFile(wiki, page, wikiname, filename)
+            uploadFile(collab, page, wikiname, filename)
             n += 1 
 
         sys.exit()
