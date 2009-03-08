@@ -989,8 +989,10 @@ class GraphShower(object):
         request.write(u"<td valign=top>\n")
 	request.write(u"<u>" + _("Order by:") + u"</u><br>\n")
         types = set([x for x in self.nodeattrs])
-        if self.orderby:
+        if self.orderby != '_hier':
             types.add(self.orderby)
+
+        types = sortShuffle(types)
 
         form_optionlist(request, 'orderby', types, self.orderby, 
                         {'': _("no ordering"), '_hier': _("hierarchical")},True)
