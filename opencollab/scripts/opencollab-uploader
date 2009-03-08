@@ -121,7 +121,7 @@ def main():
 
     sys.stdout.write("uploading %s as %s\n" % (path, filename)) 
     sys.stdout.flush()
-    uploadFile(wiki, page, filename, path)
+    uploadFile(collab, page, filename, path)
 
 if __name__ == "__main__":
     try:
