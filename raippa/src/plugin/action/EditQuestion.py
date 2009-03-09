@@ -958,7 +958,9 @@ def execute(pagename, request):
         for key in request.form:
             if key != "answertype" and key.startswith("answer"):
                 a_temp = request.form.get(key, [unicode()])[0]
-                answer = a_temp.strip().replace("\n"," ").replace("\r"," ")
+                answer = a_temp.replace("\r", "")
+                if questiondata["answertype"] != "file":
+                    answer = answer.strip().replace("\n"," ")
 
                 if not answer:
                     continue
