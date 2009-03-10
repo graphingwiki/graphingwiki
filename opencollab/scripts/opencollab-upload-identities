@@ -27,7 +27,7 @@ def parse_input_file(page_metas, path):
     except IOError:
         error = "Input file: " + file + " doesn't exist."
         sys.exit(error)
-    statinfo = os.stat(file)
+    statinfo = os.stat(path)
     epoch = statinfo.st_ctime
     epoch = utctimestamp(epoch)
     for line in lines:
