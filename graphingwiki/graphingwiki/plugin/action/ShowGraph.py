@@ -492,7 +492,9 @@ class GraphShower(object):
         olde = self.graphdata.edges.get(obj1name, obj2name)
         types = olde.linktype.copy()
         for type in types:
-            if type in self.filteredges:
+            # Filtering by edges == filtering by in-links
+            if ((type in self.filteredges) or 
+                (self.orderby == 'gwikiinlinks' and type in self.filterorder)):
                 olde.linktype.remove(type)
         if not olde.linktype:
             return
@@ -536,7 +538,7 @@ class GraphShower(object):
             return
 
         e = outgraph.edges.add(obj1name, obj2name)
-        e.update(olde)
+        e.update(olde)        
 
         # Count connected so that unconnected ones can be filtered
         if self.noloners:
@@ -552,7 +554,7 @@ class GraphShower(object):
         delete = set()
 
         for objname in outgraph.nodes:
-            obj = self.graphdata.nodes.get(objname)
+            orig_obj = self.graphdata.nodes.get(objname)
 
             # List loner pages to be filtered
             if self.noloners:
@@ -561,9 +563,9 @@ class GraphShower(object):
                     continue
 
             # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(obj))
-            n = outgraph.nodes.get(objname)
-            n.update(obj)
+            self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(orig_obj))
+            obj = outgraph.nodes.get(objname)
+            obj.update(orig_obj)
 
             # User rights have been checked before, at traverse
             pagedata = self.request.graphdata.getpage(objname)
@@ -571,7 +573,7 @@ class GraphShower(object):
             # Add page categories to selection choices in the form
             # (for local pages only, ie. existing and saved)
             if pagedata.get('saved', False):
-                self.categories_add(obj.gwikicategory)
+                self.categories_add(orig_obj.gwikicategory)
 
             # Add tooltip, if applicable
             # Only add non-guaranteed attrs to tooltip
@@ -581,18 +583,18 @@ class GraphShower(object):
             for key in pagedata.get('out', dict()):
                 pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
 
-            if (pagemeta and not hasattr(obj, 'gwikitooltip')):
+            if (pagemeta and not hasattr(orig_obj, 'gwikitooltip')):
                 pagekeys = nonguaranteeds_p(pagemeta)
                 tooldata = '\n'.join("-%s: %s" % 
                                      (x == '_notype' and _('Links') or x,
                                       ', '.join(pagemeta[x]))
                                      for x in pagekeys)
-                n.gwikitooltip = '%s\n%s' % (objname, tooldata)
+                obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 
             # Shapefiles
-            if getattr(obj, 'gwikishapefile', None):
+            if getattr(orig_obj, 'gwikishapefile', None):
                 # Enter file path for attachment shapefiles
-                value = obj.gwikishapefile[13:-2]
+                value = orig_obj.gwikishapefile[13:-2]
                 components = value.split('/')
                 if len(components) == 1:
                     page = objname
@@ -604,7 +606,7 @@ class GraphShower(object):
 
                 # get attach file path, empty label
                 if exists:
-                    n.gwikishapefile = shapefile
+                    obj.gwikishapefile = shapefile
                 
                     # Stylistic stuff: label, borders
                     # "Note that user-defined shapes are treated as a form
@@ -613,14 +615,28 @@ class GraphShower(object):
                     # bounding rectangle. Setting peripheries=0 will turn
                     # this off."
                     # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
-                    n.gwikilabel = ' '
-                    n.gwikiperipheries = '0'
-                    n.gwikistyle = 'filled'
-                    n.gwikifillcolor = 'transparent'
+                    obj.gwikilabel = ' '
+                    obj.gwikiperipheries = '0'
+                    obj.gwikistyle = 'filled'
+                    obj.gwikifillcolor = 'transparent'
                 else:
-                    del n.gwikishapefile
+                    del obj.gwikishapefile
 
-            # Ordernodes setup
+            # Add data on types of edges for which obj is child
+            for parent in outgraph.edges.parents(objname):
+                edgeobj = outgraph.edges.get(parent, objname)
+                inlinks = set(getattr(obj, 'gwikiinlinks', list()))
+                inlinks.update(getattr(edgeobj, 'linktype'))
+                setattr(obj, 'gwikiinlinks', list(inlinks))
+
+        # Delete the loner pages
+        for page in delete:
+            outgraph.nodes.delete(page)
+
+        # Ordernodes setup
+        for objname in outgraph.nodes:
+            obj = outgraph.nodes.get(objname)
+
             if self.orderby and self.orderby != '_hier':
                 value = getattr(obj, encode_page(self.orderby), None)
 
@@ -635,18 +651,15 @@ class GraphShower(object):
                         value = re_order.sub(self.ordersub, value)
 
                     # Graphviz attributes must be strings
-                    n.gwikiorder = value
+                    obj.gwikiorder = value
 
                     # Internally, some values are given a special treatment
                     value = ordervalue(value)
 
                     self.ordernodes.setdefault(value, set()).add(objname)
                 else:
-                    self.unordernodes.add(objname)
+                    self.unordernodes.add(objname)        
 
-        # Delete the loner pages
-        for page in delete:
-            outgraph.nodes.delete(page)
 
         return outgraph
 
@@ -945,6 +958,9 @@ class GraphShower(object):
 
         def sortShuffle(types):
             types = sorted(types)
+            if 'gwikiinlinks' in types:
+                types.remove('gwikiinlinks')
+            types.insert(0, 'gwikiinlinks')
             if 'gwikicategory' in types:
                 types.remove('gwikicategory')
             types.insert(0, 'gwikicategory')
@@ -989,7 +1005,7 @@ class GraphShower(object):
         request.write(u"<td valign=top>\n")
 	request.write(u"<u>" + _("Order by:") + u"</u><br>\n")
         types = set([x for x in self.nodeattrs])
-        if self.orderby != '_hier':
+        if self.orderby and self.orderby != '_hier':
             types.add(self.orderby)
 
         types = sortShuffle(types)
