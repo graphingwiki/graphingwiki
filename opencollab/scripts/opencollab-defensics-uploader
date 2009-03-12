@@ -50,12 +50,26 @@ def uploadFile(collab,page_name,filename,path):
     sys.stdout.flush()
     file.close()
 
+def parse_summary(dir, file='summary.xml'):
+    summary_metas = Meta()
+    xmldoc = minidom.parse(os.path.join(dir, file))
+    for fact in xmldoc.getElementsByTagName("fact"):
+        label = fact.getAttribute("label")
+        if label:
+            summary_metas[label].add(getText(fact.childNodes))
+        for collection in xmldoc.getElementsByTagName("collection"):
+            label = collection.getAttribute("label")
+            for fact in collection.getElementsByTagName("fact"):
+                summary_metas[label].add(getText(fact.childNodes))
+    return summary_metas
+
 def parse_tool_options(page_metas):
-    options = []
-    tmp = []
+    options=[]
+    tmp=[]
+    option_metas = Meta()
     for opt in page_metas["Options"]:
         tmp.append(opt)
-    opt_str = tmp.pop()
+    opt_str = str(tmp.pop())
     options = opt_str.split('--')
     for opt in options:
         tmp = opt.split()
@@ -63,17 +77,20 @@ def parse_tool_options(page_metas):
             opt_key = "Option "
             opt_key = opt_key + " ".join(tmp[0:1])
             opt_value = " ".join(tmp[1:])
-            page_metas[opt_key].add(opt_value)
+            option_metas[opt_key].add(opt_value)
+    return option_metas
 
-def parse_notes(page_metas, dir, file='notes.xml'):
+def parse_notes(dir, file='notes.xml'):
+    note_metas = Meta()
     xmldoc = minidom.parse(os.path.join(dir, file))
     for value in xmldoc.getElementsByTagName('value'):
         key = value.getAttribute('key')
         description = value.getAttribute('description')
         text_value = getText(value.childNodes)
-        page_metas[key].add(text_value)
-        dk = key + " Description"
-        page_metas[dk].add(description)
+        note_metas[key].add(text_value)
+        kd = key + " Description"
+        note_metas[kd].add(description)
+    return note_metas
 
 def handle_paths(collab,testplan_page,dirs):
     at = re.compile('@')
@@ -85,20 +102,11 @@ def handle_paths(collab,testplan_page,dirs):
         flist = os.listdir(dir)
         if 'summary.xml' in flist:
             print "Handling directory: " + dir
-            fname = dir + '/summary.xml'
+            page_metas.update(parse_summary(dir))
             page_metas["Summary XML"].add('[[attachment:summary.xml]]')
             testrun_page = hashfile(os.path.join(dir,'summary.xml'))
-            uploadFile(collab,testrun_page,'summary.xml',dir)
-            xmldoc = minidom.parse(os.path.join(dir,'summary.xml'))
-            for fact in xmldoc.getElementsByTagName("fact"):
-                label = fact.getAttribute("label")
-                if label:
-                    page_metas[label].add(getText(fact.childNodes))
-            for collection in xmldoc.getElementsByTagName("collection"):
-                label = collection.getAttribute("label")
-                for fact in collection.getElementsByTagName("fact"):
-                    page_metas[label].add(getText(fact.childNodes))
-            parse_tool_options(page_metas)
+            uploadFile(collab, testrun_page, 'summary.xml', dir)
+            page_metas.update(parse_tool_options(page_metas))
             if('main.log.gz' in flist):
                 pass
             elif('main.log' in flist):
@@ -121,7 +129,7 @@ def handle_paths(collab,testplan_page,dirs):
                 uploadFile(collab,testrun_page,'summary.txt',dir)
             if 'notes.xml' in flist:
                 page_metas["Notes"].add('[[attachment:notes.xml]]')
-                parse_notes(page_metas, dir)
+                page_metas.update(parse_notes(dir))
                 uploadFile(collab,testrun_page,'notes.xml',dir)
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
