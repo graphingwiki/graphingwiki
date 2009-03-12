@@ -122,7 +122,7 @@ def handle_path(collab,testplan_page,dlist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
             if 'notes.xml' in flist:
-                page_metas["Notes"].add('{{attachment:notes.xml}}')
+                page_metas["Notes"].add('[[attachment:notes.xml]]')
                 page_metas.update(parse_notes(dir))
                 uploadFile(collab,testrun_page,'notes.xml',dir)
             if(testplan_page is not None):
