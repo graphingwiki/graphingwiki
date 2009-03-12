@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 from opencollab.wiki import WikiFailure
 
 def importMetas(collab, metas, template, replace=True):
