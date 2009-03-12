@@ -944,7 +944,7 @@ def execute(pagename, request):
         note = request.form.get("note", list())
         if len(note) > 0:
             n_temp = note.pop()
-            n_temp = n_temp.strip().replace("\n"," ").replace("\r"," ")
+            n_temp = n_temp.strip().replace("\r", "")
             questiondata["note"] = n_temp
         else:
             questiondata["note"] = unicode()
