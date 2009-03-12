@@ -20,7 +20,7 @@ def monkey_patch(original, on_success=ignore, always=ignore):
         finally:
             always(self)
         # If we want to patch the result also
-        patched_result = on_success(self, result)
+        patched_result = on_success(self, result, (args, keys))
         if patched_result:
             return patched_result
         return result
@@ -71,7 +71,7 @@ def _get_save_plugin(self):
 
     return graphsaver
 
-def graphdata_save(self, result):
+def graphdata_save(self, result, _):
     graphsaver = _get_save_plugin(self)
 
     if not graphsaver:
@@ -82,7 +82,19 @@ def graphdata_save(self, result):
 
     graphsaver(self.page_name, self.request, text, path, self)
 
-def graphdata_rename(self, (success, _)):
+def graphdata_copy(self, result, (args, _)):
+    newpagename = args[0]
+    graphsaver = _get_save_plugin(self)
+
+    if not graphsaver:
+        return
+
+    text = self.get_raw_body()
+    path = underlay_to_pages(self.request, self)
+
+    graphsaver(newpagename, self.request, text, path, self)
+
+def graphdata_rename(self, (success, msg), _):
     if not success:
         return
 
@@ -91,7 +103,7 @@ def graphdata_rename(self, (success, _)):
 
     graphsaver(self.page_name, self.request, '', path, self)
 
-def variable_insert(self, result):
+def variable_insert(self, result, _):
     """
     Replace variables specified in wikiconfig eg.
 
@@ -135,10 +147,12 @@ def install_hooks():
                                        graphdata_save)
     PageEditor.renamePage = monkey_patch(PageEditor.renamePage, 
                                          graphdata_rename)
+    PageEditor.copyPage = monkey_patch(PageEditor.copyPage, 
+                                       graphdata_copy)
 
     # FIXME: Remove this patch when MoinMoin makes variable names
     # configurable in some fashion.
     PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
-                                              variable_insert)
+                                                variable_insert)
 
     _hooks_installed = True
