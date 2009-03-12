@@ -106,16 +106,8 @@ class Meta(UserDict.DictMixin):
             self.__dict__['dict'][key] = MetaKey(self.schema.get(key, None))
         return self.dict[key]
 
-    # To enable usage of metas interchangeably with dicts
-    def __setitem__(self, key, val):
-        if key not in self.dict:
-            self.dict[key] = MetaKey(self.schema.get(key, None))
-        # If we have something that can iterate, add the items
-        try:
-            self.dict[key].add(val)
-        except TypeError:
-            for x in val:
-                self.dict[key].add(x)
+    def __setitem__(self, key, value):
+        self.dict[key] = value
 
     def __delitem__(self, key):
         self.dict.pop(key, None)
