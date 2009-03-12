@@ -65,6 +65,18 @@ def parse_tool_options(page_metas):
             opt_value = " ".join(tmp[1:])
             page_metas[opt_key].add(opt_value)
 
+def parse_notes(dir, file='notes.xml'):
+    note_metas = Meta()
+    xmldoc = minidom.parse(os.path.join(dir, file))
+    for value in xmldoc.getElementsByTagName('value'):
+        key = value.getAttribute('key')
+        description = value.getAttribute('description')
+        text_value = getText(value.childNodes)
+        note_metas[key].add(text_value)
+        dk = key + " Description"
+        note_metas[dk].add(description)
+    return note_metas
+
 def handle_path(collab,testplan_page,dlist):
     at = re.compile('@')
     flist=[]
@@ -73,7 +85,7 @@ def handle_path(collab,testplan_page,dlist):
     page_metas["category"].add("CategoryTestRun")
     for dir in dlist:
         flist = os.listdir(dir)
-        if('summary.xml' in flist):
+        if 'summary.xml' in flist:
             print "Handling directory: " + dir
             fname = dir + '/summary.xml'
             page_metas["Summary XML"].add('[[attachment:summary.xml]]')
@@ -109,6 +121,10 @@ def handle_path(collab,testplan_page,dlist):
             if('summary.txt' in flist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
                 uploadFile(collab,testrun_page,'summary.txt',dir)
+            if 'notes.xml' in flist:
+                page_metas["Notes"].add('{{attachment:notes.xml}}')
+                page_metas.update(parse_notes(dir))
+                uploadFile(collab,testrun_page,'notes.xml',dir)
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
                     tmp = at.sub('', testplan_page) 
@@ -155,6 +171,7 @@ def main():
     parser.set_usage("%prog [options] 0..N optional input directories")
     url = None
     iopts={}
+    dlist=[]
     testrun_directory = None
     testplan_page = None
     options, args = parser.parse_args()
@@ -186,7 +203,6 @@ def main():
     else:
         parser.error("Collab URL needs to be specified. Use -h for help.")
     if testrun_results is not None:
-        dlist=[]
         if(options.verbose):
              print "Walking " + testrun_results
         dlist = walk_dirs(testrun_results)
