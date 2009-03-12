@@ -151,7 +151,10 @@ class Metas(UserDict.DictMixin):
 
     def __delitem__(self, key):
         self.dict.pop(key, None)
-        
+
+    def __setitem__(self, key, val):
+        self.dict[key] = val
+
     def keys(self):
         return [key for key, value in self.dict.iteritems() if value]
 
