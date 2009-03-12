@@ -19,7 +19,10 @@ def monkey_patch(original, on_success=ignore, always=ignore):
             result = original(self, *args, **keys)
         finally:
             always(self)
-        on_success(self, result)
+        # If we want to patch the result also
+        patched_result = on_success(self, result)
+        if patched_result:
+            return patched_result
         return result
     return _patched
 
@@ -43,7 +46,10 @@ def request_copy(self):
     return new_request
 RequestBase.__copy__ = request_copy
 
-# Functions for properly opening, closing, saving and deleting graphdata.
+# Functions for properly opening, closing, saving and deleting
+# graphdata. NB: Do not return anything in functions used in
+# monkey_patch unless you want to affect the return value of the
+# patched function
 
 def graphdata_getter(self):
     from graphingwiki.util import GraphData
@@ -85,6 +91,19 @@ def graphdata_rename(self, (success, _)):
 
     graphsaver(self.page_name, self.request, '', path, self)
 
+def variable_insert(self, result):
+    """
+    Replace variables specified in wikiconfig eg.
+
+    gwikivariables = {'GWIKITEST': 'I am the bestest!'}
+    """
+
+    cfgvar = getattr(self.request.cfg, 'gwikivariables', dict())
+    for name in cfgvar:
+        result = result.replace('@%s@' % name, cfgvar[name])
+
+    return result
+
 # Main function for injecting graphingwiki extensions straight into
 # Moin's beating heart.
 
@@ -116,5 +135,10 @@ def install_hooks():
                                        graphdata_save)
     PageEditor.renamePage = monkey_patch(PageEditor.renamePage, 
                                          graphdata_rename)
+
+    # FIXME: Remove this patch when MoinMoin makes variable names
+    # configurable in some fashion.
+    PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
+                                              variable_insert)
 
     _hooks_installed = True

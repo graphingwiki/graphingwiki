@@ -17,6 +17,12 @@ def execute(pagename, request):
     # Making a throwaway request by copying to avoid littering modifications
     newreq = copy(request)
 
+    # Add data of the page's creator as a temporary variable
+    if not hasattr(newreq.cfg, 'gwikivariables'):
+        newreq.cfg.gwikivariables = {'CREATORPAGE': pagename}
+    else:
+        newreq.cfg.gwikivariables['CREATORPAGE'] = pagename
+
     if editaction:
         # MoinMoin.action.newpage left no choice but to edit the URL
         # action on-the-fly in request.http_redirect
