@@ -77,13 +77,13 @@ def parse_notes(dir, file='notes.xml'):
         note_metas[dk].add(description)
     return note_metas
 
-def handle_paths(collab,testplan_page,dlist):
+def handle_paths(collab,testplan_page,dirs):
     at = re.compile('@')
     flist=[]
     page_metas=Meta()
     template = "TestRunTemplate"
     page_metas["category"].add("CategoryTestRun")
-    for dir in dlist:
+    for dir in dirs:
         flist = os.listdir(dir)
         if 'summary.xml' in flist:
             print "Handling directory: " + dir
@@ -141,7 +141,6 @@ def walk_dirs(path):
     for root, dirs, files in os.walk(path):
         for dir in dirs:
            dlist.append(os.path.join(root,dir)) 
-    dlist.append(path)
     return dlist
 
 def main():
@@ -150,11 +149,6 @@ def main():
         action="store",
         type="string", dest="config",
         help="Config file path.")
-    parser.add_option("-d", "--testrun-directory",
-        dest="testrun_directory",
-        default=None,
-        metavar="TESTRUN-DIRECTORY",
-        help=("Directory base to search for testrun directories."))
     parser.add_option("-t", "--testplan-page",
         action="store",
         type="string", dest="testplan_page", default=None,
@@ -165,6 +159,9 @@ def main():
         type="string", dest="url", default=None,
         metavar="COLLAB-URL",
         help="COLLAB-URL to connect to.")
+    parser.add_option("-r",
+        action="store_true", dest="recursive", default=False,
+        help="Enable recursion on input directories.")
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output.")
@@ -177,14 +174,11 @@ def main():
     options, args = parser.parse_args()
     if options.config:
         iopts = parse_config(options.config, "creds", "defensics")
-    if options.testrun_directory:
-        testrun_results = options.testrun_directory 
-    elif options.config and "testrun-results" in iopts["defensics"]:
-        testrun_results = iopts["defensics"]["testrun-results"] 
-    elif len(args) > 0:
+    if len(args) > 0:
         for arg in args:
             dlist.append(arg)
-        testrun_results = None
+    elif options.config and "testrun-results" in iopts["defensics"]:
+        dlist = (iopts["defensics"]["testrun-results"])
     else:
         parser.error("You need to specify a testrun directory base via -d or \n \
                       via 1..N positional input directories. Use -h for help.")
@@ -202,13 +196,21 @@ def main():
         collab = CLIWiki(url, config=options.config)
     else:
         parser.error("Collab URL needs to be specified. Use -h for help.")
-    if testrun_results is not None:
+    if options.recursive:
         if(options.verbose):
-             print "Walking " + testrun_results
-        dlist = walk_dirs(testrun_results)
+            print "Walking ", dlist
+        new_dl=[]
+        for dir in dlist:
+            new_dl.append(dir)
+            new_dl = (walk_dirs(dir))
+        a = set(new_dl)
+        b = set(dlist)
+        dirs = a | b 
+    else:
+        dirs = set(dlist)
     if(options.verbose):
-        print "Handling: " + dlist
-    handle_paths(collab, testplan_page, dlist)
+        print "Handling: ", dirs
+    handle_paths(collab, testplan_page, dirs)
 
 if __name__ == "__main__":
     try:
