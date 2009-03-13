@@ -135,6 +135,10 @@ def show_editform(wr, request, pagename, args):
     wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
     wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
+    template = request.form.get('template', [''])[0]
+    if template:
+        wr('<input type="hidden" name="template" value="%s">', template)
+
     # Note that metatable_parseargs handles permission issues
     pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                 get_all_keys=True)
@@ -265,12 +269,13 @@ def execute(pagename, request):
         
         request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
+        template = form.get('template', [None])[0]
+
         # MetaFormEdit is much closer to set_meta in function
         if form.has_key('saveform'):
             added, discarded = {pagename: dict()}, {pagename: dict()}
 
             # Pre-create page if it does not exist, using the template specified
-            template = form.get('template', [None])[0]
             if template:
                 added[pagename]['gwikitemplate'] = template
 
@@ -309,10 +314,24 @@ def execute(pagename, request):
             _, msgs = set_metas(request, dict(), discarded, added)
 
         else:
+            # MetaEdit
             msgs = list()
             pages = parse_editform(request, form)
 
             if pages:
+                saved_templates = False
+
+                for page, _ in pages.iteritems():
+                    # Save the template if needed
+                    if not Page(request, page).exists() and template:
+                        msgs.append(save_template(request, page, template))
+                        saved_templates = True
+
+                # If new pages were changed we need to redo parsing
+                # the form to know what we really need to edit
+                if saved_templates:
+                    pages = parse_editform(request, form)
+
                 for page, (oldMeta, newMeta) in pages.iteritems():
                     msgs.append('%s: ' % page + 
                                 edit_meta(request, page, oldMeta, newMeta))
