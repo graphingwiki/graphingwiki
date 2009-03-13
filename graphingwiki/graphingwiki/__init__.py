@@ -114,6 +114,10 @@ def variable_insert(self, result, _):
     for name in cfgvar:
         result = result.replace('@%s@' % name, cfgvar[name])
 
+    # Add the page's creator as a dynamic variable
+    backto = self.request.form.get('backto', [''])[0]
+    result = result.replace('@CREATORPAGE@', backto)
+
     return result
 
 # Main function for injecting graphingwiki extensions straight into
