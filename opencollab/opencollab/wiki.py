@@ -289,8 +289,6 @@ class GraphingWiki(Wiki):
         pages = dict()
 
         for result in results:
-            # Page names and meta keys seem to come from the wiki
-            # UTF-8 encoded in contrast to the actual key values
             page = result.pop(0)
             meta = Meta()
 
