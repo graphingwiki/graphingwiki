@@ -38,8 +38,8 @@ def execute(pagename, request):
             # Add prototype metas (^ something::\s*$) as keys
             protokeys = [y for x,y in dl_proto_re.findall(text)]
             for key in protokeys:
-                if not (key in newdata[pagename]['out'] or 
-                        key in newdata[pagename]['meta']):
+                if not (key in newdata[pagename].get('out', list()) or 
+                        key in newdata[pagename].get('meta', list())):
                     newdata[pagename]['meta'][key] = list()
 
             # I'll lie, cheat, do anything to make this work
