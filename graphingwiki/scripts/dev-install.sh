@@ -50,6 +50,13 @@ function makewiki {
 
 set -e
 
+# python 2.6 workarounds
+mkdir -p gw-install
+rm -f gw-install/local
+ln -s . gw-install/local
+mkdir -p gw-install/lib/python2.6
+ln -s dist-packages gw-install/lib/python2.6/site-packages
+
 installmoin
 spdir=`echo $gwinstall/lib/python?.*/site-packages`
 
