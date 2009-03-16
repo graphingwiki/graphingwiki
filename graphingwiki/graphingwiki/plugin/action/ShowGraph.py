@@ -196,6 +196,7 @@ class GraphShower(object):
         self.hidedges = 0
         self.edgelabels = 0
         self.noloners = 0
+        self.nostartnodes = 0
 
         self.categories = list()
         self.otherpages = list()
@@ -341,7 +342,8 @@ class GraphShower(object):
                 setattr(self, arg, ''.join(request.form[arg]))
 
         # Toggle arguments
-        for arg in ['unscale', 'hidedges', 'edgelabels', 'noloners']:
+        for arg in ['unscale', 'hidedges', 'edgelabels', 
+                    'noloners', 'nostartnodes']:
             if request.form.has_key(arg):
                 setattr(self, arg, 1)
 
@@ -559,6 +561,12 @@ class GraphShower(object):
             # List loner pages to be filtered
             if self.noloners:
                 if objname not in self.nodes_in_edge:
+                    delete.add(objname)
+                    continue
+
+            # Startnodes to be filtered
+            if self.nostartnodes:
+                if objname in self.startpages:
                     delete.add(objname)
                     continue
 
@@ -920,6 +928,10 @@ class GraphShower(object):
         # filter unconnected nodes
         form_checkbox(request, 'noloners', '1', self.noloners, 
                       _('Filter lonely'))
+        request.write(u"<br>\n")
+        # filter unconnected nodes
+        form_checkbox(request, 'nostartnodes', '1', self.nostartnodes, 
+                      _('Filter startnodes'))
 
         # Include
 	request.write(u"<td valign=top>\n")
