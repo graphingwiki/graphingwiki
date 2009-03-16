@@ -76,11 +76,11 @@ def parse_xml(file, nmaprun_page):
                         addressType = addressElement.getAttribute('addrtype')
                         address = addressElement.getAttribute('addr')
                         if addressType == 'ipv4':
-                            metas[address]['TYPE'] = 'IPv4'
+                            metas[address]['TYPE'].add('IPv4')
                             host_ipv4 = address
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                         if addressType == 'mac':
-                            metas[address]['TYPE'] = 'MAC'
+                            metas[address]['TYPE'].add('MAC')
                             metas[address]['Vendor'] = addressElement.getAttribute('vendor')
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                     hostNameElements = host.getElementsByTagName('hostname')
@@ -108,22 +108,22 @@ def parse_xml(file, nmaprun_page):
                                     metas[host_ipv4]['serves'].add(service)
                         hostOss = host.getElementsByTagName('osclass')
                         for hostOs in hostOss:
-                            metas[host_ipv4]['OS Type'] = hostOs.getAttribute('type')
-                            metas[host_ipv4]['OS Vendor'] = hostOs.getAttribute('vendor')
-                            metas[host_ipv4]['OS Family'] = hostOs.getAttribute('osfamily')
-                            metas[host_ipv4]['OS Generation'] = hostOs.getAttribute('osgen')
-                            metas[host_ipv4]['OS Accuracy'] = hostOs.getAttribute('accuracy')
+                            metas[host_ipv4]['OS Type'].add(hostOs.getAttribute('type'))
+                            metas[host_ipv4]['OS Vendor'].add(hostOs.getAttribute('vendor'))
+                            metas[host_ipv4]['OS Family'].add(hostOs.getAttribute('osfamily'))
+                            metas[host_ipv4]['OS Generation'].add(hostOs.getAttribute('osgen'))
+                            metas[host_ipv4]['OS Accuracy'].add(hostOs.getAttribute('accuracy'))
     nmaprun = doc.getElementsByTagName('nmaprun') 
-    metas[nmaprun_page]['Run Arguments'] = nmaprun[0].getAttribute('args')
-    metas[nmaprun_page]['NMAP Version'] = nmaprun[0].getAttribute('version')
+    metas[nmaprun_page]['Run Arguments'].add(nmaprun[0].getAttribute('args'))
+    metas[nmaprun_page]['NMAP Version'].add(nmaprun[0].getAttribute('version'))
     metas[nmaprun_page]['Run Started'].add('<<DateTime(%s)>>' % nmaprun[0].getAttribute('start'))
-    metas[nmaprun_page]['XML Output Version'] = nmaprun[0].getAttribute('xmloutputversion')
+    metas[nmaprun_page]['XML Output Version'].add(nmaprun[0].getAttribute('xmloutputversion'))
     run_stats = doc.getElementsByTagName('finished') 
     metas[nmaprun_page]['Run Ended'].add('<<DateTime(%s)>>' % run_stats[0].getAttribute('time'))
     hosts = doc.getElementsByTagName('hosts') 
-    metas[nmaprun_page]['Hosts Up'] = hosts[0].getAttribute('up')
-    metas[nmaprun_page]['Hosts Down'] = hosts[0].getAttribute('down')
-    metas[nmaprun_page]['Hosts Total'] = hosts[0].getAttribute('total')
+    metas[nmaprun_page]['Hosts Up'].add(hosts[0].getAttribute('up'))
+    metas[nmaprun_page]['Hosts Down'].add(hosts[0].getAttribute('down'))
+    metas[nmaprun_page]['Hosts Total'].add(hosts[0].getAttribute('total'))
     return metas
 
 def main():
@@ -192,7 +192,7 @@ def main():
         metas = parse_xml(file, xml_page)
         if category is not None:
             metas["category"].add(category)
-        metas[xml_page]['TYPE'] = 'NMAP Run'
+        metas[xml_page]['TYPE'].add('NMAP Run')
         if options.verbose:
             print "NOTE: Importing metas to", url
         importMetas(collab, metas, template)
