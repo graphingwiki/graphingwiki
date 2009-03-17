@@ -81,7 +81,7 @@ def parse_xml(file, nmaprun_page):
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                         if addressType == 'mac':
                             metas[address]['TYPE'].add('MAC')
-                            metas[address]['Vendor'] = addressElement.getAttribute('vendor')
+                            metas[address]['Vendor'].add(addressElement.getAttribute('vendor'))
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
                     hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
