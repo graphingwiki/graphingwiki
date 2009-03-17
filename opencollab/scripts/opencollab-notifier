@@ -50,7 +50,7 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         content += header
     for page in page_content:
         content += page_content[page]
-        collab.setMeta(page,page_marker,replace=True)
+        collab.setMeta(page, page_marker, replace=True)
     if footer is not None:
         content += footer
 
@@ -143,7 +143,7 @@ def main():
     else:
         marker="Notified=Yes"
     k,v = marker.split('=')
-    page_marker[k] = v
+    page_marker[k].add(v)
     if options.recipient:
         recipient = options.recipient
     elif options.config and "recipient" in iopts["notifier"]:
