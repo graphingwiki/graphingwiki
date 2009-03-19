@@ -6,9 +6,6 @@
     @copyright: 2009 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os
-import urllib
-
 cairo_found = True
 try:
     import cairo
