@@ -27,7 +27,7 @@ LEVELS = {'2': 'SALAINEN',
           '3': 'LUOTTAMUKSELLINEN',
           '4': 'SALASSA PIDETTÄVÄ'}
 
-LEVELSROMAN = {'4': 'IV', 3: 'III', 2: 'II'}
+LEVELSROMAN = {'4': 'IV', '3': 'III', '2': 'II'}
 
 LAW = u"JulkL (621/1999) 24.1 \xa7:n %s k"
 
