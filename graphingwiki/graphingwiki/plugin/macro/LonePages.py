@@ -28,7 +28,8 @@ def macro_LonePages(macro, hier=False, docnumber=0):
                 break
 
         pageobj = request.graphdata.getpage(page)
-        if (not pageobj.get('out', dict()) and 
+        if (pageobj.get('saved') and
+            not pageobj.get('out', dict()) and 
             not pageobj.get('include', dict()) and
             not pageobj.get('in', dict())):
             no += 1
