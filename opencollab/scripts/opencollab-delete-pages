@@ -31,9 +31,8 @@ def main():
         default=False,
         help="show what would have been deleted")
     parser.add_option("-u", "--url",
+        action="store", type="string",
         dest="url",
-        action="store_true",
-        default=False,
         metavar="COLLAB-URL",
         help="COLLAB-URL to connect to.")
     options, args = parser.parse_args()
