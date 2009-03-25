@@ -1,0 +1,166 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Marko Laakso, Mika Seppänen, Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import re
+import string
+import re
+import gzip
+import optparse
+from opencollab.util.config import parse_config
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Metas
+
+def decompressFile(path, file):
+    ifile = os.path.join(path, file)
+    ofile = os.path.join(path, "main.log")
+    try:
+        gf = gzip.open(ifile, "rb")
+    except IOError:
+        error = "Couldn't open " + ifile + " for reading."
+        sys.exit(error) 
+    try:
+        df = open(ofile, "wb")
+    except IOError:
+        error = "Couldn't open " + ofile + " for writing."
+        sys.exit(error) 
+    try:
+        df.writelines(gf)
+    except IOError:
+        error = "Write to " + ofile + " failed."
+        sys.exit(error) 
+    df.close()
+    gf.close()
+    try:
+        os.remove(ifile)
+    except os.error:
+        error = "Couldn't remove " + ifile
+        sys.exit(error)
+
+def downloadFile(collab, dpath, page, attachment):
+    fp = os.path.join(dpath, attachment)
+    try:
+        file = open(fp, "wb")
+    except IOError:
+        error = "Couldn't open " + fp + " for writing."
+        sys.exit(error)
+    sys.stdout.write("Downloading %s\n" % attachment)
+    for data, current, total in collab.getAttachmentChunked(page, attachment):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+        file.write(data)
+        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.flush()
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    file.close()
+
+def create_dir(results_dir, suite_name, ts):
+    ds = ts.single()
+    date, times = ds.split()
+    time, _ = times.split('.')
+    mod_time = re.sub(':', '-', time)
+    dname = date + '-' + mod_time
+    new_dir = os.path.join(results_dir, suite_name.single(), dname)
+    if not os.path.exists(new_dir):
+        try:
+            os.makedirs(new_dir)
+        except os.error:
+            error = "Couldn't create: ", new_dir
+            sys.exit(error)
+    return new_dir
+
+def get_pages(search_string, collab):
+    pages = Metas()
+    try:
+        search_string = unicode(search_string, 'utf-8')
+    except UnicodeDecodeError: 
+        search_string = unicode(search_string, 'iso-8859-1')
+    except UnicodeDecodeError: 
+        error = "Could not understand system default encoding."
+        sys.exit(error)
+    pages = collab.getMeta(search_string)
+    return pages
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="config",
+        help="Config file path.")
+    parser.add_option("-s", "--search-string",
+        action="store",
+        type="string", dest="search_string", default=None,
+        metavar="SEARCH-STRING",
+        help="MetaTable SEARCH-STRING." )
+    parser.add_option("-u", "--url",
+        action="store",
+        type="string", dest="url", default=None,
+        metavar="COLLAB-URL",
+        help="COLLAB-URL to connect to.")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output.")
+    parser.set_usage("%prog [options]  Defensics results directory")
+    url = None
+    iopts={}
+    search_string = None
+    results_dir = None
+    pages = Metas()
+    options, args = parser.parse_args()
+    if options.config:
+        iopts = parse_config(options.config, "creds", "defensics-downloader")
+    if len(args) > 0:
+        results_dir = args.pop()
+    elif options.config and "testrun-results" in iopts["defensics-downloader"]:
+        results_dir = (iopts["defensics-downloader"]["testrun-results"])
+    else:
+        parser.error("You need to specify a testrun directory via a\n \
+                      positional argument or configuration file variable. Use -h for help.")
+    if options.search_string:
+        search_string = options.search_string
+    elif options.config and "search-string" in iopts["defensics-downloader"]:
+        search_string = iopts["defensics-downloader"]["search-string"]
+    else:
+        parser.error("You need to specify a MetaTable search string.\n \
+                      Use -h for help.")
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified.\n \
+                      Use -h for help.")
+    if options.verbose:
+        print "Getting pages with: ", search_string, "from", url
+    pages.update(get_pages(search_string, collab))
+    if options.verbose:
+        print "Downloading testrun results to:", results_dir
+    for page in pages:
+        if pages[page]["Summary XML"]:
+            suite_name = pages[page]["Test suite name"]
+            ts = pages[page]["Test run started"]
+            dpath = create_dir(results_dir, suite_name, ts)
+            if options.verbose:
+                print "NOTE: Download destination is", dpath
+            attachments = collab.listAttachments(page)
+            for attachment in attachments:
+                downloadFile(collab, dpath, page, attachment)
+            if options.verbose:
+                print "NOTE: Decompressing main.log.gz"
+            decompressFile(dpath, "main.log.gz")
+            if options.verbose:
+                print "NOTE: Removed main.log.gz"
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
