@@ -42,6 +42,10 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     attributes = dict([item.split("=") for item in node.data.split()])
 
     stylesheet = attributes["href"].strip('"')
+
+    if not os.path.exists(stylesheet):
+        return False
+
     stylesheet_data = open(stylesheet).read()
 
     attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nmap.xsl"'
