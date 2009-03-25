@@ -30,9 +30,9 @@ def shred_triplets(resolved):
         if triplet:
             subj, pred, obj = triplet.split(';')
             if pred in mr_attributes:
-                collab_metas[subj][pred] = obj
+                collab_metas[subj][pred].add(obj)
             else:
-                collab_metas[subj][pred] = '[[%s]]' % obj
+                collab_metas[subj][pred].add('[[%s]]' % obj)
     return collab_metas
 
 def expand_ipv4(rr,new):
@@ -142,6 +142,7 @@ def main():
     url=None
     mresolve_path="/usr/bin/mresolve"
     iopts={}
+    collab_metas = Metas()
     if options.config:
         iopts = parse_config(options.config, "creds", "multi-resolver")
     if options.mresolve_path:
@@ -185,7 +186,7 @@ def main():
         expanded,resolved = generate_requests(resolved,new)
     if options.verbose:
         print "Shredding resolved RDF triplets."
-    collab_metas = shred_triplets(resolved)
+    collab_metas.update(shred_triplets(resolved))
     if options.verbose:
         print "Importing resolved identities to: " + url
     import_identities(collab,collab_metas,template,category,options.verbose)
