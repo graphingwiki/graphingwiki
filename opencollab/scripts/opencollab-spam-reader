@@ -129,7 +129,7 @@ def main():
         metas = read_spam(collab, imaps_server, imaps_user, imaps_pass)
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    importMetas(collab, metas, template)
+    importMetas(collab, metas, template, options.verbose)
 
 if __name__ == "__main__":
     try:
