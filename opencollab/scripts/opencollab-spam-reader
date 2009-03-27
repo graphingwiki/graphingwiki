@@ -41,7 +41,7 @@ def read_spam(collab, imaps_server, imaps_user, imaps_pass):
         epoch = int(time())
         metas[cpage]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
         metas[cpage]["RFC822 MESSAGE"].add('[[attachment:%s]]' % cpage)
-        metas[cpage]["TYPE"] = "SPAM"
+        metas[cpage]["TYPE"].add("SPAM")
         uploadFile(collab, cpage, data[0][1], cpage)
         body = ""
         for line in body_line_iterator(msg, decode=True):
