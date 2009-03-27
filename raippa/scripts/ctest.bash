@@ -48,8 +48,8 @@ while [ $# -gt 0 ]; do
 done
 
 [ -z "$prog" ] && fail "program must be specified using -p"
-[ -z "$refout" ] && fail "reference stdin be specified using -i"
-[ -z "$refin" ] && fail "reference stdin must be specified using -o"
+[ -z "$refout" ] && fail "reference stdout must be specified using -o"
+[ -z "$refin" ] && fail "reference stdin must be specified using -i"
 
 pout=`mktemp /tmp/ctestXXXXXX`
 trap "rm -vf $pout" EXIT SIGHUP SIGTERM SIGQUIT SIGINT
@@ -72,7 +72,7 @@ if [ -f core ]; then
     gdb --quiet --ex where -batch --core core --args $prog 2>/dev/null
     pass=no
 fi
-if diff -wy $refout $pout; then
+if diff -way $refout $pout; then
     echo stdout matches reference, good
 else
     echo stdout differs, see above
@@ -84,7 +84,7 @@ while [ $# -gt 0 ]; do
     ref=$1
     f=$2
     shift; shift
-    if diff -wy $ref $f; then
+    if diff -way $ref $f; then
 	echo file $f matches reference, good
     else
         echo file $f differs from reference, see above
