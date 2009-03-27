@@ -1,4 +1,4 @@
-import os, sys, time, datetime, subprocess, tempfile, shutil
+import os, sys, time, datetime, subprocess, tempfile, shutil, xml
 
 from optparse import OptionParser
 
@@ -29,14 +29,15 @@ def runtests(tests, scriptpath):
     for test in tests:
         if test.infiles:
             for infile in test.infiles:
-                open(infile, 'w').writelines(test.infiles[infile])
+                open(infile, 'w').write(test.infiles[infile])
+                                             
         if test.outfiles:
             for outfile in test.outfiles:
-                open('_'+outfile, 'w').writelines(test.outfiles[outfile])
-
-        open('test.txt', 'w').writelines(test.outputs)
+                open('_'+outfile, 'w').write(test.outfiles[outfile])
+                
+        open('test.txt', 'w').writelines([x+'\n' for x in test.outputs])
         if test.inputs:
-            open('output.txt', 'w').writelines(test.inputs)
+            open('output.txt', 'w').writelines([x + '\n' for x in test.inputs])
             output = 'output.txt'
         else:
             output = '/dev/null'
@@ -49,7 +50,14 @@ def runtests(tests, scriptpath):
         if ctestprocess.returncode == 0:
             success +=1
         total += 1
-        
+        if test.infiles:
+            for infile in test.infiles:
+                os.remove(infile)
+                                             
+        if test.outfiles:
+            for outfile in test.outfiles:
+                os.remove('_'+outfile)
+                
     return success, total, report
 
 
@@ -67,30 +75,30 @@ def parsecontent(content):
             if case:
                 testcases.append(case)
             case = testCase()
-            _, _, switches = line.partition('./program')
+            _, switches = line.split('./program')
             case.cmdline = switches
         elif line.startswith(':'):
-            _, _, filename = line.partition(':')
+            _, filename = line.split(':')
             case.infiles[filename] = str() 
         elif line.startswith('>'):
-            case.infiles[filename] += line[1:]
+            case.infiles[filename] += line[1:] + '\n'
         elif line.startswith('|'):
-            _, _, filename = line.partition('|')
+            _, filename = line.split('|')
             case.outfiles[filename] = str() 
         elif line.startswith('<'):
-            case.outfiles[filename] += line[1:]
+            case.outfiles[filename] += line[1:] + '\n'
         else:
             case.outputs.append(line)
     testcases.append(case)
     
-    return str(), testcases
+    return "-lm", testcases
 
 def compile(code, switches):
 
     path = tempfile.mkdtemp()
     os.chdir(path)
     
-    open('file.c', 'w').write(code)
+    open('file.c', 'w').write(code.encode('utf-8'))
 
     executablePath = os.path.join(path, "program")
 
@@ -151,9 +159,13 @@ def main():
                 sys.stderr.write('no question page!\n')
                 sys.exit(1)
             question = question.strip('[]')
-            sourcecode = wiki.getPage(page + '/file')
+            try:
+                sourcecode = wiki.getPage(page + '/file')
+            except xml.parsers.expat.ExpatError:
+                sourcecode = "DO NOT RETURN SILLY FILES!"
             sourcecode = '\n'.join(sourcecode.split('\n')[1:])
             answers = wiki.getMeta('CategoryAnswer, question=%s' % question)
+
             if not answers:
                 sys.stderr.write('no aswers!\n')
                 sys.exit(1)
@@ -167,27 +179,36 @@ def main():
             if not success:
                 info('Compilation FAILED')
                 try:
-                    wiki.putPage(page + '/comment', '#FORMAT plain\nCOMPLIATION FAILED:\n' + report)
+                    wiki.putPage(page + '/comment', '{{{\nCOMPLIATION FAILED:\n' + report + '\n}}}')
                 except opencollab.wiki.WikiFault:
                     info('no change')
-                wiki.setMeta(page, {'overallvalue' : ['False']}, True)
+                wiki.setMeta(page, {'overallvalue' : ['False'],
+                                    'comment': ['[[%s/comment]]' % page]}, True)
+                shutil.rmtree(path)
                 continue
 
             info('Compilation SUCCESS')
-            report = "#FORMAT plain\nCOMPILATION WAS SUCCESSFULL:\n" + report
+            report = "{{{\nCOMPILATION WAS SUCCESSFUL:\n" + report
             report += '----\n'
             
             success, total, testreport = runtests(tests, scriptpath)
             info('score: %d/%d' % (success, total))
             report += testreport
-
+            report += '}}}'
             try:
                 wiki.putPage(page + '/comment', report)
-            except opencollab.wiki.WikiFault:
-                info('no change')
-
-            wiki.setMeta(page, {'overallvalue' : ['%d/%d' % (success, total)]}, True)
+            except opencollab.wiki.WikiFault, e:
+                print e
+                try:
+                    wiki.putPage(page + '/comment', 'Your program failed')
+                except opencollab.wiki.WikiFault, e:
+                    print e
+                
+            wiki.setMeta(page, {'overallvalue' : ['%d/%d' % (success, total)],
+                                'comment': ['[[%s/comment]]' % page]}, True)
             shutil.rmtree(path)
+        # sleep for a while
+        time.sleep(10.0)
 
 if __name__ == '__main__':
     try:
