@@ -18,9 +18,10 @@ def execute(macro, args):
     request = macro.request
     _ = request.getText
 
-    args = [x.strip() for x in args.split(',')]
+    if args:
+        args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
-    if len(args) not in [1, 2]:
+    if not args or len(args) not in [1, 2]:
         return _sysmsg % ('error', 
                           _("GetMetaData: Need to specify page, or page and key"))
 

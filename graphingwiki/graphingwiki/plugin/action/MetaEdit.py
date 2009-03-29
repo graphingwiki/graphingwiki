@@ -17,7 +17,7 @@ from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas, set_metas
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import actionname, form_escape, SEPARATOR, \
-    decode_page
+    decode_page, enter_page, exit_page
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
@@ -46,7 +46,9 @@ def parse_editform(request, form):
     >>> parse_editform(request, {"Test-gwikiseparator-a" : ["1"], ":: a" : ["a"]})
     {'Test': ({'a': ['1', '2']}, {'a': ['1', '']})}
     """
+    _ = request.getText
 
+    msgs = list()
     keys = dict()
     pages = dict()
 
@@ -76,6 +78,9 @@ def parse_editform(request, form):
         newKey = keys.get(oldKey, oldKey)
 
         if not request.user.may.write(page):
+            err = '%s: ' % page + _('You are not allowed to edit this page.')
+            if not err in msgs:
+                msgs.append(err)
             continue
 
         oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
@@ -111,7 +116,7 @@ def parse_editform(request, form):
         if not (oldMeta or newMeta):
             del pages[page]
 
-    return pages
+    return pages, msgs
 
 def show_queryform(wr, request, pagename):
     _ = request.getText
@@ -225,31 +230,6 @@ def show_editform(wr, request, pagename, args):
     wr(u'<input type="submit" name="cancel" value="%s">\n', _('Cancel'))
     wr(u'</form>\n')
 
-def _enter_page(request, pagename):
-    _ = request.getText
-
-    request.emit_http_headers()
-
-    title = _('Metatable editor')
-    request.theme.send_title(title,
-                        pagename=pagename)
-    # Start content - IMPORTANT - without content div, there is no
-    # direction support!
-    if not hasattr(request, 'formatter'):
-        formatter = HtmlFormatter(request)
-    else:
-        formatter = request.formatter
-    request.page.formatter = formatter
-
-    request.write(request.page.formatter.startContent("content"))
-
-def _exit_page(request, pagename):
-    # End content
-    request.write(request.page.formatter.endContent()) # end content div
-    # Footer
-    request.theme.send_footer(pagename)
-    request.theme.send_closing_html()
-
 def execute(pagename, request):
     _ = request.getText
 
@@ -267,6 +247,7 @@ def execute(pagename, request):
         if backto:
             request.page = Page(request, backto)
         
+        request.theme.add_msg(_('Edit was cancelled.'), "error")
         request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
         template = form.get('template', [None])[0]
@@ -315,8 +296,7 @@ def execute(pagename, request):
 
         else:
             # MetaEdit
-            msgs = list()
-            pages = parse_editform(request, form)
+            pages, msgs = parse_editform(request, form)
 
             if pages:
                 saved_templates = False
@@ -330,7 +310,7 @@ def execute(pagename, request):
                 # If new pages were changed we need to redo parsing
                 # the form to know what we really need to edit
                 if saved_templates:
-                    pages = parse_editform(request, form)
+                    pages, newmsgs = parse_editform(request, form)
 
                 for page, (oldMeta, newMeta) in pages.iteritems():
                     msgs.append('%s: ' % page + 
@@ -347,9 +327,10 @@ def execute(pagename, request):
         if backto:
             request.page = Page(request, backto)
         
-        request.page.send_page(msg=msg)
+        request.theme.add_msg(msg)
+        request.page.send_page()
     elif form.has_key('args'):
-        _enter_page(request, pagename)
+        enter_page(request, pagename, 'Metatable editor')
         formatter = request.page.formatter
         
         request.write(formatter.heading(1, 2))
@@ -358,9 +339,9 @@ def execute(pagename, request):
         args = ', '.join(form['args'])
         show_editform(wr, request, pagename, args)
 
-        _exit_page(request, pagename)
+        exit_page(request, pagename)
     else:
-        _enter_page(request, pagename)
+        enter_page(request, pagename, 'Metatable editor')
         formatter = request.page.formatter
 
         request.write(formatter.heading(1, 2))
@@ -373,7 +354,7 @@ def execute(pagename, request):
         request.write(formatter.heading(0, 2))
         show_queryform(wr, request, pagename)
 
-        _exit_page(request, pagename)
+        exit_page(request, pagename)
 
 def _test():
     import doctest

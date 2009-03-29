@@ -41,6 +41,7 @@ from codecs import getencoder
 
 import MoinMoin.version
 
+from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin import caching
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -54,6 +55,32 @@ from graphingwiki.graph import Graph
 MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
 
 SEPARATOR = '-gwikiseparator-'
+
+# Functions for starting and ending page
+def enter_page(request, pagename, title):
+    _ = request.getText
+
+    request.emit_http_headers()
+
+    title = _(title)
+    request.theme.send_title(title,
+                             pagename=pagename)
+    # Start content - IMPORTANT - without content div, there is no
+    # direction support!
+    if not hasattr(request, 'formatter'):
+        formatter = HtmlFormatter(request)
+    else:
+        formatter = request.formatter
+    request.page.formatter = formatter
+
+    request.write(request.page.formatter.startContent("content"))
+
+def exit_page(request, pagename):
+    # End content
+    request.write(request.page.formatter.endContent()) # end content div
+    # Footer
+    request.theme.send_footer(pagename)
+    request.theme.send_closing_html()
 
 # Get action name
 def actionname(request, pagename):

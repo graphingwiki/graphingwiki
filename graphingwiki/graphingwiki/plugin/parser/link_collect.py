@@ -98,14 +98,16 @@ class Parser(WikiParser):
 
     def _word_repl(self, word, groups):
         """Handle WikiNames."""
-        if self.__add_link(word, groups):
-            return u""
-
-        bang = ''
         bang_present = groups.get('word_bang')
         if bang_present:
             if self.cfg.bang_meta:
-                return u''
+                return self.formatter.nowikiword("!%s" % word)
+            else:
+                self.formatter.text('!')
+
+        if self.__add_link(word, groups):
+            return u""
+
         name = groups.get('word_name')
         current_page = self.formatter.page.page_name
         abs_name = wikiutil.AbsPageName(current_page, name)
@@ -149,6 +151,14 @@ class Parser(WikiParser):
     def _macro_repl(self, word, groups):
         """Handle macros.
         All that really seems to be needed is to pass the raw markup. """
+        macro_name = groups.get('macro_name')
+        macro_args = groups.get('macro_args')
+
+        if macro_name == 'Include':
+            # Add includes
+            page_args = macro_args.split(',')[0]
+            self.currentitems.append(('include', (page_args, word)))
+
         return self.__add_meta(groups.get('macro'), {})
 
     _macro_name_repl = _macro_repl
@@ -314,9 +324,18 @@ class Parser(WikiParser):
             self._undent()
 
     def _parser_repl(self, word, groups):
-        self.in_pre = True
+        parser_name = groups.get('parser_name', None)
+
+        if parser_name != 'wiki':
+            self.in_pre = True
         
         return self.__add_meta(word, groups)
+
+    _parser_unique_repl = _parser_repl
+    _parser_line_repl = _parser_repl
+    _parser_name_repl = _parser_repl
+    _parser_args_repl = _parser_repl
+    _parser_nothing_repl = _parser_repl
         
     def _parser_end_repl(self, word, groups):
         self.in_pre = False

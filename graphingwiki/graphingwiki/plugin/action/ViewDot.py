@@ -40,7 +40,8 @@ from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.error import InternalError
 
 from graphingwiki.graphrepr import Graphviz, gv_found
-from graphingwiki.util import actionname
+from graphingwiki.util import actionname, enter_page, \
+    exit_page, url_parameters, encode_page
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
@@ -72,7 +73,7 @@ class ViewDot(object):
 
         # format
         if request.form.has_key('format'):
-            format = [encode(x) for x in request.form['format']][0]
+            format = [x for x in request.form['format']][0]
             if format in self.available_formats:
                 self.format = format
 
@@ -88,7 +89,7 @@ class ViewDot(object):
 
         # graphengine
         if request.form.has_key('graphengine'):
-            graphengine = [encode(x) for x in request.form['graphengine']][0]
+            graphengine = [encode_page(x) for x in request.form['graphengine']][0]
             if graphengine in self.available_graphengines:
                 self.graphengine = graphengine
 
@@ -155,6 +156,7 @@ class ViewDot(object):
         self.formargs()
         request = self.request
         _ = request.getText
+        pagename = request.page.page_name
 
         if self.help or not self.attachment:
             # fix for moin 1.3.5
@@ -163,38 +165,18 @@ class ViewDot(object):
             else:
                 formatter = request.formatter
 
-            request.emit_http_headers()
-            # This action generate data using the user language
-            request.setContentLanguage(request.lang)
-
-            title = _('View .dot attachment')
-
-            # Start content - IMPORTANT - without content div, there is no
-            # direction support!
-            request.write(formatter.startContent("content"))
-            formatter.setPage(request.page)
-
-            request.theme.send_title(title, pagename=self.pagename)
+            enter_page(request, pagename, 'View .dot attachment')
 
             self.sendForm()
 
             if self.help:
                 # This is the URL addition to the nodes that have graph data
-                self.urladd = '?'
-                for key in request.form:
-                    if key == 'help':
-                        continue
-                    for val in request.form[key]:
-                        self.urladd = (self.urladd + url_quote(encode(key)) +
-                                       '=' + url_quote(encode(val)) + '&')
-                self.urladd = self.urladd[:-1]
-                request.write('<<ViewDot(' + self.urladd + ')>>')
+                if 'help' in request.form:
+                    del request.form['help']
+                self.urladd = url_parameters(request.form)
+                request.write('&lt;&lt;ViewDot(' + self.urladd + ')&gt;&gt;')
 
-            # End content
-            self.request.write(formatter.endContent()) # end content div
-            # Footer
-            self.request.theme.send_footer(self.pagename)
-            self.request.theme.send_closing_html()
+            exit_page(request, pagename)
             return 
 
         if not self.attachment[:10].lower() == 'attachment':
@@ -242,8 +224,8 @@ class ViewDot(object):
                 request.emit_http_headers()
                 request.write('<html><body>')
             elif isinstance(self.request, RequestModPy):
-                request.setHttpHeader('Content-type: image/%s' %
-                                           formatcontent)
+                request.emit_http_headers(['Content-Type: image/%s' %
+                                           formatcontent])
                 del request.mpyreq.headers_out['Vary']
             elif not isinstance(self.request, RequestStandAlone):
                 # Do not send content type in StandAlone

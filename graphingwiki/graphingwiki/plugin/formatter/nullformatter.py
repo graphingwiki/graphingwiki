@@ -18,6 +18,8 @@ class Formatter(FormatterBase):
 
         return self.null()
         
+    nowikiword = text
+
     def null(self, *args, **kw):
         return ''
 

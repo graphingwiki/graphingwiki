@@ -226,9 +226,7 @@ def plot_sparkline(results, text=True):
     
     return data
 
-def plot_error(request):
-    image_headers(request)
-
+def plot_error(request, text="No data"):
     # Just return an error message
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  56, 20)
@@ -242,7 +240,7 @@ def plot_error(request):
     
     ctx.set_source_rgb(0, 0, 0)
     ctx.move_to(0, 20)
-    ctx.show_text(request.getText("No data"))
+    ctx.show_text(request.getText(text))
     data = write_surface(surface)
     
     return data
@@ -270,7 +268,7 @@ def execute(pagename, request):
             params[attr] = val
 
     # Show error if args on page and key are not passed
-    if not params['page'] or not params['key']:
+    if not params['page'] or not params['key']:    
         request.write(plot_error(request))
         return
 

@@ -36,7 +36,7 @@ from copy import copy
 
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser
-from MoinMoin.wikiutil import importPlugin
+from MoinMoin.wikiutil import importPlugin, get_processing_instructions
 from MoinMoin.Page import Page 
 
 # graphlib imports
@@ -231,7 +231,16 @@ def parse_text(request, page, text):
 
     # Add the page categories as links too
     categories, _, _ = parse_categories(request, text)
-    
+
+    # Process ACL:s
+    pi, _ = get_processing_instructions(text)
+    for verb, args in pi:
+        if verb == u'acl':
+            # Add all ACL:s on multiple lines to an one-lines
+            acls = new_data.get(pagename, dict()).get('acl', '')
+            acls = acls.strip() + args
+            new_data.setdefault(pagename, dict())['acl'] = acls
+
     for metakey, value in p.definitions.iteritems():
         for type, item in value:
             # print metakey, type, item
@@ -249,6 +258,9 @@ def parse_text(request, page, text):
                              u"gwikicategory", item)
             elif type == 'meta':
                 add_meta(new_data, pagename, (metakey, item))
+            elif type == 'include':
+                pagedict = new_data.setdefault(pagename, dict())
+                pagedict.setdefault('include', list()).append(item[0])
 
             if dnode:
                 add_link(new_data, pagename, dnode, metakey, hit)
@@ -447,6 +459,7 @@ def execute(pagename, request, text, pagedir, pageitem):
     request.graphdata.writelock()
 
     request.graphdata[pagename] = temp
+
     # Save the links that have truly changed
     for page in del_out:
         for edge in del_out[page]:
