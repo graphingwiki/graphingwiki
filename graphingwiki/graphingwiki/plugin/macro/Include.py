@@ -31,6 +31,8 @@ _args_re_pattern = Include._args_re_pattern[:-3] + _arg_rev + _arg_template + ')
 _orig_execute = Include.execute
 
 def execute(macro, text):
+    _ = macro.request.getText
+
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
@@ -57,12 +59,18 @@ def execute(macro, text):
                 # Override exists to support including revisions and
                 # the editing of nonexisting pages
                 def new_exists(self, *args):
+                    exists = orig_exists(self, *args)
+
                     if self.page_name == inc_name:
                         if rev:
                             self.rev = rev
-                        return True
 
-                    return orig_exists(self, *args)
+                        # Mark pages that do not really exist
+                        if not exists:
+                            self._macro_Include_nonexisting = True
+                            exists = True
+
+                    return exists
 
                 Page.exists = new_exists
 
@@ -78,16 +86,28 @@ def execute(macro, text):
                 def new_link_to(self, request, text=None, 
                                 querystr=dict(), anchor=None, **kw):
 
-                    # Add templates to Include editlinks
-                    if (template and self.page_name == inc_name and
-                        kw.get('css_class', '') == "include-edit-link"):
-                        querystr['template'] = template
+                    if self.page_name == inc_name:
+                        # Let's see if we've a link to nonexisting page
+                        if getattr(self, '_macro_Include_nonexisting', False):
+                            # Modify editlinks
+                            if kw.get('css_class', '') == "include-edit-link":
+                                text = '[%s]' % _('create')
+                                if template:
+                                    querystr['template'] = template
 
-                    # Add version information to Include page links
-                    elif (rev and self.page_name == inc_name and 
-                          kw.get('css_class', '') == "include-page-link"):
-                        querystr['action'] = 'recall'
-                        querystr['rev'] = str(rev)
+
+                            # Do not give pagelinks to nonexisting pages
+                            if kw.get('css_class', '') == "include-page-link":
+                                return text
+
+                        # Add revision information to rev links
+                        elif rev:
+                            if kw.get('css_class', '') == "include-page-link":
+                                querystr['action'] = 'recall'
+                                querystr['rev'] = str(rev)
+                                text = "%s revision %d]" % (text[:-1], rev)
+                            elif kw.get('css_class', '') == "include-edit-link":
+                                text = '[%s]' % _("edit current version")
 
                     return orig_link_to(self, request, text, 
                                         querystr, anchor, **kw)
