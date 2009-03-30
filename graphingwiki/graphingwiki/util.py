@@ -121,6 +121,27 @@ def url_construct(request, args):
 
     return request.getQualifiedURL(req_url)
 
+def make_tooltip(request, pagedata):
+    _ = request.getText
+
+    # Add tooltip, if applicable
+    # Only add non-guaranteed attrs to tooltip
+    pagemeta = dict()
+    for key in pagedata.get('meta', dict()):
+        pagemeta[key] = [x for x in pagedata['meta'][key]]
+    for key in pagedata.get('out', dict()):
+        pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
+
+    tooldata = str()
+    if pagemeta:
+        pagekeys = nonguaranteeds_p(pagemeta)
+        tooldata = '\n'.join("-%s: %s" % 
+                             (x == '_notype' and _('Links') or x,
+                              ', '.join(pagemeta[x]))
+                             for x in pagekeys)
+
+    return tooldata
+    
 # Default node attributes that should not be shown
 SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',

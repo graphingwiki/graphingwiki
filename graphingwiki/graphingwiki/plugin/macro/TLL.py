@@ -13,7 +13,6 @@ except ImportError:
     cairo_found = False
     pass
 
-from MoinMoin import caching
 from MoinMoin.action import cache
 
 from graphingwiki.util import encode_page, form_escape

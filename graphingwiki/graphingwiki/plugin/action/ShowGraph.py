@@ -50,7 +50,7 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page
+from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page, make_tooltip
 from graphingwiki.editing import ordervalue
 
 import math
@@ -583,20 +583,8 @@ class GraphShower(object):
             if pagedata.get('saved', False):
                 self.categories_add(orig_obj.gwikicategory)
 
-            # Add tooltip, if applicable
-            # Only add non-guaranteed attrs to tooltip
-            pagemeta = dict()
-            for key in pagedata.get('meta', dict()):
-                pagemeta[key] = [x for x in pagedata['meta'][key]]
-            for key in pagedata.get('out', dict()):
-                pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
-
-            if (pagemeta and not hasattr(orig_obj, 'gwikitooltip')):
-                pagekeys = nonguaranteeds_p(pagemeta)
-                tooldata = '\n'.join("-%s: %s" % 
-                                     (x == '_notype' and _('Links') or x,
-                                      ', '.join(pagemeta[x]))
-                                     for x in pagekeys)
+            tooldata = make_tooltip(self.request, pagedata)
+            if tooldata and not hasattr(orig_obj, 'gwikitooltip'):
                 obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 
             # Shapefiles

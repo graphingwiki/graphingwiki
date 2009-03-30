@@ -226,17 +226,29 @@ def plot_sparkline(results, text=True):
     
     return data
 
+def calculate_textlen(text):
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
+
+    ctx = cairo.Context(surface)
+    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
+                         cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(12)
+
+    # Calculate surface size so that texts will fit
+    text_len = ctx.text_extents(text)[4]
+
+    return text_len
+
 def plot_error(request, text="No data"):
     # Just return an error message
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 56, 20)
+                                 calculate_textlen(text), 25)
 
     ctx = cairo.Context(surface)
     ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(12)
     ctx.set_line_width(0.6)
-
     
     ctx.set_source_rgb(0, 0, 0)
     ctx.move_to(0, 20)
