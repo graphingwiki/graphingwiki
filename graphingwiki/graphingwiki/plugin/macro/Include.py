@@ -56,10 +56,16 @@ def execute(macro, text):
                 except:
                     rev = None
 
+                # Remove from/to regexes from nonexisting pages, so
+                # that nasty error messages are suppressed
+                if not Page(macro.request, inc_name).exists():
+                    text = re.sub(Include._arg_to, '', text)
+                    text = re.sub(Include._arg_from, '', text)
+
                 # Override exists to support including revisions and
                 # the editing of nonexisting pages
-                def new_exists(self, *args):
-                    exists = orig_exists(self, *args)
+                def new_exists(self, **kw):
+                    exists = orig_exists(self, **kw)
 
                     if self.page_name == inc_name:
                         if rev:
