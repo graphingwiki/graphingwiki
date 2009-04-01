@@ -28,15 +28,15 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import os
-import StringIO
+import math
 
-from base64 import b64encode
-from math import pi
-from tempfile import mkstemp
+from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
+from MoinMoin.macro.Include import _sysmsg
 
+from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.util import form_escape, make_tooltip
 
 cairo_found = True
 try:
@@ -56,6 +56,8 @@ def execute(macro, args):
     if not args:
         args = request.page.page_name
 
+    key = "MetaMap(%s)" % (args)
+
     topology = args
 
     # Get all containers
@@ -64,13 +66,20 @@ def execute(macro, args):
     #request.write(args)
 
     # Note, metatable_parseargs deals with permissions
-    pagelist, metakeys, _ = metatable_parseargs(request, args,
-                                                get_all_keys=True)
+    pagelist, metakeys, styles = metatable_parseargs(request, args,
+                                                     get_all_keys=True)
     
+    if not pagelist:
+        return _sysmsg % ('error', "%s: %s" % 
+                          (_("No such topology or empty topology"), 
+                           form_escape(topology)))
+
     coords = dict()
     images = dict()
     aliases = dict()
+    areas = dict()
 
+    allcoords = list()
     for page in pagelist:
         data = get_metas(request, page, 
                          [topology, 'gwikishapefile', 'tia-name'],
@@ -85,29 +94,43 @@ def execute(macro, args):
             continue
 
         try:
-            [int(x) for x in crds]
+            start_x, start_y = int(crds[0]), int(crds[1])
         except ValueError:
             continue
 
-        coords[page] = crds
+        coords[page] = start_x, start_y
+        allcoords.append((start_x, start_y))
 
         img = data.get('gwikishapefile', list())
 
         if img:
             img = img[0].split('/')[-1]
-            images[page] = AttachFile.getFilename(request, page, img)
+            imgname = AttachFile.getFilename(request, page, img)
+            try:
+                images[page] = cairo.ImageSurface.create_from_png(imgname)
+                end_x = start_x + images[page].get_width()
+                end_y = start_y + images[page].get_height()
+            except cairo.Error:
+                pass
+
+        # If there was no image or a problem with loading the image
+        if not page in images:
+            # Lack of image -> black 10x10 rectangle is drawn
+            end_x, end_y = start_x + 10, end_x + 10
+
+        allcoords.append((end_x, end_y))
 
         alias = data.get('tia-name', list())
         if alias:
             aliases[page] = alias[0]
 
-    allcoords = coords.values()
-    max_x = max([int(x[0]) for x in allcoords])
-    min_x = min([int(x[0]) for x in allcoords])
-    max_y = max([int(x[1]) for x in allcoords])
-    min_y = min([int(x[1]) for x in allcoords])
+    max_x = max([x[0] for x in allcoords])
+    min_x = min([x[0] for x in allcoords])
+    max_y = max([x[1] for x in allcoords])
+    min_y = min([x[1] for x in allcoords])
 
-    surface_y = max_y - min_y
+    # Make room for text under pictures
+    surface_y = max_y - min_y + 25
     surface_x = max_x - min_x
 
     # Setup Cairo
@@ -127,31 +150,37 @@ def execute(macro, args):
         if not coords.has_key(page):
             continue
 
-        x, y = [int(x) for x in coords[page]]
+        x, y = coords[page]
 #         request.write('<br>' + repr(get_metas(request, page, ['tia-name'])) + '<br>')
 #         request.write(repr(coords[page]) + '<br>')
 #         request.write(str(x-min_x) + '<br>')
 #         request.write(str(y-min_y) + '<br>')
 
-        if page in aliases:
-            ctx.set_source_rgb(0, 0, 0)
-            ctx.move_to(x-min_x, y-min_y)
-            ctx.show_text(aliases[page])
+        start_x = x-min_x
+        start_y = y-min_y
 
+        w, h = 10, 10
         if not images.has_key(page):
             ctx.set_source_rgb(0, 0, 0)
-            ctx.rectangle(x-min_x, y-min_y, 10, 10)
         else:
-            try:
-                sf_temp = cairo.ImageSurface.create_from_png(images[page])
-                w = sf_temp.get_height()
-                h = sf_temp.get_width()
-                ctx.set_source_surface(sf_temp, x-min_x, y-min_y)
-                ctx.rectangle(x-min_x, y-min_y, w, h)
-            except cairo.Error:
-                continue
+            h = images[page].get_height()
+            w = images[page].get_width()
+            ctx.set_source_surface(images[page], start_x, start_y)
+        
+        ctx.rectangle(start_x, start_y, w, h)
+
+        pagedata = request.graphdata.getpage(page)
+        text = make_tooltip(request, pagedata)
+
+        areas["%s,%s,%s,%s" % (start_x, start_y, start_x + w, start_y + h)] = \
+            [page, text, 'rect']
 
         ctx.fill()
+
+        if page in aliases:
+            ctx.set_source_rgb(0, 0, 0)
+            ctx.move_to(start_x, start_y + h + 10)
+            ctx.show_text(aliases[page])
 
     s2 = surface
 # Proto for scaling and rotating code
@@ -181,7 +210,7 @@ def execute(macro, args):
 #     ctx = cairo.Context(s2)
 
 #     if rotate:
-#         ctx.rotate(90.0*pi/180.0)
+#         ctx.rotate(90.0*math.pi/180.0)
 
 #     if scale:
 #         ctx.scale(new_surface_x/surface_x, new_surface_y/surface_y)
@@ -192,14 +221,24 @@ def execute(macro, args):
 #     ctx.set_source_surface(surface, 0, 0)
 #     ctx.paint()
 
-    # Output a PNG file
-    tmp_fileno, tmp_name = mkstemp()
-    s2.write_to_png(tmp_name)
-    s2.finish()
-    
-    f = file(tmp_name)
-    data = f.read()
-    os.close(tmp_fileno)
-    os.remove(tmp_name)
+    data = write_surface(surface)
+    cache.put(request, key, data, content_type='image/png')
 
-    return '<img src="data:image/png;base64,%s">' % (b64encode(data))
+    map_text = 'usemap="#%s" ' % (id(ctx))
+
+    div = u'<div class="ClarifiedTopology">\n' + \
+        u'<img %ssrc="%s" alt="%s">\n</div>\n' % \
+        (map_text, cache.url(request, key), _('topology'))
+
+    map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
+    for coords in areas:
+        name, text, shape = areas[coords]
+        pagelink = request.getScriptname() + u'/' + name
+
+        tooltip = "%s\n%s" % (name, text)
+
+        map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
+            (form_escape(pagelink), shape, coords, tooltip)
+    map += u'</map>\n'
+    
+    return div + map

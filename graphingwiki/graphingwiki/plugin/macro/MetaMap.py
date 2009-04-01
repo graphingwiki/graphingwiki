@@ -24,10 +24,11 @@ except ImportError:
     pass
 
 from MoinMoin.action import cache
+from MoinMoin.macro.Include import _sysmsg
 
 import graphingwiki
 
-from graphingwiki.plugin.action.metasparkline import write_surface, plot_error
+from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip
 
@@ -77,18 +78,18 @@ def execute(macro, args):
 
     GEO_IP_PATH = getattr(request.cfg, 'gwiki_geoip_path', None)
 
-    ctx = None
-
     if not cairo_found:
-        data = plot_error(request, 
-                          "ERROR: Cairo Python extensions not installed.")
+        return _sysmsg % ('error', 
+                          _("ERROR: Cairo Python extensions not installed."))
     elif not geoip_found:
-        data = plot_error(request, 
-                          "ERROR: GeoIP Python extensions not installed.")
+        return _sysmsg % ('error', 
+                          _("ERROR: GeoIP Python extensions not installed."))
     elif not GEO_IP_PATH:
-        data = plot_error(request, "ERROR: GeoIP data file not found.")
+        return _sysmsg % ('error', 
+                          _("ERROR: GeoIP data file not found."))
     elif not os.path.exists(map_path):
-        data = plot_error(request, "ERROR: World map not found.")
+        return _sysmsg % ('error', 
+                          _("ERROR: World map not found."))
     else:
         GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
 
@@ -135,26 +136,21 @@ def execute(macro, args):
 
     cache.put(request, key, data, content_type='image/png')
 
-    # If we have cairo context, i.e. if drawing the map succeeded
-    map_text = str()
-    if ctx:
-        map_text = 'usemap="#%s" ' % (id(ctx))
+    map_text = 'usemap="#%s" ' % (id(ctx))
     
     div = u'<div class="MetaMap">\n' + \
         u'<img %ssrc="%s" alt="%s">\n</div>\n' % \
         (map_text, cache.url(request, key), _('meta map'))
 
-    map = str()
-    if map_text:
-        map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
-        for coords in areas:
-            name, text, shape = areas[coords]
-            pagelink = request.getScriptname() + u'/' + name
+    map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
+    for coords in areas:
+        name, text, shape = areas[coords]
+        pagelink = request.getScriptname() + u'/' + name
 
-            tooltip = "%s\n%s" % (name, text)
+        tooltip = "%s\n%s" % (name, text)
 
-            map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
-                (form_escape(pagelink), shape, coords, tooltip)
-        map += u'</map>\n'
+        map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
+            (form_escape(pagelink), shape, coords, tooltip)
+    map += u'</map>\n'
 
     return div + map
