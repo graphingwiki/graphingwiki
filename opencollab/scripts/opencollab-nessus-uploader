@@ -1,0 +1,283 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2009 Juhani Eronen, based opencollab-nessus-uploader
+    by Lari Huttunen 
+
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re
+import os
+import sys
+import string
+import optparse
+import xml.dom.minidom
+from xml.dom.minidom import Node, ProcessingInstruction
+from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki
+from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import importMetas
+
+def getText(nodelist):
+    rc = ""
+    for node in nodelist[0].childNodes:
+        if node.nodeType == node.TEXT_NODE:
+            rc = rc + node.data
+    return rc
+
+def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+
+    stylesheet_nodes = []
+
+    for node in doc.childNodes:
+        if not isinstance(node, ProcessingInstruction):
+            continue
+
+        if node.nodeName != 'xml-stylesheet':
+            continue
+
+        stylesheet_nodes.append(node)
+
+    if len(stylesheet_nodes) != 1:
+        return False
+
+    node = stylesheet_nodes[0]
+
+    attributes = dict([item.split("=") for item in node.data.split()])
+
+    stylesheet = attributes["href"].strip('"')
+
+    if not os.path.exists(stylesheet):
+        return False
+
+    stylesheet_data = open(stylesheet).read()
+
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nesssus.xsl"'
+    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
+
+    xml_data = doc.toxml()
+
+    collab.putAttachment(xml_page, fname, xml_data, True)
+    collab.putAttachment(xml_page, "nessus.xsl", stylesheet_data, True)
+    return True
+
+def parse_xml(file, nessusrun_page):
+    """
+    xml.dom.minidom usage from
+    http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
+    """
+    metas = Metas()
+    attach = dict()
+
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+    results = doc.getElementsByTagName('results')
+    for result in results:
+        hosts = result.getElementsByTagName('host')
+        for host in hosts:
+            if not host.nodeType == Node.ELEMENT_NODE:
+                continue
+
+            # Grab Hostnames & Ips
+            hostIp = host.hasAttribute('ip')
+            if not hostIp:
+                continue
+            hostIp = host.getAttribute('ip')
+
+            # Grab scan information
+            hostDateElements = result.getElementsByTagName('date')
+            if not hostDateElements:
+                continue
+
+            startText, endText = str(), str()
+            for date in hostDateElements:
+                startText = getText(date.getElementsByTagName('start'))
+                endText = getText(date.getElementsByTagName('end'))
+
+            if not startText or not endText:
+                continue
+
+            metas[hostIp]['Nessus Start'].add(startText)
+            metas[hostIp]['Nessus End'].add(endText)
+
+            # Go on to ports reports
+            portElements = result.getElementsByTagName('port')
+            for port in portElements:
+                portServiceElement = port.getElementsByTagName('service')[0]
+
+                proto = port.getAttribute('protocol').upper()
+                portNro = port.getAttribute('portid').upper()
+
+                # Grab Hostnames & Ips
+                service = portServiceElement.hasAttribute('name')
+                if not service:
+                    continue
+                service = portServiceElement.getAttribute('name')
+
+                portString = proto
+                if portNro:
+                    portString = "%s:%s" % (proto, portNro)
+                    metas[hostIp]['listens to'].add('[[%s]]' % portString)
+
+                # Iterate through information fields
+                informationElements = port.getElementsByTagName('information')
+                for info in informationElements:
+                    id = getText(info.getElementsByTagName('id'))
+
+                    # Skip common Nessus caveats
+                    if id in ['19506', '9999']:
+                        continue
+
+                    # Grab the severity
+                    severity = getText(info.getElementsByTagName('severity'))
+                    severity = severity.split()[-1]
+
+                    # Grab the description, modify a bit
+                    infoData = getText(info.getElementsByTagName('data'))
+                    infoData = '\n'.join(x.strip() for x in 
+                                         infoData.split('\n'))
+                    infoData = infoData.strip()
+
+                    # Grab CVE:s from info, add them as links
+                    cves = re.findall('((?:CVE|CAN)-\d{4}-\d{4})', infoData)
+                    cve_links = ["[[%s]]" % x for x in cves]
+                    for cve in cve_links:
+                        metas[hostIp]["Nessus Vulnerability"].add(cve)
+
+                    # Add informational severity descriptions with
+                    # longer nessus descriptions as attachments
+                    attach_name = "nessus-%s.txt" % id
+
+                    try:
+                        infoData = infoData.decode('iso-8859-1').encode('utf-8')
+                    except:
+                        pass
+
+                    attach.setdefault(hostIp, dict())[attach_name] = infoData
+
+                    vulnstring = "[[attachment:%s]]: %s on %s" % \
+                        (attach_name, service, portString)
+
+                    # Include also external links to MITRE vuln database
+                    if cves:
+                        mitre = "http://cve.mitre.org/cgi-bin/cvename.cgi?name="
+                        cve_links = ["[[%s%s|%s]]" % (mitre, x, x) 
+                                     for x in cves]
+
+                        vulnstring += " (%s)" % ", ".join(cve_links)
+
+                    metas[hostIp]["Nessus %s" % severity].add(vulnstring)
+
+    # Get general statistics
+    info = doc.getElementsByTagName('info')[0]
+    metas[nessusrun_page]['Version'].add(getText(info.getElementsByTagName('version')))
+    hostinfo = info.getElementsByTagName('host')[0]
+    metas[nessusrun_page]['Host'].add(getText(hostinfo.getElementsByTagName('name')))
+    metas[nessusrun_page]['OS Name'].add(getText(hostinfo.getElementsByTagName('osname')))
+    metas[nessusrun_page]['OS Version'].add(getText(hostinfo.getElementsByTagName('osvers')))
+    dateinfo = info.getElementsByTagName('date')[0]
+    metas[nessusrun_page]['Run Started'].add(getText(dateinfo.getElementsByTagName('start')))
+    metas[nessusrun_page]['Run Ended'].add(getText(dateinfo.getElementsByTagName('end')))
+
+    return metas, attach
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store", type="string", 
+        dest="config",
+        metavar = "CONFIG",
+        help="CONFIG file path.")
+    parser.add_option( "-t", "--wiki-template",
+        action="store", type="string", 
+        dest="template",
+        metavar = "TEMPLATE",
+        help="Wiki TEMPLATE, e.g. NessusTemplate.")
+    parser.add_option( "-u", "--url",
+        action="store", type="string", 
+        dest="url",
+        metavar = "COLLAB-URL",
+        help="COLLAB-URL")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.add_option( "-w", "--wiki-category",
+        action="store", type="string", 
+        dest="category",
+        metavar = "CATEGORY",
+        help="Wiki CATEGORY, e.g. NessysRun.")
+    parser.set_usage("%prog [options] NESSUS-XML-FILES")
+    options, args = parser.parse_args()
+    iopts={}
+    nessus_files=[]
+    url = ''
+    if len(args) < 1:
+        parser.error("At least one XML input file path needs to be specified.")
+    if options.config:
+        iopts = parse_config(options.config, "creds", "nessus")
+    if options.template:
+        directory = options.template
+    elif options.config and "template" in iopts["nessus"]:
+        template = iopts["nessus"]["template"]
+    else:
+        template = "NessusTemplate"
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified.")
+    if options.category:
+        category = options.category
+    elif options.config and "category" in iopts["nessus"]:
+        category = iopts["nessus"]["category"]
+    else:
+        category = None
+    if options.verbose:
+        print "NOTE: Processing input files."
+    for arg in args:
+        nessus_files.append(arg)
+    for file in nessus_files:
+        xml_page = hashFile(file)
+        fname = os.path.basename(file)
+        if options.verbose:
+            print "NOTE: Parsing", file
+        metas, attach = parse_xml(file, xml_page)
+        if category is not None:
+            for page in metas:
+                metas[page]["category"].add(category)
+        metas[xml_page]['TYPE'].add('Nessus Run')
+        if options.verbose:
+            print "NOTE: Importing metas to", url
+
+        importMetas(collab, metas, template, options.verbose)
+
+        if options.verbose:
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            if options.verbose:
+                print "NOTE: Uploading", file, "to", xml_page
+            uploadFile(collab, xml_page, file, fname)
+
+        for page in attach:
+            for fname in attach[page]:
+                uploadFile(collab, page, attach[page][fname], fname)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+
