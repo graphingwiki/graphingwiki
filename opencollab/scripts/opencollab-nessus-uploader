@@ -21,6 +21,8 @@ from opencollab.util.wiki import importMetas
 
 def getText(nodelist):
     rc = ""
+    if not nodelist:
+        return rc
     for node in nodelist[0].childNodes:
         if node.nodeType == node.TEXT_NODE:
             rc = rc + node.data
