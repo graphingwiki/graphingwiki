@@ -108,18 +108,28 @@ def construct_table(macro, pagelist, metakeys,
 		  macro.formatter.div(1, **divfmt) +
                   macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
 
+    # If the first column is -, do not send page data
+    send_pages = True
+    if metakeys and metakeys[0] == '-':
+        send_pages = False
+        metakeys = metakeys[1:]
+
     if metakeys:
         # Give a class to headers to make it customisable
         request.write(macro.formatter.table_row(1, {'rowclass':
                                                     'meta_header'}))
-        # Upper left cell is empty or has the desired legend
-        t_cell(macro, [legend])
+        if send_pages:
+            # Upper left cell is empty or has the desired legend
+            t_cell(macro, [legend])
 
     for key in metakeys:
         style = styles.get(key, dict())
         
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
+
+        if not name and legend and key == 'gwikipagename':
+            name = [legend]
 
         # We don't want stuff like bullet lists in out header
         headerstyle = dict()
@@ -160,11 +170,16 @@ def construct_table(macro, pagelist, metakeys,
         else:
             request.write(macro.formatter.table_row(1, {'rowclass':
                                                         'metatable-even-row'}))
-        t_cell(macro, [page], head=1, rev=revision)
+
+        if send_pages:
+            t_cell(macro, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
-            t_cell(macro, metas[key], style=style)
+            if key == 'gwikipagename':
+                t_cell(macro, [page], head=1, style=style)
+            else:
+                t_cell(macro, metas[key], style=style)
 
         request.write(macro.formatter.table_row(0))
 
