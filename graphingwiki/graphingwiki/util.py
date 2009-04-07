@@ -153,6 +153,10 @@ SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        SPECIAL_ATTRS, dict(node))
 
+NONEDITABLE_ATTRS = ['gwikiinlinks', '-', 'gwikipagename']
+editable_p = lambda node: filter(lambda y: y not in 
+                                 NONEDITABLE_ATTRS and not '->' in y, node)
+
 NO_TYPE = u'_notype'
 
 # FIXME: Is this needed?

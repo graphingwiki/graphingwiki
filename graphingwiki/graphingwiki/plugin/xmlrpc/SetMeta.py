@@ -14,7 +14,6 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from graphingwiki.util import encode
 from graphingwiki.editing import save_template
 
-
 # Gets data in the same format as process_edit
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
@@ -46,7 +45,6 @@ def execute(xmlrpcobj, page, input, action='add',
 
     cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
 
-
     if action == 'add':
         for key in input:
             added[page][key] = input[key]
@@ -55,7 +53,8 @@ def execute(xmlrpcobj, page, input, action='add',
             cleared[page].add(key)
             added[page][key] = input[key]
     else:
-        raise ValueError("action must be one of add, set, repl (got %s)" % repr(action))
+        raise ValueError("action must be one of add, set, repl (got %s)" % 
+                         repr(action))
 
     if category_edit == 'del':
         discarded[page].setdefault('gwikicategory', list()).extend(catlist)
@@ -65,12 +64,12 @@ def execute(xmlrpcobj, page, input, action='add',
     elif  category_edit == 'add':
         added[page].setdefault('gwikicategory', list()).extend(catlist)
     else:
-        raise ValueError("category_edit must be one of add, del, set (got %s)" % repr(category_edit))
+        raise ValueError("category_edit must be one of add, del, set (got %s)" \
+                             % repr(category_edit))
 
     if template:
         added[page]['gwikitemplate'] = template
    
     _, msg = set_metas(request, cleared, discarded, added)
-    
 
     return msg

@@ -14,7 +14,7 @@ from urllib import unquote as url_unquote
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import get_metas, set_metas
+from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import actionname, form_escape, SEPARATOR, \
     decode_page, enter_page, exit_page
@@ -86,7 +86,8 @@ def parse_editform(request, form):
         oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
 
         if oldKey:
-            oldMetas = get_metas(request, page, [oldKey], abs_attach=False)
+            oldMetas = get_metas(request, page, [oldKey], 
+                                 abs_attach=False, includeGenerated=False)
             oldValues = oldMetas[oldKey]
 
             oldMeta.setdefault(oldKey, list()).extend(oldValues)
@@ -147,6 +148,9 @@ def show_editform(wr, request, pagename, args):
     # Note that metatable_parseargs handles permission issues
     pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                 get_all_keys=True)
+    # Filter out uneditables, such as inlinks
+    metakeys = editable_p(metakeys)
+
     _ = request.getText
 
     for key in metakeys + ['']:
@@ -168,8 +172,8 @@ def show_editform(wr, request, pagename, args):
             if not valnos.has_key(frompage):
                 valnos[frompage] = 1
 
-            keydata = get_metas(request, frompage, [key], abs_attach=False)
-                               
+            keydata = get_metas(request, frompage, [key], 
+                                abs_attach=False, includeGenerated=False)
 
             for i, val in enumerate(keydata[key]):
                 values[frompage][key].append(val)
@@ -263,7 +267,7 @@ def execute(pagename, request):
             # Ignore form clutter
             keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
-            old = get_metas(request, pagename, keys)
+            old = get_metas(request, pagename, keys, includeGenerated=False)
 
             for key in keys:
                 oldkey = pagename + SEPARATOR + key

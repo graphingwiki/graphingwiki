@@ -29,7 +29,7 @@ from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
-from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS
+from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex
 
 
@@ -333,9 +333,27 @@ def absolute_attach_name(quoted, target):
 
     return target
 
+def inlinks_key(request, loadedPage, checkAccess=True):
+    inLinks = set()
+    # Gather in-links regardless of type
+    for type in loadedPage.get("in", dict()):
+        for page in loadedPage['in'][type]:
+            if checkAccess:
+                if not request.user.may.read(page):
+                    continue
+            inLinks.add((type, page))
+
+    inLinks = ['[[%s]]' % (y) for x, y in inLinks]
+
+    return inLinks
+
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, 
-             display=False, abs_attach=True, checkAccess=True):
+              display=False, abs_attach=True, checkAccess=True, 
+              includeGenerated=True):
+    if not includeGenerated:
+        metakeys = [x for x in metakeys if not '->' in x]
+
     metakeys = set(metakeys)
     pageMeta = dict([(key, list()) for key in metakeys])
 
@@ -344,10 +362,79 @@ def get_metas(request, name, metakeys,
             return pageMeta
 
     loadedPage = request.graphdata.getpage(name)
+
+    loadedOuts = loadedPage.get("out", dict())
+
+    # Make a real copy of loadedOuts for tracking indirection
+    loadedOutsIndir = dict()
+    for key in loadedOuts:
+        loadedOutsIndir.setdefault(key, set()).update(loadedOuts[key])
+
+    loadedLits = loadedPage.get("lit", dict())
     loadedMeta = loadedPage.get("meta", dict())
 
+    if includeGenerated:
+        # Handle inlinks separately
+        if 'gwikiinlinks' in metakeys:
+            inLinks = inlinks_key(request, loadedPage, checkAccess=checkAccess)
+
+            loadedLits['gwikiinlinks'] = inLinks
+            loadedOuts['gwikiinlinks'] = inLinks
+
+        # Meta key indirection support
+        for key in metakeys:
+            last = False
+            key_indirs = key.split('->')
+
+            for x in range(len(key_indirs)):
+                if x == len(key_indirs) - 2:
+                    last = True
+
+                args = key.split('->')[x:x+2]
+                if len(args) < 2:
+                    continue
+                linked, target_key = args
+
+                for indir_page in loadedOutsIndir.get(linked, list()):
+
+                    if request.user.may.read(indir_page):
+                        pagedata = request.graphdata.getpage(indir_page)
+
+                        outs = pagedata.get('out', dict())
+                        if target_key in outs:
+                            # Track the next level of indirection
+                            loadedOutsIndir.setdefault(target_key, set())
+                            loadedOutsIndir[target_key].update(outs[target_key])
+
+                            # If we are not at the last -> pair,
+                            # continue tracking
+                            if not last:
+                                continue
+
+                            # Handle inlinks separately
+                            if 'gwikiinlinks' in metakeys:
+                                inLinks = inlinks_key(request, loadedPage, 
+                                                      checkAccess=checkAccess)
+
+                                loadedLits[key] = inLinks
+                                loadedOuts[key] = inLinks
+                                continue
+
+                            loadedOuts.setdefault(key, list())
+                            loadedOuts[key].extend(outs[target_key])
+
+                        metas = pagedata.get('meta', dict())
+                        if target_key in metas:
+                            loadedMeta.setdefault(key, list())
+                            loadedMeta[key].extend(metas[target_key])
+
+                        lits = pagedata.get('lit', dict())
+                        if target_key in lits:
+                            loadedLits.setdefault(key, list())
+                            loadedLits[key].extend(lits[target_key])
+
     # Add values and their sources
-    for key in metakeys & set(loadedMeta):
+    for key in metakeys & set(loadedMeta):            
         for value in loadedMeta[key]:
             pageMeta[key].append(value)
 
@@ -355,15 +442,12 @@ def get_metas(request, name, metakeys,
     # between two pages.
     if display:
         # Making things nice to look at.
-        loadedOuts = loadedPage.get("out", dict())
         for key in metakeys & set(loadedOuts):
             for target in loadedOuts[key]:
 
                 pageMeta[key].append(target)
     else:
         # Showing things as they are
-        loadedLits = loadedPage.get("lit", dict())
-
         for key in metakeys & set(loadedLits):
             for target in loadedLits[key]:
                 if abs_attach:
@@ -770,6 +854,9 @@ def set_metas(request, cleared, discarded, added):
             del pageAdded[TEMPLATE_KEY]
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
+        # Filter out uneditables, such as inlinks
+        metakeys = editable_p(metakeys)
+
         old = get_metas(request, page, metakeys, checkAccess=False)
 
         new = dict()
