@@ -144,22 +144,24 @@ def construct_table(macro, pagelist, metakeys,
             macro.request.write(f.table_cell(1, attrs=style))
 
             for page in pagelist:
+                pageobj = Page(request, page)
+
                 if (x_value in page_vals[page].get(x_key, set()) and
                     y_value in page_vals[page].get(y_key, set())):
 
                     result = ''
                     result += f.listitem(1, **entryfmt)
 
+                    args = {'class': 'metamatrix_link'}
+
                     for key in metakeys:
                         for val in page_vals[page].get(key, list()):
-                            result += f.url(1, page, 'metamatrix_link')
-                            result += format_wikitext(request, val)
-                            result += f.url(0)
+                            text = format_wikitext(request, val)
+                            result += pageobj.link_to(request, 
+                                                      text=text, **args)
 
                     if addpagename:
-                        result += f.url(1, page, 'metamatrix_link')
-                        result += f.text(page)
-                        result += f.url(0)
+                        result += pageobj.link_to(request, **args)
 
                     result += f.listitem(0)
                     macro.request.write(result)

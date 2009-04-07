@@ -161,16 +161,15 @@ def formatMetaSelection(request, pages, keys, styles, addpagename=False):
 
         result += f.listitem(1, **entryfmt)
 
+        args = {'class': 'metaselection_link'}
+
         for key in keys:
             for val in metas[key]:
-                result += f.url(1, page, 'metaselection_link')
-                result += format_wikitext(request, val)
-                result += f.url(0)
+                text = format_wikitext(request, val)
+                result += pageobj.link_to(request, text=text, **args)
 
         if addpagename:
-            result += f.url(1, page, 'metaselection_link')
-            result += f.text(page)
-            result += f.url(0)
+            result += pageobj.link_to(request, **args)
 
         result += f.listitem(0)
 
