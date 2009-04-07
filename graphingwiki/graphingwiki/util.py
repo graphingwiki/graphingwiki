@@ -113,8 +113,11 @@ def url_parameters(args):
 
     return req_url
 
-def url_construct(request, args):
-    req_url = request.getScriptname() + u'/' + request.page.page_name 
+def url_construct(request, args, name=''):
+    if not name:
+        name = request.page.page_name 
+
+    req_url = request.getScriptname() + u'/' + name
 
     if args:
         req_url += url_parameters(args)

@@ -875,7 +875,8 @@ def ordervalue(value):
 def metatable_parseargs(request, args,
                         get_all_keys=False,
                         get_all_pages=False,
-                        checkAccess=True):
+                        checkAccess=True,
+                        include_unsaved=False):
     if not args:
         # If called from a macro such as MetaTable,
         # default to getting the current page
@@ -972,6 +973,8 @@ def metatable_parseargs(request, args,
                 argset.add(page)
 
     def is_saved(name):
+        if include_unsaved:
+            return True
         return request.graphdata.getpage(name).has_key('saved')
 
     def can_be_read(name):

@@ -56,7 +56,7 @@ def execute(macro, args):
     if not args:
         args = request.page.page_name
 
-    key = "MetaMap(%s)" % (args)
+    key = "%s(%s)" % (macro.name, args)
 
     topology = args
 

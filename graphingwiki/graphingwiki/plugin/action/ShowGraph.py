@@ -196,7 +196,6 @@ class GraphShower(object):
         self.hidedges = 0
         self.edgelabels = 0
         self.noloners = 0
-        self.nostartnodes = 0
 
         self.categories = list()
         self.otherpages = list()
@@ -219,6 +218,8 @@ class GraphShower(object):
         self.filtercolor = set()
         self.filtercats = set()
         self.dir = 'LR'
+        self.nostartnodes = 0
+        self.noorignode = 0
 
         # Lists for the filter values for the form
         self.orderfiltervalues = set()
@@ -343,7 +344,7 @@ class GraphShower(object):
 
         # Toggle arguments
         for arg in ['unscale', 'hidedges', 'edgelabels', 
-                    'noloners', 'nostartnodes']:
+                    'noloners', 'nostartnodes', 'noorignode']:
             if request.form.has_key(arg):
                 setattr(self, arg, 1)
 
@@ -564,9 +565,14 @@ class GraphShower(object):
                     delete.add(objname)
                     continue
 
-            # Startnodes to be filtered
+            # Startnodes to be filtered, either all startnodes or just
+            # the page from where the action is called.
             if self.nostartnodes:
                 if objname in self.startpages:
+                    delete.add(objname)
+                    continue
+            if self.noorignode:
+                if objname == self.request.page.page_name:
                     delete.add(objname)
                     continue
 
@@ -917,9 +923,13 @@ class GraphShower(object):
         form_checkbox(request, 'noloners', '1', self.noloners, 
                       _('Filter lonely'))
         request.write(u"<br>\n")
-        # filter unconnected nodes
+        # filter startnodes nodes
         form_checkbox(request, 'nostartnodes', '1', self.nostartnodes, 
                       _('Filter startnodes'))
+        request.write(u"<br>\n")
+        # filter the start page nodes
+        form_checkbox(request, 'noorignode', '1', self.noorignode, 
+                      _('Filter current page'))
 
         # Include
 	request.write(u"<td valign=top>\n")

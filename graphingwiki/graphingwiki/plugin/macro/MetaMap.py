@@ -30,7 +30,8 @@ import graphingwiki
 
 from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import form_escape, make_tooltip
+from graphingwiki.util import form_escape, make_tooltip, \
+    url_parameters, url_construct
 
 Dependencies = ['meta']
 
@@ -64,7 +65,7 @@ def execute(macro, args):
     if not args:
         args = ''
 
-    key = "MetaMap(%s)" % (args)
+    key = "%s(%s)" % (macro.name, args)
 
     # Find map location. Default is DEFAULT_MAP in url_prefix_static
     map_path = getattr(request.cfg, 'gwiki_map_path', DEFAULT_MAP)
@@ -106,9 +107,11 @@ def execute(macro, args):
 
         # Note, metatable_parseargs deals with permissions
         pagelist, metakeys, styles = metatable_parseargs(request, args,
-                                                         get_all_keys=True)
+                                                         get_all_keys=True,
+                                                         include_unsaved=True)
 
         areas = dict()
+        allcoords = dict()
 
         for name in pagelist:
             coords = getCoordinates(GEO_IP, name)
@@ -118,16 +121,25 @@ def execute(macro, args):
 
             x, y = coords
             x, y = x*map_height, y*map_width
-            radius = 2
 
-            pagedata = request.graphdata.getpage(name)
-            text = make_tooltip(request, pagedata)
+            allcoords.setdefault((x, y), list()).append(name)
 
-            areas["%s,%s,%s" % (int(x), int(y), radius)] = \
-                [name, text, 'circle']
+        for coord in allcoords:
+            x, y = coord
+            radius = 1.5 + 0.4*(len(allcoords[coord]))
 
-            ctx.arc(x,y,2,0,radius*math.pi)
-            ctx.fill()
+            for name in allcoords[coord]:
+
+                pagedata = request.graphdata.getpage(name)
+                text = make_tooltip(request, pagedata)
+
+                area_key = "%s,%s,%s" % (int(x), int(y), radius)
+
+                areas.setdefault(area_key, list()).append((name, text, 
+                                                           'circle'))
+
+                ctx.arc(x,y,radius,0,radius*math.pi)
+                ctx.fill()
 
         data = write_surface(map_sf)
 
@@ -143,14 +155,29 @@ def execute(macro, args):
         (map_text, cache.url(request, key), _('meta map'))
 
     map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
-    for coords in areas:
-        name, text, shape = areas[coords]
-        pagelink = request.getScriptname() + u'/' + name
+    for coordlist in areas:
+        href = ''
+        tooltip = ''
 
-        tooltip = "%s\n%s" % (name, text)
+        # Only make pagelink if there are no overlapping nodes
+        if len(areas[coordlist]) == 1:
+            pagelink = request.getScriptname() + u'/' + name
+            href = ' href="%s"' % (form_escape(pagelink))
+        else:
+            pages = [x[0] for x in areas[coordlist]]
+            args = {'action': ['ShowGraph'], 
+                    'otherpages': pages, 'noorignode': '1'}
+            href = ' href="%s"' % url_construct(request, args, 
+                                                macro.request.page.page_name)
 
-        map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
-            (form_escape(pagelink), shape, coords, tooltip)
+        # When overlapping nodes occur, add to tooltips
+        for coords in areas[coordlist]:
+            name, text, shape = coords
+
+            tooltip += "%s\n%s" % (name, text)
+
+        map += u'<area%s shape="%s" coords="%s" title="%s">\n' % \
+            (href, shape, coordlist, tooltip)
     map += u'</map>\n'
 
     return div + map
