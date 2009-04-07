@@ -41,6 +41,19 @@ def timestamp(text):
     return strftime(time_format, gmtime(timegm(strptime(text, format)) + 
                                          add_to_hours))
 
+def check_time(time):
+    if not time:
+        return None
+
+    time = time[0]
+
+    try:
+        start_time = timestamp(time)
+    except ValueError:
+        return None
+
+    return start_time
+
 def execute(pagename, request):
     _ = request.getText
 
@@ -61,17 +74,22 @@ def execute(pagename, request):
         metas = get_metas(request, page, metakeys, checkAccess=False)
 
         timekey = metakeys[0]
-
         time = metas.get(timekey, list())
-        if not time:
+
+        start_time = check_time(time)
+
+        if start_time is None:
             continue
 
-        time = time[0]
+        keys_rest = metakeys[1:]
 
-        try:
-            start_time = timestamp(time)
-        except ValueError:
-            continue
+        # Opportunistically try to parse end_time
+        end_time = None
+        if len(metas) > 1:
+            timekey = keys_rest[0]
+            time = metas.get(timekey, list())
+
+            end_time = check_time(time)
 
         new_page = Page(request, page)
 
@@ -81,10 +99,13 @@ def execute(pagename, request):
         event.setAttribute('link', page_link)
         event.setAttribute('title', page)
         event.setAttribute('start', start_time)
+        if end_time:
+            event.setAttribute('end', end_time)
+            keys_rest = keys_rest[1:]
         data.appendChild(event)
 
         comment = str()
-        for key in metakeys[1:]:
+        for key in keys_rest:
             for val in metas.get(key, list()):
                 comment += format_wikitext(request, ' %s:: %s\n' % (key, val))
 
