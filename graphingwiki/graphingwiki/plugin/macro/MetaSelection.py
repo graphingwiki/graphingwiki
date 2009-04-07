@@ -166,10 +166,11 @@ def formatMetaSelection(request, pages, keys, styles, addpagename=False):
         for key in keys:
             for val in metas[key]:
                 text = format_wikitext(request, val)
-                result += pageobj.link_to(request, text=text, **args)
+                result += pageobj.link_to_raw(request, text=text, **args)
 
         if addpagename:
-            result += pageobj.link_to(request, **args)
+            result += pageobj.link_to_raw(request, 
+                                          text=pageobj.page_name, **args)
 
         result += f.listitem(0)
 

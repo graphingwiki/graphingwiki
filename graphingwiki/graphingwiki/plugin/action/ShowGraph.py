@@ -571,10 +571,6 @@ class GraphShower(object):
                 if objname in self.startpages:
                     delete.add(objname)
                     continue
-            if self.noorignode:
-                if objname == self.request.page.page_name:
-                    delete.add(objname)
-                    continue
 
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(orig_obj))
@@ -929,7 +925,7 @@ class GraphShower(object):
         request.write(u"<br>\n")
         # filter the start page nodes
         form_checkbox(request, 'noorignode', '1', self.noorignode, 
-                      _('Filter current page'))
+                      _('Anonymous graph'))
 
         # Include
 	request.write(u"<td valign=top>\n")
@@ -1283,6 +1279,10 @@ class GraphShower(object):
 
         # Add startpages, even if unconnected
         for node in nodes:
+            if self.noorignode:
+                if node == self.request.page.page_name:
+                    continue
+
             # Make sure that startnodes get loaded
             load_node(self.request, self.graphdata, node, self.urladd)
 
