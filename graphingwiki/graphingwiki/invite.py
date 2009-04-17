@@ -76,7 +76,7 @@ def invite_user_to_wiki(request, page, email, new_template, old_template, **cust
         raise InviteException("No permissions to invite from '%s'." % page)
 
     page_url = request.getBaseURL()    
-    return _invite(request, page_url, email, new_template, old_template)
+    return _invite(request, page_url, email, new_template, old_template, **custom_vars)
 
 def invite_user_to_page(request, page, email, new_template, old_template, **custom_vars):
     check_inviting_enabled(request)
