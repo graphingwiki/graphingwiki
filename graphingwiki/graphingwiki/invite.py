@@ -70,7 +70,7 @@ def add_user_to_group(request, myuser, group, create_link=True):
     text = "\n".join(head + tail)
     page.saveText(text, 0)
 
-def invite_user_to_wiki(request, page, email, new_template, old_template):
+def invite_user_to_wiki(request, page, email, new_template, old_template, **custom_vars):
     check_inviting_enabled(request)
     if not user_may_invite(request.user, page):
         raise InviteException("No permissions to invite from '%s'." % page)
@@ -78,14 +78,14 @@ def invite_user_to_wiki(request, page, email, new_template, old_template):
     page_url = request.getBaseURL()    
     return _invite(request, page_url, email, new_template, old_template)
 
-def invite_user_to_page(request, page, email, new_template, old_template):
+def invite_user_to_page(request, page, email, new_template, old_template, **custom_vars):
     check_inviting_enabled(request)
     if not user_may_invite(request.user, page):
         raise InviteException("No permissions to invite from '%s'." % page)
 
     page_url = Page(request, page).url(request, relative=False)
     page_url = request.getQualifiedURL(page_url)
-    return _invite(request, page_url, email, new_template, old_template)
+    return _invite(request, page_url, email, new_template, old_template, **custom_vars)
 
 def _invite(request, page_url, email, new_template, old_template, **custom_vars):
     mail_from = request.user.email
