@@ -87,14 +87,13 @@ def invite_user_to_page(request, page, email, new_template, old_template):
     page_url = request.getQualifiedURL(page_url)
     return _invite(request, page_url, email, new_template, old_template)
 
-def _invite(request, page_url, email, new_template, old_template):
+def _invite(request, page_url, email, new_template, old_template, **custom_vars):
     mail_from = request.user.email
     if "@" not in mail_from:
         mail_from += "@" + request.cfg.invite_sender_default_domain
 
-    # We used to have variable "PAGENAME", but it didn't work
-    # trivially when page == None.
-    variables = dict(PAGEURL=page_url,
+    variables = dict(custom_vars)
+    variables.update(PAGEURL=page_url,
                      ADMINEMAIL=request.cfg.mail_from,
                      INVITERUSER=request.user.name,
                      INVITEREMAIL=mail_from)
