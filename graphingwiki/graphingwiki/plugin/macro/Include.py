@@ -21,6 +21,9 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
+Dependencies = ["time"]
+generates_headings = True
+
 # Extend the _args_re_pattern with template and revision
 
 _arg_rev = r'(,\s*rev=(?P<rev>\d+))?'
