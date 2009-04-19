@@ -19,14 +19,16 @@ def user_may_invite(myuser, page):
     return myuser.may.read(page) and myuser.may.invite(page)
 
 def check_inviting_enabled(request):
+    return
     if not hasattr(request.user.may, "invite"):
         raise InviteException("No invite permissions configured.")
     if not hasattr(request.cfg, "mail_from"):
         raise InviteException("No admin email address configured.")
     if not hasattr(request.cfg, "invite_sender_default_domain"):
         raise InviteException("No invite sender default domain configured.")
-    if getattr(request.cfg, "mail_sendmail", None):
-        return
+    ## FIXME: Disabled sendmail support for now.
+    # if getattr(request.cfg, "mail_sendmail", None):
+    #     return
     if getattr(request.cfg, "mail_smarthost", None):
         return
     raise InviteException("No outgoing mail service configured.")
@@ -105,9 +107,10 @@ def _invite(request, page_url, email, new_template, old_template, **custom_vars)
         sendmail(request, old_template, variables)
         return old_user
 
-    password = generate_password()        
+    if not user.isValidName(request, email):
+        raise InviteException("Can not create a new user, '%s' is not a valid username." % email)
 
-    # FIXME: should we do "if user.isValidName(email)"?
+    password = generate_password()        
     new_user = user.User(request, None, email, password)
     new_user.email = email
     new_user.aliasname = ""
@@ -116,7 +119,10 @@ def _invite(request, page_url, email, new_template, old_template, **custom_vars)
     variables.update(INVITEDUSER=new_user.name,
                      INVITEDEMAIL=new_user.email,
                      INVITEDPASSWORD=password)        
-    sendmail(request, new_template, variables)
+    sendmail(request, new_template, variables, lambda x: x.lower() == email.lower())
+
+    variables.update(INVITEDPASSWORD="******")
+    sendmail(request, new_template, variables, lambda x: x.lower() != email.lower())
         
     new_user.save()
     return new_user
@@ -139,14 +145,14 @@ def encode_address_field(message, key, charset):
     for value in all_values:
         message[key] = value
 
-def sendmail(request, template, variables):
+def sendmail(request, template, variables, recipient_filter=lambda x: True):
     # Lifted and varied from Moin 1.6 code.
 
     import os, smtplib, socket
     from email import message_from_string
     from email.Message import Message
     from email.Charset import Charset, QP
-    from email.Utils import formatdate, make_msgid
+    from email.Utils import formatdate, make_msgid, getaddresses
 
     DEFAULT_HEADERS = dict()
     DEFAULT_HEADERS["To"] = "@INVITEDEMAIL@"
@@ -170,7 +176,7 @@ def sendmail(request, template, variables):
     message.set_charset(charset)
 
     ## Moin does this: work around a bug in python 2.4.3 and above.
-    ## Should we do too?
+    ## Should we do this too?
     # payload = message.get_payload()
     # message.set_payload('=')
     # if message.as_string().endswith('='):
@@ -184,17 +190,18 @@ def sendmail(request, template, variables):
     message['Date'] = formatdate()
     message['Message-ID'] = make_msgid()
 
-    if request.cfg.mail_sendmail:
-        try:
-            pipe = os.popen(request.cfg.mail_sendmail, "w")
-            pipe.write(message.as_string())
-            status = pipe.close()
-        except:
-            raise InviteException("Mail not sent.")
-
-        if status:
-            raise InviteException("Sendmail returned status '%d'." % status)
-        return
+    ## FIXME: Disabled sendmail support for now.
+    # if request.cfg.mail_sendmail:
+    #     try:
+    #         pipe = os.popen(request.cfg.mail_sendmail, "w")
+    #         pipe.write(message.as_string())
+    #         status = pipe.close()
+    #     except:
+    #         raise InviteException("Mail not sent.")
+    # 
+    #     if status:
+    #         raise InviteException("Sendmail returned status '%d'." % status)
+    #     return
 
     try:
         host, port = (request.cfg.mail_smarthost + ":25").split(":")[:2]
@@ -213,8 +220,12 @@ def sendmail(request, template, variables):
                 server.login(user, pwd)
 
             mail_from = message["From"]
-            mail_to = message["To"]
-            server.sendmail(mail_from, mail_to, message.as_string())
+            mail_to = message.get_all("To", list()) + message.get_all("Cc", list()) + message.get_all("Bcc", list())
+            mail_to = [address for (name, address) in getaddresses(mail_to)]
+            mail_to = filter(recipient_filter, mail_to)
+            mail_to = list(set(mail_to))
+            if mail_to:
+                server.sendmail(mail_from, mail_to, message.as_string())
         finally:
             try:
                 server.quit()
