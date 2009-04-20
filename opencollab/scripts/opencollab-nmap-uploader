@@ -137,6 +137,11 @@ def main():
         dest="config",
         metavar = "CONFIG",
         help="CONFIG file path.")
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true",
+        dest="last_edit_wins", default=False,
+        metavar = "LAST-EDIT-WINS",
+        help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option( "-t", "--wiki-template",
         action="store", type="string", 
         dest="template",
@@ -164,12 +169,18 @@ def main():
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
         iopts = parse_config(options.config, "creds", "nmap")
+    if options.last_edit_wins:
+	replace = True
+    elif options.config and "last-edit-wins" in iopts["nmap"]:
+	replace = iopts["nmap"]["last-edit-wins"]
+    else:
+        replace = False
     if options.template:
-        directory = options.template
+        template = options.template
     elif options.config and "template" in iopts["nmap"]:
         template = iopts["nmap"]["template"]
     else:
-        template = "NmapTemplate"
+        template = "NmapRunTemplate"
     if options.url:
         url = options.url
         collab = CLIWiki(url)
@@ -200,7 +211,7 @@ def main():
         metas[xml_page]['TYPE'].add('NMAP Run')
         if options.verbose:
             print "NOTE: Importing metas to", url
-        importMetas(collab, metas, template, options.verbose)
+        importMetas(collab, metas, template, options.verbose, replace)
 
         if options.verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
