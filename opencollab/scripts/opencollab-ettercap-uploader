@@ -149,11 +149,11 @@ def parse_xml(file, ettercaprun_page):
 
                 info = getText(acct.getElementsByTagName('info'))
                 if info:
-                    info = ' (%s)' % (info)
+                    info = '(%s) ' % (info)
 
                 success = port.getAttribute('failed')
                 if success:
-                    success = ' (%s)' % (success)
+                    success = '(%s) ' % (success)
 
                 metas[hostIp]['Plaintext credentials'].add("%s%s%s%s%s" % 
                                                            (user, passwd, 
