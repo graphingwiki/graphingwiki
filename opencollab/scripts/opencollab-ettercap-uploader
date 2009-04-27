@@ -1,0 +1,260 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2009 Juhani Eronen, based opencollab-nmap-uploader
+    by Lari Huttunen 
+
+    Usable after eg. the following toolchain
+
+    ettercap -l 20090427 -q -T -r capture-20090427.pcap //
+    etterlog -mx 20090427.eci | sed -e '1,/<?xml/ d' > etter-20090427.xml
+ 
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re
+import os
+import sys
+import string
+import optparse
+import xml.dom.minidom
+from xml.dom.minidom import Node, ProcessingInstruction
+from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki
+from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import importMetas
+
+def getText(nodelist):
+    rc = ""
+    if not nodelist:
+        return rc
+    for node in nodelist[0].childNodes:
+        if node.nodeType == node.TEXT_NODE:
+            rc = rc + node.data
+    return rc
+
+def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+
+    stylesheet_nodes = []
+
+    for node in doc.childNodes:
+        if not isinstance(node, ProcessingInstruction):
+            continue
+
+        if node.nodeName != 'xml-stylesheet':
+            continue
+
+        stylesheet_nodes.append(node)
+
+    if len(stylesheet_nodes) != 1:
+        return False
+
+    node = stylesheet_nodes[0]
+
+    attributes = dict([item.split("=") for item in node.data.split()])
+
+    stylesheet = attributes["href"].strip('"')
+
+    if not os.path.exists(stylesheet):
+        return False
+
+    stylesheet_data = open(stylesheet).read()
+
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nesssus.xsl"'
+    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
+
+    xml_data = doc.toxml()
+
+    collab.putAttachment(xml_page, fname, xml_data, True)
+    collab.putAttachment(xml_page, "ettercap.xsl", stylesheet_data, True)
+    return True
+
+def parse_xml(file, ettercaprun_page):
+    metas = Metas()
+    attach = dict()
+
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+    hosts = doc.getElementsByTagName('host')
+    for host in hosts:
+        if not host.nodeType == Node.ELEMENT_NODE:
+            continue
+
+        hostIp = host.getAttribute('ip')
+        
+        # Handle link elements
+        res = host.getElementsByTagName('mac')
+        if res:
+            mac = getText(res)
+            metas[hostIp]['Packet vertical'].add("[[%s]]" % (mac))
+            metas[hostIp]['Identity type'].add("L3")
+            metas[mac]['Packet vertical'].add("[[%s]]" % (hostIp))
+            metas[mac]['Identity type'].add("L2")
+
+        res = host.getElementsByTagName('hostname')
+        if res:
+            hostname = getText(res)
+            metas[hostIp]['PTR'].add("[[%s]]" % (hostname))
+
+        res = host.getElementsByTagName('os')
+        if res:
+            accuracy = res[0].hasAttribute('type')
+            if accuracy:
+                metas[hostIp]['OS Accuracy'].add(res[0].getAttribute('type'))
+            os_detect = getText(res)
+            metas[hostIp]['OS'].add(os_detect)
+
+        res = host.getElementsByTagName('manuf')
+        if res:
+            os_manuf = getText(res)
+            metas[hostIp]['OS Vendor'].add(os_manuf)
+
+        for port in host.getElementsByTagName('port'):
+            # Construct banner and service, if any
+            banner = getText(port.getElementsByTagName('banner')).strip()
+            if banner:
+                banner = 'with %s ' % (banner)
+
+            service = port.getAttribute('service')
+            if service:
+                service = '%s ' % (service)
+
+            proto = port.getAttribute('proto').upper()
+            port_nro = port.getAttribute('addr').upper()
+
+            metas[hostIp]['serves'].add("%s%son port %s:%s" % 
+                                        (service, banner, proto, port_nro))
+            metas[hostIp]['listens to'].add("[[%s:%s]]" % (proto, port_nro))
+
+            for acct in port.getElementsByTagName('account'):
+                user = getText(acct.getElementsByTagName('user'))
+                if user:
+                    user = 'user %s ' % (user)
+
+                passwd = getText(acct.getElementsByTagName('pass'))
+                if passwd:
+                    passwd = 'with password %s ' % (passwd)
+
+                client = getText(acct.getElementsByTagName('client'))
+                if client:
+                    client = 'from [[%s]] ' % (client)
+
+                info = getText(acct.getElementsByTagName('info'))
+                if info:
+                    info = ' (%s)' % (info)
+
+                success = port.getAttribute('failed')
+                if success:
+                    success = ' (%s)' % (success)
+
+                metas[hostIp]['Plaintext credentials'].add("%s%s%s%s%s" % 
+                                                           (user, passwd, 
+                                                            client, info,
+                                                            success))
+
+    # Get general statistics
+    etterlog = doc.getElementsByTagName('etterlog')[0]
+    metas[ettercaprun_page]['version'].add(etterlog.getAttribute('version'))
+    metas[ettercaprun_page]['date'].add(etterlog.getAttribute('date'))
+
+    return metas, attach
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store", type="string", 
+        dest="config",
+        metavar = "CONFIG",
+        help="CONFIG file path.")
+    parser.add_option( "-t", "--wiki-template",
+        action="store", type="string", 
+        dest="template",
+        metavar = "TEMPLATE",
+        help="Wiki TEMPLATE, e.g. EttercapTemplate.")
+    parser.add_option( "-u", "--url",
+        action="store", type="string", 
+        dest="url",
+        metavar = "COLLAB-URL",
+        help="COLLAB-URL")
+    parser.add_option("-v",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.add_option( "-w", "--wiki-category",
+        action="store", type="string", 
+        dest="category",
+        metavar = "CATEGORY",
+        help="Wiki CATEGORY, e.g. EttercapRun.")
+    parser.set_usage("%prog [options] ETTERCAP-XML-FILES")
+    options, args = parser.parse_args()
+    iopts={}
+    ettercap_files=[]
+    url = ''
+    if len(args) < 1:
+        parser.error("At least one XML input file path needs to be specified.")
+    if options.config:
+        iopts = parse_config(options.config, "creds", "ettercap")
+    if options.template:
+        directory = options.template
+    elif options.config and "template" in iopts["ettercap"]:
+        template = iopts["ettercap"]["template"]
+    else:
+        template = "EttercapTemplate"
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified.")
+    if options.category:
+        category = options.category
+    elif options.config and "category" in iopts["ettercap"]:
+        category = iopts["ettercap"]["category"]
+    else:
+        category = None
+    if options.verbose:
+        print "NOTE: Processing input files."
+    for arg in args:
+        ettercap_files.append(arg)
+    for file in ettercap_files:
+        xml_page = hashFile(file)
+        fname = os.path.basename(file)
+        if options.verbose:
+            print "NOTE: Parsing", file
+        metas, attach = parse_xml(file, xml_page)
+        if category is not None:
+            for page in metas:
+                metas[page]["category"].add(category)
+        metas[xml_page]['TYPE'].add('Ettercap Run')
+        if options.verbose:
+            print "NOTE: Importing metas to", url
+
+        importMetas(collab, metas, template, options.verbose)
+
+        if options.verbose:
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            if options.verbose:
+                print "NOTE: Uploading", file, "to", xml_page
+            uploadFile(collab, xml_page, file, fname)
+
+        for page in attach:
+            for fname in attach[page]:
+                uploadFile(collab, page, attach[page][fname], fname)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+
