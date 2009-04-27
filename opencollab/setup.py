@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name='opencollab', version='627',
-      author='Joachim Viide, Pekka Pietikäinen, Mika Seppänen',
+      author='Joachim Viide, Pekka Pietikäinen, Mika Seppänen, Lari Huttunen, Juhani Eronen',
       author_email='contact@clarifiednetworks.com',
       description='OpenCollab XML-RPC SDK',
       packages=['opencollab'],
@@ -21,9 +21,9 @@ setup(name='opencollab', version='627',
         'scripts/opencollab-notifier',
         'scripts/opencollab-nmap-uploader',
         'scripts/opencollab-nessus-uploader',
+        'scripts/opencollab-ettercap-uploader',
         'scripts/opencollab-push-tickets',
         'scripts/opencollab-remove-dups',
         'scripts/opencollab-spam-reader',
         'scripts/opencollab-upload-identities',
         'scripts/opencollab-uploader'])
-

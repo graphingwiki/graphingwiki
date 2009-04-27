@@ -216,7 +216,7 @@ def main():
         action="store", type="string", 
         dest="category",
         metavar = "CATEGORY",
-        help="Wiki CATEGORY, e.g. NessysRun.")
+        help="Wiki CATEGORY, e.g. NessusRun.")
     parser.set_usage("%prog [options] NESSUS-XML-FILES")
     options, args = parser.parse_args()
     iopts={}
