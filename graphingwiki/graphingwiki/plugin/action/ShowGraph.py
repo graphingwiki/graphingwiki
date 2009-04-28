@@ -1275,13 +1275,15 @@ class GraphShower(object):
         return obj
 
     def traverse(self, outgraph, nodes):
-        newnodes = nodes
+        newnodes = set()
 
         # Add startpages, even if unconnected
         for node in nodes:
             if self.noorignode:
                 if node == self.request.page.page_name:
                     continue
+
+            newnodes.add(node)
 
             # Make sure that startnodes get loaded
             load_node(self.request, self.graphdata, node, self.urladd)
