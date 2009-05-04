@@ -4,6 +4,7 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
+import re
 import os
 import sys
 import string
@@ -39,7 +40,8 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
 
     node = stylesheet_nodes[0]
 
-    attributes = dict([item.split("=") for item in node.data.split()])
+    data = re.findall("[\t ]*([^=]+=[\'\"][^\'\"]+[\'\"])[\t ]*", node.data)
+    attributes = dict([item.split("=") for item in data])
 
     stylesheet = attributes["href"].strip('"')
 
