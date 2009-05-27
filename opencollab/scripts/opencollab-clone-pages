@@ -19,7 +19,7 @@ from urllib import unquote
 def main():
     usage = "usage: %prog [options] srcwiki dstwiki pageregexp"
 
-    parser = optparse.OptionParser()
+    parser = optparse.OptionParser(usage=usage)
 
     parser.add_option("-n", "--dry-run",
                       dest="dryrun",

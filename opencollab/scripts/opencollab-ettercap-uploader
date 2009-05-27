@@ -202,7 +202,7 @@ def main():
     if options.config:
         iopts = parse_config(options.config, "creds", "ettercap")
     if options.template:
-        directory = options.template
+        template = options.template
     elif options.config and "template" in iopts["ettercap"]:
         template = iopts["ettercap"]["template"]
     else:
