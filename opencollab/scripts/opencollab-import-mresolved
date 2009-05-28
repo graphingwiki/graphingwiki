@@ -211,7 +211,7 @@ def main():
         print "Parsing input file:", path
     if options.url:
         url = options.url
-        CLIWiki(url)
+        collab = CLIWiki(url)
     elif options.config and "url" in iopts["creds"]:
         url = iopts["creds"]["url"]
         collab = CLIWiki(url, config=options.config)
