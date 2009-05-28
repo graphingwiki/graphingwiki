@@ -82,7 +82,7 @@ def parse_xml(file, nessusrun_page):
     except xml.parsers.expat.ExpatError, e:
         error = file + ": " + str(e) 
         sys.exit(error)
-    results = doc.getElementsByTagName('results')
+    results = doc.getElementsByTagName('result')
     for result in results:
         hosts = result.getElementsByTagName('host')
         for host in hosts:
