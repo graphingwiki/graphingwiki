@@ -35,48 +35,30 @@ def main():
                       type="string", dest="config",
                       metavar="CONFIG",
                       help="CONFIG file path.")
-    parser.add_option("-f", "--file",
-                      dest="path",
-                      default=None,
-                      metavar="FILE",
-                      help="Input FILE or path.")
-    parser.add_option("-o", "--output",
-                      dest="output",
-                      default=None,
-                      metavar="OUTPUT",
-                      help="Save the file to name OUTPUT in the wiki.")
     parser.add_option("-p", "--page",
                       dest="page",
                       default=None,
                       metavar="PAGE",
                       help="Upload the file(s) to PAGE.")
-    parser.add_option("-r", "--recursive",
-                      action="store_true",
-                      dest="recursive",
-                      help="recursivly upload files")
     parser.add_option("-u", "--url",
                       dest="url",
                       default=None,
                       metavar="COLLAB-URL",
                       help="COLLAB-URL to connect to.")
-    parser.set_usage("%prog [options]")
-
+    parser.set_usage("%prog [options] 0..N optional input directories")
     options, args = parser.parse_args()
     iopts={}
+    ilist=[]
     if options.config:
         iopts = parse_config(options.config, "creds", "uploader")
-    if options.path:
-        path = options.path
+    if len(args) > 0:
+        for arg in args:
+            ilist.append(arg)
     elif options.config and "path" in iopts["uploader"]:
-        path = iopts["uploader"]["path"]
+        ilist = (iopts["uploader"]["path"])
     else:
-        path = None
-    if options.output:
-        output = options.output
-    elif options.config and "output" in iopts["uploader"]:
-        output = iopts["uploader"]["output"]
-    else:
-        output = None
+        parser.error("You need to specify a testrun directory base via -d or \n \
+                      via 1..N positional input directories. Use -h for help.")
     if options.page:
         page = options.page
     elif options.config and "page" in iopts["uploader"]:
@@ -92,8 +74,8 @@ def main():
     else:
         parser.error("Collab URL needs to specified. Use -h for help.")
 
-    if options.recursive:
-        filelist = list()
+    filelist = list()
+    for path in ilist:
         if os.path.isfile(path):
             wikiname = quote(path, safe="")
             filelist.append((path, wikiname))
@@ -104,24 +86,12 @@ def main():
                     wikiname = filename[len(os.path.dirname(path)):].lstrip("/")
                     wikiname = quote(wikiname, safe="")
                     filelist.append((filename, wikiname))
-
         total = len(filelist)
         n = 1
         for filename, wikiname in filelist:
             sys.stdout.write("%d/%d uploading %s as %s\n" % (n, total, filename, wikiname)) 
             uploadFile(collab, page, wikiname, filename)
             n += 1 
-
-        sys.exit()
-
-    if options.output is None:
-        _, filename = os.path.split(path)
-    else:
-        filename = options.output
-
-    sys.stdout.write("uploading %s as %s\n" % (path, filename)) 
-    sys.stdout.flush()
-    uploadFile(collab, page, filename, path)
 
 if __name__ == "__main__":
     try:
