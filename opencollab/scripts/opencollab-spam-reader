@@ -26,6 +26,7 @@ def read_spam(collab, imaps_server, imaps_user, imaps_pass):
     metas = Metas()
     href = re.compile('\w+=(3D)?\"')
     tag = re.compile('\">?.*$')
+    gtlt = re.compile('[<>]')
     mailbox = imaplib.IMAP4_SSL(imaps_server) 
     if imaps_pass is None:
         mailbox.login(imaps_user,getpass.getpass())
@@ -51,6 +52,7 @@ def read_spam(collab, imaps_server, imaps_user, imaps_pass):
             if url_all_re.search(token):
                 token = href.sub('', token)
                 token = tag.sub('', token)
+                token = gtlt.sub('', token)
                 metas[cpage]["SPAM URL"].add(token)
     mailbox.close()
     mailbox.logout()
