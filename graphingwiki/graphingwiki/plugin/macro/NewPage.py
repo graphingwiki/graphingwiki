@@ -15,6 +15,10 @@ actioninput = '<input type="hidden" name="editfunc" value="%s">\n<input'
 def macro_NewPage(macro, template=u'', button_label=u'', parent_page=u'', 
                   name_template=u'%s', edit_action=''):
 
+    # Handle includedpage
+    if parent_page == '@INCLUDINGPAGE':
+        parent_page = macro.request.page.page_name
+
     newpage = NewPage(macro, template, button_label,
                       parent_page, name_template)
     macrotext = newpage.renderInPage()
