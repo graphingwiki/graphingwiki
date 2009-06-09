@@ -38,6 +38,8 @@ parser.add_option("-d", "--del", action="store_true", dest="rm",
                   help="Delete attachment")
 parser.add_option("-u", "--username", dest="username", 
                   help="Username for logging onto the wiki")
+parser.add_option("-p", "--password", dest="password", 
+                  help="Wiki password")
 
 options, args = parser.parse_args()
 
@@ -53,8 +55,15 @@ else:
 username = ''
 if options.username:
     username = options.username
+else:
+    username = ''
+if options.password:
+    password = options.password
+else:
+    password = ''
 
-username, password = getuserpass(username)
+if not options.username or not options.password:
+    username, password = getuserpass(username)
 
 if options.load:
     result = xmlrpc_attach(wiki, page, fname, username, password, 'load')

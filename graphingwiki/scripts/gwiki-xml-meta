@@ -61,6 +61,8 @@ parser.add_option("-t", "--template", dest="template",
                   help="Use page template")
 parser.add_option("-U", "--username", dest="username", 
                   help="Username for logging onto the wiki")
+parser.add_option("-p", "--password", dest="password", 
+                  help="Wiki password")
 
 options, args = parser.parse_args()
 
@@ -74,8 +76,15 @@ wiki = args[0]
 username = ''
 if options.username:
     username = options.username
+else:
+    username = ''
+if options.password:
+    password = options.password
+else:
+    password = ''
 
-username, password = getuserpass(username)
+if not options.username or not options.password:
+    username, password = getuserpass(username)
 
 class ArgError(Exception):
     def __init__(self, value):
