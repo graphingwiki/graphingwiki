@@ -196,6 +196,10 @@ class GraphShower(object):
         self.hidedges = 0
         self.edgelabels = 0
         self.noloners = 0
+        self.imagelabels = 0
+ 
+        self.legend = 'bottom'
+        self.legend_positions = ['off', 'top', 'bottom', 'left', 'right']
 
         self.categories = list()
         self.otherpages = list()
@@ -326,6 +330,12 @@ class GraphShower(object):
             if format in self.available_formats:
                 self.format = format
 
+        # legend
+        if request.form.has_key('legend'):
+            legend = request.form['legend'][0]
+            if legend in self.legend_positions:
+                self.legend = legend
+
         # Categories
         if request.form.has_key('categories'):
             self.categories = request.form['categories']
@@ -343,7 +353,7 @@ class GraphShower(object):
                 setattr(self, arg, ''.join(request.form[arg]))
 
         # Toggle arguments
-        for arg in ['unscale', 'hidedges', 'edgelabels', 
+        for arg in ['unscale', 'hidedges', 'edgelabels', 'imagelabels',
                     'noloners', 'nostartnodes', 'noorignode']:
             if request.form.has_key(arg):
                 setattr(self, arg, 1)
@@ -598,27 +608,42 @@ class GraphShower(object):
                     page = objname
                 else:
                     page = '/'.join(components[:-1])
-                file = components[-1]
+                fname = components[-1]
 
-                shapefile, exists = attachment_file(self.request, page, file)
+                shapefile, exists = attachment_file(self.request, page, fname)
 
                 # get attach file path, empty label
                 if exists:
-                    obj.gwikishapefile = shapefile
-                
-                    # Stylistic stuff: label, borders
+                    # No sense to present shapefile path with dot output
+                    if self.format == 'dot':
+                        obj.gwikiimage = fname
+                    else:
+                        obj.gwikiimage = shapefile
+                        filedata = md5.new(file(shapefile).read()).hexdigest()
+                        self.shapefiles[obj] = filedata
+                        
+                    if self.imagelabels:
+                        name = getattr(orig_obj, 'gwikilabel', objname)
+                        obj.gwikilabel = '<<TABLE BORDER="0" '+\
+                            'CELLSPACING="0" CELLBORDER="0"><TR><TD>'+\
+                            '<IMG SRC="%s"/></TD></TR>' % (shapefile)+\
+                            '<TR><TD>%s</TD></TR></TABLE>>' % (name)
+                        del obj.gwikiimage
+                    else:
+                        # Stylistic stuff: label, borders
+                        obj.gwikilabel = ' '
+                        obj.gwikistyle = 'filled'
+                        obj.gwikifillcolor = 'transparent'
+
                     # "Note that user-defined shapes are treated as a form
                     # of box shape, so the default peripheries value is 1
                     # and the user-defined shape will be drawn in a
                     # bounding rectangle. Setting peripheries=0 will turn
                     # this off."
                     # http://www.graphviz.org/doc/info/attrs.html#d:peripheries
-                    obj.gwikilabel = ' '
                     obj.gwikiperipheries = '0'
-                    obj.gwikistyle = 'filled'
-                    obj.gwikifillcolor = 'transparent'
-                else:
-                    del obj.gwikishapefile
+
+                del obj.gwikishapefile
 
             # Add data on types of edges for which obj is child
             for parent in outgraph.edges.parents(objname):
@@ -902,8 +927,21 @@ class GraphShower(object):
         request.write(_("Max width") + u"<br>\n")
         form_textbox(request, 'width', 5, str(self.width))
 
+        request.write(_("Legend") + u"<br>\n")
+        request.write(u'<select name="legend"><br>\n')
+        for type in self.legend_positions:
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (form_escape(type),
+                           type == self.legend and " selected>" or ">",
+                           form_escape(type)))
+        request.write(u'</select><br>\n')
+
         # Unscale
         form_checkbox(request, 'unscale', '0', self.unscale, _('Unscale'))
+
+        # labels for shapefiles
+        form_checkbox(request, 'imagelabels', '0', self.imagelabels, 
+                      _('Shapefile labels'))
 
         # hide edges
         request.write(u"<br><u>" + _("Edges:") + u"</u><br>\n")
@@ -1420,8 +1458,12 @@ class GraphShower(object):
                 self.send_gv(gr)
             elif self.format == 'png':
                 self.send_form()
-                self.send_graph(gr, True)
-                self.send_legend()
+                if self.legend == 'top':
+                    self.send_legend()
+                    self.send_graph(gr, True)
+                else:
+                    self.send_graph(gr, True)
+                    self.send_legend()
         else:
             self.send_form()
             self.test_graph(outgraph)
