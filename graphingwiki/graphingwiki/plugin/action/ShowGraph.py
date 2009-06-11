@@ -619,8 +619,6 @@ class GraphShower(object):
                         obj.gwikiimage = fname
                     else:
                         obj.gwikiimage = shapefile
-                        filedata = md5.new(file(shapefile).read()).hexdigest()
-                        self.shapefiles[obj] = filedata
                         
                     if self.imagelabels:
                         name = getattr(orig_obj, 'gwikilabel', objname)
