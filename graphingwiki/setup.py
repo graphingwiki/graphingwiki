@@ -3,7 +3,7 @@ from distutils.core import setup
 old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py', 'metaCVS.py',
                           'ShowGraphIE.py', 'MetaTableEdit.py',
                           'ShowLatexSource.py', 'metaRadarDiagram.py',
-                          'metaeditform.py'],
+                          'metaeditform.py', 'ShowGraphSimple.py'],
                'macro': ['metaRadarDiagram.py'],
                'script': ['scripts/gwiki-debuggraph', 'scripts/moin-showpage', 
                           'scripts/moin-editpage']}

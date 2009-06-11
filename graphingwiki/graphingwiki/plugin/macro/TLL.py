@@ -15,7 +15,7 @@ except ImportError:
 
 from MoinMoin.action import cache
 
-from graphingwiki.util import encode_page, form_escape
+from graphingwiki.util import encode_page, form_escape, cache_key, cache_exists
 from graphingwiki.plugin.action.metasparkline import \
     draw_path, cairo_not_found, write_surface, plot_error
 
@@ -95,15 +95,13 @@ def execute(macro, args):
 
     arglist = [x.strip() for x in args.split(',') if x]
 
-    key = "TLL(%s)" % (','.join(arglist))
-
     if not cairo_found:
         error = True
         key = "Cairo not found"
 
-    key = "%s_%s" % (key, cache.key(request, content=key))
+    key = cache_key(request, (macro.name, arglist))
 
-    if not cache.exists(request, key):
+    if not cache_exists(request, key):
         if len(arglist) == 1:
             level = args[0]
         elif len(arglist):

@@ -31,7 +31,7 @@ import graphingwiki
 from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
-    url_parameters, url_construct
+    url_parameters, url_construct, cache_key, cache_exists, latest_edit
 
 Dependencies = ['meta']
 
@@ -65,7 +65,8 @@ def execute(macro, args):
     if not args:
         args = ''
 
-    key = "%s(%s)" % (macro.name, args)
+    # Currently, the key is just based on args and the latest wiki edit
+    key = cache_key(request, (macro.name, args, latest_edit(request)))
 
     # Find map location. Default is DEFAULT_MAP in url_prefix_static
     map_path = getattr(request.cfg, 'gwiki_map_path', DEFAULT_MAP)
@@ -91,7 +92,7 @@ def execute(macro, args):
     elif not os.path.exists(map_path):
         return _sysmsg % ('error', 
                           _("ERROR: World map not found."))
-    else:
+    elif not cache_exists(request, key):
         GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
 
     #    try:
@@ -146,38 +147,49 @@ def execute(macro, args):
 #    except cairo.Error:
 #        data = plot_error(request, key)
 
-    cache.put(request, key, data, content_type='image/png')
+        cache.put(request, key, data, content_type='image/png')
 
-    map_text = 'usemap="#%s" ' % (id(ctx))
+        mappi = ''
+
+        for coordlist in areas:
+            href = ''
+            tooltip = ''
+
+            # Only make pagelink if there are no overlapping nodes
+            if len(areas[coordlist]) == 1:
+                pagelink = request.getScriptname() + u'/' + name
+                href = ' href="%s"' % (form_escape(pagelink))
+            else:
+                pages = [x[0] for x in areas[coordlist]]
+                args = {'action': ['ShowGraph'], 
+                        'otherpages': pages, 'noorignode': '1'}
+                href = ' href="%s"' % url_construct(request, args, 
+                                                    request.page.page_name)
+
+            # When overlapping nodes occur, add to tooltips
+            for coords in areas[coordlist]:
+                name, text, shape = coords
+
+                tooltip += "%s\n%s" % (name, text)
+
+            mappi += u'<area%s shape="%s" coords="%s" title="%s">\n' % \
+                (href, shape, coordlist, tooltip)
+
+        cache.put(request, key + '-map', mappi, content_type='text/html')
+
+    else:
+        mappifile = cache._get_datafile(request, key + '-map')
+        mappi = mappifile.read()
+        mappifile.close()
+
+    map_text = 'usemap="#%s" ' % (key)
     
     div = u'<div class="MetaMap">\n' + \
         u'<img %ssrc="%s" alt="%s">\n</div>\n' % \
         (map_text, cache.url(request, key), _('meta map'))
 
-    map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
-    for coordlist in areas:
-        href = ''
-        tooltip = ''
-
-        # Only make pagelink if there are no overlapping nodes
-        if len(areas[coordlist]) == 1:
-            pagelink = request.getScriptname() + u'/' + name
-            href = ' href="%s"' % (form_escape(pagelink))
-        else:
-            pages = [x[0] for x in areas[coordlist]]
-            args = {'action': ['ShowGraph'], 
-                    'otherpages': pages, 'noorignode': '1'}
-            href = ' href="%s"' % url_construct(request, args, 
-                                                macro.request.page.page_name)
-
-        # When overlapping nodes occur, add to tooltips
-        for coords in areas[coordlist]:
-            name, text, shape = coords
-
-            tooltip += "%s\n%s" % (name, text)
-
-        map += u'<area%s shape="%s" coords="%s" title="%s">\n' % \
-            (href, shape, coordlist, tooltip)
+    map = u'<map id="%s" name="%s">\n' % (key, key)
+    map += mappi
     map += u'</map>\n'
 
     return div + map

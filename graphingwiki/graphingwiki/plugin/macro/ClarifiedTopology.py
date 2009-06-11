@@ -36,7 +36,8 @@ from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import form_escape, make_tooltip
+from graphingwiki.util import form_escape, make_tooltip, \
+    cache_key, cache_exists, latest_edit
 
 cairo_found = True
 try:
@@ -47,17 +48,7 @@ except ImportError:
 
 Dependencies = ['metadata']
 
-def execute(macro, args):
-    formatter = macro.formatter
-    macro.request.page.formatter = formatter
-    request = macro.request
-    _ = request.getText
-
-    if not args:
-        args = request.page.page_name
-
-    key = "%s(%s)" % (macro.name, args)
-
+def draw_topology(request, args, key):
     topology = args
 
     # Get all containers
@@ -220,17 +211,9 @@ def execute(macro, args):
         
 #     ctx.set_source_surface(surface, 0, 0)
 #     ctx.paint()
-
     data = write_surface(surface)
-    cache.put(request, key, data, content_type='image/png')
 
-    map_text = 'usemap="#%s" ' % (id(ctx))
-
-    div = u'<div class="ClarifiedTopology">\n' + \
-        u'<img %ssrc="%s" alt="%s">\n</div>\n' % \
-        (map_text, cache.url(request, key), _('topology'))
-
-    map = u'<map id="%s" name="%s">\n' % (id(ctx), id(ctx))
+    map = ''
     for coords in areas:
         name, text, shape = areas[coords]
         pagelink = request.getScriptname() + u'/' + name
@@ -239,6 +222,37 @@ def execute(macro, args):
 
         map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
             (form_escape(pagelink), shape, coords, tooltip)
+
+    return data, map
+
+def execute(macro, args):
+    formatter = macro.formatter
+    macro.request.page.formatter = formatter
+    request = macro.request
+    _ = request.getText
+
+    if not args:
+        args = request.page.page_name
+
+    key = cache_key(request, (macro.name, args, latest_edit(request)))
+
+    map_text = 'usemap="#%s" ' % (key)
+
+    if not cache_exists(request, key):
+        data, mappi = draw_topology(request, args, key)
+        cache.put(request, key, data, content_type='image/png')
+        cache.put(request, key + '-map', mappi, content_type='text/html')
+    else:
+        mappifile = cache._get_datafile(request, key + '-map')
+        mappi = mappifile.read()
+        mappifile.close()
+
+    div = u'<div class="ClarifiedTopology">\n' + \
+        u'<img %ssrc="%s" alt="%s">\n</div>\n' % \
+        (map_text, cache.url(request, key), _('topology'))
+
+    map = u'<map id="%s" name="%s">\n' % (key, key)
+    map += mappi
     map += u'</map>\n'
     
     return div + map

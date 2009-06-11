@@ -159,11 +159,7 @@ class ViewDot(object):
         pagename = request.page.page_name
 
         if self.help or not self.attachment:
-            # fix for moin 1.3.5
-            if not hasattr(request, 'formatter'):
-                formatter = HtmlFormatter(request)
-            else:
-                formatter = request.formatter
+            formatter = request.formatter
 
             enter_page(request, pagename, 'View .dot attachment')
 

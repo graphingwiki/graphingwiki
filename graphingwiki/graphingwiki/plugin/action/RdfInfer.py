@@ -60,11 +60,7 @@ def execute(pagename, request):
     request.theme.send_title(request.getText('Inference'),
                         pagename=pagename)
 
-    # fix for moin 1.3.5
-    if not hasattr(request, 'formatter'):
-        formatter = HtmlFormatter(request)
-    else:
-        formatter = request.formatter
+    formatter = request.formatter
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!

@@ -32,12 +32,14 @@ import os
 import shelve
 import re
 import socket
+
+import md5
 from tempfile import mkstemp
 from random import choice, seed
-from base64 import b64encode
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
+from MoinMoin.action import cache
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -50,40 +52,11 @@ cl = Clock()
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
-from graphingwiki.util import attachment_file, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page, make_tooltip
+from graphingwiki.util import attachment_file, attachment_url, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page, make_tooltip, cache_exists, cache_key
 from graphingwiki.editing import ordervalue
 
 import math
 import colorsys
-
-# Header stuff for IE
-msie_header = """From: <Graphingwiki>
-Subject: A graph
-Date: Sat, 8 Apr 2006 23:57:55 +0300
-MIME-Version: 1.0
-Content-Type: multipart/related; boundary="partboundary1AuwCgrY/3/JaRKh"; type="text/html"
-
---partboundary1AuwCgrY/3/JaRKh
-Content-Type: text/html; charset="%s"
-
-""" % config.charset
-
-def add_mime_part(name, type, data):
-    basdata = ''
-    for x in range(1, (len(data)/64)+1):
-        basdata = basdata + data[(x-1)*64:x*64] + '\n'
-    basdata = basdata + data[x*64:]
-
-    return """
---partboundary1AuwCgrY/3/JaRKh
-Content-Location: %s
-Content-Type: %s
-Content-Transfer-Encoding: base64
-
-%s
-""" % (name, type, basdata)
-
-msie_end = "\n--partboundary1AuwCgrY/3/JaRKh--\n\n"
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
@@ -176,20 +149,28 @@ class GraphShower(object):
     EDGE_DARKNESS = 0.83
     FRINGE_DARKNESS = 0.50
   
-    def __init__(self, pagename, request, graphengine = "neato"):
+    def __init__(self, pagename, request, graphengine = "neato", 
+                 urladd='', app_page='', inline=''):
         self.hashcolor = self.wrap_color_func(self.hashcolor)
         self.gradientcolor = self.wrap_color_func(self.gradientcolor)
     
         # Fix for mod_python, globals are bad
         self.used_colors = dict()
 
+        self.inline = inline
+
         self.pagename = pagename
-        # Page the graph appears in, used in inline graphs
-        self.app_page = pagename
+        # app_page for inline graphs
+        if not app_page:
+            self.app_page = pagename
+        # If we appear on a subpage, links may be screwed - 
+        # app_page retains knowledge on the page graph appears in
+        else:
+            self.app_page = app_page
 
         self.request = request
         self.graphengine = graphengine
-        self.available_formats = ['png', 'svg', 'dot']
+        self.available_formats = ['png', 'svg', 'dot', 'zgr']
         self.format = 'png'
         self.limit = ''
         self.unscale = 0
@@ -230,15 +211,14 @@ class GraphShower(object):
         self.colorfiltervalues = set()
 
         # What to add to node URL:s in the graph
-        self.urladd = ''
+        if urladd:
+            self.urladd = urladd
+        else:
+            self.urladd = ''
 
         # Selected colorfunction used and postprocessing function
         self.colorfunc = self.hashcolor
         self.colorscheme = 'random'
-
-        # If we should send out just the graphic or forms as well
-        # Used by ShowGraphSimple.py
-        self.do_form = True
 
         # link/node attributes that have been assigned colors
         self.coloredges = set()
@@ -249,6 +229,13 @@ class GraphShower(object):
         # nodes that do and do not have the attribute designated with orderby
         self.ordernodes = dict()
         self.unordernodes = set()
+
+        # Hashes of shapefiles stored for caching
+        self.shapefiles = dict()
+        self.cache_key = ''
+
+        # SVG shapefiles need some extra work
+        self.shapefiles_svg = dict()
 
         # For test, inline
         self.help = ""
@@ -310,7 +297,7 @@ class GraphShower(object):
         request = self.request
         error = False
         
-        if self.do_form:
+        if not self.inline:
             # Get categories for current page, for the category form
             self.allcategories.update(request.page.getCategories(request))
         
@@ -392,7 +379,8 @@ class GraphShower(object):
             self.filtercolor.update(request.form['filtercolor'])
 
         # This is the URL addition to the nodes that have graph data
-        self.urladd = url_parameters(request.form)
+        if not self.urladd:
+            self.urladd = url_parameters(request.form)
 
         # Disable output if testing graph
         if request.form.has_key('test'):
@@ -431,7 +419,7 @@ class GraphShower(object):
             return
 
         # No need to list all categories if the list is not going to be used
-        if not self.do_form:
+        if not self.inline:
             return
 
         self.allcategories.update(cats)
@@ -439,7 +427,6 @@ class GraphShower(object):
     def build_graph_data(self):
         self.graphdata = Graph()
 
-        pagedir = self.request.page.getPagePath()
         pagename = self.pagename
 
         def get_categories(nodename):
@@ -595,7 +582,7 @@ class GraphShower(object):
             if pagedata.get('saved', False):
                 self.categories_add(orig_obj.gwikicategory)
 
-            tooldata = make_tooltip(self.request, pagedata)
+            tooldata = make_tooltip(self.request, pagedata, self.format)
             if tooldata and not hasattr(orig_obj, 'gwikitooltip'):
                 obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 
@@ -618,8 +605,21 @@ class GraphShower(object):
                     if self.format == 'dot':
                         obj.gwikiimage = fname
                     else:
-                        obj.gwikiimage = shapefile
-                        
+                        filedata = md5.new(file(shapefile).read()).hexdigest()
+                        self.shapefiles[objname] = filedata
+
+                        if self.format in ['svg', 'zgr']:
+                            # Save attachment URL:s for later editing
+                            self.shapefiles_svg[shapefile] = \
+                                attachment_url(self.request, page, fname)
+
+                            obj.gwikilabel = '<<TABLE BORDER="0" '+\
+                                'CELLSPACING="0" CELLBORDER="0"><TR><TD>'+\
+                                '<IMG SRC="%s"/></TD></TR></TABLE>>' % \
+                                (shapefile)
+                        else:
+                            obj.gwikiimage = shapefile
+
                     if self.imagelabels:
                         name = getattr(orig_obj, 'gwikilabel', objname)
                         obj.gwikilabel = '<<TABLE BORDER="0" '+\
@@ -627,7 +627,7 @@ class GraphShower(object):
                             '<IMG SRC="%s"/></TD></TR>' % (shapefile)+\
                             '<TR><TD>%s</TD></TR></TABLE>>' % (name)
                         del obj.gwikiimage
-                    else:
+                    elif not self.format in ['svg', 'zgr']:
                         # Stylistic stuff: label, borders
                         obj.gwikilabel = ' '
                         obj.gwikistyle = 'filled'
@@ -680,7 +680,6 @@ class GraphShower(object):
                     self.ordernodes.setdefault(value, set()).add(objname)
                 else:
                     self.unordernodes.add(objname)        
-
 
         return outgraph
 
@@ -820,15 +819,15 @@ class GraphShower(object):
 
         return outgraph
 
-    def make_legend(self):
+    def make_legend(self, key):
         _ = self.request.getText
         # Make legend
         if self.size:
-            legendgraph = Graphviz('legend', rankdir='LR', constraint='false',
+            legendgraph = Graphviz(key, rankdir='LR', constraint='false',
                                    **{'size': self.size})
 
         else:
-            legendgraph = Graphviz('legend', rankdir='LR', constraint='false')
+            legendgraph = Graphviz(key, rankdir='LR', constraint='false')
         legend = legendgraph.subg.add("clusterLegend",
                                       label=_('Legend'))
         subrank = self.pagename.count('/')
@@ -886,7 +885,6 @@ class GraphShower(object):
 
         return legendgraph
 
-
     def send_form(self):
         request = self.request
         _ = request.getText
@@ -936,6 +934,7 @@ class GraphShower(object):
 
         # Unscale
         form_checkbox(request, 'unscale', '0', self.unscale, _('Unscale'))
+        request.write(u"<br>\n")
 
         # labels for shapefiles
         form_checkbox(request, 'imagelabels', '0', self.imagelabels, 
@@ -1154,63 +1153,153 @@ class GraphShower(object):
 
         return data
     
-    def send_graph(self, gr, map=False):
-        img = self.get_layout(gr.graphviz, self.format)
+    def get_gv_format(self):
+        if self.format in ['zgr', 'svg']:
+            return 'svg'
+
+        return self.format
+
+    def send_graph(self, graphviz, key='', text='visualisation'):
         _ = self.request.getText
 
-        if map:
-            imgbase = "data:image/" + self.format + ";base64," + b64encode(img)
+        self.request.write('<div class="%s-%s">' % (text, self.legend))
 
-            page = ('<img src="%s" alt="%s" usemap="#%s">\n' % 
-                    (imgbase, _('visualisation'), gr.graphattrs['name']))
+        if not key:
+            key = "%s-%s" % (self.cache_key, self.format)
 
-            self.send_map(gr.graphviz)
+        gvformat = self.get_gv_format()
+
+        if self.format in ['zgr', 'svg']:
+            # Display zgr graphs as applets, legends as per usual
+            if self.format == 'zgr' and text != 'legend':
+                image_p = lambda url, text, mappi: \
+                    '<applet code="net.claribole.zgrviewer.ZGRApplet.class"'+ \
+                    ' archive="%s/gwikicommon/zgrviewer/zvtm.jar,' % \
+                    (self.request.cfg.url_prefix_static) + \
+                    '%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
+                    (self.request.cfg.url_prefix_static) + \
+                    'width="%s" height="%s">' % (self.width, self.height)+\
+                    '<param name="type" ' + \
+                    'value="application/x-java-applet;version=1.4" />' + \
+                    '<param name="scriptable" value="false" />' + \
+                    '<param name="svgURL" value="%s" />' % (url) + \
+                    '<param name="title" value="ZGRViewer - Applet" />'+ \
+                    '<param name="appletBackgroundColor" value="#DDD" />' + \
+                    '<param name="graphBackgroundColor" value="#DDD" />' + \
+                    '<param name="highlightColor" value="red" />' + \
+                    ' </applet><br>\n'
+            else:
+                image_p = lambda url, text, mappi: \
+                    '<object data="%s" alt="%s" ' % (url, text) + \
+                    'type="image/svg+xml">\n' + \
+                    '<embed src="%s" alt="%s" ' % (url, text) + \
+                    'type="image/svg+xml"/>\n</object>'
+
+            mime_type = 'image/svg+xml'
+            mappi = ''
         else:
-            imgbase = "data:image/svg+xml;base64," + b64encode(img)
-            
-            page = ('<embed height=800 width=1024 src="%s" alt="%s">\n' %
-                    (imgbase, _('visualisation')))
+            image_p = lambda url, text, mappi: \
+                '<img src="%s" alt="%s"%s\n' % (url, text, mappi)
+            mime_type = 'image/%s' % (self.format)
+            mappi = unicode(self.send_map(graphviz, key), 'utf-8')
+            mappi = ' usemap="#%s">\n%s' % (key, mappi)
 
-        self.request.write(page)
+        if not cache_exists(self.request, key):
+            img = self.get_layout(graphviz, gvformat)
 
-    def send_map(self, graphviz):
-        mappi = self.get_layout(graphviz, 'cmapx')
+            # Firefox does not understand point size fonts. Graphviz
+            # only provides point-size fonts, so px-size fonts must be
+            # set manually. This works also in Inkscape, and when the
+            # graph is scaled, as scaling is done with graph attributes.
+            #
+            # http://groups.google.com/group/mozilla.dev.tech.svg/browse_thread/thread/1d574c2690e37c7b
+            # http://www.nabble.com/SVG-font-size-difference-between-Firefox-and-Adobe-SVGviewer-td21502117.html
+            # https://mailman.research.att.com/pipermail/graphviz-interest/2007q1/004288.html
+            # Firefox 3 barfs on font-weight, so I'm not using it.
+            if gvformat == 'svg':
+                img = img.replace(\
+                    "font-family:Times New Roman;font-size:14.00;",
+                    "font-family:serif;font-size:12px;")
 
-        # Dot output is utf-8
-        # XXX so why does this use config.charset?
-        self.request.write(unicode(mappi, config.charset) + '\n')
+                # Graphviz does not get it if you try to give it URL:s
+                # as shapefiles. We mitigate this by first giving it
+                # filenames, and then renaming them as URL:s here
+                for fname in self.shapefiles_svg:
+                    img = img.replace(fname, 
+                                      form_escape(self.shapefiles_svg[fname]))
+
+            cache.put(self.request, key, img, content_type=mime_type)
+
+        self.request.write(image_p(cache.url(self.request, key), 
+                                   _(text), mappi))
+
+        self.request.write('</div>')
+
+    def send_legend(self):
+        legend = None
+
+        # If form choice is no legend
+        if self.legend == 'off':
+            return
+
+        key = "%s-legend-%s" % (self.cache_key, encode_page(self.format))
+
+        if self.coloredges or self.colornodes:
+            legend = self.make_legend(key)
+
+        if not legend:
+            return
+
+        self.send_graph(legend, key=key, text='legend')
+
+    def send_map(self, graphviz, key):
+        key = key + '-cmapx'
+
+        if not cache_exists(self.request, key):
+            mappi = self.get_layout(graphviz, 'cmapx')
+            cache.put(self.request, key, mappi, content_type="text/html")
+        else:
+            mappifile = cache._get_datafile(self.request, key)
+            mappi = mappifile.read()
+            mappifile.close()
+
+        return mappi
 
     def send_gv(self, gr):
-        gvdata = self.get_layout(gr.graphviz, 'dot')
+        key = self.cache_key + '-dot'
+
+        if not cache_exists(self.request, key):
+            gvdata = self.get_layout(gr.graphviz, 'dot')
+
+            cache.put(self.request, key, gvdata, 
+                      content_type="text/vnd.graphviz")
+        else:
+            gvdatafile = cache._get_datafile(self.request, key)
+            gvdata = gvdatafile.read()
+            gvdatafile.close()
 
         self.request.write(gvdata)
 
+        key = self.cache_key + '-legend-dot'
+
         legend = None
         if self.coloredges or self.colornodes:
-            legend = self.make_legend()
+            legend = self.make_legend(key)
 
-        if legend:
-            img = self.get_layout(legend, 'dot')
-            self.request.write(img)
+        if not legend:
+            return
 
-    def send_legend(self):
-        _ = self.request.getText
-        legend = None
-        if self.coloredges or self.colornodes:
-            legend = self.make_legend()
+        if not cache_exists(self.request, key):
+            gvdata = self.get_layout(legend, 'dot')
 
-        if legend:
-            img = self.get_layout(legend, self.format)
-            
-            if self.format == 'svg':
-                imgbase = "data:image/svg+xml;base64," + b64encode(img)
-                self.request.write('<embed width=800 src="%s">\n' % imgbase)
-            else:
-                imgbase = "data:image/" + self.format + \
-                          ";base64," + b64encode(img)
-                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n' %
-                                   (imgbase, _('visualisation'), legend.name))
-                self.send_map(legend)
+            cache.put(self.request, key, gvdata, 
+                      content_type="text/vnd.graphviz")
+        else:
+            gvdatafile = cache._get_datafile(self.request, key)
+            gvdata = gvdatafile.read()
+            gvdatafile.close()
+
+        self.request.write(gvdata)
                                    
     def send_footer(self, formatter):
         if self.format != 'dot' or not gv_found:
@@ -1225,6 +1314,10 @@ class GraphShower(object):
         pagename = self.pagename
         _ = request.getText
 
+        # If we're inline, don't continue
+        if self.inline:
+            return request.formatter
+
         if self.format != 'dot' or not gv_found:
             request.emit_http_headers()
             # This action generate data using the user language
@@ -1235,11 +1328,7 @@ class GraphShower(object):
 
             request.theme.send_title(title, pagename=pagename)
 
-            # fix for moin 1.3.5
-            if not hasattr(request, 'formatter'):
-                formatter = HtmlFormatter(request)
-            else:
-                formatter = request.formatter
+            formatter = request.formatter
 
             # fix for moin 1.8
             formatter.page = request.page
@@ -1347,20 +1436,18 @@ class GraphShower(object):
 
         return outgraph
 
-    def browser_detect(self):
-        if 'MSIE' in self.request.getUserAgent():
-            self.parts = list()
-            self.send_graph = self.send_graph_ie
-            self.send_legend = self.send_legend_ie
-            self.send_headers = self.send_headers_ie
-            self.send_footer = self.send_footer_ie
-
     def fail_page(self, reason):
-        formatter = self.send_headers()
+        if not self.inline:
+            formatter = self.send_headers()
+        else:
+            formatter = self.request.formatter
+
         self.request.write(_sysmsg % ('error', reason))
-        self.request.write(self.request.formatter.endContent())
-        self.request.theme.send_footer(self.pagename)
-        self.request.theme.send_closing_html()
+        self.request.write(formatter.endContent())
+
+        if not self.inline:
+            self.request.theme.send_footer(self.pagename)
+            self.request.theme.send_closing_html()
 
     def edge_tooltips(self, outgraph):
         for edge in outgraph.edges:
@@ -1381,7 +1468,6 @@ class GraphShower(object):
             # as it's a bit ugly
             ltdisp = ', '.join(x for x in linktypes if x != NO_TYPE)
             val = '%s>%s>%s' % (edge[0], ltdisp, edge[1])
-
             e.tooltip = val
             
         return outgraph
@@ -1390,12 +1476,11 @@ class GraphShower(object):
         cl.start('execute')
         _ = self.request.getText
 
-        self.browser_detect()
-
         # Bail out flag on if underlay page etc.
-        if not self.request.page.isStandardPage(includeDeleted=False):
-            self.fail_page(_("No graph data available."))
-            return
+        if not self.inline:
+            if not self.request.page.isStandardPage(includeDeleted=False):
+                self.fail_page(_("No graph data available."))
+                return
 
         error = self.form_args()
 
@@ -1430,40 +1515,44 @@ class GraphShower(object):
             # Fix URL:s
             outgraph = self.fix_node_urls(outgraph)
 
+            # Graph unique if the following are equal: content, layout
+            # format, images, ordering
+            key_parts = [outgraph, self.graphengine, 
+                         self.shapefiles, self.orderby]
+
+            self.cache_key = cache_key(self.request, key_parts)
+
+            outgraph.name = "%s-%s" % (self.cache_key, encode_page(self.format))
+
             # Do the layout
             gr = self.generate_layout(outgraph)
             cl.stop('layout')
 
         cl.start('format')
-        if self.help == 'inline':
+        if not self.format == 'dot' and not self.inline:
             self.send_form()
+
+        if self.help == 'inline':
             urladd = self.request.page.page_name + \
                      self.urladd.replace('&inline=Inline', '')
-            urladd = urladd.replace('action=ShowGraph',
-                                    'action=ShowGraphSimple')
             self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
-        elif self.format in ['svg', 'dot', 'png']:
+
+        elif self.format in self.available_formats:
             if not gv_found:
-                self.send_form()
                 self.request.write(formatter.text(_(\
                     "ERROR: Graphviz Python extensions not installed. " +\
                     "Not performing layout.")))
-            elif self.format == 'svg':
-                self.send_form()
-                self.send_graph(gr)
-                self.send_legend()
-            elif self.format == 'dot':
+
+            if self.format == 'dot':
                 self.send_gv(gr)
-            elif self.format == 'png':
-                self.send_form()
+            else:
                 if self.legend == 'top':
                     self.send_legend()
-                    self.send_graph(gr, True)
+                    self.send_graph(gr.graphviz)
                 else:
-                    self.send_graph(gr, True)
+                    self.send_graph(gr.graphviz)
                     self.send_legend()
         else:
-            self.send_form()
             self.test_graph(outgraph)
 
         cl.stop('format')
@@ -1471,7 +1560,8 @@ class GraphShower(object):
         cl.stop('execute')
         # print cl.dump()
 
-        self.send_footer(formatter)
+        if not self.inline:
+            self.send_footer(formatter)
 
     def test_graph(self, outgraph):
         _ = self.request.getText
@@ -1504,97 +1594,6 @@ class GraphShower(object):
             self.request.write(str(nroedges / (nronodes*nronodes-1)))
         self.request.write(formatter.paragraph(0))
 
-    # IE versions of some relevant functions
-
-    def send_graph_ie(self, gr, map=False):
-        _ = self.request.getText
-        img = self.get_layout(gr.graphviz, self.format)
-        filename = gr.graphattrs['name'] + "." + self.format
-
-        if map:
-            self.parts.append((filename,
-                               'image/' + self.format,
-                               b64encode(img)))
-            
-            page = ('<img src="%s" alt="%s" usemap="#%s">\n' %
-                    (filename, _('visualisation'), gr.graphattrs['name']))
-            self.send_map(gr.graphviz)
-        else:
-            self.parts.append((filename,
-                               'image/svg+xml',
-                               b64encode(img)))
-
-            page = ('<embed height=800 width=1024 src="%s" alt=">\n' %
-                    (filename, _('visualisation')))
-
-        self.request.write(page)
-
-    def send_legend_ie(self):
-        _ = self.request.getText
-        legend = None
-        if self.coloredges or self.colornodes:
-            legend = self.make_legend()
-
-        if legend:
-            img = self.get_layout(legend, self.format)
-            filename = legend.name + "." + self.format
-
-            if self.format == 'svg':
-                self.parts.append((filename,
-                                   'image/svg+xml',
-                                   b64encode(img)))
-
-                self.request.write('<embed width=800 src="%s">\n' % filename)
-            else:
-                self.parts.append((filename,
-                                   'image/' + self.format,
-                                   b64encode(img)))
-            
-                self.request.write('<img src="%s" alt="%s" usemap="#%s">\n' %
-                                   (filename, _('visualisation'), legend.name))
-                self.send_map(legend)
-
-    def send_parts_ie(self):
-        for part in self.parts:
-            self.request.write(add_mime_part(*part))        
-
-    def send_headers_ie(self):
-        request = self.request
-        pagename = self.pagename
-
-        if self.format != 'dot' or not gv_found:
-            request.emit_http_headers(["Content-type: message/rfc822"])
-            request.write(msie_header)
-            _ = request.getText
-
-            title = _('Wiki linkage as seen from') + \
-                    '"%s"' % pagename
-            request.theme.send_title(title, pagename=pagename)
-
-            # Start content - IMPORTANT - without content div, there is no
-            # direction support!
-            formatter = HtmlFormatter(request)
-            request.write(formatter.startContent("content"))
-            formatter.setPage(self.request.page)
-        else:
-            request.emit_http_headers(["Content-type: text/plain;charset=%s" %
-                                       config.charset])
-            formatter = TextFormatter(request)
-            formatter.setPage(self.request.page)
-
-        return formatter
-
-    def send_footer_ie(self, formatter):
-        if self.format != 'dot' or not gv_found:
-            # End content
-            self.request.write(formatter.endContent()) # end content div
-            # Footer
-            self.request.theme.send_footer(self.pagename)
-            self.request.write('</body>\n</html>\n')
-            self.send_parts_ie()
-            self.request.write(msie_end)
-
-
-def execute(pagename, request):
-    graphshower = GraphShower(pagename, request)
+def execute(pagename, request, **kw):
+    graphshower = GraphShower(pagename, request, **kw)
     graphshower.execute()

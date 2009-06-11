@@ -60,8 +60,8 @@ def execute(macro, args):
 
     # Import the plugin action to print out the graph html form
     graphshower = wikiutil.importPlugin(request.cfg,
-                                        'action', 'ShowGraphSimple',
-                                        'execute_graphs')
+                                        'action', 'ShowGraph',
+                                        'execute')
 
     if not args:
         return ""
@@ -72,14 +72,14 @@ def execute(macro, args):
         return ""
 
     # Legacy fix
-    args['action'] = ['ShowGraphSimple']
+    args['action'] = ['ShowGraph']
     pagename = uri
 
     # Check out if the start page exists, if not, we'll just bail out
     try:
         if not request.user.may.read(pagename):
             return _sysmsg % (error, 
-        _("InlineGraph: User may  not read page") + " %s" % 
+        _("InlineGraph: User may not read page") + " %s" % 
         form_escape(pagename))
     except:
         return _("InlineGraph: No data on") + " %s" % pagename
@@ -92,11 +92,12 @@ def execute(macro, args):
     req_uri = url_construct(graph_request, args)
     urladd = '?' + req_uri.split('?')[1]
 
-    graph_request.request_uri = request.getScriptname() + '/' + pagename + urladd
+    graph_request.request_uri = request.getScriptname() + '/' +  \
+        pagename + urladd
 
     request.write(u'<div class="inlinegraph">')
     graphshower(graph_request.page.page_name, graph_request, 
-                urladd=urladd, app_page=request.page.page_name)
+                urladd=urladd, app_page=request.page.page_name, inline=1)
 
     return u'<a href="%s" id="footer">[%s]</a>\n' % \
            (req_uri, _('examine')) + \

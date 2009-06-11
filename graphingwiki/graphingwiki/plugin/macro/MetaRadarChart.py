@@ -47,7 +47,7 @@ def radarchart_args(args):
     urlargs = {u'action': [u'metaRadarChart']}
 
     if not args:
-        return urlargs, args
+        return urlargs, ''
 
     arglist = [x.strip() for x in args.split(',') if x]
     macro_args = list()

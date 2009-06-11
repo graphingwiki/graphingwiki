@@ -255,7 +255,6 @@ class Graph(Node):
     >>> sorted(graph.edges)
     []
     """
-
     def __init__(self):
         self.nodes = Nodes(self)
         self.edges = Edges()
@@ -263,6 +262,21 @@ class Graph(Node):
 
     def __nonzero__(self):
         return len(self.nodes) > 0
+
+    def __repr__(self):
+        out = ''
+
+        for node in sorted(self.nodes):
+            out += node
+            n = self.nodes.get(node)
+            out += repr(sorted(n))
+
+        for edge in sorted(self.edges):
+            out += repr(edge)
+            e = self.edges.get(*edge)
+            out += repr(sorted(e))
+
+        return out
 
 def _test():
     import doctest

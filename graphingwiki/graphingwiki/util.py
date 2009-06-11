@@ -41,6 +41,7 @@ from codecs import getencoder
 
 import MoinMoin.version
 
+from MoinMoin.action import cache
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin import caching
 from MoinMoin import config
@@ -49,12 +50,41 @@ from MoinMoin.util.lock import ReadLock, WriteLock
 from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.logfile import editlog
 
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
 
 SEPARATOR = '-gwikiseparator-'
+
+# Methods related to Moin cache feature
+def latest_edit(request):
+    log = editlog.EditLog(request)
+    entry = ''
+
+    for x in log.reverse():
+        entry = x
+        break
+    
+    return entry.ed_time_usecs
+
+def cache_exists(request, key):
+    if getattr(request.cfg, 'gwiki_cache_invalidate', False):
+        return False
+
+    return cache.exists(request, key)
+
+def cache_key(request, parts):
+    data = StringIO.StringIO()
+
+    # Make sure that repr of the object is unique
+    for part in parts:
+        data.write(repr(part))
+
+    data = data.getvalue()
+
+    return cache.key(request, content=data)
 
 # Functions for starting and ending page
 def enter_page(request, pagename, title):
@@ -124,7 +154,7 @@ def url_construct(request, args, name=''):
 
     return request.getQualifiedURL(req_url)
 
-def make_tooltip(request, pagedata):
+def make_tooltip(request, pagedata, format=''):
     _ = request.getText
 
     # Add tooltip, if applicable
@@ -142,6 +172,10 @@ def make_tooltip(request, pagedata):
                              (x == '_notype' and _('Links') or x,
                               ', '.join(pagemeta[x]))
                              for x in pagekeys)
+
+    # Graphviz bug: too long tooltips make svg output fail
+    if format in ['svg', 'zgr']:
+        return tooldata[:6746]
 
     return tooldata
     
@@ -271,6 +305,11 @@ def attachment_file(request, page, file):
     att_file = AttachFile.getFilename(request, page, file)
                                                    
     return att_file, os.path.isfile(att_file)
+
+def attachment_url(request, page, file):
+    att_url = AttachFile.getAttachUrl(page, file, request)
+                                                   
+    return att_url
 
 class GraphData(UserDict.DictMixin):
     def __init__(self, request):
