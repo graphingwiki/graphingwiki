@@ -61,8 +61,9 @@ cd graphingwiki
 %{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
 cd ..
 
-mkdir $RPM_BUILD_ROOT/%{python_sitelib}/raippa
-cp -r raippa/* $RPM_BUILD_ROOT/%{python_sitelib}/raippa
+cd raippa
+%{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
+cd ..
 
 cd opencollab
 %{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
