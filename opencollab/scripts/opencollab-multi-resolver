@@ -119,6 +119,9 @@ def main():
                       default=None,
                       metavar="MRESOLVE-PATH",
                       help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
+    parser.add_option("-r", "--recurse",
+        action="store_true", dest="recurse", default=False,
+        help="Perform queries recursively." )
     parser.add_option("-t", "--template",
                       dest="template",
                       default=None,
@@ -134,7 +137,7 @@ def main():
                       default=None,
                       metavar="CATEGORY",
                       help=("Optional CATEGORY to use, e.g. CategoryIdentity"))
-    parser.add_option("-v",
+    parser.add_option("-v", "--verbose",
         action="store_true", dest="verbose", default=False,
         help="Enable verbose output." )
     parser.set_usage("%prog [options]")
@@ -177,13 +180,20 @@ def main():
     if options.verbose:
         print "Expanding initial requests."
     expanded,resolved = seed_initial(new)
-    if options.verbose:
-        print "Resolving requests recursively."
-    while expanded:
-        new,err = resolve_requests(expanded,mresolve_path)
+    if options.recurse:
         if options.verbose:
-            print err
-        expanded,resolved = generate_requests(resolved,new)
+            print "Resolving requests recursively."
+        while expanded:
+            new,err = resolve_requests(expanded,mresolve_path)
+            if options.verbose:
+                print err
+            expanded,resolved = generate_requests(resolved,new)
+    else:
+        if options.verbose:
+            print "Resolving requests."
+        new,err = resolve_requests(expanded,mresolve_path)
+        for triplet in new.split('\n'):
+            resolved.add(triplet)
     if options.verbose:
         print "Shredding resolved RDF triplets."
     collab_metas.update(shred_triplets(resolved))
