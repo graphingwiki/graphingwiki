@@ -1,15 +1,15 @@
  # -*- coding: iso-8859-1 -*-
 from MoinMoin.Page import Page
-from MoinMoin.formatter.text_html import Formatter
+from MoinMoin import wikiutil
+
+Dependencies = ['metadata']
+generates_headings = False
 
 class SlideshowException(Exception):
     def __init__(self, args=str()):
         self.args = args
     def __str__(self):
         return self.args
-
-Dependencies = ['metadata']
-generates_headings = False
 
 def get_slides(request, pagename, slidekey, direction):
     pagedata = request.graphdata.getpage(pagename)
@@ -70,15 +70,15 @@ def macro_MetaSlideshow(macro, slidekey=u'next'):
     parameters = dict()
 
     if request.form.get('action', [None])[0]:
-        parameters['action'] = request.form['action'][0]
+        parameters['action'] = wikiutil.escape(request.form['action'][0])
 
     if request.form.get('media', [None])[0]:
-        parameters['media'] = request.form['media'][0]
+        parameters['media'] = wikiutil.escape(request.form['media'][0])
 
     result = list()
-    result.append(formatter.table(1, {"tableclass": "navigation"}))
-    result.append(formatter.table_row(1))
-    result.append(formatter.table_cell(1))
+    result.append(formatter.table(True, {"tableclass": "navigation"}))
+    result.append(formatter.table_row(True))
+    result.append(formatter.table_cell(True))
 
     if parameters.get('action', str()) == 'print':
         if parameters.get('media', str()) != 'projection':
@@ -118,8 +118,8 @@ def macro_MetaSlideshow(macro, slidekey=u'next'):
         if (index == 1):
             result.append(formatter.text("Slide %i of %i" % (current+1, len(slideshow))))
 
-    result.append(formatter.table_row(0))
-    result.append(formatter.table_cell(0))
-    result.append(formatter.table(0))
+    result.append(formatter.table_row(False))
+    result.append(formatter.table_cell(False))
+    result.append(formatter.table(False))
 
     return "".join(result) 
