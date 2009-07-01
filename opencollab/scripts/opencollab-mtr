@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re
+import socket
+import optparse
+import subprocess
+from subprocess import Popen
+from opencollab.wiki import CLIWiki
+from opencollab.meta import Metas, Meta, Func
+from opencollab.util.config import parse_config
+from opencollab.util.wiki import importMetas
+
+def run_trace(host, mtr, count):
+    mtr = mtr + " -rnc " + str(count) + " " + host
+    mtrp = Popen(mtr, shell=True, stdin=subprocess.PIPE, 
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
+    mtrp.stdin.write(host + '\n')
+    (sout, err) = mtrp.communicate()
+    return sout, err
+
+def shred_trace(host, trace):
+    collab_metas = Metas()
+    lines = trace.split('\n')
+    s = []
+    for line in lines[1:]:
+        s = line.split()
+        if s:
+            collab_metas[s[1]]["MTR HOP"].add(s[0])
+            collab_metas[s[1]]["MTR DEST"].add('[[%s]]' % host)
+            collab_metas[s[1]]["MTR LOSS"].add(s[2])
+            collab_metas[s[1]]["MTR SENT"].add(s[3])
+            collab_metas[s[1]]["MTR AVG"].add(s[4])
+            collab_metas[s[1]]["MTR BEST"].add(s[5])
+            collab_metas[s[1]]["MTR WORST"].add(s[6])
+            collab_metas[s[1]]["MTR STDDEV"].add(s[7])
+    return collab_metas
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option( "-c", "--config",
+        action="store",
+        type="string", dest="config",
+        metavar="CONFIG",
+        help="CONFIG file path.")
+    parser.add_option("-m", "--mtr-path",
+                      dest="mtr_path",
+                      default=None,
+                      metavar="MTR-PATH",
+                      help=("MTR-PATH. defaults to /usr/bin/mtr."))
+    parser.add_option("-n", "--number-of-cycles",
+                      dest="count",
+                      default=None,
+                      metavar="COUNT",
+                      help=("COUNT of seconds to run the trace. Defaults to 10 seconds per host."))
+    parser.add_option("-t", "--template",
+                      dest="template",
+                      default=None,
+                      metavar="TEMPLATE",
+                      help=("Optional TEMPLATE to use. Defaults to IdentityTemplate."))
+    parser.add_option("-u", "--url",
+                      dest="url",
+                      default=None,
+                      metavar="COLLAB-URL",
+                      help=("COLLAB-URL to connect to."))
+    parser.add_option("-w", "--wiki-category",
+                      dest="category",
+                      default=None,
+                      metavar="CATEGORY",
+                      help=("Optional CATEGORY to use, e.g. CategoryIdentity"))
+    parser.add_option("-v", "--verbose",
+        action="store_true", dest="verbose", default=False,
+        help="Enable verbose output." )
+    parser.set_usage("%prog [options] 0..N destination hosts")
+    options, args = parser.parse_args()
+    url=None
+    mtr_path="/usr/bin/mtr"
+    iopts={}
+    collab_metas = Metas()
+    hosts = []
+    if options.config:
+        iopts = parse_config(options.config, "creds", "mtr")
+    if len(args) > 0:
+        for arg in args:
+            hosts.append(arg)
+    elif options.config and "host" in iopts["mtr"]:
+        hosts.append(iopts["host"]["mtr"])
+    else:
+        parser.error("You need to specify a target host via the configuration file or\n \
+                      via 1..N positional arguments. Use -h for help.")
+    if options.mtr_path:
+        mtr_path=options.mtr_path
+    elif options.config and "mtr-path" in iopts["mtr"]:
+        mtr_path=iopts["mtr"]["mtr-path"]
+    else:
+        mresolve_path="/usr/bin/mtr"
+    if options.count:
+        count = options.count
+    elif options.config and "count" in iopts["mtr"]:
+        count = iopts["mtr"]["count"]
+    else:
+        count = 10
+    if options.template:
+        template=options.template
+    elif options.config and "template" in iopts["mtr"]:
+        template=iopts["mtr"]["template"]
+    else:
+        template="MtrTemplate"
+    if options.url:
+        url = options.url
+        collab = CLIWiki(url)
+    elif options.config and "url" in iopts["creds"]:
+        url = iopts["creds"]["url"]
+        collab = CLIWiki(url, config=options.config)
+    else:
+        parser.error("Collab URL needs to be specified. Use -h for help.")
+    if options.category:
+        category=options.category
+    elif options.config and "category" in iopts["mtr"]:
+        category=iopts["mtr"]["category"]
+    else:
+        category=None
+    for host in hosts:
+        if options.verbose:
+           print "Running trace to: ", host 
+        trace,error = run_trace(host, mtr_path, count)
+        if error:
+           print error
+        else:
+	   collab_metas.update(shred_trace(host, trace)) 
+    importMetas(collab, collab_metas, template, options.verbose, replace=False)
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
