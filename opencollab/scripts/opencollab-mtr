@@ -14,13 +14,12 @@ from opencollab.meta import Metas, Meta, Func
 from opencollab.util.config import parse_config
 from opencollab.util.wiki import importMetas
 
-def run_trace(host, mtr, count):
-    mtr = mtr + " -rnc " + str(count) + " " + host
-    mtrp = Popen(mtr, shell=True, stdin=subprocess.PIPE, 
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
-    mtrp.stdin.write(host + '\n')
-    (sout, err) = mtrp.communicate()
-    return sout, err
+def mod_hop(hop):
+    s = hop.replace('.', '') 
+    pad = 3 - len(hop)
+    for i in range(pad): 
+        s = "0" + s
+    return s
 
 def shred_trace(host, trace):
     collab_metas = Metas()
@@ -29,7 +28,8 @@ def shred_trace(host, trace):
     for line in lines[1:]:
         s = line.split()
         if s:
-            collab_metas[s[1]]["MTR HOP"].add(s[0])
+            hop = mod_hop(s[0])
+            collab_metas[s[1]]["MTR HOP"].add(hop)
             collab_metas[s[1]]["MTR DEST"].add('[[%s]]' % host)
             collab_metas[s[1]]["MTR LOSS"].add(s[2])
             collab_metas[s[1]]["MTR SENT"].add(s[3])
@@ -38,6 +38,14 @@ def shred_trace(host, trace):
             collab_metas[s[1]]["MTR WORST"].add(s[6])
             collab_metas[s[1]]["MTR STDDEV"].add(s[7])
     return collab_metas
+
+def run_trace(host, mtr, count):
+    mtr = mtr + " -rnc " + str(count) + " " + host
+    mtrp = Popen(mtr, shell=True, stdin=subprocess.PIPE, 
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
+    mtrp.stdin.write(host + '\n')
+    (sout, err) = mtrp.communicate()
+    return sout, err
 
 def main():
     parser = optparse.OptionParser()
@@ -131,7 +139,7 @@ def main():
            print error
         else:
 	   collab_metas.update(shred_trace(host, trace)) 
-    importMetas(collab, collab_metas, template, options.verbose, replace=False)
+    #importMetas(collab, collab_metas, template, options.verbose, replace=False)
 if __name__ == "__main__":
     try:
         main()
