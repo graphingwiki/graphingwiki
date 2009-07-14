@@ -3,11 +3,11 @@
     MoinMoin - TwitterBadge macro Version 0.1
                Displays an emended object with the wanted twitter content
     Example: <<TwitterBadge(janikenttala)>>
-    @copyright: 2008 by MarcelHäfner (www.heavy.ch)
     @copyright: 2009 by Jani Kenttala
     @license: GNU GPL, see COPYING for details.
 
     Based on YouTube.py
+    @copyright: 2008 by MarcelHäfner (www.heavy.ch)
 """
 
 import re, StringIO
@@ -23,10 +23,10 @@ def execute(macro, args):
     html= '''
 <div id="twitter_div">
 <ul id="twitter_update_list"></ul>
-<a href="http://twitter.com/%s/" id="twitter-link" style="display:block;text-align:right;">follow %s on Twitter</a>
+<a href="https://twitter.com/%s/" id="twitter-link" style="display:block;text-align:right;">follow %s on Twitter</a>
 </div>
-<script type="text/javascript" src="http://twitter.com/javascripts/blogger.js"></script>
-<script type="text/javascript" src="http://twitter.com/statuses/user_timeline/%s.json?callback=twitterCallback2&amp;count=5"></script>
+<script type="text/javascript" src="https://twitter.com/javascripts/blogger.js"></script>
+<script type="text/javascript" src="https://twitter.com/statuses/user_timeline/%s.json?callback=twitterCallback2&amp;count=5"></script>
 ''' % ( link,link, link )
 
     return macro.formatter.rawHTML(html)
