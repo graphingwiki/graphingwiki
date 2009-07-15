@@ -28,23 +28,23 @@
 import StringIO, string
 from MoinMoin import wikiutil
 
-def formatSharelinks(f,url):
+def formatSharelinks(formatter,url):
     result = ''
     linklist = {}
     linklist['[Twitter]'] = "http://twitthis.com/twit?url=%s" % ( url )
     linklist['[Facebook]'] = "http://www.facebook.com/share.php?u=%s" % (url )
 
     divfmt = {'class': 'SocialShareLinks'}
-    result = f.div(1, **divfmt)
+    result = formatter.div(1, **divfmt)
 
-    result += f.text('Share at: ')
+    result += formatter.text('Share at: ')
 
     for (site, shareulr) in linklist.iteritems():
-        result += f.url(1, shareulr, style="SocialShareLink", target="_blank")
-        result += f.text(site+ " ")
-        result += f.url(0)
+        result += formatter.url(1, shareulr, style="SocialShareLink", target="_blank")
+        result += formatter.text(site+ " ")
+        result += formatter.url(0)
 
-    result += f.div(0)
+    result += formatter.div(0)
     return result
 
 def execute(macro, args):
