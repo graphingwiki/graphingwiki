@@ -48,6 +48,6 @@ def formatSharelinks(formatter,url):
     return result
 
 def execute(macro, args):
-
-    url = wikiutil.escape(macro.request.getQualifiedURL())
-    return formatSharelinks(macro.formatter, url)
+    url = macro.request.getQualifiedURL() + macro.request.getPathinfo()
+    escapedurl = wikiutil.escape(url) 
+    return formatSharelinks(macro.formatter, escapedurl)
