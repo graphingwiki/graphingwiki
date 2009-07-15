@@ -1,7 +1,7 @@
 # -*- coding: iso-8859-1 -*-
 """
     MoinMoin - FriendFeedBadge macro Version 0.1
-               Displays an emended object with the wanted FriendFeed content
+               Displays an emended object with the wanted twitter content
     Example: <<FriendFeedBadge(janikenttala)>>
     @copyright: 2009 by Jani Kenttala
     @license: GNU GPL, see COPYING for details.
