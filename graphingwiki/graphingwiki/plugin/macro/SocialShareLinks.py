@@ -28,24 +28,26 @@
 import StringIO, string
 from MoinMoin import wikiutil
 
+def formatSharelinks(f,url):
+    result = ''
+    linklist = {}
+    linklist['[Twitter]'] = "http://twitthis.com/twit?url=%s" % ( url )
+    linklist['[Facebook]'] = "http://www.facebook.com/share.php?u=%s" % (url )
+
+    divfmt = {'class': 'SocialShareLinks'}
+    result = f.div(1, **divfmt)
+
+    result += f.text('Share at: ')
+
+    for (site, shareulr) in linklist.iteritems():
+        result += f.url(1, shareulr, style="SocialShareLink", target="_blank")
+        result += f.text(site+ " ")
+        result += f.url(0)
+
+    result += f.div(0)
+    return result
+
 def execute(macro, args):
 
     url = wikiutil.escape(macro.request.getQualifiedURL())
-  
-    socialnets = []
- 
-    twitter = '<a href="http://twitthis.com/twit?url=%s" title="Twitter" target="_blank">Twitter</a>' % (url) 
-    socialnets.append(twitter)
-
-    facebook = '<a href="http://www.facebook.com/share.php?u=%s" title="Facebook" target="_blank">Facebook</a>' % (url)
-    socialnets.append(facebook)
-
-#    delicious = '<a href="http://del.icio.us/post?v=2&url=%s" title="Del.icio.us" target="_blank">Del.icio.us</a>' % (url)
-#    socialnets.append(delicious)
-
-    html="Share on: "
-    html+= string.join(socialnets,", ")
-
-#    import pdb;pdb.set_trace()
-    return macro.formatter.rawHTML(html)
-
+    return formatSharelinks(macro.formatter, url)
