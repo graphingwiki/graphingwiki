@@ -34,7 +34,7 @@ def formatSharelinks(formatter,url):
     linklist['[Twitter]'] = "http://twitthis.com/twit?url=%s" % ( url )
     linklist['[Facebook]'] = "http://www.facebook.com/share.php?u=%s" % ( url )
     linklist['[FriendFeed]'] = "http://friendfeed.com/?url=%s" %  ( url )
-
+    linklist['[Digg]'] = "http://digg.com/submit?url=%s" %  (url)
 
     divfmt = {'class': 'SocialShareLinks'}
     result = formatter.div(1, **divfmt)
