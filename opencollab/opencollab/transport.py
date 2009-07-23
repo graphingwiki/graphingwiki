@@ -6,6 +6,12 @@
 import xmlrpclib
 import httplib
 
+_kerberos_found = True
+try:
+    import kerberos
+except ImportError:
+    _kerberos_found = False
+
 class CustomTransport(xmlrpclib.Transport):
     # A custom transport class that tries to keep the connection alive
     # over several requests.
@@ -49,6 +55,27 @@ class CustomTransport(xmlrpclib.Transport):
         self.send_content(h, request_body)
 
         response = h.getresponse()
+
+        if response.status == 401 and _kerberos_found and \
+                "Negotiate" in  response.msg.getheaders("www-authenticate"):
+            try:
+                res, vc = kerberos.authGSSClientInit("HTTP@" + host)
+                if res != 1:
+                    raise kerberos.GSSError()
+                res = kerberos.authGSSClientStep(vc, "")
+                if res != 0:
+                    raise kerberos.GSSError()
+                h.close()
+                h = self.make_connection(host)
+                self.send_request(h, handler)
+                h.putheader("Authorization", "Negotiate %s" % (
+                        kerberos.authGSSClientResponse(vc)))
+                self.send_host(h, host)
+                self.send_user_agent(h)
+                self.send_content(h, request_body)
+                response = h.getresponse()
+            except kerberos.GSSError:
+                pass
 
         if response.status != 200:
             raise xmlrpclib.ProtocolError(
