@@ -267,7 +267,7 @@ class Graph(Node):
         out = ''
 
         for node in sorted(self.nodes):
-            out += node
+            out += repr(node)
             n = self.nodes.get(node)
             out += repr(sorted(n))
 
