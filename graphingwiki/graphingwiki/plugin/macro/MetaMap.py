@@ -175,7 +175,7 @@ def execute(macro, args):
             mappi += u'<area%s shape="%s" coords="%s" title="%s">\n' % \
                 (href, shape, coordlist, tooltip)
 
-        cache.put(request, key + '-map', mappi, content_type='text/html')
+        cache.put(request, key + '-map', repr(mappi), content_type='text/html')
 
     else:
         mappifile = cache._get_datafile(request, key + '-map')

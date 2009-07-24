@@ -1257,7 +1257,7 @@ class GraphShower(object):
 
         if not cache_exists(self.request, key):
             mappi = self.get_layout(graphviz, 'cmapx')
-            cache.put(self.request, key, mappi, content_type="text/html")
+            cache.put(self.request, key, repr(mappi), content_type="text/html")
         else:
             mappifile = cache._get_datafile(self.request, key)
             mappi = mappifile.read()
@@ -1271,7 +1271,7 @@ class GraphShower(object):
         if not cache_exists(self.request, key):
             gvdata = self.get_layout(gr.graphviz, 'dot')
 
-            cache.put(self.request, key, gvdata, 
+            cache.put(self.request, key, repr(gvdata), 
                       content_type="text/vnd.graphviz")
         else:
             gvdatafile = cache._get_datafile(self.request, key)
@@ -1292,7 +1292,7 @@ class GraphShower(object):
         if not cache_exists(self.request, key):
             gvdata = self.get_layout(legend, 'dot')
 
-            cache.put(self.request, key, gvdata, 
+            cache.put(self.request, key, repr(gvdata), 
                       content_type="text/vnd.graphviz")
         else:
             gvdatafile = cache._get_datafile(self.request, key)
