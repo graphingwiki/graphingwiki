@@ -150,20 +150,28 @@ def construct_table(macro, pagelist, metakeys,
                     y_value in page_vals[page].get(y_key, set())):
 
                     result = ''
-                    result += f.listitem(1, **entryfmt)
 
                     args = {'class': 'metamatrix_link'}
 
+                    # Were there vals?
+                    vals = None
+
                     for key in metakeys:
                         for val in page_vals[page].get(key, list()):
-                            text = format_wikitext(request, val)
-                            result += pageobj.link_to(request, 
-                                                      text=text, **args)
+                            # Strip ugly brackets from bracketed links
+                            val = val.lstrip('[').strip(']')
 
-                    if addpagename:
+                            result += f.listitem(1, **entryfmt)
+
+                            result += pageobj.link_to(request, 
+                                                      text=val, **args)
+                            result += f.listitem(0)
+
+                            vals = val
+
+                    if vals and addpagename:
                         result += pageobj.link_to(request, **args)
 
-                    result += f.listitem(0)
                     macro.request.write(result)
                     
         request.write(macro.formatter.table_row(0))
@@ -190,7 +198,7 @@ def execute(self, args):
 
     if len(keys) < 2:
         return _sysmsg % ('error', 
-                          request.getText('Need a minimum of three keys to build matrix'))
+                          self.request.getText('Need a minimum of three keys to build matrix'))
 
     legend = "%s/%s" % (keys[0], keys[1])
 
