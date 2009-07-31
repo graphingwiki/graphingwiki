@@ -28,10 +28,6 @@ Preconditions:
 
   plugin_dirs = ['/usr/lib/python2.4/site-packages/graphingwiki/plugin']
 
- OR run per instance
-
-  % gwiki-install WIKIDIR
-
 4. Populate the graph data of existing pages
    % gwiki-rehash WIKIDIR
 
@@ -50,14 +46,8 @@ For housekeeping and debugging.
 gwiki-get-tgz
  * Gets a graphingwiki revision from repository
 
-gwiki-install
- * Installs the plugins to a wiki.
-
 gwiki-rehash  
  * Saves graph data from all the pages of a wiki.
-
-gwiki-debuggraph
- * Debug: Shows a page's graph data in list and dot formats.
 
 gwiki-showpage
  * A general CLI interface to a MoinMoin wiki

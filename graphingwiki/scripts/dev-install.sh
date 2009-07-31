@@ -37,15 +37,8 @@ function makewiki {
     sed -e "s!moinmoin_dir =.*!moinmoin_dir = '$gwdata'!" < $moinsrc/wikiconfig.py > $gwdata/wikiconfig.py
     rm -f $gwdata/wiki || true
     ln -s . $gwdata/wiki
-    find $gwdata/data/plugin -type l | xargs --no-run-if-empty rm
-    python $gwinstall/bin/gwiki-install -v $gwdata
 
-    # replace plugins with symlinks pointing at code
-    # in the svn working copy, so your edits will show up in running code
-    for pluginsubdir in action macro formatter parser xmlrpc; do
-        ln -sf $gwsrc/graphingwiki/plugin/$pluginsubdir/*.py $gwdata/data/plugin/$pluginsubdir/
-    done
-
+    echo "    plugin_dirs = ['$gwsrc/graphingwiki/plugin/']" >> $gwdata/wikiserverconfig.py
 }
 
 set -e
