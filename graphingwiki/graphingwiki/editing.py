@@ -370,7 +370,6 @@ def get_metas(request, name, metakeys,
     for key in loadedOuts:
         loadedOutsIndir.setdefault(key, set()).update(loadedOuts[key])
 
-    loadedLits = loadedPage.get("lit", dict())
     loadedMeta = loadedPage.get("meta", dict())
 
     if includeGenerated:
@@ -378,7 +377,6 @@ def get_metas(request, name, metakeys,
         if 'gwikiinlinks' in metakeys:
             inLinks = inlinks_key(request, loadedPage, checkAccess=checkAccess)
 
-            loadedLits['gwikiinlinks'] = inLinks
             loadedOuts['gwikiinlinks'] = inLinks
 
         # Meta key indirection support
@@ -416,7 +414,6 @@ def get_metas(request, name, metakeys,
                                 inLinks = inlinks_key(request, loadedPage, 
                                                       checkAccess=checkAccess)
 
-                                loadedLits[key] = inLinks
                                 loadedOuts[key] = inLinks
                                 continue
 
@@ -428,32 +425,14 @@ def get_metas(request, name, metakeys,
                             loadedMeta.setdefault(key, list())
                             loadedMeta[key].extend(metas[target_key])
 
-                        lits = pagedata.get('lit', dict())
-                        if target_key in lits:
-                            loadedLits.setdefault(key, list())
-                            loadedLits[key].extend(lits[target_key])
-
     # Add values and their sources
     for key in metakeys & set(loadedMeta):            
         for value in loadedMeta[key]:
             pageMeta[key].append(value)
 
-    # Link values are in a list as there can be more than one edge
-    # between two pages.
-    if display:
-        # Making things nice to look at.
-        for key in metakeys & set(loadedOuts):
-            for target in loadedOuts[key]:
-
-                pageMeta[key].append(target)
-    else:
-        # Showing things as they are
-        for key in metakeys & set(loadedLits):
-            for target in loadedLits[key]:
-                if abs_attach:
-                    target = absolute_attach_name(name, target)
-
-                pageMeta[key].append(target)
+    if loadedOuts.has_key('gwikicategory'):
+        pageMeta.setdefault('gwikicategory', 
+                            list()).extend(loadedOuts['gwikicategory'])
             
     return pageMeta
 
@@ -465,8 +444,9 @@ def get_keys(request, name):
     page = request.graphdata.getpage(name)
     keys = set(page.get('meta', dict()))
 
-    # Non-typed links are not included
-    keys.update([x for x in page.get('out', dict()) if x != NO_TYPE])
+    if page.get('out', dict()).has_key('gwikicategory'):
+        keys.add('gwikicategory')
+
     return keys
 
 def get_pages(request):
@@ -483,6 +463,7 @@ def get_pages(request):
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
     preformatted_re = re.compile('({{{.*?}}})', re.M|re.S)
+    wiki_preformatted_re = re.compile('{{{\s*\#\!wiki', re.M|re.S)
 
     keys_to_markers = dict()
     markers_to_keys = dict()
@@ -490,6 +471,10 @@ def remove_preformatted(text):
     # Replace with unique format strings per preformatted area
     def replace_preformatted(mo):
         key = mo.group(0)
+
+        # Do not remove wiki-formatted areas
+        if wiki_preformatted_re.search(key):
+            return key
 
         marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
         while marker in text:
@@ -580,12 +565,12 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u" test:: 1\n test:: 2",
     ...               dict(test=[u"1"]),
     ...               dict(test=[u"3"]))
-    u' test:: 3\n test:: 2'
+    u' test:: 3\n test:: 2\n'
     >>> replace_metas(request,
     ...               u" test:: 1\n test:: 2",
     ...               dict(test=[u"1"]),
     ...               dict(test=[u""]))
-    u' test:: 2'
+    u' test:: 2\n'
     >>> replace_metas(request,
     ...               u" test:: 1\n test:: 2",
     ...               dict(test=[u"2"]),
@@ -597,7 +582,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u"This is just filler\n test::\nYeah",
     ...               dict(),
     ...               dict(test=[u"1"]))
-    u'This is just filler\n test:: 1\nYeah'
+    u'This is just filler\n test:: 1\nYeah\n'
 
     Adding metas, clustering when possible:
     >>> replace_metas(request,
@@ -609,7 +594,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u"This is just filler\n test:: 1\nYeah",
     ...               dict(test=[u"1"]),
     ...               dict(test=[u"1", u"2"]))
-    u'This is just filler\n test:: 1\n test:: 2\nYeah'
+    u'This is just filler\n test:: 1\n test:: 2\nYeah\n'
 
     Handling the magical duality normal categories (CategoryBah)
     and meta style categories:
@@ -657,7 +642,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u' aa:: k\n ab:: a\n ab:: a\n----\nCategoryFoo\n',
     ...               {u'aa': [u'k'], u'ab': [u'a', u'a']},
     ...               {u'aa': [u'k'], u'ab': [u'', u'', u' ']})
-    u' aa:: k\n----\nCategoryFoo'
+    u' aa:: k\n----\nCategoryFoo\n'
 
     Regression test, bug #527: If the meta-to-be-replaced is not
     the first one on the page, it should still be replaced.
@@ -683,7 +668,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u" a:: {{{}}}\n b:: {{{Password}}}",
     ...               {'a': [u'{{{}}}']},
     ...               {'a': [u'']})
-    u' b:: {{{Password}}}'
+    u' b:: {{{Password}}}\n'
 
     Regression test, bug #591 - empties erased
 
@@ -691,13 +676,20 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u"blaa\n  a:: \n b:: \n c:: \n",
     ...               {u'a': [], u'c': [], u'b': []},
     ...               {u'a': [u'', u' '], u'c': [u'', u' '], u'b': [u'a', u' ']})
-    u'blaa\n a:: \n b:: a\n c:: \n'
+    u'blaa\n a:: \n b:: a\n c::\n'
 
     replace_metas(request, 
     ...           u' status:: open\n agent:: 127.0.0.1-273418929\n heartbeat:: 1229625387.57',
     ...           {'status': [u'open'], 'heartbeat': [u'1229625387.57'], 'agent': [u'127.0.0.1-273418929']},
     ...           {'status': [u'', 'pending'], 'heartbeat': [u'', '1229625590.17'], 'agent': [u'', '127.0.0.1-4124520965']})
     u' status:: pending\n heartbeat:: 1229625590.17\n agent:: 127.0.0.1-4124520965\n'
+
+    Regression test, bug #672
+    >>> replace_metas(request,
+    ...               u'<<MetaTable(Case672/A, Case672/B, Case672/C)>>\n\n test:: a\n',
+    ...               {u'test': [u'a']},
+    ...               {u'test': [u'a', u'']})
+    u'<<MetaTable(Case672/A, Case672/B, Case672/C)>>\n\n test:: a\n'
     """
 
     text = text.rstrip()
@@ -745,7 +737,12 @@ def replace_metas(request, text, oldmeta, newmeta):
         if not newval:
             return ""
 
-        return " %s:: %s\n" % (key, newval)
+        retval = " %s:: %s\n" % (key, newval)
+        if all.startswith('\n'):
+            retval = '\n' + retval
+
+        return retval
+
     text = dl_re.sub(dl_subfun, text)
 
     # Handle the magic duality between normal categories (CategoryBah)

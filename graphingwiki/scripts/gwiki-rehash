@@ -94,13 +94,16 @@ try:
                              return_objects=True)
 
     if len(args) > 1:
-        pagelist = [unicode(x, sys.getfilesystemencoding()) for x in args]
+        pagelist = [unicode(x, sys.getfilesystemencoding()) for x in args[1:]]
+        pageobjs = list()
 
         for page in pagelist:
-            if not Page(request, page).exists():
+            pageobj = Page(request, page)
+            if not pageobj.exists():
                 raise UserInputException
+            pageobjs.append(pageobj)
 
-        pages = pagelist
+        pages = pageobjs
         retain_shelve = True
 
 except UserInputException:

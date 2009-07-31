@@ -63,23 +63,18 @@ def shelve_add_in(new_data, (frm, to), linktype):
     new_data[to] = temp
 
 # Add out-links from local nodes to current node
-def shelve_add_out(new_data, (frm, to), linktype, hit):
+def shelve_add_out(new_data, (frm, to), linktype):
     if not linktype:
         linktype = NO_TYPE
 
     temp = new_data.get(frm, {})
 
-    # Also add literal text (hit) for each link
-    # eg, if out it SomePage, lit can be ["SomePage"]
     if not temp.has_key(u'out'):
         temp[u'out'] = {linktype: [to]}
-        temp[u'lit'] = {linktype: [hit]}
     elif not temp[u'out'].has_key(linktype):
         temp[u'out'][linktype] = [to]
-        temp[u'lit'][linktype] = [hit]
     else:
         temp[u'out'][linktype].append(to)
-        temp[u'lit'][linktype].append(hit)
 
     new_data[frm] = temp
 
@@ -125,18 +120,13 @@ def shelve_remove_out(new_data, (frm, to), linktype):
             # print "No such type: %s" % type
             continue
         if to in temp[u'out'][type]:
-            # As the literal text values for the links
-            # are added at the same time, they have the
-            # same index value
             i = temp[u'out'][type].index(to)
             del temp[u'out'][type][i]
-            del temp[u'lit'][type][i]
 
             # print "removed %s" % (repr(to))
 
         if not temp[u'out'][type]:
             del temp[u'out'][type]
-            del temp[u'lit'][type]
             # print "%s empty" % (type)
             # print "Hey man, I think I did it!"
 
@@ -196,11 +186,11 @@ def add_include(new_data, pagename, hit):
     temp.setdefault(u'include', list()).append(pagearg)
     new_data[pagename] = temp
 
-def add_link(new_data, pagename, nodename, linktype, hit):
+def add_link(new_data, pagename, nodename, linktype):
     edge = [pagename, nodename]
 
     shelve_add_in(new_data, edge, linktype)
-    shelve_add_out(new_data, edge, linktype, hit)
+    shelve_add_out(new_data, edge, linktype)
 
 def parse_text(request, page, text):
     pagename = page.page_name
@@ -255,7 +245,7 @@ def parse_text(request, page, text):
                 hit = item
                 if item in categories:
                     add_link(new_data, pagename, dnode, 
-                             u"gwikicategory", item)
+                             u"gwikicategory")
             elif type == 'meta':
                 add_meta(new_data, pagename, (metakey, item))
             elif type == 'include':
@@ -263,13 +253,12 @@ def parse_text(request, page, text):
                 pagedict.setdefault('include', list()).append(item[0])
 
             if dnode:
-                add_link(new_data, pagename, dnode, metakey, hit)
+                add_link(new_data, pagename, dnode, metakey)
 
     return new_data
 
 def changed_meta(request, pagename, old_data, new_data):
     add_out = dict()
-    lit_out = dict()
     del_out = dict()
 
     add_in = dict()
@@ -284,7 +273,6 @@ def changed_meta(request, pagename, old_data, new_data):
     # as edges have a larger time footprint while saving.
 
     add_out.setdefault(pagename, list())
-    lit_out.setdefault(pagename, list())
     del_out.setdefault(pagename, list())
 
     old_keys = set(old_data.get(u'out', {}).keys())
@@ -301,7 +289,6 @@ def changed_meta(request, pagename, old_data, new_data):
             # old data had more links, delete old
             if new_edges <= i:
                 val = old_data[u'out'][key][i]
-                lit = old_data[u'lit'][key][i]
 
                 del_out[pagename].append((key, val))
 
@@ -312,10 +299,8 @@ def changed_meta(request, pagename, old_data, new_data):
             # new data has more links, add new
             elif old_edges <= i:
                 val = new_data[pagename][u'out'][key][i]
-                lit = new_data[pagename][u'lit'][key][i]
 
                 add_out[pagename].append((key, val))
-                lit_out[pagename].append(lit)
 
                 # Only save in-links to local pages, not eg. url or interwiki
                 if node_type(request, val) == 'page':
@@ -323,19 +308,15 @@ def changed_meta(request, pagename, old_data, new_data):
 
             # check if the link i has changed
             else:
-                val_lit = old_data[u'lit'][key][i]
-                new_val_lit = new_data[pagename][u'lit'][key][i]
-
-                if val_lit == new_val_lit:
-                    continue
-
                 val = old_data[u'out'][key][i]
                 new_val = new_data[pagename][u'out'][key][i]
+
+                if val == new_val:
+                    continue
 
                 # link changed, replace old link with new
                 # add and del out-links
                 add_out[pagename].append((key, new_val))
-                lit_out[pagename].append(new_val_lit)
 
                 del_out[pagename].append((key, val))
 
@@ -349,10 +330,8 @@ def changed_meta(request, pagename, old_data, new_data):
     # Added edges of a new linktype
     for key in new_keys.difference(old_keys):
         for i, val in enumerate(new_data[pagename][u'out'][key]):
-            lit = new_data[pagename][u'lit'][key][i]
 
             add_out[pagename].append((key, val))
-            lit_out[pagename].append(lit)
 
             # Only save in-links to local pages, not eg. url or interwiki
             if node_type(request, val) == 'page':
@@ -418,7 +397,7 @@ def changed_meta(request, pagename, old_data, new_data):
 
     #print
 
-    return add_out, lit_out, del_out, add_in, del_in
+    return add_out, del_out, add_in, del_in
 
 def _clear_page(request, pagename):
     # Do not delete in-links! It will break graphs, categories and whatnot
@@ -442,7 +421,7 @@ def execute(pagename, request, text, pagedir, pageitem):
     # Get a copy of current data
     old_data = request.graphdata.get(pagename, {})
 
-    add_out, lit_out, del_out, add_in, del_in = \
+    add_out, del_out, add_in, del_in = \
         changed_meta(request, pagename, old_data, new_data)
 
     # Insert metas and other stuff from parsed content
@@ -476,8 +455,7 @@ def execute(pagename, request, text, pagedir, pageitem):
         for i, edge in enumerate(add_out[page]):
             linktype, dst = edge
             #print 'addout', repr(page), edge
-            hit = lit_out[page][i]
-            shelve_add_out(request.graphdata, [page, dst], linktype, hit)
+            shelve_add_out(request.graphdata, [page, dst], linktype)
     for page in add_in:
         for edge in add_in[page]:
             #print 'addin', repr(page), edge

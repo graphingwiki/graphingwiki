@@ -451,9 +451,9 @@ class GraphData(UserDict.DictMixin):
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in value.get('lit', dict()):
+            for key in value.get('out', dict()):
                 self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in value['lit'][key]:
+                for val in value['out'][key]:
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
@@ -482,7 +482,7 @@ class GraphData(UserDict.DictMixin):
                 node.__setattr__(key, val)
 
         # Shapefile is an extra special case
-        for shape in page.get('lit', dict()).get('gwikishapefile', list()):
+        for shape in page.get('meta', dict()).get('gwikishapefile', list()):
             node.gwikishapefile = shape
         # so is category
         node.gwikicategory = \
@@ -559,7 +559,6 @@ class GraphData(UserDict.DictMixin):
 
         # Add links from page
         links = page.get('out', dict())
-        lit_links = page.get('lit', dict())
         for type in links:
             for i, dst in enumerate(links[type]):
                 # Filter Category, Template pages

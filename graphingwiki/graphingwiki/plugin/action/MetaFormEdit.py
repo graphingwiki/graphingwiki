@@ -135,10 +135,6 @@ def execute(pagename, request):
                 for val in data[page]['meta'][key]:
                     vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in data[page].get('lit', dict()):
-                for val in data[page]['lit'][key]:
-                    vals_on_keys.setdefault(key, set()).add(val)
-
     def repl_subfun(mo):
         pagekey, val = mo.groups()
 

@@ -16,7 +16,6 @@ Dependencies = []
 class Parser(WikiParser):
     def __init__(self, raw, request, **kw):
         self.pagename = request.page.page_name
-        self.new_item = True
         self.definitions = {} 
         self.curdef = ''
         self.prevdef = ''
@@ -41,55 +40,27 @@ class Parser(WikiParser):
     def __add_meta(self, word, groups):
         if not word.strip():
             return ''
-
+        
         if self.in_dd:
         ## FIXME? for now, only accept entries on the same line for 
         ## meta value to minimise surprise
             if not self.ddline == self.lineno:
                 return ''
-
-            # If there were eg. links before the text currently being
-            # added, they have been gathered in self.formatter.currentitems.
-            # Add them now before the text currently being processed.
-            while self.currentitems:
-                _, items = self.currentitems.pop()
-
-                next = ''
-                if self.formatter.textstorage:
-                    next = self.formatter.textstorage.pop()
-
-                # The item zero contains the raw form of the item,
-                # further ones contain parsed stuff for savegraphdata
-                self.formatter.textstorage.append(items[0])
-                if next:
-                    self.formatter.textstorage.append(next)
                 
             self.formatter.textstorage.append(word)
-            self.new_item = False
 
         return ''
-
-    def __add_link(self, word, groups):
-        if self.in_dd:
-            if not self.new_item:
-                self.__add_meta(word, groups)
-                return True
-            else:
-                self.new_item = False
-    
-        return False
 
     def _interwiki_repl(self, word, groups):
         """Handle InterWiki links."""
         wiki = groups.get('interwiki_wiki')
         page = groups.get('interwiki_page')
         wikipage = "%s:%s" % (wiki, page)
-        if self.__add_link(wikipage, groups):
-            return u""
+        self.__add_meta(wikipage, groups)
 
         iw_url = resolve_iw_url(self.request, wiki, page)
 
-        self.currentitems.append(('interwiki', (wikipage, iw_url)))
+        self.currentitems.append(('interwiki', (wikipage, wikipage)))
         self.new_item = False
         return u''
 
@@ -105,13 +76,12 @@ class Parser(WikiParser):
             else:
                 self.formatter.text('!')
 
-        if self.__add_link(word, groups):
-            return u""
-
         name = groups.get('word_name')
         current_page = self.formatter.page.page_name
         abs_name = wikiutil.AbsPageName(current_page, name)
         if abs_name == current_page:
+            self.currentitems.append(('wikilink', (abs_name, abs_name)))
+            self.__add_meta(abs_name, groups)
             return u''
         else:
             # handle anchors
@@ -121,6 +91,8 @@ class Parser(WikiParser):
                 anchor = ""
             if self.cat_re.match(abs_name):
                 self.currentitems.append(('category', (abs_name)))
+                self.__add_meta(abs_name, groups)
+
             else:
                 if not anchor:
                     wholename = abs_name
@@ -128,6 +100,7 @@ class Parser(WikiParser):
                     wholename = "%s#%s" % (abs_name, anchor)
 
                 self.currentitems.append(('wikilink', (wholename, abs_name)))
+                self.__add_meta(wholename, groups)
             return u''
 
     _word_bang_repl = _word_repl
@@ -139,8 +112,7 @@ class Parser(WikiParser):
         scheme = groups.get('url_scheme', 'http')
         target = groups.get('url_target', '')
 
-        if self.__add_link(target, groups):
-            return u""
+        self.__add_meta(target, groups)
 
         self.currentitems.append(('url', (target, target)))
         return u''
@@ -153,13 +125,14 @@ class Parser(WikiParser):
         All that really seems to be needed is to pass the raw markup. """
         macro_name = groups.get('macro_name')
         macro_args = groups.get('macro_args')
+        macro = groups.get('macro')
 
         if macro_name == 'Include':
             # Add includes
             page_args = macro_args.split(',')[0]
             self.currentitems.append(('include', (page_args, word)))
 
-        return self.__add_meta(groups.get('macro'), {})
+        return self.__add_meta(macro, {})
 
     _macro_name_repl = _macro_repl
     _macro_args_repl = _macro_repl
@@ -184,9 +157,7 @@ class Parser(WikiParser):
         target = groups.get('link_target', '')
         desc = groups.get('link_desc', '')
 
-        # If we're in dd and there has been prior text, do not go forward
-        if self.__add_link(raw, groups):
-            return u""
+        self.__add_meta(raw, groups)
 
         target = self._fix_attach_uri(target)
 
@@ -205,8 +176,7 @@ class Parser(WikiParser):
     def _transclude_repl(self, word, groups):
         raw = groups.get('transclude', '')
         target = groups.get('transclude_target', '')
-        if self.__add_link(raw, groups):
-            return u""
+        self.__add_meta(raw, groups)
 
         target = self._fix_attach_uri(target)
 
@@ -217,8 +187,7 @@ class Parser(WikiParser):
     _transclude_params_repl = _transclude_repl
 
     def _email_repl(self, word, groups):
-        if self.__add_link(word, groups):
-            return u""
+        self.__add_meta(word, groups)
 
         self.currentitems.append(('wikilink', (word, 'mailto:%s' % word)))
         return u''
@@ -243,17 +212,6 @@ class Parser(WikiParser):
     _tt_repl = __add_meta
     _u_repl = __add_meta
 
-    def __single_link_before_text(self):
-        """ 
-        Corner case: If we have a dd with non-empty text after a
-        single link, it will not be added as text automatically, and
-        has to be dealt with separately.
-        """
-        type, content = self.currentitems[0]
-        raw = content[0]
-        # The item came before the text
-        self.formatter.textstorage.insert(0, raw)
-
     def _dl_repl(self, match, groups):
         """Handle definition lists."""
         if self.in_pre:
@@ -262,20 +220,12 @@ class Parser(WikiParser):
         # Flush pre-dd links and previous dd:s not undented
         if self.currentitems and not self.curdef:
             self.definitions.setdefault('_notype', 
-                                        []).extend(self.currentitems)
+                                        list()).extend(self.currentitems)
         elif self.currentitems:
-            curkey = self.definitions.setdefault(self.curdef, [])
-
-            # Only account for non-empty text
-            if ''.join(self.formatter.textstorage).strip():
-                self.__single_link_before_text()
-                # Only add this to stored text, not self.definitions -
-                # undent will handle the insertion of this meta later
-            else:
-                curkey.extend(self.currentitems)
+            self.definitions.setdefault(self.curdef, 
+                                        list()).extend(self.currentitems)
 
         self.currentitems=[]
-        self.new_item = True
         self.ddline = self.lineno
 
         result = []
@@ -294,25 +244,22 @@ class Parser(WikiParser):
 
     def _undent(self):
         if self.in_dd:
-            curkey = self.definitions.setdefault(self.curdef, [])
+            curkey = self.definitions.setdefault(self.curdef, list())
 
             # Only account for non-empty text
             if ''.join(self.formatter.textstorage).strip():
-                if self.currentitems:
-                    self.__single_link_before_text()
                 # Add the metas, prepare to populate next key
                 curkey.append(('meta', ''.join(self.formatter.textstorage)))
                 self.formatter.textstorage = list()
-            elif self.currentitems:
+            if self.currentitems:
                 curkey.extend(self.currentitems)
         else:
             self.definitions.setdefault('_notype', 
-                                        []).extend(self.currentitems)
+                                        list()).extend(self.currentitems)
 
         # self.ddline is not reset here, as the last 
         # items on line may be added after the undent
         self.in_dd = 0
-        self.new_item = True
         self.prevdef = self.curdef
         self.curdef = '_notype'
         self.currentitems = []
@@ -326,9 +273,10 @@ class Parser(WikiParser):
     def _parser_repl(self, word, groups):
         parser_name = groups.get('parser_name', None)
 
-        if parser_name != 'wiki':
-            self.in_pre = True
-        
+        self.in_pre = True
+        if parser_name == 'wiki':
+            self.in_pre = False
+
         return self.__add_meta(word, groups)
 
     _parser_unique_repl = _parser_repl
