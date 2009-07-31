@@ -17,8 +17,7 @@ setup(name='graphingwiki', version='0.1',
       package_data={'graphingwiki': ['plugin/*/*.py', 'world_map.png', 
                                      "plugin/__init__.py"]},
       scripts=['scripts/gwiki-rehash', 'scripts/gwiki-showgraph',
-               'scripts/gwiki-install', 'scripts/gwiki-showpage', 
-               'scripts/mm2gwiki.py', 'scripts/gwiki-editpage',
-               'scripts/gwiki-xml-attachfile',
+               'scripts/gwiki-showpage', 'scripts/mm2gwiki.py', 
+               'scripts/gwiki-editpage', 'scripts/gwiki-xml-attachfile',
                'scripts/gwiki-get-tgz', 'scripts/gwiki-xml-meta'])
 
