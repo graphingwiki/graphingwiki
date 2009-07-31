@@ -41,7 +41,7 @@ from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
 from MoinMoin.request.request_cli import Request as RequestCLI
-from MoinMoin.Page import Page
+from MoinMoin.Page import Page, RootPage
 from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
@@ -49,8 +49,15 @@ from graphingwiki.editing import underlay_to_pages
 from graphingwiki import install_hooks
 install_hooks()
 
-usage = "usage: %prog <path-to-wiki> [pagename]\n"
+pages = []
+retain_shelve = False
+
+usage = "usage: %prog [options] <path-to-wiki> [pagename(s)]\n"
 parser = OptionParser(usage=usage)
+
+parser.add_option("-u", "--update_underlay", dest="underlay_only", 
+                  action='store_true', default=False,
+                  help="Only update underlay pages")
 
 (options, args) = parser.parse_args()
 
@@ -58,8 +65,6 @@ parser = OptionParser(usage=usage)
 encoder = getencoder(config.charset)
 def _e(str):
     return encoder(str, 'replace')[0]
-
-pages = []
 
 class UserInputException(Exception):
     pass
@@ -70,21 +75,39 @@ try:
 
     sys.path.insert(0, configdir)
     from MoinMoin.request.request_cli import Request as RequestCLI
-    req = RequestCLI()
-    datadir = req.cfg.data_dir
-    pagesdir = os.path.join(datadir, 'pages')
+    request = RequestCLI()
+    datadir = request.cfg.data_dir
+
+    # Get a list of all pages
+    root = RootPage(request)
+    filter=None
+    if options.underlay_only:
+        retain_shelve = True
+
+        def filterStandard(name):
+            pageobj = Page(request, name)
+            return pageobj.getPageStatus()[0]
+
+        filter = filterStandard
+
+    pages = root.getPageList(user="", include_underlay=True, filter=filter,
+                             return_objects=True)
+
     if len(args) > 1:
-        pagename = unicode(args[1], sys.getfilesystemencoding())
-        pagefilename = quoteWikinameFS(pagename)
-        pagedir = os.path.join(pagesdir, pagefilename)
-        if not os.path.isdir(pagedir):
-            raise UserInputException
-        pages = [pagename]
+        pagelist = [unicode(x, sys.getfilesystemencoding()) for x in args]
+
+        for page in pagelist:
+            if not Page(request, page).exists():
+                raise UserInputException
+
+        pages = pagelist
+        retain_shelve = True
+
 except UserInputException:
     parser.print_help()
     sys.exit(2)
 
-if not pages:
+if not retain_shelve:
     gddir = os.path.join(datadir, 'graphdata')
     if os.path.exists(gddir):
         shutil.rmtree(gddir)
@@ -98,16 +121,6 @@ else:
                              "and rehash the crashed pages.\n")
             sys.exit(1)
 
-os.chdir(pagesdir)
-
-if not pages:
-    # List existing pages
-    for dir in [x for x in os.listdir('.') if os.path.isdir(x)]:
-        if 'current' in os.listdir(dir):
-            pages.append(unquoteWikiname(dir))
-
-pages = filter(lambda x: not x.endswith('/MoinEditorBackup'), pages)
-
 total = len(pages)
 padding = len(str(total))
 count = 1
@@ -115,29 +128,19 @@ count = 1
 # Just init one request
 req = RequestCLI()
 
-for pagename in pages:
-    page_enc = _e(pagename)
+for pageobj in pages:
+    page_enc = _e(pageobj.page_name)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
     count += 1
     # Implant relevant bits for this page into our recycleable req
-    
-    pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
-    picklefile = os.path.join(pagedir, 
-                              quoteWikinameFS(pagename), 
-                              'graphdata.pickle')
-
-    if os.path.isfile(picklefile):
-        os.unlink(picklefile)
-
-    p = Page(req, pagename)
-    req.page = p
-    pagepath = underlay_to_pages(req, p)
-    text = p.get_raw_body()
+    req.page = pageobj
+    pagepath = underlay_to_pages(req, pageobj)
+    text = pageobj.get_raw_body()
 
     # Apply the graphsaver action to the page
     graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
-    graphsaver(pagename, req, text, pagepath, p)
+    graphsaver(pageobj.page_name, req, text, pagepath, pageobj)
 
 # Must finish the request to ensure that metadata is saved
 req.finish()
