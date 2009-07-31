@@ -178,13 +178,17 @@ class GraphShower(object):
         self.edgelabels = 0
         self.noloners = 0
         self.imagelabels = 0
- 
+        self.fillshapes = 1
+
         self.legend = 'bottom'
         self.legend_positions = ['off', 'top', 'bottom', 'left', 'right']
 
         self.categories = list()
         self.otherpages = list()
         self.startpages = list()
+
+        self.invisnodes = list()
+        self.neighbours = list()
 
         self.depth = 1
         self.orderby = ''
@@ -327,11 +331,12 @@ class GraphShower(object):
         if request.form.has_key('categories'):
             self.categories = request.form['categories']
 
-        # Other pages
-        if request.form.has_key('otherpages'):
-            self.otherpages = [x.strip() for x in 
-                               ','.join(request.form["otherpages"]).split(',')
-                               if x.strip()]
+        # List arguments of pages
+        for arg in ['otherpages', 'invisnodes', 'neighbours']:
+            if request.form.has_key(arg):
+                setattr(self, arg, [x.strip() for x in 
+                                    ','.join(request.form[arg]).split(',')
+                                    if x.strip()])
 
         # String arguments, only include non-empty
         for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
@@ -341,7 +346,7 @@ class GraphShower(object):
 
         # Toggle arguments
         for arg in ['unscale', 'hidedges', 'edgelabels', 'imagelabels',
-                    'noloners', 'nostartnodes', 'noorignode']:
+                    'noloners', 'nostartnodes', 'noorignode', 'fillshapes']:
             if request.form.has_key(arg):
                 setattr(self, arg, 1)
 
@@ -587,7 +592,8 @@ class GraphShower(object):
                 obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 
             # Shapefiles
-            if getattr(orig_obj, 'gwikishapefile', None):
+            if not objname in self.invisnodes and \
+                    getattr(orig_obj, 'gwikishapefile', None):
                 # Enter file path for attachment shapefiles
                 value = orig_obj.gwikishapefile[13:-2]
                 components = value.split('/')
@@ -642,6 +648,7 @@ class GraphShower(object):
                     obj.gwikiperipheries = '0'
 
                 del obj.gwikishapefile
+                
 
             # Add data on types of edges for which obj is child
             for parent in outgraph.edges.parents(objname):
@@ -737,9 +744,11 @@ class GraphShower(object):
                 re_color = getattr(self, 're_color', None)
                 if re_color:
                     rule = re_color.sub(self.colorsub, rule)
-                obj.gwikifillcolor = self.colorfunc(rule)
-                obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
-                obj.gwikistyle = 'filled'
+                if (not hasattr(obj, 'gwikiimage') or
+                    (hasattr(obj, 'gwikiimage') and self.fillshapes)):
+                    obj.gwikifillcolor = self.colorfunc(rule)
+                    obj.gwikicolor = self.colorfunc(rule, self.FRINGE_DARKNESS)
+                    obj.gwikistyle = 'filled'
 
         nodes = filter(lambda x: hasattr(x, encode_page(colorby)), 
                        map(outgraph.nodes.get, outgraph.nodes))
@@ -785,6 +794,16 @@ class GraphShower(object):
         # Also fix overlong labels
         for name in outgraph.nodes:
             node = outgraph.nodes.get(name)
+
+            # Invisible nodes do not get label, or much anything else
+            if name in self.invisnodes:
+                node.gwikistyle = 'invis'
+                node.gwikilabel = ''
+                node.gwikitooltip = ''
+                node.gwikishape = 'point'
+                node.gwikiimage = ''
+                continue
+
             if not hasattr(node, 'gwikilabel'):
                 node.gwikilabel = name
 
@@ -816,6 +835,18 @@ class GraphShower(object):
                     node.gwikistyle = node.gwikistyle + ', bold'
                 else:
                     node.gwikistyle = 'bold'
+
+        # Special emphasis on neighbour nodes
+        for edge in outgraph.edges:
+            if edge[0] in self.neighbours:
+                neighbour = edge[1]
+            elif edge[1] in self.neighbours:
+                neighbour = edge[0]
+            else:
+                continue
+
+            node = outgraph.nodes.get(neighbour)
+            node.gwikistyle = node.gwikistyle.replace('bold', 'setlinewidth(6)')
 
         return outgraph
 
@@ -983,6 +1014,14 @@ class GraphShower(object):
                       _("Other pages:") + u"</u><br>\n")
         form_textbox(request, 'otherpages', 20, ', '.join(self.otherpages))
 
+        # invis nodes
+        request.write(_("Invisible nodes:") + u"</u><br>\n")
+        form_textbox(request, 'invisnodes', 20, ', '.join(self.invisnodes))
+
+        # highlight neighbors
+        request.write(_("Highlight neighbors:") + u"</u><br>\n")
+        form_textbox(request, 'neighbours', 20, ', '.join(self.neighbours))
+
         # limit
         request.write(u"<u>" + _("Include rules:") + u"</u><br>\n")
         for x,y in [('start', _('These pages only')),
@@ -1041,6 +1080,10 @@ class GraphShower(object):
             form_textbox(request, 'colorreg', 10, str(self.colorreg))
             request.write(u'<u>' + _('substitution:') + '</u><br>\n')
             form_textbox(request, 'colorsub', 10, str(self.colorsub))
+
+            # Fill nodes with shapefiles
+            form_checkbox(request, 'fillshapes', '1', self.fillshapes, 
+                          _('Fill shapefiles?'))
 	
         # orderby
         request.write(u"<td valign=top>\n")
@@ -1257,7 +1300,7 @@ class GraphShower(object):
 
         if not cache_exists(self.request, key):
             mappi = self.get_layout(graphviz, 'cmapx')
-            cache.put(self.request, key, repr(mappi), content_type="text/html")
+            cache.put(self.request, key, mappi, content_type="text/html")
         else:
             mappifile = cache._get_datafile(self.request, key)
             mappi = mappifile.read()
@@ -1271,7 +1314,7 @@ class GraphShower(object):
         if not cache_exists(self.request, key):
             gvdata = self.get_layout(gr.graphviz, 'dot')
 
-            cache.put(self.request, key, repr(gvdata), 
+            cache.put(self.request, key, gvdata, 
                       content_type="text/vnd.graphviz")
         else:
             gvdatafile = cache._get_datafile(self.request, key)
@@ -1292,7 +1335,7 @@ class GraphShower(object):
         if not cache_exists(self.request, key):
             gvdata = self.get_layout(legend, 'dot')
 
-            cache.put(self.request, key, repr(gvdata), 
+            cache.put(self.request, key, gvdata, 
                       content_type="text/vnd.graphviz")
         else:
             gvdatafile = cache._get_datafile(self.request, key)
@@ -1450,8 +1493,17 @@ class GraphShower(object):
             self.request.theme.send_closing_html()
 
     def edge_tooltips(self, outgraph):
-        for edge in outgraph.edges:
+        for edge in outgraph.edges:                
             e = outgraph.edges.get(*edge)
+
+            # Edges from invisible nodes do not get attributes
+            if (edge[0] in self.invisnodes or 
+                edge[1] in self.invisnodes):
+                e.color = ''
+                e.decorate = ''
+                e.label = ''
+                e.style = 'invis'
+
             # Fix linktypes to strings
             linktypes = getattr(e, 'linktype', [NO_TYPE])
             lt = ', '.join(linktypes)
