@@ -178,7 +178,27 @@ def make_tooltip(request, pagedata, format=''):
         return tooldata[:6746]
 
     return tooldata
-    
+
+# Expand include arguments to a list of pages
+def expand_include(request, pagename, args):
+    pagelist = list()
+
+    for inc_name in args:
+        inc_name = wikiutil.AbsPageName(pagename, inc_name)
+        if inc_name.startswith("^"):
+            try:
+                inc_match = re.compile(inc_name)
+            except re.error:
+                pass # treat as plain page name
+            else:
+                # Get user filtered readable page list
+                pagelist.extend(request.rootpage.getPageList(
+                        filter=inc_match.match))
+        else:
+            pagelist.append(inc_name)
+        
+    return pagelist
+   
 # Default node attributes that should not be shown
 SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',

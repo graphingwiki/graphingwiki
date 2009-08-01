@@ -174,18 +174,6 @@ def add_meta(new_data, pagename, (key, val)):
     # Save to shelve's metadata list
     shelve_set_attribute(new_data, pagename, key, val)
 
-def add_include(new_data, pagename, hit):
-    hit = hit[11:-3]
-    pagearg = hit.split(',')[0]
-
-    # If no data, continue
-    if not pagearg:
-        return
-
-    temp = new_data.get(pagename, {})
-    temp.setdefault(u'include', list()).append(pagearg)
-    new_data[pagename] = temp
-
 def add_link(new_data, pagename, nodename, linktype):
     edge = [pagename, nodename]
 
@@ -249,8 +237,10 @@ def parse_text(request, page, text):
             elif type == 'meta':
                 add_meta(new_data, pagename, (metakey, item))
             elif type == 'include':
-                pagedict = new_data.setdefault(pagename, dict())
-                pagedict.setdefault('include', list()).append(item[0])
+                # No support for regexp includes, for now!
+                if not item[0].startswith("^"):
+                    dnode = wikiutil.AbsPageName(pagename, item[0])
+                    metakey = 'gwikiinclude'
 
             if dnode:
                 add_link(new_data, pagename, dnode, metakey)
@@ -406,7 +396,6 @@ def _clear_page(request, pagename):
     else:
         request.graphdata[pagename][u'saved'] = False
         del request.graphdata[pagename][u'mtime']
-        del request.graphdata[pagename][u'include']
         del request.graphdata[pagename][u'acl']
         del request.graphdata[pagename][u'meta']
 
@@ -430,7 +419,6 @@ def execute(pagename, request, text, pagedir, pageitem):
     temp = request.graphdata.get(pagename, {})
     temp[u'meta'] = new_data.get(pagename, dict()).get(u'meta', dict())
     temp[u'acl'] = new_data.get(pagename, dict()).get(u'acl', '')
-    temp[u'include'] = new_data.get(pagename, dict()).get(u'include', list())
     temp[u'mtime'] = cur_time
     temp[u'saved'] = True
 

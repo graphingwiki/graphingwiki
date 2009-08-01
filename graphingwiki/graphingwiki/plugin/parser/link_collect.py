@@ -129,7 +129,7 @@ class Parser(WikiParser):
 
         if macro_name == 'Include':
             # Add includes
-            page_args = macro_args.split(',')[0]
+            page_args = word.split(',')[0]
             self.currentitems.append(('include', (page_args, word)))
 
         return self.__add_meta(macro, {})
