@@ -1,0 +1,23 @@
+should not have any overrides
+<<Include(^Fr.*,,editlink)>>
+
+nonexisting with to, from
+<<Include(FIXME,,to="^----$")>>
+
+nonexisting with editlink, template and rev
+<<Include(Case183/nonexisting,,,editlink,rev=0,template="HelpTemplate")>>
+
+nonexisting with editlink and template
+<<Include(Case183/nonexisting,,,editlink,template="HelpTemplate")>>
+
+nonexisting with editlink
+<<Include(Case183/nonexisting,,,editlink)>>
+
+nonexisting include
+<<Include(Case183/nonexisting)>>
+
+revision include of FrontPage
+<<Include(FrontPage,,,editlink,rev=1)>>
+revision with template
+<<Include(FrontPage,,,editlink,rev=1,template="HelpTemplate")>>
+<<Include(FrontPage,,,editlink)>>

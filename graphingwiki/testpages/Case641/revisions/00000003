@@ -1,0 +1,33 @@
+Describe Case641 here.
+{{{#!wiki red
+ 1:: FrontPage
+}}}
+
+{{{#!wiki comment/dotted
+This is a wiki parser section with class "comment dotted" (see HelpOnParsers).
+
+Its visibility gets toggled the same way.
+ 2:: FrontPage
+
+}}}
+
+{{{#!wiki caution
+'''Don't overuse admonitions'''
+
+Admonitions should be used with care. A page riddled with admonitions will look restless and will be harder to follow then a page where admonitions are used sparingly.
+ 3:: FrontPage
+}}}
+
+{{{#!python
+def hello():
+    print "Hello World!"
+
+ donotshowthis:: FrontPage
+}}}
+
+{{{
+def hello():
+    print "Hello World!"
+ donotshowthis:: FrontPage
+}}}
+<<MetaTable>>

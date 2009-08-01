@@ -1,0 +1,4 @@
+ metaparsebug:: !CamelCase foo bar
+ metaparsebug:: foo !CamelCase bar
+ metaparsebug:: foo bar !CamelCase
+<<MetaTable>>

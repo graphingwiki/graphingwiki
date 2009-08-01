@@ -1,0 +1,6 @@
+{{{#!dot
+digraph g {
+a -> b;
+}}}
+
+<<ViewDot(?action=ViewDot&graphengine=neato&format=png&attachment=attachment:Case634/k.dot)>>

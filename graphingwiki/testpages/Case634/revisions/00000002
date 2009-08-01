@@ -1,0 +1,4 @@
+{{{#!dot
+digraph g {
+a -> b;
+}}}

@@ -1,0 +1,8 @@
+[[MetaRadarChart(Case489/TableTest ää 2, chartheight=400)]]
+[[MetaRadarChart(||ää ää||öö öö||aa aa||bb bb||)]]
+ aa aa:: 4
+ bb bb:: 3
+ öö öö:: 2
+ ää ää:: 1
+----
+CategoryTableTest
