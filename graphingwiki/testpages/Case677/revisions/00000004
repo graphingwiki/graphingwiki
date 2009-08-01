@@ -1,0 +1,37 @@
+ Created page:: [[FrontPage]]
+[[FrontPage| poo page: FrontPage]]
+ a a:: [[FrontPage|huhhahhei]]
+ b b:: OtherPage juu juu
+[[FrontPage| b b: FrontPage]]
+ c c:: Case677/noncamelcase koo koo
+ d d:: [[FrontPage
+
+these should show
+{{{
+<<MetaTable(Created page=FrontPage)>>
+}}}
+<<MetaTable(Created page=FrontPage)>>
+{{{
+<<MetaTable(a a=FrontPage)>>
+}}}
+<<MetaTable(a a=FrontPage)>>
+
+these should not show
+{{{
+<<MetaTable(b b=FrontPage)>>
+}}}
+<<MetaTable(b b=FrontPage)>>
+{{{
+{{{
+<<MetaTable(d d=FrontPage)>>
+}}}
+<<MetaTable(d d=FrontPage)>>
+{{{
+<<MetaTable(poo page=FrontPage)>>
+}}}
+<<MetaTable(poo page=FrontPage)>>
+{{{
+Although Case677/noncamelcase is an existing page, it is not written as a link in meta c c
+<<MetaTable(c c=Case677/noncamelcase)>>
+}}}
+<<MetaTable(c c=Case677/noncamelcase)>>
