@@ -150,8 +150,8 @@ def execute(pagename, request):
     data = dict()
     for page in pagelist:
         # On links, we want a list of page names, not their markup
-        metas = get_metas(request, page, metakeys,
-                          display=True, checkAccess=False)
+        metas = get_metas(request, page, metakeys, checkAccess=False)
+
         # Get the maximum value of each key on a page
         for key in metakeys:
             data.setdefault(key, list())

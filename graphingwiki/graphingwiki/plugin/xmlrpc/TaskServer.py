@@ -65,8 +65,8 @@ def execute(xmlrpcobj, agentid, oper='get',
         
         random.shuffle(pagelist)
         for page in pagelist:
-            stuff = getmetas(request, globaldata, page,
-                             metakeys, display=False)
+            stuff = getmetas(request, globaldata, page, metakeys)
+
             metas = dict()
             for key in stuff:
                 metas[key] = [x for x, y in stuff[key]]

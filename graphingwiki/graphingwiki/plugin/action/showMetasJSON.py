@@ -48,7 +48,7 @@ def execute(pagename, request):
         request.write('{"%s"' % page)
         request.write(' : ')
         request.write('{')
-        metas = get_metas(request, page, metakeys, display=False, checkAccess=True)
+        metas = get_metas(request, page, metakeys, checkAccess=True)
         metacount = 1
         for meta in metas:
             request.write('"%s"' % meta)

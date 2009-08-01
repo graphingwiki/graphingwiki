@@ -86,7 +86,7 @@ def execute(macro, args):
 
     values = set()
     for page in pagelist:
-        metas = get_metas(request, page, metakeys, display=True)
+        metas = get_metas(request, page, metakeys)
         for key in metas:
             # Get the maximum value of each key on a page
             if metas[key]:

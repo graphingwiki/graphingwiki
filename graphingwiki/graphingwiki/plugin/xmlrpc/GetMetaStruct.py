@@ -17,12 +17,13 @@ def execute(xmlrpcobj, args):
     _ = request.getText
 
     # Expects MetaTable arguments
-    pagelist, metakeys, _ = metatable_parseargs(request, args, get_all_keys=True)
+    pagelist, metakeys, _ = metatable_parseargs(request, args, 
+                                                get_all_keys=True)
 
     out = {}
     # We're pretty sure the user has the read access to the pages,
     # so don't check again
     for page in pagelist:
-        metas = get_metas(request, page, metakeys, display=False, abs_attach=False, checkAccess=False)
+        metas = get_metas(request, page, metakeys, checkAccess=False)
         out[page] = dict(metas)
     return out

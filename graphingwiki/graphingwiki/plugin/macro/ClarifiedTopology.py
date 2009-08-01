@@ -74,7 +74,7 @@ def draw_topology(request, args, key):
     for page in pagelist:
         data = get_metas(request, page, 
                          [topology, 'gwikishapefile', 'tia-name'],
-                         display=True, checkAccess=False)
+                         checkAccess=False)
 
         crds = [x.split(',') for x in data.get(topology, list)]
 
