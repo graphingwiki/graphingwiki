@@ -1045,9 +1045,9 @@ def metatable_parseargs(request, args,
                 # Either the value itself
                 re_val = "^(%s|" % (re.escape(val)) 
                 # or as bracketed link
-                re_val += "(?P<sta>\[\[)?%s(?(sta)\]\])?|" % (re.escape(val)) 
+                re_val += "(?P<sta>\[\[)%s(?(sta)\]\])|" % (re.escape(val)) 
                 # or as commented bracketed link
-                re_val += "(?P<stb>\[\[)?%s(?(stb)\|[^\]]*\]\])?)$" % \
+                re_val += "(?P<stb>\[\[)%s(?(stb)\|[^\]]*\]\]))$" % \
                     (re.escape(val)) 
 
             # else strip the //:s
