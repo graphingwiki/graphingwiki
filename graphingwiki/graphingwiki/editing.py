@@ -1030,24 +1030,31 @@ def metatable_parseargs(request, args,
             data = arg.split("=")
             key = data[0]
             val = '='.join(data[1:])
-            linkmatch = False
 
             # Assume that value limits are regexps, if
             # not, escape them into exact regexp matches
             if not regexp_re.match(val):
 
-                # If the value is a page, make it a non-matching regexp so
-                # that all link variations will generate a match
-                if Page(request, val).exists():
-                    re_val = "%s" % (re.escape(val))
-                    linkmatch = True
-                else:
-                    re_val = "^%s$" % (re.escape(val))
+                # If the value is a page, make it a non-matching
+                # regexp so that all link variations will generate a
+                # match. An alternative would be to match from links
+                # also, but in this case old-style metalinks, which
+                # cannot be edited, would appear in metatables, which
+                # is not wanted (old-style eg. [[Page| key: Page]])
+
+                # Either the value itself
+                re_val = "^(%s|" % (re.escape(val)) 
+                # or as bracketed link
+                re_val += "(?P<sta>\[\[)?%s(?(sta)\]\])?|" % (re.escape(val)) 
+                # or as commented bracketed link
+                re_val += "(?P<stb>\[\[)?%s(?(stb)\|[^\]]*\]\])?)$" % \
+                    (re.escape(val)) 
+
             # else strip the //:s
             elif len(val) > 1:
                 re_val = val[1:-1]
 
-            limitregexps.setdefault(key, set()).add((re.compile(re_val, re.IGNORECASE | re.UNICODE), val, linkmatch))
+            limitregexps.setdefault(key, set()).add(re.compile(re_val, re.IGNORECASE | re.UNICODE))
             continue
 
         # order spec
@@ -1130,7 +1137,6 @@ def metatable_parseargs(request, args,
         if limitregexps:
             # We're sure we have access to read the page, don't check again
             metas = get_metas(request, page, limitregexps, checkAccess=False)
-            links = get_links(request, page, limitregexps, checkAccess=False)
 
             for key, re_limits in limitregexps.iteritems():
 
@@ -1139,23 +1145,12 @@ def metatable_parseargs(request, args,
                     clear = False
                     break
 
-                for re_limit, lit_val, linkmatch in re_limits:
+                for re_limit in re_limits:
                     clear = False
 
                     # Iterate all the keys for the value for a match
                     for value in values:
                         if re_limit.search(value):
-
-                            # If we're trying to match different link
-                            # variations, "valid page name" should not
-                            # match the following, as it is not
-                            # written as a proper link on the page and
-                            # not saved as link.
-                            #
-                            # c c:: valid page name koo koo
-                            if linkmatch:
-                                if not lit_val in links[key]:
-                                    continue
 
                             clear = True
                             # Single match is enough
