@@ -11,11 +11,16 @@ def hashFile(f):
     """
     try:
         fobj = f.read()
-        hash = md5.new(fobj.hexdigest())
     except AttributeError:
-        fobj = file(f,'rb')
-        hash = md5.new(fobj.read()).hexdigest()
-    fobj.close();
+        try:
+            fobj = file(f,'rb')
+            hash = md5.new(fobj.read()).hexdigest()
+        except IOError:
+            sys.exit(sys.exc_info())
+        else:
+            fobj.close()
+    else:
+         hash = md5.new(fobj).hexdigest()
     return hash
 
 def uploadFile(collab, page_name, file, file_name):
