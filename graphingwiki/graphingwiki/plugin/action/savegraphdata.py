@@ -223,7 +223,6 @@ def parse_text(request, page, text):
         for type, item in value:
             # print metakey, type, item
             dnode = None
-            metakey = ''
 
             if  type in ['url', 'wikilink', 'interwiki', 'email']:
                 dnode = item[1]
@@ -240,8 +239,8 @@ def parse_text(request, page, text):
             elif type == 'include':
                 # No support for regexp includes, for now!
                 if not item[0].startswith("^"):
-                    dnode = wikiutil.AbsPageName(pagename, item[0])
-                    metakey = 'gwikiinclude'
+                    included = wikiutil.AbsPageName(pagename, item[0])
+                    add_link(new_data, pagename, included, u"gwikiinclude")
 
             if dnode:
                 add_link(new_data, pagename, dnode, metakey)
