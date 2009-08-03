@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-
+"""
+    @copyright: 2009 Lari Huttunen, Marko Laakso
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
 import md5
 import os
 import sys
@@ -10,18 +13,12 @@ def hashFile(f):
     Expect a file name or a cStringIO.StringIO object.
     """
     try:
-        fobj = f.read()
+        data = f.read()
     except AttributeError:
-        try:
-            fobj = file(f,'rb')
-            hash = md5.new(fobj.read()).hexdigest()
-        except IOError:
-            sys.exit(sys.exc_info())
-        else:
-            fobj.close()
-    else:
-         hash = md5.new(fobj).hexdigest()
-    return hash
+        fobj = file(f,'rb')
+        data = fobj.read()
+        fobj.close()
+    return md5.new(data).hexdigest()
 
 def uploadFile(collab, page_name, file, file_name):
     try:
