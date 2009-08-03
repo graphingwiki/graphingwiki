@@ -10,10 +10,11 @@ def hashFile(f):
     Expect a file name or a cStringIO.StringIO object.
     """
     try:
+        fobj = f.read()
+        hash = md5.new(fobj.hexdigest())
+    except AttributeError:
         fobj = file(f,'rb')
-    except(IOError, TypeError):
-        fobj = f
-    hash = md5.new(fobj.read()).hexdigest()
+        hash = md5.new(fobj.read()).hexdigest()
     fobj.close();
     return hash
 
