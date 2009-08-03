@@ -222,7 +222,8 @@ def parse_text(request, page, text):
     for metakey, value in p.definitions.iteritems():
         for type, item in value:
             # print metakey, type, item
-            dnode=None
+            dnode = None
+            metakey = ''
 
             if  type in ['url', 'wikilink', 'interwiki', 'email']:
                 dnode = item[1]
