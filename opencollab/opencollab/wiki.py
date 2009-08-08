@@ -6,170 +6,141 @@
 import urlparse
 import xmlrpclib
 import urllib
-import socket
 import httplib
+import base64
 import re
+from encodings import idna
 
-try:
-    from curltransport import CURLTransport as CustomTransport
-except ImportError:
-    from transport import CustomTransport
-
-class WikiFailure(Exception):
-    pass
-
-class AuthenticationFailed(WikiFailure):
-    pass
-
-class WikiAuthenticationFailed(AuthenticationFailed):
-    pass
-
-class HttpAuthenticationFailed(AuthenticationFailed):
-    pass
+class WikiFailure(Exception): pass
+class AuthenticationFailed(WikiFailure): pass
+class WikiAuthenticationFailed(AuthenticationFailed): pass
+class HttpAuthenticationFailed(AuthenticationFailed): pass
 
 class WikiFault(WikiFailure):
     def __init__(self, fault):
-        faultString = fault.faultString.strip()
-        faultLines = fault.faultString.split("\n")
+        message = "There was an error in the wiki side"
 
-        if faultLines:
-            message = "There was an error in the wiki side (%s)" % faultLines[0]
-        else:
-            message = "There was an error in the wiki side"
+        lines = fault.faultString.splitlines()
+        if lines:
+            message += " (%s)" % lines[0]
 
         WikiFailure.__init__(self, message)
         self.fault = fault
 
-def runWrapped(func, *args, **keys):
-    try:
-        result = func(*args, **keys)
-    except xmlrpclib.Fault, f:
-        if f.faultCode == "INVALID":
-            raise WikiAuthenticationFailed(f.faultString)
-        raise WikiFault(f)
-    except xmlrpclib.ProtocolError, e:
-        if e.errcode == 401:
-            raise HttpAuthenticationFailed(e.errmsg)
-        raise WikiFailure(e.errmsg)
-    except (socket.gaierror, socket.error), (code, msg):
-        raise WikiFailure(msg)
-    except httplib.HTTPException, msg:
-        raise WikiFailure(msg)
-
-    if isinstance(result, dict) and "faultString" in result:
-        faultString = result["faultString"]
-        raise WikiFailure(faultString)
-    return result
-
-def urlQuote(string):
-    if isinstance(string, unicode):
-        string = string.encode("utf-8")
-    return urllib.quote(string, "/:")
-                               
 class Wiki(object):
     WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?)[\,\.]$", re.I)
 
-    def __init__(self, url=None, sslPeerVerify=False):
-        object.__init__(self)
+    def __init__(self, url):
+        scheme, host, path, _, _, _ = urlparse.urlparse(url)
+        if isinstance(host, unicode):
+            host = idna.ToASCII(host)
+        if isinstance(path, unicode):
+            path = urllib.quote(path.encode("utf-8"))
+        
+        self.host = idna.ToASCII(host)
+        self.path = path + "?action=xmlrpc2"
 
-        self.sslPeerVerify = sslPeerVerify
+        self.headers = dict(Connection="Keep-Alive")
+        self.token = None
 
-        self._url = urlQuote(url)
-        self._httpCreds = None
-        self._wikiCreds = None
-        self._proxy = None
-
-    def _getProxy(self):
-        if self._proxy is not None:
-            return self._proxy
-
-        action = "action=xmlrpc2"
-        scheme, netloc, path, _, _, _ = urlparse.urlparse(self._url)
-
-        if self._httpCreds:
-            username, password = map(urlQuote, self._httpCreds)
-            netloc = "%s:%s@%s" % (username, password, netloc)
-        url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
-
-        if scheme == "http":
-            transport = CustomTransport(CustomTransport.HTTP)
+        if scheme.strip().lower() == "http":
+            self.connection = httplib.HTTPConnection(self.host)
         else:
-            transport = CustomTransport(CustomTransport.HTTPS,
-                                        sslPeerVerify=self.sslPeerVerify)
-
-        try:
-            self._proxy = xmlrpclib.ServerProxy(url, transport, allow_none=True)
-        except IOError, msg:
-            raise WikiFailure(msg)
-
-        return self._proxy
-
-    def _doWikiAuth(self, username, password):
-        token = self._getProxy().getAuthToken(username, password)
+            self.connection = httplib.HTTPSConnection(self.host)
+        
+    def _wiki_auth(self, username, password):
+        token = self._request("getAuthToken", username, password)
         if not token:
             raise WikiAuthenticationFailed("wiki authentication failed")
-        return token
+        self.token = token, username, password        
     
     def _authenticate(self, username, password):
-        self._proxy = None
-        self._wikiCreds = None
-        self._httpCreds = None
+        self.headers.pop("Authorization", None)
+        self.token = None
 
         try:
             try:
-                whoami = runWrapped(self._getProxy().WhoAmI)
+                whoami = self._request("WhoAmI")
             except HttpAuthenticationFailed:
-                self._proxy = None
-                self._httpCreds = username, password
-                whoami = runWrapped(self._getProxy().WhoAmI)
-
+                auth = base64.b64encode(username + ":" + password)
+                self.headers["Authorization"] = "Basic " + auth
+                whoami = self._request("WhoAmI")
+                
             match = self.WHOAMI_FORMAT.match(whoami)
             if match is None:
                 raise WikiFailure("WhoAmI action returned invalid data")
 
-            valid = match.groups(1)
+            valid = match.group(1)
             if valid == "0":
-                token = runWrapped(self._doWikiAuth, username, password)
-                self._wikiCreds = token, username, password
+                self._wiki_auth(username, password)
         except:
-            self._proxy = None
-            self._wikiCreds = None
-            self._httpCreds = None
+            self.headers.pop("Authorization", None)
+            self.token = None
             raise
 
-    def _multiCall(self, name, *args):
-        multiCall = xmlrpclib.MultiCall(self._getProxy())
+    def _dumps(self, name, args):
+        if self.token is None:
+            return xmlrpclib.dumps(args, name)
+
+        token, _, _ = self.token
+
+        mc_list = list()
+        mc_list.append(dict(methodName="applyAuthToken", params=(token,)))
+        mc_list.append(dict(methodName=name, params=args))
+        return xmlrpclib.dumps((mc_list,), "system.multicall")
+
+    def _loads(self, data):
+        result, _ = xmlrpclib.loads(data)
+        if self.token is None:
+            return result[0]
+
+        auth, other = result[0]
+        if (not isinstance(auth, (dict, list)) or 
+            not isinstance(other, (dict, list))):
+            WikiFailure("unexpected type in multicall result")            
+
+        if isinstance(auth, dict):
+            code = auth.get("faultCode", None)
+            string = auth.get("faultString", "<unknown fault>")
+            if code == "INVALID":
+                raise WikiAuthenticationFailed(string)
+            raise xmlrpclib.Fault(code, string)
         
-        if self._wikiCreds:
-            token, username, password = self._wikiCreds
-            multiCall.applyAuthToken(token)
+        if isinstance(other, dict):
+            raise xmlrpclib.Fault(other["faultCode"], other["faultString"])
+        return other[0]
+            
+    def _request(self, name, *args):
+        body = self._dumps(name, args)
+        self.connection.request("POST", self.path, body, self.headers)
 
-        method = getattr(multiCall, name)
-        method(*args)
-        results = multiCall()
+        response = self.connection.getresponse()
+        data = response.read()
+        if response.status == 401:
+            raise HttpAuthenticationFailed(response.reason)
+        elif response.status != 200:
+            raise WikiFailure(response.reason)
 
-        if not self._wikiCreds:
-            return results[0]
-        if results[0] == "SUCCESS":
-            return results[1]
-
-        raise WikiAuthenticationFailed(results[0]["failureString"])
+        return self._loads(data)
 
     def request(self, name, *args):
         try:
-            return runWrapped(self._multiCall, name, *args)
-        except WikiAuthenticationFailed:
-            _, username, password = self._wikiCreds
-            token = runWrapped(self._doWikiAuth, username, password)
-            self._wikiCreds = token, username, password
-        return runWrapped(self._multiCall, name, *args)
+            try:
+                return self._request(name, *args)
+            except WikiAuthenticationFailed:
+                _, username, password = self.token
+                self.token = None
+                self._wiki_auth(username, password)
+                return self._request(name, *args)
+        except xmlrpclib.Fault, fault:            
+            raise WikiFault(fault)
 
     def authenticate(self, username, password):
         try:
             self._authenticate(username, password)
         except AuthenticationFailed:
             return False
-        return True
+        return True    
 
 import re
 import md5
