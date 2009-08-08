@@ -107,7 +107,7 @@ def draw_topology(request, args, key):
         # If there was no image or a problem with loading the image
         if not page in images:
             # Lack of image -> black 10x10 rectangle is drawn
-            end_x, end_y = start_x + 10, end_x + 10
+            end_x, end_y = start_x + 10, start_y + 10
 
         allcoords.append((end_x, end_y))
 
