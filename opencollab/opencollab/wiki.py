@@ -49,10 +49,11 @@ class Wiki(object):
             self.connection = httplib.HTTPSConnection(self.host)
         
     def _wiki_auth(self, username, password):
+        self.token = None
         token = self._request("getAuthToken", username, password)
         if not token:
             raise WikiAuthenticationFailed("wiki authentication failed")
-        self.token = token, username, password        
+        self.token = token, username, password
     
     def _authenticate(self, username, password):
         self.headers.pop("Authorization", None)
@@ -129,7 +130,6 @@ class Wiki(object):
                 return self._request(name, *args)
             except WikiAuthenticationFailed:
                 _, username, password = self.token
-                self.token = None
                 self._wiki_auth(username, password)
                 return self._request(name, *args)
         except xmlrpclib.Fault, fault:            
