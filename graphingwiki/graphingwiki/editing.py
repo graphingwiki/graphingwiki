@@ -943,14 +943,21 @@ def string_aton(value):
     if not '.' in value:
         raise TypeError
 
-    value = value.lstrip('[').rstrip(']').strip('"')
+    # Strips links syntax and stuff
+    value = value.lstrip('[').rstrip(']')
+
+    # Support for CIDR notation, eg. 10.10.1.0/24
+    end = ''
+    if '/' in value:
+        value, end = value.split('/', 1)
+        end = '/' + end
 
     # 00 is stylistic to avoid this: 
     # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
     #             socket.inet_aton('1.2.3.4')]) 
     # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
-    return u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
-                           "unicode_escape")
+    return = u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
+                             "unicode_escape") + end
 
 ORDER_FUNCS = [
     # (conversion function, ignored exception type(s))
