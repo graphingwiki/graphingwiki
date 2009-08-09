@@ -36,7 +36,7 @@ class Wiki(object):
             host = idna.ToASCII(host)
         if isinstance(path, unicode):
             path = urllib.quote(path.encode("utf-8"))
-        
+
         self.host = idna.ToASCII(host)
         self.path = path + "?action=xmlrpc2"
 
@@ -47,6 +47,7 @@ class Wiki(object):
             self.connection = httplib.HTTPConnection(self.host)
         else:
             self.connection = httplib.HTTPSConnection(self.host)
+        self.connection.connect()
         
     def _wiki_auth(self, username, password):
         self.token = None
@@ -115,7 +116,14 @@ class Wiki(object):
         body = self._dumps(name, args)
         self.connection.request("POST", self.path, body, self.headers)
 
-        response = self.connection.getresponse()
+        try:
+            response = self.connection.getresponse()
+        except httplib.BadStatusLine:
+            self.connection.close()
+            self.connection.connect()
+            self.connection.request("POST", self.path, body, self.headers)
+            response = self.connection.getresponse()
+
         data = response.read()
         if response.status == 401:
             raise HttpAuthenticationFailed(response.reason)
