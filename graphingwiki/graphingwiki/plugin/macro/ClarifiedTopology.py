@@ -95,7 +95,9 @@ def draw_topology(request, args, key):
         img = data.get('gwikishapefile', list())
 
         if img:
+            # Get attachment name, strip link artifacts, find filesys name
             img = img[0].split('/')[-1]
+            img = img.rstrip('}').rstrip(']]')
             imgname = AttachFile.getFilename(request, page, img)
             try:
                 images[page] = cairo.ImageSurface.create_from_png(imgname)
