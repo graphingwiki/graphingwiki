@@ -162,8 +162,9 @@ def make_tooltip(request, pagedata, format=''):
     pagemeta = dict()
     for key in pagedata.get('meta', dict()):
         pagemeta[key] = [x for x in pagedata['meta'][key]]
-    for key in pagedata.get('out', dict()):
-        pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
+    for key in ['gwikicategory', '_notype']:
+        if key in pagedata.get('out', dict()):
+            pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
 
     tooldata = str()
     if pagemeta:
