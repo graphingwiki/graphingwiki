@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-"
+"""
+    RenamePage action plugin to MoinMoin/Graphingwiki
+     - Extends MoinMoin RenamePage action with link renaming
+
+    @copyright: 2009 by Juhani Eronen <exec@iki.fi>
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+"""
 import re
 
 from MoinMoin import wikiutil

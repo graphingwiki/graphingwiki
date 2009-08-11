@@ -2,11 +2,14 @@
 
 from MoinMoin.request import RequestBase
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
 
 from graphingwiki.editing import underlay_to_pages
+from graphingwiki.util import actionname
 
 import os
+import re
 
 # Helper functions for monkey patching and dealing with underlays.
 
@@ -120,6 +123,48 @@ def variable_insert(self, result, _):
 
     return result
 
+def attachfile_filelist(self, result, (args, _)):
+    _ = self.getText
+    attachments = re.findall('do=view&amp;target=([^"]+)', result)
+    if len(attachments) < 2:
+        return result
+
+    form = u'<form method="GET" action="%s">\n' % \
+        actionname(self, self.page.page_name) + \
+        u'<input type=hidden name=action value="AttachFile">'
+
+    result = form + result
+
+    att1 = self.form.get('att1', [''])[0]
+    att2 = self.form.get('att2', [''])[0]
+    sort = self.form.get('sort', ['normal'])[0]
+
+    for target in attachments:
+        buttontext = '\\1 | ' + \
+            '<input type="radio" value="%s" name="att1"/%s>' % \
+            (target, att1 == target and ' checked' or '')+ \
+            '<input type="radio" value="%s" name="att2"/%s>' % \
+            (target, att2 == target and ' checked' or '')+ \
+            _('diff')
+
+        viewtext = '(<a href.+&amp;do=view&amp;target=%s">%s</a>)' % \
+            (re.escape(target), _("view"))
+        
+        result, count = re.subn(viewtext, buttontext, result, 1)
+
+    result = result + \
+        '<input type="radio" value="normal" name="sort"/%s>%s\n' % \
+        (sort == 'normal' and ' checked' or '', _("Normal")) + \
+        '<input type="radio" value="sort" name="sort"/%s>%s\n' % \
+        (sort == 'sort' and ' checked' or '', _("Sort")) + \
+        '<input type="radio" value="uniq" name="sort"/%s>%s\n' % \
+        (sort == 'uniq' and ' checked' or '', _("Sort + uniq")) + \
+        '<input type="radio" value="cnt" name="sort"/%s>%s\n' % \
+        (sort == 'cnt' and ' checked' or '', _("Sort + uniq + count")) + \
+        '<br><input type=submit name=do value="diff"></form>'
+
+    return result
+
 # Main function for injecting graphingwiki extensions straight into
 # Moin's beating heart.
 
@@ -153,6 +198,9 @@ def install_hooks():
                                          graphdata_rename)
     PageEditor.copyPage = monkey_patch(PageEditor.copyPage, 
                                        graphdata_copy)
+
+    AttachFile._build_filelist = monkey_patch(AttachFile._build_filelist, 
+                                              attachfile_filelist)
 
     # FIXME: Remove this patch when MoinMoin makes variable names
     # configurable in some fashion.
