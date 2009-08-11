@@ -21,7 +21,7 @@ def _do_diff(pagename, request):
         (AttachFile.exists(request, pagename, att1) and 
          AttachFile.exists(request, pagename, att2))):
         AttachFile.error_msg(pagename, request, 
-                             _('Could not diff, attachment not selected or do not exist'))
+                             _('Could not diff, attachments not selected or nonexisting'))
         return
 
     request.form['target'] = [att1]
