@@ -199,6 +199,7 @@ def install_hooks():
     PageEditor.copyPage = monkey_patch(PageEditor.copyPage, 
                                        graphdata_copy)
 
+    # Monkey patch AttachFile to include diffing
     AttachFile._build_filelist = monkey_patch(AttachFile._build_filelist, 
                                               attachfile_filelist)
 
