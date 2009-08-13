@@ -208,12 +208,16 @@ def main():
                 tmp = sys.stdin.readline().strip()
                 if(tmp == "q"):
                     sys.exit()
-                answer = int(tmp)
-                if((answer >= 0) and (answer <= nro)):
-                    testplan_page = pnames[answer][0]
-                    cont = False
+                try:
+                    answer = int(tmp)
+                except ValueError:
+                    print "Your selection must be between 0 and ", nro
                 else:
-                    print "Your selection should be between 0 and ", nro
+                    if((answer >= 0) and (answer <= nro)):
+                        testplan_page = pnames[answer][0]
+                        cont = False
+                    else:
+                        print "Your selection must be between 0 and ", nro
     if options.recursive:
         if(options.verbose):
             print "Walking ", dlist
