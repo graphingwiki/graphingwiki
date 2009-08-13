@@ -131,6 +131,9 @@ def main():
         action="store",
         type="string", dest="config",
         help="Config file path.")
+    parser.add_option("-p", "--prompt",
+        action="store_true", dest="prompt", default=False,
+        help="Prompt for selecting the test plan from search results obtained via -s.")
     parser.add_option("-s", "--search-string",
         action="store",
         type="string", dest="search_string", default=None,
@@ -168,13 +171,14 @@ def main():
     elif options.config and "testrun-results" in iopts["defensics"]:
         dlist = (iopts["defensics"]["testrun-results"])
     else:
-        if options.search_string:
-            search_string = options.search_string
-        elif options.config and "search-string" in iopts["defensics-uploader"]:
-            search_string = iopts["defensics-uploader"]["search-string"]
-        else:
-            parser.error("You need to specify a testrun directory base via -d or \n \
-                          via 1..N positional input directories. Use -h for help.")
+        parser.error("You need to specify a testrun directory base via -d or \n \
+                      via 1..N positional input directories. Use -h for help.")
+    if options.search_string:
+        search_string = options.search_string
+    elif options.config and "search-string" in iopts["defensics-uploader"]:
+        search_string = iopts["defensics-uploader"]["search-string"]
+    else:
+        search_string = None
     if options.testplan_page:
         testplan_page = options.testplan_page
     elif options.config and "testplan-page" in iopts["defensics"]:
@@ -191,11 +195,25 @@ def main():
         parser.error("Collab URL needs to be specified. Use -h for help.")
     if search_string is not None:
         tpages = getPages(collab, search_string)
-        nro = 1
+        nro = 0
         for page in tpages:
             print ("%3d" % nro), page
             nro += 1
-        sys.exit()
+        if options.prompt:
+            nro -= 1
+            cont = True
+            pnames = tpages.items()
+            while cont:
+                print "Enter your selection or q to quit: " 
+                tmp = sys.stdin.readline().strip()
+                if(tmp == "q"):
+                    sys.exit()
+                answer = int(tmp)
+                if((answer >= 0) and (answer <= nro)):
+                    testplan_page = pnames[answer][0]
+                    cont = False
+                else:
+                    print "Your selection should be between 0 and ", nro
     if options.recursive:
         if(options.verbose):
             print "Walking ", dlist
