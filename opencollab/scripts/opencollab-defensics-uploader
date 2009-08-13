@@ -85,11 +85,14 @@ def handle_paths(collab,testplan_page,dirs):
             page_metas.update(parse_tool_options(page_metas))
             if('main.log.gz' in flist):
                 pass
-            elif('main.log' in flist):
+            if('main.log' in flist):
                 page_metas["Main Log"].add('[[attachment:main.log.gz]]')
-                gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
-                gzipped.write(open(os.path.join(dir, "main.log")).read())
-                gzipped.close()
+                if('main.log.gz' in flist):
+                    pass
+                else:
+                    gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
+                    gzipped.write(open(os.path.join(dir, "main.log")).read())
+                    gzipped.close()
                 uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz')
             if('run.set' in flist):
                 page_metas["Settings"].add('[[attachment:run.set]]')
