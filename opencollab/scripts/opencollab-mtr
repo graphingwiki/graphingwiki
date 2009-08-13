@@ -139,7 +139,7 @@ def main():
            print error
         else:
 	   collab_metas.update(shred_trace(host, trace)) 
-    #importMetas(collab, collab_metas, template, options.verbose, replace=False)
+    importMetas(collab, collab_metas, template, options.verbose, replace=False)
 if __name__ == "__main__":
     try:
         main()

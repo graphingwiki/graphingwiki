@@ -40,3 +40,22 @@ def uploadFile(collab, page_name, file, file_name):
     sys.stdout.flush()
     file_obj.close()
     return parts_uploaded
+
+def downloadFile(collab, dpath, page, attachment):
+    fp = os.path.join(dpath, attachment)
+    try:
+        file = open(fp, "wb")
+    except IOError:
+        error = "Couldn't open " + fp + " for writing."
+        sys.exit(error)
+    sys.stdout.write("Downloading %s\n" % attachment)
+    for data, current, total in collab.getAttachmentChunked(page, attachment):
+        percent = 100.0 * current / float(max(total, 1))
+        status = current, total, percent
+        file.write(data)
+        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
+        sys.stdout.flush()
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    file.close()
+
