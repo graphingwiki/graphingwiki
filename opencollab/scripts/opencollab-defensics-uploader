@@ -9,21 +9,13 @@ import os
 import sys
 import re
 import string
-import md5
 import optparse
 from xml.dom import minidom
-from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Func
+from opencollab.util.config import parse_config
+from opencollab.util.file import hashFile, uploadFile
 from gzip import GzipFile
-
-def hashfile(filename):
-    print "Hashing " + filename;
-    f = file(filename,'rb')     
-    hash = md5.new(f.read()).hexdigest();
-    f.close();
-
-    return hash
 
 def getText(nodelist):
     rc = ""
@@ -31,24 +23,6 @@ def getText(nodelist):
         if node.nodeType == node.TEXT_NODE:
             rc = rc + node.data
     return rc
-
-def uploadFile(collab,page_name,filename,path):
-    abspath = path + "/" + filename
-    file = open(abspath, "rb")
-    parts_uploaded = False
-    for current, total in collab.putAttachmentChunked(page_name, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-        sys.stdout.write("\rSent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.write("of %s" % filename)
-        sys.stdout.flush()
-        parts_uploaded = True
-    if(parts_uploaded == True):
-        sys.stdout.write("\n")
-    else:
-        sys.stdout.write("Already uploaded %s\n" % filename)
-    sys.stdout.flush()
-    file.close()
 
 def parse_summary(dir, file='summary.xml'):
     summary_metas = Meta()
@@ -103,9 +77,10 @@ def handle_paths(collab,testplan_page,dirs):
         if 'summary.xml' in flist:
             print "Handling directory: " + dir
             page_metas.update(parse_summary(dir))
+            fpath = os.path.join(dir, 'summary.xml')
             page_metas["Summary XML"].add('[[attachment:summary.xml]]')
-            testrun_page = hashfile(os.path.join(dir,'summary.xml'))
-            uploadFile(collab, testrun_page, 'summary.xml', dir)
+            testrun_page = hashFile(fpath)
+            uploadFile(collab, testrun_page, fpath, 'summary.xml')
             page_metas.update(parse_tool_options(page_metas))
             if('main.log.gz' in flist):
                 pass
@@ -114,23 +89,23 @@ def handle_paths(collab,testplan_page,dirs):
                 gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                 gzipped.write(open(os.path.join(dir, "main.log")).read())
                 gzipped.close()
-                uploadFile(collab,testrun_page,'main.log.gz',dir)
+                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz')
             if('run.set' in flist):
                 page_metas["Settings"].add('[[attachment:run.set]]')
-                uploadFile(collab,testrun_page,'run.set',dir)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set')
             if('runinfo' in flist):
                 page_metas["Settings"].add('[[attachment:runinfo]]')
-                uploadFile(collab,testrun_page,'runinfo',dir)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo')
             if('statistics.csv' in flist):
                 page_metas["Statistics"].add('[[attachment:statistics.csv]]')
-                uploadFile(collab,testrun_page,'statistics.csv',dir)
+                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv')
             if('summary.txt' in flist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
-                uploadFile(collab,testrun_page,'summary.txt',dir)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt')
             if 'notes.xml' in flist:
                 page_metas["Notes"].add('[[attachment:notes.xml]]')
                 page_metas.update(parse_notes(dir))
-                uploadFile(collab,testrun_page,'notes.xml',dir)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml')
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
                     tmp = at.sub('', testplan_page) 
