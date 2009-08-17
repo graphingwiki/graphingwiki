@@ -82,14 +82,14 @@ class Wiki(object):
 
     def _dumps(self, name, args):
         if self.token is None:
-            return xmlrpclib.dumps(args, name)
+            return xmlrpclib.dumps(args, name, allow_none=True)
 
         token, _, _ = self.token
 
         mc_list = list()
         mc_list.append(dict(methodName="applyAuthToken", params=(token,)))
         mc_list.append(dict(methodName=name, params=args))
-        return xmlrpclib.dumps((mc_list,), "system.multicall")
+        return xmlrpclib.dumps((mc_list,), "system.multicall", allow_none=True)
 
     def _loads(self, data):
         result, _ = xmlrpclib.loads(data)
