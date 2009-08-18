@@ -59,12 +59,14 @@ def read_spam(collab, imaps_server, imaps_user, imaps_pass):
         ccs = msg.get_all('cc', [])
         resent_tos = msg.get_all('resent-to', [])
         resent_ccs = msg.get_all('resent-cc', [])
-        reply_to = msg.get_all('reply-to', [])
-        all_recipients = getaddresses(tos + ccs + resent_tos + resent_ccs + reply_to)
+        all_recipients = getaddresses(tos + ccs + resent_tos + resent_ccs)
         for r in all_recipients:
             metas[cpage]["RECIPIENT"].add(r[1])
-        sender = msg.get_all('from', []).pop()
-        metas[cpage]["FROM"].add(sender)
+        reply_to = msg.get_all('reply-to', [])
+        if reply_to:
+            metas[cpage]["SENDER"].add(reply_to[0])
+        msg_from = msg.get_all('from', []).pop()
+        metas[cpage]["FROM"].add(msg_from)
         date = msg.get_all('date')
         metas[cpage]["DATE"] = date
     mailbox.close()
