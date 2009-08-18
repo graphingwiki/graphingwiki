@@ -25,7 +25,7 @@ except:
 
 def read_spam(collab, imaps_server, imaps_user, imaps_pass):
     metas = Metas()
-    href = re.compile('\w+=(3D)?\"')
+    href = re.compile('(href|HREF)=(3D)?\"')
     tag = re.compile('\">?.*$')
     gtlt = re.compile('[<>]')
     mailbox = imaplib.IMAP4_SSL(imaps_server) 
