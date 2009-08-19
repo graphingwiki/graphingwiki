@@ -5,6 +5,7 @@
                     
     raippa_config = 'Configuration'
 
+    theme_default = 'raippa'
     theme_force = True
                 
     user_form_fields = [
@@ -19,16 +20,6 @@
 
     user_form_disable = ['name']
     
-    html_head = '' # omit if you already have something
-
-    for script in ['js/mootools-core-yc.js',
-                   'js/sorttable-moo.js',
-                   'simile/ajax/simile-ajax-api.js',
-                   'simile/timeline/timeline-api.js']:
-
-        html_head += '<script src="%s" type="text/javascript"></script>' \
-                     % (url_prefix_static + '/gwikicommon/' + script)
-
     from MoinMoin.security import Permissions
 
     class SecurityPolicy(Permissions):
