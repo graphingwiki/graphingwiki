@@ -17,7 +17,7 @@
  */
 
 window.addEvent('domready', function(){
-
+if($('tasklist_cont')){
 $('content').setStyle('background-image','url()');
 
 $('tasklist_cont').setStyles({
@@ -183,7 +183,7 @@ typesel.addEvent('change',function(){
 	selectTaskType();
 });
 selectTaskType();
-
+}
 });//domready
 
 function selectTaskType(){

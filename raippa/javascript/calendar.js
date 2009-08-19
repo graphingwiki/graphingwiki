@@ -3,7 +3,7 @@
 // Mootools 1.2 compatibility by Davorin Šego
 
 var Calendar = new Class({	
-
+	Implements : [Events, Options],
 	options: {
 		blocked: [], // blocked dates 
 		classes: [], // ['calendar', 'prev', 'next', 'month', 'year', 'today', 'invalid', 'valid', 'inactive', 'active', 'hover', 'hilite']
@@ -1105,4 +1105,3 @@ var Calendar = new Class({
 	}
 });
 
-Calendar.implement(new Events, new Options);

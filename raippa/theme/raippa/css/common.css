@@ -396,6 +396,7 @@ th.calendar-month {
 	background-color: #DEDEDE;
 	border: solid 1px #ADB9CC;
 }
+
 td.calendar-today {
     border-width: 2pt;
     border-color: #8470FF;
@@ -428,6 +429,8 @@ td.calendar-empty {
     background-color: #DEDEDE;
 }
 
+
+
 /* table without borders*/
 table.no_border, table.no_border td, table.no_border tr {
 border: none;
@@ -455,6 +458,7 @@ div#task_infodiv {
 	border: solid black 1px;
 	background: #F0FFFF;
 	margin: 5px 0 0 0;
+
 }
 
 /* Qestion editor answer table*/
@@ -470,6 +474,7 @@ a.jslink:hover {
 	cursor: pointer;
 }
 a.jslink {
+	font-size: 12px;
 	color: green;
 
 }
@@ -480,4 +485,43 @@ table#calEventList td {
 }
 table#calEventList th {
 	padding: 0 5px 0 5px;
+}
+
+ul.tabMenu li {
+	display: inline;
+	background-color: #163047;
+	color: #FFFFFF;
+	padding: 2px 5px;
+}
+
+ul.tabMenu li:hover, ul.tabMenu li.selected {
+	background-color: #66B8DC;
+	color:#000000;
+	cursor: pointer;
+}
+
+ul.sortable {
+	list-style-type: none;
+	border: none;
+	margin: 5px;
+	padding: 5px;
+	min-height: 20px;
+	width: 100%;
+
+}
+ul.sortable li {
+	cursor: pointer;
+	margin-right: 1em;
+	overflow: hidden;
+}
+
+
+li.hovered {
+    background-color: #BDDCFE;
+	cursor: pointer;
+}
+
+ul.sortable li.sorting {
+    background-color: #6495ED;
+	cursor: pointer;
 }
