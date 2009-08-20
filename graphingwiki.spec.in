@@ -84,7 +84,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files raippa
 %defattr(-,root,root,-)
-%{python_sitelib}/raippa/*
+%{python_sitelib}/raippa*
 %{_bindir}/raippa-install
 
 %files opencollab
