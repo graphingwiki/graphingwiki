@@ -4,74 +4,12 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re
 import optparse
-import getpass
-import imaplib
-import email
-import cStringIO
-from email.Iterators import body_line_iterator
-from email.utils import getaddresses
 from opencollab.util.config import parse_config
-from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import importMetas
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas
-from opencollab.util.regexp import *
-try:
-    import email.utils
-except:
-    import email.Utils
-
-def read_spam(collab, imaps_server, imaps_user, imaps_pass):
-    metas = Metas()
-    href = re.compile('(href|HREF)=(3D)?\"')
-    tag = re.compile('\">?.*$')
-    gtlt = re.compile('[<>]')
-    mailbox = imaplib.IMAP4_SSL(imaps_server) 
-    if imaps_pass is None:
-        mailbox.login(imaps_user,getpass.getpass())
-    else:
-        mailbox.login(imaps_user,imaps_pass)
-    mailbox.select()
-    typ, data = mailbox.search(None, 'UNSEEN')
-    for num in data[0].split():
-        typ, data = mailbox.fetch(num, '(RFC822)')
-        msg = email.message_from_string(data[0][1])
-        msg_obj = cStringIO.StringIO(data[0][1])
-        cpage = hashFile(msg_obj)
-        epoch = int(time())
-        metas[cpage]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
-        metas[cpage]["RFC822 MESSAGE"].add('[[attachment:%s.txt]]' % cpage)
-        metas[cpage]["TYPE"].add("SPAM")
-        uploadFile(collab, cpage, data[0][1], cpage + ".txt")
-        body = ""
-        for line in body_line_iterator(msg, decode=True):
-                body+=line
-        tokens = body.split()
-        for token in tokens:
-            if url_all_re.search(token):
-                token = href.sub('', token)
-                token = tag.sub('', token)
-                token = gtlt.sub('', token)
-                metas[cpage]["SPAM URL"].add(token)
-        tos = msg.get_all('to', [])
-        ccs = msg.get_all('cc', [])
-        resent_tos = msg.get_all('resent-to', [])
-        resent_ccs = msg.get_all('resent-cc', [])
-        all_recipients = getaddresses(tos + ccs + resent_tos + resent_ccs)
-        for r in all_recipients:
-            metas[cpage]["RECIPIENT"].add(r[1])
-        reply_to = msg.get_all('reply-to', [])
-        if reply_to:
-            metas[cpage]["SENDER"].add(reply_to[0])
-        msg_from = msg.get_all('from', []).pop()
-        metas[cpage]["FROM"].add(msg_from)
-        date = msg.get_all('date')
-        metas[cpage]["DATE"] = date
-    mailbox.close()
-    mailbox.logout()
-    return metas
+from opencollab.util.wiki import importMetas
+from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseURLs, parseMetaData
 
 def main():
     parser = optparse.OptionParser()
@@ -106,6 +44,7 @@ def main():
     parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
+    metas = Metas()
     if options.config:
         iopts = parse_config(options.config, "creds", "spam")
     if options.imaps_server:
@@ -143,7 +82,12 @@ def main():
     if imaps_server is not None and imaps_user is not None:
         if options.verbose:
             print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
-        metas = read_spam(collab, imaps_server, imaps_user, imaps_pass)
+        mailbox = imapsAuth(imaps_server, imaps_user, imaps_pass)
+        metas.update(getMessagesAndUpload(mailbox, collab))
+        metas.update(parseURLs(metas))
+        metas.update(parseMetaData(metas))
+        for page in metas:
+            del metas[page]['msg']
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
     importMetas(collab, metas, template, options.verbose)

@@ -3,9 +3,9 @@
     @copyright: 2009 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, sys, getpass, imaplib, email, cStringIO
+import re, sys, getpass, imaplib, email, cStringIO, copy
 from opencollab.meta import Metas
-from opencollab.util.file import hashFile
+from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.regexp import *
 from email.Iterators import body_line_iterator
 try:
@@ -30,7 +30,7 @@ def imapsAuth(imaps_server, imaps_user, imaps_pass):
         sys.exit(error)
     return mailbox
 
-def getMessages(mailbox):
+def getMessagesAndUpload(mailbox, collab):
     metas = Metas()
     mailbox.select()
     try:
@@ -49,14 +49,15 @@ def getMessages(mailbox):
         cpage = hashFile(msg_obj)
         epoch = int(time())
         metas[cpage]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
-        metas[cpage]["RFC822 MESSAGE"].add('[[attachment:%s.txt]]' % cpage)
+        metas[cpage]["RFC822 Message"].add('[[attachment:%s.txt]]' % cpage)
         metas[cpage]["TYPE"].add("SPAM")
         metas[cpage]["msg"].add(msg)
+        uploadFile(collab, cpage, data[0][1], cpage + '.txt')
     return metas
 
 def parseURLs(metas):
-    new_metas = Metas()
-    new_metas = metas
+    #new_metas = Metas()
+    new_metas = copy.deepcopy(metas)
     href = re.compile('(href|HREF)=(3D)?\"')
     tag = re.compile('\">?.*$')
     gtlt = re.compile('[<>]')
@@ -65,7 +66,7 @@ def parseURLs(metas):
         body = ""
         for line in body_line_iterator(msg, decode=True):
             body+=line
-            tokens = body.split()
+        tokens = body.split()
         for token in tokens:
             if url_all_re.search(token):
                 token = href.sub('', token)
@@ -75,8 +76,9 @@ def parseURLs(metas):
     return new_metas
 
 def parseMetaData(metas):
-    new_metas = Metas()
-    new_metas = metas
+    #new_metas = Metas()
+    new_metas = copy.deepcopy(metas)
+    gtlt = re.compile('[<>]')
     for cpage in metas:
         msg = metas[cpage]['msg'].single()
         tos = msg.get_all('to', [])
@@ -85,13 +87,23 @@ def parseMetaData(metas):
         resent_ccs = msg.get_all('resent-cc', [])
         all_recipients = getaddresses(tos + ccs + resent_tos + resent_ccs)
         for r in all_recipients:
-            metas[cpage]["RECIPIENT"].add(r[1])
+            new_metas[cpage]["Recipient"].add(r[1])
         reply_to = msg.get_all('reply-to', [])
         if reply_to:
-            metas[cpage]["SENDER"].add(reply_to[0])
+            new_metas[cpage]["Sender"].add(reply_to[0])
         msg_from = msg.get_all('from', []).pop()
-        metas[cpage]["FROM"].add(msg_from)
-        date = msg.get_all('date')
-        metas[cpage]["DATE"] = date
+        new_metas[cpage]["From"].add(msg_from)
+        date = msg.get_all('date', []).pop()
+        new_metas[cpage]["Date"].add(date)
+        subject = msg.get_all('subject',[]).pop()
+        subject = email.Header.decode_header(subject).pop()
+        if subject[1] is not None:
+            subject = unicode(subject[0], subject[1])
+        else:
+            subject = unicode(subject[0], 'utf-8')
+        new_metas[cpage]["Subject"].add(subject)
+        rpath = msg.get_all('return-path', []).pop()
+        rpath = gtlt.sub('', rpath)
+        new_metas[cpage]["Return-Path"].add(rpath)
     return new_metas
 
