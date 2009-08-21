@@ -137,7 +137,7 @@ class Question:
             
         return answers
 
-    def check_answers(self, user_answers, user, save_history=False):
+    def check_answers(self, user_answers, user, usedtime=None, save_history=False):
         success_dict = {"right":list(), "wrong":list()}
         save_dict = dict() 
         overallvalue = str()
@@ -183,7 +183,7 @@ class Question:
 
         if save_history:
             #TODO: check if save was successfull
-            success, msg = user.save_answers(self, overallvalue, save_dict)
+            success, msg = user.save_answers(self, overallvalue, save_dict, usedtime)
             if not success:
                 raise SaveException, msg
 

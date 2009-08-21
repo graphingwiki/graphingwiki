@@ -27,7 +27,7 @@ class TaskStats:
         questions = self.task.questionlist()
 
         if not questions:
-            return dict(), dict()
+            return dict(), dict(), dict()
 
         done = dict()
         doing = dict()

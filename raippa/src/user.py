@@ -29,7 +29,7 @@ class User:
 
         return False
 
-    def save_answers(self, question, overallvalue, save_dict):
+    def save_answers(self, question, overallvalue, save_dict, usedtime):
         histories = self.histories(question.pagename)
 
         if len(histories) == 1:
@@ -48,6 +48,11 @@ class User:
                        "useragent": [self.request.getUserAgent()],
                        "time": [time.strftime("%Y-%m-%d %H:%M:%S")],
                        "gwikicategory": [rc['history']]}
+
+        if usedtime:
+            if usedtime > 1800:
+                usedtime = 1800
+            historydata["usedtime"] = [str(usedtime)]
 
         if question.options().get('answertype', None) == 'file':
             historydata = {history: historydata}
@@ -82,7 +87,7 @@ class User:
 
         for historypage in pagelist:
             keys = ["gwikicategory", "question"]
-            metas = get_metas(self.request, historypage, checkAccess=False)
+            metas = get_metas(self.request, historypage, keys, checkAccess=False)
         
             categories = metas.get("gwikicategory", list())
             if rc['history'] in categories:

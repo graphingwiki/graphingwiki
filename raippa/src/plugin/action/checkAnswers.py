@@ -1,7 +1,7 @@
 # -*- coding: iso-8859-1 -*-
-import random
+import random, time
 
-from raippa.pages import Course, Question, Answer
+from raippa.pages import Course, Question, Answer, SaveException
 from raippa.user import User
 
 from MoinMoin.Page import Page
@@ -36,18 +36,38 @@ def execute(pagename, request):
         Page(request, pagename).send_page()
         return
 
+    starttime = request.form.get('time', [None])[0]
+
+    if starttime:
+        try:
+            usedtime = time.time() - float(starttime)
+        except:
+            usedtime = None
+    else:
+        usedtime = None
+
     user = User(request, request.user.name)
 
-    overallvalue, successdict = question.check_answers(answers, user, True)
+    try:
+        overallvalue, successdict = question.check_answers(answers, user, usedtime, True)
+    except SaveException, msg:
+        request.theme.add_msg(msg.args[0], 'error')
+        Page(request, pagename).send_page()
+        return
 
     if overallvalue in ['success', 'pending']:
         answerpages = successdict.get('right', list())
 
+
         #TODO: handle comments
-        comment = None
-        while not comment and len(answerpages) > 0:
-            answerpage = answerpages.pop(random.randrange(0, len(answerpages)))
+        comments = []
+        while len(answerpages) > 0:
+            answerpage = answerpages.pop()
             comment = Answer(request, answerpage).comment()
+            if comment:
+                comments.append(comment)
+        
+        request.session["comments"] = comments
 
         task = question.task()
         questionlist = task.questionlist()
