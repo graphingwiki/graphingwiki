@@ -2,7 +2,7 @@ import time
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import get_metas, get_keys, set_metas 
-from raippa import page_exists, addlink, randompage
+from raippa import removelink, addlink, randompage
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
@@ -40,11 +40,12 @@ class Answer:
         questions = list()
 
         for page in pages:
-            keys = ["gwikicategory"]
-            metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
-            #TODO: replace with CategoryQuestionOptions
-            if page.endswith('/flow'):
-                questions.append(page[:-5])
+            keys = ["gwikicategory", "question"]
+            qmetas = get_metas(self.request, page, keys, checkAccess=False)
+            
+            if rc['questionoptions'] in qmetas.get('gwikicategory', list()):
+                for questionpage in qmetas.get("question", list()):
+                    questions.append(removelink(questionpage))
 
         if len(questions) == 1:
             return Question(self.request, questions[0])
@@ -54,7 +55,7 @@ class Answer:
             return None
 
     def answer(self):
-        metas = get_metas(self.request, self.pagename, ['answer'], display=True, checkAccess=False)
+        metas = get_metas(self.request, self.pagename, ['answer'], checkAccess=False)
         answers = metas.get('answer', list())
 
         answer = None
@@ -85,13 +86,13 @@ class Answer:
         return value
 
     def tips(self):
-        metas = get_metas(self.request, self.pagename, ['tip'], display=True, checkAccess=False)
+        metas = get_metas(self.request, self.pagename, ['tip'], checkAccess=False)
         tips = metas.get('tip', list())
 
         return tips
 
     def comment(self):
-        metas = get_metas(self.request, self.pagename, ['comment'], display=True, checkAccess=False)
+        metas = get_metas(self.request, self.pagename, ['comment'], checkAccess=False)
         comments = metas.get('comment', list())
         if len(comments) == 1:
             return comments[0]
@@ -121,14 +122,15 @@ class Question:
     def answers(self):
         answers = list()
 
-        if not page_exists(self.request, self.optionspage):
+        if not Page(self.request, self.optionspage).exists():
             return answers
 
-        metas = get_metas(self.request, self.optionspage, ['answer'], display=True, checkAccess=False)
+        metas = get_metas(self.request, self.optionspage, ['answer'], checkAccess=False)
         answerpages = metas.get('answer', list())
 
         for answerpage in answerpages:
-            if not page_exists(self.request, answerpage):
+            answerpage = removelink(answerpage)
+            if not Page(self.request, answerpage).exists():
                 raise DeadLinkException(u"Page %s linked in %s doesn't exist." % (answerpage, self.optionspage))
 
             answers.append(answerpage)
@@ -242,11 +244,11 @@ class Question:
     def options(self):
         options = dict()
 
-        if not page_exists(self.request, self.optionspage):
+        if not Page(self.request, self.optionspage).exists():
             return options
 
         optionkeys = ['answertype', 'redo']
-        metas = get_metas(self.request, self.optionspage, optionkeys, display=True, checkAccess=False)
+        metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
 
         for key in optionkeys:
             values = metas.get(key, list())
@@ -266,8 +268,7 @@ class Question:
         pagelist = page.get('in', dict()).get("question", list())
 
         for historypage in pagelist:
-            keys = ["gwikicategory"]
-            metas = get_metas(self.request, historypage, keys, display=True, checkAccess=False)
+            metas = get_metas(self.request, historypage, ["gwikicategory"], checkAccess=False)
 
             categories = metas.get("gwikicategory", list())
 
@@ -284,11 +285,11 @@ class Question:
         for key, pages in pagedict.iteritems():
             if key not in ['_notype', 'question']:
                 for page in pages:
-                    keys = ["gwikicategory"]
-                    metas = get_metas(self.request, page, keys, display=True, checkAccess=False)
+                    keys = ["gwikicategory", "task"]
+                    metas = get_metas(self.request, page, keys, checkAccess=False)
                     if rc['taskflow'] in metas.get('gwikicategory', list()):
-                        #TODO: getparent or link
-                        tasks.append(page[:-5])
+                        for taskpage in metas.get('task', list()):
+                            tasks.append(removelink(page[:-5]))
 
         if len(tasks) == 1:
             return Task(self.request, tasks[0])
@@ -305,7 +306,7 @@ class Task:
         self.pagename = pagename
         self.optionspage = pagename+'/options'
         self.flowpage = pagename+'/flow'
-        if page_exists(request, self.flowpage):
+        if Page(request, self.flowpage).exists():
             self.flow = Flow(request, self.flowpage)
         else:
             self.flow = None
@@ -313,13 +314,16 @@ class Task:
     def options(self):
         options = dict()
 
-        if not page_exists(self.request, self.optionspage):
+        if not Page(self.request, self.optionspage).exists():
             return options
 
         optionkeys = ['deadline', 'type', 'prerequisite']
-        metas = get_metas(self.request, self.optionspage, optionkeys, display=True, checkAccess=False)
+        metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
         for key in optionkeys:
-            values = metas.get(key, list())
+            values = list()
+
+            for value in metas.get(key, list()):
+                values.append(removelink(value))
 
             if key == 'prerequisite':
                 if len(values) > 0:
@@ -358,7 +362,7 @@ class Task:
 
                 if next and next in questionlist:
                     raise TooManyValuesException("Flow %s has key %s linked in multiple times." % self.flowpage)       
-                elif not page_exists(self.request, next):
+                elif not Page(self.request, next).exists():
                     raise DeadLinkException(u"Page %s linked in %s doesn't exist." % (next, self.flowpage))
 
                 questionlist.append(next)
@@ -423,11 +427,11 @@ class Course:
             self.flow = None
         else:
             keys = ['graph', 'flow'] 
-            metas = get_metas(self.request, self.config, keys, display=True, checkAccess=False)
+            metas = get_metas(self.request, self.config, keys, checkAccess=False)
 
             graphs = metas.get('graph', list())
             if len(graphs) == 1:
-                self.graphpage = graphs[0]
+                self.graphpage = removelink(graphs[0])
             elif len(graphs) < 1:
                 self.graphpage = None
             else:
@@ -435,8 +439,8 @@ class Course:
 
             flows = metas.get('flow', list())
             if len(flows) == 1:
-                self.flowpage = flows[0]
-                self.flow = Flow(request, flows[0])
+                self.flowpage = removelink(flows[0])
+                self.flow = Flow(request, self.flowpage)
             elif len(flows) < 1:
                 self.flowpage = None
                 self.flow = None

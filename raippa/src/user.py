@@ -3,7 +3,7 @@ import datetime, time
 from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment
 from graphingwiki.editing import get_keys, get_metas, set_metas
-from raippa import addlink
+from raippa import removelink, addlink
 from raippa import raippacategories as rc
 from raippa.pages import Task, Question
 
@@ -82,13 +82,15 @@ class User:
 
         for historypage in pagelist:
             keys = ["gwikicategory", "question"]
-            metas = get_metas(self.request, historypage, keys, display=True, checkAccess=False)
+            metas = get_metas(self.request, historypage, checkAccess=False)
         
             categories = metas.get("gwikicategory", list())
             if rc['history'] in categories:
                 if questionpage:
-                    if questionpage in metas.get("question", list()):
-                        histories.append(historypage)
+                    for question in metas.get("question", list()):
+                        if removelink(question) == questionpage:
+                            histories.append(historypage)
+                            break
                 else:
                     histories.append(historypage)
 
@@ -122,7 +124,7 @@ class User:
             if len(histories) == 1:
                 history = histories[0]
                 keys = ['overallvalue']
-                metas = get_metas(self.request, history, keys, display=True, checkAccess=False)
+                metas = get_metas(self.request, history, keys, checkAccess=False)
 
                 if 'success' in metas.get('overallvalue', list()):
                     return True, history 

@@ -1,6 +1,7 @@
 from raippa.pages import Course, Task, Question
 from raippa import pages_in_category
 from raippa import raippacategories as rc
+from raippa import removelink
 
 from graphingwiki.editing import get_metas
 from MoinMoin.Page import Page
@@ -76,7 +77,7 @@ class QuestionStats:
 
         keys = ['user', 'overallvalue']
         for history in histories:
-            metas = get_metas(self.request, history, keys, display=True, checkAccess=False)
+            metas = get_metas(self.request, history, keys, checkAccess=False)
 
             users = metas.get('user', list())
             if not users:
@@ -87,14 +88,13 @@ class QuestionStats:
             overallvalue = metas.get('overallvalue', [None])[0]
             if overallvalue == "success":
                 for user in users:
-                    key = ['gwikicategory']
-                    metas = get_metas(self.request, user, key, display=True, checkAccess=False)
+                    user = removelink(user)
+                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
                     if rc['student'] in metas.get('gwikicategory', list()):
                         done[user] = revision
             else:
                 for user in users:
-                    key = ['gwikicategory']
-                    metas = get_metas(self.request, user, key, display=True, checkAccess=False)
+                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
                     if rc['student'] in metas.get('gwikicategory', list()):
                         doing[user] = revision
 

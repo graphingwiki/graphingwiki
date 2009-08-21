@@ -19,6 +19,12 @@ raippacategories = {"task": "CategoryTask",
                     "timetrack": "CategoryTimetrack",
                     "student": "CategoryStudent"}
 
+def unicode_form(form):
+    new_form = dict()
+    for key in form:
+        new_form[key.encode('utf8')] = form[key]
+    return new_form
+
 def pages_in_category(request, category):
     page = request.graphdata.getpage(category)
     pagelist = page.get('in', dict()).get("gwikicategory", list())
