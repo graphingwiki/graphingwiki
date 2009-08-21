@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
+
 import time
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.user import User as MoinUser
 from graphingwiki.editing import get_metas, get_keys, set_metas 
 from raippa import removelink, addlink, randompage
 from raippa import raippacategories as rc
@@ -107,7 +110,7 @@ class Question:
     def __init__(self, request, pagename):
         self.request = request
         self.pagename = pagename
-        self.optionspage = pagename+'/options'
+        self.optionspage = u'%s/options' % pagename
 
     def title(self):
         raw_content = Page(self.request, self.pagename).get_raw_body()
@@ -168,6 +171,8 @@ class Question:
                         success_dict["wrong"].append(answerpage)
                         save_dict["wrong"].append(answer.answer())
                         overallvalue = "failure"
+                    else:
+                        success_dict["right"].append(answerpage)
 
             if len(answerpages) > 0 and len(user_answers) > 0:
                 overallvalue = "failure"
@@ -304,12 +309,46 @@ class Task:
     def __init__(self, request, pagename):
         self.request = request
         self.pagename = pagename
-        self.optionspage = pagename+'/options'
-        self.flowpage = pagename+'/flow'
+        self.optionspage = u'%s/options' % pagename
+        self.flowpage = u'%s/flow' % pagename
         if Page(request, self.flowpage).exists():
             self.flow = Flow(request, self.flowpage)
         else:
             self.flow = None
+
+    def deadline(self):
+        metas = get_metas(self.request, self.optionspage, ['deadline'], checkAccess=False)
+        overall = None
+        deadlines = dict()
+        for value in metas.get('deadline', list()):
+            try:
+                kek = time.strptime(value, "%Y-%m-%d")
+                if not overall:
+                    overall = value 
+                else:
+                    raise TooManyKeysException, "Task %s has too many overal deadlines." % self.pagename
+            except ValueError:
+                value = removelink(value)
+                if Page(self.request, value).exists():
+                    keys = get_keys(self.request, value)
+                    dmetas = get_metas(self.request, value, keys, checkAccess=False)
+                    for key in dmetas:
+                        umeta = get_metas(self.request, key, ["gwikicategory"], checkAccess=False)
+                        if rc['student'] in umeta.get('gwikicategory', list()):
+                            users_deadlines = list()
+                            for deadline in dmetas.get(key, list()):
+                                try:
+                                    time.strptime(deadline, "%Y-%m-%d")
+                                    users_deadlines.append(deadline)
+                                except:
+                                    pass
+
+                            if len(users_deadlines) > 1:
+                                raise TooManyKeysException, "Page %s has too many deadlines for user %s." % (value, key)
+                            elif len(users_deadlines) == 1:
+                                deadlines[key] = users_deadlines[0]
+
+        return overall, deadlines
 
     def options(self):
         options = dict()
@@ -317,7 +356,7 @@ class Task:
         if not Page(self.request, self.optionspage).exists():
             return options
 
-        optionkeys = ['deadline', 'type', 'prerequisite']
+        optionkeys = ['type', 'prerequisite']
         metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
         for key in optionkeys:
             values = list()
@@ -329,11 +368,6 @@ class Task:
                 if len(values) > 0:
                     options[key] = values
 
-            elif key == 'deadline':
-                if len(values) == 1:
-                    options[key] = values[0]
-                elif len(values) > 1:
-                    raise TooManyValuesException(u'Task %s has too many deadlines.' % self.pagename)
             else:
                 if len(values) == 1:
                     options[key] = values[0]

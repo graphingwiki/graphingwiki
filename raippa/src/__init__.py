@@ -6,7 +6,8 @@ forbidden = ['CategoryTaskFlow',
              'CategoryTaskOptions',
              'CategoryQuestionOptions',
              'CategoryAnswer',
-             'CategoryHistory']
+             'CategoryHistory',
+             'CategoryDeadline']
 
 
 raippacategories = {"task": "CategoryTask",
@@ -17,12 +18,13 @@ raippacategories = {"task": "CategoryTask",
                     "questionoptions": "CategoryQuestionOptions",
                     "answer": "CategoryAnswer",
                     "timetrack": "CategoryTimetrack",
-                    "student": "CategoryStudent"}
+                    "student": "CategoryStudent",
+                    "deadline": "CategoryDeadline"}
 
 def unicode_form(form):
     new_form = dict()
     for key in form:
-        new_form[key.encode('utf8')] = form[key]
+        new_form[key.decode('utf8')] = form[key]
     return new_form
 
 def pages_in_category(request, category):

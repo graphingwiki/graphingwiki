@@ -158,17 +158,20 @@ class User:
             if not instance.questionlist():
                 return False, None
 
-            options = instance.options()
-            deadline = options.get('deadline', None)
+            deadline, deadlines = instance.deadline() 
+
+            if self.name in deadlines:
+                deadline = deadlines[self.name]
 
             if deadline:
-                #TODO: type check
                 deadline = time.strptime(deadline, "%Y-%m-%d")
                 deadline = datetime.date(deadline[0], deadline[1], deadline[2])
                 today = datetime.date.today()
 
                 if deadline < today:
                     return False, "deadline"
+
+            options = instance.options()
 
             for taskpage in options.get('prerequisite', list()):
                 done, value = self.has_done(Task(self.request, taskpage))
