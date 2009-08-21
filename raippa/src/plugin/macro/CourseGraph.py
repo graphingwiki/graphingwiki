@@ -254,7 +254,7 @@ if($('ttDate')){
 
     if course.flow:
         #IE does not support base64 encoded images so we get it from drawgraphIE action
-        if True: #'MSIE' in request.getUserAgent():
+        if 'MSIE' in request.getUserAgent():
             url = u"%s/%s?action=drawgraphIE" % (request.getBaseURL(), pagename)
             map, tag = draw_graph(request, get_student_data(request, course, user), result='map')
             img = u'<img src="%s&type=student" usemap="#%s"><br>\n' % (url, tag)
