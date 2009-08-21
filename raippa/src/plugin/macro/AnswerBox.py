@@ -1,5 +1,5 @@
 #-*- coding: iso-8859-1 -*-
-import random
+import random, time
 
 from MoinMoin.Page import Page
 
@@ -7,6 +7,8 @@ from raippa.pages import Question, Answer
 from raippa.user import User
 
 def sanitize(input):
+    if input == None:
+        input = u""
     input = unicode(input)
     input = input.replace("'", "\\'")
     input = input.replace("\n", " ")
@@ -377,6 +379,7 @@ def draw_answers(macro, user, question):
     res.append(f.div(1, id="answerBox"))
     res.append(f.rawHTML('<form id="ansForm" enctype="multipart/form-data" method="post" action="">'))
     res.append(f.rawHTML('<input type="hidden" name="action" value="checkAnswers">'))
+    res.append(f.rawHTML('<input type="hidden" name="time" value="%s">' % str(time.time())))
 
     answers = question.answers()
     #possible types: radio,checkbox, text (+file?)
