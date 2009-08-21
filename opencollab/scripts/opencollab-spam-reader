@@ -83,6 +83,8 @@ def main():
         if options.verbose:
             print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
         mailbox = imapsAuth(imaps_server, imaps_user, imaps_pass)
+        if options.verbose:
+            print "Uploading message files to collab."
         metas.update(getMessagesAndUpload(mailbox, collab))
         metas.update(parseURLs(metas))
         metas.update(parseMetaData(metas))
