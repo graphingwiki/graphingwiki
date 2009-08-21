@@ -60,10 +60,10 @@ def macro_Comments(macro, commentpage):
     page = macro.request.page
 
     commentpage = get_unicode(request, commentpage)
-    if commentpage:
-        comments = get_comments(request, commentpage)
-    else:
-        return formatter.text("Missing commentpage.")
+    if not commentpage:
+        commentpage = "%s/comments" % pagename
+
+    comments = get_comments(request, commentpage)
 
     result = list()
     result.extend(comment_gui(request, formatter, commentpage, comments))

@@ -15,7 +15,7 @@ def save_comment(request, commentpage, sender, comment):
     return set_metas(request, dict(), dict(), metas)
 
 def execute(pagename, request):
-    comment = wikiutil.escape(request.form.get('comment', [str()])[0])
+    comment = request.form.get('comment', [str()])[0].replace("\r\n", " ")
     commentpage = wikiutil.escape(request.form.get('commentpage', [str()])[0])
 
     if not commentpage:
