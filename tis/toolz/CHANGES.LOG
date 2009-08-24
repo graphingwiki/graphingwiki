@@ -1,0 +1,94 @@
+[1.1.0]
+	* Major upgrade. Due to a slight stupidity that is now fixed the scan is about 15-20 times
+	  faster than before :)
+	* Added Extended Databases. SigBuster can now be ordered to scan for magic bytes, exploit signatures
+	  and AntiDebug signatures by adding -ed to the command switches. The additional databases are also
+	  updated with the -u switch.
+
+[1.0.5]
+	* Update site has been changed. Some minor modifications were also done, but they
+	  should be transparent to the user.
+
+[1.0.4]
+	* Fixed scanning for signatures with a wildcard at the beginning
+	* Added a -dd switch to delete all detected files, leaving only undetected intact
+	
+[1.0.3]
+	* Fixed the -fast switch
+	* Thanks to awesome job done by CERT/CC all the broken signatures should now be history
+	* The signature database allows comments prefixed with #, as long as they exist outside
+	  the three lines of the signature definition.
+	* Purged the compiler signatures from the DB. If you'd like to have them, contact me.
+	* If no signatures are detected, but entropy suggests the file is packed the following "detection" is given:
+	  [NoSig, Entropy suggests the file is packed]
+	  
+[1.0.2]
+	* Reduced the noise and did a few small improvements.
+
+[1.0.1]
+	* Added ShutdownHook to display statistics when user presses Ctrl+C
+	* Rewrote the whole scanner engine :) It's about 65% faster now...
+
+[0.9.2]
+	* Bugfix concerning -pfp and -m used at the same time.
+	* Small optimizations done to speed up the scanning.
+[0.9]
+	* Made SigBuster Java 1.4 compliant
+	* Added recursion
+	* Added entropy calculations for undetected files. (Entropy will not be mentioned when using -qq)
+	* Quiet-mode (-q) will now show if the file is not a valid PE file)
+	* Added new switch (-pfp) to show full path/filenames regardless of possible quietmode.
+
+[0.8]
+	* Changed behaviour so that instead of moving anything only copying takes place...
+	* Added a -q option to make the program be quiet :) gives out only <filename><tab><signature>
+	  and the statistics at the end of the scan. Use -qq to drop the statistics too.
+	* Fixed the -u option. Updating works now...
+
+[0.7]
+	* Fixed a glitch in the code. It's a _lot_ faster now :)
+
+	* Added 6 new signatures
+
+[0.6]
+	* Added a -u switch, which will download a new signature db and overwrite the old one.
+
+	* Added signature for NsPack (ep_only = true)
+	* Added signature for petite (ep_only = true)
+	* Added signature for ASPack 2.12 (ep_only = true)
+	* Added signatures for unknown versions of Morphine (ep_only = true)
+	* Fixed the anxau.com signature ;)
+
+[0.5]
+	* Added a -o switch, which will copy the binaries to directories named after the packer
+	
+	* Cleaned up the signature db a bit to get rid of some of the signatures that caused a lot
+	  of duplicates for same packers.
+	* Added a proper signature for PolyEne 0.01+ (ep_only = false)
+	* Added signature for UPX-Scrambler RC1.x (ep_only = true)
+	* Added separate signature for UPX 1.25 (ep_only = true)
+	* Added signature for NsPack (ep_only = true)
+	* Added signature for PC Shrinker 0.71 -> Virogen (ep_only = true)
+	* Added partial signature for DotFix (ep_only = false)
+
+[0.4]
+	* Fixed a minor bug in the detection rate counting.
+	* Added a -fast switch. This will stop scanning on first hit. It will then move to the next file.
+	* Optimized the signatureloading to put the (ep_only = true) signatures first, others after that.
+	* If -m is given, all the files SigBuster thinks are corrupt will get a .corrupt in their filename
+	* Fixed a bug on -m switch. It failed to delete the file after copying if an exception had occurred in the scan.
+	* Modified the summary to show statistics on signature matches.
+	
+	* Added detection for Petite 2.3 (ep_only = true)
+	* Added detection for ASProtect 1.2x - 1.3x (ep_only = true)
+	* Added detection for UPX 1.24 (ep_only = true)
+	* Added 2 detections for PECompact 2.x (ep_only = true)
+	* Added partial signature for DotFix v3.4 (ep_only = false)
+	* Added detection for UPX 0.80 - 1.25 (ep_only = true)
+	* Added detection for ASPack 2.x (without poly) (ep_only = true)
+	* Added 2 detections for SVK Protector (SVKP) (ep_only = true)
+	* Added detection for SVKP 1.3x (ep_only = true)
+	* Added detection for PolyCrypt PE (ep_only = false)
+	* Removed the PolyEnE detection, since the signature gave waaaay too many false positives :(
+	
+[0.3b] Initial beta release
