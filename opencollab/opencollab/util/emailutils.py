@@ -59,7 +59,7 @@ def parseURLs(metas):
     #new_metas = Metas()
     new_metas = copy.deepcopy(metas)
     href = re.compile('(href|HREF)=(3D)?\"')
-    tag = re.compile('\">?.*$')
+    tag = re.compile('\'\">?.*$')
     gtlt = re.compile('[<>]')
     for cpage in metas:
         msg = metas[cpage]['msg'].single()
