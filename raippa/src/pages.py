@@ -4,7 +4,8 @@ import time
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
-from graphingwiki.editing import get_metas, get_keys, set_metas 
+from MoinMoin.logfile import editlog
+from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
 from raippa import removelink, addlink, randompage
 from raippa import raippacategories as rc
 from raippa.flow import Flow
@@ -282,6 +283,128 @@ class Question:
 
         return histories
 
+    def students(self, user=None):
+        done = dict()
+        doing = dict()
+
+        if user:
+            histories = user.histories(self.pagename)
+        else:
+            histories = self.histories()
+
+        keys = ['user', 'overallvalue']
+        for history in histories:
+            metas = get_metas(self.request, history, keys, checkAccess=False)
+
+            users = metas.get('user', list())
+            if not users:
+                continue
+
+            revision = Page(self.request, history).get_real_rev()
+
+            overallvalue = metas.get('overallvalue', [None])[0]
+            if overallvalue == "success":
+                for user in users:
+                    user = removelink(user)
+                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
+                    if rc['student'] in metas.get('gwikicategory', list()):
+                        done[user] = revision
+            else:
+                for user in users:
+                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
+                    if rc['student'] in metas.get('gwikicategory', list()):
+                        doing[user] = revision
+
+        return done, doing
+
+    def history_revisions(self, histories=None):
+        if not histories:
+            histories = self.histories()
+
+        revisions = dict()
+
+        for historypage in histories:
+            revisions[historypage] = dict()
+            editors = dict()
+            log = editlog.EditLog(self.request, rootpagename=historypage)
+            for line in log:
+                editors[int(line.rev)] = MoinUser(self.request, line.userid).name
+
+            pages, keys = get_revisions(self.request, Page(self.request, historypage))
+
+            keys = ['user',
+                    'overallvalue', 'right', 'wrong',
+                    'time', 'usedtime',
+                    'gwikicategory', 'gwikirevision']
+
+            for page in pages:
+                metas = get_metas(self.request, page, keys)
+
+                revision = int(metas.get('gwikirevision', list())[0])
+                editor = editors[revision]
+
+                users = list()
+                for user in metas.get('user', list()):
+                    users.append(removelink(user))
+
+                if editor not in users:
+                    continue
+
+                right = metas.get('right', list())
+                wrong = metas.get('wrong', list())
+
+                overall = metas.get('overallvalue', list())
+                if len(overall) < 1 or len(overall) > 1:
+                    continue
+                else:
+                    overall = overall[0]
+
+                answer_time = metas.get('time', list())
+                if len(answer_time) < 1 or len(answer_time) > 1:
+                    continue
+                else:
+                    try:
+                        time.strptime(answer_time[0], "%Y-%m-%d %H:%M:%S")
+                        answer_time = answer_time[0]
+                    except:
+                        continue
+            
+                used = metas.get('usedtime', list())
+                if len(used) < 1 or len(used) > 1:
+                    continue
+                else:
+                    try:
+                        used = int(float(used[0]))
+                    except:
+                        continue
+            
+                revisions[historypage][revision] = [users, overall, right, wrong, answer_time, used]
+
+        return revisions
+
+    def used_time(self, user=None):
+        if user:
+            histories = user.histories(self.pagename)
+        else:
+            histories = self.histories()
+
+        revisions = Question(request, self.pagename).history_revisions(histories)
+        total_time = int()
+        total_revs = int()
+        
+        for historypage in revisions:
+            if not revisions.get(historypage, dict()):
+                continue
+
+            user_total = int()
+            for rev_number in revisions[historypage].keys():
+                user_total += revisions[historypage][rev_number][5]
+
+            total_time += user_total
+            total_revs += len(revisions[historypage].keys())
+
+        return total_time, total_revs
+
     def task(self):
         pagedict = self.request.graphdata.getpage(self.pagename).get('in', dict())
 
@@ -403,6 +526,52 @@ class Task:
 
         return questionlist
 
+    def students(self, user=None):
+        questions = self.questionlist()
+
+        if not questions:
+            return dict(), dict(), dict()
+
+        done = dict()
+        doing = dict()
+        rev_count = dict()
+
+        for question in questions:
+            done_question, doing_question = Question(self.request, question).students(user)
+            rev_count[question] = list()
+
+            for student in done:
+                if student not in done_question:
+                    if doing.get(student, None) == None:
+                        doing[student] = list()
+                    doing[student].append(question)
+
+            for student in done_question:
+                if done.get(student, None) == None:
+                    done[student] = list()
+                done[student].append(question)
+                rev_count[question].append(done_question[student])
+            
+            for student in doing_question:
+                if doing.get(student, None) == None:
+                    doing[student] = list()
+                doing[student].append(question)
+                rev_count[question].append(doing_question[student])
+        
+        return done, doing, rev_count
+
+    def used_time(self, user=None):
+        flow = self.questionlist()
+        total_time = int()
+        total_count = int()
+
+        for questionpage in flow:
+            used_time, try_count = Question(self.request, questionpage).used_time(user) 
+            total_time += used_time
+            total_count += try_count
+
+        return total_time, total_count
+
     def title(self):
         raw_content = Page(self.request, self.pagename).get_raw_body()
         title = unicode()
@@ -480,3 +649,39 @@ class Course:
                 self.flow = None
             else:
                 raise TooManyValuesException("Page %s has too many flow values" % self.config)
+
+    def students(self, user):
+        done_all, doing_all = dict()
+        flow = self.flow.fullflow()
+
+        for taskpage in flow:
+            if taskpage != "first":
+                task = Task(request, taskpage)
+                done, doing, revs = task.users(user)
+
+                for doing_user in doing:
+                    if doing_user not in doing_all:
+                        doing_all[doing_user] = list()
+                    doing_all[doing_user].append(taskpage)
+
+                for done_user in done:
+                    if done_user not in done_all:
+                        done_all[done_user] = list()
+                    done_all[done_user].append(taskpage)
+
+        return done_all, doing_all
+
+    def used_time(self, user=None):
+        total_time = int()
+        total_tries = int()
+
+        flow = self.flow.fullflow()
+        for taskpage in flow:
+            if taskpage != "first":
+                task = Task(request, taskpage)
+                task_time, try_count = task.used_time(user)
+                total_time += task_time
+                total_tries += try_count 
+                
+        return total_time, total_tries
+

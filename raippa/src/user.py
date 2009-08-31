@@ -29,6 +29,12 @@ class User:
 
         return False
 
+    def is_student(self):
+        metas = get_metas(self.request, self.name, ["gwikicategory"], checkAccess=False)
+        if rc['student'] in metas.get('gwikicategory', list()):
+            return True
+        return False
+
     def save_answers(self, question, overallvalue, save_dict, usedtime):
         histories = self.histories(question.pagename)
 
@@ -36,7 +42,7 @@ class User:
             history = histories[0]
             remove = {history: get_keys(self.request, history)}
         elif len(histories) < 1:
-            history = "History/"+self.name+"/"+question.pagename
+            history = self.name+"/"+question.pagename
             history = history[:255]
             remove = dict()
         else:

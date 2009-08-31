@@ -29,13 +29,11 @@
 
             user = User(self.request, self.request.user.name)
             if not user.is_teacher():
-
-                if pagename.startswith(user.name+"/"):
+                if pagename.startswith("%s/" % user.name):
                     return False
 
                 from graphingwiki.editing import get_metas
-                keys = ['gwikicategory']
-                metas = get_metas(self.request, pagename, keys, display=True, checkAccess=False)
+                metas = get_metas(self.request, pagename, ['gwikicategory'], checkAccess=False)
                 page_categories = metas.get('gwikicategory', list())
 
                 from raippa import forbidden
@@ -50,11 +48,17 @@
                     if category == rc['student'] and pagename != user.name:
                         return False
                     elif category == rc['task']:
-                        may, reason = user.can_do(Task(self.request, pagename))
-                        return may
+                        if user.is_student():
+                            may, reason = user.can_do(Task(self.request, pagename))
+                            return may
+                        else:
+                            return False
                     elif category == rc['question']:
-                        may, reason = user.can_do(Question(self.request, pagename))
-                        return may
+                        if user.is_student():
+                            may, reason = user.can_do(Question(self.request, pagename))
+                            return may
+                        else:
+                            return False
 
             return Permissions.__getattr__(self, 'read')(pagename)
 

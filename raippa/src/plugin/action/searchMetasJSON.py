@@ -28,56 +28,42 @@
 
 """
 
-from graphingwiki.editing import metatable_parseargs, get_metas
 from MoinMoin.Page import Page
-from raippa.pages import Question, Answer
-from raippa import pages_in_category, page_exists
+from raippa.pages import Question, Answer, Course, Task
+from raippa import pages_in_category, to_json
 from raippa.user import User
-def to_json(arg):
-    """Formats python data structures to json. 
-    Supports any combination of:
-        str,unicode,
-        int,long,float,bool,null
-        dict,list,tuple    
-    """
-    def parse(raw):
-       
-        if isinstance(raw, (unicode,str)):
-            raw = raw.replace('"' ,'\\"')
-            return '"%s"' %raw 
 
-        elif isinstance(raw, bool):
-            if raw:
-                return "true"
-            else:
-                return "false"
+def question_stats(request, question):
+    revisions = question.history_revisions()
 
-        elif isinstance(raw, (int, float, long)):
-            return raw
+    #total time and total try count
+    stats = {"total": [0.0, 0]}
 
-        elif isinstance(raw, dict):
-            result = list()
-            for key, val in raw.items():
-                result.append('%s : %s' % (parse(str(key)), parse(val)))
+    for historypage in revisions:
+        if not revisions.get(historypage, dict()):
+            continue
 
-            return "{\n" + ",\n".join(result) + "\n}"
+        for rev_number in revisions[historypage]:
+            rev = revisions[historypage][rev_number]
+            students = rev[0]
+            overallvalue = rev[1]
+            right = rev[2]
+            wrong = rev[3]
+            date = rev[4]
+            used_time = rev[5]
 
-        elif isinstance(raw, (list, tuple, set)):
-            result = list()
-            for val in raw:
-                result.append('%s' % (parse(val)))
-           
-            return '[\n' +  ",\n".join(result) + "\n]"
+            for student in students:
+                if student not in stats.keys():
+                    #total time and total try count
+                    stats[student] = {"total": [0.0, 0]}
 
-        else:
-            return "null"
+                stats[student][date] = [overallvalue, right, wrong, used_time]
+                stats[student]["total"][0] += used_time
+                stats[student]["total"][1] += 1
+                stats["total"][0] += used_time
+                stats["total"][1] += 1
 
-
-    result = parse(arg)
-    if result[0]  not in ["[", "{"]:
-        result = '[' + result +']'
-    return result
-
+    return stats
 
 def search_metas(request, keyword):
     """Searches for values and keys that match given argument and
@@ -111,13 +97,30 @@ def list_questions(request, search, all):
                 continue
             task = task.pagename
 
-        if page_exists(request, qpage + '/options'):
+        if Page(request, qpage + '/options').exists():
             incomplete = False
 
         if not search and title or search and title.find(search) >= 0:
             result.append({"title": title, "page" : qpage, "incomplete" : incomplete, "task" : task})
 
     return result
+
+def list_tasks(request, search, all):
+    result = dict()
+    course = Course(request, request.cfg.raippa_config)
+    result["selected"] = course.flow.fullflow()
+    result["free"] = dict()
+    tasks = pages_in_category(request, "CategoryTask")
+    for tpage in tasks:
+        task = Task(request, tpage)
+        title = task.title()
+        result["titles"][tpage] = title
+        if tpage not in result["selected"]:
+            result["free"][tpage] = []
+
+
+    return result
+
 def search_meta_value(request, search):
     graphdata = request.graphdata
     graphdata.reverse_meta()
@@ -148,8 +151,14 @@ def execute(pagename, request):
     elif args == "questions":
         request.write(to_json(list_questions(request, search, True)))
     
+    elif args == "tasks":
+        request.write(to_json(list_tasks(request, search, True)))
+    
     elif args == "has_done" and search:
         request.write(to_json(has_done(request, search)))
+
+    elif args == "question_stats":
+        request.write(to_json(question_stats(request, Question(request, pagename))))
 
     else:
         request.write(to_json(""))

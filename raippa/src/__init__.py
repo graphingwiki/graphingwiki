@@ -21,6 +21,51 @@ raippacategories = {"task": "CategoryTask",
                     "student": "CategoryStudent",
                     "deadline": "CategoryDeadline"}
 
+def to_json(arg):
+    """Formats python data structures to json. 
+    Supports any combination of:
+        str,unicode,
+        int,long,float,bool,null
+        dict,list,tuple    
+    """
+    def parse(raw): 
+       
+        if isinstance(raw, (unicode,str)):
+            raw = raw.replace('"' ,'\\"')
+            return '"%s"' %raw
+
+        elif isinstance(raw, bool):
+            if raw:
+                return "true"
+            else:
+                return "false"
+
+        elif isinstance(raw, (int, float, long)):
+            return raw
+
+        elif isinstance(raw, dict):
+            result = list()
+            for key, val in raw.items():
+                result.append('%s : %s' % (parse(unicode(key)), parse(val)))
+
+            return "{\n" + ",\n".join(result) + "\n}"
+
+        elif isinstance(raw, (list, tuple, set)):
+            result = list()
+            for val in raw:
+                result.append('%s' % (parse(val)))
+
+            return '[\n' +  ",\n".join(result) + "\n]"
+
+        else:
+            return "null"
+
+
+    result = parse(arg)
+    if result[0]  not in ["[", "{"]:
+        result = '[' + result +']'
+    return result
+
 def unicode_form(form):
     new_form = dict()
     for key in form:
