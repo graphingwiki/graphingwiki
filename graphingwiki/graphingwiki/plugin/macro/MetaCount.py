@@ -36,18 +36,29 @@ from graphingwiki.util import format_wikitext, url_escape
 Dependencies = ['metadata']
 
 def execute(macro, args):
+    SILENT = False
+
     if args is None:
         args = ''
+    else:
+        args = args.strip().split(',')
+        if args[-1].strip() == 'gwikisilent':
+            SILENT = True
+            args = args[:-1]
+
+        args = ','.join(args)
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
                                                      get_all_keys=True)
 
-    request = macro.request
-    _ = request.getText
-
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        return "No matches for '%s'" % args
+        return _("No matches for") + " '%s'" % (args)
 
-    return "%d" % (len(pagelist))
+    _ = macro.request.getText
+
+    if SILENT:
+        return "%d " % (len(pagelist))
+
+    return "%d " % (len(pagelist)) + _("matches for") + " '%s'" % (args)
