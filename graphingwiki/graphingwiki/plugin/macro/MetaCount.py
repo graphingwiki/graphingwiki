@@ -50,4 +50,4 @@ def execute(macro, args):
     if not pagelist:
         return "No matches for '%s'" % args
 
-    return "%d matches for '%s'" % (len(pagelist), args)
+    return "%d" % (len(pagelist))
