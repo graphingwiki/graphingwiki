@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import time
+import time, re
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
@@ -247,6 +247,80 @@ class Question:
 
         return success, msg
 
+    def delete(self):
+        #remove question from the flow
+        task = self.task()
+        if task and Page(self.request, task.flowpage).exists():
+            previous = list()
+            next = list()
+
+            keys = get_keys(self.request, task.flowpage)
+            metas = get_metas(self.request, task.flowpage, keys, checkAccess=False)
+            new_metas = dict()
+
+            for key in metas:
+                values = list()
+                for value in metas[key]:
+                    value = removelink(value)
+                    
+                    if value == self.pagename:
+                        previous.append(key)
+                    else:
+                        values.append(value)
+
+                if self.pagename == key:
+                    next.extend(values)
+                else:
+                    new_metas[key] = list()
+                    for value in values:
+                        new_metas[key].append(addlink(value))
+
+            for previous_question in previous:
+                if previous_question not in new_metas:
+                    new_metas[previous_question] = list()
+
+                for next_question in next:
+                     if next_question not in new_metas[previous_question]:
+                         new_metas[previous_question].append(addlink(next_question)) 
+   
+            remove = {task.flowpage: metas}
+            add = {task.flowpage: new_metas}
+            success, msg = set_metas(self.request, remove, dict(), add)
+
+            if not success:
+                return success, msg
+
+        #remove historypages
+        for historypage in self.histories():
+            page = PageEditor(self.request, historypage, do_editor_backup=0)
+            if page.exists():
+                success, msg = page.deletePage()
+
+                if not success:
+                    return success, msg
+
+        #remove subpages
+        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
+        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+
+        for subpage in subpages:
+            page = PageEditor(self.request, subpage, do_editor_backup=0)
+            if page.exists():
+                success, msg = page.deletePage()
+
+                if not success:
+                    return success, msg
+
+        #remove questionpage
+        page = PageEditor(self.request, self.pagename, do_editor_backup=0)
+        if page.exists():
+            success, msg = page.deletePage()
+
+            if not success:
+                return success, msg
+
+        return True, u'Question "%s" was successfully deleted!' % self.title()
+
     def options(self):
         options = dict()
 
@@ -388,7 +462,7 @@ class Question:
         else:
             histories = self.histories()
 
-        revisions = Question(request, self.pagename).history_revisions(histories)
+        revisions = Question(self.request, self.pagename).history_revisions(histories)
         total_time = int()
         total_revs = int()
         
@@ -534,11 +608,9 @@ class Task:
 
         done = dict()
         doing = dict()
-        rev_count = dict()
 
         for question in questions:
             done_question, doing_question = Question(self.request, question).students(user)
-            rev_count[question] = list()
 
             for student in done:
                 if student not in done_question:
@@ -550,15 +622,13 @@ class Task:
                 if done.get(student, None) == None:
                     done[student] = list()
                 done[student].append(question)
-                rev_count[question].append(done_question[student])
             
             for student in doing_question:
                 if doing.get(student, None) == None:
                     doing[student] = list()
                 doing[student].append(question)
-                rev_count[question].append(doing_question[student])
         
-        return done, doing, rev_count
+        return done, doing
 
     def used_time(self, user=None):
         flow = self.questionlist()
@@ -581,6 +651,89 @@ class Task:
                 title = line[3:-3]
 
         return title
+
+    def delete(self, delete_questions=False):
+        #remove task from the flow
+        course = Course(self.request, self.request.cfg.raippa_config)
+        if course and Page(self.request, course.flowpage).exists():
+            previous = list()
+            next = list()
+            
+            keys = get_keys(self.request, course.flowpage)
+            metas = get_metas(self.request, course.flowpage, keys, checkAccess=False)
+            new_metas = dict()
+            
+            for point in metas:
+                nextlist = list()
+                for nextpoint in metas[point]:
+                    parts = nextpoint.split()
+                    if len(parts) > 1 and not parts[0].startswith("[["):
+                        reason = parts[0]
+                        parsed_next = " ".join(parts[1:])
+
+                    parsed_next = removelink(parsed_next)
+                    
+                    if parsed_next == self.pagename:
+                        previous.append(point)
+                    else:
+                        nextlist.append(nextpoint)
+                        
+                if self.pagename == point:
+                    #TODO: prerequisites
+                    next.extend(nextlist)
+                else:
+                    if point not in new_metas:
+                        new_metas[point] = list()
+                    new_metas[point].extend(nextlist)
+                        
+            for previous_question in previous:
+                if previous_question not in new_metas:
+                    new_metas[previous_question] = list()
+                    
+                for next_question in next:
+                     if next_question not in new_metas[previous_question]:
+                         new_metas[previous_question].append(next_question)
+                         
+            remove = {course.flowpage: metas}
+            add = {course.flowpage: new_metas}
+#            success, msg = set_metas(self.request, remove, dict(), add)
+            
+#            if not success:
+#                return success, msg
+
+        raise ValueError, [metas, "kek", new_metas]
+
+        #remove subpages
+        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
+        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+            
+        for subpage in subpages:
+            page = PageEditor(self.request, subpage, do_editor_backup=0)
+            if page.exists():
+                success, msg = page.deletePage()
+                
+                if not success:
+                    return success, msg
+
+        #remove taskpage 
+        page = PageEditor(self.request, self.pagename, do_editor_backup=0)
+        if page.exists():
+            success, msg = page.deletePage()
+
+            if not success:
+                return success, msg
+
+        #remove questionpages
+        if delete_questions:
+            for questionpage in self.questionlist():
+                if Page(self.request, questionpage).exists():
+                    success, msg = Question(self.request, questionpage).delete()
+                
+                    if not success:
+                        return success, msg
+                
+        return True, u'Question "%s" was successfully deleted!' % self.title()
+
 
     def save_flow(self, flow, options):
         save_data = dict()
@@ -657,7 +810,7 @@ class Course:
         for taskpage in flow:
             if taskpage != "first":
                 task = Task(request, taskpage)
-                done, doing, revs = task.users(user)
+                done, doing = task.students(user)
 
                 for doing_user in doing:
                     if doing_user not in doing_all:
