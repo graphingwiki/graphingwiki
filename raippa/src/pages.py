@@ -658,6 +658,7 @@ class Task:
         if course and Page(self.request, course.flowpage).exists():
             previous = list()
             next = list()
+            prerequisites = self.options().get('prerequisite', list())
             
             keys = get_keys(self.request, course.flowpage)
             metas = get_metas(self.request, course.flowpage, keys, checkAccess=False)
@@ -679,8 +680,46 @@ class Task:
                         nextlist.append(nextpoint)
                         
                 if self.pagename == point:
-                    #TODO: prerequisites
                     next.extend(nextlist)
+
+                    #move prerequisites
+                    for nextpoint in nextpoint:
+                        parts = nextpoint.split() 
+                        if len(parts) > 1 and not parts[0].startswith("[["):
+                            reason = parts[0]
+                            parsed_next = " ".join(parts[1:])
+
+                        parsed_next = removelink(parsed_next)
+
+                        ntask = Task(self.request, parsed_next)
+                        keys = get_keys(self.request, ntask.optionspage)
+                        old = get_metas(self.request, ntask.optionspage, keys, checkAccess=False)
+
+                        next_prerequisites = list()
+                        for prerequisite in old.get('prerequisite', list()):
+                            next_prerequisites.append(removelink(prerequisite))
+
+                        if self.pagename in next_prerequisites: 
+                            next_prerequisites.remove(self.pagename)
+ 
+                            for index, prerequisite in enumerate(next_prerequisites):
+                                next_prerequisites[index] = addlink(prerequisite)
+                            
+                            new = old
+                            new['prerequisite'] = next_prerequisites
+   
+                            if prerequisites:
+                                for prerequisite in prerequisites:
+                                    new['prerequisite'].append(addlink(prerequisite))
+
+                            remove = {ntask.optionspage: old}
+                            add = {ntask.optionspage: new}
+
+                            success, msg = set_metas(self.request, remove, dict(), add)
+
+                            if not success:
+                                return success, msg
+
                 else:
                     if point not in new_metas:
                         new_metas[point] = list()
@@ -696,12 +735,10 @@ class Task:
                          
             remove = {course.flowpage: metas}
             add = {course.flowpage: new_metas}
-#            success, msg = set_metas(self.request, remove, dict(), add)
+            success, msg = set_metas(self.request, remove, dict(), add)
             
-#            if not success:
-#                return success, msg
-
-        raise ValueError, [metas, "kek", new_metas]
+            if not success:
+                return success, msg
 
         #remove subpages
         filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
@@ -732,7 +769,7 @@ class Task:
                     if not success:
                         return success, msg
                 
-        return True, u'Question "%s" was successfully deleted!' % self.title()
+        return True, u'Task "%s" was successfully deleted!' % self.title()
 
 
     def save_flow(self, flow, options):
