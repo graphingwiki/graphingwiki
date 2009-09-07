@@ -247,7 +247,113 @@ class Question:
 
         return success, msg
 
-    def delete(self):
+    def rename(self, newname, comment=u""):
+        newname = newname[:255]
+        title = self.title()
+
+        #rename question in the flow
+        task = self.task()
+        if task and Page(self.request, task.flowpage).exists():
+            keys = get_keys(self.request, task.flowpage)
+
+            if self.pagename in keys:
+                metas = get_metas(self.request, task.flowpage, keys, checkAccess=False)
+                remove = {task.flowpage: [self.pagename]}
+                add = {task.flowpage: {newname: metas[self.pagename]}}
+
+                success, msg = set_metas(self.request, remove, dict(), add)
+
+                if not success:
+                    return success, msg
+
+        #rename historypages and links to them
+        for historypage in self.histories():
+            historyname = u"%s/%s" % ("/".join(historypage.split("/")[:-1]), newname)
+            historyname = historyname[:255]
+
+            pagedata = self.request.graphdata.getpage(historypage)
+            linkcomment = "changed links: %s -> %s" % (historypage, historyname)
+            
+            pages = list()
+            for type in pagedata.get('in', {}):
+                for pagename in pagedata['in'][type]:
+                    pages.append(pagename)
+                    
+            for pagename in pages:
+                page = PageEditor(self.request, pagename)
+                old_text = page.get_raw_body()
+                savetext = old_text.replace(historypage, historyname)
+            
+                msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
+
+            page = PageEditor(self.request, historypage)
+            if page.exists():
+                success, msg = page.renamePage(historyname, comment)
+
+                if not success:
+                    return success, msg
+
+        #rename subpages and links to them
+        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
+        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+
+        for subpage in subpages:
+            #TODO: check pagename lenght
+            new_subpage = subpage.replace(self.pagename, newname, 1)
+
+            pagedata = self.request.graphdata.getpage(subpage)
+            linkcomment = "changed links: %s -> %s" % (subpage, new_subpage)
+
+            pages = list()
+            for type in pagedata.get('in', {}):
+                for pagename in pagedata['in'][type]:
+                    pages.append(pagename)
+
+            for pagename in pages:
+                page = PageEditor(self.request, pagename)
+                old_text = page.get_raw_body()
+                savetext = old_text.replace(subpage, new_subpage)
+
+                msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
+
+            page = PageEditor(self.request, subpage)
+            if page.exists():
+                success, msg = page.renamePage(new_subpage, comment)
+
+                if not success:
+                    return success, msg
+
+        #rename links to the question
+        pagedata = self.request.graphdata.getpage(self.pagename)
+        linkcomment = "changed links: %s -> %s" % (self.pagename, newname)
+            
+        pages = list()
+        for type in pagedata.get('in', {}):
+            for pagename in pagedata['in'][type]:
+                pages.append(pagename)
+
+        for pagename in pages:
+            page = PageEditor(self.request, pagename)
+            old_text = page.get_raw_body()
+            savetext = old_text.replace(self.pagename, newname)
+
+            if pagename == u'How should one comment programs :o/options':
+                raise ValueError [old_text, savetext]
+
+            msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
+
+        #rename questionpage
+        page = PageEditor(self.request, self.pagename)
+        if page.exists():
+            success, msg = page.renamePage(newname, comment)
+
+            if not success:
+                return success, msg
+
+        return True, u'Question "%s" was successfully renamed!' % title
+
+    def delete(self, comment=u""):
+        title = self.title()
         #remove question from the flow
         task = self.task()
         if task and Page(self.request, task.flowpage).exists():
@@ -294,7 +400,7 @@ class Question:
         for historypage in self.histories():
             page = PageEditor(self.request, historypage, do_editor_backup=0)
             if page.exists():
-                success, msg = page.deletePage()
+                success, msg = page.deletePage(comment)
 
                 if not success:
                     return success, msg
@@ -306,7 +412,7 @@ class Question:
         for subpage in subpages:
             page = PageEditor(self.request, subpage, do_editor_backup=0)
             if page.exists():
-                success, msg = page.deletePage()
+                success, msg = page.deletePage(comment)
 
                 if not success:
                     return success, msg
@@ -314,12 +420,12 @@ class Question:
         #remove questionpage
         page = PageEditor(self.request, self.pagename, do_editor_backup=0)
         if page.exists():
-            success, msg = page.deletePage()
+            success, msg = page.deletePage(comment)
 
             if not success:
                 return success, msg
 
-        return True, u'Question "%s" was successfully deleted!' % self.title()
+        return True, u'Question "%s" was successfully deleted!' % title
 
     def options(self):
         options = dict()
@@ -652,88 +758,125 @@ class Task:
 
         return title
 
-    def delete(self, delete_questions=False):
+    def rename(self, newname, comment=u""):
+        title = self.title()
+        newname = newname[:255]
+
+        #rename task in the flow
+        course = Course(self.request, self.request.cfg.raippa_config)
+        if course and Page(self.request, course.flowpage).exists():
+            keys = get_keys(self.request, course.flowpage)
+
+            if self.pagename in keys:
+                metas = get_metas(self.request, course.flowpage, keys, checkAccess=False)
+
+                remove = {task.flowpage: [self.pagename]}
+                add = {task.flowpage: {newname: metas[self.pagename]}}
+
+                success, msg = set_metas(self.request, remove, dict(), add)
+
+                if not success:
+                    return success, msg
+
+        #rename links
+        pagedata = self.request.graphdata.getpage(self.pagename)
+        linkcomment = "changed links: %s -> %s" % (self.pagename, newname)
+
+        pages = list()
+        for type in pagedata.get('in', {}):
+            for pagename in pagedata['in'][type]:
+                pages.append(pagename)
+
+        for pagename in pages:
+            page = PageEditor(self.request, pagename)
+            old_text = page.get_raw_body()
+            savetext = old_text.replace(self.pagename, newname)
+
+            msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
+
+        #rename subpages
+        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
+        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+
+        for subpage in subpages:
+            page = PageEditor(self.request, subpage)
+            if page.exists():
+                #TODO: check pagename length
+                #TODO: update links to subpage
+                new_subpage = subpage.replace(self.pagename, newname, 1)
+                success, msg = page.renamePage(new_subpage, comment)
+
+                if not success:
+                    return success, msg
+                            
+        #rename taskpage
+        pagedata = self.request.graphdata.getpage(self.pagename)
+
+        page = PageEditor(self.request, self.pagename)
+        if page.exists():
+            success, msg = page.renamePage(newname, comment)
+            
+            if not success:
+                return success, msg
+
+        return True, u'Task "%s" was successfully renamed!' % title
+
+    def delete(self, comment=u"", delete_questions=False):
+        title = self.title()
+
+        #move prerequisites
+        prerequisites = self.options().get('prerequisite', list())
+
+        pagedata = self.request.graphdata.getpage(self.pagename)
+        pages = pagedata.get('in', dict()).get('prerequisite', list())
+
+        for pagename in pages:
+            metas = get_metas(self.request, pagename, ['prerequisite'], checkAccess=False)
+
+            new_prerequisites = list()
+            for prerequisite in prerequisites:
+                new_prerequisites.append(addlink(prerequisite))
+ 
+            for prerequisite in metas.get('prerequisite', list()):
+                if self.pagename != removelink(prerequisite) and prerequisite not in prerequisites:
+                    new_prerequisites.append(prerequisite)
+
+            remove = {pagename: ['prerequisite']}
+            add = {pagename: {'prerequisite': new_prerequisites}}
+
+            success, msg = set_metas(self.request, remove, dict(), add)
+
+            if not success:
+                return success, msg
+
         #remove task from the flow
         course = Course(self.request, self.request.cfg.raippa_config)
         if course and Page(self.request, course.flowpage).exists():
-            previous = list()
-            next = list()
-            prerequisites = self.options().get('prerequisite', list())
-            
             keys = get_keys(self.request, course.flowpage)
             metas = get_metas(self.request, course.flowpage, keys, checkAccess=False)
+
             new_metas = dict()
+            next = metas.get(self.pagename, list())
             
             for point in metas:
-                nextlist = list()
-                for nextpoint in metas[point]:
-                    parts = nextpoint.split()
-                    if len(parts) > 1 and not parts[0].startswith("[["):
-                        reason = parts[0]
-                        parsed_next = " ".join(parts[1:])
+                if point != self.pagename:
+                    new_metas[point] = list()
+                    for nextpoint in metas[point]:
+                        parsed_next = nextpoint
 
-                    parsed_next = removelink(parsed_next)
-                    
-                    if parsed_next == self.pagename:
-                        previous.append(point)
-                    else:
-                        nextlist.append(nextpoint)
-                        
-                if self.pagename == point:
-                    next.extend(nextlist)
-
-                    #move prerequisites
-                    for nextpoint in nextpoint:
-                        parts = nextpoint.split() 
+                        parts = nextpoint.split()
                         if len(parts) > 1 and not parts[0].startswith("[["):
                             reason = parts[0]
                             parsed_next = " ".join(parts[1:])
 
                         parsed_next = removelink(parsed_next)
-
-                        ntask = Task(self.request, parsed_next)
-                        keys = get_keys(self.request, ntask.optionspage)
-                        old = get_metas(self.request, ntask.optionspage, keys, checkAccess=False)
-
-                        next_prerequisites = list()
-                        for prerequisite in old.get('prerequisite', list()):
-                            next_prerequisites.append(removelink(prerequisite))
-
-                        if self.pagename in next_prerequisites: 
-                            next_prerequisites.remove(self.pagename)
- 
-                            for index, prerequisite in enumerate(next_prerequisites):
-                                next_prerequisites[index] = addlink(prerequisite)
-                            
-                            new = old
-                            new['prerequisite'] = next_prerequisites
-   
-                            if prerequisites:
-                                for prerequisite in prerequisites:
-                                    new['prerequisite'].append(addlink(prerequisite))
-
-                            remove = {ntask.optionspage: old}
-                            add = {ntask.optionspage: new}
-
-                            success, msg = set_metas(self.request, remove, dict(), add)
-
-                            if not success:
-                                return success, msg
-
-                else:
-                    if point not in new_metas:
-                        new_metas[point] = list()
-                    new_metas[point].extend(nextlist)
-                        
-            for previous_question in previous:
-                if previous_question not in new_metas:
-                    new_metas[previous_question] = list()
                     
-                for next_question in next:
-                     if next_question not in new_metas[previous_question]:
-                         new_metas[previous_question].append(next_question)
-                         
-            remove = {course.flowpage: metas}
+                        if parsed_next == self.pagename:
+                            new_metas[point].extend(next)
+                        else:
+                            new_metas[point].append(nextpoint)
+
+            remove = {course.flowpage: metas.keys()}
             add = {course.flowpage: new_metas}
             success, msg = set_metas(self.request, remove, dict(), add)
             
@@ -747,7 +890,7 @@ class Task:
         for subpage in subpages:
             page = PageEditor(self.request, subpage, do_editor_backup=0)
             if page.exists():
-                success, msg = page.deletePage()
+                success, msg = page.deletePage(comment)
                 
                 if not success:
                     return success, msg
@@ -755,7 +898,7 @@ class Task:
         #remove taskpage 
         page = PageEditor(self.request, self.pagename, do_editor_backup=0)
         if page.exists():
-            success, msg = page.deletePage()
+            success, msg = page.deletePage(comment)
 
             if not success:
                 return success, msg
@@ -764,12 +907,12 @@ class Task:
         if delete_questions:
             for questionpage in self.questionlist():
                 if Page(self.request, questionpage).exists():
-                    success, msg = Question(self.request, questionpage).delete()
+                    success, msg = Question(self.request, questionpage).delete(comment)
                 
                     if not success:
                         return success, msg
                 
-        return True, u'Task "%s" was successfully deleted!' % self.title()
+        return True, u'Task "%s" was successfully deleted!' % title
 
 
     def save_flow(self, flow, options):
@@ -805,8 +948,6 @@ class Task:
         success, msg =  set_metas(self.request, remove, dict(), save_data)
 
         return success, msg
-
-
 
 class Course:
 
