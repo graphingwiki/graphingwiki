@@ -9,7 +9,7 @@ from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas
 from opencollab.util.wiki import importMetas
-from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseURLs, parseMetaData
+from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyAndParseURLs
 
 def main():
     parser = optparse.OptionParser()
@@ -86,10 +86,13 @@ def main():
         if options.verbose:
             print "Uploading message files to collab."
         metas.update(getMessagesAndUpload(mailbox, collab))
-        metas.update(parseURLs(metas))
         metas.update(parseMetaData(metas))
+        metas.update(parseHTML(metas))
+        metas.update(lexifyAndParseURLs(metas))
         for page in metas:
             del metas[page]['msg']
+            del metas[page]['text']
+            del metas[page]['html']
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
     importMetas(collab, metas, template, options.verbose)

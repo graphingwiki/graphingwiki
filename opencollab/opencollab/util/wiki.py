@@ -10,6 +10,7 @@ def importMetas(collab, metas, template, verbose, replace=True):
             status = collab.setMeta(page, pmeta, template=template, replace=replace)
         except WikiFailure, msg:
             error = page + " " + repr(msg)
+            error += repr(pmeta)
             sys.exit(error)
         else:
             if verbose:

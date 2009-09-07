@@ -3,7 +3,7 @@
     @copyright: 2009 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, sys, getpass, imaplib, email, cStringIO, copy
+import re, sys, getpass, imaplib, email, cStringIO, copy, mimetypes, HTMLParser
 from opencollab.meta import Metas
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.regexp import *
@@ -53,26 +53,103 @@ def getMessagesAndUpload(mailbox, collab):
         metas[cpage]["TYPE"].add("SPAM")
         metas[cpage]["msg"].add(msg)
         uploadFile(collab, cpage, data[0][1], cpage + '.txt')
+        counter = 1
+        for part in msg.walk():
+            if part.get_content_maintype() == 'multipart':
+                continue
+            ext = mimetypes.guess_extension(part.get_content_type())
+            if not ext:
+                ext = '.bin'
+                filename = 'part-%03d%s' % (counter, ext)
+            counter += 1
+            ctype = part.get_content_type()
+            if ctype == 'text/plain':
+                metas[cpage]["text"].add(part.get_payload(decode=True))
+            elif ctype == 'text/html':
+                metas[cpage]["html"].add(part)
+            else:
+                ufile = part.get_payload(decode=True)
+                if ufile:
+                    metas[cpage]["Attachment"].add('[[attachment:%s]]' % filename)
+                    uploadFile(collab, cpage, ufile, filename)
     return metas
 
-def parseURLs(metas):
-    #new_metas = Metas()
+def lexifyAndParseURLs(metas):
+    punct = re.compile('[\.,:;]')
+    oddball = re.compile('[\xab\xbb\x92\xa9]')
     new_metas = copy.deepcopy(metas)
+    for cpage in metas:
+        for text in metas[cpage]["text"]:
+            shred = []
+            shred = text.split()
+            for token in shred:
+                if url_all_re.search(token):
+                    new_metas[cpage]['SPAM URL'].add(token)
+                else:
+                    try:
+                        token = unicode(token, "utf-8")
+                    except:
+                        try:
+                            token = unicode(token, "iso-8859-1")
+                        except:
+                            token = "UNSUPPORTED-CHARSET"
+                    token = punct.sub('', token)
+                    token = token.lower()
+                    new_metas[cpage]["Lexeme"].add(token) 
+    return new_metas
+
+# From http://pleac.sourceforge.net/pleac_python/webautomation.html
+class html(HTMLParser.HTMLParser):
+    def __init__(self):
+        HTMLParser.HTMLParser.__init__(self)
+        self._plaintext = ""
+        self._ignore = False
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            self._ignore = True
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self._ignore = False
+    def handle_data(self, data):
+        if len(data)>0 and not self._ignore:
+            self._plaintext += data
+    def get_plaintext(self):
+        return self._plaintext
+    def error(self,msg):
+        # ignore all errors
+        pass
+
+def parseURLs(html_content):
     href = re.compile('(href|HREF)=(3D)?\"')
     tag = re.compile('\'\">?.*$')
     gtlt = re.compile('[<>]')
+    urls = []
+    for line in html_content:
+            tokens = line.split()
+            for token in tokens:
+                if url_all_re.search(token):
+                    token = href.sub(' ', token) 
+                    token = tag.sub(' ', token)
+                    token = gtlt.sub(' ', token)
+                urls.append(token)   
+    return urls
+
+def parseHTML(metas):
+    new_metas = copy.deepcopy(metas)
     for cpage in metas:
-        msg = metas[cpage]['msg'].single()
-        body = ""
-        for line in body_line_iterator(msg, decode=True):
-            body+=line
-        tokens = body.split()
-        for token in tokens:
-            if url_all_re.search(token):
-                token = href.sub('', token)
-                token = tag.sub('', token)
-                token = gtlt.sub('', token)
-                new_metas[cpage]['SPAM URL'].add(token)
+        for html_part in metas[cpage]["html"]:
+            page_html = html_part.get_payload(decode=True)
+            parser = html()
+            try:
+                parser.feed(page_html)
+            except:
+                print "HTML parse error, salvaging URLs in: ", cpage
+                urls = parseURLs(page_html)
+                for url in urls:
+                    new_metas[cpage]["SPAM URL"].add(url)
+            else:
+                parser.close()  # force processing all data
+                new_metas[cpage]["text"].add(parser.get_plaintext())
     return new_metas
 
 def parseMetaData(metas):
