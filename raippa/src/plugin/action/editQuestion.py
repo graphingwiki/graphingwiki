@@ -36,6 +36,8 @@ def execute(pagename, request):
     if user.is_teacher():
         if request.form.get("newQuestion", [u""])[0]:
             name = request.form.get("pagename", [u""])[0]
+            if len(name) > 240:
+                name = name[:240]
             success, msg =  save_new_question(request, name)
             
             page = Page(request, pagename)

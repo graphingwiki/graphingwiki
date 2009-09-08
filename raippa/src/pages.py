@@ -248,7 +248,7 @@ class Question:
         return success, msg
 
     def rename(self, newname, comment=u""):
-        newname = newname[:255]
+        newname = newname[:240]
         title = self.title()
 
         #rename question in the flow
@@ -298,7 +298,6 @@ class Question:
         subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
 
         for subpage in subpages:
-            #TODO: check pagename lenght
             new_subpage = subpage.replace(self.pagename, newname, 1)
 
             pagedata = self.request.graphdata.getpage(subpage)
@@ -335,7 +334,7 @@ class Question:
         for pagename in pages:
             page = PageEditor(self.request, pagename)
             old_text = page.get_raw_body()
-            savetext = old_text.replace(self.pagename, newname)
+            savetext = old_text.replace(addlink(self.pagename), addlink(newname))
 
             if pagename == u'How should one comment programs :o/options':
                 raise ValueError [old_text, savetext]
@@ -760,7 +759,7 @@ class Task:
 
     def rename(self, newname, comment=u""):
         title = self.title()
-        newname = newname[:255]
+        newname = newname[:240]
 
         #rename task in the flow
         course = Course(self.request, self.request.cfg.raippa_config)
@@ -770,8 +769,8 @@ class Task:
             if self.pagename in keys:
                 metas = get_metas(self.request, course.flowpage, keys, checkAccess=False)
 
-                remove = {task.flowpage: [self.pagename]}
-                add = {task.flowpage: {newname: metas[self.pagename]}}
+                remove = {course.flowpage: [self.pagename]}
+                add = {course.flowpage: {newname: metas[self.pagename]}}
 
                 success, msg = set_metas(self.request, remove, dict(), add)
 
@@ -790,7 +789,7 @@ class Task:
         for pagename in pages:
             page = PageEditor(self.request, pagename)
             old_text = page.get_raw_body()
-            savetext = old_text.replace(self.pagename, newname)
+            savetext = old_text.replace(addlink(self.pagename), addlink(newname))
 
             msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
 
@@ -801,8 +800,6 @@ class Task:
         for subpage in subpages:
             page = PageEditor(self.request, subpage)
             if page.exists():
-                #TODO: check pagename length
-                #TODO: update links to subpage
                 new_subpage = subpage.replace(self.pagename, newname, 1)
                 success, msg = page.renamePage(new_subpage, comment)
 

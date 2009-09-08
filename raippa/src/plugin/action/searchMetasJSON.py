@@ -60,8 +60,37 @@ def question_stats(request, question):
                 stats[student][date] = [overallvalue, right, wrong, used_time]
                 stats[student]["total"][0] += used_time
                 stats[student]["total"][1] += 1
+
                 stats["total"][0] += used_time
                 stats["total"][1] += 1
+
+    return stats
+
+def task_stats(request, task):
+    stats = {"total":dict()} 
+
+    done, doing = task.students()
+    students = list(set(done.keys()).union(set(doing.keys())))
+    flow = task.questionlist()
+
+    for student in students:
+        stats[student] = {"done": dict(), "doing": dict(), "total": [0.0, 0]}
+
+        for questionpage in flow:
+            used_time, try_count = Question(request, questionpage).used_time(User(request, student))
+            if questionpage in done.get(student, list()):
+                stats[student]["done"][questionpage] = [used_time, try_count]
+            elif questionpage in doing.get(student, list()):
+                stats[student]["doing"][questionpage] = [used_time, try_count]
+
+            stats[student]["total"][0] += used_time
+            stats[student]["total"][1] += try_count 
+            
+            if not stats["total"].get(questionpage, list()):
+                stats["total"][questionpage] = [0.0, 0]
+
+            stats["total"][questionpage][0] += used_time
+            stats["total"][questionpage][1] += try_count
 
     return stats
 
@@ -110,11 +139,12 @@ def list_tasks(request, search, all):
     course = Course(request, request.cfg.raippa_config)
     result["selected"] = course.flow.fullflow()
     result["free"] = dict()
+    result["data"] = dict()
     tasks = pages_in_category(request, "CategoryTask")
     for tpage in tasks:
         task = Task(request, tpage)
         title = task.title()
-        result["titles"][tpage] = title
+        result["data"][tpage] = {"title" : title}
         if tpage not in result["selected"]:
             result["free"][tpage] = []
 
@@ -159,6 +189,9 @@ def execute(pagename, request):
 
     elif args == "question_stats":
         request.write(to_json(question_stats(request, Question(request, pagename))))
+
+    elif args == "task_stats":
+        request.write(to_json(task_stats(request, Task(request, pagename))))
 
     else:
         request.write(to_json(""))
