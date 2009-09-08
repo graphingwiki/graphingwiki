@@ -25,18 +25,19 @@ class RenamePage(RenamePageBasic):
         if 'raippa_rename' in self.form.keys():
             types = self.form.get('raippa_rename', list())
             self.newpagename = self.form.get('newpagename', [u''])[0]
+
+            comment = self.form.get('comment', [u''])[0]
+            comment = wikiutil.clean_input(comment)
         
             if not self.newpagename:
                 return False, u'Missing new pagename.'
 
             if 'question' in types:
                 question = Question(self.request, self.pagename)
-                return question.rename(self.newpagename)
-                success, msg = question.rename(self.newpagename)
-                raise ValueError, [success, msg, self.newpagename, self.pagename]
+                return question.rename(self.newpagename, comment)
             elif 'task' in types:
                 task = Task(self.request, self.pagename)
-                return task.rename(self.newpagename)
+                return task.rename(self.newpagename, comment)
             else:
                 return False, u'Missing page type.'
 

@@ -144,7 +144,8 @@ def list_tasks(request, search, all):
     for tpage in tasks:
         task = Task(request, tpage)
         title = task.title()
-        result["data"][tpage] = {"title" : title}
+        overall_deadline, deadlines = task.deadline()
+        result["data"][tpage] = {"title" : title, "deadline" : overall_deadline}
         if tpage not in result["selected"]:
             result["free"][tpage] = []
 
