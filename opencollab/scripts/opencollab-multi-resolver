@@ -20,7 +20,7 @@ def import_identities(collab,collab_metas,template,category,verbose):
         if page:
             if category is not None:
                 pmeta["category"].add(category)
-            status = collab.setMeta(page,pmeta,template=template,replace=True)
+            status = collab.setMeta(page,pmeta,template=template,replace=false)
             if verbose:
                 print "Set meta for: " + repr(page) + "with status: " + repr(status)
 
