@@ -184,6 +184,9 @@ def parseMetaData(metas):
         rpath = msg.get_all('return-path', []).pop()
         rpath = gtlt.sub('', rpath)
         new_metas[cpage]["Return-Path"].add(rpath)
+        msgid = msg.get_all('message-id', []).pop()
+        msgid = gtlt.sub('', msgid)
+        new_metas[cpage]["Message-ID"].add(msgid)
     return new_metas
 
 def parseURLs(metas):
@@ -202,14 +205,15 @@ def parseURLs(metas):
                 for token in tokens:
                     if schema.search(token):
                         pass
-                    elif url_all_re.search(token):
+                    if url_all_re.search(token):
+                        match = fqdn_re.search(token)
+                        new_metas[cpage]["SPAM DNS Name"].add('[[%s]]' % match.group())
                         token = href.sub(' ', token) 
                         token = quote.sub(' ', token)
                         token = tag.sub(' ', token)
                         url = token.split()
                         for i in url:
                             if url_all_re.search(i): 
-                                i = quote.sub('', i)
                                 new_metas[cpage]["SPAM URL"].add(i)
     return new_metas
 
