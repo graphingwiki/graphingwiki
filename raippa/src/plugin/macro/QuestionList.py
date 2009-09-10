@@ -6,7 +6,7 @@ def question_list_gui(macro, questionlist, user):
     request = macro.request
     f = macro.formatter
     result = list()
-
+    
     result.append(f.rawHTML('''<script type="text/javascript">
 if(MooTools){
     window.addEvent('domready', function(){
@@ -38,6 +38,11 @@ if(MooTools){
     result.append(f.div(True,id="questionList"))
     result.append(f.bullet_list(True))
 
+    if len(questionlist) > 1:
+        tasktype = Question(request, questionlist[0]).task().options().get('type', None)
+    else:
+        tasktype = None
+    
     for questionpage in questionlist:
         question = Question(request, questionpage)
 
@@ -53,13 +58,13 @@ if(MooTools){
                 result.append(f.pagelink(True, questionpage))
                 result.append(f.text(question.title()))
                 result.append(f.pagelink(False, questionpage))
-                if reason == "redo":
+                if reason == "redo" and tasktype not in ['exam', 'questionary']:
                     result.append(f.icon('(./)'))
                 elif reason == "pending":
                     result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
             else:
                 result.append(f.text(question.title()))
-                if reason == "done":
+                if reason == "done" and tasktype not in ['exam', 'questionary']:
                     result.append(f.icon('(./)'))
                 elif reason == "pending":
                     result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
@@ -109,9 +114,9 @@ def question_list_editor(macro, task):
     res.append(f.div(True, id="editList"))
     prefix =request.cfg.url_prefix_static 
     old_type = task.options().get('type', u'')
-    deadline = task.options().get('deadline', u'')
+    deadline, alldeadlines = task.deadline()
     res.append(f.rawHTML('''
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
+<script type="text/javascript" src="%s/raippajs/raippa-common.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript">
 
@@ -154,6 +159,7 @@ var qSortList = new Class({
         },
         'complete' : function(el){
             el.removeClass('sorting');
+            questionListData.set('edited' , true);
         }
     });
  
@@ -223,6 +229,7 @@ var qSortList = new Class({
                 },
             events: {
                 'click': function(){
+                    questionListData.set('edited' , true);
                     thislist.removeItems(li).destroy();
                     if (thislist.lists.length > 1){
                         thislist.addQuestion(page, name, true, Math.abs(pool - 1), incomplete);
@@ -255,54 +262,19 @@ var qSortList = new Class({
         }
 });
 
-function modalize(div){
-     var overlay = new Element('div', {
-            id : 'overlay',
-            'tween' :{
-                'duration' : 'short'
-                },
-            styles : {
-                'width' : '100%%',
-                'height' : '100%%',
-                'opacity' : 0.8,
-                'z-index' : 990,
-                'background' : '#333333',
-                'position' : 'fixed',
-                'top' : 0,
-                'left' : 0
-                },
-            events : {
-                'click' : function(){
-                    this.tween('opacity', 0.2);
-                    (function(){
-                        this.destroy();
-                        var l = $('lightContainer');
-                        if(l) l.destroy();
-                    }).delay(150, this);
-                    }
-                }
-        
-        });
-       var container = new Element('div',{
-            id : 'lightContainer',
-            styles : {
-                'left' : '50%%',
-                'position' : 'absolute',
-                'top' : 0,
-                'z-index' : 1000
-                }
-        }).grab(div);
-    
-    if (!Browser.Engine.trident){
-        overlay.setStyle('opacity', 0.2);
-        overlay.tween('opacity', 0.8);
+
+var questionListModal = new Class({
+    Extends: modalizer,
+    click : function(){
+        var edited = questionListData.get('edited');
+        if(!edited || confirm('Discard changes and close editor?')){
+            this.close();
+        }   
     }
- 
-    $(document.body).adopt(overlay, container);
-    div.setStyle('margin-left', -0.5 * div.getCoordinates().width);
-   }
+});
 
 function editQuestionList(){
+    questionListData.set('edited' , false);
     var searchCont = new Element('div',{
             styles : {
                 'width' : '450px',
@@ -347,7 +319,7 @@ function editQuestionList(){
                     }),
                 new Element('input',{
                     'name' : 'pagename',
-                    'maxlength' : '255' 
+                    'maxlength' : '240' 
                     }),
                 new Element('input',{
                     'type' : 'submit',
@@ -371,7 +343,7 @@ function editQuestionList(){
                     if (search == search_hint) search = '';
                     var cont = $('qSearchResults');
 
-                    if(questionListData.get("questionData")){
+                    if(questionListData.get("questionData") && cont){
                         var qPool = new Element('ul',{
                             id: 'qPool' ,
                             'class' : 'sortable'
@@ -394,7 +366,7 @@ function editQuestionList(){
                         qPool.inject(cont);
                         //qPool.inject(newQuestionCont, "before");
                     }else{
-                        cont.addClass('ajax_loading');
+                        if(cont) cont.addClass('ajax_loading');
                         var refresh = function(){ this.fireEvent('keyup') };
                         refresh.delay(500, this);
                     }
@@ -507,9 +479,7 @@ function editQuestionList(){
    questionListData.get('selected').each(function(el){
         questionListData.get('editList').addQuestion(el["page"], el["title"], false, 0, el["incomplete"]);
         });
-
-    modalize(searchCont);
-    
+   $(document.body).grab(searchCont); 
     var calendar = new Calendar({
             'deadline' : 'Y-m-d'
         },{
@@ -520,8 +490,21 @@ function editQuestionList(){
 
 
     field.fireEvent('keyup');
+    return searchCont;
 }
 
+function editor(view){
+    var edit = editQuestionList();
+    var stats = new Element('div');
+    var modal = new questionListModal([edit, stats], {
+        defTab : view,
+        tabLabels : ["edit", "stats"],
+        containerStyles :{
+            'margin-top' : '100px',
+            'background' : 'white'
+            }
+        });
+    }
 function submitCheck(ajax){
     var form = $("taskEditForm");
     var qList = questionListData.get("editList").serializeQ();
@@ -558,9 +541,9 @@ function submitCheck(ajax){
     }
 
 </script>
-<a class="jslink" onclick="editQuestionList();">edit</a>
+<a class="jslink" onclick="editor(0);">edit</a>
 &nbsp;
-<a class="jslink" onclick="">stats</a>
+<a class="jslink" onclick="editor(1);">stats</a>
     ''' % (prefix, prefix, ",".join(jsQlist), old_type, deadline, prefix)))
 
     res.append(f.div(False))

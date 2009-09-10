@@ -362,12 +362,14 @@ function submitCheck(button){
     return res
 
 def draw_statistics(macro, question):
-    res = list()
+    result = list()
+    request = macro.request
     f = macro.formatter
 
-    res.append(f.div(1,id="answerStatBox"))
-    res.append(f.div(0))
-    return res
+    result.append(f.div(1,id="answerStatBox"))
+    result.append(f.div(0))
+
+    return result
 
 def draw_answers(macro, user, question):
     f = macro.formatter

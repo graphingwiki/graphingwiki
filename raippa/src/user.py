@@ -184,22 +184,21 @@ class User:
                 if not done:
                     return False, "prerequisites"
 
-            may_total = False
-            may_reason = None
-
             questionlist = instance.questionlist()
+
             for questionpage in questionlist:
                 question = Question(self.request, questionpage)
-                may, reason = self.can_do(question)
+                done, info = self.has_done(question)
 
-                if may:
-                    may_total = True
-                    may_reason = reason
-                elif not may and reason in ['pending', 'picked']:
-                    return True, reason
-
-            if may_total:
-               return True, may_reason
+                if done:
+                    redo = question.options().get('redo', unicode())
+                    if redo == "True":
+                        return True, "redo"
+                else:
+                    if info in ['pending', 'picked']:
+                        return True, info
+                    else:
+                        return True, None
 
             return False, "done"
 
@@ -211,11 +210,16 @@ class User:
             #False, "done"
             #False, "pending"
             #False, "picked"
+            #False, "deadline"
             #False, "prerequisites"
 
             task = instance.task()
             if not task:
                 return False, None
+
+            may, info = self.can_do(task)
+            if not may:
+                return False, info
 
             redo = instance.options().get('redo', unicode())
             done, value = self.has_done(instance)
@@ -231,17 +235,21 @@ class User:
                 elif value in ["picked", "pending"]:
                     return False, value
 
-            questionlist = task.questionlist()
-            for questionpage in questionlist:
-                question = Question(self.request, questionpage)
+            tasktype = task.options().get('type', None)
 
-                done, value = self.has_done(question)
-                if question.pagename != instance.pagename and not done:
-                    return False, "prerequisites"
-                elif question.pagename == instance.pagename:
-                    return True, None
+            if tasktype == 'basic':
+                questionlist = task.questionlist()
+                prerequisites = questionlist[:questionlist.index(instance.pagename)]
+                prerequisites.reverse()
 
-            return False, None
+                for questionpage in prerequisites:
+                    question = Question(self.request, questionpage)
+
+                    done, value = self.has_done(question)
+                    if not done:
+                        return False, "prerequisites"
+
+            return True, None
         else:
             raise ValueError, instance
 

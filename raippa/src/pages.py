@@ -10,22 +10,28 @@ from raippa import removelink, addlink, randompage
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
-class DeadLinkException(Exception):
+class RaippaException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
+class DeadLinkException(RaippaException):
     pass
 
-class TooManyKeysException(Exception):
+class TooManyKeysException(RaippaException):
     pass
 
-class TooManyLinksException(Exception):
+class TooManyLinksException(RaippaException):
     pass
 
-class TooManyValuesException(Exception):
+class TooManyValuesException(RaippaException):
     pass
 
-class MissingMetaException(Exception):
+class MissingMetaException(RaippaException):
     pass
 
-class PageDoesNotExistException(Exception):
+class PageDoesNotExistException(RaippaException):
     pass
 
 class SaveException(Exception):
@@ -56,7 +62,7 @@ class Answer:
         elif len(questions) > 1:
             raise TooManyValuesException(u'Too many pages linking in to %s.' % self.pagename)
         else:
-            return None
+            raise PageDoesNotExistException(u"Answer %s is missing a question" % self.pagename)
 
     def answer(self):
         metas = get_metas(self.request, self.pagename, ['answer'], checkAccess=False)

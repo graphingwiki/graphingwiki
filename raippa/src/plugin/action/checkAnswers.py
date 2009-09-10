@@ -40,7 +40,7 @@ def execute(pagename, request):
 
     if starttime:
         try:
-            usedtime = time.time() - float(starttime)
+            usedtime = int(time.time() - float(starttime))
         except:
             usedtime = None
     else:
@@ -55,11 +55,18 @@ def execute(pagename, request):
         Page(request, pagename).send_page()
         return
 
+    task = question.task()
+    tasktype = task.options().get('type', None)
+
+    if tasktype in ['exam', 'questionary']:
+        page = Page(request, task.pagename)
+        request.http_redirect(page.url(request))
+        return
+
     if overallvalue in ['success', 'pending']:
         answerpages = successdict.get('right', list())
 
 
-        #TODO: handle comments
         comments = []
         while len(answerpages) > 0:
             answerpage = answerpages.pop()
@@ -69,9 +76,7 @@ def execute(pagename, request):
         
         request.session["comments"] = comments
 
-        task = question.task()
-        questionlist = task.questionlist()
-        if questionlist and pagename == questionlist[-1]:
+        if user.has_done(task)[0]:
             course = Course(request, request.cfg.raippa_config)
             if course.graphpage:
                 page = Page(request, course.graphpage)
@@ -79,6 +84,7 @@ def execute(pagename, request):
                 page = Page(request, request.cfg.page_front_page)
         else:
             page = Page(request, task.pagename)
+
         request.http_redirect(page.url(request))
         return
 
