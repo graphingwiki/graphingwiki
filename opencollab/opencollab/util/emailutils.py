@@ -3,7 +3,7 @@
     @copyright: 2009 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, sys, getpass, imaplib, email, cStringIO, copy, mimetypes, HTMLParser
+import re, sys, getpass, imaplib, email, cStringIO, copy, mimetypes, HTMLParser, socket
 from opencollab.meta import Metas
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.regexp import *
@@ -189,6 +189,15 @@ def parseMetaData(metas):
         new_metas[cpage]["Message-ID"].add(msgid)
     return new_metas
 
+def getRrType(rr):
+    try:
+        socket.inet_aton(rr)
+    except socket.error:
+        type = "NAME"
+    else:
+        type = "IPv4"
+    return type
+
 def parseURLs(metas):
     new_metas = copy.deepcopy(metas)
     href = re.compile('(href|HREF|src|SRC|title)=(3D)?')
@@ -207,7 +216,10 @@ def parseURLs(metas):
                         pass
                     if url_all_re.search(token):
                         match = fqdn_re.search(token)
-                        new_metas[cpage]["SPAM DNS Name"].add('[[%s]]' % match.group())
+                        rr = match.group()
+                        type = getRrType(rr)
+                        new_metas[cpage]["SPAM RR"].add('[[%s]]' % match.group())
+                        new_metas[rr]["TYPE"].add(type)
                         token = href.sub(' ', token) 
                         token = quote.sub(' ', token)
                         token = tag.sub(' ', token)

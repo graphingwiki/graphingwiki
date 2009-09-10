@@ -122,6 +122,11 @@ def main():
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
         help="Perform queries recursively." )
+    parser.add_option("-s", "--selection",
+                      dest="selection",
+                      default=None,
+                      metavar="SEARCH",
+                      help=("Use MetaTable SEARCH arguments to fetch input from a collab instead reading them from STDIN."))
     parser.add_option("-t", "--template",
                       dest="template",
                       default=None,
@@ -142,10 +147,12 @@ def main():
         help="Enable verbose output." )
     parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
+    new = []
     url=None
     mresolve_path="/usr/bin/mresolve"
     iopts={}
     collab_metas = Metas()
+    types = set(("NAME", "IPv4", "AS"))
     if options.config:
         iopts = parse_config(options.config, "creds", "multi-resolver")
     if options.mresolve_path:
@@ -174,9 +181,30 @@ def main():
         category=iopts["multi-resolver"]["category"]
     else:
         category=None
-    if options.verbose:
-        print "Reading input identities from STDIN."
-    new = read_input()
+    if options.selection:
+        selection = options.selection
+    elif options.config and "selection" in iopts["multi-resolver"]:
+        selection = iopts["multi-resolver"]["selection"]
+    else:
+        selection = None
+    if selection is None:
+        if options.verbose:
+            print "Reading input identities from STDIN."
+        new = read_input()
+    else:
+        if options.verbose:
+            print "Fetching identities from collab."
+        pages = collab.getMeta(selection)
+        for page in pages:
+            if pages[page]["TYPE"].single() in types:
+                new.append(page)
+            else:
+                if options.verbose:
+                    print page, " identity type is not supported."
+    if not new:
+        if options.verbose:
+            print "No input identities, no work. Exiting."
+        sys.exit()
     if options.verbose:
         print "Expanding initial requests."
     expanded,resolved = seed_initial(new)
