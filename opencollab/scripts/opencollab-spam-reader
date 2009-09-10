@@ -9,7 +9,7 @@ from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas
 from opencollab.util.wiki import importMetas
-from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyAndParseURLs
+from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
 
 def main():
     parser = optparse.OptionParser()
@@ -88,7 +88,8 @@ def main():
         metas.update(getMessagesAndUpload(mailbox, collab))
         metas.update(parseMetaData(metas))
         metas.update(parseHTML(metas))
-        metas.update(lexifyAndParseURLs(metas))
+        metas.update(lexifyTokens(metas))
+        metas.update(parseURLs(metas))
         for page in metas:
             del metas[page]['msg']
             del metas[page]['text']

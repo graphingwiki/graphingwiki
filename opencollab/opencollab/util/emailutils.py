@@ -57,26 +57,42 @@ def getMessagesAndUpload(mailbox, collab):
         for part in msg.walk():
             if part.get_content_maintype() == 'multipart':
                 continue
-            ext = mimetypes.guess_extension(part.get_content_type())
-            if not ext:
-                ext = '.bin'
-                filename = 'part-%03d%s' % (counter, ext)
-            counter += 1
             ctype = part.get_content_type()
             if ctype == 'text/plain':
-                metas[cpage]["text"].add(part.get_payload(decode=True))
+                charset = part.get_content_charset()
+                payload = part.get_payload(decode=True)
+                if charset is not None:
+                    try:
+                        payload = unicode(payload, charset, "replace")
+                    except:
+                        try:
+                            payload = unicode(payload, "latin-1", "replace")
+                        except:
+                            try:
+                                payload = unicode(payload, "cp1252", "replace")
+                            except:
+                                payload = "unsupported-charset"
+                metas[cpage]["text"].add(payload)
             elif ctype == 'text/html':
                 metas[cpage]["html"].add(part)
             else:
+                filename = part.get_filename() 
+                if filename is None:
+                    ext = mimetypes.guess_extension(part.get_content_type())
+                    if not ext:
+                        ext = '.bin'
+                    filename = 'part-%03d%s' % (counter, ext)
                 ufile = part.get_payload(decode=True)
                 if ufile:
                     metas[cpage]["Attachment"].add('[[attachment:%s]]' % filename)
                     uploadFile(collab, cpage, ufile, filename)
+            counter += 1
     return metas
 
-def lexifyAndParseURLs(metas):
-    punct = re.compile('[\.,:;]')
-    oddball = re.compile('[\xab\xbb\x92\xa9]')
+def lexifyTokens(metas):
+    quotes = re.compile('(^[\"\']|[\"\']$)')
+    markup = re.compile('[\#<>\[\]\(\)\{\}]')
+    punct = re.compile('[\.,:;]\s?$')
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
         for text in metas[cpage]["text"]:
@@ -84,22 +100,26 @@ def lexifyAndParseURLs(metas):
             shred = text.split()
             for token in shred:
                 if url_all_re.search(token):
-                    new_metas[cpage]['SPAM URL'].add(token)
+                    pass
                 else:
                     try:
                         token = unicode(token, "utf-8")
                     except:
-                        try:
-                            token = unicode(token, "iso-8859-1")
-                        except:
-                            token = "UNSUPPORTED-CHARSET"
+                        token = "unknown-charset"
+                    token = quotes.sub('', token)
+                    token = markup.sub('', token)
                     token = punct.sub('', token)
                     token = token.lower()
-                    new_metas[cpage]["Lexeme"].add(token) 
+                    new_metas[cpage]["Lexeme"].add("[[%s]]" % token) 
+                    # Scalability issues. :)
+                    #if token:
+                    #    new_metas[token]["TYPE"].add("LEXEME")
     return new_metas
 
-# From http://pleac.sourceforge.net/pleac_python/webautomation.html
 class html(HTMLParser.HTMLParser):
+    """
+    From http://pleac.sourceforge.net/pleac_python/webautomation.html
+    """
     def __init__(self):
         HTMLParser.HTMLParser.__init__(self)
         self._plaintext = ""
@@ -119,21 +139,6 @@ class html(HTMLParser.HTMLParser):
         # ignore all errors
         pass
 
-def parseURLs(html_content):
-    href = re.compile('(href|HREF)=(3D)?\"')
-    tag = re.compile('\'\">?.*$')
-    gtlt = re.compile('[<>]')
-    urls = []
-    for line in html_content:
-            tokens = line.split()
-            for token in tokens:
-                if url_all_re.search(token):
-                    token = href.sub(' ', token) 
-                    token = tag.sub(' ', token)
-                    token = gtlt.sub(' ', token)
-                urls.append(token)   
-    return urls
-
 def parseHTML(metas):
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
@@ -143,10 +148,7 @@ def parseHTML(metas):
             try:
                 parser.feed(page_html)
             except:
-                print "HTML parse error, salvaging URLs in: ", cpage
-                urls = parseURLs(page_html)
-                for url in urls:
-                    new_metas[cpage]["SPAM URL"].add(url)
+                print "ERROR: HTML parse error."
             else:
                 parser.close()  # force processing all data
                 new_metas[cpage]["text"].add(parser.get_plaintext())
@@ -182,5 +184,32 @@ def parseMetaData(metas):
         rpath = msg.get_all('return-path', []).pop()
         rpath = gtlt.sub('', rpath)
         new_metas[cpage]["Return-Path"].add(rpath)
+    return new_metas
+
+def parseURLs(metas):
+    new_metas = copy.deepcopy(metas)
+    href = re.compile('(href|HREF|src|SRC|title)=(3D)?')
+    schema = re.compile('xmlns(:\w)?=') 
+    quote = re.compile('[\'\"]')
+    tag = re.compile('[<>]')
+    for cpage in metas:
+        msg = metas[cpage]["msg"].single()
+        for part in msg.walk():
+            ctype = part.get_content_type()
+            if(ctype == "text/plain") or (ctype == "text/html"):
+                content = part.get_payload(decode=True)
+                tokens = content.split()
+                for token in tokens:
+                    if schema.search(token):
+                        pass
+                    elif url_all_re.search(token):
+                        token = href.sub(' ', token) 
+                        token = quote.sub(' ', token)
+                        token = tag.sub(' ', token)
+                        url = token.split()
+                        for i in url:
+                            if url_all_re.search(i): 
+                                i = quote.sub('', i)
+                                new_metas[cpage]["SPAM URL"].add(i)
     return new_metas
 
