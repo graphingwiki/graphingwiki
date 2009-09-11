@@ -5,8 +5,19 @@ from raippa.pages import Task
 from raippa.user import User
 from raippa import unicode_form
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 
-answer_options = ("answer", "tip", "comment", "value")
+
+def save_new_task(request, pagename):
+    page = PageEditor(request, pagename)
+    template = Page(request, "TaskTemplate").get_raw_body()
+
+    try:
+        msg = page.saveText(template, page.get_real_rev())
+    except Exception, e:
+        return False, unicode(e)
+
+    return True, msg
 
 def execute(pagename, request):
     request.form = unicode_form(request.form)
@@ -14,6 +25,18 @@ def execute(pagename, request):
     user = User(request, request.user.name)
     success = False
     if user.is_teacher():
+
+        if request.form.get("newTask", [u""])[0]:
+            name = request.form.get("pagename", [u""])[0]
+            if len(name) > 240:
+                name = name[:240]
+            success, msg =  save_new_task(request, name)
+            
+            page = Page(request, pagename)
+            request.theme.add_msg(msg)
+            Page(request, pagename).send_page()
+            return
+
         flow = dict()
         flow_queue = [u"first"]
 
