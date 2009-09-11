@@ -159,13 +159,10 @@ def execute(macro, args):
     categories = ','.join(categories)
     
     html = u'''
-  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
-  <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
-
 <script type="text/javascript">
 addLoadEvent(function(){
 var dates = new Hash();
-    \n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
+    \n'''
 
     for date, d in entries.iteritems():
         html += u'dates.set("%s","' % date
