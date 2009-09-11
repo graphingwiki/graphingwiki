@@ -6,7 +6,8 @@
 var courseEditor = new Class({
 	Implements : [Options],
 	Binds: ['getTasks', 'createUi', 'tasklistAdd', 'tasklistRemove','drawGraph',
-	        'addTask', 'drawInfo', 'getParentBox', 'getChildBox', 'error'],
+	        'addTask', 'drawInfo', 'getParentBox', 'getChildBox', 'error', 'getFreeSpot', 
+	        'removeFromTree', 'submitData'],
 	tasks: {},
 	flow: {},
 	errors: [],
@@ -59,10 +60,20 @@ var courseEditor = new Class({
 		},
 		infoContainerStyles: {
 			'width' :'150px',
-			'float' : 'left',
 			'padding' : '5px 5px 5px 5px',
 			'background-color' : '#ECF1EF',
-			'margin-top' : '20px'
+			'font-size': 'small'
+		},
+		saveContainerStyles: {
+			'width' :'150px',
+			'padding' : '5px 5px 5px 5px',
+			'background-color' : '#ECF1EF',
+			'margin-top' : '10px',
+			'clear': 'left'
+		},
+		controllerStyles: {
+			'margin-top' : '20px',
+			'float' : 'left'
 		},
 		canvasStyles: {
 			'position' : 'absolute',
@@ -73,7 +84,8 @@ var courseEditor = new Class({
 			'cursor' : 'move',
 			'z-index' : '201',
 			'position' : 'absolute'
-		}
+		},
+		taskVerticalDistance : 25
 	},
 	initialize : function(el, options){
 		if (!el) return false;
@@ -82,7 +94,7 @@ var courseEditor = new Class({
 		
 		this.flow = new Hash({'first': []});
 		this.tasks = {
-				/* data: { taskname : { title, required, element, deadline, description} , ...} */
+				/* data: { taskname : { title, required, element, deadline, description, list_item} , ...} */
 			"data": new Hash(),
 			"selected": {},
 			"free":{},
@@ -106,12 +118,7 @@ var courseEditor = new Class({
 			tmp.extend(next);
 
 			next.each(function(task){
-				if (!this.tasks.data[task]){
-					this.error("restoreCurrent: could not find tasks.data["+task+"]");
-					//return;
-				}
 				var title = this.tasks.data[task].title;
-				console.debug('add('+to+ ',' + task +',' + title +')');
 				this.addTask(to, task, title);
 			}, this);
 		}
@@ -125,6 +132,35 @@ var courseEditor = new Class({
 			this.taskListAdd(key);
 		}, this);
 		
+		var taskAddForm = new Element('form', {
+			'method': 'post',
+			'styles': {
+				'margin-left' : '10px'
+			},
+			'events' :{
+				'submit': function(e){
+					var e = new Event(e).stop();
+                    var field = taskAddForm.getElement('input[name=pagename]');
+					taskAddForm.set('send',{
+                        url : field.get('value') + '?action=editQuestionList&newTask=true',
+                        async : false
+                        });
+					taskAddForm.send();
+					this.getTasks();
+					
+					//add newly created tasks to list: a task without both list_item and element must be new
+					this.tasks.data.each(function(value, key){
+						if (!value.element && !value.list_item){
+							this.taskListAdd(key);
+						}
+					}, this);
+					
+                    field.set('value','');
+				}.bindWithEvent(this)
+			}
+		});
+		taskAddForm.grab(new Element('input', {'name' : 'pagename', 'maxlength' : '240'}));
+		taskAddForm.grab(new Element('input', {'type': 'submit', 'value': 'New Task'}));
 		this.graphContainer = new Element('div');
 		this.graphContainer.setStyles(this.options.graphContainerStyles);
 		
@@ -136,23 +172,50 @@ var courseEditor = new Class({
 		
 		this.graphContainer.grab(first);
 		
-		this.tasklistContainer = new Element('div').grab(this.tasklist);
+		this.tasklistContainer = new Element('div').adopt(this.tasklist, taskAddForm);
 		this.tasklistContainer.setStyles(this.options.tasklistContainerStyles);
 		
+		var controllers = new Element('div');
+		controllers.setStyles(this.options.controllerStyles);
+		
+		var saveContainer = new Element('div');
+		saveContainer.setStyles(this.options.saveContainerStyles);
+
+		saveContainer.grab(new Element('input',{
+			'type': 'button',
+			'value' : 'Save',
+			'events': {
+				'click': function(){
+					this.submitData();
+				}.bindWithEvent(this)
+			}
+		})); 
+		saveContainer.grab(new Element('span', {html : "&nbsp;&nbsp;&nbsp;"}));
+		saveContainer.grab(new Element('input', {
+			'type': 'button',
+			'value': 'Cancel',
+			'events': {
+				'click': function(){
+					if($('overlay')){
+						$('overlay').fireEvent('click');
+					}else{
+						this.container.destroy();
+					}
+				}.bindWithEvent(this)
+			}
+		}));
 		this.infoContainer = new Element('div');
 		this.infoContainer.setStyles(this.options.infoContainerStyles);
 
+		controllers.adopt(this.infoContainer, saveContainer);
 		var clear = new Element('div').setStyle('clear', 'both');
-		this.container.adopt(this.tasklistContainer, this.infoContainer, this.graphContainer, clear);
+		this.container.adopt(this.tasklistContainer, controllers, this.graphContainer, clear);
 		
 		this.drawInfo();
 	},
 	taskListAdd : function(taskname){
 		var item = new Element('li');
-		if (!this.tasks.data[taskname]) {
-			this.error("taskListAdd: could not find tasks.data[" + taskname + "]");
-			return;
-		}
+
 		var title = this.tasks.data[taskname]["title"];
 		item.set('text', taskname);
 		item.store('name', taskname);
@@ -317,8 +380,6 @@ var courseEditor = new Class({
 		        }, this);
 		}
 		
-		//count of siblings
-		cLkm = this.flow[to].length;
 		
 		//add new task to parents flow
 		this.flow[to].include(value);
@@ -383,17 +444,10 @@ var courseEditor = new Class({
 		box.grab(content);
 		this.graphContainer.grab(box);
 		//trying to move box to free space
-		var ppos = $(pDiv).getCoordinates(this.graphContainer);
-		bX =  ppos.left + this.options.elSize.width /2 - 2 - content.getCoordinates().width/2  +Math.ceil(cLkm/2) * 100 * Math.pow( -1, cLkm);
-		bY =  ppos.top + 25 + this.options.elSize.height;
-		if(bX < 100){
-			bX = Math.abs(bX - 100)  + 100;
-			bY += 100;
-		}
-		if(posx){ bX = posx; }
-		if(posy){ bY = posy;}
-		box.setStyle('left', bX);
-		box.setStyle('top',bY);
+		
+		var position = this.getFreeSpot(pDiv);
+		box.setStyle('left', position.x);
+		box.setStyle('top', position.y);
 
 		box.addEvent('click',function(){
 			this.drawInfo(value);
@@ -403,10 +457,12 @@ var courseEditor = new Class({
 		box.makeDraggable({
 		onDrag: function(){
 		        if(this.tasks.endPoints.contains(value)){
+		        	var top = box.getPosition(this.graphContainer).y + this.options.taskVerticalDistance 
+		        				+ this.options.taskCanvasSize.height - 20;
+		        	var left =  box.getPosition(this.graphContainer).x + box.getCoordinates(this.graphContainer).width /2 -10;
 		            $('ep_'+box.id).setStyles({
-		                'left': box.getPosition(this.graphContainer).x + 
-		                box.getCoordinates(this.graphContainer).width /2 -10,
-		                'top': box.getPosition(this.graphContainer).y + 40
+		                'left': left,
+		                'top': top
 		                });
 		        }
 		        this.drawGraph(box.id);
@@ -425,6 +481,23 @@ var courseEditor = new Class({
 			this.newEndPoint(value);
 		}
 		this.drawGraph();	
+	},
+	/* Tries to find good spot near given element, returns a object with x and y coodrinates*/
+	getFreeSpot: function(element){
+		var result = {};
+		var el = $(element);
+		var cCnt = 0;
+		if (el.retrieve('value')){
+			cCnt = this.flow[el.retrieve('value')].length -1 ;
+		}
+		var ppos = $(element).getCoordinates(this.graphContainer);
+		result.x =  ppos.left +Math.ceil(cCnt/2) * 100 * Math.pow( -1, cCnt);
+		result.y=  ppos.top + this.options.taskVerticalDistance + this.options.elSize.height;
+		if(result.x < 100){
+			result.x = Math.abs(result.x - 100)  + 100;
+			result.y += 100;
+		}
+		return result;
 	},
 	/* Draws lines between task balls*/
 	drawGraph : function(id, highlight){
@@ -539,36 +612,39 @@ var courseEditor = new Class({
 			ctx.lineTo(xto, yto);
 			ctx.stroke();
 
-			//calculating points for arrow
-			var midx = (xto - xfrom)/2;
-			var midy = Math.abs(yto - yfrom)/2;
-			var vx = xto - xfrom;
-			var vy = yto - yfrom;
-			//unit vector for line
-			var v0x = vx / Math.sqrt(vx*vx + vy*vy) * 15;
-			var v0y = vy / Math.sqrt(vx*vx + vy*vy) * 15;
-			//determining which way to put arrow
-			if(c1x > c2x || c1x == c2x && is_child && c1y > c2y || c1x == c2x && c1y < c2y){
-				var reverse = 1;
-			}else{
-				var reverse = -1;
+			//draw a beautiful arrow only if we are drawing line between tasks
+			if (!is_ep){
+				//calculating points for arrow
+				var midx = (xto - xfrom)/2;
+				var midy = Math.abs(yto - yfrom)/2;
+				var vx = xto - xfrom;
+				var vy = yto - yfrom;
+				//unit vector for line
+				var v0x = vx / Math.sqrt(vx*vx + vy*vy) * 15;
+				var v0y = vy / Math.sqrt(vx*vx + vy*vy) * 15;
+				//determining which way to put arrow
+				if(c1x > c2x || c1x == c2x && is_child && c1y > c2y || c1x == c2x && c1y < c2y){
+					var reverse = 1;
+				}else{
+					var reverse = -1;
+				}
+				//check if c1 is really c2's parent
+				if(is_child){
+					reverse *= -1;
+				}
+				midx += v0x * reverse / 2;
+				midy += v0y * reverse / 2;
+				var ang = Math.PI * (1/2 + reverse * 2/6);
+				var a1x = v0x * Math.cos(ang) - v0y * Math.sin(ang) + midx;
+				var a1y = v0x * Math.sin(ang) + v0y * Math.cos(ang) + midy;
+				var a2x = v0x * Math.cos(-ang) - v0y * Math.sin(-ang) + midx;
+				var a2y = v0x * Math.sin(-ang) + v0y * Math.cos(-ang) + midy;
+				ctx.fillStyle = color;
+				ctx.moveTo(midx,midy);
+				ctx.lineTo(a1x, a1y);
+				ctx.lineTo(a2x, a2y);
+				ctx.fill();
 			}
-			//check if c1 is really c2's parent
-			if(is_child){
-				reverse *= -1;
-			}
-			midx += v0x * reverse / 2;
-			midy += v0y * reverse / 2;
-			var ang = Math.PI * (1/2 + reverse * 2/6);
-			var a1x = v0x * Math.cos(ang) - v0y * Math.sin(ang) + midx;
-			var a1y = v0x * Math.sin(ang) + v0y * Math.cos(ang) + midy;
-			var a2x = v0x * Math.cos(-ang) - v0y * Math.sin(-ang) + midx;
-			var a2y = v0x * Math.sin(-ang) + v0y * Math.cos(-ang) + midy;
-			ctx.fillStyle = color;
-			ctx.moveTo(midx,midy);
-			ctx.lineTo(a1x, a1y);
-			ctx.lineTo(a2x, a2y);
-			ctx.fill();
 		}
 		}
 		if(!id){
@@ -610,6 +686,10 @@ var courseEditor = new Class({
 	
 		var pDiv = this.tasks.data[value].element;
 		this.tasks.endPoints.include(value);
+		var top = pDiv.getPosition(this.graphContainer).y + this.options.taskVerticalDistance
+				+ this.options.taskCanvasSize.height -20 ;
+		var left =  pDiv.getPosition(this.graphContainer).x + 
+				pDiv.getCoordinates(this.graphContainer).width /2 -10;
 
 		var ep = new Canvas({
 			'id' : 'ep_'+ pDiv.id,
@@ -618,8 +698,8 @@ var courseEditor = new Class({
 				'position': 'absolute',
 				'cursor': 'move',
 				'z-index' : 201,
-	            'left': pDiv.getPosition(this.graphContainer).x + pDiv.getCoordinates(this.graphContainer).width /2 -10,
-	            'top': pDiv.getPosition(this.graphContainer).y + 50
+	            'left': left,
+	            'top': top
 			} 
 		});
 		ep.inject(this.graphContainer);
@@ -691,12 +771,52 @@ var courseEditor = new Class({
 				editor.tasks["selected"] = $H(json.selected);
 				var data = $H(json.data).map(function(value){
 							value.element = false;
+							value.list_item = false;
 							return $H(value);
 						});
+				//combining new and old data, old data is not overwritten
 				editor.tasks.data.combine(data);
 			}
 		});
 		query.get({'args':'tasks'});
+	},
+	removeFromTree : function(task){
+		var task_ob = this.tasks.data[task];
+		var parents = this.getParentBox(task);
+		var childs = this.getChildBox(task);
+		var required = task_ob.required;
+		
+		//add task children to every parent
+		parents.each(function(parent){
+			this.flow[parent].erase(task);
+			this.flow[parent].extend(childs);
+			//adding end points if needed
+			if (this.flow[parent].length == 0){
+				this.newEndPoint(parent);
+			}
+		}, this);
+		
+		//add current task requirements to every child
+		childs.each(function(child){
+			this.tasks.data[child].required.extend(required);
+		}, this);
+		
+		//removing orphan end points
+		this.tasks.endPoints.erase(task);
+		var ep = $('ep_'+ task_ob.element.id);
+		if (ep){
+			ep.destroy();
+		}
+		//destroy tree element, remove from flow and empty requirements 
+		this.flow.erase(task);
+		task_ob.element.destroy();
+		task_ob.element = false;
+		required.empty();
+		
+		//add task back to task list
+		this.taskListAdd(task);
+		
+		this.drawGraph();
 	},
 	drawInfo : function(task){
 		this.infoContainer.empty();
@@ -710,17 +830,92 @@ var courseEditor = new Class({
 		var info = [];
 		var title = new Element('h4', {text : data.title });
 		info.push(title);
+		
+		if (data.description){
+			info.push(new Element('p').appendText(data.description));
+			
+		}
 		if (data.deadline){
-			var deadline = new Element('p', { text: 'deadline: '+ data.deadline});
-			info.push(deadline);
+			info.push(new Element('p').grab(new Element('b', {text : 'deadline: '}))
+					.appendText(data.deadline));
+
 		}
 		
+		var next = this.flow[task];
+		if (next.length > 0){
+			info.push(new Element('b',{ text : 'Next: '}));
+			var nextlist = new Element('ul');
+			next.each(function(child){
+				var title = this.tasks.data[child].title;
+				var li = new Element('li', { 'text' : title});
+				li.grab(new Element('a', { 
+					'class' : 'jslink',
+					'text' : ' detach',
+					'events': {
+						'click': function(){
+							this.flow[task].erase(child);
+							if (this.flow[task].length == 0){
+								this.newEndPoint(task);
+							}
+							this.drawGraph();
+							this.drawInfo(task);
+						}.bindWithEvent(this)
+					}
+				}));
+				info.push(li);
+			}, this);
+		}
+		
+		if (! this.tasks.endPoints.contains(task)){
+			info.push(new Element('p')
+				.grab(new Element('a', {
+					'text' : 'new connection',
+					'class' : 'jslink',
+					'events' : {
+						'click' : function(){
+							this.newEndPoint(task);
+							this.drawInfo(task);
+					}.bindWithEvent(this)
+				}
+			}))
+			);
+		}
+		
+		info.push(new Element('input',{
+			'type': 'button',
+			'value': 'remove',
+			'events': {
+				'click': function(){
+					this.removeFromTree(task);
+					this.drawGraph();
+				}.bindWithEvent(this)
+			}
+		}));
 		this.infoContainer.adopt(info);
 		
 	},
 	submitData: function(){
+		var form = new Element('form', {
+			'action' : '?action=editCourseFlow',
+			'method': 'post'
+		});
 		
-		
+		sel = this.flow;
+		var tmp = ["first"];
+		while (tmp.length > 0) {
+			var to = tmp.shift();
+			var next = sel[to];
+			tmp.extend(next);
+			next.each(function(task){
+				form.grab(new Element('input', {
+					'type': 'hidden',
+					'name': 'flow_'+to,
+					'value': task
+				}));
+			}, this);
+		}
+
+		form.submit();
 	},
 	error: function(msg){
 		if(this.options.errors){
