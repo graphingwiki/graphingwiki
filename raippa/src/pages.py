@@ -1005,6 +1005,24 @@ class Course:
 
         return done_all, doing_all
 
+    def save_flow(self, flow):
+        save_data = dict()
+        save_data[self.flowpage] = dict()
+        remove = dict()
+        remove[self.flowpage] = list()
+
+        if flow:
+            remove[self.flowpage] = self.flow.fullflow().keys()
+            for key,values in flow.iteritems():
+                save_data[self.flowpage][key] = list()
+                for val in values:
+                    save_data[self.flowpage][key].append("success " + addlink(val))
+
+        success, msg =  set_metas(self.request, remove, dict(), save_data)
+
+        return success, msg
+
+
     def used_time(self, user=None):
         total_time = int()
         total_tries = int()
