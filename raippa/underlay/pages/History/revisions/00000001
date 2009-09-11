@@ -1,4 +1,0 @@
-#acl TeacherGroup:read,write,admin,delete,revert All:write -All:read
-
-----
-warning: CategoryHistory is huge <<MetaTable(CategoryHistory)>>
