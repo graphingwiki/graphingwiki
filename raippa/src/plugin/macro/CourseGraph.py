@@ -146,7 +146,6 @@ def get_stat_data(request, course, user=None):
     flow = course.flow.fullflow()
 
     course_stats = CourseStats(request, course.config)
-    students = course_stats.students()
 
     for taskpage, nextlist in flow.iteritems():
         if taskpage != 'first' and taskpage not in graph.keys():
@@ -205,6 +204,51 @@ def get_stat_data(request, course, user=None):
 
     return graph
 
+def draw_teacher_ui(request, course):
+    result = list()
+    f = request.formatter
+    
+    #editor
+
+    prefix =request.cfg.url_prefix_static 
+
+    result.append(f.rawHTML(''' 
+ <script type="text/javascript" src="%s/raippajs/moocanvas.js"></script>
+ <script type="text/javascript" src="%s/raippajs/course_edit.js"></script>
+<script type="text/javascript">
+window.addEvent('domready', function(){
+    });
+
+
+function editor(view){
+    var edit = new Element('div');
+    var stats = $('statsBox').clone().removeClass('hidden'); 
+    var modal = new modalizer([edit, stats], { 
+        tabLabels : ["edit", "stats"],
+        defTab : view
+        });
+    var editor = new courseEditor(edit);
+    }
+</script>
+    <br>
+    <a class="jslink" onclick="editor(0);">edit</a>
+    &nbsp;
+    <a class="jslink" onclick="editor(1);">stats</a>
+    ''' % (prefix, prefix)))
+    #stats
+    result.append(f.div(1,css_class='hidden',id="statsBox"))
+    if 'MSIE' in request.getUserAgent():
+        map, tag = draw_graph(request, get_stat_data(request, course, None), result='map')
+        img = u'<img src="%s&user=%s&type=stats" usemap="#%s"><br>\n' % (url, user.name, tag)
+        html = map + u"\n" + img
+        result.append(html)
+    else:
+        html, tag = draw_graph(request, get_stat_data(request, course, None))
+        result.append(html)
+
+    result.append(f.div(0))
+    return result
+
 def macro_CourseGraph(macro):
     request = macro.request
     formatter = macro.formatter
@@ -232,24 +276,13 @@ def macro_CourseGraph(macro):
 
     tooltip = u'''
 <script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
-<script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript">
-addLoadEvent(function(){
-//window.addEvent('domready', function(){
+window.addEvent('domready', function(){
 var links = $$('area');
 var tips = new Tips(links);
-if($('ttDate')){
-  var calCss = new Asset.css("%s/raippa/css/calendar.css");
-  var cal = new Calendar({
-    ttDate : 'Y-m-d'
-    },{     
-      direction : -1,
-      draggable : false
-      });       
-}                   
-});                     
-</script>  
-''' % (url_prefix, url_prefix, url_prefix)
+});
+</script>
+''' % (url_prefix)
     result.append(tooltip)
 
     if course.flow:
@@ -260,18 +293,12 @@ if($('ttDate')){
             img = u'<img src="%s&type=student" usemap="#%s"><br>\n' % (url, tag)
             result.append(map)
             result.append(img)
-            if teacher:
-                map, tag = draw_graph(request, get_stat_data(request, course, None), result='map')
-                img = u'<img src="%s&user=%s&type=stats" usemap="#%s"><br>\n' % (url, user.name, tag)
-                result.append(map)
-                result.append(img)
         else:
             html, tag = draw_graph(request, get_student_data(request, course, user))
             result.append(html)
-            if teacher:
-                result.append("stats ui:<br>")
-                html, tag = draw_graph(request, get_stat_data(request, course, None))
-                result.append(html)
+
+        if teacher:
+            result.extend(draw_teacher_ui(request, course))
 
         return u'\n'.join(result)
     else:
