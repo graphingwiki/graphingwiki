@@ -373,7 +373,7 @@ div.tip {
 	position: absolute;
     color: #fff;
     width: 139px;
-    z-index: 50;
+    z-index: 1050;
 }
 div.tip-title {
     font-weight: bold;
