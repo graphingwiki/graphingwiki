@@ -68,9 +68,7 @@ def printEntries(entries, date, pagename, request):
         request.write(stuff)
         request.write('</td>')
     
-    request.write(u'''<script type="text/javascript"
-    src="%s/raippajs/mootools-1.2-core-yc.js"></script>
-    <script type="text/javascript">
+    request.write(u'''<script type="text/javascript">
     function toggle(el){
         var part_list = $(el).getParent('p').getNext('div');
         part_list.toggleClass('hidden');
@@ -81,7 +79,7 @@ def printEntries(entries, date, pagename, request):
         }
     }
     </script>
-    '''% request.cfg.url_prefix_static )
+    ''')
     request.write(u'<table id="calEventList">')
     request.write(u'''<tr><th colspan="6">%s</th></tr>
     <tr>
