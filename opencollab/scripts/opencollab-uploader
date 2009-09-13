@@ -57,8 +57,7 @@ def main():
     elif options.config and "path" in iopts["uploader"]:
         ilist = (iopts["uploader"]["path"])
     else:
-        parser.error("You need to specify a testrun directory base via -d or \n \
-                      via 1..N positional input directories. Use -h for help.")
+        parser.error("You need to specify 1..N positional input directories. Use -h for help.")
     if options.page:
         page = options.page
     elif options.config and "page" in iopts["uploader"]:
