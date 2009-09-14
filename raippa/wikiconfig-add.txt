@@ -1,4 +1,7 @@
     # Raippa specific configuration
+    html_head+='<script type="text/javascript" src="%s/raippajs/raippa-common.js"></script>' \
+               % url_prefix_static
+
     superuser = [u"TeacherGroup"]
     acl_rights_before = u"TeacherGroup:read,write,delete,revert,admin"
     acl_hierarchic = True

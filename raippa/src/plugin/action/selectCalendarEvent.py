@@ -14,8 +14,8 @@ def _enter_page(request, pagename):
 	   
     title = _('Calendar')
 
-    request.theme.send_title(title,
-                             pagename=pagename)
+    request.emit_http_headers()
+    request.theme.send_title(title, pagename=pagename)
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!

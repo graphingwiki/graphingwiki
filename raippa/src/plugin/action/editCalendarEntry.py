@@ -19,11 +19,13 @@ def _enter_page(request, pagename):
 
     title = _('Calendar entry editor')
 
+    request.emit_http_headers()
     request.theme.send_title(title, pagename=pagename, 
     html_head=u'''<link rel="stylesheet" type="text/css" charset="utf-8"
     media="all" href="%s/raippa/css/calendar.css">
+    <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
     <script type="text/javascript" src="%s/common/js/calendar.js"></script>
-    ''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static))
+    ''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static))
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -92,37 +94,28 @@ def savedata(request):
             i += 1
             if not Page(request, pagename).exists():
                 break
-    
-    data = {"Date": [date],
-            "Time": [time],
-            "Duration": [duration],
-            "Type": [type],
-            "Until": [until],
-            "Location": [location],
-            "gwikicategory": [category]}
 
-    if capacity > 0:
-        data["Capacity"] = [unicode(capacity)]
+    content = u'%s\n----\n' % title 
 
-    data = {pagename: data}
-    result, msg = set_metas(request, remove, dict(), data)
-    if not result:
-        return msg
+    if date:
+        content += u' Date:: %s\n' % date
+    if time:
+        content += u' Time:: %s\n' % time
+    if duration:
+        content += u' Duration:: %s\n' % duration
+    if type:
+        content += u' Type:: %s\n' % type
+    if location:
+        content += u' Location:: %s\n' % location
+    if capacity:
+        content += u' Capacity:: %i\n' % capacity
+    if until:
+        content += u' Until:: %s\n' %  until
+    if category:
+        content += u'----\n%s' % category
 
     page = PageEditor(request, pagename)
-    if edit:
-        oldbody = page.get_raw_body()
-        if oldbody.split("\n")[0].startswith("#acl"):
-            acl = oldbody.split("\n")[0]
-        else:
-            acl = unicode()
-        oldcontent = "----".join(oldbody.split("----")[1:])
-        content = u'%s\n%s\n----\n%s' % (acl, title, oldcontent)
-    else:
-        oldcontent = page.get_raw_body()
-        content = u'%s\n----\n%s' % (title, oldcontent)
-    page.saveText(content, page.get_real_rev())
-
+    msg = page.saveText(content, page.get_real_rev())
 
 def show_entryform(request):
     time_now = datetime.datetime.now() + datetime.timedelta(minutes=30)

@@ -14,6 +14,7 @@ def _enter_page(request, pagename):
 	   
     title = _('Calendar')
 
+    request.emit_http_headers()
     request.theme.send_title(title,
                              pagename=pagename)
 
@@ -68,7 +69,9 @@ def printEntries(entries, date, pagename, request):
         request.write(stuff)
         request.write('</td>')
     
-    request.write(u'''<script type="text/javascript">
+    request.write(u'''<script type="text/javascript"
+    src="%s/raippajs/mootools-1.2-core-yc.js"></script>
+    <script type="text/javascript">
     function toggle(el){
         var part_list = $(el).getParent('p').getNext('div');
         part_list.toggleClass('hidden');
@@ -79,7 +82,7 @@ def printEntries(entries, date, pagename, request):
         }
     }
     </script>
-    ''')
+    '''% request.cfg.url_prefix_static )
     request.write(u'<table id="calEventList">')
     request.write(u'''<tr><th colspan="6">%s</th></tr>
     <tr>
@@ -161,7 +164,7 @@ def execute(pagename, request):
     entries = dict()
 
     for page in pagelist:
-        metas = get_metas(request, page, metakeys, display=False, checkAccess=True)
+        metas = get_metas(request, page, metakeys, checkAccess=True)
 
         if u'Date' not in metas.keys():
             continue
@@ -196,7 +199,6 @@ def execute(pagename, request):
                     continue
                 entrycontent[meta] = metas[meta][0]
             datedata.append(entrycontent)
-
 
     #Getting current month
     now = datetime.datetime.fromtimestamp(time.mktime(time.strptime(thisdate, '%Y-%m-%d')))
