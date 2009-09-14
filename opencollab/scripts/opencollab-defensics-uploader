@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 """
     @copyright: 2008 Marko Laakso, Mika Seppänen, Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -197,10 +198,19 @@ def main():
     else:
         parser.error("Collab URL needs to be specified. Use -h for help.")
     if search_string is not None:
+
+        if not re.search(search_string,'||.*||'):
+            search_string += ',|| ||'
+
         tpages = getPages(collab, search_string)
         nro = 0
+
         for page in tpages:
-            print ("%3d" % nro), page
+            msg = ""
+            msg += "%3d %s" % (nro, page)
+            for metakey,metavalue in tpages[page].iteritems():
+                msg += " %s:%s" % (metakey,"/".join(metavalue))
+            print "%s" % msg
             nro += 1
         if options.prompt:
             nro -= 1
