@@ -143,9 +143,12 @@ def list_tasks(request, search, all):
     tasks = pages_in_category(request, "CategoryTask")
     for tpage in tasks:
         task = Task(request, tpage)
+        taskoptions = task.options()
+        
+        prereq = taskoptions.get("prerequisite", [])
         title = task.title()
         overall_deadline, deadlines = task.deadline()
-        result["data"][tpage] = {"title" : title, "deadline" : overall_deadline}
+        result["data"][tpage] = {"title" : title, "deadline" : overall_deadline, "required" : prereq}
         if tpage not in result["selected"]:
             result["free"][tpage] = []
 

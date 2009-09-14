@@ -6,13 +6,14 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
 from MoinMoin.logfile import editlog
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
-from raippa import removelink, addlink, randompage
+from raippa import removelink, addlink, randompage, pages_in_category
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
 class RaippaException(Exception):
     def __init__(self, value):
         self.value = value
+        self.args = value
     def __str__(self):
         return repr(self.value)
 
@@ -34,7 +35,7 @@ class MissingMetaException(RaippaException):
 class PageDoesNotExistException(RaippaException):
     pass
 
-class SaveException(Exception):
+class SaveException(RaippaException):
     pass
 
 class Answer:
@@ -666,6 +667,7 @@ class Task:
 
         optionkeys = ['type', 'prerequisite']
         metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
+
         for key in optionkeys:
             values = list()
 
@@ -675,7 +677,13 @@ class Task:
             if key == 'prerequisite':
                 if len(values) > 0:
                     options[key] = values
-
+            elif key == 'type':
+               if len(values) == 1:
+                   options[key] = values[0]
+               elif len(values) > 1:
+                   raise TooManyValuesException(u'Task %s has too many %s options.' % (self.pagename, key))
+               elif len(values) < 1:
+                   options['type'] = u'basic'
             else:
                 if len(values) == 1:
                     options[key] = values[0]
@@ -1005,11 +1013,19 @@ class Course:
 
         return done_all, doing_all
 
-    def save_flow(self, flow):
+    def save_flow(self, flow, prerequirements):
         save_data = dict()
         save_data[self.flowpage] = dict()
         remove = dict()
         remove[self.flowpage] = list()
+
+        #remove old prerequirements from tasks
+        tasks = pages_in_category(self.request, "CategoryTask")
+        for taskpage in tasks:
+            task = Task(self.request, taskpage)
+            options = task.options()
+            if options.get("prerequisite", []):
+                remove[task.optionspage] = ["prerequisite"]
 
         if flow:
             remove[self.flowpage] = self.flow.fullflow().keys()
@@ -1017,6 +1033,13 @@ class Course:
                 save_data[self.flowpage][key] = list()
                 for val in values:
                     save_data[self.flowpage][key].append("success " + addlink(val))
+
+                    task = Task(self.request, val)
+                    save_data[task.optionspage] = dict()
+                    save_data[task.optionspage]["prerequisite"] = list()
+                    save_data[task.optionspage]["gwikicategory"] =  [rc['taskoptions']]
+                    for req in prerequirements[val]:
+                        save_data[task.optionspage]["prerequisite"].append(addlink(req))
 
         success, msg =  set_metas(self.request, remove, dict(), save_data)
 

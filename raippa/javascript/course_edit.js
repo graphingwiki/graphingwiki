@@ -119,7 +119,8 @@ var courseEditor = new Class({
 
 			next.each(function(task){
 				var title = this.tasks.data[task].title;
-				this.addTask(to, task, title);
+				var requisite = this.tasks.data[task].required;
+				this.addTask(to, task, title, requisite);
 			}, this);
 		}
 		this.drawGraph();
@@ -313,11 +314,11 @@ var courseEditor = new Class({
 	* @param description label visible to user
 	* optional parameters:
 	* @param type		random | select
-	* @param required	prerequisite (task id)
+	* @param required	prerequisite (task page name)
 	* @param posx		x-coordinate
 	* @param posy		y-coordinate
 	**/
-	addTask : function(to, value, description, type, required, posx, posy){
+	addTask : function(to, value, description, required, type, posx, posy){
 		
 		var boxData = this.tasks.data;
 		var editor = this;
@@ -841,10 +842,36 @@ var courseEditor = new Class({
 
 		}
 		
+		var before = this.getParentBox(task);
+		info.push(new Element('b', {'text' : 'prerequisites: '}));
+		before.each(function(parent){
+			var title = this.tasks.data[parent].title;
+			var required = this.tasks.data[task].required;
+			var selected = required.contains(parent);
+			var li = new Element('li', {'text' : title});
+			li.grab(new Element('input',{
+				'type': 'checkbox',
+				'checked': selected,
+				'value': parent,
+				'events': {
+					'change': function(){
+						var chk = this.checked;
+						if(chk){
+							required.include(parent);
+						}else{
+							required.erase(parent);
+						}
+					}
+				}
+			}));
+			
+			info.push(li);
+		}, this);
+		
 		var next = this.flow[task];
 		if (next.length > 0){
+			info.push(new Element('br'));
 			info.push(new Element('b',{ text : 'Next: '}));
-			var nextlist = new Element('ul');
 			next.each(function(child){
 				var title = this.tasks.data[child].title;
 				var li = new Element('li', { 'text' : title});
@@ -906,12 +933,19 @@ var courseEditor = new Class({
 			var to = tmp.shift();
 			var next = sel[to];
 			tmp.extend(next);
-			next.each(function(task){
+			next.each(function(child){
 				form.grab(new Element('input', {
 					'type': 'hidden',
 					'name': 'flow_'+to,
-					'value': task
+					'value': child
 				}));
+				if (this.tasks.data[child].required.contains(to)){
+					form.grab(new Element('input', {
+						'type': 'hidden',
+						'name': 'req_'+ child,
+						'value': to
+					}));		
+				}
 			}, this);
 		}
 
