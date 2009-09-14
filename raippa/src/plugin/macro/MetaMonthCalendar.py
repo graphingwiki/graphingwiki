@@ -159,10 +159,13 @@ def execute(macro, args):
     categories = ','.join(categories)
     
     html = u'''
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
+  <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
+
 <script type="text/javascript">
 addLoadEvent(function(){
 var dates = new Hash();
-    \n'''
+    \n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
 
     for date, d in entries.iteritems():
         html += u'dates.set("%s","' % date
@@ -274,7 +277,10 @@ var dates = new Hash();
         output += macro.formatter.table_cell(1, {'class': 'calendar-weeknumber'})
         output += macro.formatter.text("%2d" % weeknum)
         output += macro.formatter.table_cell(0)
-        weeknum += 1
+        if weeknum >= 53 or (weeknum >= 52 and week[6] <= 7):
+            weeknum = 1
+        else:
+            weeknum += 1
 
         for i,day in enumerate(week):
             if day and str(day) == str(now.day) and now.month == month and now.year == year:
