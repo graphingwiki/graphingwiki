@@ -54,17 +54,17 @@ def main():
     else:
         parser.error("Collab needs to be specified. Use -h for help.")
     metas = collab.getMeta(search_string)
-    for k,v in metas.iteritems():
-        print "Deleting %r..." % (k),
+    for page in metas:
+        print "Deleting %r..." % (page),
         if not options.dryrun:
             try:
-                collab.deletePage(k)
+                collab.deletePage(page)
                 print "[ok].",
             except WikiFailure, (strerror):
                 print "[failed]: %s"  % (strerror),
         print
     print
-    
+
 if __name__ == "__main__":
     try:
         main()
