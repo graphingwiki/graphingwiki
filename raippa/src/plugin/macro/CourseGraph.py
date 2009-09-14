@@ -238,6 +238,8 @@ function editor(view){
     #stats
     result.append(f.div(1,css_class='hidden',id="statsBox"))
     if 'MSIE' in request.getUserAgent():
+        url = u"%s/%s?action=drawgraphIE" % (request.getBaseURL(), request.page.page_name)
+        user = User(request, request.cfg.raippa_config)
         map, tag = draw_graph(request, get_stat_data(request, course, None), result='map')
         img = u'<img src="%s&user=%s&type=stats" usemap="#%s"><br>\n' % (url, user.name, tag)
         html = map + u"\n" + img

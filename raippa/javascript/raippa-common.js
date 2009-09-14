@@ -248,11 +248,14 @@ var modalizer = new Class({
 			tabs[tab].addClass('selected');
 		}
 		this.els.setStyle('display', 'none');
-		this.container.setStyle('width','10px');
-		this.container.setStyle('width','auto');
+		this.container.setStyle('width','100px');
+		
 
-	
 		el.setStyle('display','');
+		var width = el.getSize().x;
+		this.container.setStyle('width', width);
+		this.container.setStyle('width', 'auto');
+
 		if (!el.retrieve('margin')) el.store('margin', el.getStyle('margin'));
 		el.setStyle('margin', '');
 		el.setStyle('border-top','');
