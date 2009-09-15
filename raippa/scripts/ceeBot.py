@@ -42,8 +42,13 @@ def runtests(tests, scriptpath):
         else:
             output = '/dev/null'
 
+
         command = os.path.join(scriptpath, 'ctest.bash -p "./program %s" -i %s -o test.txt' % (test.cmdline, output))
-        
+
+        if test.outfiles:
+            command = command + ' ' + ' '.join(['-f _%s %s' % (x, x) for x in test.outfiles.keys()])
+            command =  command.replace('test.txt', '/dev/null')
+
         ctestprocess = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
         report += ctestprocess.stdout.read()
         ctestprocess.wait()
@@ -200,14 +205,14 @@ def main():
             except opencollab.wiki.WikiFault, e:
                 print e
                 try:
-                    wiki.putPage(page + '/comment', 'Your program failed')
+                    wiki.putPage(page + '/comment', 'Your program failed. Your program propably printed something silly. Unfortunately we cannot show what your program printed.')
                 except opencollab.wiki.WikiFault, e:
                     print e
                 
             wiki.setMeta(page, {'overallvalue' : ['%d/%d' % (success, total)],
                                 'comment': ['[[%s/comment]]' % page]}, True)
+            info('done')
             shutil.rmtree(path)
-        # sleep for a while
         time.sleep(10.0)
 
 if __name__ == '__main__':

@@ -14,6 +14,14 @@ import shutil
 import tempfile
 import time
 
+import xmlrpclib, re
+orig_feed = xmlrpclib.ExpatParser.feed
+def monkey_feed(self, data):
+    return orig_feed(self, re.sub(ur'[\x00-\x08\x0b-\x19]', '?', data))
+xmlrpclib.ExpatParser.feed = monkey_feed
+    
+
+
 utils = """# -*- coding: utf-8 -*-
 import subprocess
 import errno
@@ -109,11 +117,13 @@ class GraphingWiki(object):
 def pickHistoryPage(wiki, course):
     result = wiki.request(3, "GetMeta", "CategoryHistory, overallvalue=pending, course=%s" % course, False)
 
+
     header = result[0]
     pages = result[1:]
     info("Found %d history pages waiting for checking" % len(pages))
 
     for page in pages:
+	print page[0]
         pagename = page[0]
         metaList = page[1:]
         metas = dict()
@@ -126,9 +136,9 @@ def pickHistoryPage(wiki, course):
     return None 
 
 password = open("password").read().strip()
-course = "Course/521141P_Autumn2008"
+course = "Course/88618"
 
-wiki = GraphingWiki("http://vm0021.virtues.local/", "bot", password)
+wiki = GraphingWiki("https://vm0021.virtues.local/", "bot", password)
 
 while True:
     picked = pickHistoryPage(wiki, course)
@@ -190,7 +200,8 @@ while True:
     pages = result[1:]
     if len(pages) != 1:
         error("Found %d answer pages" % len(pages))
-        sys.exit(1)
+        #sys.exit(1)
+        pages = pages[:1]
 
     for page in pages:
         pagename = page[0]
@@ -207,7 +218,7 @@ while True:
 
         tests = stripLink(trues[0])
 
-    info("Fetching doctests from %s" % file)
+    info("Fetching doctests from %s" % tests)
     tests = stripFormat(wiki.request(3, "getPage", tests))
 
     path = tempfile.mkdtemp()
@@ -251,7 +262,9 @@ while True:
     info("Result %d of %d tests succeeded" % (succeeded, total))
 
     report = stdout.replace("\\n", "\n")
-    report = "#FORMAT plain\n" + report
+    report = '''{{{
+    %s
+    }}}''' % report
 
     metas = dict()
     metas["overallvalue"] = ["%d/%d" % (succeeded, total)]
@@ -270,4 +283,4 @@ while True:
     os.chdir(cwd)
     shutil.rmtree(path)
 
-    time.sleep(1)
+    time.sleep(5)
