@@ -541,4 +541,6 @@ table.navigation {
     margin: 2px;
 }
         
-
+h1 {
+	line-height: 1em;
+}
