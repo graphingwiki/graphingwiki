@@ -470,13 +470,10 @@ width: 240px;
 	display: none;
 }
 
-a.jslink:hover {
-	cursor: pointer;
-}
 a.jslink {
 	font-size: 12px;
 	color: green;
-
+	cursor: pointer;
 }
 
 /* Styling for show calendar date*/
