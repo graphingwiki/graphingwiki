@@ -13,6 +13,7 @@ def execute(pagename, request):
     success = False
     if user.is_teacher():
         flow = dict()
+        prerequirements = dict()
         flow_queue = [u"first"]
 
         while len(flow_queue)>0:
@@ -21,8 +22,11 @@ def execute(pagename, request):
             flow_queue.extend(next)
             if next:
                 flow[task]= next
+
+            prerequirements[task] = request.form.get("req_" + task, [])
+
         course = Course(request, request.cfg.raippa_config)
-        success, msg = course.save_flow(flow)
+        success, msg = course.save_flow(flow, prerequirements)
         if success:
             msg = u"Course flow saved successfully."
         else:
