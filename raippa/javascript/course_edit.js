@@ -7,12 +7,12 @@ var courseEditor = new Class({
 	Implements : [Options],
 	Binds: ['getTasks', 'createUi', 'tasklistAdd', 'tasklistRemove','drawGraph',
 	        'addTask', 'drawInfo', 'getParentBox', 'getChildBox', 'error', 'getFreeSpot', 
-	        'removeFromTree', 'submitData'],
+	        'removeFromTree', 'submitData', 'moveBox'],
 	tasks: {},
 	flow: {},
 	errors: [],
 	options: {
-		errors: true,
+		errors: false,
 		containerStyles: {
 			'min-width' : '900px',
 			'overflow' : 'hidden'
@@ -85,6 +85,14 @@ var courseEditor = new Class({
 			'z-index' : '201',
 			'position' : 'absolute'
 		},
+		dropStyles : {
+			'position': 'absolute',
+			'background-color': 'blue',
+			'height': '24px',
+			'width': '24px',
+			'z-index': 200,
+			'opacity': 0
+		},
 		taskVerticalDistance : 25
 	},
 	initialize : function(el, options){
@@ -106,7 +114,21 @@ var courseEditor = new Class({
 		this.getTasks();
 		this.createUi();
 		//this.restoreCurrent();
-		(function(){this.restoreCurrent();}).delay(100, this);
+		(function(){
+			if (this.container.getStyle('display') == 'none'){
+				var vis = this.container.getStyle('visibility');
+				this.container.setStyle('visibility', 'hidden');
+				this.container.setStyle('display', '');
+				
+				this.restoreCurrent();
+				
+				this.container.setStyle('visibility', vis);
+				this.container.setStyle('display', 'none');				
+
+			}else{
+				this.restoreCurrent();
+			}
+			}).delay(100, this);
 	
 	},
 	restoreCurrent : function(){
@@ -120,7 +142,7 @@ var courseEditor = new Class({
 			next.each(function(task){
 				var title = this.tasks.data[task].title;
 				var requisite = this.tasks.data[task].required;
-				this.addTask(to, task, title, requisite);
+				this.addTask(to, task, title,{"required": requisite});
 			}, this);
 		}
 		this.drawGraph();
@@ -252,17 +274,19 @@ var courseEditor = new Class({
 
 	            onDrop: function(el, drop){
 	                el.destroy();
-	                if(drop && drop.tagName == 'DIV'){
+	                if(drop && drop.retrieve('parent') && drop.retrieve('child')){
+	                	
+	                	this.addTask(drop.retrieve('parent'), taskname, title, {'before': drop.retrieve('child')});
+	                	drop.setOpacity(0);
+	                	
+	                }else if(drop && drop.tagName == 'DIV'){
 						drop.morph(this.options.elSize);
 
 						if(drop.id != 'first'){
 							drop.getElement('canvas').morph(this.options.elSize);
 						}
 	                    this.addTask(drop.retrieve('value'), taskname, title);
-	                }else if(drop && drop.tagName == 'CANVAS'){
-	                	this.addTask(drop.retrieve('parent'), taskname, title, 'after');	
-	                }
-           
+	                }         
 
 	                    draw.delay(500, this);
 	                    draw.delay(400, this);
@@ -271,8 +295,8 @@ var courseEditor = new Class({
 	            }.bindWithEvent(this),
 	            onEnter: function(el, drop){
 
-	            		if(drop.retrieve('parent') && drop.tagName == 'CANVAS'){
-	            			this.drawGraph(drop.retrieve('parent'), drop.id);
+	            		if(drop.retrieve('parent')){
+	            			drop.tween('opacity', 0.4);
 	            		}else if(drop.tagName == 'DIV'){
 	            			if(drop.id != 'first'){
 	            				drop.getElement('canvas').morph(this.options.elSizeLarge);
@@ -281,14 +305,14 @@ var courseEditor = new Class({
 	            		}
 	            }.bindWithEvent(this),
 	            onLeave : function(el, drop){
-	            	if(drop.tagName == 'DIV'){
+	            	if (drop.retrieve('parent')){
+            			drop.tween('opacity', 0);
+	            	}else if(drop.tagName == 'DIV'){
 	            		drop.morph(this.options.elSize);
 	            		if(drop.id != 'first'){
 	            			drop.getElement('canvas').morph(this.options.elSize);
 	            		}
-	            	}else if (drop.tagName == 'CANVAS'){
-	            		(function(){ this.drawGraph(drop.retrieve('parent'));}).delay(400, this);
-	            	}
+	            	} 
 	          }.bindWithEvent(this)
 	        });
 	        drag.start(e);
@@ -313,13 +337,11 @@ var courseEditor = new Class({
 	* @param value		value of new task
 	* @param description label visible to user
 	* optional parameters:
-	* @param type		random | select
 	* @param required	prerequisite (task page name)
-	* @param posx		x-coordinate
-	* @param posy		y-coordinate
+	* @param options	hash with possible keys: type (select|random), before (task), before_all
 	**/
-	addTask : function(to, value, description, required, type, posx, posy){
-		
+	addTask : function(to, value, description, options){
+		var options = options ? options : {};
 		var boxData = this.tasks.data;
 		var editor = this;
 		
@@ -341,7 +363,7 @@ var courseEditor = new Class({
 		//something has gone wrong and we were trying to attach task to itself
 		if(to.toString() == value.toString()) return;
 		
-		var required = required ? required: [to];
+		var required = options.required ? options.required: [to];
 			
 		//adding only new connection if both to and value already exist in tree
 		if(boxData[value].element && pDiv){
@@ -367,27 +389,37 @@ var courseEditor = new Class({
 		this.flow[value] = [];
 
 		//inserting new task after some tasks and attaching its children to new task 
-		if(type == "after"){
+		if(options.before_all){
 			this.flow[value]= this.flow[to];
 			this.flow[to] =  [value];
 			//moving newly acquired children and end points a bit down
-			this.getChildBox(value).each(function(value){
-				var el = boxData[value].element;
-		        if(this.tasks.endPoints.contains(value)){
-		            ep = $('ep_'+ el.id);
-		            ep.setStyle('top', ep.getPosition(this.graphContainer).y + 40);
-		            }
-		        el.setStyle('top', el.getPosition(this.graphContainer).y + 40 + this.options.elSize.height);
+			this.getChildBox(value).each(function(child){
+				
+				var el = boxData[child].element;
+				if(boxData[child].required.contains(to)){
+					boxData[child].required.remove(to);
+					boxData[child].required.include(value);
+				}
+				this.moveBox(child);
 		        }, this);
+		}else if(options.before && boxData[options.before]){
+			this.flow[value].include(options.before);
+			this.flow[to].erase(options.before);
+			var before_req = boxData[options.before].required;
+			if (before_req.contains(to)){
+				before_req.include(value);
+				before_req.erase(to);
+			}
+
+			options.position =  boxData[options.before].element.getPosition(this.graphContainer);
+			
+			this.moveBox(options.before);
+		
 		}
 		
 		
 		//add new task to parents flow
 		this.flow[to].include(value);
-
-		if(/random|select/.test(type)){
-			boxData[to].set('type',type);
-		}
 		
 		//generating container div for task canvas
 		lkm = boxData.getLength();
@@ -444,9 +476,13 @@ var courseEditor = new Class({
 		content.appendChild(descText);
 		box.grab(content);
 		this.graphContainer.grab(box);
-		//trying to move box to free space
 		
-		var position = this.getFreeSpot(pDiv);
+		if(options.position){
+			var position = options.position;
+		}else{
+			//trying to move box to free space
+			var position = this.getFreeSpot(pDiv);
+		}
 		box.setStyle('left', position.x);
 		box.setStyle('top', position.y);
 
@@ -478,7 +514,7 @@ var courseEditor = new Class({
 
 		tip = new Tips(content);
 
-		if(type != "after"){
+		if(!options || !options.before){
 			this.newEndPoint(value);
 		}
 		this.drawGraph();	
@@ -506,7 +542,8 @@ var courseEditor = new Class({
 			var boxes = [$(id)];
 		}else{
 			var boxes = $(document.body).getElements('#first, div[id^=item]');
-			$$('canvas[id^=canv]').destroy();
+			this.graphContainer.getElements('canvas[id^=canv]').destroy();
+			this.graphContainer.getElements('div[id^=drop]').destroy();
 		}
 		
 		var boxData = this.tasks.data;
@@ -579,11 +616,14 @@ var courseEditor = new Class({
 			xdiff = Math.max(Math.abs(c1x - c2x),0);//pad *2);
 			ydiff = Math.max(Math.abs(c1y - c2y),0);//pad *2);
 
-			canv.setStyle('top' , Math.min(c1y,c2y) - pad);
-			canv.setStyle('left',  Math.min(c1x, c2x)- pad);
-
-			canv.height = ydiff + pad *2 ;
-			canv.width = xdiff + pad *2;
+			var top =  Math.min(c1y,c2y) - pad;
+			var left = Math.min(c1x, c2x)- pad;
+			canv.setStyle('top' , top);
+			canv.setStyle('left',  left);
+			var canvheight = ydiff + pad *2 ;
+			var canvwidth = xdiff + pad*2;
+			canv.height = canvheight; 
+			canv.width = canvwidth;
 			yswap = 0;
 
 			if((c2y - c1y) * (c2x - c1x) <= 0){
@@ -635,6 +675,26 @@ var courseEditor = new Class({
 				}
 				midx += v0x * reverse / 2;
 				midy += v0y * reverse / 2;
+				
+				//create a box to allow dropping
+				if ($('drop_' + fix_pid + '_' + fix_cid)){
+					var drop = $('drop_' + fix_pid + '_' + fix_cid);
+				}else{
+					var drop = new Element('div',{
+						'id': 'drop_'+ fix_pid + '_' + fix_cid,
+						'styles': this.options.dropStyles
+					});
+					drop.store('parent', fix_pid_value);
+					drop.store('child', fix_cid_value);
+					drop.setStyles(this.options.dropStyles);
+					this.graphContainer.grab(drop);
+
+				}
+				drop.setStyle('top', top + canvheight /2 - 12);
+				drop.setStyle('left',left + canvwidth /2 - 12);
+				//drop.setStyle('top', top + midy -5);
+				//drop.setStyle('left', left + midx - 5);
+				
 				var ang = Math.PI * (1/2 + reverse * 2/6);
 				var a1x = v0x * Math.cos(ang) - v0y * Math.sin(ang) + midx;
 				var a1y = v0x * Math.sin(ang) + v0y * Math.cos(ang) + midy;
@@ -653,9 +713,7 @@ var courseEditor = new Class({
 		}
 
 	},
-	drawMenu: function(){
-		
-	},
+
 	/* Returns parents of given object */
 	getParentBox : function (id, all){
 	var result = new Array();
@@ -760,6 +818,26 @@ var courseEditor = new Class({
 		}
 	return result.flatten();
 	},
+	
+	/* Moves element and it's children up or down*/
+	moveBox: function(el, direction){
+		var next = [el].extend(this.getChildBox(el));
+		next.each(function(next){
+			
+			var move = this.options.taskVerticalDistance +  this.options.elSize.height;
+			if (direction == "up"){
+				move *= -1;
+			}
+			next_el = this.tasks.data[next].element;
+	        if(this.tasks.endPoints.contains(next)){
+	            ep = $('ep_'+ next_el.id);
+	            ep.setStyle('top', ep.getPosition(this.graphContainer).y + move);
+	            }
+	        next_el.setStyle('top', next_el.getPosition(this.graphContainer).y + move);
+		
+		}, this);
+		
+	},
 	/* Retrieves available tasks using json ajax query*/
 	getTasks: function(){
 		var editor = this;
@@ -784,8 +862,10 @@ var courseEditor = new Class({
 	removeFromTree : function(task){
 		var task_ob = this.tasks.data[task];
 		var parents = this.getParentBox(task);
-		var childs = this.getChildBox(task);
+		var childs = this.flow[task];
 		var required = task_ob.required;
+		
+		this.moveBox(task, "up");
 		
 		//add task children to every parent
 		parents.each(function(parent){
@@ -849,22 +929,24 @@ var courseEditor = new Class({
 			var required = this.tasks.data[task].required;
 			var selected = required.contains(parent);
 			var li = new Element('li', {'text' : title});
-			li.grab(new Element('input',{
+			var input = new Element('input',{
 				'type': 'checkbox',
 				'checked': selected,
 				'value': parent,
 				'events': {
 					'change': function(){
-						var chk = this.checked;
+						var chk = input.checked;
 						if(chk){
 							required.include(parent);
 						}else{
 							required.erase(parent);
 						}
-					}
+						this.drawGraph();
+						
+					}.bindWithEvent(this)
 				}
-			}));
-			
+			});
+			li.grab(input);
 			info.push(li);
 		}, this);
 		
@@ -948,7 +1030,7 @@ var courseEditor = new Class({
 				}
 			}, this);
 		}
-
+		this.container.grab(form);
 		form.submit();
 	},
 	error: function(msg){
