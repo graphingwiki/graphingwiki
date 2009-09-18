@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-"
 """
-    showMetasJson
-      - Shows meta values in a metatable kind a fasion in JSON 
+    searchMetasJson
+      - Search question/task/course/meta data and return results in JSON
 
     @copyright: 2008  <lauri.pokka@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -57,6 +57,9 @@ def question_stats(request, question):
                     #total time and total try count
                     stats[student] = {"total": [0.0, 0]}
 
+                metas = get_metas(request, student, ['name'], checkAccess=False)
+                stats[student]['name'] = metas.get('name', [''])[0]
+
                 stats[student][date] = [overallvalue, right, wrong, used_time]
                 stats[student]["total"][0] += used_time
                 stats[student]["total"][1] += 1
@@ -75,6 +78,8 @@ def task_stats(request, task):
 
     for student in students:
         stats[student] = {"done": dict(), "doing": dict(), "total": [0.0, 0]}
+        metas = get_metas(request, student, ['name'], checkAccess=False)
+        stats[student]['name'] = metas.get('name', [''])[0]
 
         for questionpage in flow:
             used_time, try_count = Question(request, questionpage).used_time(User(request, student))
