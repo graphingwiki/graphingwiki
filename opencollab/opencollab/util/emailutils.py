@@ -26,7 +26,7 @@ def imapsAuth(imaps_server, imaps_user, imaps_pass):
     try:
         mailbox.login(imaps_user, imaps_pass)
     except:
-        error = 'ERROR: Login failed: authentication failure'
+        error = 'ERROR: IMAP login failed: authentication failure'
         sys.exit(error)
     return mailbox
 
@@ -36,13 +36,13 @@ def getMessagesAndUpload(mailbox, collab):
     try:
         typ, data = mailbox.search(None, 'UNSEEN')
     except:
-        error = 'ERROR: Search failed'
+        error = 'ERROR: IMAP search failed'
         sys.exit(error)
     for num in data[0].split():
         try:
             typ, data = mailbox.fetch(num, '(RFC822)')
         except:
-            error = 'ERROR: Fetch failed'
+            error = 'ERROR: IMAP fetch failed'
             sys.exit(error)
         msg = email.message_from_string(data[0][1])
         msg_obj = cStringIO.StringIO(data[0][1])
@@ -64,13 +64,13 @@ def getMessagesAndUpload(mailbox, collab):
                 if charset is not None:
                     try:
                         payload = unicode(payload, charset, "replace")
-                    except:
+                    except UnicodeDecodeError:
                         try:
                             payload = unicode(payload, "latin-1", "replace")
-                        except:
+                        except UnicodeDecodeError:
                             try:
                                 payload = unicode(payload, "cp1252", "replace")
-                            except:
+                            except UnicodeDecodeError:
                                 payload = "unsupported-charset"
                 metas[cpage]["text"].add(payload)
             elif ctype == 'text/html':
@@ -102,10 +102,6 @@ def lexifyTokens(metas):
                 if url_all_re.search(token):
                     pass
                 else:
-                    try:
-                        token = unicode(token, "utf-8")
-                    except:
-                        token = "unknown-charset"
                     token = quotes.sub('', token)
                     token = markup.sub('', token)
                     token = punct.sub('', token)
