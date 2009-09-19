@@ -32,7 +32,7 @@ def shred_email_address(addr):
     else:
         sname = local
     metas[addr]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
-    metas[addr]["SMTP DOMAIN"].add('[[%s]]' % domain)
+    metas[addr]["SMTP DOMAIN"].add('[[%s]]' % domain.lower())
     metas[addr]["SMTP LOCAL PART"].add(local)
     metas[addr]["SEE ALSO"].add('[[%s]]' % sname)
     metas[addr]["TYPE"].add("EMAIL")
