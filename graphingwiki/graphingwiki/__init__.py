@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import MoinMoin.wikisync  
+import MoinMoin.wikiutil as wikiutil
+  
 from MoinMoin.request import RequestBase
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
@@ -10,6 +13,100 @@ from graphingwiki.util import actionname
 
 import os
 import re
+import socket
+import xmlrpclib
+
+# HTTP Auth support to wikisync:
+# http://moinmo.in/FeatureRequests/WikiSyncWithHttpAuth
+class MoinRemoteWikiHttpAuth(MoinMoin.wikisync.MoinRemoteWiki):
+    """ Used for MoinMoin wikis reachable via XMLRPC. """
+    def __init__(self, request, interwikiname, prefix, pagelist, user, password, verbose=False):
+        self.request = request
+        self.prefix = prefix
+        self.pagelist = pagelist
+        self.verbose = verbose
+        _ = self.request.getText
+
+        wikitag, wikiurl, wikitail, wikitag_bad = wikiutil.resolve_interwiki(self.request, interwikiname, '')
+        self.wiki_url = wikiutil.mapURL(self.request, wikiurl)
+        self.valid = not wikitag_bad
+        self.xmlrpc_url = self.wiki_url + "?action=xmlrpc2"
+        if not self.valid:
+            self.connection = None
+            return
+
+        httpauth = False
+        notallowed = _("Invalid username or password.")
+
+        self.connection = self.createConnection()
+
+        try:
+            iw_list = self.connection.interwikiName()
+        except socket.error:
+            raise MoinMoin.wikisync.UnsupportedWikiException(_("The wiki is currently not reachable."))
+        except xmlrpclib.Fault, err:
+            raise MoinMoin.wikisync.UnsupportedWikiException("xmlrpclib.Fault: %s" % str(err))
+        except xmlrpclib.ProtocolError, err:
+            if err.errmsg != "Authorization Required":
+                raise
+
+            if user and password:
+                try:
+                    import urlparse
+                    import urllib
+
+                    def urlQuote(string):
+                        if isinstance(string, unicode):
+                            string = string.encode("utf-8")
+                        return urllib.quote(string, "/:")
+
+                    scheme, netloc, path, a, b, c = \
+                        urlparse.urlparse(self.wiki_url)
+                    action = "action=xmlrpc2"
+
+                    user, password = map(urlQuote, [user, password])
+                    netloc = "%s:%s@%s" % (user, password, netloc)
+                    self.xmlrpc_url = urlparse.urlunparse((scheme, netloc, 
+                                                           path, "", 
+                                                           action, ""))
+
+                    self.connection = self.createConnection()
+                    iw_list = self.connection.interwikiName()
+
+                    httpauth = True
+                except:
+                    raise MoinMoin.wikisync.NotAllowedException(notallowed)
+            elif user:
+                return
+            else:
+                raise MoinMoin.wikisync.NotAllowedException(notallowed)
+
+        if user and password:
+            token = self.connection.getAuthToken(user, password)
+            if token:
+                self.token = token
+            elif httpauth:
+                self.token = None
+            else:
+                raise MoinMoin.wikisync.NotAllowedException(_("Invalid username or password."))
+        else:
+            self.token = None
+
+        self.remote_interwikiname = remote_interwikiname = iw_list[0]
+        self.remote_iwid = remote_iwid = iw_list[1]
+        self.is_anonymous = remote_interwikiname is None
+        if not self.is_anonymous and interwikiname != remote_interwikiname:
+            raise MoinMoin.wikisync.UnsupportedWikiException(_("The remote wiki uses a different InterWiki name (%(remotename)s)"
+                                             " internally than you specified (%(localname)s).") % {
+                "remotename": wikiutil.escape(remote_interwikiname), "localname": wikiutil.escape(interwikiname)})
+
+        if self.is_anonymous:
+            self.iwid_full = MoinMoin.wikisync.packLine([remote_iwid])
+        else:
+            self.iwid_full = MoinMoin.wikisync.packLine([remote_iwid, 
+                                                         interwikiname])
+
+MoinMoin.wikisync.MoinRemoteWiki = MoinRemoteWikiHttpAuth
 
 # Helper functions for monkey patching and dealing with underlays.
 
