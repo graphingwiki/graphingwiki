@@ -96,8 +96,18 @@ def removelink(pagename):
         pagename = pagename[2:-2]
     return pagename
 
+def running_pagename(request, parent):
+    number = 0
+    pagename = "%s/%.3i" % (parent, number)
+
+    while Page(request, pagename).exists():
+        number += 1
+        pagename = "%s/%.3i" % (parent, number)
+
+    return pagename
+
 def randompage(request, type):
     while True:
         pagename = "%s/%i" % (type, random.randint(10000,99999))
-        if not page_exists(request, pagename):
+        if not Page(request, pagename).exists():
             return pagename

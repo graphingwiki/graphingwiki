@@ -6,7 +6,7 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
 from MoinMoin.logfile import editlog
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
-from raippa import removelink, addlink, randompage, pages_in_category
+from raippa import removelink, addlink, running_pagename, pages_in_category
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
@@ -226,7 +226,7 @@ class Question:
                     anspage = old_answers.pop(old_answers.index(old_page))
 
                 except:
-                    anspage = self.pagename +"/" +randompage(self.request, "answer")
+                    anspage = running_pagename(self.request, self.pagename)
 
                 save_data[anspage] ={
                         "answer" : ans.get("answer", [u""]),

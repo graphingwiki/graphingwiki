@@ -17,6 +17,8 @@ def unique_filename(answers, filename, index=0):
 
 def execute(pagename, request):
     question = Question(request, pagename)
+    task = question.task()
+    tasktype = task.options().get('type', None)
     answertype = question.options().get('answertype', None)
 
     if answertype == "file":
@@ -31,7 +33,7 @@ def execute(pagename, request):
     else:
         answers = request.form.get('answer', list())
 
-    if not answers:
+    if not answers and tasktype not in ['exam', 'questionary']:
         request.theme.add_msg('Missing answers.', 'error')
         Page(request, pagename).send_page()
         return
@@ -55,9 +57,6 @@ def execute(pagename, request):
         Page(request, pagename).send_page()
         return
 
-    task = question.task()
-    tasktype = task.options().get('type', None)
-
     if tasktype in ['exam', 'questionary']:
         page = Page(request, task.pagename)
         request.http_redirect(page.url(request))
@@ -65,7 +64,6 @@ def execute(pagename, request):
 
     if overallvalue in ['success', 'pending']:
         answerpages = successdict.get('right', list())
-
 
         comments = []
         while len(answerpages) > 0:
