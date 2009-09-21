@@ -28,43 +28,49 @@
     class SecurityPolicy(Permissions):
 
         def read(self, pagename):
+            if self.request.user.name in self.request.cfg.superuser:
+                return Permissions.__getattr__(self, 'read')(pagename)
+    
             from raippa.user import User
+            from graphingwiki.editing import get_metas
+            from raippa import raippacategories as rc
 
-            user = User(self.request, self.request.user.name)
-            if not user.is_teacher():
-                from graphingwiki.editing import get_metas
-                from raippa import raippacategories as rc
-
-                parent = "/".join(pagename.split("/")[:-1])
-                metas = get_metas(self.request, parent, ['gwikicategory'], checkAccess=False)
-                if rc['student'] in metas.get('gwikicategory', list()):
+            parent = "/".join(pagename.split("/")[:-1])
+            metas = get_metas(self.request, parent, ['gwikicategory'], checkAccess=False)
+            if rc['student'] in metas.get('gwikicategory', list()):
+                return False
+        
+            metas = get_metas(self.request, pagename, ['gwikicategory'], checkAccess=False)
+            page_categories = metas.get('gwikicategory', list())
+    
+            from raippa import forbidden
+            for category in page_categories:
+                if category in forbidden:
                     return False
-
-                metas = get_metas(self.request, pagename, ['gwikicategory'], checkAccess=False)
-                page_categories = metas.get('gwikicategory', list())
-
-                from raippa import forbidden
-                for category in page_categories:
-                    if category in forbidden:
+    
+            from raippa.pages import Task, Question
+            user = User(self.request, self.request.user.name)
+            teacher = user.is_teacher()
+    
+            for category in page_categories:
+                if category == rc['student'] and not teacher and pagename != user.name:
+                    return False
+                elif category == rc['task']:
+                    if teacher:
+                        return True
+                    elif user.is_student():
+                        may, reason = user.can_do(Task(self.request, pagename))
+                        return may
+                    else:
                         return False
-
-                from raippa.pages import Task, Question
-
-                for category in page_categories:
-                    if category == rc['student'] and pagename != user.name:
+                elif category == rc['question']: 
+                    if teacher:
+                        return True
+                    elif user.is_student():
+                        may, reason = user.can_do(Question(self.request, pagename))
+                        return may
+                    else:
                         return False
-                    elif category == rc['task']:
-                        if user.is_student():
-                            may, reason = user.can_do(Task(self.request, pagename))
-                            return may
-                        else:
-                            return False
-                    elif category == rc['question']:
-                        if user.is_student():
-                            may, reason = user.can_do(Question(self.request, pagename))
-                            return may
-                        else:
-                            return False
-
+    
             return Permissions.__getattr__(self, 'read')(pagename)
 
