@@ -26,6 +26,13 @@ class Theme(ThemeBase):
         @rtype: unicode
         @return: page header html
         """
+        #adding raippa comments to msg
+        session = self.request.session
+        comments = session.get("comments",[])
+        if comments:
+            self.add_msg("<br>".join(comments))
+            session["comments"] = list()
+
         html = [
             # Pre header custom html
             self.emit_custom_html(self.cfg.page_header1),
