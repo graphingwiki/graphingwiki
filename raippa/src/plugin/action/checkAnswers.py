@@ -33,7 +33,7 @@ def execute(pagename, request):
     else:
         answers = request.form.get('answer', list())
 
-    if not answers and tasktype not in ['exam', 'questionary']:
+    if not answers and tasktype not in ['exam']:
         request.theme.add_msg('Missing answers.', 'error')
         Page(request, pagename).send_page()
         return
@@ -58,7 +58,15 @@ def execute(pagename, request):
         return
 
     if tasktype in ['exam', 'questionary']:
-        page = Page(request, task.pagename)
+        if user.can_do(task)[0]:
+            page = Page(request, task.pagename)
+        else:
+            course = Course(request, request.cfg.raippa_config)
+            if course.graphpage:
+                page = Page(request, course.graphpage)
+            else:
+                page = Page(request, request.cfg.page_front_page)
+
         request.http_redirect(page.url(request))
         return
 

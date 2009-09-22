@@ -97,7 +97,7 @@ def get_student_data(request, course, user):
             task = Task(request, taskpage)
 
             if user.is_teacher():
-                graph[taskpage]['URL'] = taskpage
+                graph[taskpage]['URL'] = u"%s/%s" % (request.getBaseURL(), taskpage)
                 graph[taskpage]['label'] = u'select'
                 graph[taskpage]['fillcolor'] = u'steelblue3'
                 graph[taskpage]['tooltip'] = task.title()
@@ -116,7 +116,7 @@ def get_student_data(request, course, user):
                         graph[taskpage]['tooltip'] = task.title()
                         #TODO: show deadline
 
-                    graph[taskpage]['URL'] = taskpage
+                    graph[taskpage]['URL'] = u"%s/%s" % (request.getBaseURL(), taskpage)
 
                 else:
                     if reason == "done":
@@ -267,11 +267,9 @@ def macro_CourseGraph(macro):
 
     #set graphpage to config
     if teacher:
-        metas = get_metas(request, course.config, ["graph"], checkAccess=False)
-
-        if not metas.get("graph", list()):
-            data = {course.config: {"graph": [addlink(pagename)]}}
-            success, msg = set_metas(request, dict(), dict(), data)
+        remove = {course.config: ['graph']}
+        data = {course.config: {"graph": [addlink(pagename)]}}
+        success, msg = set_metas(request, remove, dict(), data)
 
     result = list()
     url_prefix = request.cfg.url_prefix_static

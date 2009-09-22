@@ -110,6 +110,8 @@ class User:
     def has_done(self, instance):
         if isinstance(instance, Task):
             #True, None
+            #True, "exam"
+            #True, "questionary"
             #False, None
             #False, "pending"
             #False, "picked"
@@ -117,12 +119,24 @@ class User:
             if not questionlist:
                 return False, None
 
+            type = instance.options().get('type', None)
+            if type == "exam":
+                return True, "exam"
+
+            info = None
+
             for questionpage in questionlist:
                 done, value = self.has_done(Question(self.request, questionpage))
-                if not done:
-                    return False, value
+                if type == "questionary":
+                    info = "questionary"
+                    if not done:
+                        if not value:
+                            return False, None
+                else:
+                    if not done:
+                        return False, value
        
-            return True, None
+            return True, info
         elif isinstance(instance, Question):
             #True, historypage
             #False, None
