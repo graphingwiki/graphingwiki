@@ -264,7 +264,6 @@ var qSortList = new Class({
         }
 });
 
-
 var questionListModal = new Class({
     Extends: modalizer,
     click : function(){
