@@ -115,6 +115,8 @@ def question_list_editor(macro, task):
     prefix =request.cfg.url_prefix_static 
     old_type = task.options().get('type', u'')
     deadline, alldeadlines = task.deadline()
+    if deadline == None:
+        deadline = ""
     res.append(f.rawHTML('''
 <script type="text/javascript" src="%s/raippajs/raippa-common.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
@@ -405,7 +407,16 @@ function editQuestionList(){
             'id' : 'deadline',
             'name' : 'deadline',
             'value' : '%s'
-            }));
+            }),
+            new Element('a', {
+                'class' : 'jslink',
+                'text' : 'clear',
+                'events' : {
+                    'click' : function(){
+                        $('deadline').set('value', '');
+                    }
+                }
+                }));
     var qSelectedList = new Element('ul', {
             id : 'qSelectedList',
             'class' : 'sortable'
