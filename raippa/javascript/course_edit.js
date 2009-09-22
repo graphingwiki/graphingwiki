@@ -12,6 +12,7 @@ var courseEditor = new Class({
 	flow: {},
 	errors: [],
 	options: {
+		firstNode: "first",
 		errors: false,
 		containerStyles: {
 			'min-width' : '900px',
@@ -100,7 +101,8 @@ var courseEditor = new Class({
 		this.container = $(el);
 		this.container.setStyles(this.options.containerStyles);
 		
-		this.flow = new Hash({'first': []});
+		this.flow = new Hash();
+		this.flow.set(this.options.firstNode, []);
 		this.tasks = {
 				/* data: { taskname : { title, required, element, deadline, description, list_item} , ...} */
 			"data": new Hash(),
@@ -133,7 +135,7 @@ var courseEditor = new Class({
 	},
 	restoreCurrent : function(){
 		var sel = this.tasks.selected;
-		var tmp = ["first"];
+		var tmp = [this.options.firstNode];
 		while (tmp.length > 0) {
 			var to = tmp.shift();
 			var next = sel[to];
@@ -189,7 +191,7 @@ var courseEditor = new Class({
 		
 		var first = new Element('div', {'id': 'first', 'text' :'start'});
 		first.store('value', 'first');
-		this.tasks.data['first'] = {'title' : 'first', 'element' : first};
+		this.tasks.data[this.options.firstNode] = {'title' : 'first', 'element' : first};
 		first.setStyles(this.options.startBoxStyles);
 		first.setStyles(this.options.elSize);
 		
@@ -347,7 +349,7 @@ var courseEditor = new Class({
 		
 		var enable_text = false;
 		if(to === null){
-			to = 'first';
+			to = this.options.firstNode;
 		}
 		
 		//hide task list item
@@ -377,7 +379,7 @@ var courseEditor = new Class({
 			return;
 		}
 		
-		boxData[value].required = required;
+		boxData[value].required = required.erase(this.options.firstNode);
 		
 		//remove end point from parent task
 		if(this.tasks.endPoints.contains(to) == true){
@@ -923,36 +925,38 @@ var courseEditor = new Class({
 		}
 		
 		var before = this.getParentBox(task);
-		info.push(new Element('b', {'text' : 'prerequisites: '}));
-		before.each(function(parent){
-			var title = this.tasks.data[parent].title;
-			var required = this.tasks.data[task].required;
-			var selected = required.contains(parent);
-			var li = new Element('li', {'text' : title});
-			var input = new Element('input',{
-				'type': 'checkbox',
-				'checked': selected,
-				'value': parent,
-				'events': {
-					'change': function(){
-						var chk = input.checked;
-						if(chk){
-							required.include(parent);
-						}else{
-							required.erase(parent);
-						}
-						this.drawGraph();
+		before.erase(this.options.firstNode);
+		if(before.length > 0){
+			info.push(new Element('b', {'text' : 'prerequisites: '}));
+			before.each(function(parent){
+				var title = this.tasks.data[parent].title;
+				var required = this.tasks.data[task].required;
+				var selected = required.contains(parent);
+				var li = new Element('li', {'text' : title});
+				var input = new Element('input',{
+					'type': 'checkbox',
+					'checked': selected,
+					'value': parent,
+					'events': {
+						'change': function(){
+							var chk = input.checked;
+							if(chk){
+								required.include(parent);
+							}else{
+								required.erase(parent);
+							}
+							this.drawGraph();
 						
-					}.bindWithEvent(this)
-				}
-			});
-			li.grab(input);
-			info.push(li);
-		}, this);
-		
+						}.bindWithEvent(this)
+					}
+				});
+				li.grab(input);
+				info.push(li);
+			}, this);
+			info.push(new Element('br'));
+		}
 		var next = this.flow[task];
 		if (next.length > 0){
-			info.push(new Element('br'));
 			info.push(new Element('b',{ text : 'Next: '}));
 			next.each(function(child){
 				var title = this.tasks.data[child].title;
@@ -1010,7 +1014,7 @@ var courseEditor = new Class({
 		});
 		
 		sel = this.flow;
-		var tmp = ["first"];
+		var tmp = [this.options.firstNode];
 		while (tmp.length > 0) {
 			var to = tmp.shift();
 			var next = sel[to];
@@ -1021,7 +1025,7 @@ var courseEditor = new Class({
 					'name': 'flow_'+to,
 					'value': child
 				}));
-				if (this.tasks.data[child].required.contains(to)){
+				if (this.tasks.data[child].required.contains(to) && to != this.options.firstNode){
 					form.grab(new Element('input', {
 						'type': 'hidden',
 						'name': 'req_'+ child,
