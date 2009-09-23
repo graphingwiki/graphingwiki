@@ -8,7 +8,7 @@
     @license: GPLv2
 """
 
-import urllib, re
+import urllib, re, urlparse
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 remoteurl='''http://www.milw0rm.com/remote.php'''
@@ -27,13 +27,16 @@ def scrape_mw(scrapeurl):
         date = unicode(cols[0].contents[0])
         descr = unicode(cols[1].contents[0].string)
         link = unicode(cols[1].contents[0]['href'])
-        print date, descr, link
+        if '/exploits/' not in link:
+            continue
+        data = urllib.urlopen(urlparse.urljoin(remoteurl, link)).read()
+        cves = set([('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', data)])
+        yield date, cves, descr, link
 
 
 if __name__ == '__main__':
-    scrape_mw(localurl)
-    scrape_mw(localurl + '?start=30')
-    scrape_mw(remoteurl)
-    scrape_mw(remoteurl + '?start=30')
-
-
+#     scrape_mw(localurl)
+#     scrape_mw(localurl + '?start=30')
+    #scrape_mw(remoteurl)
+    for z in scrape_mw(remoteurl + '?start=60'):
+        print z
