@@ -2,13 +2,12 @@
 # -*- coding: latin-1 -*-
 """
     Scraper for milw0rm exploit feed
-    TBD: check for CVE IDs in exploit files
 
     @copyright: 2009 Erno Kuusela
     @license: GPLv2
 """
 
-import urllib, re, urlparse
+import urllib, re, urlparse, time
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 remoteurl='''http://www.milw0rm.com/remote.php'''
