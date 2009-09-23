@@ -168,7 +168,7 @@ class Question:
                 if answer.value() == "right":
                     if answer.answer() not in user_answers:
                         success_dict["wrong"].append(answerpage)
-                        if questiontype != 'text':
+                        if questiontype == 'checkbox':
                             overallvalue = "failure"
                     else:
                         user_answers.remove(answer.answer())

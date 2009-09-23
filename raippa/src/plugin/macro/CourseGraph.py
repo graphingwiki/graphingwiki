@@ -95,13 +95,20 @@ def get_student_data(request, course, user):
             graph[taskpage] = dict()
         
             task = Task(request, taskpage)
+            deadline, deadlines = task.deadline()
+            user_deadline = deadlines.get(user.name, None)
 
             if user.is_teacher():
                 graph[taskpage]['URL'] = u"%s/%s" % (request.getBaseURL(), taskpage)
                 graph[taskpage]['label'] = u'select'
                 graph[taskpage]['fillcolor'] = u'steelblue3'
-                graph[taskpage]['tooltip'] = task.title()
-                #TODO: show deadline
+                tooltip = u'%s:: ' % task.title()
+                if user_deadline:
+                    tooltip += u'Your deadline: %s' % user_deadline
+                elif deadline:
+                    tooltip += u'Deadline: %s' % deadline
+
+                graph[taskpage]['tooltip'] = tooltip
             else:
                 cando, reason = user.can_do(task)
           
@@ -113,8 +120,13 @@ def get_student_data(request, course, user):
                     else:
                         graph[taskpage]['label'] = u'select'
                         graph[taskpage]['fillcolor'] = u'steelblue3'
-                        graph[taskpage]['tooltip'] = task.title()
-                        #TODO: show deadline
+                        tooltip = u'%s:: ' % task.title()
+                        if user_deadline:
+                            tooltip += u'Your deadline: %s' % user_deadline
+                        elif deadline:
+                            tooltip += u'Deadline: %s' % deadline
+                    
+                        graph[taskpage]['tooltip'] = tooltip
 
                     graph[taskpage]['URL'] = u"%s/%s" % (request.getBaseURL(), taskpage)
 
