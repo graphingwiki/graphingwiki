@@ -178,7 +178,8 @@ var modalizer = new Class({
 		},
 		tabContainerStyles: {
 			'background-color': 'gray'
-		}
+		},
+		destroyOnExit: true
 	},
 
 	initialize : function(els, options){
@@ -234,6 +235,7 @@ var modalizer = new Class({
 		}
 	    
 	    this.els.setStyle('display', 'none');
+	    this.els.removeClass('hidden');
 	    $(document.body).adopt(this.overlay, this.outerContainer);
 	    
 	    //this.showTab();
@@ -270,6 +272,11 @@ var modalizer = new Class({
 	close : function(){
         	this.overlay.tween('opacity', 0.2);
             (function(){
+            	if(!this.options.destroyOnExit){
+            		this.els.dispose();
+            		this.els.setStyle('display', 'none');
+            		$(document.body).adopt(this.els);
+            	}
                 this.overlay.destroy();
                 var l = this.outerContainer;
                 $clear(this.periodical);
