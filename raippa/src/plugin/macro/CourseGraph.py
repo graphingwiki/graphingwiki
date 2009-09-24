@@ -11,9 +11,8 @@ from graphingwiki.util import encode_page
 
 from MoinMoin import config
 
-from raippa.pages import Course, Task
+from raippa.pages import Course, Task, Question
 from raippa.user import User
-from raippa.stats import CourseStats, TaskStats
 from raippa import addlink
 
 def draw_graph(request, graphdict, result="both"):
@@ -157,48 +156,52 @@ def get_stat_data(request, course, user=None):
     graph = dict()
     flow = course.flow.fullflow()
 
-    course_stats = CourseStats(request, course.config)
-
     for taskpage, nextlist in flow.iteritems():
         if taskpage != 'first' and taskpage not in graph.keys():
             task = Task(request, taskpage)
             questions = task.questionlist()
             title = task.title()
-
-            stats = TaskStats(request, taskpage)
-            done, doing, rev_count = stats.students(user)
+            done, doing = task.students(user)
 
             max = int()
 
-            for question, revs in rev_count.iteritems():
-                for rev in revs:
-                    if rev > max:
-                        max = rev
+            for questionpage in task.questionlist():
+                total_time, rev_count = Question(request, questionpage).used_time(user)
+                if rev_count > max:
+                    max = rev_count
 
+            tasktype = task.options().get('type', 'basic')
             graph[taskpage] = dict()
 
             if user:
                 done_questions = done.get(user.name, list())
                 if len(done_questions) == len(questions):
                     graph[taskpage]['label'] = u'done'
-                    tip = u"%s::Student has done all the questions in this task.<br>" % (title)
+
+                    if tasktype == 'exam':
+                        tip = u"%s::Student has answered to all the questions in this exam.<br>" % (title)
+                    elif tasktype == 'questionary':
+                        tip = u"%s::Student has answered to all the questions in this questionary.<br>" % (title) 
+                    else:
+                        tip = u"%s::Student has done all the questions in this task.<br>" % (title)
                 else:
                     graph[taskpage]['label'] = u'%i/%i' % (len(done_questions), len(questions))
-                    tip = u"%s::Student has done %i questions out of %i.<br>" % (title, len(done_questions), len(questions))
-
-                if max <= 0:
-                    graph[taskpage]['fillcolor'] = u'steelblue3'
-                elif max <= 3:
-                    graph[taskpage]['fillcolor'] = u'darkolivegreen4'
-                elif max <= 6:
-                    graph[taskpage]['fillcolor'] = u'gold'
-                else:
-                    graph[taskpage]['fillcolor'] = u'firebrick'
+                    if tasktype == 'exam':
+                        tip = u"%s::Student has answered %i questions out of %i in this exam.<br>" % (title, len(done_questions), len(questions))
+                    elif tasktype == 'questionary':
+                        tip = u"%s::Student has answered %i questions out of %i in this questionary.<br>" % (title, len(done_questions), len(questions))
+                    else:
+                        tip = u"%s::Student has done %i questions out of %i.<br>" % (title, len(done_questions), len(questions))
 
             else:
                 done_all = list(set(done.keys()).difference(set(doing.keys())))
                 graph[taskpage]['label'] = u'%i/%i' % (len(doing.keys()), len(done_all))
-                tip = u"%s::%i students is doing this task and %i has passed it.<br>" % (title, len(doing), len(done_all))
+                if tasktype == 'exam':
+                   tip = u"%s::%i students has started this exam and %i has answered to all the questions.<br>" % (title, len(doing), len(done_all)) 
+                elif tasktype == 'questionary':
+                   tip = u"%s::%i students has started this questionary and %i has answered to all the questions.<br>" % (title, len(doing), len(done_all))
+                else:
+                   tip = u"%s::%i students is doing this task and %i has passed it.<br>" % (title, len(doing), len(done_all))
 
             if max <= 0:
                 graph[taskpage]['fillcolor'] = u'steelblue3'
@@ -228,10 +231,6 @@ def draw_teacher_ui(request, course):
  <script type="text/javascript" src="%s/raippajs/moocanvas.js"></script>
  <script type="text/javascript" src="%s/raippajs/course_edit.js"></script>
 <script type="text/javascript">
-window.addEvent('domready', function(){
-    });
-
-
 function editor(view){
     var edit = new Element('div');
     var stats = $('statsBox').clone().removeClass('hidden'); 
@@ -270,7 +269,7 @@ def macro_CourseGraph(macro):
     pagename = macro.request.page.page_name
 
     if not request.user.name:
-        return 
+        return u'Login or create user.' 
 
     user = User(request, request.user.name)
     teacher = user.is_teacher()

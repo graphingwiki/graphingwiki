@@ -478,6 +478,12 @@ class Question:
         else:
             histories = self.histories()
 
+        task = self.task()
+        if task:
+            tasktype = task.options().get('type', 'basic')
+        else:
+            tasktype = 'basic'
+
         keys = ['user', 'overallvalue']
         for history in histories:
             metas = get_metas(self.request, history, keys, checkAccess=False)
@@ -488,18 +494,18 @@ class Question:
 
             revision = Page(self.request, history).get_real_rev()
 
-            overallvalue = metas.get('overallvalue', [None])[0]
-            if overallvalue == "success":
-                for user in users:
-                    user = removelink(user)
-                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
-                    if rc['student'] in metas.get('gwikicategory', list()):
+            for user in users:
+                user = removelink(user)
+                metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
+                if rc['student'] in metas.get('gwikicategory', list()):
+                    if tasktype in ['questionary', 'exam']:
                         done[user] = revision
-            else:
-                for user in users:
-                    metas = get_metas(self.request, user, ['gwikicategory'], checkAccess=False)
-                    if rc['student'] in metas.get('gwikicategory', list()):
-                        doing[user] = revision
+                    else:
+                        overallvalue = metas.get('overallvalue', [None])[0]
+                        if overallvalue == "success":
+                            done[user] = revision
+                        else:
+                            doing[user] = revision
 
         return done, doing
 
@@ -524,15 +530,17 @@ class Question:
                     'gwikicategory', 'gwikirevision']
 
             for page in pages:
-                metas = get_metas(self.request, page, keys)
+                metas = get_metas(self.request, page, keys, checkAccess=False)
 
                 revision = int(metas.get('gwikirevision', list())[0])
                 editor = editors[revision]
 
                 users = list()
                 for user in metas.get('user', list()):
-                    #TODO: check student category
-                    users.append(removelink(user))
+                    user = removelink(user)
+                    umetas = get_metas(self.request, user, 'gwikicategory', checkAccess=False)
+                    if rc['student'] in umetas.get('gwikicategory', list()):
+                        users.append(removelink(user))
 
                 if editor not in users:
                     continue
@@ -724,7 +732,7 @@ class Task:
         questions = self.questionlist()
 
         if not questions:
-            return dict(), dict(), dict()
+            return dict(), dict()
 
         done = dict()
         doing = dict()

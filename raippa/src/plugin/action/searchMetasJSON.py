@@ -29,15 +29,16 @@
 """
 
 from MoinMoin.Page import Page
+from graphingwiki.editing import get_metas
 from raippa.pages import Question, Answer, Course, Task
-from raippa import pages_in_category, to_json
+from raippa import pages_in_category, to_json, raippacategories
 from raippa.user import User
 
 def question_stats(request, question):
     revisions = question.history_revisions()
 
     #total time and total try count
-    stats = {"total": [0.0, 0]}
+    stats = {"total": {"time" : 0.0, "count": 0}}
 
     for historypage in revisions:
         if not revisions.get(historypage, dict()):
@@ -55,17 +56,22 @@ def question_stats(request, question):
             for student in students:
                 if student not in stats.keys():
                     #total time and total try count
-                    stats[student] = {"total": [0.0, 0]}
+                    stats[student] = {"total": {"time":0.0, "count": 0}, "tries" : {}}
 
                 metas = get_metas(request, student, ['name'], checkAccess=False)
-                stats[student]['name'] = metas.get('name', [''])[0]
+                name = metas.get('name', list())
+                if not name:
+                    name = "Missing name"
+                else:
+                    name = name[0]
+                stats[student]['name'] = name
 
-                stats[student][date] = [overallvalue, right, wrong, used_time]
-                stats[student]["total"][0] += used_time
-                stats[student]["total"][1] += 1
+                stats[student]["tries"][date] = {"overall": overallvalue, "right" : right, "wrong": wrong, "time": used_time}
+                stats[student]["total"]["time"] += used_time
+                stats[student]["total"]["count"] += 1
 
-                stats["total"][0] += used_time
-                stats["total"][1] += 1
+                stats["total"]["time"] += used_time
+                stats["total"]["count"] += 1
 
     return stats
 
@@ -77,25 +83,31 @@ def task_stats(request, task):
     flow = task.questionlist()
 
     for student in students:
-        stats[student] = {"done": dict(), "doing": dict(), "total": [0.0, 0]}
+        stats[student] = {"done": dict(), "doing": dict(), "total": {"time":0.0, "count":0}}
         metas = get_metas(request, student, ['name'], checkAccess=False)
-        stats[student]['name'] = metas.get('name', [''])[0]
+
+        name = metas.get('name', list())
+        if not name:
+            name = "Missing name"
+        else:
+            name = name[0]
+        stats[student]['name'] = name
 
         for questionpage in flow:
             used_time, try_count = Question(request, questionpage).used_time(User(request, student))
             if questionpage in done.get(student, list()):
-                stats[student]["done"][questionpage] = [used_time, try_count]
+                stats[student]["done"][questionpage] = {"time": used_time, "count": try_count}
             elif questionpage in doing.get(student, list()):
-                stats[student]["doing"][questionpage] = [used_time, try_count]
+                stats[student]["doing"][questionpage] = {"time" : used_time, "count": try_count}
 
-            stats[student]["total"][0] += used_time
-            stats[student]["total"][1] += try_count 
+            stats[student]["total"]["time"] += used_time
+            stats[student]["total"]["count"] += try_count 
             
             if not stats["total"].get(questionpage, list()):
-                stats["total"][questionpage] = [0.0, 0]
+                stats["total"][questionpage] = {"time":0.0, "count":0}
 
-            stats["total"][questionpage][0] += used_time
-            stats["total"][questionpage][1] += try_count
+            stats["total"][questionpage]["time"] += used_time
+            stats["total"][questionpage]["count"] += try_count
 
     return stats
 
@@ -196,11 +208,15 @@ def execute(pagename, request):
     elif args == "has_done" and search:
         request.write(to_json(has_done(request, search)))
 
-    elif args == "question_stats":
-        request.write(to_json(question_stats(request, Question(request, pagename))))
-
-    elif args == "task_stats":
-        request.write(to_json(task_stats(request, Task(request, pagename))))
+    elif args == "stats":
+        metas = get_metas(request, pagename, ["gwikicategory"], checkAccess=False)
+        categories = metas.get("gwikicategory", list())
+        
+        if raippacategories["question"] in categories:
+            request.write(to_json(question_stats(request, Question(request, pagename))))
+        
+        elif raippacategories["task"] in categories:
+            request.write(to_json(task_stats(request, Task(request, pagename))))
 
     else:
         request.write(to_json(""))
