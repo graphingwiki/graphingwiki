@@ -10,6 +10,7 @@ def sanitize(input):
     if input == None:
         input = u""
     input = unicode(input)
+    input = input.replace("\\", "\\\\")
     input = input.replace("'", "\\'")
     input = input.replace("\n", " ")
     return input.strip()
@@ -23,52 +24,28 @@ def draw_teacherui(macro, user, question):
     res.append(f.div(1,id="teacherUiBox"))
 
     res.append(f.rawHTML('''
-    <ul id="answerUiMenu" class="tabMenu">
-        <li id="tab1">View</li>
-        <li id="tab2">Edit</li>
-        <li id="tab3">Statistics</li>
-    </ul>
-    '''))
-    res.append(f.rawHTML('''<script type="text/javascript">
-if(MooTools){
-window.addEvent('domready', function(){
-    var lis = $('answerUiMenu').getElements('li');
-     lis.addEvent('click',function(){
-        changeTab(this.id);
-        lis.removeClass('selected');
-        this.addClass('selected');
-    });
+ <script type="text/javascript" src="%s/raippajs/stats.js"></script>
+    <script type="text/javascript">
 
-    $('tab2').fireEvent('click');
-    });
-}
-function changeTab(box){
-    var eb = $('answerEditBox');
-    var vb = $('answerBox');
-    var sb = $('answerStatBox');
-
-    if(box == "view" || box == "tab1"){
-       sb.addClass('hidden');
-       eb.addClass('hidden');
-       vb.removeClass('hidden');
-    }else if(box == "edit" || box == "tab2"){
-       sb.addClass('hidden');
-       vb.addClass('hidden');
-       eb.removeClass('hidden');
-    }else if(box == "stats" || box == "tab3"){
-       vb.addClass('hidden');
-       eb.addClass('hidden');
-       sb.removeClass('hidden');
+function editor(view){ 
+    var edit = $('answerEditBox');
+    var statsdiv = new Element('div'); 
+    var modal = new modalizer([edit, statsdiv], { 
+        tabLabels : ["edit", "stats"],
+        defTab : view,
+        destroyOnExit : false
+        });     
+    
+    var stats = new Stats(statsdiv);
     }
-}
+
 </script>
-'''))
-    #answer box
-    res.extend(draw_answers(macro, user, question))
+<br>
+<a class="jslink" onClick="editor(0);">edit</a>
+<a class="jslink" onClick="editor(1);">stats</a>
+''' % request.cfg.url_prefix_static))
     #edit ui
     res.extend(draw_answer_edit_ui(macro, question))
-    #stats window
-    res.extend(draw_statistics(macro, question))
 
     res.append(f.div(0))
 
@@ -90,7 +67,7 @@ window.addEvent('domready', function(){
     addAns();
     checkType();
     clearRms();
-    showTip(0);
+    showTip($$('tr.tiprow').length -1);
 });
 function clearRms(){ 
     $$('input.rmcheck').each(function(el){
@@ -120,7 +97,7 @@ function checkType(){
        norm_rows.removeClass('hidden');
     }
 }
-
+/* Shows tip and comment fields of <num>th answer*/
 function showTip(num){
     $$('tr.tiprow').addClass('hidden');
     $$('tr.comrow').addClass('hidden');
@@ -356,20 +333,11 @@ function submitCheck(button){
 
     res.append(f.table(0))
     res.append(f.rawHTML('<input type="submit" onclick="return submitCheck(this);" value="Save">'))
+    res.append(f.rawHTML('<input type="button" onclick="window.location.reload();" value="Cancel">'))
     res.append(f.rawHTML('</form>'))
     res.append(f.div(0))
 
     return res
-
-def draw_statistics(macro, question):
-    result = list()
-    request = macro.request
-    f = macro.formatter
-
-    result.append(f.div(1,id="answerStatBox"))
-    result.append(f.div(0))
-
-    return result
 
 def draw_answers(macro, user, question):
     f = macro.formatter
@@ -391,9 +359,11 @@ def draw_answers(macro, user, question):
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage)
 
+            page = anspage.split("/")[-1]
+            
             value = answer.answer()
             res.append(f.rawHTML(
-    '''<input type="%s" id="ans%s" name="answer" value="%s">''' % (qtype, i,value)))
+    '''<input type="%s" id="ans%s" name="answer" value="%s">''' % (qtype, i, page)))
             res.append(f.rawHTML('''<label for="ans%s">%s</label>''' %(i, value)))
             res.append(f.linebreak(0))
 
@@ -464,9 +434,9 @@ def macro_AnswerBox(macro):
 
     question = Question(request, pagename)
 
+    result.extend(draw_answers(macro, user, question))
+    
     if user.is_teacher():
         result.extend(draw_teacherui(macro, user, question))
-    else:
-        result.extend(draw_answers(macro, user, question))
 
     return "".join(result)
