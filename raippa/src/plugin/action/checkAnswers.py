@@ -30,8 +30,23 @@ def execute(pagename, request):
                 
                 answer = request.form.get(answerkey, list())
                 answers.append((filename, answer[1].value))
-    else:
+    elif answertype == "text":
         answers = request.form.get('answer', list())
+    else:
+        answer_ids = request.form.get('answer', list())
+        question_answers = question.answers()
+        answers = list()
+
+        for answer_id in answer_ids:
+            found = False
+            for question_answer in question_answers:
+                if answer_id == question_answer.split("/")[-1]:
+                    found = True
+                    answers.append(Answer(request, question_answer).answer())
+            if not found:
+                request.theme.add_msg('Missing answers.', 'error')
+                Page(request, pagename).send_page()
+                return
 
     if not answers and tasktype not in ['exam']:
         request.theme.add_msg('Missing answers.', 'error')
@@ -95,8 +110,8 @@ def execute(pagename, request):
         return
 
     else:
-        answerpages = successdict.get('right', list())
-        answerpages.extend(successdict.get('wrong', list()))
+        #give tips only for incorrect answers (no point in giving tips for correct answers, right?)
+        answerpages = successdict.get('wrong', list())
  
         tip = None
 

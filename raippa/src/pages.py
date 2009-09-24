@@ -226,7 +226,7 @@ class Question:
                     anspage = old_answers.pop(old_answers.index(old_page))
 
                 except:
-                    anspage = running_pagename(self.request, self.pagename)
+                    anspage = running_pagename(self.request, self.pagename+"/answer")
 
                 save_data[anspage] ={
                         "answer" : ans.get("answer", [u""]),
@@ -531,6 +531,7 @@ class Question:
 
                 users = list()
                 for user in metas.get('user', list()):
+                    #TODO: check student category
                     users.append(removelink(user))
 
                 if editor not in users:

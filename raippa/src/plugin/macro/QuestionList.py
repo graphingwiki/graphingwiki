@@ -35,14 +35,24 @@ if(MooTools){
     });
 }
     </script>'''))
+
+    task = Question(request, questionlist[0]).task()
+    deadline, deadlines = task.deadline()
+                  
+    user_deadline = deadlines.get(user.name, None)
+    if user_deadline:
+        result.append("Your deadline: %s" % user_deadline)
+    elif deadline:
+        result.append("Deadline: %s" % deadline)
+
     result.append(f.div(True,id="questionList"))
     result.append(f.bullet_list(True))
 
     if len(questionlist) > 1:
-        tasktype = Question(request, questionlist[0]).task().options().get('type', None)
+        tasktype = task.options().get('type', None)
     else:
         tasktype = None
-    
+
     for questionpage in questionlist:
         question = Question(request, questionpage)
 
@@ -58,13 +68,23 @@ if(MooTools){
                 result.append(f.pagelink(True, questionpage))
                 result.append(f.text(question.title()))
                 result.append(f.pagelink(False, questionpage))
-                if reason == "redo" and tasktype not in ['exam', 'questionary']:
-                    result.append(f.icon('(./)'))
-                elif reason == "pending":
-                    result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
+
+                if tasktype in ['exam', 'questionary']:
+                    done, info = user.has_done(question)
+                    if done:
+                        result.append(f.icon('(./)'))
+                    elif info not in ['pending', 'picked', None]:
+                        result.append(f.icon('(./)'))
+                    elif info in ['pending', 'picked']:
+                        result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
+                else:
+                    if reason == "redo":
+                        result.append(f.icon('(./)'))
+                    elif reason == "pending":
+                        result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
             else:
                 result.append(f.text(question.title()))
-                if reason == "done" and tasktype not in ['exam', 'questionary']:
+                if reason == "done":
                     result.append(f.icon('(./)'))
                 elif reason == "pending":
                     result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
@@ -263,6 +283,7 @@ var qSortList = new Class({
             });
         }
 });
+
 
 var questionListModal = new Class({
     Extends: modalizer,
