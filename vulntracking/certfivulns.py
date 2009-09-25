@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: latin-1 -*-
 """
-    Screen scraper for CERT-FI vuln feed
+    Scraper for CERT-FI vuln feed
 
     @copyright: 2009 Erno Kuusela
     @license: GPLv2
@@ -9,6 +9,7 @@
 
 import urllib, re
 from collections import defaultdict
+from osvdb import textify
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 rssurl='''http://www.cert.fi/rss/haavoittuvuudet.xml'''
 
@@ -18,16 +19,6 @@ def scrape_rss():
         if link.contents[0].startswith('http://www.cert.fi/haavoittuvuudet'):
             yield scrape_one_vuln(link.contents[0])
 
-def textify(s):
-    out = []
-    for elt in s.contents:
-        if isinstance(elt, basestring):
-            s = unicode(elt).strip()
-            if s:
-                out.append(s)
-        else:
-            out += textify(elt)
-    return out
 
 def scrape_one_vuln(url):
     soup = BS(urllib.urlopen(url), convertEntities="html")
