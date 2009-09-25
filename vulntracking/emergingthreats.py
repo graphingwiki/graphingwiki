@@ -9,8 +9,7 @@
 
 import urllib, re, socket
 
-emerging_exploits_url = 'file:///tmp/emerging-exploit.rules'
-#emerging_exploits_url = 'http://www.emergingthreats.net/rules/emerging-exploit.rules'
+emerging_exploits_url = 'http://www.emergingthreats.net/rules/emerging-exploit.rules'
 
 def scrape():
     for line in urllib.urlopen(emerging_exploits_url):
