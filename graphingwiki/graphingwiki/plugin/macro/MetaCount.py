@@ -36,6 +36,7 @@ from graphingwiki.util import format_wikitext, url_escape
 Dependencies = ['metadata']
 
 def execute(macro, args):
+    _ = macro.request.getText
     SILENT = False
 
     if args is None:
@@ -55,11 +56,17 @@ def execute(macro, args):
     if SILENT:
         return "%d " % (len(pagelist))
 
+
+
     # No data -> bail out quickly, Scotty
     if not pagelist:
         return _("No matches for") + " '%s'" % (args)
 
-    _ = macro.request.getText
+
+
+
+
+
 
 
     return "%d " % (len(pagelist)) + _("matches for") + " '%s'" % (args)
