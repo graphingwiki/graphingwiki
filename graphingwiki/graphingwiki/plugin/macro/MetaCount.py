@@ -52,13 +52,14 @@ def execute(macro, args):
     pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
                                                      get_all_keys=True)
 
+    if SILENT:
+        return "%d " % (len(pagelist))
+
     # No data -> bail out quickly, Scotty
     if not pagelist:
         return _("No matches for") + " '%s'" % (args)
 
     _ = macro.request.getText
 
-    if SILENT:
-        return "%d " % (len(pagelist))
 
     return "%d " % (len(pagelist)) + _("matches for") + " '%s'" % (args)
