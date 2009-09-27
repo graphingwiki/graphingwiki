@@ -17,6 +17,7 @@ import urllib
 import getpass
 import copy
 import md5
+import operator
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
@@ -997,11 +998,20 @@ def metatable_parseargs(request, args,
     cat_re = category_regex(request)
     temp_re = template_regex(request)
 
+    # Standard Python operators
+    operators = {'<': operator.lt, 
+                 '<=': operator.le, 
+                 '==': operator.eq,
+                 '!=': operator.ne, 
+                 '>=': operator.ge, 
+                 '>': operator.gt}
+
     # Arg placeholders
     argset = set([])
     keyspec = []
     orderspec = []
     limitregexps = {}
+    limitops = {}
 
     # list styles
     styles = {}
@@ -1030,6 +1040,19 @@ def metatable_parseargs(request, args,
 
                 keyspec.append(key.strip())
 
+            continue
+
+        # Check for Python operator comparisons
+        for op in operators:
+            if op in arg:
+
+                data = arg.split(op)
+                # Must have real comparison
+                if not len(data) == 2:
+                    continue
+
+                key, comp = map(string.strip, data)
+                limitops.setdefault(key, list()).append((comp, op))
             continue
 
         # Metadata regexp, move on
@@ -1171,7 +1194,42 @@ def metatable_parseargs(request, args,
                 if not clear:
                     break
 
-        # Add page if all the regexps have matched
+        if limitops:
+            # We're sure we have access to read the page, don't check again
+            metas = get_metas(request, page, limitops, checkAccess=False)
+
+            for key, complist in limitops.iteritems():
+                values = metas[key]
+
+                for (comp, op) in complist:
+                    clear = True
+
+                    # The non-existance of values is good for not
+                    # equal, bad for the other comparisons
+                    if not values:
+                        if op == '!=':
+                            continue
+
+                        clear = False
+
+                    # Must match all
+                    for value in values:
+                        value, comp = ordervalue(value), ordervalue(comp)
+
+                        if not operators[op](value, comp):
+                            clear = False
+                            break
+
+                    # If one of the comparisons for a single key were not True
+                    if not clear:
+                        break
+
+                # If all of the comparisons for a single page were not True
+                if not clear:
+                    break
+                            
+
+        # Add page if all the regexps and operators have matched
         if clear:
             pagelist.add(page)
 
