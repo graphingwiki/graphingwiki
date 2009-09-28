@@ -424,7 +424,7 @@ class GraphShower(object):
             return
 
         # No need to list all categories if the list is not going to be used
-        if not self.inline:
+        if self.inline:
             return
 
         self.allcategories.update(cats)
