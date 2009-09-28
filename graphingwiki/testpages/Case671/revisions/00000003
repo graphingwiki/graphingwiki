@@ -1,0 +1,32 @@
+<<MetaTable(Case671)>>
+
+mymeta should be a,b, e
+
+{{{
+#!wiki comment
+ mymeta:: a
+}}}
+
+{{{#!wiki comment
+ mymeta:: b
+}}}
+
+{{{#!text
+ mymeta:: c
+}}}
+
+{{{
+ mymeta:: d
+}}}
+
+{{{
+
+#!wiki comment
+ mymeta:: e
+}}}
+
+{{{
+koopsi
+#!wiki comment
+ mymeta:: f
+}}}

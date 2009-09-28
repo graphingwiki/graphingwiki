@@ -273,11 +273,31 @@ class Parser(WikiParser):
     def _parser_repl(self, word, groups):
         parser_name = groups.get('parser_name', None)
 
-        self.in_pre = True
-        if parser_name == 'wiki':
-            self.in_pre = False
+        self.in_pre = 'search_parser'
+
+        # If there's a parser on the begin of the parser line, stop
+        # searching for parsers. If wiki parser, process metas.
+        if parser_name:
+            if parser_name == 'wiki':
+                self.in_pre = False
+            elif parser_name.strip():
+                self.in_pre = True
 
         return self.__add_meta(word, groups)
+
+    # Catch the wiki parser within the parsed content
+    def _parser_content(self, line):
+        if self.in_pre == 'search_parser' and line.strip():
+            if line.strip().startswith("#!"):
+                parser_name = line.strip()[2:].split()[0]
+                if parser_name == 'wiki':
+                    self.in_pre = False
+                    return ''
+
+            # If the first line with content is not a parser spec -> no parser
+            self.in_pre = True
+
+        return ''
 
     _parser_unique_repl = _parser_repl
     _parser_line_repl = _parser_repl

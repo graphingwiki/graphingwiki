@@ -1,0 +1,10 @@
+<<MetaTable(Case671)>>
+
+{{{
+#!wiki comment
+ mymeta:: a
+}}}
+
+{{{#!wiki comment
+ mymeta:: b
+}}}
