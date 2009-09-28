@@ -62,9 +62,10 @@ def draw_topology(request, args, key):
                                                      get_all_keys=True)
     
     if not pagelist:
-        return _sysmsg % ('error', "%s: %s" % 
-                          (_("No such topology or empty topology"), 
-                           form_escape(topology)))
+        return False, "", \
+            _sysmsg % ('error', "%s: %s" % 
+                       (_("No such topology or empty topology"), 
+                        form_escape(topology)))
 
     coords = dict()
     images = dict()
@@ -226,7 +227,7 @@ def draw_topology(request, args, key):
         map += u'<area href="%s" shape="%s" coords="%s" title="%s">\n' % \
             (form_escape(pagelink), shape, coords, tooltip)
 
-    return data, map
+    return True, data, map
 
 def execute(macro, args):
     formatter = macro.formatter
@@ -242,7 +243,10 @@ def execute(macro, args):
     map_text = 'usemap="#%s" ' % (key)
 
     if not cache_exists(request, key):
-        data, mappi = draw_topology(request, args, key)
+        succ, data, mappi = draw_topology(request, args, key)
+        if not succ:
+            reuturn mappi
+
         cache.put(request, key, data, content_type='image/png')
         cache.put(request, key + '-map', mappi, content_type='text/html')
     else:
