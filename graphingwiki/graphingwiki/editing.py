@@ -410,6 +410,9 @@ def get_metas(request, name, metakeys, checkAccess=True,
                 linked, target_key = args
 
                 for indir_page in loadedOutsIndir.get(linked, list()):
+                    # Relative pages etc
+                    indir_page = wikiutil.AbsPageName(request.page.page_name, 
+                                                      indir_page)
 
                     if request.user.may.read(indir_page):
                         pagedata = request.graphdata.getpage(indir_page)
