@@ -2,7 +2,7 @@ from raippa.pages import Question, Task
 from raippa.user import User
 from raippa import page_exists
 
-def question_list_gui(macro, questionlist, user):
+def question_list_gui(macro, task, user):
     request = macro.request
     f = macro.formatter
     result = list()
@@ -36,7 +36,13 @@ if(MooTools){
 }
     </script>'''))
 
-    task = Question(request, questionlist[0]).task()
+    questionlist = task.questionlist()
+ 
+    if len(questionlist) > 1:
+        tasktype = task.options().get('type', None)
+    else:
+        tasktype = None
+
     deadline, deadlines = task.deadline()
                   
     user_deadline = deadlines.get(user.name, None)
@@ -47,11 +53,6 @@ if(MooTools){
 
     result.append(f.div(True,id="questionList"))
     result.append(f.bullet_list(True))
-
-    if len(questionlist) > 1:
-        tasktype = task.options().get('type', None)
-    else:
-        tasktype = None
 
     for questionpage in questionlist:
         question = Question(request, questionpage)
@@ -107,7 +108,7 @@ def question_list_teacher_gui(macro, task, user):
     res.append(f.div(1,id="teacherUiBox"))
 
 
-    res.extend(question_list_gui(macro, questionlist, user))
+    res.extend(question_list_gui(macro, task, user))
 
     res.extend(question_list_editor(macro, task))
 
@@ -602,6 +603,6 @@ def macro_QuestionList(macro):
     if user.is_teacher():
         result.extend(question_list_teacher_gui(macro, task, user))
     else:
-        result.extend(question_list_gui(macro, task.questionlist(), user))
+        result.extend(question_list_gui(macro, task, user))
 
     return "".join(result)
