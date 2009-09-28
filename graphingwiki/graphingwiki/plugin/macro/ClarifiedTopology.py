@@ -50,6 +50,7 @@ Dependencies = ['metadata']
 
 def draw_topology(request, args, key):
     topology = args
+    _ = request.getText
 
     # Get all containers
     args = 'CategoryContainer, %s=/.+/' % (args)
