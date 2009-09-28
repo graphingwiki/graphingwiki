@@ -245,7 +245,7 @@ def execute(macro, args):
     if not cache_exists(request, key):
         succ, data, mappi = draw_topology(request, args, key)
         if not succ:
-            reuturn mappi
+            return mappi
 
         cache.put(request, key, data, content_type='image/png')
         cache.put(request, key + '-map', mappi, content_type='text/html')
