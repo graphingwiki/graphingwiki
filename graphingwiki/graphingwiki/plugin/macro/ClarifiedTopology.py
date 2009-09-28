@@ -37,7 +37,7 @@ from MoinMoin.macro.Include import _sysmsg
 from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
-    cache_key, cache_exists, latest_edit
+    cache_key, cache_exists, latest_edit, encode_page
 
 cairo_found = True
 try:
@@ -60,7 +60,7 @@ def draw_topology(request, args, key):
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
-    
+
     if not pagelist:
         return False, "", \
             _sysmsg % ('error', "%s: %s" % 
@@ -247,6 +247,7 @@ def execute(macro, args):
         if not succ:
             return mappi
 
+        mappi = encode_page(mappi)
         cache.put(request, key, data, content_type='image/png')
         cache.put(request, key + '-map', mappi, content_type='text/html')
     else:
