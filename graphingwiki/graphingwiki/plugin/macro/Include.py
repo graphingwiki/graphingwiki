@@ -21,6 +21,8 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
+from graphingwiki.util import form_escape, actionname
+
 Dependencies = ["time"]
 generates_headings = True
 
@@ -32,6 +34,10 @@ _arg_template = r'(,\s*template=(?P<tequot>[\'"])(?P<template>.+?)(?P=tequot))?'
 _args_re_pattern = Include._args_re_pattern[:-3] + _arg_rev + _arg_template + ')?$'
 
 _orig_execute = Include.execute
+
+def wr(fmt, *args):
+    args = tuple(map(form_escape, args))
+    return fmt % args
 
 def execute(macro, text):
     _ = macro.request.getText
@@ -94,16 +100,35 @@ def execute(macro, text):
                 template = args.group('template')
                 def new_link_to(self, request, text=None, 
                                 querystr=dict(), anchor=None, **kw):
-
+                    
                     if self.page_name == inc_name:
                         # Let's see if we've a link to nonexisting page
                         if getattr(self, '_macro_Include_nonexisting', False):
-                            # Modify editlinks
+                            # Modify editlinks with template selection
                             if kw.get('css_class', '') == "include-edit-link":
-                                text = '[%s]' % _('create')
                                 if template:
                                     querystr['template'] = template
+                                else:
+                                    orig_page = macro.request.page.page_name
+                                    msg = wr('<form method="GET" action="%s">', 
+                                             actionname(request, orig_page))
+                                    msg += wr('<select name="template">')
+                                    msg += wr('<option value="">%s</option>', 
+                                              _("No template"))
 
+                                    # Get list of template pages readable by current user
+                                    filterfn = request.cfg.cache.page_template_regexact.search
+                                    templates = request.rootpage.getPageList(filter=filterfn)
+                                    for i in templates:
+                                        msg += wr('<option value="%s">%s</option>', i, i)
+
+                                    msg += '<input type="hidden" name="action" value="newpage"'
+                                    msg += wr('<input type="hidden" name="pagename" value="%s"', inc_name)
+                                    msg += wr('<input type="hidden" name="backto" value="%s"', querystr['backto'])
+                                    msg += wr('<input type="submit" value="%s">', _('create'))
+                                    msg += wr('</select></form>')
+
+                                return msg
 
                             # Do not give pagelinks to nonexisting pages
                             if kw.get('css_class', '') == "include-page-link":
