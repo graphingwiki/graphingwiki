@@ -472,12 +472,6 @@ class GraphData(UserDict.DictMixin):
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
 
-            for key in value.get('out', dict()):
-                self.keys_on_pages.setdefault(key, set()).add(page)
-                for val in value['out'][key]:
-                    self.vals_on_pages.setdefault(val, set()).add(page)
-                    self.vals_on_keys.setdefault(key, set()).add(val)
-
     def _add_node(self, pagename, graph, urladd="", nodetype=""):
         # Don't bother if the node has already been added
         if graph.nodes.get(pagename):
