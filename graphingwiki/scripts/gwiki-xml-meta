@@ -8,7 +8,8 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
-import sys, os
+import sys
+import os
 
 # add ../lib/pythonX.Y/site-packages to sys.path, in case we've been put into
 # $prefix/bin by setup.py install
@@ -24,7 +25,7 @@ from MoinMoin import config
 
 from graphingwiki.util import encode_page
 from graphingwiki.editing import xmlrpc_error, xmlrpc_conninit, \
-     xmlrpc_connect, getmeta_to_table, getuserpass
+     xmlrpc_connect, getmeta_to_table, getuserpass, WikiRpcException
 
 def handle_error(result):
     # Us being here means that an error has occurred
@@ -111,87 +112,89 @@ template = str()
 if options.template:
     template = options.template
 
-if options.app_file or options.repl_file:
-    if options.app_file:
-        method = 'add'
-        fname = options.app_file
-    else:
-        method = 'set'
-        fname = options.repl_file
+try:
+    if options.app_file or options.repl_file:
+        if options.app_file:
+            method = 'add'
+            fname = options.app_file
+        else:
+            method = 'set'
+            fname = options.repl_file
 
-    reader = csv.reader(open(fname, "rb"), delimiter=';')
+        reader = csv.reader(open(fname, "rb"), delimiter=';')
 
-    # Keys from first row, ignore the key for first column
-    keys = [x.strip() for x in reader.next()[1:]]
+        # Keys from first row, ignore the key for first column
+        keys = [x.strip() for x in reader.next()[1:]]
 
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+        srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 
-    # Data in next rows
-    for row in reader:
+        # Data in next rows
+        for row in reader:
+            input = dict()
+
+            # First column == page name
+            page = unicode(row[0], config.charset)
+
+            # enumerate values, ignore first column
+            for i, val in enumerate(row[1:]):
+                input.setdefault(keys[i], list()).append(val)
+
+            xmlrpc_connect(srcWiki.SetMeta, wiki, page,
+                           input, method, True,
+                           category_edit, catlist,
+                           template)
+
+            for res in srcWiki():
+                print res
+
+    elif options.repl_page or options.app_page:
+        if options.app_page:
+            page = unicode(options.app_page, config.charset)
+            method = 'add'
+        else:
+            page = unicode(options.repl_page, config.charset)
+            method = 'set'
+
         input = dict()
+        if options.set_args:
+            for arg in options.set_args:
+                data = arg.split('=')
+                if len(data) != 2:
+                    raise ArgError("Bad set args: %s\n" % data)
+                key, val = [unicode(x, config.charset) for x in data]
+                input.setdefault(key, list()).append(val)
 
-        # First column == page name
-        page = unicode(row[0], config.charset)
+        srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 
-        # enumerate values, ignore first column
-        for i, val in enumerate(row[1:]):
-            input.setdefault(keys[i], list()).append(val)
+        xmlrpc_connect(srcWiki.SetMeta, wiki, page,
+                       input, method, True, category_edit,
+                       catlist, template)
 
-        result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
-                                input, method, True,
-                                category_edit, catlist,
-                                template)
+        for res in srcWiki():
+            print res
 
-        if isinstance(result, list):
-            print '\n'.join(result)
-        else:
-            handle_error(result)
-
-    sys.exit(0)
-
-if options.repl_page or options.app_page:
-    if options.app_page:
-        page = unicode(options.app_page, config.charset)
-        method = 'add'
     else:
-        page = unicode(options.repl_page, config.charset)
-        method = 'set'
+        srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 
-    input = dict()
-    if options.set_args:
-        for arg in options.set_args:
-            data = arg.split('=')
-            if len(data) != 2:
-                raise ArgError("Bad set args: %s\n" % data)
-            key, val = [unicode(x, config.charset) for x in data]
-            input.setdefault(key, list()).append(val)
+        val = ",".join(options.get_args)
 
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
+        xmlrpc_connect(srcWiki.GetMeta, wiki, val, options.keysonly)
 
-    result = xmlrpc_connect(srcWiki.SetMeta, wiki, page,
-                            input, method, True,
-                            category_edit, catlist,
-                            template)
+        wr = csv.writer(sys.stdout, delimiter=';')
 
-    if isinstance(result, list):
-        print '\n'.join(result)
-        sys.exit(0)
-else:
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
-    val = ",".join(options.get_args)
-        
-    result = xmlrpc_connect(srcWiki.GetMeta, wiki, val, options.keysonly)
+        # The first item may be 'SUCCESS', skip that
+        results = srcWiki()
+        if results[0] == 'SUCCESS':
+            results = results[1:]
 
-    wr = csv.writer(sys.stdout, delimiter=';')
-    if isinstance(result, list):
-        if options.keysonly:
-            wr.writerow(['Keys'] + [encode_page(x) for x in result[0]])
-            wr.writerow(['Pages'] + [encode_page(x) for x in result[1]])
-        else:
-            result = getmeta_to_table(result)
-            for row in result:
-                wr.writerow([encode_page(x) for x in row])
+        for res in results:
+            if options.keysonly:
+                wr.writerow(['Keys'] + [encode_page(x) for x in res[0]])
+                wr.writerow(['Pages'] + [encode_page(x) for x in res[1]])
+            else:
+                result = getmeta_to_table(res)
+                for row in result:
+                    wr.writerow([encode_page(x) for x in row])
 
-        sys.exit(0)
-
-handle_error(result)
+except WikiRpcException, err:
+    handle_error(err)

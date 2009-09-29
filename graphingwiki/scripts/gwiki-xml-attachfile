@@ -19,7 +19,8 @@ import xmlrpclib
 
 from optparse import OptionParser
 
-from graphingwiki.editing import xmlrpc_attach, xmlrpc_error, getuserpass
+from graphingwiki.editing import xmlrpc_attach, xmlrpc_error, getuserpass, \
+     WikiRpcException
 
 usage = "usage: %prog [options] wikiurl pagename filename"
 parser = OptionParser(usage=usage)
@@ -43,6 +44,12 @@ parser.add_option("-p", "--password", dest="password",
 
 options, args = parser.parse_args()
 
+def handle_error(result):
+    # Us being here means that an error has occurred
+    errno, err = xmlrpc_error(result)
+    sys.stderr.write("Error %s: %s\n" % (errno, err))
+    sys.exit(1)
+
 if len(args) == 3:
     wiki, page, fname = args
 elif len(args) == 2 and options.list:
@@ -65,61 +72,61 @@ else:
 if not options.username or not options.password:
     username, password = getuserpass(username)
 
-if options.load:
-    result = xmlrpc_attach(wiki, page, fname, username, password, 'load')
+try:
 
-    # If we got back a binary -> rock on
-    if isinstance(result, xmlrpclib.Binary):
-        # Stdout, alternate name
-        if options.name == '-':
-            sys.stdout.write(result.data)
-        elif options.name:
+    if options.load:
+        result = xmlrpc_attach(wiki, page, fname, username, password, 'load')
+
+        for item in result:
+            # If we got back a binary -> rock on
+            if isinstance(item, xmlrpclib.Binary):
+                # Stdout, alternate name
+                if options.name == '-':
+                    sys.stdout.write(item.data)
+                elif options.name:
+                    fname = options.name
+
+                f = file(fname, 'w')
+                f.write(item.data)
+                f.close()
+
+                print "Loaded attachment %s from page %s." % (fname, page)
+    elif options.list:
+        result = xmlrpc_attach(wiki, page, '', username, password, 'list')
+
+        print "Attachments on page %s:" % page
+        for item in result:
+            print item
+
+    elif options.rm:
+        result = xmlrpc_attach(wiki, page, fname, username, password, 'delete')
+
+        if result[0] is True:
+            print "Deleted attachment %s on page %s." % (fname, page)
+
+    else:
+        try:
+            content = file(fname).read()
+            # Separate file name from its path
+            fname = fname.split('/')[-1]
+        except:
+            sys.stderr.write("File %s not found\n" % fname)
+            parser.print_help()
+            sys.exit(1)
+
+        overwrite = False
+
+        if options.write:
+            overwrite = True
+        if options.name:
             fname = options.name
 
-        f = file(fname, 'w')
-        f.write(result.data)
-        f.close()
-        
-        print "Loaded attachment %s from page %s." % (fname, page)
-        sys.exit(0)
-elif options.list:
-    result = xmlrpc_attach(wiki, page, '', username, password, 'list')
+        result = xmlrpc_attach(wiki, page, fname, username, password,
+                               'save', content, overwrite)
 
-    print "Attachments on page %s:" % page
-    for item in result:
-        print item
-    sys.exit(0)
-elif options.rm:
-    result = xmlrpc_attach(wiki, page, fname, username, password, 'delete')
+        if result[0] is True:
+            print "Saved attachment %s to page %s." % (fname, page)
+            sys.exit(0)
 
-    if result is True:
-        print "Deleted attachment %s on page %s." % (fname, page)
-        sys.exit(0)
-else:
-    try:
-        content = file(fname).read()
-        # Separate file name from its path
-        fname = fname.split('/')[-1]
-    except:
-        sys.stderr.write("File %s not found\n" % fname)
-        parser.print_help()
-        sys.exit(1)
-
-    overwrite = False
-
-    if options.write:
-        overwrite = True
-    if options.name:
-        fname = options.name
-
-    result = xmlrpc_attach(wiki, page, fname, username, password,
-                           'save', content, overwrite)
-
-    if result is True:
-        print "Saved attachment %s to page %s." % (fname, page)
-        sys.exit(0)
-
-# Us being here means that an error has occurred
-errno, err = xmlrpc_error(result)
-sys.stderr.write("Error %s: %s\n" % (errno, err))
-sys.exit(1)
+except WikiRpcException, err:
+    handle_error(err)

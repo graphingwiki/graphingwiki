@@ -1359,6 +1359,10 @@ def list_attachments(request, pagename):
 
     return []
 
+class WikiRpcException:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
 def xmlrpc_conninit(wiki, username, password):
     # Action-unrelated connection code
     scheme, netloc, path, _, _, _ = urlparse.urlparse(wiki)
@@ -1369,34 +1373,46 @@ def xmlrpc_conninit(wiki, username, password):
     url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
     srcWiki = xmlrpclib.ServerProxy(url)
 
-    return srcWiki, url
+    try:
+        token = srcWiki.getAuthToken(username, password)
+    except xmlrpclib.ProtocolError, e:
+        faultString = 'Cannot connect to server at %s (%d %s)' % \
+                      (wiki, e.errcode, e.errmsg)
+        raise WikiRpcException(faultCode=4, faultString=faultString)
+        
+    mc = xmlrpclib.MultiCall(srcWiki)
+    if token:
+        mc.applyAuthToken(token)
+
+    return mc, url
 
 def xmlrpc_connect(func, wiki, *args, **kwargs):
     try:
-        return func(*args, **kwargs)
+        func(*args, **kwargs)
     except xmlrpclib.ProtocolError, e:
-        return {'faultCode': 4,
-                'faultString': 'Cannot connect to server at %s (%d %s)' %
-                (wiki, e.errcode, e.errmsg)}
+        raise WikiRpcException(faultCode=4,
+                               faultString=
+                               'Cannot connect to server at %s (%d %s)' %
+                               (wiki, e.errcode, e.errmsg))
     except socket.error, e:
         # Socket.error does not return two values consistently
         # it might return also ('timed out',), so I'm preparing
         # for the flying elephants here
         args = getattr(e, 'args', [])
         if len(args) != 2:
-            return {'faultCode': '666',
-                    'faultString': ''.join(args)}
+            raise WikiRpcException(faultCode='666',
+                                   faultString=''.join(args))
         else:
-            return {'faultCode': args[0],
-                    'faultString': args[1]}
+            raise WikiRpcException(faultCode=args[0],
+                                   faultString=args[1])
     except socket.gaierror, e:
         args = getattr(e, 'args', [])
         if len(args) != 2:
-            return {'faultCode': '666',
-                    'faultString': ''.join(args)}
+            raise WikiRpcException(faultCode='666',
+                                   faultString=''.join(args))
         else:
-            return {'faultCode': args[0],
-                    'faultString': args[1]}
+            raise WikiRpcException(faultCode=args[0],
+                                   faultString=args[1])
 
 def xmlrpc_attach(wiki, page, fname, username, password, method,
                   content='', overwrite=False):
@@ -1404,11 +1420,17 @@ def xmlrpc_attach(wiki, page, fname, username, password, method,
     if content:
         content = xmlrpclib.Binary(content)
 
-    return xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
-                          method, content, overwrite)
+    xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
+                   method, content, overwrite)
+
+    ret = srcWiki()
+    if ret[0] == 'SUCCESS':
+        return ret[1:]
+
+    return ret
 
 def xmlrpc_error(error):
-    return error['faultCode'], error['faultString']
+    return error.faultCode, error.faultString
 
 def getuserpass(username=''):
     # Redirecting stdout to stderr for these queries
