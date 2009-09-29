@@ -45,7 +45,7 @@ def execute(macro, args):
                                                      get_all_keys=True)
 
     namekey = ''
-    if metakeys:
+    if metakeys and '%s||' % metakeys[0] in args:
         namekey = metakeys[0]
 
     out = list()
