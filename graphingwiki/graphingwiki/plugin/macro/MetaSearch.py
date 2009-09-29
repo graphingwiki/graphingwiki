@@ -27,7 +27,9 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from MoinMoin.macro.Include import _sysmsg
+from MoinMoin.Page import Page
+
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 def execute(macro, args):
     formatter = macro.formatter
@@ -42,9 +44,21 @@ def execute(macro, args):
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
 
+    namekey = ''
+    if metakeys:
+        namekey = metakeys[0]
+
     out = list()
 
     for page in pagelist:
-        out.append(request.page.link_to(page))
+        text = ''
+        if namekey:
+            metas = get_metas(request, page, [namekey], checkAccess=False)
+            text = ', '.join(metas[namekey])
+
+        if not text:
+            text = page
+
+        out.append(Page(request, page).link_to(request, text=text))
 
     return ', '.join(out)
