@@ -503,7 +503,7 @@ class Question:
                     continue
 
                 user_used = int()
-                for rev_number in revisions[historypage].keys():
+                for rev_number in revisions[historypage]:
                     user_used += revisions[historypage][rev_number][5]
 
                 total_used += user_used
@@ -514,7 +514,7 @@ class Question:
                     if tasktype in ['questionary', 'exam']:
                         done[student] = (user_revs, user_used)
                     else:
-                        if revisions[historypage][1] == "success":
+                        if revisions[historypage][rev_number][1] == "success":
                             done[student] = (user_revs, user_used)
                         else:
                             doing[student] = (user_revs, user_used)
@@ -525,6 +525,11 @@ class Question:
                 keys = ['user', 'overallvalue']
                 metas = get_metas(self.request, historypage, keys, checkAccess=False)
                 for student in metas.get('user', list()):
+                    student = removelink(student)
+                    umeta = get_metas(self.request, student, ["gwikicategory"], checkAccess=False)
+                    if rc['student'] not in umeta.get('gwikicategory', list()):
+                        continue
+
                     if tasktype in ['questionary', 'exam']:
                         done[student] = tuple()
                     else:
