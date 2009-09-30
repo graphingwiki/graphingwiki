@@ -478,7 +478,7 @@ class Question:
 
         return done, doing
 
-    def stats(self, user=None):
+    def stats(self, user=None, totals=True):
         done = dict()
         doing = dict()
 
@@ -493,32 +493,47 @@ class Question:
         else:
             tasktype = 'basic'
 
-        revisions = Question(self.request, self.pagename).history_revisions(histories)
-        total_used = int() 
-        total_revs = int() 
+        if totals:
+            total_used = int()
+            total_revs = int()
+            revisions = Question(self.request, self.pagename).history_revisions(histories)
                     
-        for historypage in revisions:
-            if not revisions.get(historypage, dict()):
-                continue
+            for historypage in revisions:
+                if not revisions.get(historypage, dict()):
+                    continue
 
-            user_used = int()
-            for rev_number in revisions[historypage].keys():
-                user_used += revisions[historypage][rev_number][5]
+                user_used = int()
+                for rev_number in revisions[historypage].keys():
+                    user_used += revisions[historypage][rev_number][5]
 
-            total_used += user_used
-            user_revs = len(revisions[historypage].keys())
-            total_revs += user_revs
+                total_used += user_used
+                user_revs = len(revisions[historypage].keys())
+                total_revs += user_revs
 
-            for student in revisions[historypage][rev_number][0]:
-                if tasktype in ['questionary', 'exam']:
-                    done[student] = (user_revs, user_used)
-                else:
-                    if revisions[historypage][1] == "success":
+                for student in revisions[historypage][rev_number][0]:
+                    if tasktype in ['questionary', 'exam']:
                         done[student] = (user_revs, user_used)
                     else:
-                        doing[student] = (user_revs, user_used)
+                        if revisions[historypage][1] == "success":
+                            done[student] = (user_revs, user_used)
+                        else:
+                            doing[student] = (user_revs, user_used)
 
-        return done, doing, (total_revs, total_used)
+            return done, doing, (total_revs, total_used)
+        else:
+            for historypage in histories:
+                keys = ['user', 'overallvalue']
+                metas = get_metas(self.request, historypage, keys, checkAccess=False)
+                for student in metas.get('user', list()):
+                    if tasktype in ['questionary', 'exam']:
+                        done[student] = tuple()
+                    else:
+                        if "success" in metas.get('overallvalue', list()):
+                            done[student] = tuple()
+                        else:
+                            doing[student] = tuple()
+
+            return done, doing, tuple()
 
     def history_revisions(self, histories=None):
         if not histories:
@@ -743,7 +758,7 @@ class Task:
         done, doing, totals = self.stats(user)
         return done, doing
 
-    def stats(self, user=None):
+    def stats(self, user=None, totals=True):
         questions = self.questionlist()
 
         if not questions:
@@ -752,33 +767,46 @@ class Task:
         done = dict()
         doing = dict()
 
-        total_used = int()
-        total_revs = int()
+        if totals:
+            total_used = int()
+            total_revs = int()
 
-        for question in questions:
-            done_question, doing_question, totals = Question(self.request, question).stats(user)
+            for question in questions:
+                done[question] = dict()
+                doing[question] = dict()
+                stats = Question(self.request, question).stats(user, True)
+                done_question, doing_question, question_totals = stats 
 
-            if totals:
-                total_used += totals[0]
-                total_revs += totals[0]
+                if question_totals:
+                    user_revs = question_totals[0]
+                    user_used = question_totals[1]
+                    total_revs += question_totals[0]
+                    total_used += question_totals[1]
+                else:
+                    user_revs = int()
+                    user_used = int()
 
-            for student in done:
-                if student not in done_question:
-                    if doing.get(student, None) == None:
-                        doing[student] = list()
-                    doing[student].append(question)
-
-            for student in done_question:
-                if done.get(student, None) == None:
-                    done[student] = list()
-                done[student].append(question)
+                for student in done_question:
+                    done[question][student] = (user_revs, user_used)
             
-            for student in doing_question:
-                if doing.get(student, None) == None:
-                    doing[student] = list()
-                doing[student].append(question)
+                for student in doing_question:
+                    doing[question][student] = (user_revs, user_used)
         
-        return done, doing, (total_used, total_revs)
+            return done, doing, (total_revs, total_used)
+        else:
+            for question in questions:
+                done[question] = dict()
+                doing[question] = dict()
+                stats = Question(self.request, question).stats(user, False)
+                done_question, doing_question, question_totals = stats
+                    
+                for student in done_question:
+                    done[question][student] = tuple()
+
+                for student in doing_question:
+                    doing[question][student] = tuple()
+
+            return done, doing, tuple()
 
     def used_time(self, user=None):
         flow = self.questionlist()
@@ -1022,30 +1050,6 @@ class Course:
                 self.flow = None
             else:
                 raise TooManyValuesException("Page %s has too many flow values" % self.config)
-
-    def students(self, user):
-        return self.stats(user)
-
-    def stats(self, user):
-        done, doing = dict()
-        flow = self.flow.fullflow()
-
-        for taskpage in flow:
-            if taskpage != "first":
-                task = Task(request, taskpage)
-                done_task, doing_task, totals = task.stats(user)
-
-                for doing_user in doing_task:
-                    if doing_user not in doing:
-                        doing[doing_user] = list()
-                    doing[doing_user].append(taskpage)
-
-                for done_user in done_task:
-                    if done_user not in done:
-                        done[done_user] = list()
-                    done[done_user].append(taskpage)
-
-        return done, doing
 
     def save_flow(self, flow, prerequirements):
         save_data = dict()

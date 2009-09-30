@@ -161,7 +161,7 @@ def get_stat_data(request, course, user=None):
             task = Task(request, taskpage)
             questions = task.questionlist()
             title = task.title()
-            done, doing, values = task.stats(user)
+            done, doing, values = task.stats(user, totals=False)
             if values:
                 max = values[0]
             else:
@@ -171,8 +171,12 @@ def get_stat_data(request, course, user=None):
             graph[taskpage] = dict()
 
             if user:
-                done_questions = done.get(user.name, list())
-                if len(done_questions) == len(questions):
+                user_done = int()
+                for question, students in done.iteritems():
+                    if user in students:
+                        user_done += 1
+
+                if user_done == len(questions):
                     graph[taskpage]['label'] = u'done'
 
                     if tasktype == 'exam':
@@ -182,23 +186,43 @@ def get_stat_data(request, course, user=None):
                     else:
                         tip = u"%s::Student has done all the questions in this task.<br>" % (title)
                 else:
-                    graph[taskpage]['label'] = u'%i/%i' % (len(done_questions), len(questions))
+                    graph[taskpage]['label'] = u'%i/%i' % (user_done, len(questions))
                     if tasktype == 'exam':
-                        tip = u"%s::Student has answered %i questions out of %i in this exam.<br>" % (title, len(done_questions), len(questions))
+                        tip = u"%s::Student has answered %i questions out of %i in this exam.<br>" % (title, user_done, len(questions))
                     elif tasktype == 'questionary':
-                        tip = u"%s::Student has answered %i questions out of %i in this questionary.<br>" % (title, len(done_questions), len(questions))
+                        tip = u"%s::Student has answered %i questions out of %i in this questionary.<br>" % (title, user_done, len(questions))
                     else:
-                        tip = u"%s::Student has done %i questions out of %i.<br>" % (title, len(done_questions), len(questions))
+                        tip = u"%s::Student has done %i questions out of %i.<br>" % (title, user_done, len(questions))
 
             else:
-                done_all = list(set(done.keys()).difference(set(doing.keys())))
-                graph[taskpage]['label'] = u'%i/%i' % (len(doing.keys()), len(done_all))
+                doing_users = list()
+                for question, students in doing.iteritems():
+                    doing_users.extend(students)
+                doing_users = list(set(doing_users))
+
+                done_all = list()
+                for index, question in enumerate(questions):
+                    if index == 0:
+                        for student in done.get(question, list()):
+                            if student not in doing_users:
+                                done_all.append(student)
+                    else:
+                        for student in done_all:
+                            if student not in done.get(question, list()):
+                                try:
+                                    done_all.remove(student)
+                                except:
+                                    pass
+                                if student not in doing_users:
+                                    doing_users.append(student)
+
+                graph[taskpage]['label'] = u'%i|%i' % (len(doing_users), len(done_all))
                 if tasktype == 'exam':
-                   tip = u"%s::%i students has started this exam and %i has answered to all the questions.<br>" % (title, len(doing), len(done_all)) 
+                   tip = u"%s::%i students has started this exam and %i has answered to all the questions.<br>" % (title, len(doing_users), len(done_all)) 
                 elif tasktype == 'questionary':
-                   tip = u"%s::%i students has started this questionary and %i has answered to all the questions.<br>" % (title, len(doing), len(done_all))
+                   tip = u"%s::%i students has started this questionary and %i has answered to all the questions.<br>" % (title, len(doing_users), len(done_all))
                 else:
-                   tip = u"%s::%i students is doing this task and %i has passed it.<br>" % (title, len(doing), len(done_all))
+                   tip = u"%s::%i students is doing this task and %i has passed it.<br>" % (title, len(doing_users), len(done_all))
 
             if max <= 0:
                 graph[taskpage]['fillcolor'] = u'steelblue3'

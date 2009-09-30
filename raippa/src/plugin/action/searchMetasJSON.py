@@ -78,36 +78,71 @@ def question_stats(request, question):
 def task_stats(request, task):
     stats = {"total":dict()} 
 
-    done, doing = task.students()
-    students = list(set(done.keys()).union(set(doing.keys())))
-    flow = task.questionlist()
+    done, doing, totals = task.stats()
 
-    for student in students:
-        stats[student] = {"done": dict(), "doing": dict(), "total": {"time":0.0, "count":0}}
-        metas = get_metas(request, student, ['name'], checkAccess=False)
+    for question in done:
+        for student in done[question]:
+            if stats.get(student, None) == None:
+                stats[student] = {"done":dict(), "doing":dict(), "total":{"time":0.0, "count":0}}
+                metas = get_metas(request, student, ['name'], checkAccess=False)
 
-        name = metas.get('name', list())
-        if not name:
-            name = "Missing name"
-        else:
-            name = name[0]
-        stats[student]['name'] = name
-
-        for questionpage in flow:
-            used_time, try_count = Question(request, questionpage).used_time(User(request, student))
-            if questionpage in done.get(student, list()):
-                stats[student]["done"][questionpage] = {"time": used_time, "count": try_count}
-            elif questionpage in doing.get(student, list()):
-                stats[student]["doing"][questionpage] = {"time" : used_time, "count": try_count}
-
-            stats[student]["total"]["time"] += used_time
-            stats[student]["total"]["count"] += try_count 
+                name = metas.get('name', list())
+                if not name:
+                    name = "Missing name"
+                else:
+                    name = name[0]
+                stats[student]['name'] = name
             
-            if not stats["total"].get(questionpage, list()):
-                stats["total"][questionpage] = {"time":0.0, "count":0}
+            user_stats = done[question][student]
 
-            stats["total"][questionpage]["time"] += used_time
-            stats["total"][questionpage]["count"] += try_count
+            if user_stats:
+                user_revs = user_stats[0]
+                user_used = user_stats[1]
+            else:
+                user_revs = int() 
+                user_used = int()
+
+            stats[student]["done"][question] = {"time": user_used, "count": user_revs}
+            stats[student]["total"]["time"] += user_used
+            stats[student]["total"]["count"] += user_revs
+
+            if stats["total"].get(question, None) == None:
+                stats["total"][question] = {"time":0.0, "count":0}
+
+            stats["total"][question]["time"] += user_used
+            stats["total"][question]["count"] += user_revs
+
+    for question in doing:
+        for student in doing[question]:
+            if stats.get(student, None) == None:
+                stats[student] = {"done":dict(), "doing":dict(), "total":{"time":0.0, "count":0}}
+                metas = get_metas(request, student, ['name'], checkAccess=False)
+
+                name = metas.get('name', list())
+                if not name:
+                    name = "Missing name"
+                else:
+                    name = name[0]
+                stats[student]['name'] = name
+            
+            user_stats = doing[question][student]
+
+            if user_stats:
+                user_revs = user_stats[0]
+                user_used = user_stats[1]
+            else:
+                user_revs = int()
+                user_used = int()
+    
+            stats[student]["doing"][question] = {"time": user_used, "count": user_revs}
+            stats[student]["total"]["time"] += user_used
+            stats[student]["total"]["count"] += user_revs
+
+            if stats["total"].get(question, None) == None:
+                stats["total"][question] = {"time":0.0, "count":0}
+
+            stats["total"][question]["time"] += user_used
+            stats["total"][question]["count"] += user_revs
 
     return stats
 
