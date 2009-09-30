@@ -161,14 +161,11 @@ def get_stat_data(request, course, user=None):
             task = Task(request, taskpage)
             questions = task.questionlist()
             title = task.title()
-            done, doing = task.students(user)
-
-            max = int()
-
-            for questionpage in task.questionlist():
-                total_time, rev_count = Question(request, questionpage).used_time(user)
-                if rev_count > max:
-                    max = rev_count
+            done, doing, values = task.stats(user)
+            if values:
+                max = values[0]
+            else:
+                max = int()
 
             tasktype = task.options().get('type', 'basic')
             graph[taskpage] = dict()

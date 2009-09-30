@@ -62,16 +62,18 @@ class User:
 
         if question.options().get('answertype', None) == 'file':
             historydata = {history: historydata}
+            historydata[history]['file'] = list()
 
             #TODO: check success
-            success, msg = set_metas(self.request, remove, dict(), historydata)
-            if success:
-                revision = Page(self.request, history).get_real_rev()
+            revision = Page(self.request, history).get_real_rev() + 1
    
-                for filename, content in save_dict.iteritems():
-                    filename = u"%s.rev%i" % (filename, revision)
-                    filename, size = add_attachment(self.request, history, filename, content)
-                    #TODO: check success with filesize
+            for filename, content in save_dict.iteritems():
+                filename = u"%s.rev%i" % (filename, revision)
+                filename, size = add_attachment(self.request, history, filename, content)
+                historydata[history]['file'].append(filename)
+                #TODO: check success with filesize
+
+            success, msg = set_metas(self.request, remove, dict(), historydata)
 
             return success, msg
         else:

@@ -377,8 +377,11 @@ def draw_answers(macro, user, question):
             res.append(f.rawHTML('Your answer is not yet processed. Wait or submit new answer.'))
             res.append(f.linebreak(0))
         elif value not in ['picked', 'pending', None] and Page(request, value).exists():
-            res.append(f.rawHTML('Your old answer is in %s.' % value))
-            res.append(f.rawHTML('TODO: comment or something goes here.'))
+            #TODO: comment from comment page
+            if value == 'success':
+                res.append(f.rawHTML('Your answer was correct.'))
+            else:
+                res.append(f.rawHTML('Your answer was incorrect.'))    
             res.append(f.linebreak(0))
 
         res.append(f.rawHTML('''
