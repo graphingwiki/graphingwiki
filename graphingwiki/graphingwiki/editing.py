@@ -379,14 +379,17 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
     loadedPage = request.graphdata.getpage(name)
 
-    loadedOuts = loadedPage.get("out", dict())
+    # Make a real copy of loadedOuts and loadedMeta for tracking indirection
+    loadedOuts = dict()
+    for key in loadedPage.get('out', dict()):
+        loadedOuts[key] = [x for x in loadedPage['out'][key]]
+    loadedMeta = dict()
+    for key in loadedPage.get('meta', dict()):
+        loadedMeta[key] = [x for x in loadedPage['meta'][key]]
 
-    # Make a real copy of loadedOuts for tracking indirection
     loadedOutsIndir = dict()
     for key in loadedOuts:
         loadedOutsIndir.setdefault(key, set()).update(loadedOuts[key])
-
-    loadedMeta = loadedPage.get("meta", dict())
 
     if includeGenerated:
         # Handle inlinks separately
@@ -397,55 +400,58 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
         # Meta key indirection support
         for key in metakeys:
-            last = False
-            key_indirs = key.split('->')
+            def add_matching_redirs(curpage, curkey, prev=''):
+                args = curkey.split('->')
+                newkey = '->'.join(args[2:])
+                
+                last = False
 
-            for x in range(len(key_indirs)):
-                if x == len(key_indirs) - 2:
+                if not args:
+                    return
+                if len(args) in [1, 2]:
                     last = True
 
-                args = key.split('->')[x:x+2]
-                if len(args) < 2:
-                    continue
-                linked, target_key = args
+                if len(args) == 1:
+                    linked, target_key = prev, args[0]
+                else:
+                    linked, target_key = args[:2]
 
-                for indir_page in loadedOutsIndir.get(linked, list()):
+                pagedata = request.graphdata.getpage(curpage)
+
+                pages = pagedata.get('out', dict()).get(linked, set())
+
+                for indir_page in set(pages):
                     # Relative pages etc
-                    indir_page = wikiutil.AbsPageName(request.page.page_name, 
-                                                      indir_page)
+                    indir_page = \
+                        wikiutil.AbsPageName(request.page.page_name, 
+                                             indir_page)
 
                     if request.user.may.read(indir_page):
                         pagedata = request.graphdata.getpage(indir_page)
 
                         outs = pagedata.get('out', dict())
-                        if target_key in outs:
-                            # Track the next level of indirection
-                            loadedOutsIndir.setdefault(target_key, set())
-                            loadedOutsIndir[target_key].update(outs[target_key])
-
-                            # If we are not at the last -> pair,
-                            # continue tracking
-                            if not last:
-                                continue
-
-                            # Handle inlinks separately
-                            if 'gwikiinlinks' in metakeys:
-                                inLinks = inlinks_key(request, loadedPage, 
-                                                      checkAccess=checkAccess)
-
-                                loadedOuts[key] = inLinks
-                                continue
-
-                            loadedOuts.setdefault(key, list())
-                            loadedOuts[key].extend(outs[target_key])
-
                         metas = pagedata.get('meta', dict())
-                        if target_key in metas:
-                            loadedMeta.setdefault(key, list())
-                            loadedMeta[key].extend(metas[target_key])
+
+                        # Add matches at first round
+                        if last:
+                            if target_key in outs:
+                                loadedOuts.setdefault(key, list())
+                                loadedOuts[key].extend(outs[target_key])
+
+                            if target_key in metas:
+                                loadedMeta.setdefault(key, list())
+                                loadedMeta[key].extend(metas[target_key])
+                            continue
+
+                        elif not target_key in outs:
+                            continue
+
+                        add_matching_redirs(indir_page, newkey, target_key)
+
+            add_matching_redirs(name, key)
 
     # Add values
-    for key in metakeys & set(loadedMeta):            
+    for key in metakeys & set(loadedMeta):
         for value in loadedMeta[key]:
             pageMeta[key].append(value)
 
@@ -1016,6 +1022,10 @@ def metatable_parseargs(request, args,
     limitregexps = {}
     limitops = {}
 
+    # Capacity for storing indirection keys in metadata comparisons
+    # and regexps, eg. k->c=/.+/
+    indirection_keys = []
+
     # list styles
     styles = {}
 
@@ -1027,8 +1037,6 @@ def metatable_parseargs(request, args,
         # metadata key spec, move on
         if arg.startswith('||') and arg.endswith('||'):
             # take order, strip empty ones, look at styles
-            #keyspec = [url_quote(encode(x)) for x in arg.split('||') if x]
-            keyspec = []
             for key in arg.split('||'):
                 if not key:
                     continue
@@ -1045,23 +1053,47 @@ def metatable_parseargs(request, args,
 
             continue
 
+        op_match = False
         # Check for Python operator comparisons
         for op in operators:
             if op in arg:
+                data = arg.rsplit(op)
+                
+                # If this is not a comparison but indirection,
+                # continue. Good: k->s>3, bad: k->s=/.+/
+                if op == '>' and data[0].endswith('-'):
+                    continue
 
-                data = arg.split(op)
                 # Must have real comparison
                 if not len(data) == 2:
                     continue
 
                 key, comp = map(string.strip, data)
+
+                # Add indirection key
+                if '->' in key:
+                    indirection_keys.append(key)
+
                 limitops.setdefault(key, list()).append((comp, op))
+                op_match = True
+
+            # One of the operators matched, no need to go forward
+            if op_match:
+                break
+
+        # One of the operators matched, process next arg
+        if op_match:
             continue
 
         # Metadata regexp, move on
         if '=' in arg:
             data = arg.split("=")
             key = data[0]
+
+            # Add indirection key
+            if '->' in key:
+                indirection_keys.append(key)
+
             val = '='.join(data[1:])
 
             # Assume that value limits are regexps, if
@@ -1087,7 +1119,9 @@ def metatable_parseargs(request, args,
             elif len(val) > 1:
                 re_val = val[1:-1]
 
-            limitregexps.setdefault(key, set()).add(re.compile(re_val, re.IGNORECASE | re.UNICODE))
+            limitregexps.setdefault(key, set()).add(re.compile(re_val, 
+                                                               re.IGNORECASE 
+                                                               | re.UNICODE))
             continue
 
         # order spec
@@ -1249,6 +1283,9 @@ def metatable_parseargs(request, args,
                 for key in (x for x in get_keys(request, name)
                             if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
+
+        # Add gathered indirection metakeys
+        metakeys.update(indirection_keys)
 
         metakeys = sorted(metakeys, key=ordervalue)
     else:

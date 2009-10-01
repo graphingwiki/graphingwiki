@@ -1650,7 +1650,7 @@ class GraphShower(object):
                      self.urladd.replace('&inline=Inline', '')
             self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
 
-        elif self.format == 'igraph':
+        elif self.format == 'igraph' and not self.help:
             self.test_graph(gr, outgraph)
             self.send_graph(gr)
 
