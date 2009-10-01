@@ -45,34 +45,39 @@ def execute(pagename, request):
             Page(request, pagename).send_page()
             return
 
-        
-        answer_data = list()
-        for key in request.form:
-            if key.startswith("answer"):
-                try:
-                    index = unicode(int(key[6:]))
-                except (ValueError):
-                    continue
-
-                answer = sanitize(request.form.get(key, [u""])[0])
-                if not answer:
-                    continue
-
-                tip = sanitize(request.form.get("tip" + index, [u""])[0])
-                comment = sanitize(request.form.get("comment" + index, [u""])[0])
-                value = sanitize(request.form.get("value" + index, [u""])[0])
-                old_page = request.form.get("page" + index, [u""])[0]
-                answer_data.append({
-                    "answer": [answer],
-                    "value" : [value],
-                    "tip" : [tip],
-                    "comment" : [comment],
-                    "old_page" : [old_page]})
-
-
         question_options = dict()
         question_options["redo"] = [request.form.get("redo", [u"False"])[0]]
-        question_options["answertype"] = [request.form.get("answertype", [u""])[0]]
+        anstype = request.form.get("answertype", [u""])[0]
+        question_options["answertype"] = [anstype]
+        
+        
+        answer_data = list()
+        if anstype != u"file":
+            for key in request.form:
+                if key.startswith("answer"):
+                    try:
+                        index = unicode(int(key[6:]))
+                    except (ValueError):
+                        continue
+
+                    answer = sanitize(request.form.get(key, [u""])[0])
+                    if not answer:
+                        continue
+
+                    tip = sanitize(request.form.get("tip" + index, [u""])[0])
+                    comment = sanitize(request.form.get("comment" + index, [u""])[0])
+                    value = sanitize(request.form.get("value" + index, [u""])[0])
+                    old_page = request.form.get("page" + index, [u""])[0]
+                    answer_data.append({
+                        "answer": [answer],
+                        "value" : [value],
+                        "tip" : [tip],
+                        "comment" : [comment],
+                        "old_page" : [old_page]})
+
+        else:
+            filetest = unicode(request.form.get("answer", [u""])[0])
+            answer_data.append({"answer": [filetest]})
 
         question = Question(request, pagename)
         success, msg = question.save_question(answer_data, question_options)
