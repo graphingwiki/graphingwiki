@@ -9,6 +9,7 @@
 
 exploits_rss_url='http://www.vupen.com/exploits.xml'
 import urllib, re, urlparse
+from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 
 def scrape_rss():
@@ -21,8 +22,12 @@ def scrape_rss():
 def scrape_one(url):
     soup = BS(urllib.urlopen(url), convertEntities="html")
     for f in soup.findAll('font', text=re.compile(r'^CVE-\d')):
-        return url, unicode(f.string)
+        zdict = defaultdict(list)
+        zdict[u'url'].append(url)
+        zdict[u'CVE ID'].append(unicode(f.string))
+        return u'VUPEN ' +url.split(u'/')[-1].replace(u'.php', ''), zdict
 
-#print scrape_one("file:///tmp/tt.html")
-# for z in scrape_rss():
-#     print z
+if __name__ == '__main__':
+    #print scrape_one("file:///tmp/tt.html")
+    for z in scrape_rss():
+        print z
