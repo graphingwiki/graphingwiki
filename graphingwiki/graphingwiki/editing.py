@@ -446,6 +446,14 @@ def get_metas(request, name, metakeys, checkAccess=True,
                         elif not target_key in outs:
                             continue
 
+                        # Handle inlinks separately 
+                        if 'gwikiinlinks' in metakeys: 
+                            inLinks = inlinks_key(request, loadedPage,  
+                                                  checkAccess=checkAccess) 
+
+                            loadedOuts[key] = inLinks 
+                            continue 
+
                         add_matching_redirs(indir_page, newkey, target_key)
 
             add_matching_redirs(name, key)

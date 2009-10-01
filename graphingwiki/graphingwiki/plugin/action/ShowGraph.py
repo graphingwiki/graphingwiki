@@ -1243,7 +1243,7 @@ class GraphShower(object):
         _ = self.request.getText
 
         self.request.write('<div class="%s-%s">' % (text, self.legend))
-
+        
         if not key:
             key = "%s-%s" % (self.cache_key, self.format)
 
@@ -1610,7 +1610,6 @@ class GraphShower(object):
             cl.start('layout')
             if (self.format == 'igraph' or 
                 (igraph_found and self.help == 'test')):
-                gr = IGraphRepr(outgraph)
 
                 # Graph unique if the following are equal: edges
                 key_parts = [gr.edges]
@@ -1630,14 +1629,18 @@ class GraphShower(object):
                 key_parts = [outgraph, self.graphengine, 
                              self.shapefiles, self.orderby]
 
-                # Do the layout
-                gr = self.generate_layout(outgraph)
-
             # Generate cache key
             self.cache_key = cache_key(self.request, key_parts)
 
             outgraph.name = "%s-%s" % (self.cache_key, 
                                        encode_page(self.format))
+
+            if (self.format == 'igraph' or 
+                (igraph_found and self.help == 'test')):
+                gr = IGraphRepr(outgraph)
+            else:
+                # Do the layout
+                gr = self.generate_layout(outgraph)
 
             cl.stop('layout')
 
