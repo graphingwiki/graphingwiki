@@ -1611,6 +1611,8 @@ class GraphShower(object):
             if (self.format == 'igraph' or 
                 (igraph_found and self.help == 'test')):
 
+                gr = IGraphRepr(outgraph)
+
                 # Graph unique if the following are equal: edges
                 key_parts = [gr.edges]
             else:
@@ -1637,7 +1639,7 @@ class GraphShower(object):
 
             if (self.format == 'igraph' or 
                 (igraph_found and self.help == 'test')):
-                gr = IGraphRepr(outgraph)
+                pass
             else:
                 # Do the layout
                 gr = self.generate_layout(outgraph)
