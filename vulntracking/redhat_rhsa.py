@@ -37,13 +37,13 @@ def absolutify_urls(soup, baseurl):
             a_tag["href"] = urlparse.urljoin(baseurl, a_tag["href"])
             
 errata_baseurl = "http://rhn.redhat.com/errata/"
-def scrapeit(save=True):
+def scrapeit(save=False):
     startfn ='rhel-server-errata-security.html'
-    s = BS(open(startfn))
+    s = BS(urllib.urlopen(errata_baseurl + startfn))
     absolutify_urls(s, errata_baseurl + startfn)
     tehdict = collections.defaultdict(list)
     adv_ids = set(
-        map(unicode, BS(open(startfn)).findAll(text=re.compile(r'^RHSA-\d.*'))))
+        map(unicode, s.findAll(text=re.compile(r'^RHSA-\d.*'))))
     for adv_id in sorted(adv_ids):
         adv_url = adv_id_to_url(adv_id)
         cachefn=adv_url.split('/')[-1]
@@ -73,16 +73,14 @@ def scrapeit(save=True):
 
         d['rhsa-url'].append(adv_url)
         d['gwikicategory'].append('CategoryRhsa')
-        tehdict[d['advisory'][0]] = d
-        print 'saved this'
-        pprint(dict(d))
-        
+        yield d['advisory'][0], d
 
     if save:
         f = open('rhsa.pickle', 'w')
         pickle.dump(tehdict, f, 2)
         f.close()
-    return tehdict
 
 if __name__ == '__main__':
-    scrapeit()
+    from pprint import pprint
+    for z in scrapeit():
+        pprint(z)
