@@ -4,7 +4,6 @@ import time, re
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
-from MoinMoin.logfile import editlog
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
 from raippa import removelink, addlink, running_pagename, pages_in_category
 from raippa import raippacategories as rc
@@ -66,18 +65,33 @@ class Answer:
             raise PageDoesNotExistException(u"Answer %s is missing a question" % self.pagename)
 
     def answer(self):
-        metas = get_metas(self.request, self.pagename, ['answer'], checkAccess=False)
-        answers = metas.get('answer', list())
+        answertype = self.question().options().get('answertype', 'text')
 
-        answer = None
+        if answertype != 'file':
+            metas = get_metas(self.request, self.pagename, ['answer'], checkAccess=False)
+            answers = metas.get('answer', list())
 
-        if len(answers) == 1:
-            answer = answers[0]
-            #TODO: if page, get content
-        elif len(answers) > 1:
-            raise TooManyValuesException(u'Page %s has too many "answer" -metas.' % self.pagename)
+            answer = None
+
+            if len(answers) == 1:
+                answer = answers[0]
+            elif len(answers) > 1:
+                raise TooManyValuesException(u'Page %s has too many "answer" -metas.' % self.pagename)
+            else:
+                raise MissingMetaException(u'''Page %s doesn't have "answer" -meta.''' % self.pagename)
         else:
-            raise MissingMetaException(u'''Page %s doesn't have "answer" -meta.''' % self.pagename)
+            raw = Page(self.request, self.pagename).get_raw_body()
+            lines = raw.split("\n")
+            answers = lines[:]
+
+            for line in reversed(lines):
+                answers.pop()
+                if line.startswith(' question::'):
+                    break
+
+            answer = "\n".join(answers)
+            if not answer:
+                raise ValueError, u'Missing answer text in page %s' % self.pagename
 
         return answer
 
@@ -210,10 +224,13 @@ class Question:
         remove[self.optionspage] = list()
         pages_to_delete = list()
         old_answers = list()
+        anstype = options.get("answertype", [u""])[0]
+
+        answer_pages = list()
+        old_answers = self.answers()
+        remove[self.optionspage].append("answer")
 
         if len(answers_data) > 0:
-            remove[self.optionspage].append("answer")
-            old_answers = self.answers()
             new_answers = list()
             answerpages = list()
 
@@ -224,17 +241,31 @@ class Question:
                 try:
                     old_page = ans.get("old_page", [u""])[0]
                     anspage = old_answers.pop(old_answers.index(old_page))
-
                 except:
-                    anspage = running_pagename(self.request, self.pagename+"/answer")
+                    anspage = running_pagename(self.request, self.pagename+"/answer", answer_pages)
 
-                save_data[anspage] ={
+                answer_pages.append(anspage)
+
+                if anstype != "file":
+                    save_data[anspage] ={
+                        "question" : addlink(self.pagename),
                         "answer" : ans.get("answer", [u""]),
                         "value" : ans.get("value", [u""]),
                         "tip" : ans.get("tip", [u""]),
                         "comment" : ans.get("comment", [u""]),
                         "gwikicategory" : [rc['answer']]
-                    }
+                        }
+                else:
+                    pagecontent = u'''
+%s
+ question:: %s
+----
+%s
+''' % (ans.get("answer", [u""])[0], addlink(self.pagename), rc['answer'])
+
+                    page = PageEditor(self.request, anspage)
+                    msg = page.saveText(pagecontent, page.get_real_rev())
+
                 new_answers.append(addlink(anspage))
 
             save_data[self.optionspage]["answer"] = new_answers
@@ -548,11 +579,6 @@ class Question:
 
         for historypage in histories:
             revisions[historypage] = dict()
-            editors = dict()
-            log = editlog.EditLog(self.request, rootpagename=historypage)
-            for line in log:
-                editors[int(line.rev)] = MoinUser(self.request, line.userid).name
-
             pages, keys = get_revisions(self.request, Page(self.request, historypage))
 
             keys = ['user',
@@ -564,17 +590,13 @@ class Question:
                 metas = get_metas(self.request, page, keys, checkAccess=False)
 
                 revision = int(metas.get('gwikirevision', list())[0])
-                editor = editors[revision]
 
                 users = list()
                 for user in metas.get('user', list()):
                     user = removelink(user)
                     umetas = get_metas(self.request, user, 'gwikicategory', checkAccess=False)
                     if rc['student'] in umetas.get('gwikicategory', list()):
-                        users.append(removelink(user))
-
-                if editor not in users:
-                    continue
+                        users.append(user)
 
                 right = metas.get('right', list())
                 wrong = metas.get('wrong', list())

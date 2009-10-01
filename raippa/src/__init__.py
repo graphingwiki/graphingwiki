@@ -96,11 +96,11 @@ def removelink(pagename):
         pagename = pagename[2:-2]
     return pagename
 
-def running_pagename(request, parent):
+def running_pagename(request, parent, excluded=list()):
     number = 0
     pagename = "%s/%.3i" % (parent, number)
 
-    while Page(request, pagename).exists():
+    while pagename in excluded or Page(request, pagename).exists():
         number += 1
         pagename = "%s/%.3i" % (parent, number)
 
