@@ -51,12 +51,55 @@ except ImportError:
         gv_found = False
         pass
 
+igraph_found = False
+try:
+    import igraph
+    igraph_found = True
+except:
+    pass
+
 if gv_found:
     # gv needs libag to be initialised before using any read methods,
     # making a graph here seems to ensure aginit() is called
     gv.graph(' ')
 
 import graph
+
+# Constructor for IGraph objects
+class IGraphRepr(object):
+    def __init__(self, outgraph):
+        # The lgl layout does not represent nodes without edges in
+        # any meaningful manner - let's omit them from taking space
+        edges_seen = list()
+        root = [None]
+
+        def map_id(name):
+            if not name in edges_seen:
+                root[0] = len(edges_seen)
+                edges_seen.append(name)
+            idx = edges_seen.index(name)
+            return idx
+
+        # edge ID:s need to be integers
+        self.edges = [(map_id(x[0]), map_id(x[1])) for x in outgraph.edges]
+
+        self.gr = igraph.Graph(self.edges)
+
+        # Not efficient to use node labels as the plotting draws
+        # text as paths
+        self.gr.vs["label"] = [''] * self.gr.vcount()
+
+        # Need to start lgl from a weakly connected root to avoid
+        # heavy clustering of connected components
+        self.points = self.gr.layout_lgl(root=root[0])
+
+    def summary(self, **kw):
+        return self.gr.summary(**kw)
+
+    def layout(self, format="", file="", height=1024, width=1024):
+        igraph.plot(self.gr, file, layout=self.points, 
+                    bbox=(width, height))
+
 
 # Superclass for groups of items, found under every (sub)graph
 class GraphvizItemGroup(object):
@@ -285,7 +328,7 @@ class Graphviz:
         # Temporary kludge, FIXME when gv_python improves
         return ""
 
-    def layout(self, format="", file=""):
+    def layout(self, format="", file="", **kw):
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
         format, file = map(encode_page, [format, file])

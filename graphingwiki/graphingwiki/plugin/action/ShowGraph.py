@@ -51,7 +51,7 @@ from MoinMoin.request import Clock
 cl = Clock()
 
 from graphingwiki.graph import Graph
-from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found
+from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found, igraph_found, IGraphRepr
 from graphingwiki.util import attachment_file, attachment_url, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page, make_tooltip, cache_exists, cache_key
 from graphingwiki.editing import ordervalue
 
@@ -60,9 +60,10 @@ import colorsys
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
-<input type=submit name=graph value="%s">
-<input type=submit name=test value="%s">
-<input type=submit name=inline value="%s">
+%s
+<input type=submit name=graph value="%%s">
+<input type=submit name=test value="%%s">
+<input type=submit name=inline value="%%s">
 </form>
 </div>
 
@@ -79,7 +80,8 @@ form_end = u"""<div class="showgraph-buttons">\n
       tableElementStyle.display="none";
     }
   }
-</script>"""
+</script>""" % (igraph_found and 
+                '<input type=submit name=overview value="%s">' or '')
 
 def form_optionlist(request, name, data, comparison, 
                     default_args=dict(), radio=False):
@@ -255,6 +257,12 @@ class GraphShower(object):
         self.cat_re = category_regex(request)
         self.temp_re = template_regex(request)
 
+        # Threshold of making an automatic overview of graph
+        self.overview_threshold = getattr(request.cfg,
+                                          'gwiki_overview_threshold', 
+                                          150)
+        self.no_overview = 0
+
     def wrap_color_func(self, func):
         def color_func(string, darknessFactor=1.0):
             # Black edges must be black                  
@@ -315,6 +323,17 @@ class GraphShower(object):
             except ValueError:
                 self.depth = 1
 
+        # When to to do overview?
+        if request.form.has_key('overview_threshold'):
+            thr = request.form['overview_threshold'][0]
+            try:
+                thr = int(thr)
+                if thr >= 1:
+                    self.overview_threshold = thr
+            except ValueError:
+                # Settle for config limit or default
+                pass
+
         # format
         if request.form.has_key('format'):
             format = request.form['format'][0]
@@ -344,9 +363,10 @@ class GraphShower(object):
             if request.form.get(arg):
                 setattr(self, arg, ''.join(request.form[arg]))
 
-        # Toggle arguments
+        # Toggle arguments 
         for arg in ['unscale', 'hidedges', 'edgelabels', 'imagelabels',
-                    'noloners', 'nostartnodes', 'noorignode', 'fillshapes']:
+                    'noloners', 'nostartnodes', 'noorignode', 'fillshapes', 
+                    'no_overview']:
             if request.form.has_key(arg):
                 setattr(self, arg, 1)
 
@@ -395,6 +415,10 @@ class GraphShower(object):
         # Show inline graph
         if request.form.has_key('inline'):
             self.help = 'inline'
+
+        # Show inline graph
+        if request.form.has_key('overview'):
+            self.format = 'igraph'
 
         # Height and Width
         for attr in ['height', 'width']:
@@ -967,6 +991,14 @@ class GraphShower(object):
         form_checkbox(request, 'unscale', '0', self.unscale, _('Unscale'))
         request.write(u"<br>\n")
 
+        # Igraph special - by default, 
+        if igraph_found:
+            form_checkbox(request, 'no_overview', '0', self.no_overview,
+                          _('No automatic overview'))
+            request.write(u'<br>\n' + _("Overview node threshold") + u"<br>\n")
+            form_textbox(request, 'overview_threshold', 5, 
+                         str(self.overview_threshold))
+
         # labels for shapefiles
         form_checkbox(request, 'imagelabels', '0', self.imagelabels, 
                       _('Shapefile labels'))
@@ -1171,7 +1203,11 @@ class GraphShower(object):
 
         request.write(u"</table>\n</div>\n</div>\n")
 
-        request.write(form_end % (_('Create'), _('Test'), _('Inline')))
+        if igraph_found:
+            request.write(form_end % (_('Overview'), _('Create'), 
+                                      _('Test'), _('Inline')))
+        else:
+            request.write(form_end % (_('Create'), _('Test'), _('Inline')))
 
     def generate_layout(self, outgraph):
         # Add all data to graph
@@ -1186,9 +1222,10 @@ class GraphShower(object):
 
         return gr
 
-    def get_layout(self, graphviz, format):
-        tmp_fileno, tmp_name = mkstemp()
-        graphviz.layout(file=tmp_name, format=format)
+    def get_layout(self, grapheng, format, addon=''):
+        tmp_fileno, tmp_name = mkstemp(addon)
+        grapheng.layout(file=tmp_name, format=format, 
+                        height=self.height, width=self.width)
         f = file(tmp_name)
         data = f.read()
         os.close(tmp_fileno)
@@ -1202,7 +1239,7 @@ class GraphShower(object):
 
         return self.format
 
-    def send_graph(self, graphviz, key='', text='visualisation'):
+    def send_graph(self, grapheng, key='', text='visualisation'):
         _ = self.request.getText
 
         self.request.write('<div class="%s-%s">' % (text, self.legend))
@@ -1212,7 +1249,7 @@ class GraphShower(object):
 
         gvformat = self.get_gv_format()
 
-        if self.format in ['zgr', 'svg']:
+        if self.format in ['zgr', 'svg', 'igraph']:
             # Display zgr graphs as applets, legends as per usual
             if self.format == 'zgr' and text != 'legend':
                 image_p = lambda url, text, mappi: \
@@ -1244,32 +1281,35 @@ class GraphShower(object):
             image_p = lambda url, text, mappi: \
                 '<img src="%s" alt="%s"%s\n' % (url, text, mappi)
             mime_type = 'image/%s' % (self.format)
-            mappi = unicode(self.send_map(graphviz, key), 'utf-8')
+            mappi = unicode(self.send_map(grapheng, key), 'utf-8')
             mappi = ' usemap="#%s">\n%s' % (key, mappi)
 
         if not cache_exists(self.request, key):
-            img = self.get_layout(graphviz, gvformat)
+            if self.format == 'igraph':
+                img = self.get_layout(grapheng, '', '.svg')
+            else:
+                img = self.get_layout(grapheng, gvformat)
 
-            # Firefox does not understand point size fonts. Graphviz
-            # only provides point-size fonts, so px-size fonts must be
-            # set manually. This works also in Inkscape, and when the
-            # graph is scaled, as scaling is done with graph attributes.
-            #
-            # http://groups.google.com/group/mozilla.dev.tech.svg/browse_thread/thread/1d574c2690e37c7b
-            # http://www.nabble.com/SVG-font-size-difference-between-Firefox-and-Adobe-SVGviewer-td21502117.html
-            # https://mailman.research.att.com/pipermail/graphviz-interest/2007q1/004288.html
-            # Firefox 3 barfs on font-weight, so I'm not using it.
-            if gvformat == 'svg':
-                img = img.replace(\
-                    "font-family:Times New Roman;font-size:14.00;",
-                    "font-family:serif;font-size:12px;")
+                # Firefox does not understand point size fonts. Graphviz
+                # only provides point-size fonts, so px-size fonts must be
+                # set manually. This works also in Inkscape, and when the
+                # graph is scaled, as scaling is done with graph attributes.
+                #
+                # http://groups.google.com/group/mozilla.dev.tech.svg/browse_thread/thread/1d574c2690e37c7b
+                # http://www.nabble.com/SVG-font-size-difference-between-Firefox-and-Adobe-SVGviewer-td21502117.html
+                # https://mailman.research.att.com/pipermail/graphviz-interest/2007q1/004288.html
+                # Firefox 3 barfs on font-weight, so I'm not using it.
+                if gvformat == 'svg':
+                    img = img.replace(\
+                        "font-family:Times New Roman;font-size:14.00;",
+                        "font-family:serif;font-size:12px;")
 
-                # Graphviz does not get it if you try to give it URL:s
-                # as shapefiles. We mitigate this by first giving it
-                # filenames, and then renaming them as URL:s here
-                for fname in self.shapefiles_svg:
-                    img = img.replace(fname, 
-                                      form_escape(self.shapefiles_svg[fname]))
+                    # Graphviz does not get it if you try to give it URL:s
+                    # as shapefiles. We mitigate this by first giving it
+                    # filenames, and then renaming them as URL:s here
+                    for fname in self.shapefiles_svg:
+                        img = img.replace(fname, 
+                                          form_escape(self.shapefiles_svg[fname]))
 
             cache.put(self.request, key, img, content_type=mime_type)
 
@@ -1554,30 +1594,51 @@ class GraphShower(object):
         # Gather data needed in layout, filter lone pages is needed
         outgraph = self.gather_layout_data(outgraph)
         cl.stop('traverse')
-        
-        if gv_found:
+
+        # Trigger automated overview of large graphs
+        if (igraph_found and 
+            not self.no_overview and 
+            len(outgraph.nodes) >= self.overview_threshold):
+            self.format = 'igraph'
+
+        # Perform layout if we have a layout engine and can use it for
+        # the selected output
+        if (gv_found or 
+            (igraph_found and 
+             (self.format == 'igraph' or self.help == 'test'))):
+
             cl.start('layout')
-            # Stylistic stuff: Color nodes, edges, bold startpages
-            if self.colorby:
-                outgraph = self.color_nodes(outgraph)
-            outgraph = self.color_edges(outgraph)
-            outgraph = self.edge_tooltips(outgraph)
-            outgraph = self.circle_start_nodes(outgraph)
+            if (self.format == 'igraph' or 
+                (igraph_found and self.help == 'test')):
+                gr = IGraphRepr(outgraph)
 
-            # Fix URL:s
-            outgraph = self.fix_node_urls(outgraph)
+                # Graph unique if the following are equal: edges
+                key_parts = [gr.edges]
+            else:
+                # Stylistic stuff: Color nodes, edges, bold startpages
+                if self.colorby:
+                    outgraph = self.color_nodes(outgraph)
+                outgraph = self.color_edges(outgraph)
+                outgraph = self.edge_tooltips(outgraph)
+                outgraph = self.circle_start_nodes(outgraph)
 
-            # Graph unique if the following are equal: content, layout
-            # format, images, ordering
-            key_parts = [outgraph, self.graphengine, 
-                         self.shapefiles, self.orderby]
+                # Fix URL:s
+                outgraph = self.fix_node_urls(outgraph)
 
+                # Graph unique if the following are equal: content, layout
+                # format, images, ordering
+                key_parts = [outgraph, self.graphengine, 
+                             self.shapefiles, self.orderby]
+
+                # Do the layout
+                gr = self.generate_layout(outgraph)
+
+            # Generate cache key
             self.cache_key = cache_key(self.request, key_parts)
 
-            outgraph.name = "%s-%s" % (self.cache_key, encode_page(self.format))
+            outgraph.name = "%s-%s" % (self.cache_key, 
+                                       encode_page(self.format))
 
-            # Do the layout
-            gr = self.generate_layout(outgraph)
             cl.stop('layout')
 
         cl.start('format')
@@ -1588,6 +1649,10 @@ class GraphShower(object):
             urladd = self.request.page.page_name + \
                      self.urladd.replace('&inline=Inline', '')
             self.request.write('&lt;&lt;InlineGraph(%s)&gt;&gt;' % urladd)
+
+        elif self.format == 'igraph':
+            self.test_graph(gr, outgraph)
+            self.send_graph(gr)
 
         elif self.format in self.available_formats:
             if not gv_found:
@@ -1605,7 +1670,7 @@ class GraphShower(object):
                     self.send_graph(gr.graphviz)
                     self.send_legend()
         else:
-            self.test_graph(outgraph)
+            self.test_graph(gr, outgraph)
 
         cl.stop('format')
 
@@ -1615,36 +1680,41 @@ class GraphShower(object):
         if not self.inline:
             self.send_footer(formatter)
 
-    def test_graph(self, outgraph):
-        _ = self.request.getText
-        # Give some parameters about the graph, more could easily be added
+    def test_graph(self, gr, outgraph):
         formatter = self.request.formatter
-        self.request.write(formatter.paragraph(1))
-        self.request.write(formatter.text("%s: " % _("Nodes in graph") +
-                                          str(len(outgraph.nodes))))
-        self.request.write(formatter.paragraph(0))
-
-        self.request.write(formatter.paragraph(1))
-        self.request.write(formatter.text("%s: " % _("Edges in graph") +
-                                          str(len(outgraph.edges))))
-        self.request.write(formatter.paragraph(0))
-
-        if self.orderby and self.orderby != '_hier':
+        if igraph_found:
+            self.request.write(formatter.preformatted(1))
+            self.request.write(gr.summary(verbosity=1))
+            self.request.write(formatter.preformatted(0))
+        else:
+            _ = self.request.getText
+            # Give some parameters about the graph, more could easily be added
             self.request.write(formatter.paragraph(1))
-            self.request.write(formatter.text("%s: " % _("Order levels") +
-                                                str(len(
-                self.ordernodes.keys()))))
+            self.request.write(formatter.text("%s: " % _("Nodes in graph") +
+                                              str(len(outgraph.nodes))))
             self.request.write(formatter.paragraph(0))
 
-        self.request.write(formatter.paragraph(1))
-        self.request.write("%s: " % _('Density'))
-        nroedges = float(len(outgraph.edges))
-        nronodes = float(len(outgraph.nodes))
-        if nronodes == 0 or (nronodes-1 == 0):
-            self.request.write('0')
-        else:
-            self.request.write(str(nroedges / (nronodes*nronodes-1)))
-        self.request.write(formatter.paragraph(0))
+            self.request.write(formatter.paragraph(1))
+            self.request.write(formatter.text("%s: " % _("Edges in graph") +
+                                              str(len(outgraph.edges))))
+            self.request.write(formatter.paragraph(0))
+
+            if self.orderby and self.orderby != '_hier':
+                self.request.write(formatter.paragraph(1))
+                self.request.write(formatter.text("%s: " % _("Order levels") +
+                                                    str(len(
+                    self.ordernodes.keys()))))
+                self.request.write(formatter.paragraph(0))
+
+            self.request.write(formatter.paragraph(1))
+            self.request.write("%s: " % _('Density'))
+            nroedges = float(len(outgraph.edges))
+            nronodes = float(len(outgraph.nodes))
+            if nronodes == 0 or (nronodes-1 == 0):
+                self.request.write('0')
+            else:
+                self.request.write(str(nroedges / (nronodes*nronodes-1)))
+            self.request.write(formatter.paragraph(0))
 
 def execute(pagename, request, **kw):
     graphshower = GraphShower(pagename, request, **kw)
