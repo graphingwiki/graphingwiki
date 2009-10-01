@@ -24,7 +24,12 @@ this.parent(c.elements,c.options);this.togglers=$$(c.togglers);this.container=do
 }if(this.options.height){this.effects.height=this.options.fixedHeight?"fullHeight":"scrollHeight";}for(var b=0,a=this.togglers.length;b<a;b++){this.addSection(this.togglers[b],this.elements[b]);
 }this.elements.each(function(e,d){if(this.options.show===d){this.fireEvent("active",[this.togglers[d],e]);}else{for(var f in this.effects){e.setStyle(f,0);
 }}},this);if($chk(this.options.display)){this.display(this.options.display,this.options.initialDisplayFx);}},addSection:function(d,b){d=document.id(d);
-b=document.id(b);var e=this.togglers.contains(d);this.togglers.include(d);this.elements.include(b);var a=this.togglers.indexOf(d);d.addEvent(this.options.trigger,this.display.bind(this,a));
+b=document.id(b);var e=this.togglers.contains(d);this.togglers.include(d);this.elements.include(b);var a=this.togglers.indexOf(d);
+
+d.inject(this.container);
+b.inject(this.container);
+d.addEvent(this.options.trigger,this.display.bind(this,a));
+
 if(this.options.height){b.setStyles({"padding-top":0,"border-top":"none","padding-bottom":0,"border-bottom":"none"});}if(this.options.width){b.setStyles({"padding-left":0,"border-left":"none","padding-right":0,"border-right":"none"});
 }b.fullOpacity=1;if(this.options.fixedWidth){b.fullWidth=this.options.fixedWidth;}if(this.options.fixedHeight){b.fullHeight=this.options.fixedHeight;}b.setStyle("overflow","hidden");
 if(!e){for(var c in this.effects){b.setStyle(c,0);}}return this;},display:function(a,b){b=$pick(b,true);a=($type(a)=="element")?this.elements.indexOf(a):a;
