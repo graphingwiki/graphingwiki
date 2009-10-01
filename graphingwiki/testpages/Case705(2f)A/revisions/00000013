@@ -1,0 +1,7 @@
+ parent2:: [[Case705/C]]
+ parent2:: aaa
+
+<<MetaTable(CategoryBlah, parent->parent2->here we are on page=/.+/)>>
+<<MetaTable(CategoryBlah, parent->parent2=/.+/, ||parent->parent2||)>>
+<<MetaTable(CategoryBlah, ||parent->parent2||)>>
+<<MetaTable(CategoryBlah, parent->parent2=/.+/)>>

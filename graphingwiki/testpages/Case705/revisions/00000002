@@ -1,0 +1,5 @@
+ parent:: [[Case705/A]]
+
+<<MetaTable(CategoryBlah, parent->parent=Case705/C)>> 
+----
+CategoryBlah

@@ -1,0 +1,4 @@
+ parent2:: [[Case705/C]]
+
+<<MetaTable(parent->parent2->here we are on page=/C/)>>
+<<MetaTable(parent->parent2=/.+/)>>

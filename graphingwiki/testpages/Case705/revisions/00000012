@@ -1,0 +1,14 @@
+ parent:: [[Case705/A]]
+
+<<MetaTable(CategoryBlah, parent->parent2=[[Case705/C]])>> 
+<<MetaTable(CategoryBlah, ||parent->parent2||)>> 
+
+regression
+
+<<MetaTable(CategoryBlah, ||parent||)>> 
+<<MetaTable(CategoryBlah, ||parent->parent||)>> 
+<<MetaTable(CategoryBlah, ||parent->parent->parent||)>> 
+<<MetaTable(CategoryBlah, ||parent->parent->parent->parent||)>> 
+<<MetaTable(CategoryBlah, ||parent->parent->parent->parent->parent||)>> 
+----
+CategoryBlah

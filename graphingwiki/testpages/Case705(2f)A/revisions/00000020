@@ -1,0 +1,28 @@
+ parent:: [[Case705/C]]
+
+{{{
+<<MetaTable(CategoryBlah, parent->parent=/.+/, ||parent->parent||)>>
+}}}
+<<MetaTable(CategoryBlah, parent->parent=/.+/, ||parent->parent||)>>
+
+{{{
+<<MetaTable(CategoryBlah, parent->here we are on page=/.+/)>>
+}}}
+<<MetaTable(CategoryBlah, parent->here we are on page=/.+/)>>
+
+{{{
+<<MetaTable(CategoryBlah, parent->parent->here we are on page=/.+/)>>
+}}}
+<<MetaTable(CategoryBlah, parent->parent->here we are on page=/.+/)>>
+
+{{{
+<<MetaTable(CategoryBlah, ||parent->parent||)>>
+}}}
+<<MetaTable(CategoryBlah, ||parent->parent||)>>
+
+{{{
+<<MetaTable(CategoryBlah, parent->parent=/.+/)>>
+}}}
+<<MetaTable(CategoryBlah, parent->parent=/.+/)>>
+----
+CategoryBlah
