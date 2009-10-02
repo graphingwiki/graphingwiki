@@ -464,6 +464,23 @@ class Question:
 
         return True, u'Question "%s" was successfully deleted!' % title
 
+    def redo(self):
+        if not Page(self.request, self.optionspage).exists():
+            return False
+
+        metas = get_metas(self.request, self.optionspage, ['redo'], checkAccess=False)
+
+        values = metas.get('redo', list())
+        if len(values) > 1:
+            raise TooManyValuesException(u'Question %s has too many redo options.' %self.pagename)
+        elif len(values) < 1:
+            raise MissingMetaException(u"Question %s doesn't have redo option." % self.pagename)
+        else:
+            if values[0] == "True":
+                return True
+            else:
+                return False
+
     def options(self):
         options = dict()
 

@@ -121,7 +121,7 @@ class User:
             if not questionlist:
                 return False, None
 
-            type = instance.options().get('type', None)
+            type = instance.options().get('type', 'basic')
             if type == "exam":
                 return True, "exam"
 
@@ -145,13 +145,24 @@ class User:
             #False, historypage
             #False, "pending"
             #False, "picked"
+
             histories = self.histories(instance.pagename)
             if len(histories) > 1:
                 raise ValueError, "User %s has too many history pages for question %s." % (self.name, instance.pagename)
+
+            tasktype = instance.task().options().get('type', 'basic')
+
             if len(histories) == 1:
                 history = histories[0]
                 keys = ['overallvalue']
                 metas = get_metas(self.request, history, keys, checkAccess=False)
+
+                if tasktype in ['exam', 'questionary']:
+                    if 'picked' in metas.get('overallvalue', list()):
+                        return False, "picked"
+                    elif 'pending' in metas.get('overallvalue', list()):
+                        return False, "pending"
+                    return True, history
 
                 if 'success' in metas.get('overallvalue', list()):
                     return True, history 

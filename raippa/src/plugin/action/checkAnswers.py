@@ -123,7 +123,10 @@ def execute(pagename, request):
                 tip = random.choice(tips)
 
         if not tip:
-            tip = u'Incorrect answer.'
+            if answertype == 'checkbox':
+                tip = u'You either selected one or more incorrect alternatives or you did not select all the correct alternatives.'
+            else:
+                tip = u'Incorrect answer.'
 
         request.theme.add_msg(tip, 'error')
         Page(request, pagename).send_page()
