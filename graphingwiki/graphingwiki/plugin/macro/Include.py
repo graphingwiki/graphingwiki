@@ -106,9 +106,9 @@ def execute(macro, text):
                         if getattr(self, '_macro_Include_nonexisting', False):
                             # Modify editlinks with template selection
                             if kw.get('css_class', '') == "include-edit-link":
-                                msg = ''
                                 if template:
                                     querystr['template'] = template
+                                    text = '[%s]' % _('create') 
                                 else:
                                     orig_page = macro.request.page.page_name
                                     msg = wr('<form method="GET" action="%s">', 
@@ -129,7 +129,7 @@ def execute(macro, text):
                                     msg += wr('<input type="submit" value="%s">', _('create'))
                                     msg += wr('</select></form>')
 
-                                return msg
+                                    return msg
 
                             # Do not give pagelinks to nonexisting pages
                             if kw.get('css_class', '') == "include-page-link":
