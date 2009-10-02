@@ -1,30 +1,23 @@
-"""
 #! /usr/bin/env python
 # -*- coding: latin-1 -*-
+"""
     Scraper for CVE vuln feed
 
     @copyright: 2009 Erno Kuusela
     @license: GPLv2
 """
 
-from lxml import objectify
+import xml.etree.cElementTree as ET
 from collections import defaultdict
 import shelve
- 
+
 def parse_nvd_data(fob, shelf):
-    objectify.enable_recursive_str()
-    tree = objectify.parse(fob)
-    e = tree.getroot().entry
-    do_nvd_entry(e, shelf)
-    while 1:
-        e = e.getnext()
-        if e is None:
-            break
-        cveid, zdict = do_nvd_entry(e, shelf)
+    tree = ET.parse(fob)
+    for entry in tree.getroot().getchildren():
+        cveid, zdict = do_nvd_entry(entry, shelf)
         print cveid
         shelf[cveid] = zdict
             
-
 def do_nvd_entry(e, shelf):
     m = defaultdict(list)
     m['feedsource'].append('nvd')
@@ -78,6 +71,7 @@ def do_nvd_entry(e, shelf):
         if cweid:
             m["cwe-id"].append(cweid)
     return cveid, m
+
 
 def main():
     s = shelve.open("parsednvd.shelve")
