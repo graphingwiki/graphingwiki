@@ -29,7 +29,7 @@ def scrape():
     if new:
         retcode = subprocess.call(["svn", "co", exploits_svn_url, tmpdir])
     else:
-        retcode = 0 #subprocess.call(["svn", "update", tmpdir])
+        retcode = subprocess.call(["svn", "update", tmpdir])
     if retcode:
         raise MetasploitScrapingError("svn command returned failure")
     for root, dirs, files in os.walk(tmpdir):
