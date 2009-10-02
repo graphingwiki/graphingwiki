@@ -106,6 +106,7 @@ def execute(macro, text):
                         if getattr(self, '_macro_Include_nonexisting', False):
                             # Modify editlinks with template selection
                             if kw.get('css_class', '') == "include-edit-link":
+                                msg = ''
                                 if template:
                                     querystr['template'] = template
                                 else:
