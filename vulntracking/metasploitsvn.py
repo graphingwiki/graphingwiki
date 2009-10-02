@@ -7,6 +7,7 @@
     @license: GPLv2
 """
 import os, errno, re, subprocess
+from collections import defaultdict
 
 exploits_svn_url = 'http://metasploit.com/svn/framework3/trunk/modules/exploits'
 
@@ -28,34 +29,40 @@ def scrape():
     if new:
         retcode = subprocess.call(["svn", "co", exploits_svn_url, tmpdir])
     else:
-        retcode = subprocess.call(["svn", "update", tmpdir])
+        retcode = 0 #subprocess.call(["svn", "update", tmpdir])
     if retcode:
-        raise MetasploitScrapingError("svn command returnde failure")
+        raise MetasploitScrapingError("svn command returned failure")
     for root, dirs, files in os.walk(tmpdir):
         for fn in files:
             if not fn.endswith('.rb'):
                 continue
-            for cveref in findcve(os.path.join(root, fn)):
-                #print 'hit', root, fn, cveref
-                yield cveref
+            zdict = findcve(os.path.join(root, fn))
+            if zdict:
+                #print 'hit', root, fn, zdict
+                yield zdict
 
 
 def findcve(rbfile):
-    PRE_REFS, IN_REFS = 1, 2
-    state = PRE_REFS
+    seen_refs=0
+    zdict = defaultdict(list)
+    zdict['feedtype'] = 'attack'
+    gotany=0
     for line in open(rbfile):
-        if state == PRE_REFS and "'References'" in line and '=>' in line:
-            state = IN_REFS
-        elif state == IN_REFS:
+        if not seen_refs and "'References'" in line and '=>' in line:
+            seen_refs=1
+        elif seen_refs:
             if '=>' in line or (']' in line and '[' not in line):
-                return
+                break
             m = re.search(r"'([^']*)'\s*,\s*'([^']*)'", line)
             if m:
-                yield m.groups()
+                zdict[m.group(1)].append(m.group(2))
+                gotany=1
+    if gotany:
+        pagename = 'MetaSploit ' +rbfile.lstrip(tmpdir).rstrip('.rb').replace('/', '-')
+        return pagename, zdict
+    else:
+        return None
 
 if __name__ == '__main__':
     for z in scrape():
         print z
-
-                
-
