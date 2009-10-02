@@ -36,7 +36,7 @@ function editor(view){
         destroyOnExit : false
         });     
     
-    var stats = new Stats(statsdiv);
+    var stats = new QuestionStats(statsdiv);
     }
 
 </script>

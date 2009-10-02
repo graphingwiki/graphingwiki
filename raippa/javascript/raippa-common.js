@@ -23,12 +23,13 @@ this.parent(c.elements,c.options);this.togglers=$$(c.togglers);this.container=do
 }this.effects={};if(this.options.opacity){this.effects.opacity="fullOpacity";}if(this.options.width){this.effects.width=this.options.fixedWidth?"fullWidth":"offsetWidth";
 }if(this.options.height){this.effects.height=this.options.fixedHeight?"fullHeight":"scrollHeight";}for(var b=0,a=this.togglers.length;b<a;b++){this.addSection(this.togglers[b],this.elements[b]);
 }this.elements.each(function(e,d){if(this.options.show===d){this.fireEvent("active",[this.togglers[d],e]);}else{for(var f in this.effects){e.setStyle(f,0);
-}}},this);if($chk(this.options.display)){this.display(this.options.display,this.options.initialDisplayFx);}},addSection:function(d,b){d=document.id(d);
+}}},this);if($chk(this.options.display)){this.display(this.options.display,this.options.initialDisplayFx);}},
+addSection:function(d,b){d=document.id(d);
 b=document.id(b);var e=this.togglers.contains(d);this.togglers.include(d);this.elements.include(b);var a=this.togglers.indexOf(d);
 
 d.inject(this.container);
 b.inject(this.container);
-d.addEvent(this.options.trigger,this.display.bind(this,a));
+d.addEvent(this.options.trigger,this.display.bind(this,b));
 
 if(this.options.height){b.setStyles({"padding-top":0,"border-top":"none","padding-bottom":0,"border-bottom":"none"});}if(this.options.width){b.setStyles({"padding-left":0,"border-left":"none","padding-right":0,"border-right":"none"});
 }b.fullOpacity=1;if(this.options.fixedWidth){b.fullWidth=this.options.fixedWidth;}if(this.options.fixedHeight){b.fullHeight=this.options.fixedHeight;}b.setStyle("overflow","hidden");
@@ -141,6 +142,41 @@ this.timer=this.show.delay(this.options.showDelay,this,a);this.tip.setStyle("dis
 if((f[c[g]]+e[g]-a[g])>b[g]){f[c[g]]=d.page[g]-this.options.offset[g]-e[g];}}this.tip.setStyles(f);},fill:function(a,b){if(typeof b=="string"){a.set("html",b);
 }else{a.adopt(b);}},show:function(a){this.fireEvent("show",[this.tip,a]);},hide:function(a){this.fireEvent("hide",[this.tip,a]);}});
 
+
+/*
+ * A custom accordion class with support for removing sections.
+ */
+
+var RaippaAccordion = new Class({
+    Extends : Fx.Accordion,
+    removeSection : function(index){
+        index = ($type(index) == 'element') ? this.elements.indexOf(index) : index;
+        var toggler = this.togglers[index];
+        var el = this.elements[index];
+        this.togglers.erase(toggler);
+        this.elements.erase(el);
+        toggler.destroy();
+        el.destroy();
+        //if (index == this.previous)
+        this.previous = -1;
+        
+        return this;
+    },
+    addSectionAt: function(toggler, element, index){
+        this.addSection(toggler, element);
+        
+        this.togglers.erase(toggler);
+        this.togglers.splice(index, 0, toggler);
+        
+        this.elements.erase(element);
+        this.elements.splice(index, 0, element);
+
+        toggler.dispose().inject(this.elements[index-1], 'after');
+        element.dispose().inject(toggler, 'after');
+        this.previous = -1;
+        return this;
+    }
+});
 
 /*
  * Modalizer with tabbing support. Takes an array of elements as argument and

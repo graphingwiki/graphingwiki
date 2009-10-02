@@ -72,25 +72,26 @@ if(MooTools){
 
                 if tasktype in ['exam', 'questionary']:
                     done, info = user.has_done(question)
+
                     if done:
                         result.append(f.icon('(./)'))
                     elif info not in ['pending', 'picked', None]:
                         result.append(f.icon('(./)'))
                     elif info in ['pending', 'picked']:
-                        result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
+                        result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
                 else:
                     if reason == "redo":
                         result.append(f.icon('(./)'))
                     elif reason == "pending":
-                        result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
+                        result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
             else:
                 result.append(f.text(question.title()))
                 if reason == "done":
                     result.append(f.icon('(./)'))
                 elif reason == "pending":
-                    result.append(f.rawHTML(''' <span ref="%s" class="pending">pending</span>''' % questionpage))
+                    result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
                 elif reason == "picked":
-                    result.append(f.rawHTML(''' <span ref="%s" class="picked">picked</span>''' % questionpage))
+                    result.append(f.rawHTML(''' <span ref="%s" class="picked"></span>''' % questionpage))
 
         result.append(f.listitem(False))
 
@@ -141,6 +142,7 @@ def question_list_editor(macro, task):
     res.append(f.rawHTML('''
 <script type="text/javascript" src="%s/raippajs/raippa-common.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
+<script type="text/javascript" src="%s/raippajs/stats.js"></script>
 <script type="text/javascript">
 
 var questionListData;
@@ -527,8 +529,8 @@ function editQuestionList(){
 
 function editor(view){
     var edit = editQuestionList();
-    var stats = new Element('div');
-    var modal = new questionListModal([edit, stats], {
+    var statsdiv = new Element('div');
+    var modal = new questionListModal([edit, statsdiv], {
         defTab : view,
         tabLabels : ["edit", "stats"],
         containerStyles :{
@@ -536,6 +538,7 @@ function editor(view){
             'background' : 'white'
             }
         });
+    var stats = new TaskStats(statsdiv);
     }
 function submitCheck(ajax){
     var form = $("taskEditForm");
@@ -576,7 +579,7 @@ function submitCheck(ajax){
 <a class="jslink" onclick="editor(0);">edit</a>
 &nbsp;
 <a class="jslink" onclick="editor(1);">stats</a>
-    ''' % (prefix, prefix, ",".join(jsQlist), old_type, deadline, prefix)))
+    ''' % (prefix, prefix, prefix,  ",".join(jsQlist), old_type, deadline, prefix)))
 
     res.append(f.div(False))
     return res

@@ -522,3 +522,20 @@ ul.sortable li.sorting {
     background-color: #6495ED;
 	cursor: pointer;
 }
+
+h3.statboxtitle {
+	cursor: pointer;
+	border: 1px solid #f5f5f5;
+	border-right-color: #ddd;
+	border-bottom-color: #ddd;
+	font-size: 12px;
+	background: #D2E0E6;
+	color: #528CE0;
+	margin: 0 0 4px 0;
+	padding: 3px 5px 1px;
+}
+
+div.statbox p, div.statbox h4 {
+	margin:0px;
+	padding:5px;
+}
