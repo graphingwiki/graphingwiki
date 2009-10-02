@@ -28,3 +28,6 @@ def scrape():
         if refs or classtypes:
             yield refs, classtypes, (proto, port)
 
+if __name__ == '__main__':
+    for z in scrape():
+        print z

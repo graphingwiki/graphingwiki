@@ -68,6 +68,8 @@ def scrape_row(h, s, url):
         if w.endswith(':'):
             if k:
                 print 'yield', k, repr(u' '.join(d))
+                if k == 'CVE ID':
+                    d = ["CVE-%s" % x for x in d]
                 yield k, u' '.join(d)
             k = w.rstrip(':')
             d = []
