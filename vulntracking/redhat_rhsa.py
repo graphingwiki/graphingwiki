@@ -60,8 +60,8 @@ def scrapeit(save=False):
                 map(unicode, s2.findAll(text=re.compile(r'^CVE-\d')))))
 
         # try to find updates for rhel 5
-        [x.parent for x in s.findAll(text=re.compile("Red.*v. 5.*server\)"))
-         if not x.parent.has_key("href")]
+#         [x.parent for x in s.findAll(text=re.compile("Red.*v. 5.*server\)"))
+#          if not x.parent.has_key("href")]
                                      
         d['update-rpm'] = sorted(set(
                 map(unicode, s2.findAll(text=re.compile(r'.*\.rpm')))))
