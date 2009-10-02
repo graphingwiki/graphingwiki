@@ -87,7 +87,7 @@ class IGraphRepr(object):
 
         # Not efficient to use node labels as the plotting draws
         # text as paths
-        self.gr.vs["label"] = [''] * self.gr.vcount()
+        self.gr.vs["label"] = [' '] * self.gr.vcount()
 
         # Need to start lgl from a weakly connected root to avoid
         # heavy clustering of connected components
