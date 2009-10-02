@@ -11,23 +11,26 @@ import urllib, re, socket
 
 from collections import defaultdict
 
-emerging_exploits_url = 'http://www.emergingthreats.net/rules/emerging-exploit.rules'
-
-def fix_refs(refs):
-    new_refs = list()
-    for ref in refs:
-        if ref[0] == 'url':
-            new_refs.append(('URL', 'http://%s' % ref[1]))
-        elif ref[0] == 'cve':
-            new_refs.append(('CVE', 'CVE-%s' % ref[1]))
-        elif ref[0] == 'bugtraq':
-            new_refs.append(('Bugtraq ID', ref[1]))
-            
-    return new_refs
+emerging_exploits_url = 'http://www.emergingthreats.net/rules/emerging-all.rules'
+def fix_refs(refs): 
+    for refk, refv in refs: 
+        if refk == 'url': 
+            yield 'URL', 'http://%s' % refv
+        elif refk == 'cve': 
+            yield 'CVE', 'CVE-%s' % refv
+        elif refk == 'bugtraq': 
+            yield 'Bugtraq ID', refv
 
 def scrape():
     for line in urllib.urlopen(emerging_exploits_url):
         refs  = re.findall(r'reference:(\w+),([^; ]*)[; ]', line)
+        x = re.search(r'msg:"([^"]*)"', line)
+        if not x:
+            continue
+        msg = x.group(1)
+        if not msg:
+            continue
+
         refs = fix_refs(refs)
 
         classtypes  = re.findall(r'classtype:([^; ]*)[; ]', line)
@@ -42,14 +45,17 @@ def scrape():
         else:
             proto, port = None, None
         if refs or classtypes:
-            zdict = defaultdict()
-            for typ, val in refs:
-                zdict.setdefault(typ, list()).append(val)
+            zdict = defaultdict(list)
+            zdict['feedtype'].append('defense')
+            for refk, refv in refs:
+                zdict[refk].append(refv)
             for x in classtypes:
-                zdict.setdefault('Emergingthreats-classtype', list()).append(x)
+                zdict['EmergingThreats-classtype'].append(x)
             if proto:
-                zdict['Emergingthreats-target'] = "%s:%s" % (proto.upper(), port)
-            yield zdict
+                zdict['EmergingThreats-target'].append("%s:%s" % (proto.upper(), port))
+            if (msg.startswith('ET EXPLOIT') or
+                'CVE' in zdict):
+                yield u'EmergingThreats ' + unicode(msg, 'latin-1'), zdict
 
 if __name__ == '__main__':
     for z in scrape():
