@@ -8,15 +8,10 @@
 """
 import urllib2
 
-from time import strftime, gmtime
+from critismunge import utctimestamp
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 top10url='http://www.dshield.org/top10.html'
-
-ts_string = "%Y%m%d %H:%M:%S +0000"
-
-def utctimestamp(ts=None):
-    return strftime(ts_string, gmtime(ts))
 
 def scrape():
     for table, tblname in zip(BS(urllib2.urlopen(top10url)).findAll("table", "datatable")[:3], ['reports', 'targets', 'sources']):
@@ -29,6 +24,7 @@ def scrape():
             zdict['dshield-top10-' + tblname + '-count'] = count
             #zdict['port'] = port
             zdict['dshield-timestamp'] = utctimestamp()
+            zdict['Feed tyle'].append('Attack')
             yield u'TCP:' + port, zdict
 
 if __name__ == '__main__':

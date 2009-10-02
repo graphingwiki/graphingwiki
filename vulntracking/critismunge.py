@@ -7,11 +7,31 @@
     @license: GPLv2
 """
 import csv, re
+
+from time import strptime, strftime, gmtime
+from calendar import timegm
 from collections import defaultdict
 
 wikiurl = 'https://www.example.com/collab/yourcollab/'    
 
+ts_string = "%Y%m%d %H:%M:%S +0000"
 
+def utctimestamp(ts=None):
+    return strftime(ts_string, gmtime(ts))
+
+def format_time(date):
+    try:
+        date = utctimestamp(timegm(strptime(date, '%Y-%m-%d')))
+    except:
+        try:
+            date = utctimestamp(timegm(strptime(date, '%Y.%m.%d')))
+        except:
+            try:
+                date = utctimestamp(timegm(strptime(date, '%B %d, %Y')))
+            except:
+                pass
+
+    return date
 
 def metatable_csv_to_dict(f):
     z = csv.reader(f, delimiter=";")

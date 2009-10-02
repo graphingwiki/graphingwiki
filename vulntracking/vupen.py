@@ -25,7 +25,9 @@ def scrape_one(url):
         zdict = defaultdict(list)
         zdict[u'url'].append(url)
         zdict[u'CVE ID'].append(unicode(f.string))
-        return u'VUPEN ' +url.split(u'/')[-1].replace(u'.php', ''), zdict
+        zdict[u'Feed type'].append('Exploit')
+        return u'VUPEN-' +\
+            url.split(u'/')[-1].replace(u'.php', '').split('_')[-1], zdict
 
 if __name__ == '__main__':
     #print scrape_one("file:///tmp/tt.html")

@@ -35,7 +35,6 @@ def textify(s):
             out += textify(elt)
     return out
 
-
 def scrape_one(url):
     #url = 'file:///tmp/osv_d.html'
     soup = BS(urllib.urlopen(url), convertEntities="html")
@@ -49,7 +48,10 @@ def scrape_one(url):
             x = x.next
         for k, v in scrape_row(unicode(h.string), map(unicode, textify(x)), unicode(url)):
             if not k.startswith('u(see also'):
-                zdict[k].append(v)
+                # Skip NVD links
+                if not v.startswith('NVD'):
+                    zdict[k].append(v)
+    zdict['Feed type'].append('Vulnerability')
     return zdict
 
 def scrape_row(h, s, url):
@@ -67,8 +69,8 @@ def scrape_row(h, s, url):
     for w in s:
         if w.endswith(':'):
             if k:
-                print 'yield', k, repr(u' '.join(d))
-                if k == 'CVE ID':
+                #print 'yield', k, repr(u' '.join(d))
+                if k == 'CVE':
                     d = ["CVE-%s" % x for x in d]
                 yield k, u' '.join(d)
             k = w.rstrip(':')

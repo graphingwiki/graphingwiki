@@ -7,6 +7,8 @@
     @license: GPLv2
 """
 
+from critismunge import format_time
+
 import urllib, re, urlparse, time
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
@@ -30,7 +32,13 @@ def scrape_mw(scrapeurl):
             continue
         data = urllib.urlopen(urlparse.urljoin(remoteurl, link)).read()
         cves = set([('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', data)])
-        yield date, cves, descr, link
+        zdict = defaultdict(list)
+        zdict['CVE'].extend(cves)
+        zdict['URL'] = urlparse.urljoin("http://www.milw0rm.com", link)
+        zdict['Description'] = descr
+        zdict['Date'] = format_time(date)
+        zdict['Feed type'].append('Exploit')
+        yield "Milw0rm-%s" % (link.split('/')[-1]), zdict
 
 
 if __name__ == '__main__':

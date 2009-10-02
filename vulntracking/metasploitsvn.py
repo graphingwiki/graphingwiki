@@ -41,7 +41,6 @@ def scrape():
                 #print 'hit', root, fn, zdict
                 yield zdict
 
-
 def findcve(rbfile):
     seen_refs=0
     zdict = defaultdict(list)

@@ -6,6 +6,7 @@
     @copyright: 2009 Erno Kuusela
     @license: GPLv2
 """
+from critismunge import format_time
 
 import BeautifulSoup
 from BeautifulSoup import BeautifulSoup as BS
@@ -56,8 +57,10 @@ def scrapeit(save=False):
         s2 = BS(open(cachefn))
         absolutify_urls(s2, errata_baseurl + cachefn)
         d = collections.defaultdict(list)
-        d['cve-id'] = sorted(set(
+        d['CVE'] = sorted(set(
                 map(unicode, s2.findAll(text=re.compile(r'^CVE-\d')))))
+
+        d['Feed type'].append('Vulnerability')
 
         # try to find updates for rhel 5
 #         [x.parent for x in s.findAll(text=re.compile("Red.*v. 5.*server\)"))
@@ -65,11 +68,16 @@ def scrapeit(save=False):
                                      
         d['update-rpm'] = sorted(set(
                 map(unicode, s2.findAll(text=re.compile(r'.*\.rpm')))))
-        assert d['update-rpm']
+
+        if not d['update-rpm']:
+            continue
+
         t = s2.find('table', 'details')
         for th in t.findAll('th'):
             metakey = towiki(th).split()[0].rstrip(':').lower().replace(' ', '-')
-            d[metakey].append(towiki(th.parent.find("td")))
+            if metakey == 'cves':
+                continue
+            d[metakey].append(format_time(towiki(th.parent.find("td"))))
 
         d['rhsa-url'].append(adv_url)
         d['gwikicategory'].append('CategoryRhsa')
