@@ -1,0 +1,25 @@
+1254520040000000	00000001	SAVENEW	Case710	127.0.0.1	localhost			
+1254520053000000	00000002	SAVE	Case710	127.0.0.1	localhost			
+1254520169000000	00000003	SAVE	Case710	127.0.0.1	localhost			
+1254553857000000	00000004	SAVE	Case710	127.0.0.1	localhost			
+1254554898000000	00000005	SAVE	Case710	127.0.0.1	localhost			
+1254556977000000	00000006	SAVE	Case710	127.0.0.1	localhost			
+1254557061000000	00000007	SAVE	Case710	127.0.0.1	localhost			
+1254557075000000	00000008	SAVE	Case710	127.0.0.1	localhost			
+1254557890000000	00000009	SAVE	Case710	127.0.0.1	localhost			
+1254557899000000	00000010	SAVE	Case710	127.0.0.1	localhost			
+1254557909000000	00000011	SAVE	Case710	127.0.0.1	localhost			
+1254561478000000	00000012	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254561985000000	00000013	SAVE/REVERT	Case710	127.0.0.1	localhost		00000011	
+1254562087000000	00000014	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254562226000000	00000015	SAVE/REVERT	Case710	127.0.0.1	localhost		00000011	
+1254562527000000	00000016	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254562980000000	00000017	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254563760000000	00000018	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254564768000000	00000019	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254565269000000	00000020	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254565542000000	00000021	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254565737000000	00000022	SAVE	Case710	127.0.0.1	localhost			 (changed links: some page -> some other page)
+1254565819000000	00000023	SAVE	Case710	127.0.0.1	localhost			 (changed links: SomePage -> SomeOtherPage)
+1254565891000000	00000024	SAVE	Case710	127.0.0.1	localhost			 (changed links: Case710/SomePage -> Case710/SomeOtherPage)
+1254565909000000	00000025	SAVE	Case710	127.0.0.1	localhost			 (changed links: Case710/some page -> Case710/some other page)

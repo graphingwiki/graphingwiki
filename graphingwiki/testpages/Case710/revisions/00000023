@@ -1,0 +1,19 @@
+Create pages ''SomeOtherPage'' and ''[[some other page]]'', rename them, and check that the following links will change:
+
+SomeOtherPage
+
+[[some other page]]
+
+[[some other page|some Page]]
+
+[[some other page|some Page|target="_blank"]]
+
+[[some other page|{{attachment:samplegraphic.png}}]]
+
+[[some other page|{{attachment:samplegraphic.png}}|target="_blank"]] 
+
+../SomeOtherPage or [[../some other page|link text]]
+
+The links below should not change. Then, make subpages [[Case710/SomePage]] and [[Case710/some page]], rename them, and see that only links to them change.
+
+/SomePage, [[/some page]], [[/some page|link text|target="_blank"]]

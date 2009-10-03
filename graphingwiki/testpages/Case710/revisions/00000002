@@ -1,0 +1,19 @@
+Create a page ''SomePage'', rename it, and check that the following links will change:
+
+SomePage
+
+[[SomePage]]
+
+[[SomePage|some Page]]
+
+[[SomePage|some Page|target="_blank"]]
+
+[[SomePage|{{attachment:samplegraphic.png}}]]
+
+[[SomePage|{{attachment:samplegraphic.png}}|target="_blank"]] 
+
+../SomePage or [[../SomePage|link text]]
+
+The following link should not change:
+
+/SomePage or [[/SomePage]]

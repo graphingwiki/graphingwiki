@@ -1,0 +1,19 @@
+Create pages ''SomePage'' and ''[[some page]]'', rename them, and check that the following links will change:
+
+SomePage
+
+[[some page]]
+
+[[some page|some Page]]
+
+[[some page|some Page|target="_blank"]]
+
+[[some page|{{attachment:samplegraphic.png}}]]
+
+[[some page|{{attachment:samplegraphic.png}}|target="_blank"]] 
+
+../SomePage or [[../some page|link text]]
+
+The following link should not change. Then, make a subpage /SomePage, rename it, and see that only the following links change:
+
+/SomePage or [[/some page]]
