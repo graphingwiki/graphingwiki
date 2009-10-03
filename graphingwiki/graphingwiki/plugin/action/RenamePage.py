@@ -12,14 +12,83 @@ import re
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.RenamePage import RenamePage as RenamePageBasic
+from MoinMoin.parser.text_moin_wiki import Parser
 
 class RenamePage(RenamePageBasic):
+
+    def _inlink_rename(self, page, newpagename, oldpagename, comment):
+        rel_newpagename = wikiutil.RelPageName(page, newpagename)
+
+        # The following regexp match functions search for
+        # occurrences of the target page name, determine
+        # if they're absolute, relative or subpage
+        # matches, and replace them accordingly
+        def word_subfun(mo):
+            match = mo.groups()
+            if wikiutil.AbsPageName(page, match[1]) == oldpagename:
+                # If the link was relative:
+                if not oldpagename in match[1]:
+                    # If the new page will be a subpage of the
+                    # source, retain relative link. Else, make
+                    # an absolute link.
+                    if rel_newpagename.startswith('/'):
+                        return match[1].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            rel_newpagename)
+                    else:
+                        return match[1].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            newpagename)
+
+                # Else, change absolute link
+                return match[1].replace(oldpagename, newpagename)
+            # No match in this link -> move on
+            else:
+                return match[1]
+
+        def link_subfun(mo):
+            match = mo.groups()
+
+            if wikiutil.AbsPageName(page, match[1]) == oldpagename:
+                # If the link was relative:
+                if not oldpagename in match[0]:
+                    # If the new page will be a subpage of the
+                    # source, retain relative link. Else, make
+                    # an absolute link.
+                    if rel_newpagename.startswith('/'):
+                        return match[0].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            rel_newpagename)
+                    else:
+                        return match[0].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            newpagename)
+
+                # Else, change absolute link
+                return match[0].replace(oldpagename, newpagename)
+            # No match in this link -> move on
+            else:
+                return match[0]
+
+        self.page = PageEditor(self.request, page)
+        savetext = self.page.get_raw_body()
+
+        # Must replace both WikiWords and links, as
+        # [[WikiWord]] is a link.
+        word_re = re.compile(Parser.word_rule, re.VERBOSE)
+        savetext = word_re.sub(word_subfun, savetext)
+        link_re = re.compile(Parser.link_rule, re.VERBOSE)
+        savetext = link_re.sub(link_subfun, savetext)
+
+        msg = self.page.saveText(savetext, 0, comment=comment, 
+                                 notify=False)
+        return msg
 
     def do_action(self):
         _ = self.request.getText
 
         pdata = self.request.graphdata.getpage(self.pagename)
-        oldpagename = re.escape(self.pagename)
+        oldpagename = self.pagename
 
         success, msgs = RenamePageBasic.do_action(self)
 
@@ -39,21 +108,20 @@ class RenamePage(RenamePageBasic):
             comment = "%s (%s)" % (comment, _("changed links:") + 
                                    " %s -> %s" % (self.pagename, newpagename))
 
+            # List pages that link to the renamed page
+            pages = set()
             for type in pdata.get('in', {}):
-                for page in pdata['in'][type]:
+                pages.update(pdata['in'][type])
 
-                    # User rights _ARE_ checked here!
-                    if not self.request.user.may.write(page):
-                        continue
-                    
-                    self.page = PageEditor(self.request, page)
-                    savetext = self.page.get_raw_body()
+            # Update listed pages
+            for page in pages:
+                # User rights _ARE_ checked here!
+                if not self.request.user.may.write(page):
+                    continue
 
-                    savetext = re.sub(oldpagename, newpagename, savetext)
-
-                    msg = self.page.saveText(savetext, 0, comment=comment, 
-                                             notify=False)
-                    msgs = "%s %s" % (msgs, msg)
+                msg = self._inlink_rename(page, newpagename, 
+                                          oldpagename, comment)
+                msgs = "%s %s" % (msgs, msg)
 
         return success, msgs
 

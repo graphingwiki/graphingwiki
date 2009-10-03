@@ -131,6 +131,10 @@ def form_escape(text):
     #return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
     return cgi.escape(text, quote=True)
 
+def form_writer(fmt, *args):
+    args = tuple(map(form_escape, args))
+    return fmt % args
+
 def url_parameters(args):
     req_url = u'?'
 

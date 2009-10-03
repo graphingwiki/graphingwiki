@@ -21,7 +21,8 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
-from graphingwiki.util import form_escape, actionname
+from graphingwiki.util import actionname
+from graphingwiki.util import form_writer as wr
 
 Dependencies = ["time"]
 generates_headings = True
@@ -34,10 +35,6 @@ _arg_template = r'(,\s*template=(?P<tequot>[\'"])(?P<template>.+?)(?P=tequot))?'
 _args_re_pattern = Include._args_re_pattern[:-3] + _arg_rev + _arg_template + ')?$'
 
 _orig_execute = Include.execute
-
-def wr(fmt, *args):
-    args = tuple(map(form_escape, args))
-    return fmt % args
 
 def execute(macro, text):
     _ = macro.request.getText

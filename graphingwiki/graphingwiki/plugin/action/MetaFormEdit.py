@@ -16,7 +16,8 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.util import encode, actionname, form_escape, SEPARATOR
+from graphingwiki.util import encode, actionname, SEPARATOR
+from graphingwiki.util import form_writer as wr
 
 from savegraphdata import parse_text
 
@@ -40,10 +41,6 @@ class FormPage(Page):
         kw['format_args'] = format_args
         kw['do_cache'] = 0
         apply(Page.send_page_content, (self, request, body), kw)
-
-def wr(fmt, *args):
-    args = tuple(map(form_escape, args))
-    return fmt % args
 
 def execute(pagename, request):
     _ = request.getText
