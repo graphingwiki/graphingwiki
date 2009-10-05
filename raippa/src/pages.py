@@ -80,16 +80,12 @@ class Answer:
             else:
                 raise MissingMetaException(u'''Page %s doesn't have "answer" -meta.''' % self.pagename)
         else:
-            raw = Page(self.request, self.pagename).get_raw_body()
-            lines = raw.split("\n")
-            answers = lines[:]
+            answer = Page(self.request, self.pagename).get_raw_body()
+            regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+            raw_answer = regexp.search(answer)
 
-            for line in reversed(lines):
-                answers.pop()
-                if line.startswith(' question::'):
-                    break
-
-            answer = "\n".join(answers)
+            if raw_answer:
+                answer = raw_answer.groups()[0]
             if not answer:
                 raise ValueError, u'Missing answer text in page %s' % self.pagename
 
@@ -235,7 +231,7 @@ class Question:
             answerpages = list()
 
             for anspage in old_answers:
-                remove[anspage] = ["value", "answer", "comment", "tip"]
+                remove[anspage] = ["value", "answer", "comment", "tip", "question"]
 
             for ans in answers_data:
                 try:
@@ -248,7 +244,7 @@ class Question:
 
                 if anstype != "file":
                     save_data[anspage] ={
-                        "question" : addlink(self.pagename),
+                        "question" : [addlink(self.pagename)],
                         "answer" : ans.get("answer", [u""]),
                         "value" : ans.get("value", [u""]),
                         "tip" : ans.get("tip", [u""]),
@@ -257,7 +253,10 @@ class Question:
                         }
                 else:
                     pagecontent = u'''
+{{{
 %s
+}}}
+----
  question:: %s
 ----
 %s

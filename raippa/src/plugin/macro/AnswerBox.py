@@ -1,8 +1,9 @@
 #-*- coding: iso-8859-1 -*-
-import random, time
+import re, random, time
 
 from MoinMoin.Page import Page
-
+from graphingwiki.editing import get_metas
+from raippa import removelink
 from raippa.pages import Question, Answer
 from raippa.user import User
 
@@ -377,12 +378,29 @@ def draw_answers(macro, user, question):
             res.append(f.rawHTML('Your answer is not yet processed. Wait or submit new answer.'))
             res.append(f.linebreak(0))
         elif value not in ['picked', 'pending', None] and Page(request, value).exists():
-            #TODO: comment from comment page
-            if value == 'success':
-                res.append(f.rawHTML('Your answer was correct.'))
+            metas = get_metas(request, value, ['comment'], checkAccess=False)
+            comments = metas.get('comment', list())
+            if comments:
+                commentpage = Page(request, removelink(comments[0]))
+                if commentpage.exists():
+                    comment = commentpage.get_raw_body()
+                    
+                    regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+                    raw_comment = regexp.search(comment)
+
+                    if raw_comment:
+                        comment = raw_comment.groups()[0]
+
+                    res.append(f.text('Comment about your previous answer:'))
+                    res.append(f.preformatted(1))
+                    res.append(f.rawHTML(comment))
+                    res.append(f.preformatted(0))
             else:
-                res.append(f.rawHTML('Your answer was incorrect.'))    
-            res.append(f.linebreak(0))
+                if value == 'success':
+                    res.append(f.rawHTML('Your answer was correct.'))
+                else:
+                    res.append(f.rawHTML('Your answer was incorrect.'))    
+                res.append(f.linebreak(0))
 
         res.append(f.rawHTML('''
 <script type="text/javascript">

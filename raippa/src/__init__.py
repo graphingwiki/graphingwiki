@@ -7,7 +7,8 @@ forbidden = ['CategoryTaskFlow',
              'CategoryQuestionOptions',
              'CategoryAnswer',
              'CategoryHistory',
-             'CategoryDeadline']
+             'CategoryDeadline',
+             'CategoryBotComment']
 
 
 raippacategories = {"task": "CategoryTask",

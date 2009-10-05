@@ -67,7 +67,7 @@ if(MooTools){
             may, reason = user.can_do(question) 
             if may:
                 result.append(f.pagelink(True, questionpage))
-                result.append(f.text(question.title()))
+                result.append(f.text(question.title() + u' '))
                 result.append(f.pagelink(False, questionpage))
 
                 if tasktype in ['exam', 'questionary']:
@@ -77,17 +77,26 @@ if(MooTools){
                         result.append(f.icon('(./)'))
                     elif info not in ['pending', 'picked', None]:
                         result.append(f.icon('(./)'))
-                    elif info in ['pending', 'picked']:
+                    elif info == 'pending':
                         result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
+                    elif info == 'picked':
+                        result.append(f.rawHTML(''' <span ref="%s" class="picked"></span>''' % questionpage))
                 else:
-                    if reason == "redo":
-                        result.append(f.icon('(./)'))
-                    elif reason == "pending":
+                    if reason == "pending":
                         result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
+                    else:
+                        done, info = user.has_done(question)
+                        if done:
+                            result.append(f.icon('B)'))
+                        elif info not in ['pending', 'picked', None]:
+                            result.append(f.icon('X-('))
             else:
-                result.append(f.text(question.title()))
+                result.append(f.text(question.title() + u' '))
                 if reason == "done":
-                    result.append(f.icon('(./)'))
+                    if tasktype in ['exam', 'questionary']:
+                        result.append(f.icon('(./)'))
+                    else:
+                        result.append(f.icon('B)'))
                 elif reason == "pending":
                     result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
                 elif reason == "picked":
