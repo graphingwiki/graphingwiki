@@ -1,26 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 by Mika Sepp�nen 
+    @copyright: 2008 by Mika Seppänen, Rauli Puuperä, Erno Kuusela
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+import socket
 import os
 import sys
-import xmlrpclib
 import datetime
 import subprocess
-
+import xmlrpclib
+import re
 import shutil
 import tempfile
 import time
+import traceback
 
-import xmlrpclib, re
+from optparse import OptionParser
+
+from opencollab.wiki import CLIWiki
+import opencollab.wiki
+
 orig_feed = xmlrpclib.ExpatParser.feed
+
 def monkey_feed(self, data):
     return orig_feed(self, re.sub(ur'[\x00-\x08\x0b-\x19]', '?', data))
 xmlrpclib.ExpatParser.feed = monkey_feed
-    
-
 
 utils = """# -*- coding: utf-8 -*-
 import subprocess
@@ -76,150 +81,14 @@ def info(msg):
     date = datetime.datetime.now().isoformat()[:19]
     print "%s [info] %s" % (date, msg)
 
-def stripLink(input):
-    return input.lstrip("[").rstrip("]")
+def parseTests(content):
+    #Match the stuff between {{{ and }}} the docttest should be there
+    test_regex = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+    return test_regex.search(content).groups()[0]
 
-def stripFormat(input):
-    lines = input.split("\n")
-    if lines[0].startswith("#FORMAT"):
-        return "\n".join(lines[1:])
-    return input
-
-class GraphingWiki(object):
-    def __init__(self, url, user, password):
-        self.credentials = (user, password)
-        self.authToken = ""
-        self.proxy = xmlrpclib.ServerProxy(url + "?action=xmlrpc2")
-        self.doAuth()
-
-    def doAuth(self):
-        self.authToken = self.proxy.getAuthToken(*self.credentials)
-
-    def request(self, retryCount, name, *args):
-        if retryCount <= 0:
-            return
-
-        mc = xmlrpclib.MultiCall(self.proxy)
-        mc.applyAuthToken(self.authToken)
-        getattr(mc, name)(*args)
-
-        results = iter(mc())
-
-        try:
-            results.next()
-        except xmlrpclib.Fault, fault:
-            if "Expired token." in fault.faultString:
-                self.doAuth()
-                return self.request(retryCount - 1, name, *args)
-
-        return results.next()
-
-def pickHistoryPage(wiki, course):
-    result = wiki.request(3, "GetMeta", "CategoryHistory, overallvalue=pending, course=%s" % course, False)
-
-
-    header = result[0]
-    pages = result[1:]
-    info("Found %d history pages waiting for checking" % len(pages))
-
-    for page in pages:
-	print page[0]
-        pagename = page[0]
-        metaList = page[1:]
-        metas = dict()
-
-        for key, values in zip(header, metaList):
-            metas[key] = values
-
-        return (pagename, metas)
-
-    return None 
-
-password = open("password").read().strip()
-course = "Course/88618"
-
-wiki = GraphingWiki("https://vm0021.virtues.local/", "bot", password)
-
-while True:
-    picked = pickHistoryPage(wiki, course)
-
-    if picked is None:
-        time.sleep(10)
-        continue
-
-    info("Picked %s." % picked[0])
-
-    metas = dict()
-    metas["overallvalue"] = ["picked"]
-
-    try:
-        wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
-    except xmlrpclib.Fault, fault:
-        if "You did not change" in fault.faultString:
-            sys.exit(str(fault))
-   
-    metas = picked[1]
-
-    files = metas["file"]
-    if len(files) != 1:
-        error("Found %d solution files" % len(files))
-        continue
-    else:
-        file = stripLink(files[0])
-
-    questions = metas["question"]
-    if len(questions) != 1:
-        error("Found %d questions" % len(questions))
-        continue
-    else:
-        question = stripLink(questions[0])
-
-    info("Fetching solution from %s" % file)
-    try:
-        solution = stripFormat(wiki.request(3, "getPage", file))
-    except xmlrpclib.Fault, fault:
-        if "No such page was found" in fault.faultString:
-            metas = dict()
-            metas["overallvalue"] = ["False"]
-            report = "You didn't submit a file!\n"
-            try:
-                wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
-                wiki.request(3, "putPage", picked[0] + "/comment", report)
-            except xmlrpclib.Fault, fault:
-                if "You did not change" in fault.faultString:
-                    pass
-                else:
-                    raise
-
-            continue
-
-    info("Fetching right answer from %s" % question)
-    result = wiki.request(3, "GetMeta", "CategoryAnswer, question=%s" % question, False)
-
-    header = result[0]
-    pages = result[1:]
-    if len(pages) != 1:
-        error("Found %d answer pages" % len(pages))
-        #sys.exit(1)
-        pages = pages[:1]
-
-    for page in pages:
-        pagename = page[0]
-        metaList = page[1:]
-        metas = dict()
-
-        for key, values in zip(header, metaList):
-            metas[key] = values
-
-        trues = metas["true"]
-        if len(trues) != 1:
-            error("Found %d true metakeys from %s" % (len(trues), pagename))
-            sys.exit(1)
-
-        tests = stripLink(trues[0])
-
-    info("Fetching doctests from %s" % tests)
-    tests = stripFormat(wiki.request(3, "getPage", tests))
+def checkAnswer(code, tests):
+    #This is mostly legacy stuff from previous version. I'm not 100%
+    #sure what it does :)
 
     path = tempfile.mkdtemp()
     cwd = os.getcwd()
@@ -229,7 +98,6 @@ while True:
     open(os.path.join(path, "tests.txt"), "w").write(tests)
     open(os.path.join(path, "tarkistaUtils.py"), "w").write(utils)
     open(os.path.join(path, "run.py"), "w").write(run)
-
 
     open(os.path.join(path, "ratkaisu.py"), "w").write("pass\n")
 
@@ -244,11 +112,14 @@ while True:
     trivialTests = total - failed
     info("Found %d trivial tests" % (trivialTests))
 
-
-    open(os.path.join(path, "ratkaisu.py"), "w").write(solution.encode('utf-8'))
+    open(os.path.join(path, "ratkaisu.py"), "w").write(code.encode('utf-8'))
 
     p = subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
+
+    info("Removing tempdir %s" % path)
+    os.chdir(cwd)
+    shutil.rmtree(path)
 
     try:
         failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
@@ -259,28 +130,155 @@ while True:
     succeeded = max(succeeded - trivialTests, 0)
     total = total - trivialTests
 
-    info("Result %d of %d tests succeeded" % (succeeded, total))
+    return succeeded, total, stdout, stderr
 
-    report = stdout.replace("\\n", "\n")
-    report = '''{{{
-    %s
-    }}}''' % report
+def checking_loop(wiki):
+    url = wiki.host
 
-    metas = dict()
-    metas["overallvalue"] = ["%d/%d" % (succeeded, total)]
-    metas["comment"] = ["[[%s]]" % (picked[0] + "/comment")]
+    while True:
 
-    try:
-        wiki.request(3, "SetMeta", picked[0], metas, "repl", True)
-        wiki.request(3, "putPage", picked[0] + "/comment", report)
-    except xmlrpclib.Fault, fault:
-        if "You did not change" in fault.faultString:
-            pass
-        else:
-            raise
+        #Get all new history pages with pending status
+        picked_pages = wiki.getMeta('CategoryHistory, overallvalue=pending')
+        info('Found %d pages' % len(picked_pages))
 
-    info("Removing tempdir %s" % path)
-    os.chdir(cwd)
-    shutil.rmtree(path)
+        if not picked_pages:
+            time.sleep(10)
+            continue
+        
+        #go thgrough all new pages
+        for page in picked_pages:
+            info('%s: picked %s' % (url, page))
 
-    time.sleep(5)
+            #change the status to picked
+            wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
+
+            metas = picked_pages[page]
+            
+            # get the attachment filename from the file meta
+            attachment_file = metas['file'].single()
+            
+            #get the source code
+            info("Fetching sourcode from %s" % attachment_file)
+            code = wiki.getAttachment(page, attachment_file)
+
+            #if there is wrong amount of question page linksd, leave
+            #the returned assignment as picked so that other
+            #assignments can be checked. 
+
+            if len(metas['question']) != 1:
+                error('Invalid meta data in %s! There were %d values!\n' 
+                      % (page, len(metas['question'])))
+                continue
+            
+            #get the question pagenmae
+            question = metas['question'].single(None)
+            question = question.strip('[]')
+
+            #find associataed answerpages
+            answer_meta = wiki.getMeta('CategoryAnswer, question=%s' 
+                                       % question)
+
+            #Get the page name
+            answer_page = answer_meta.keys()[0]
+            info('Getting answer from %s' % answer_page)
+
+            #get the tests
+            tests = parseTests(wiki.getPage(answer_page))
+            
+            succeeded, total, stdout, stderr = checkAnswer(code, tests)
+            info("Result %d of %d tests succeeded" % (succeeded, total))
+
+            report = stdout.replace("\\n", "\n")
+            report = '''{{{
+        %s
+        }}}''' % report
+            
+            metas = dict()
+            
+            if succeeded == total:
+                metas['overallvalue'] = ['success']
+            else:
+                metas['overallvalue'] = ['failed']
+
+            #wrong = amount of failed tests, right = succeeded tests
+            metas['wrong'] = total - succeeded
+            metas['right'] = succeeded
+                    
+            metas["comment"] = ["[[%s]]" % (page + "/comment")]
+
+            wiki.setMeta(page, metas)
+            
+            # "add" the page to comment category. This is propably
+            # silly maybe this should be done using setMeta
+            report = report + '\n----\nCategoryBotComment'
+
+            # Put the comment page
+            try:
+                wiki.putPage(page + "/comment", report)
+            except opencollab.wiki.WikiFault, error_message:
+                # It's ok if the comment does not change
+                if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
+                    pass
+                else:
+                    raise
+
+            time.sleep(5)
+
+def main():
+
+    parser = OptionParser()
+    parser.add_option("-u", "--url-to-wiki", dest="url",
+                      help="connect to URL", metavar="URL", default = None)
+    parser.add_option("-f", "--config-file", dest="file",
+                      help="read credentials from FILE", metavar="FILE")
+
+    (options, args) = parser.parse_args()
+    
+    if args:
+        sys.stderr.write('Invalid arguments! Use -h for help\n')
+        sys.exit(1)
+
+    if not options.url:
+        sys.stderr.write('You must specify a wiki to connect!\n')
+        sys.exit(1)
+    url = options.url
+
+    if not options.file:
+        try:
+            wiki = CLIWiki(options.url)
+        except socket.error, e:
+            sys.stderr.write(e + '\n')
+            sys.exit(1)
+       
+        success = wiki.authenticate()
+
+    else:
+        while True:
+            try:
+                wiki = CLIWiki(options.url, config = options.file)
+            except socket.error, e:
+                error(e)
+                time.sleep(10)
+            else:
+                break
+                
+    if not wiki.token:
+        sys.stderr.write('Auhtentication failure\n')
+        sys.exit(1)
+
+    while True:
+        try:
+            checking_loop(wiki)
+        except opencollab.wiki.WikiFailure:
+            error('WIKI PROBLEMS')
+            traceback.print_exc()
+        except socket.error:
+            error('CONNECTION PROBLEMS')
+            traceback.print_exc()
+        except KeyboardInterrupt:
+            sys.exit(0)
+        time.sleep(10)
+        
+
+if __name__ == '__main__':
+    main()
