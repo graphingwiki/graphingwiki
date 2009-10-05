@@ -656,7 +656,8 @@ class GraphShower(object):
                             'CELLSPACING="0" CELLBORDER="0"><TR><TD>'+\
                             '<IMG SRC="%s"/></TD></TR>' % (shapefile)+\
                             '<TR><TD>%s</TD></TR></TABLE>>' % (name)
-                        del obj.gwikiimage
+                        if not self.format in ['svg', 'zgr']:
+                            del obj.gwikiimage
                     elif not self.format in ['svg', 'zgr']:
                         # Stylistic stuff: label, borders
                         obj.gwikilabel = ' '
