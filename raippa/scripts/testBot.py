@@ -201,12 +201,13 @@ def checking_loop(wiki):
                 metas['overallvalue'] = ['failed']
 
             #wrong = amount of failed tests, right = succeeded tests
-            metas['wrong'] = total - succeeded
-            metas['right'] = succeeded
+            metas['wrong'] = str(total - succeeded)
+            metas['right'] = str(succeeded)
                     
             metas["comment"] = ["[[%s]]" % (page + "/comment")]
 
-            wiki.setMeta(page, metas)
+            #add metas
+            wiki.setMeta(page, metas, True)
             
             # "add" the page to comment category. This is propably
             # silly maybe this should be done using setMeta
@@ -221,7 +222,7 @@ def checking_loop(wiki):
                     pass
                 else:
                     raise
-
+            info('Done')
             time.sleep(5)
 
 def main():
