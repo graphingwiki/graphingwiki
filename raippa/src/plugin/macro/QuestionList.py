@@ -1,4 +1,6 @@
-from raippa.pages import Question, Task
+from MoinMoin.Page import Page
+from graphingwiki.editing import get_metas
+from raippa.pages import Question, Task, MissingMetaException, TooManyValuesException
 from raippa.user import User
 from raippa import page_exists
 
@@ -65,6 +67,7 @@ if(MooTools){
             result.append(f.pagelink(False, questionpage))
         else:
             may, reason = user.can_do(question) 
+
             if may:
                 result.append(f.pagelink(True, questionpage))
                 result.append(f.text(question.title() + u' '))
@@ -89,6 +92,27 @@ if(MooTools){
                         if done:
                             result.append(f.icon('B)'))
                         elif info not in ['pending', 'picked', None]:
+                            answertype = question.options().get('answertype', 'text')
+                            if Page(request, info).exists() and answertype == 'file':
+                                keys = ['right', 'wrong']
+                                metas = get_metas(request, info, keys, checkAccess=False)
+
+                                wrong = metas.get('wrong', list())
+                                if len(wrong) > 1:
+                                    raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
+                                elif len(wrong) < 1:
+                                    raise MissingMetaException(u'Missing "wrong" meta on page %.' % info)
+                                wrong = int(wrong[0])
+
+                                right = metas.get('right', list())
+                                if len(right) > 1:
+                                    raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
+                                elif len(right) < 1:
+                                    raise MissingMetaException(u'Missing "right meta on page %.' % info)
+                                right = int(right[0])
+
+                                result.append(f.text('%i/%i ' % (right, right+wrong)))
+
                             result.append(f.icon('X-('))
             else:
                 result.append(f.text(question.title() + u' '))
