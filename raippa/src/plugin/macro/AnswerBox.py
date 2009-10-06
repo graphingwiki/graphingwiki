@@ -379,29 +379,35 @@ def draw_answers(macro, user, question):
             res.append(f.linebreak(0))
         elif value not in ['picked', 'pending', None] and Page(request, value).exists():
             task = question.task()
-            if not done and task and task.options().get('type', 'basic') not in ['exam', 'questionary']:
+            if task and task.options().get('type', 'basic') not in ['exam', 'questionary']:
                 keys = ['comment', 'right', 'wrong']
                 metas = get_metas(request, value, keys, checkAccess=False)
 
-                wrong = metas.get('wrong', list())
-                if len(wrong) > 1:
+                right = int()
+                wrong = int()
+
+                wrongs = metas.get('wrong', list())
+                if len(wrongs) > 1:
                     raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
-                elif len(wrong) < 1:
-                    raise MissingMetaException(u'Missing "wrong" meta on page %.' % info)
-                wrong = int(wrong[0])
+                elif len(wrongs) < 1:
+                    wrong = 0
+                else:
+                    wrong = int(wrongs[0])
 
-                right = metas.get('right', list())
-                if len(right) > 1:
+                rights = metas.get('right', list())
+                if len(rights) > 1:
                     raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
-                elif len(right) < 1:
-                    raise MissingMetaException(u'Missing "right meta on page %.' % info)
-                right = int(right[0])
+                elif len(rights) < 1:
+                    right = 0
+                else:
+                    right = int(rights[0])
 
-                res.append(f.text('Your last answer passed %s test(s) out of %i.' % (right, right+wrong)))
-                res.append(f.linebreak(0))
+                if right > 0 or wrong > 0:
+                    res.append(f.text('Your last answer passed %s test(s) out of %i.' % (right, right+wrong)))
+                    res.append(f.linebreak(0))
              
                 comments = metas.get('comment', list())
-                if comments:
+                if comments and wrong > 0:
                     commentpage = Page(request, removelink(comments[0]))
                     if commentpage.exists():
                         comment = commentpage.get_raw_body()
@@ -416,12 +422,6 @@ def draw_answers(macro, user, question):
                         res.append(f.preformatted(1))
                         res.append(f.rawHTML(comment))
                         res.append(f.preformatted(0))
-                else:
-                    if value == 'success':
-                        res.append(f.rawHTML('Your answer was correct.'))
-                    else:
-                        res.append(f.rawHTML('Your answer was incorrect.'))    
-                    res.append(f.linebreak(0))
 
         res.append(f.rawHTML('''
 <script type="text/javascript">

@@ -89,30 +89,44 @@ if(MooTools){
                         result.append(f.rawHTML(''' <span ref="%s" class="pending"></span>''' % questionpage))
                     else:
                         done, info = user.has_done(question)
-                        if done:
-                            result.append(f.icon('B)'))
-                        elif info not in ['pending', 'picked', None]:
-                            answertype = question.options().get('answertype', 'text')
-                            if Page(request, info).exists() and answertype == 'file':
-                                keys = ['right', 'wrong']
-                                metas = get_metas(request, info, keys, checkAccess=False)
+                        answertype = question.options().get('answertype', 'text')
+                        partly = False
 
-                                wrong = metas.get('wrong', list())
-                                if len(wrong) > 1:
-                                    raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
-                                elif len(wrong) < 1:
-                                    raise MissingMetaException(u'Missing "wrong" meta on page %.' % info)
-                                wrong = int(wrong[0])
+                        if info and Page(request, info).exists() and answertype == 'file':
+                            keys = ['right', 'wrong']
+                            metas = get_metas(request, info, keys, checkAccess=False)
 
-                                right = metas.get('right', list())
-                                if len(right) > 1:
-                                    raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
-                                elif len(right) < 1:
-                                    raise MissingMetaException(u'Missing "right meta on page %.' % info)
-                                right = int(right[0])
+                            right = int()
+                            wrong = int()
+        
+                            wrongs = metas.get('wrong', list())
+                            if len(wrongs) > 1:
+                                raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
+                            elif len(wrongs) < 1:
+                                wrong = 0
+                            else:
+                                wrong = int(wrongs[0])
 
+                            if wrong > 0:
+                                partly = True
+
+                            rights = metas.get('right', list())
+                            if len(rights) > 1:
+                                raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
+                            elif len(rights) < 1:
+                                right = 0
+                            else:
+                                right = int(rights[0])
+                
+                            if right > 0 or wrong > 0:
                                 result.append(f.text('%i/%i ' % (right, right+wrong)))
 
+                        if done:
+                            if partly:
+                                result.append(f.icon(':\\'))
+                            else:
+                                result.append(f.icon('B)'))
+                        elif info not in ['pending', 'picked', None]:
                             result.append(f.icon('X-('))
             else:
                 result.append(f.text(question.title() + u' '))
