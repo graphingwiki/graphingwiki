@@ -1314,10 +1314,12 @@ class GraphShower(object):
 
             cache.put(self.request, key, img, content_type=mime_type)
 
-        self.request.write(image_p(cache.url(self.request, key), 
-                                   _(text), mappi))
+        image_uri = cache.url(self.request, key)
 
-        self.request.write('</div>')
+        self.request.write(image_p(image_uri, _(text), mappi))
+        self.request.write(
+            u'<a href="%s" id="footer" class="graph-link">[%s]</a>\n' % \
+                (image_uri, _('download')) + u'</div>')
 
     def send_legend(self):
         legend = None
@@ -1688,6 +1690,7 @@ class GraphShower(object):
 
     def test_graph(self, gr, outgraph):
         formatter = self.request.formatter
+        self.request.write('<div class="graph-info">')
         if igraph_found:
             self.request.write(formatter.preformatted(1))
             self.request.write(gr.summary(verbosity=1))
@@ -1721,6 +1724,7 @@ class GraphShower(object):
             else:
                 self.request.write(str(nroedges / (nronodes*nronodes-1)))
             self.request.write(formatter.paragraph(0))
+        self.request.write('</div>')
 
 def execute(pagename, request, **kw):
     graphshower = GraphShower(pagename, request, **kw)

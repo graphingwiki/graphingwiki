@@ -99,6 +99,5 @@ def execute(macro, args):
     graphshower(graph_request.page.page_name, graph_request, 
                 urladd=urladd, app_page=request.page.page_name, inline=1)
 
-    return u'<a href="%s" id="footer">[%s]</a>\n' % \
-           (req_uri, _('examine')) + \
-           u'</div>'
+    return u'<a href="%s" id="footer" class="graph-link">[%s]</a>\n' % \
+           (req_uri, _('examine')) + u'</div>'
