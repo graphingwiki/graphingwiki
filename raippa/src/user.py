@@ -65,7 +65,11 @@ class User:
             historydata[history]['file'] = list()
 
             #TODO: check success
-            revision = Page(self.request, history).get_real_rev() + 1
+            revision = Page(self.request, history).get_real_rev()
+            if revision == 99999999:
+                revision = 1
+            else:
+                revision += 1
    
             for filename, content in save_dict.iteritems():
                 filename = u"%s.rev%i" % (filename, revision)
@@ -213,6 +217,9 @@ class User:
 
             questionlist = instance.questionlist()
 
+            may = False
+            reason = "done"
+
             for questionpage in questionlist:
                 question = Question(self.request, questionpage)
                 done, info = self.has_done(question)
@@ -220,14 +227,15 @@ class User:
                 if done:
                     redo = question.options().get('redo', unicode())
                     if redo == "True":
-                        return True, "redo"
+                        may = True
+                        reason = "redo"
                 else:
                     if info in ['pending', 'picked']:
                         return True, info
                     else:
                         return True, None
 
-            return False, "done"
+            return may, reason
 
         elif isinstance(instance, Question):
             #True, None
