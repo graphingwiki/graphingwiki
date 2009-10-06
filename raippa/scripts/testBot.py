@@ -195,7 +195,7 @@ def checking_loop(wiki):
             
             metas = dict()
             
-            if succeeded == total:
+            if succeeded == total or succeeded > 0:
                 metas['overallvalue'] = ['success']
             else:
                 metas['overallvalue'] = ['failed']
