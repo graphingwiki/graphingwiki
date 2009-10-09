@@ -138,8 +138,7 @@ def downloadFile(wiki, page, quotedFile, basePath, num, count):
 
     # Check whether the file actually already exists
     if fileExists(wiki, page, quotedFile, filePath):
-        status = num, count, shortName
-        sys.stdout.write("%d/%d file %s already exists, skipping\n" % status)
+        sys.stdout.write("%d/%d file %s already exists, skipping\n" % (num, count, repr(shortName)))
         sys.stdout.flush()
         return
     print "DIR", repr(directory)
