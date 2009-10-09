@@ -535,7 +535,21 @@ h3.statboxtitle {
 	padding: 3px 5px 1px;
 }
 
-div.statbox p, div.statbox h4 {
+div.statbox p, div.statbox h4, div.statbox h5 {
 	margin:0px;
 	padding:5px;
+}
+
+.wrongAnswer {
+	color: red;
+	font-style: italic;
+}
+
+.rightAnswer {
+	color: green;
+	font-style: italic;
+}
+.missingAnswer {
+	color: #FF6633;
+	font-style: italic;
 }

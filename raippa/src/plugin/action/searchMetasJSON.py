@@ -36,9 +36,16 @@ from raippa.user import User
 
 def question_stats(request, question):
     revisions = question.history_revisions()
+    
+    answers = {"right" : [], "wrong" : []}
+    answerpages = question.answers()
+    for anspage in answerpages:
+         ans = Answer(request, anspage)
+         answers[ans.value()].append(ans.answer())
 
+    type = question.options().get("answertype", None)
     #total time and total try count
-    stats = {"total": {"time" : 0.0, "count": 0}}
+    stats = {"total": {"time" : 0.0, "count": 0, "answers" : answers, "type" : type}}
 
     for historypage in revisions:
         if not revisions.get(historypage, dict()):
@@ -66,7 +73,11 @@ def question_stats(request, question):
                     name = name[0]
                 stats[student]['name'] = name
 
-                stats[student]["tries"][date] = {"overall": overallvalue, "right" : right, "wrong": wrong, "time": used_time}
+                stats[student]["tries"][date] = {
+                        "overall": overallvalue,
+                        "right" : right,
+                        "wrong": wrong,
+                        "time": used_time}
                 stats[student]["total"]["time"] += used_time
                 stats[student]["total"]["count"] += 1
 
@@ -76,7 +87,8 @@ def question_stats(request, question):
     return stats
 
 def task_stats(request, task):
-    stats = {"total":dict()} 
+    type = task.options().get("tasktype", None)
+    stats = {"total": {"type": type, "questions": {}}}
 
     done, doing, totals = task.stats()
 
@@ -106,11 +118,11 @@ def task_stats(request, task):
             stats[student]["total"]["time"] += user_used
             stats[student]["total"]["count"] += user_revs
 
-            if stats["total"].get(question, None) == None:
-                stats["total"][question] = {"time":0.0, "count":0}
+            if stats["total"]["questions"].get(question, None) == None:
+                stats["total"]["questions"][question] = {"time":0.0, "count":0}
 
-            stats["total"][question]["time"] += user_used
-            stats["total"][question]["count"] += user_revs
+            stats["total"]["questions"][question]["time"] += user_used
+            stats["total"]["questions"][question]["count"] += user_revs
 
     for question in doing:
         for student in doing[question]:
@@ -240,7 +252,9 @@ def execute(pagename, request):
     elif args == "tasks":
         request.write(to_json(list_tasks(request, search, True)))
     
-    elif args == "has_done" and search:
+    elif args == "has_done":
+        if not search:
+            search = pagename
         request.write(to_json(has_done(request, search)))
 
     elif args == "stats":
