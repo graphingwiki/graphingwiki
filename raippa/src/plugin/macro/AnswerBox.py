@@ -4,7 +4,7 @@ import re, random, time
 from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas
 from raippa import removelink
-from raippa.pages import Question, Answer, MissingMetaException, TooManyValuesException
+from raippa.pages import Question, Course,  Answer, MissingMetaException, TooManyValuesException
 from raippa.user import User
 
 def sanitize(input):
@@ -375,7 +375,27 @@ def draw_answers(macro, user, question):
     elif qtype == "file":
         done, value = user.has_done(question)
         if value == "pending":
-            res.append(f.rawHTML('Your answer is not yet processed. Wait or submit new answer.'))
+            course = Course(request, request.cfg.raippa_config)
+            coursepage = course.graphpage
+            res.append(f.rawHTML('''
+<script type="text/javascript">
+    if (MooTools){
+        window.addEvent('domready', function(){
+            var check = new Request.JSON({
+                url: '?action=searchMetasJSON&args=has_done',
+                onSuccess: function(result){
+                    if(result.checked == true || result.status == "picked"){
+                        window.location = "%s";
+                    }
+                }
+            });
+        (function(){check.get();}).periodical(5000);
+        });
+    }
+</script>
+            '''  % coursepage)) 
+            res.append(f.rawHTML('Your answer is not yet processed. Wait or submit new answer. '))
+            res.append(f.rawHTML('<span class="ajax_loading">&nbsp;&nbsp;&nbsp;&nbsp;</span>'))
             res.append(f.linebreak(0))
         elif value not in ['picked', 'pending', None] and Page(request, value).exists():
             task = question.task()
