@@ -154,7 +154,11 @@ class User:
             if len(histories) > 1:
                 raise ValueError, "User %s has too many history pages for question %s." % (self.name, instance.pagename)
 
-            tasktype = instance.task().options().get('type', 'basic')
+            task = instance.task()
+            if task:
+                tasktype = task.options().get('type', 'basic')
+            else:
+                tasktype = None
 
             if len(histories) == 1:
                 history = histories[0]

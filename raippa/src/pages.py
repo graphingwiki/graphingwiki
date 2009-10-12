@@ -830,10 +830,10 @@ class Task:
                     user_used = int()
 
                 for student in done_question:
-                    done[question][student] = (user_revs, user_used)
+                    done[question][student] = done_question[student]
             
                 for student in doing_question:
-                    doing[question][student] = (user_revs, user_used)
+                    doing[question][student] = doing_question[student] 
         
             return done, doing, (total_revs, total_used)
         else:

@@ -86,8 +86,10 @@ def draw_graph(request, graphdict, result="both"):
         return img, tag
 
 def get_student_data(request, course, user):
-    graph = dict()
+    graph = {'first': dict()}
     flow = course.flow.fullflow()
+    graph['first']['shape'] = 'point'
+    graph['first']['next'] = flow.get('first', list())
 
     for taskpage, nextlist in flow.iteritems():
         if taskpage != 'first' and taskpage not in graph.keys():
@@ -97,11 +99,12 @@ def get_student_data(request, course, user):
             deadline, deadlines = task.deadline()
             user_deadline = deadlines.get(user.name, None)
 
+            tooltip = u'%s:: ' % task.title()
+
             if user.is_teacher():
                 graph[taskpage]['URL'] = u"%s/%s" % (request.getBaseURL(), taskpage)
                 graph[taskpage]['label'] = u'select'
                 graph[taskpage]['fillcolor'] = u'steelblue3'
-                tooltip = u'%s:: ' % task.title()
                 if user_deadline:
                     tooltip += u'Your deadline: %s' % user_deadline
                 elif deadline:
@@ -115,11 +118,11 @@ def get_student_data(request, course, user):
                     if reason == "redo":
                         graph[taskpage]['label'] = u'redo'
                         graph[taskpage]['fillcolor'] = u'darkolivegreen4'
-                        graph[taskpage]['tooltip'] = u'Done::You have passed this task but there is some questions you can do again if you want.'
+                        tooltip += u'You have passed this task but there is some questions you can do again if you want.'
+                        graph[taskpage]['tooltip'] = tooltip 
                     else:
                         graph[taskpage]['label'] = u'select'
                         graph[taskpage]['fillcolor'] = u'steelblue3'
-                        tooltip = u'%s:: ' % task.title()
                         if user_deadline:
                             tooltip += u'Your deadline: %s' % user_deadline
                         elif deadline:
@@ -133,17 +136,24 @@ def get_student_data(request, course, user):
                     if reason == "done":
                         graph[taskpage]['label'] = u'done'
                         graph[taskpage]['fillcolor'] = u'darkolivegreen4'
-                        graph[taskpage]['tooltip'] = u'Done::You have passed this task.'
+                        tooltip += u'You have passed this task.'
+                        graph[taskpage]['tooltip'] = tooltip 
                     elif reason == "deadline":
                         done, value = user.has_done(task)
                         if done:
                             graph[taskpage]['label'] = u'done'
                             graph[taskpage]['fillcolor'] = u'darkolivegreen4'
-                            graph[taskpage]['tooltip'] = u'Done::You have passed this task.'
+                            tooltip += u'You have passed this task.'
+                            graph[taskpage]['tooltip'] = tooltip 
                         else:
                             graph[taskpage]['label'] = u''
                             graph[taskpage]['fillcolor'] = u'firebrick'
-                            graph[taskpage]['tooltip'] = u'Deadline::Deadline to this task is gone.'
+                            if user_deadline:
+                                tooltip += u'Your deadline: %s' % user_deadline
+                            elif deadline:
+                                tooltip += u'Deadline: %s' % deadline
+                            tooltip += u'<br>Deadline to this task is gone.'
+                            graph[taskpage]['tooltip'] = tooltip
                     else:
                         graph[taskpage]['label'] = u''
 
@@ -153,8 +163,12 @@ def get_student_data(request, course, user):
     return graph
 
 def get_stat_data(request, course, user=None):
-    graph = dict()
     flow = course.flow.fullflow()
+    graph = {'first': dict()}
+    flow = course.flow.fullflow()
+    graph['first']['shape'] = 'point'
+    graph['first']['next'] = flow.get('first', list())
+
 
     for taskpage, nextlist in flow.iteritems():
         if taskpage != 'first' and taskpage not in graph.keys():
@@ -162,6 +176,7 @@ def get_stat_data(request, course, user=None):
             questions = task.questionlist()
             title = task.title()
             done, doing, values = task.stats(user, totals=False)
+
             if values:
                 max = values[0]
             else:
