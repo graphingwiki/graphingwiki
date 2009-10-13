@@ -31,7 +31,7 @@ def textify(s):
     return out
 
 def scrape_mw(scrapeurl):
-    if 0:
+    if 1:
         f = urllib.urlopen(scrapeurl)
     else:
         f = open("/tmp/immunity.html")
