@@ -55,7 +55,7 @@ def do_nvd_entry(e, shelf):
         #print 'ref',
         #print r['{http://scap.nist.gov/schema/vulnerability/0.4}source'],
         #print r['{http://scap.nist.gov/schema/vulnerability/0.4}reference'].get('href')
-        m['reference'].append(gen_text(r[0]), r[1].get('href'))
+        m[gen_text(r[0])].append(r[1].get('href'))
     
     metric = lambda x: e.find('{http://scap.nist.gov/schema/vulnerability/0.4}cvss').find('{http://scap.nist.gov/schema/cvss-v2/0.2}base_metrics').find('{http://scap.nist.gov/schema/cvss-v2/0.2}' + x)
     
