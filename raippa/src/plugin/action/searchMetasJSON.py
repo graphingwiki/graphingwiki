@@ -88,7 +88,7 @@ def question_stats(request, question):
 
 def task_stats(request, task):
     type = task.options().get("tasktype", None)
-    stats = {"total": {"type": type, "questions": {}}}
+    stats = {"total": {"type": type, "questions": {}, "order": task.questionlist() }}
 
     done, doing, totals = task.stats()
 

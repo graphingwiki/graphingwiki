@@ -304,11 +304,14 @@ var TaskStats = new Class({
 		if (!data.total) return;
 		var type = data.total.type;
         var questions = $H(data.total.questions);
+		var order = $A(data.total.order);
+		
         var users = $H(data.items);
         var user_cnt = users.getLength() || 1;
 
         var text = "<h4>Questions:</h4>";
-        questions.each(function(value, question){
+        order.each(function(question){
+			var value = questions[question];
             var users_doing = users_done = maxtime = maxtries = 0;
                
             users.each(function(userdata, user){
