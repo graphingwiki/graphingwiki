@@ -26,6 +26,7 @@ def draw_teacherui(macro, user, question):
 
     res.append(f.rawHTML('''
  <script type="text/javascript" src="%s/raippajs/stats.js"></script>
+ <script type="text/javascript" src="%s/raippajs/raphael.js"></script>
     <script type="text/javascript">
 
 function editor(view){ 
@@ -44,7 +45,7 @@ function editor(view){
 <br>
 <a class="jslink" onClick="editor(0);">edit</a>
 <a class="jslink" onClick="editor(1);">stats</a>
-''' % request.cfg.url_prefix_static))
+''' % (request.cfg.url_prefix_static,request.cfg.url_prefix_static)))
     #edit ui
     res.extend(draw_answer_edit_ui(macro, question))
 
@@ -228,7 +229,6 @@ function hideTips(field){
     
 
 }
-
 function submitCheck(button){
   if(button.value == "Cancel"){
     return true;
@@ -253,6 +253,12 @@ function submitCheck(button){
   }else{
     $('tr[id^=row]').destroy();
   }
+  //trying to prevent double saves
+  if($(button).retrieve('saved') == 'true'){
+    return false;  
+    }
+
+  $(button).store('saved', 'true');
   return true;
 }
 
@@ -348,7 +354,20 @@ def draw_answers(macro, user, question):
     qtype = question.options().get('answertype', '')
     
     res.append(f.div(1, id="answerBox"))
-    res.append(f.rawHTML('<form id="ansForm" enctype="multipart/form-data" method="post" action="">'))
+    res.append(f.rawHTML('''<script type="text/javascript">
+    var cansubmit = true;
+    function disableform(el){
+        if(cansubmit){
+            cansubmit = false;
+            $(el).getElement('input[type=submit]').set('disabled', 'true');
+            return true;
+        }else{
+            return false;
+        }
+    }
+    </script>'''))
+
+    res.append(f.rawHTML('<form id="ansForm" enctype="multipart/form-data" method="post" onsubmit="disableform(this);"action="">'))
     res.append(f.rawHTML('<input type="hidden" name="action" value="checkAnswers">'))
     res.append(f.rawHTML('<input type="hidden" name="time" value="%s">' % str(time.time())))
 
