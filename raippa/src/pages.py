@@ -155,7 +155,8 @@ class Question:
                 raise DeadLinkException(u"Page %s linked in %s doesn't exist." % (answerpage, self.optionspage))
 
             answers.append(answerpage)
-            
+        
+        answers.sort() 
         return answers
 
     def check_answers(self, user_answers, user, usedtime=None, save_history=False):
@@ -736,6 +737,17 @@ class Task:
                                 deadlines[key] = users_deadlines[0]
 
         return overall, deadlines
+
+    def consecutive(self):
+        if not Page(self.request, self.optionspage).exists():
+            return False 
+
+        metas = get_metas(self.request, self.optionspage, ["option"], checkAccess=False)
+
+        if 'consecutive' in metas.get('option', list()):
+            return True
+
+        return False
 
     def options(self):
         options = dict()

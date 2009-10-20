@@ -72,9 +72,14 @@ class User:
                 revision += 1
    
             for filename, content in save_dict.iteritems():
-                filename = u"%s.rev%i" % (filename, revision)
+                parts = filename.split(".")
+                if len(parts) == 1:
+                    filename = u"%s_rev%i" % (parts[0], revision)
+                else:
+                    filename = u"%s_rev%i.%s" % (".".join(parts[:-1]), revision, parts[-1])
+
                 filename, size = add_attachment(self.request, history, filename, content)
-                historydata[history]['file'].append(filename)
+                historydata[history]['file'].append("[[attachment:%s]]" % filename)
                 #TODO: check success with filesize
 
             success, msg = set_metas(self.request, remove, dict(), historydata)
@@ -276,7 +281,7 @@ class User:
 
             tasktype = task.options().get('type', None)
 
-            if tasktype == 'basic':
+            if tasktype in ['basic', 'questionary'] and task.consecutive():
                 questionlist = task.questionlist()
                 prerequisites = questionlist[:questionlist.index(instance.pagename)]
                 prerequisites.reverse()

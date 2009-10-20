@@ -536,6 +536,28 @@ div#footer {
     background-color: #FFFF80;
 }
 
+.answer-diff {
+    width:99%;
+}
+
+.answer-diff-expected {
+    background-color: #E0FFE0;
+    vertical-align: sub;
+}
+
+.answer-diff-users {
+    background-color: #FFE0E0;
+    vertical-align: sub;
+}
+
+.answer-diff-expected span {
+    background-color: #00FF00;
+}
+
+.answer-diff-users span {
+    background-color: #FF0000;
+}
+
 table.navigation {
     float: right;
     margin: 2px;
