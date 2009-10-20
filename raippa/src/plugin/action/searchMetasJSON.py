@@ -39,11 +39,15 @@ def question_stats(request, question):
     
     answers = {"right" : [], "wrong" : []}
     answerpages = question.answers()
+    type = question.options().get("answertype", None)
+    
     for anspage in answerpages:
          ans = Answer(request, anspage)
-         answers[ans.value()].append(ans.answer())
+         value = "right"
+         if type != "file":
+             value = ans.value()
+         answers[value].append(ans.answer())
 
-    type = question.options().get("answertype", None)
     #total time and total try count
     stats = {"total": {"time" : 0.0, "count": 0, "answers" : answers, "type" : type}}
 
@@ -59,6 +63,7 @@ def question_stats(request, question):
             wrong = rev[3]
             date = rev[4]
             used_time = rev[5]
+            files = rev[6]
 
             for student in students:
                 if student not in stats.keys():
@@ -77,7 +82,8 @@ def question_stats(request, question):
                         "overall": overallvalue,
                         "right" : right,
                         "wrong": wrong,
-                        "time": used_time}
+                        "time": used_time,
+                        "files" : files}
                 stats[student]["total"]["time"] += used_time
                 stats[student]["total"]["count"] += 1
 

@@ -601,7 +601,7 @@ class Question:
             keys = ['user',
                     'overallvalue', 'right', 'wrong',
                     'time', 'usedtime',
-                    'gwikicategory', 'gwikirevision']
+                    'gwikicategory', 'gwikirevision', 'file']
 
             for page in pages:
                 metas = get_metas(self.request, page, keys, checkAccess=False)
@@ -617,6 +617,11 @@ class Question:
 
                 right = metas.get('right', list())
                 wrong = metas.get('wrong', list())
+                files_raw = metas.get('file', list())
+                files = list()
+                if files_raw and files_raw[0]:
+                    for file in files_raw:
+                        files.append(removelink(file).replace("attachment:", ""))
 
                 overall = metas.get('overallvalue', list())
                 if len(overall) < 1 or len(overall) > 1:
@@ -643,7 +648,7 @@ class Question:
                     except:
                         continue
             
-                revisions[historypage][revision] = [users, overall, right, wrong, answer_time, used]
+                revisions[historypage][revision] = [users, overall, right, wrong, answer_time, used, files]
 
         return revisions
 

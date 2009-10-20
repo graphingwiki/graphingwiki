@@ -36,7 +36,8 @@ var Stats = new Class({
         statsContainerStyles : {
             'width' : '66%',
             'float' : 'right'
-        }
+        },
+		srcname : "stats.js"
 	},
 	stats: {},
 	statBoxes: [],
@@ -61,6 +62,12 @@ var Stats = new Class({
 		
 		this.updateUI();
 		this.updateData();
+		
+		if (typeof(Raphael) == "undefined"){
+			var path = document.getElement('script[src$='+this.options.srcname+']').get('src')
+			.replace(this.options.srcname, "raphael.js");
+			var raphaeljs = new Asset.javascript(path);
+		}
 
 	},
 	updateUI: function(){
@@ -72,9 +79,14 @@ var Stats = new Class({
             'class' : 'statboxtitle'
         });
         var totalbox = new Element('div', {
-            'class' : 'statbox',
-            'html' : this.showTotalData(this.stats)
-        });
+            'class' : 'statbox'
+			});
+        var totalcontent =  this.showTotalData(this.stats);
+		if (["element","array"].contains($type(totalcontent))) {
+			totalbox.adopt(totalcontent);
+		}else{
+			totalbox.set('html', totalcontent);
+		}
                 
         this.statsContainer.adopt(totaltitle, totalbox);
         
@@ -159,16 +171,21 @@ var Stats = new Class({
 		var resultList = this.searchResults.empty();
 		
 		results.each(function(value, key){
-			var item = new Element('a',{
-				'text': value.name,
-                'class' : 'jslink'
-			});
+			var item = this.formatItem(value,key);
+
             item.addEvent('click', function(){
                 this.showStatBox(key);
             }.bindWithEvent(this));
 			resultList.adopt(item, new Element('br'));
 		}, this);
 		
+	},
+	formatItem: function(value,key){
+		var item = new Element('a',{
+				'text': value.name,
+                'class' : 'jslink'
+			});
+		return item;
 	},
 	updateData: function(){
         
@@ -209,14 +226,29 @@ var Stats = new Class({
 
 var QuestionStats = new Class({
     Implements : Stats,
+	formatItem : function(value,key){
+		var item = new Element('a', {
+				'text': value.name,
+                'class' : 'jslink'
+		});
+		if($H(value.tries).getLength() > 10){
+			item.setStyle('color', 'red');
+		}
+		
+		return item;
+		
+	},
     /* Defines what is shown in overall view */
     showTotalData : function(data){
-		if ( ! data.total) return;
-        var total = $H(data.total);
-        var user_cnt = $H(data.items).getLength() || 1;
-        var users = $H(data.items);
-		var maxtries = maxtime = 0;
-		var ans_stats = $H();
+		if (!data.total) return;
+        var total = $H(data.total),
+        	user_cnt = $H(data.items).getLength() || 1,
+        	users = $H(data.items),
+			maxtries = maxtime = 0,
+			ans_stats = $H(),
+		 	result = [],
+			type = data.total.type,
+			starttime = new Date();
 
 		users.each(function(userdata, user){
 			$H(userdata.tries).each(function(trydata){
@@ -236,13 +268,20 @@ var QuestionStats = new Class({
         var avg_time = (total.get('time') / (60 * user_cnt)).round(1); 
         var avg_tries = (total.get('count') /user_cnt).round(1);
 		maxtime = (maxtime / 60).round(1);
-		
-        var text = "<p><b>Avg time: </b>" + avg_time + "min" +
+		if(type == "file"){
+			avg_tries = (avg_tries/3).round();
+			maxtries = (maxtries/3).round();	
+		}
+        result.push(new Element('p', { 
+			'html' : "<b>Avg time: </b>" + avg_time + "min" +
         			"<br><b>Avg tries: </b>" + avg_tries +
 					"<br><b>Max time: </b>"+ maxtime +"min" +
-					"<br><b>Max tries: </b>" + maxtries + "</p>";
+					"<br><b>Max tries: </b>" + maxtries
+					}));
 					
-		text += "<h4>Popularity of answers:</h4><p>";
+		result.push(new Element('h4',{
+			'html' : "Popularity of answers:"
+			}));
 		var popularity = $H();
 		ans_stats.each(function(count,ans){
 			value = $A(total.answers.right).contains(ans) ? "<span class='rightAnswer'>right</span>":
@@ -252,20 +291,26 @@ var QuestionStats = new Class({
 							"% ("+value+")<br>";
 		});
 		var top10 = popularity.getKeys().sort().reverse().slice(0,10);
+		var toptext = "";
 		top10.each(function(key){
-			text += popularity[key] || "";
+			toptext += popularity[key] || "";
 		});
-		text +=	"</p>";
-        return text;
+		result.push(new Element('p',{
+			'html' : toptext
+		}));
+
+		var duration = (new Date().getTime() - starttime.getTime())/1000;
+        return result;
     },
     
     /* Defines what is shown in detailed view */
     showItemData: function(item){
-		var answers = this.stats.total.answers;
-		var type = this.stats.total.type;
+		var answers = this.stats.total.answers,
+			userid = this.stats.items.keyOf(item),
+		 	type = this.stats.total.type,
+			count = $H(item.tries).getLength();
 		
-		
-        var text = "<p><b>Total tries:</b> " + item.total.count + "<br>" +
+        var text = "<p><b>Total tries:</b> " + count + "<br>" +
             "<b>Total time: </b> " + (item.total.time / 60).round(1)  + "min</p>" +
             "<h4>Tries:</h4>";
             
@@ -277,9 +322,17 @@ var QuestionStats = new Class({
 				var missed = value.overall == "success" ? []: $A(answers.right).filter(function(ans){
 					return !$A(value.right).contains(ans);
 				});
-				
+				var files = value.files, fileurls = "";
+				if (files.length > 0){
+					$each(files, function(value){
+						page = document.location.href.split("/");
+						page.splice(page.length-1,0,userid);
+						histpage = page.join("/");
+						fileurls += '<br>file: <a target="_blank" href="'+histpage+'?action=AttachFile&do=get&target='+value+'">' +value + '</a>';
+					});
+				}
 
-                text += "<p><b>" + key + "</b>" +
+                text += "<p><b>" + key + "</b>" + fileurls + 
                         "<br>right: <em>" + value.right.toString() + "</em>" +
 						"<br>missing right: <span class='missingAnswer'>" + missed.toString() + "</span>" +
                         "<br>wrong: <span class='wrongAnswer'> " +
@@ -299,17 +352,21 @@ var TaskStats = new Class({
     Implements: Stats,
     /* Defines what is shown in overall view */
     showTotalData : function(data){
-        
-		var starttime = new Date();
-		if (!data.total) return;
-		var type = data.total.type;
-        var questions = $H(data.total.questions);
-		var order = $A(data.total.order);
-		
-        var users = $H(data.items);
-        var user_cnt = users.getLength() || 1;
+        if (!data.total) return;
 
-        var text = "<h4>Questions:</h4>";
+		var result = [],
+			starttime = new Date(),
+			type = data.total.type,
+        	questions = $H(data.total.questions),
+			order = $A(data.total.order);
+		
+        var users = $H(data.items),
+        	user_cnt = users.getLength() || 1;
+
+        result.push(new Element('h4', {
+			text: "Questions:"
+		}));
+		var graph_times = [], graph_tries = [], graph_labels = [];
         order.each(function(question){
 			var value = questions[question];
             var users_doing = users_done = maxtime = maxtries = 0;
@@ -334,17 +391,51 @@ var TaskStats = new Class({
             var avg_time = (value.time / (60*(users_done+users_doing))).round(2);
             var avg_tries = (value.count / (users_done+users_doing)).round(2);
 			var maxtime = (maxtime / 60).round(2);
-            text += "<p><b>" + question + " </b><a href='" + question+"'>(link)</a>" +
+            result.push(new Element('p', {
+				'html' : "<b>" + question + " </b><a href='" + question+"'>(link)</a>" +
                     "<br>Average duration: <em>"+ avg_time +"</em> min and <em>" + avg_tries + "</em> tries"+
                     "<br>Users doing / total: <em>"+ users_doing + " / " + (users_doing + users_done) +"</em>" +
-					"<br>Max duration: <em>" + maxtime + "</em> min and <em>" + maxtries + "</em> tries"+
-					"</p>";
+					"<br>Max duration: <em>" + maxtime + "</em> min and <em>" + maxtries + "</em> tries"
+					}));
+					
+			graph_tries.push(avg_tries);
+			graph_times.push(avg_time);
+			graph_labels.push((graph_labels.length +1) +". ");
 
         });
-            var stoptime = new Date();
-            var exectime = (stoptime.getTime() - starttime.getTime())/ 1000;
-            //console.debug('calculation took ' + exectime + 's');
-        return text;
+			
+					
+		if (typeof(Raphael) != "undefined") {
+			var graph = new Element('div').inject(document.body);
+			var r = Raphael(graph, 410, 260),
+            fin2 = function(){
+                var y = [], res = [];
+                for (var i = this.bars.length; i--;) {
+                    y.push(this.bars[i].y);
+                    res.push(this.bars[i].value || "0");
+                }
+				var text = "Questionx: \nAvg time: "+res[0] + "mins\nAvg tries: " + res[1];
+                this.flag = r.g.popup(this.bars[0].x, Math.min.apply(Math, y), text).insertBefore(this);
+            }, fout2 = function(){
+                this.flag.animate({
+                    opacity: 0
+                }, 300, function(){
+                    this.remove();
+                });
+            };
+			r.g.txtattr.font = "12px bold, 'Fontin Sans', Fontin-Sans, sans-serif";
+			r.g.text(200, 10,'Average tries and time usage:');
+
+			r.g.barchart(30, 40, 340, 220, [graph_tries, graph_times],
+			 {stacked: true, type: "soft"}).hoverColumn(fin2, fout2);//.label(graph_labels)
+			result.push(graph);
+		}
+		
+		var stoptime = new Date();
+        var exectime = (stoptime.getTime() - starttime.getTime())/ 1000;
+        //console.debug('calculation took ' + exectime + 's');
+
+        return result;
     },
     
     /* Defines what is shown in detailed view */
