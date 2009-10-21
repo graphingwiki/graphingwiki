@@ -7,7 +7,7 @@
 
 var Stats = new Class({
 	Implements: [Options],
-	Binds: ['getData', 'createUI', 'hideStatBox', 'showStatBox', 'filter', 'showStatBox'],
+	Binds: ['getData', 'createUI', 'hideStatBox', 'showStatBox', 'filter', 'showStatBox','studentHasDone'],
 	options: {
         maxBoxCount : 3,
 		query_args: 'stats',
@@ -37,7 +37,11 @@ var Stats = new Class({
             'width' : '66%',
             'float' : 'right'
         },
-		srcname : "stats.js"
+		srcname : "stats.js",
+		passedCheck: true,
+		passedCheckLabel: "Not yet passed",
+		countCheck : true,
+		countCheckLabel: "Has a lot of tries"
 	},
 	stats: {},
 	statBoxes: [],
@@ -100,6 +104,14 @@ var Stats = new Class({
 		this.container.setStyle('display', tmpdisplay);
         
 		var search = new Element('input');
+		var passedCheck = this.passedCheck =  new Element('input',{
+			'type': 'checkbox',
+			'id': 'passedCheck'
+		});
+		var filterlabel = new Element('label',{
+			'for': 'passedCheck',
+			'text': this.options.passedCheckLabel
+		});
         search.store('default', 'Search name or id...');
         search.set('value', search.retrieve('default'));
         search.setStyles(this.options.searchFieldStyles);
@@ -123,8 +135,18 @@ var Stats = new Class({
             }
         });
 		this.searchContainer.adopt(search, this.searchResults);
-        
+        if(this.options.passedCheck){
+			passedCheck.inject(search, 'after');
+			filterlabel.inject(passedCheck, 'after');
+			passedCheck.addEvent('change', function(){
+				search.fireEvent('keyup');
+			})
+		}
         this.filter("");
+	},
+	/* returns true if student has done the whole Question/Task */
+	studentHasDone: function(student){
+		return true;
 	},
     
     /* Defines what is shown in overall view */
@@ -165,8 +187,12 @@ var Stats = new Class({
 		var results = $H();
 		if(this.stats && this.stats.items){
 			results = this.stats.items.filter(function(value, key){
+				if (this.options.passedCheck == true && this.passedCheck.get('checked') == true 
+					&& this.studentHasDone(key)){
+					return false;
+				}
 				return key.test(search, "i") || value.name.test(search, "i");
-			});
+			}, this);
 		}
 		var resultList = this.searchResults.empty();
 		
@@ -232,11 +258,21 @@ var QuestionStats = new Class({
                 'class' : 'jslink'
 		});
 		if($H(value.tries).getLength() > 10){
-			item.setStyle('color', 'red');
+			if (this.studentHasDone(key)) {
+				item.setStyle('color', 'orange')
+			}
+			else {
+				item.setStyle('color', 'red');
+			}
 		}
 		
 		return item;
 		
+	},
+	studentHasDone : function(student){
+		return $H(this.stats.items[student].tries).some(function(value, key){
+			return value.overall == "success"|| false;
+		},this);
 	},
     /* Defines what is shown in overall view */
     showTotalData : function(data){
@@ -350,6 +386,10 @@ var QuestionStats = new Class({
 
 var TaskStats = new Class({
     Implements: Stats,
+	studentHasDone : function(student){
+		var done = $H(this.stats.items[student].doing).getLength() == 0 || false;
+		return done;
+	},
     /* Defines what is shown in overall view */
     showTotalData : function(data){
         if (!data.total) return;

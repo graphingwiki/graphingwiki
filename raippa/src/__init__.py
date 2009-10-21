@@ -32,6 +32,7 @@ def to_json(arg):
     def parse(raw): 
        
         if isinstance(raw, (unicode,str)):
+            raw = raw.replace("\n", '\\n')
             raw = raw.replace('\\' ,'\\\\')
             raw = raw.replace('"' ,'\\"')
             return '"%s"' %raw

@@ -41,12 +41,12 @@ def question_stats(request, question):
     answerpages = question.answers()
     type = question.options().get("answertype", None)
     
-    for anspage in answerpages:
-         ans = Answer(request, anspage)
-         value = "right"
-         if type != "file":
-             value = ans.value()
-         answers[value].append(ans.answer())
+    if type != "file":
+        for anspage in answerpages:
+            ans = Answer(request, anspage)
+            value = "right"
+            value = ans.value()
+            answers[value].append(ans.answer())
 
     #total time and total try count
     stats = {"total": {"time" : 0.0, "count": 0, "answers" : answers, "type" : type}}
