@@ -332,12 +332,17 @@ var QuestionStats = new Class({
 			);
 			popularity[count].push(tr);
 		});
-		var top10 = popularity.getKeys().sort().reverse().slice(0,10);
-		top10.each(function(key){
+		var top10 = popularity.getKeys().sort(
+			function(a,b){
+				return b.toInt() - a.toInt();
+				}
+			).reverse().slice(0,10);
+		for (i=0; i< top10.length; i++){
+			key = top10[i];
 			popularity[key].each(function(value){
-				toptable.grab(value);
+				toptable.grab(value,'top');
 			});
-		});
+		}
 		result.push(toptable);
 
 		var duration = (new Date().getTime() - starttime.getTime())/1000;
