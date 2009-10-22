@@ -31,7 +31,7 @@ if(MooTools){
                         }
 
                     });
-                (function(){check.get();}).periodical(5000);
+                (function(){check.get();}).periodical(45000);
             });
         }
     });
@@ -183,6 +183,7 @@ def question_list_editor(macro, task):
     res.append(f.div(True, id="editList"))
     prefix =request.cfg.url_prefix_static 
     old_type = task.options().get('type', u'')
+    consecutive = task.consecutive()
     deadline, alldeadlines = task.deadline()
     if deadline == None:
         deadline = ""
@@ -190,6 +191,7 @@ def question_list_editor(macro, task):
 <script type="text/javascript" src="%s/raippajs/raippa-common.js"></script>
 <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
 <script type="text/javascript" src="%s/raippajs/stats.js"></script>
+<script type="text/javascript" src="%s/raippajs/raphael.js"></script>
 <script type="text/javascript">
 
 var questionListData;
@@ -455,7 +457,16 @@ function editQuestionList(){
 
     var typesel = new Element('select',{
         'id' : 'typesel',
-        'name' : 'type'
+        'name' : 'type',
+        'events' : {
+            'change' : function(){
+                    if(['exam'].contains(this.get('value'))){
+                        $('consecutiveCont').addClass('hidden');
+                    }else{
+                        $('consecutiveCont').removeClass('hidden');
+                    }
+                }
+            }
         })
     var oldtype = "%s";
     ["basic", "exam", "questionary"].each(function(type){
@@ -466,10 +477,24 @@ function editQuestionList(){
             'text' : type
             }));
         });
+    var consecutive = "%s" == "True";
     var typeCont = new Element('div').adopt(new Element('label', {
             'for' : 'typesel',
             'text' : 'Task type: '
-            }),typesel);
+            }),
+            typesel);
+    var consecutiveCont = new Element('div',{'id': 'consecutiveCont'}).adopt(
+            new Element('label', {
+                'for' : 'consecutiveCheck',
+                'text' : 'Is consecutive '
+                }),
+            new Element('input', {
+                'type' : 'checkbox',
+                'name' : 'consecutive',
+                'checked' : consecutive,
+                'id' : 'consecutiveCheck'
+                }));
+    typeCont.grab(consecutiveCont);
     var deadlineCont = new Element('div').adopt(new Element('label',{
             'for' : 'deadline',
             'text' : 'Deadline: '
@@ -569,7 +594,7 @@ function editQuestionList(){
         });
     var calCSS = new Asset.css('%s/raippa/css/calendar.css');
 
-
+    typesel.fireEvent('change');
     field.fireEvent('keyup');
     return searchCont;
 }
@@ -610,6 +635,13 @@ function submitCheck(ajax){
         'name' : 'deadline',
         'value' : $('deadline').get('value')
         }));
+    if( $('consecutiveCheck').get('checked')){
+        form.grab(new Element('input', {
+            'type' : 'hidden',
+            'name' : 'consecutive',
+            'value' : 'consecutive'
+        }));
+    }
     if (!ajax){
         form.submit();
     }else{
@@ -626,7 +658,7 @@ function submitCheck(ajax){
 <a class="jslink" onclick="editor(0);">edit</a>
 &nbsp;
 <a class="jslink" onclick="editor(1);">stats</a>
-    ''' % (prefix, prefix, prefix,  ",".join(jsQlist), old_type, deadline, prefix)))
+    ''' % (prefix, prefix, prefix,  prefix, ",".join(jsQlist), old_type, consecutive, deadline, prefix)))
 
     res.append(f.div(False))
     return res
