@@ -39,9 +39,9 @@ var Stats = new Class({
         },
 		srcname : "stats.js",
 		passedCheck: true,
-		passedCheckLabel: "Not yet passed",
+		passedCheckLabel: " Not yet passed",
 		countCheck : true,
-		countCheckLabel: "Has a lot of tries"
+		countCheckLabel: " Has a lot of tries"
 	},
 	stats: {},
 	statBoxes: [],
@@ -318,22 +318,27 @@ var QuestionStats = new Class({
 		result.push(new Element('h4',{
 			'html' : "Popularity of answers:"
 			}));
+		var toptable = new Element('table');
+		toptable.setStyle('width', '95%');
 		var popularity = $H();
 		ans_stats.each(function(count,ans){
 			value = $A(total.answers.right).contains(ans) ? "<span class='rightAnswer'>right</span>":
 				 "<span class='wrongAnswer'>wrong</span>";
-			if (!popularity[count]) popularity[count] = "";
-			popularity[count] += "<b>"+ans+"</b>: "+ (count * 100/total.get("count")).round(1)+ 
-							"% ("+value+")<br>";
+			if (!popularity[count]) popularity[count] = [];
+			var tr = new Element('tr',{}).adopt(
+				new Element('td').grab(new Element('b',{text : ans})),
+				new Element('td',{ text : (count * 100/total.get("count")).round(1)+ "%"}),
+				new Element('td',{'html' : value})
+			);
+			popularity[count].push(tr);
 		});
 		var top10 = popularity.getKeys().sort().reverse().slice(0,10);
-		var toptext = "";
 		top10.each(function(key){
-			toptext += popularity[key] || "";
+			popularity[key].each(function(value){
+				toptable.grab(value);
+			});
 		});
-		result.push(new Element('p',{
-			'html' : toptext
-		}));
+		result.push(toptable);
 
 		var duration = (new Date().getTime() - starttime.getTime())/1000;
         return result;
@@ -440,34 +445,33 @@ var TaskStats = new Class({
 					
 			graph_tries.push(avg_tries);
 			graph_times.push(avg_time);
-			graph_labels.push((graph_labels.length +1) +". ");
+			graph_labels.push("Q"+(graph_labels.length +1));
 
         });
 			
 					
 		if (typeof(Raphael) != "undefined") {
 			var graph = new Element('div').inject(document.body);
-			var r = Raphael(graph, 410, 260),
-            fin2 = function(){
-                var y = [], res = [];
-                for (var i = this.bars.length; i--;) {
-                    y.push(this.bars[i].y);
-                    res.push(this.bars[i].value || "0");
-                }
-				var text = "Questionx: \nAvg time: "+res[0] + "mins\nAvg tries: " + res[1];
-                this.flag = r.g.popup(this.bars[0].x, Math.min.apply(Math, y), text).insertBefore(this);
-            }, fout2 = function(){
-                this.flag.animate({
-                    opacity: 0
-                }, 300, function(){
-                    this.remove();
-                });
-            };
-			r.g.txtattr.font = "12px bold, 'Fontin Sans', Fontin-Sans, sans-serif";
-			r.g.text(200, 10,'Average tries and time usage:');
+			var r = Raphael(graph, 410, 220),
 
-			r.g.barchart(30, 40, 340, 220, [graph_tries, graph_times],
-			 {stacked: true, type: "soft"}).hoverColumn(fin2, fout2);//.label(graph_labels)
+				fin = function(){
+					var unit = (this.bar.j % 2) == 1 ?  " mins" : " tries";
+					var text = this.bar.value + unit || "0";
+					this.flag = r.g.popup(this.bar.x, this.bar.y, text ).insertBefore(this);
+				},
+				fout = function(){
+                	this.flag.animate({
+                    	opacity: 0
+                	}, 300, function(){
+                    	this.remove();
+                	});
+            	};
+			r.g.txtattr.font = "16px bold, 'Fontin Sans', Fontin-Sans, sans-serif";
+			r.g.text(200, 10,'Average tries and time usage:');
+		
+			r.g.barchart(30,20,340,180, [graph_tries,graph_times],{type: "soft"})
+				.hover(fin,fout).label([graph_labels, graph_labels], true);
+
 			result.push(graph);
 		}
 		

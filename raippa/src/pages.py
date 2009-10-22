@@ -1053,11 +1053,12 @@ class Task:
         remove[self.pagename] = list()
         remove[self.optionspage] = list()
         remove[self.flowpage] = list()
+        
+        remove[self.flowpage] = self.questionlist()
+        remove[self.flowpage].extend(["first"])
 
         #TODO: create copy of questions that already exists in other tasks
         if flow:
-            remove[self.flowpage] = self.questionlist()
-            remove[self.flowpage].extend(["first"])
             for key,val in flow.iteritems():
                 if len(val) > 1:
                     raise TooManyValuesException("Trying to save too many values to flow node.")
@@ -1067,10 +1068,10 @@ class Task:
             save_data[self.flowpage]["task"] = [addlink(self.pagename)]
             save_data[self.flowpage]["gwikicategory"] = [rc['taskflow']]
 
-        if options:
-            remove[self.optionspage].extend(["type", "deadline", "task"])
-            save_data[self.optionspage]["type"] = options.get("type", [u""])
-            save_data[self.optionspage]["deadline"] = options.get("deadline", [u""])
+        remove[self.optionspage].extend(["type", "deadline", "task", "option"])
+        save_data[self.optionspage]["type"] = options.get("type", [u""])
+        save_data[self.optionspage]["deadline"] = options.get("deadline", [u""])
+        save_data[self.optionspage]["option"] = options.get("consecutive", [u""])
 
         save_data[self.optionspage]["task"] =  [addlink(self.pagename)]
         save_data[self.optionspage]["gwikicategory"] =  [rc['taskoptions']]

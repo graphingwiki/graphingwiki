@@ -49,7 +49,8 @@ def execute(pagename, request):
         task_options = dict()
         task_options["type"] = [request.form.get("type", [u"basic"])[0]]
         task_options["deadline"] = [request.form.get("deadline", [u""])[0]]
-
+        task_options["consecutive"] = [request.form.get("consecutive", [u""])[0]]
+        
         task = Task(request, pagename)
         success, msg = task.save_flow(flow, task_options)
         if success:
