@@ -17,7 +17,7 @@ from urllib import quote
 from urllib import unquote
 
 def main():
-    usage = "usage: %prog [options] srcwiki dstwiki pageregexp"
+    usage = "usage: %prog [options] srcwiki dstwiki metatable-expression"
 
     parser = optparse.OptionParser(usage=usage)
 
