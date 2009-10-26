@@ -2,8 +2,10 @@
 import re, random, time
 
 from MoinMoin.Page import Page
+from MoinMoin.support import difflib
 from graphingwiki.editing import get_metas
-from raippa import removelink
+from raippa import removelink, attachment_list, attachment_content
+from raippa import raippacategories as rc
 from raippa.pages import Question, Course,  Answer, MissingMetaException, TooManyValuesException
 from raippa.user import User
 
@@ -15,6 +17,77 @@ def sanitize(input):
     input = input.replace("'", "\\'")
     input = input.replace("\n", " ")
     return input.strip()
+
+def paint_diff(diff, previous=""):
+    colored = str()
+
+    if previous == "\n":
+        for char in diff:
+            if char == "\n":
+                colored += "&nbsp;\n"
+            else:
+                colored += char
+    else:
+        for char in diff:
+            if char == "\n":
+                colored += "\n&nbsp;"
+            else:
+                colored += char
+
+    return colored
+
+def diff_html(expected, users_output):
+    charobj = difflib.SequenceMatcher(None, expected, users_output)
+    charmatch = charobj.get_matching_blocks()
+    left = str()
+    right = str()
+    lastleft = 0
+    lastright = 0
+
+    for leftindex, rightindex, length in charmatch:
+        if leftindex > lastleft:
+            if lastleft > 0:
+                previous = expected[lastleft-1]
+            else:
+                previous = ""
+            colored = paint_diff(expected[lastleft:leftindex], previous)
+            left += '<span>%s</span>' % colored.replace(" ", "&nbsp;")
+
+        left += expected[leftindex:leftindex+length].replace(" ", "&nbsp;")
+        lastleft = leftindex+length
+
+        if rightindex > lastright:
+            if lastright > 0:
+                previous = users_output[lastright-1]
+            else:
+                previous = ""
+            colored = paint_diff(users_output[lastright:rightindex], previous)
+            right += '<span>%s</span>' % colored.replace(" ", "&nbsp;")
+
+        right += users_output[rightindex:rightindex+length].replace(" ", "&nbsp;")
+        lastright = rightindex+length
+
+    return """
+<table class="answer-diff">
+<tr>
+<td class="answer-diff-expected">
+<b>Expected output</b>&nbsp;&nbsp;(<span>missing</span>)
+</td>
+<td class="answer-diff-users">
+<b>Your program outputs</b>&nbsp;&nbsp;(<span>not wanted</span>)
+</td>
+</tr>
+<tr>
+<td class="answer-diff-expected">
+%s
+</td>
+<td class="answer-diff-users">
+%s
+</td>
+</tr>
+</table>
+""" % ("<br>\n".join(left.split("\n")), "<br>\n".join(right.split("\n")))
+
 
 def draw_teacherui(macro, user, question):
     
@@ -419,48 +492,141 @@ def draw_answers(macro, user, question):
         elif value not in ['picked', 'pending', None] and Page(request, value).exists():
             task = question.task()
             if task and task.options().get('type', 'basic') not in ['exam', 'questionary']:
-                keys = ['comment', 'right', 'wrong']
+                keys = ['output', 'right', 'wrong']
                 metas = get_metas(request, value, keys, checkAccess=False)
 
                 right = int()
                 wrong = int()
 
                 wrongs = metas.get('wrong', list())
-                if len(wrongs) > 1:
-                    raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
-                elif len(wrongs) < 1:
-                    wrong = 0
-                else:
-                    wrong = int(wrongs[0])
+                wrong = len(wrongs)
 
                 rights = metas.get('right', list())
-                if len(rights) > 1:
-                    raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
-                elif len(rights) < 1:
-                    right = 0
-                else:
-                    right = int(rights[0])
+                right = len(rights)
 
                 if right > 0 or wrong > 0:
                     res.append(f.text('Your last answer passed %s test(s) out of %i.' % (right, right+wrong)))
                     res.append(f.linebreak(0))
              
-                comments = metas.get('comment', list())
-                if comments and wrong > 0:
-                    commentpage = Page(request, removelink(comments[0]))
-                    if commentpage.exists():
-                        comment = commentpage.get_raw_body()
-                    
-                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
-                        raw_comment = regexp.search(comment)
+                outputs = metas.get('output', list())
+                if outputs and wrong > 0:
+                    answer_testnames = dict()
+                    for answerpage in answers:
+                        ameta = get_metas(request, answerpage, ['testname'], checkAccess=False)
+                        if ameta.get('testname', list()):
+                            answer_testnames[ameta['testname'][0]] = answerpage
 
-                        if raw_comment:
-                            comment = raw_comment.groups()[0]
-                    
-                        res.append(f.text('Comment about your previous answer:'))
-                        res.append(f.preformatted(1))
-                        res.append(f.rawHTML(comment))
-                        res.append(f.preformatted(0))
+                    for output in outputs:
+                        output = removelink(output)
+                        outputpage = Page(request, output)
+                        if not outputpage.exists():
+                            continue
+
+                        hmeta = get_metas(request, output, ['testname'], checkAccess=False)
+
+                        testnames = hmeta.get('testname', list())
+                        if not testnames:
+                            continue
+
+                        testname = testnames[0]
+                        if testname not in answer_testnames:
+                            continue
+
+                        answerpagename = answer_testnames[testname]
+
+                        answerpage = Page(request, answerpagename)
+                        if not answerpage.exists():
+                            continue
+
+                        keys = ['gwikicategory', 'parameters', 'input', 'output']
+                        ameta = get_metas(request, answerpagename, keys, checkAccess=False)
+
+                        if rc['answer'] not in ameta.get('gwikicategory', list()):
+                            continue
+
+                        res.append(f.rawHTML("<b>Test: %s</b>" % testname))
+                        res.append(f.linebreak(0))
+
+                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+
+                        #answer parameters
+                        if ameta.get('parameters', list()):
+                            res.append(f.text('Used commandline parameters:'))
+                            res.append(f.preformatted(1))
+                            res.append(f.rawHTML(ameta['parameters'][0]))
+                            res.append(f.preformatted(0))
+                            res.append(f.linebreak(0))
+
+                        #answer input
+                        if ameta.get('input', list()):
+                            input_page = Page(request, removelink(ameta['input'][0]))
+
+                            if input_page.exists():
+                                answer_input = regexp.search(input_page.get_raw_body())
+
+                                if answer_input:
+                                    answer_input = answer_input.groups()[0]
+                                    res.append(f.text('Used input:'))
+                                    res.append(f.preformatted(1))
+                                    res.append(f.rawHTML(answer_input))
+                                    res.append(f.preformatted(0))
+                                    res.append(f.linebreak(0))
+
+                                attachments = attachment_list(request, input_page.page_name)
+                                for ifile in attachments:
+                                    res.append(f.text('Used input file: %s' % ifile))
+                                    res.append(f.preformatted(1))
+                                    fc = attachment_content(request, input_page.page_name, ifile)
+                                    res.append(f.text(fc))
+                                    res.append(f.preformatted(0))
+                                    res.append(f.linebreak(0))
+
+                        #answer output
+                        if ameta.get('output', list()):
+                            output_page = Page(request, removelink(ameta['output'][0]))
+
+                        if not output_page.exists():
+                            continue
+
+                        answer_output = regexp.search(output_page.get_raw_body())
+                        if answer_output:
+                            answer_output = answer_output.groups()[0]
+
+                            output_text = outputpage.get_raw_body()
+                            raw_output = regexp.search(output_text)
+                            
+                            if raw_output:
+                                output_text = raw_output.groups()[0]
+                                res.append(f.text('Output: '))
+                                if answer_output == output_text:
+                                    res.append(f.icon('B)'))
+                                else:
+                                    res.append(f.icon('X-('))
+                                res.append(f.rawHTML(diff_html(answer_output, output_text)))
+                                res.append(f.linebreak(0))
+                            else:
+                                res.append(f.text('Missing output.'))
+                                res.append(f.linebreak(0))
+
+                            #file diff
+                            user_attachments = attachment_list(request, output)
+
+                            attachments = attachment_list(request, output_page.page_name)
+                            for ofile in attachments:
+                                if ofile not in user_attachments:
+                                    res.append(f.text('Missing output file: %s' % ofile))
+                                    res.append(f.linebreak(0))
+                                    continue
+
+                                ufile_output = attachment_content(request, output, ofile)
+                                afile_output = attachment_content(request, output_page.page_name, ofile)
+                                res.append(f.text('File output: %s ' % ofile))
+                                if afile_output == ufile_output:
+                                    res.append(f.icon('B)'))
+                                else:
+                                    res.append(f.icon('X-('))
+                                res.append(f.rawHTML(diff_html(afile_output, ufile_output)))
+                                res.append(f.linebreak(0))
 
         res.append(f.rawHTML('''
 <script type="text/javascript">

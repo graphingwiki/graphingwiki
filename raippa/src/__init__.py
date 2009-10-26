@@ -1,5 +1,5 @@
-import random
-from MoinMoin import wikiutil
+import random, os
+from MoinMoin import config, wikiutil
 from MoinMoin.Page import Page
 
 forbidden = ['CategoryTaskFlow',
@@ -68,6 +68,42 @@ def to_json(arg):
     if result[0]  not in ["[", "{"]:
         result = '[' + result +']'
     return result
+
+def attachment_content(request, pagename, filename):
+    if isinstance(filename, unicode):
+        filename = filename.encode(config.charset)
+
+    if request.page and pagename == request.page.page_name:
+        page = request.page
+    else:
+        page = Page(request, pagename)
+
+    attachdir = page.getPagePath("attachments", check_create=1)
+    fpath = os.path.join(attachdir, filename)
+
+    if not os.path.isfile(fpath):
+        raise ValueError, "Attachment '%s' does not exist!" % filename
+
+    file = open(fpath, 'r')
+    content = file.read()
+    file.close()
+
+    return content
+
+def attachment_list(request, pagename):
+    if request.page and pagename == request.page.page_name:
+        page = request.page
+    else:
+        page = Page(request, pagename)
+
+    attach_dir = page.getPagePath("attachments", check_create=1)
+
+    if os.path.isdir(attach_dir):
+        files = [fn.decode(config.charset) for fn in os.listdir(attach_dir)]
+        files.sort()
+    else:
+        files = list() 
+    return files
 
 def unicode_form(form):
     new_form = dict()
