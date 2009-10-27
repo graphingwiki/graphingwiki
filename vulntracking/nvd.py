@@ -36,7 +36,7 @@ def do_nvd_entry(e, shelf):
             pass
 
     try:
-        vs = e.find'{http://scap.nist.gov/schema/vulnerability/0.4}vulnerable-software-list')
+        vs = e.find('{http://scap.nist.gov/schema/vulnerability/0.4}vulnerable-software-list')
         if not vs:
             vs = []
     except AttributeError:
