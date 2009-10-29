@@ -100,23 +100,13 @@ if(MooTools){
                             wrong = int()
         
                             wrongs = metas.get('wrong', list())
-                            if len(wrongs) > 1:
-                                raise TooManyValuesException(u'Too many "wrong" values on page %s.' % info)
-                            elif len(wrongs) < 1:
-                                wrong = 0
-                            else:
-                                wrong = int(wrongs[0])
+                            wrong = len(wrongs)
 
                             if wrong > 0:
                                 partly = True
 
                             rights = metas.get('right', list())
-                            if len(rights) > 1:
-                                raise TooManyValuesException(u'Too many "right" values on page %s.' % info)
-                            elif len(rights) < 1:
-                                right = 0
-                            else:
-                                right = int(rights[0])
+                            right = len(rights)
                 
                             if right > 0 or wrong > 0:
                                 result.append(f.text('%i/%i ' % (right, right+wrong)))

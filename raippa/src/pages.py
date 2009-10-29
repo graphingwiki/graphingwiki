@@ -5,7 +5,7 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.user import User as MoinUser
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
-from raippa import removelink, addlink, running_pagename, pages_in_category
+from raippa import removelink, addlink, running_pagename, pages_in_category, rename_page, delete_page
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
@@ -80,6 +80,7 @@ class Answer:
             else:
                 raise MissingMetaException(u'''Page %s doesn't have "answer" -meta.''' % self.pagename)
         else:
+            #TODO new file answer
             answer = Page(self.request, self.pagename).get_raw_body()
             regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
             raw_answer = regexp.search(answer)
@@ -90,6 +91,10 @@ class Answer:
                 raise ValueError, u'Missing answer text in page %s' % self.pagename
 
         return answer
+
+    def options(self):
+        metas = get_metas(self.request, self.pagename, ['option'], checkAccess=False)
+        return metas.get('option', list())
 
     def value(self):
         metas = get_metas(self.request, self.pagename, ['value'], display=True, checkAccess=False)
@@ -253,6 +258,7 @@ class Question:
                         "gwikicategory" : [rc['answer']]
                         }
                 else:
+                    #TODO new file answer
                     pagecontent = u'''
 {{{
 %s
@@ -285,112 +291,39 @@ class Question:
 
         return success, msg
 
-    def rename(self, newname, comment=u""):
-        newname = newname[:240]
+    def rename(self, newname, comment=""):
         title = self.title()
 
         #rename question in the flow
         task = self.task()
         if task and Page(self.request, task.flowpage).exists():
             keys = get_keys(self.request, task.flowpage)
-
+                    
             if self.pagename in keys:
                 metas = get_metas(self.request, task.flowpage, keys, checkAccess=False)
                 remove = {task.flowpage: [self.pagename]}
                 add = {task.flowpage: {newname: metas[self.pagename]}}
-
+                
                 success, msg = set_metas(self.request, remove, dict(), add)
-
+                
                 if not success:
                     return success, msg
 
-        #rename historypages and links to them
+        #rename histories
         for historypage in self.histories():
-            historyname = u"%s/%s" % ("/".join(historypage.split("/")[:-1]), newname)
-            historyname = historyname[:255]
+            newhistoryname = historypage.replace(self.pagename, newname, 1)
 
-            pagedata = self.request.graphdata.getpage(historypage)
-            linkcomment = "changed links: %s -> %s" % (historypage, historyname)
-            
-            pages = list()
-            for type in pagedata.get('in', {}):
-                for pagename in pagedata['in'][type]:
-                    pages.append(pagename)
-                    
-            for pagename in pages:
-                page = PageEditor(self.request, pagename)
-                old_text = page.get_raw_body()
-                savetext = old_text.replace(historypage, historyname)
-            
-                msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
-
-            page = PageEditor(self.request, historypage)
-            if page.exists():
-                success, msg = page.renamePage(historyname, comment)
-
-                if not success:
-                    return success, msg
-
-        #rename subpages and links to them
-        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
-        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
-
-        for subpage in subpages:
-            new_subpage = subpage.replace(self.pagename, newname, 1)
-
-            pagedata = self.request.graphdata.getpage(subpage)
-            linkcomment = "changed links: %s -> %s" % (subpage, new_subpage)
-
-            pages = list()
-            for type in pagedata.get('in', {}):
-                for pagename in pagedata['in'][type]:
-                    pages.append(pagename)
-
-            for pagename in pages:
-                page = PageEditor(self.request, pagename)
-                old_text = page.get_raw_body()
-                savetext = old_text.replace(subpage, new_subpage)
-
-                msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
-
-            page = PageEditor(self.request, subpage)
-            if page.exists():
-                success, msg = page.renamePage(new_subpage, comment)
-
-                if not success:
-                    return success, msg
-
-        #rename links to the question
-        pagedata = self.request.graphdata.getpage(self.pagename)
-        linkcomment = "changed links: %s -> %s" % (self.pagename, newname)
-            
-        pages = list()
-        for type in pagedata.get('in', {}):
-            for pagename in pagedata['in'][type]:
-                pages.append(pagename)
-
-        for pagename in pages:
-            page = PageEditor(self.request, pagename)
-            old_text = page.get_raw_body()
-            savetext = old_text.replace(addlink(self.pagename), addlink(newname))
-
-            if pagename == u'How should one comment programs :o/options':
-                raise ValueError [old_text, savetext]
-
-            msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
-
-        #rename questionpage
-        page = PageEditor(self.request, self.pagename)
-        if page.exists():
-            success, msg = page.renamePage(newname, comment)
-
+            success, msg = rename_page(self.request, historypage, newhistoryname, comment)
             if not success:
                 return success, msg
 
-        return True, u'Question "%s" was successfully renamed!' % title
+        #rename page
+        success, msg = rename_page(self.request, self.pagename, newname)
+        return success, u'Question "%s" was successfully renamed!' % title
 
     def delete(self, comment=u""):
         title = self.title()
+
         #remove question from the flow
         task = self.task()
         if task and Page(self.request, task.flowpage).exists():
@@ -435,32 +368,15 @@ class Question:
 
         #remove historypages
         for historypage in self.histories():
-            page = PageEditor(self.request, historypage, do_editor_backup=0)
-            if page.exists():
-                success, msg = page.deletePage(comment)
-
-                if not success:
-                    return success, msg
-
-        #remove subpages
-        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
-        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
-
-        for subpage in subpages:
-            page = PageEditor(self.request, subpage, do_editor_backup=0)
-            if page.exists():
-                success, msg = page.deletePage(comment)
-
-                if not success:
-                    return success, msg
-
-        #remove questionpage
-        page = PageEditor(self.request, self.pagename, do_editor_backup=0)
-        if page.exists():
-            success, msg = page.deletePage(comment)
+            success, msg = delete_page(self.request, historypage, comment)
 
             if not success:
                 return success, msg
+
+        #remove questionpage
+        success, msg = delete_page(self.request, self.pagename, comment)
+        if not success:
+            return success, msg
 
         return True, u'Question "%s" was successfully deleted!' % title
 
@@ -593,6 +509,8 @@ class Question:
             histories = self.histories()
 
         revisions = dict()
+        #TODO only users revisions. not bot,teacher,etc.
+        #check rev 1627
 
         for historypage in histories:
             revisions[historypage] = dict()

@@ -1,6 +1,7 @@
-import random, os
+import random, os, re
 from MoinMoin import config, wikiutil
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 
 forbidden = ['CategoryTaskFlow',
              'CategoryTaskOptions',
@@ -110,6 +111,67 @@ def unicode_form(form):
     for key in form:
         new_form[key.decode('utf8')] = form[key]
     return new_form
+
+def rename_page(request, pagename, newname, comment=""):
+    msg = str()
+
+    #rename incoming links
+    pagedata = request.graphdata.getpage(pagename)
+    linkcomment = "changed links: %s -> %s" % (pagename, newname)
+
+    pages = list()
+    for type in pagedata.get('in', {}):
+        for linkingpage in pagedata['in'][type]:
+            pages.append(linkingpage)
+
+    for linkingpage in pages:
+        page = PageEditor(request, linkingpage)
+        old_text = page.get_raw_body()
+        savetext = old_text.replace(addlink(pagename), addlink(newname))
+
+        msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
+
+    #rename subpages
+    filterfn = re.compile(ur"^%s/.*$" % re.escape(pagename), re.U).match
+    subpages = request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+
+    for subpage in subpages:
+        newsubname = subpage.replace(pagename, newname, 1)
+        success, msg = rename_page(request, subpage, newsubname, comment)
+        if not success:
+            return success, msg
+
+    #rename page
+    page = PageEditor(request, pagename)
+    if page.exists():
+        success, msg = page.renamePage(newname, comment)
+        
+        if not success:
+            return success, msg
+        
+    return True, msg 
+
+def delete_page(request, pagename, comment=""):
+    msg = str()
+
+    #remove subpages
+    filterfn = re.compile(ur"^%s/.*$" % re.escape(pagename), re.U).match
+    subpages = request.rootpage.getPageList(user='', exists=1, filter=filterfn)
+            
+    for subpage in subpages:
+        success, msg = delete_page(request, subpage, comment)
+        if not success:
+            return success, msg
+
+    #remove page 
+    page = PageEditor(request, pagename, do_editor_backup=0)
+    if page.exists():
+         success, msg = page.deletePage(comment)
+         if not success:
+             return success, msg
+
+    return True, msg
+
 
 def pages_in_category(request, category):
     page = request.graphdata.getpage(category)
