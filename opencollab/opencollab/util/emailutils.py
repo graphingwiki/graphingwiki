@@ -62,16 +62,14 @@ def getMessagesAndUpload(mailbox, collab):
                 charset = part.get_content_charset()
                 payload = part.get_payload(decode=True)
                 if charset is not None:
+                    print cpage, charset
                     try:
-                        payload = unicode(payload, charset, "replace")
+                        payload = unicode(payload, charset, "ignore")
                     except UnicodeDecodeError:
                         try:
-                            payload = unicode(payload, "latin-1", "replace")
+                            payload = unicode(payload, "cp1252", "ignore")
                         except UnicodeDecodeError:
-                            try:
-                                payload = unicode(payload, "cp1252", "replace")
-                            except UnicodeDecodeError:
-                                payload = "unsupported-charset"
+                            payload = "unsupported-charset"
                 metas[cpage]["text"].add(payload)
             elif ctype == 'text/html':
                 metas[cpage]["html"].add(part)

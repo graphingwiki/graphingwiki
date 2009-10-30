@@ -33,10 +33,10 @@ def parse_summary(dir, file='summary.xml'):
         label = fact.getAttribute("label")
         if label:
             summary_metas[label].add(getText(fact.childNodes))
-        for collection in xmldoc.getElementsByTagName("collection"):
-            label = collection.getAttribute("label")
-            for fact in collection.getElementsByTagName("fact"):
-                summary_metas[label].add(getText(fact.childNodes))
+    for collection in xmldoc.getElementsByTagName("collection"):
+        label = collection.getAttribute("label")
+        for cfact in collection.getElementsByTagName("fact"):
+            summary_metas[label].add(getText(cfact.childNodes))
     return summary_metas
 
 def parse_tool_options(page_metas):
