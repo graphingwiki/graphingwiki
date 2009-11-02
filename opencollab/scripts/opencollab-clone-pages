@@ -10,6 +10,7 @@ import opencollab.wiki
 import os
 import sys
 import optparse
+import locale
 
 import md5
 
@@ -54,9 +55,7 @@ def main():
     wiki_dst = opencollab.wiki.CLIWiki(url_dst)
 
     try:
-        searchstring = unicode(searchstring, 'utf-8')
-    except UnicodeDecodeError:
-        searchstring = unicode(searchstring, 'iso-8859-1')
+        searchstring = unicode(searchstring, locale.getpreferredencoding())
     except UnicodeDecodeError:
         sys.stdout.write("Could not understand system default encoding")
         sys.exit(1)
