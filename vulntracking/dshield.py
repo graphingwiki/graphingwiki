@@ -27,6 +27,17 @@ def scrape():
             zdict['Feed tyle'].append('Attack')
             yield u'TCP:' + port, zdict
 
+def update_vulns(s):
+    for vid, data in scrape():
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE', [])):
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['EMERGING-THREATS'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+
 if __name__ == '__main__':
     for z in scrape():
         print z

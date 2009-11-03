@@ -10,8 +10,9 @@ import urllib, re
 from collections import defaultdict
 from osvdb import textify
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
-rssurl='''http://www.cert.fi/rss/haavoittuvuudet.xml'''
 import scrapegoat
+
+rssurl='''http://www.cert.fi/rss/haavoittuvuudet.xml'''
 
 def scrape_rss():
     surfer = scrapegoat.Surfer()
@@ -36,10 +37,23 @@ def scrape_one_vuln(soup, url):
         for s in textify(zb):
             zdict[k].append(s.lstrip(u'- '))
     zdict['CVE ID'] += list(set(
-            map(unicode, soup.findAll('a', text=re.compile(r'^CVE-')))))
+            map(lambda x: unicode(x),
+                soup.findAll('a', text=re.compile(r'^CVE-')))))
     zdict['Feed type'].append('Vulnerability')
     return u'CERT-FI ' + vulnid, zdict
 
+def update_vulns(s):
+    for vid, data in scrape_rss():
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE ID', [])):
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['CERT-FI'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+            
+            
 if __name__ == '__main__':
     for z in scrape_rss():
         print z

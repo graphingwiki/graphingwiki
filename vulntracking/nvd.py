@@ -18,7 +18,6 @@ def parse_nvd_data(fob, shelf):
     tree = ET.parse(fob)
     for entry in tree.getroot().getchildren():
         cveid, zdict = do_nvd_entry(entry, shelf)
-        print cveid
         shelf[cveid] = zdict
             
 def do_nvd_entry(e, shelf):

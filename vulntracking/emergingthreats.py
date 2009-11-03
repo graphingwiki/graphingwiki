@@ -11,7 +11,7 @@ import urllib, re, socket
 
 from collections import defaultdict
 
-emerging_exploits_url = 'http://www.emergingthreats.net/rules/emerging-all.rules'
+emerging_url = 'http://www.emergingthreats.net/rules/emerging-all.rules'
 def fix_refs(refs): 
     for refk, refv in refs: 
         if refk == 'url': 
@@ -22,7 +22,7 @@ def fix_refs(refs):
             yield 'Bugtraq ID', refv
 
 def scrape():
-    for line in urllib.urlopen(emerging_exploits_url):
+    for line in open("emerging-all.rules"): #urllib.urlopen(emerging_url):
         refs  = re.findall(r'reference:(\w+),([^; ]*)[; ]', line)
         x = re.search(r'msg:"([^"]*)"', line)
         if not x:
@@ -56,6 +56,18 @@ def scrape():
             if (msg.startswith('ET EXPLOIT') or
                 'CVE' in zdict):
                 yield u'EmergingThreats ' + unicode(msg, 'latin-1'), zdict
+
+def update_vulns(s):
+    for vid, data in scrape():
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE', [])):
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['EmergingThreats'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+
 
 if __name__ == '__main__':
     for z in scrape():

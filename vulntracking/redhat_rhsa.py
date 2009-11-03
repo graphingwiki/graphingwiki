@@ -38,16 +38,18 @@ def absolutify_urls(soup, baseurl):
             a_tag["href"] = urlparse.urljoin(baseurl, a_tag["href"])
             
 errata_baseurl = "http://rhn.redhat.com/errata/"
-def scrapeit(save=False):
+def scrapeit(save=False, cachedir="./rhsa_cache"):
     startfn ='rhel-server-errata-security.html'
     s = BS(urllib.urlopen(errata_baseurl + startfn))
     absolutify_urls(s, errata_baseurl + startfn)
     tehdict = collections.defaultdict(list)
+    if not os.path.isdir(cachedir):
+        os.mkdir(cachedir)
     adv_ids = set(
         map(unicode, s.findAll(text=re.compile(r'^RHSA-\d.*'))))
     for adv_id in sorted(adv_ids):
         adv_url = adv_id_to_url(adv_id)
-        cachefn=adv_url.split('/')[-1]
+        cachefn=os.path.join(cachedir, adv_url.split('/')[-1])
         if not os.path.exists(cachefn):
             print 'cache miss', cachefn
             f = open(cachefn, 'w')
@@ -57,7 +59,7 @@ def scrapeit(save=False):
         s2 = BS(open(cachefn))
         absolutify_urls(s2, errata_baseurl + cachefn)
         d = collections.defaultdict(list)
-        d['CVE'] = sorted(set(
+        d['CVE ID'] = sorted(set(
                 map(unicode, s2.findAll(text=re.compile(r'^CVE-\d')))))
 
         d['Feed type'].append('Vulnerability')
@@ -87,6 +89,17 @@ def scrapeit(save=False):
         f = open('rhsa.pickle', 'w')
         pickle.dump(tehdict, f, 2)
         f.close()
+
+def update_vulns(s):
+    for vid, data in scrapeit(True):
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE ID', [])):
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['RHSA'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
 
 if __name__ == '__main__':
     from pprint import pprint

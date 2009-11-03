@@ -62,6 +62,19 @@ def findcve(rbfile):
     else:
         return None
 
+def update_vulns(s):
+    for vid, data in scrape():
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE', [])):
+            cveid = 'CVE-' + cveid
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['Metasploit'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+
+
 if __name__ == '__main__':
     for z in scrape():
         print z
