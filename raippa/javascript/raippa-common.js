@@ -280,7 +280,8 @@ var modalizer = new Class({
 	    $(document.body).adopt(this.overlay, this.outerContainer);
 	    
 	    //this.showTab();
-	    this.periodical = this.showTab.periodical(100, this);
+	    //this.periodical = this.showTab.periodical(100, this);
+		this.showTab.delay(100, this);
 	},
 	showTab : function(tab){
 		var tab = tab || this.tab_selected;
@@ -320,7 +321,7 @@ var modalizer = new Class({
             	}
                 this.overlay.destroy();
                 var l = this.outerContainer;
-                $clear(this.periodical);
+                //$clear(this.periodical);
                 if(l) l.destroy();
             }).delay(150, this);
 		

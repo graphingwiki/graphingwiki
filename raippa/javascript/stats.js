@@ -219,7 +219,7 @@ var Stats = new Class({
             "html" : "&nbsp;&nbsp;&nbsp;&nbsp;",
             'class' : 'ajax_loading',
             'styles' : {
-                'display' : 'box',
+                'display' : 'block',
                 'width': '100%'
             }
         });
