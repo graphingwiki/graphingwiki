@@ -41,9 +41,23 @@ def scrape_mw(scrapeurl):
         yield "Milw0rm-%s" % (link.split('/')[-1]), zdict
 
 
+def update_vulns(s):
+    from itertools import chain
+    for vid, data in chain(scrape_mw(remoteurl),
+                           scrape_mw(remoteurl + '?start=30')):
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE', [])):
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['Milw0rm'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+            
+
 if __name__ == '__main__':
 #     scrape_mw(localurl)
 #     scrape_mw(localurl + '?start=30')
-    #scrape_mw(remoteurl)
-    for z in scrape_mw(remoteurl + '?start=60'):
+    for z in scrape_mw(remoteurl):
+    #for z in scrape_mw(remoteurl + '?start=60'):
         print z
