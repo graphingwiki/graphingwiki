@@ -181,22 +181,51 @@ class Question:
             for answerpage in answerpages:
                 answer = Answer(self.request, answerpage)
 
-                if answer.value() == "right":
-                    if answer.answer() not in user_answers:
-                        success_dict["wrong"].append(answerpage)
-                        if questiontype == 'checkbox':
-                            overallvalue = "failure"
-                    else:
-                        user_answers.remove(answer.answer())
-                        success_dict["right"].append(answerpage)
-                        save_dict["right"].append(answer.answer())
+                answer_options = answer.options()
+                if questiontype == 'text' and 'regexp' in answer_options:
+                    regexp = re.compile(answer.answer(), re.DOTALL)
+
+                    if answer.value() == "right":        
+                        done = list()
+                        for user_answer in user_answers:
+                            re_output = regexp.match(user_answer)
+                            if re_output:
+                                success_dict["right"].append(answerpage)
+                                save_dict["right"].append(user_answer)
+                                done.append(user_answer)
+
+                        if not done:
+                            success_dict["wrong"].append(answerpage)
+                        else:
+                            for done_answer in done:
+                                user_answers.remove(done_answer)
+
+                    else:                                
+                        for user_answer in user_answers:
+                            re_output = regexp.match(user_answer)
+                            if re_output:
+                                success_dict["wrong"].append(answerpage)
+                                save_dict["wrong"].append(user_answer)
+                                overallvalue = "failure"
+                            else:
+                                success_dict["right"].append(answerpage)
                 else:
-                    if answer.answer() in user_answers:
-                        success_dict["wrong"].append(answerpage)
-                        save_dict["wrong"].append(answer.answer())
-                        overallvalue = "failure"
+                    if answer.value() == "right":
+                        if answer.answer() not in user_answers:
+                            success_dict["wrong"].append(answerpage)
+                            if questiontype == 'checkbox':
+                                overallvalue = "failure"
+                        else:
+                            user_answers.remove(answer.answer())
+                            success_dict["right"].append(answerpage)
+                            save_dict["right"].append(answer.answer())
                     else:
-                        success_dict["right"].append(answerpage)
+                        if answer.answer() in user_answers:
+                            success_dict["wrong"].append(answerpage)
+                            save_dict["wrong"].append(answer.answer())
+                            overallvalue = "failure"
+                        else:
+                            success_dict["right"].append(answerpage)
 
             if len(answerpages) > 0 and len(user_answers) > 0:
                 overallvalue = "failure"
