@@ -99,7 +99,7 @@ def main():
     importMetas(collab, metas, template, options.verbose)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print "Script interrupted via CTRL-C."
+#    try:
+    main()
+#    except KeyboardInterrupt:
+#        print "Script interrupted via CTRL-C."

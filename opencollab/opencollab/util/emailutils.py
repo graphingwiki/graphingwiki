@@ -3,7 +3,8 @@
     @copyright: 2009 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, sys, getpass, imaplib, email, cStringIO, copy, mimetypes, HTMLParser, socket
+import re, sys, getpass, imaplib, email, cStringIO, copy
+import mimetypes, HTMLParser, socket, encodings
 from opencollab.meta import Metas
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.regexp import *
@@ -29,6 +30,14 @@ def imapsAuth(imaps_server, imaps_user, imaps_pass):
         error = 'ERROR: IMAP login failed: authentication failure'
         sys.exit(error)
     return mailbox
+
+def decodePayload(charset, payload):
+    try:
+        dec_payload = unicode(payload, charset, "ignore")
+    except (UnicodeDecodeError, LookupError):
+        return None
+    else:
+        return dec_payload
 
 def getMessagesAndUpload(mailbox, collab):
     metas = Metas()
@@ -58,21 +67,24 @@ def getMessagesAndUpload(mailbox, collab):
             if part.get_content_maintype() == 'multipart':
                 continue
             ctype = part.get_content_type()
-            if ctype == 'text/plain':
+            if ctype == 'text/plain' or ctype == 'text/html':
                 charset = part.get_content_charset()
                 payload = part.get_payload(decode=True)
                 if charset is not None:
-                    print cpage, charset
-                    try:
-                        payload = unicode(payload, charset, "ignore")
-                    except UnicodeDecodeError:
-                        try:
-                            payload = unicode(payload, "cp1252", "ignore")
-                        except UnicodeDecodeError:
-                            payload = "unsupported-charset"
-                metas[cpage]["text"].add(payload)
-            elif ctype == 'text/html':
-                metas[cpage]["html"].add(part)
+                    dec_payload = decodePayload(charset, payload) 
+                else:
+                    dec_payload = None
+                if dec_payload is None:
+                    for ch in encodings.aliases.aliases.values():
+                        dec_payload = decodePayload(ch, payload)
+                        if dec_payload is not None:
+                            break
+                    if dec_payload is None:
+                        dec_payload = "unsupported-charset"
+                if ctype == 'text/plain':
+                    metas[cpage]["text"].add(dec_payload)
+                else:
+                    metas[cpage]["html"].add(dec_payload)
             else:
                 filename = part.get_filename() 
                 if filename is None:
@@ -137,10 +149,10 @@ def parseHTML(metas):
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
         for html_part in metas[cpage]["html"]:
-            page_html = html_part.get_payload(decode=True)
+            #page_html = html_part.get_payload(decode=True)
             parser = html()
             try:
-                parser.feed(page_html)
+                parser.feed(html_part)
             except:
                 print "ERROR: HTML parse error."
             else:
