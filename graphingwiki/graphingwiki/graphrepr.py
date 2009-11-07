@@ -27,8 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-#! /usr/bin/env python
-# -*- coding: latin-1 -*-
 
 import sys
 import os

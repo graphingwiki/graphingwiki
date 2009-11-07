@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    recentchangestimeline action
+     - generates data needed by SIMILE timeline visualisation
+
+    @copyright: 2008-2009 by Juhani Eronen <exec@iki.fi>
+     somewhat based on the MoinMoin RecentChanges macro 
+     by Juergen Hermann <jh@web.de>
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+"""
 import urllib
 
 from time import strftime, time
@@ -8,7 +19,7 @@ from MoinMoin.util import rangelist
 from MoinMoin.logfile import editlog
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.macro.RecentChanges import format_comment
+from MoinMoin.macro.RecentChanges import format_comment, _MAX_DAYS
 
 def format_entries(request, lines, doc, data):
     line = lines[0]
@@ -113,6 +124,10 @@ def execute(pagename, request):
     today = request.user.getTime(time())[0:3]
     this_day = today
     day_count = 0
+    try:
+        max_days = int(request.form.get('max_days', [_MAX_DAYS])[0])
+    except ValueError:
+        max_days = _MAX_DAYS
 
     pages = {}
 
@@ -133,8 +148,11 @@ def execute(pagename, request):
                 request.write(format_entries(request, page, doc, data))
             pages = {}
 
+            day_count += 1
+            if max_days and (day_count >= max_days):
+                break
+
         elif this_day != day:
-            # new day but no changes
             this_day = day
 
         pages.setdefault(line.pagename, []).append(line)
