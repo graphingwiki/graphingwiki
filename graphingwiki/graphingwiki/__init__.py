@@ -252,7 +252,21 @@ def graphdata_rename(self, (success, msg), _):
     graphsaver = _get_save_plugin(self)
     path = underlay_to_pages(self.request, self)
 
-    graphsaver(self.page_name, self.request, '', path, self)
+    # Rename is really filesystem-level rename, no old data is really
+    # left behind, so it should be cleared.  When saving with text
+    # 'deleted\n', no graph data is actually saved.
+    graphsaver(self.page_name, self.request, 'deleted\n', path, self)
+
+    # Rename might litter empty directories data/pagename and
+    # data/pagename/cache, let's remove them
+    oldpath = self.getPagePath(check_create=0)
+    for dirpath, dirs, files in os.walk(oldpath, topdown=False):
+        # If there are files left, some backups etc information is
+        # still there, so let's quit
+        if files:
+            break
+
+        os.rmdir(dirpath)
 
 def variable_insert(self, result, _):
     """
