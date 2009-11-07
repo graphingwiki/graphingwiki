@@ -10,8 +10,8 @@ USABILITY ADDON INSTALLATION
 
     for script in ['js/mootools-core-yc.js', \
                    'js/sorttable-moo.js', \
-                   'simile/ajax/simile-ajax-api.js', \
-                   'simile/timeline/timeline-api.js']:
+                   'simile/timeline/timeline_ajax/simile-ajax-api.js', \
+                   'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
 
