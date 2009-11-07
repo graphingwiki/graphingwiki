@@ -66,8 +66,8 @@ import colorsys
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
-%s
 <input type=submit name=graph value="%%s">
+%s
 <input type=submit name=test value="%%s">
 <input type=submit name=inline value="%%s">
 </form>
@@ -966,7 +966,15 @@ class GraphShower(object):
                 continue
 
             node = outgraph.nodes.get(neighbour)
-            node.gwikistyle = node.gwikistyle.replace('bold', 'setlinewidth(6)')
+            style = getattr(node, 'gwikistyle', '')
+            if 'bold' in style:
+                style = style.replace('bold', 'setlinewidth(6)')
+            elif style:
+                style = style + ',setlinewidth(6)'
+            else:
+                style = 'setlinewidth(6)'
+
+            node.gwikistyle = style
 
         return outgraph
 
@@ -1350,7 +1358,7 @@ class GraphShower(object):
         request.write(u"</table>\n</div>\n</div>\n")
 
         if igraph_found:
-            request.write(form_end % (_('Overview'), _('Create'), 
+            request.write(form_end % (_('Create'), _('Overview'),
                                       _('Test'), _('Inline')))
         else:
             request.write(form_end % (_('Create'), _('Test'), _('Inline')))
