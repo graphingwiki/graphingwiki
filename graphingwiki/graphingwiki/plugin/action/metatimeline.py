@@ -12,6 +12,8 @@ from graphingwiki.util import format_wikitext
 
 time_format = "%b %d %Y %H:%M:%S +0000"
 
+datetime_format = "<<DateTime(%Y-%m-%dT%H:%M:%S)>>"
+
 # A method for 
 def timestamp(text):
     # First, try another time format
@@ -19,8 +21,12 @@ def timestamp(text):
         return strftime(time_format, 
                         strptime(text.split('.')[0], "%Y%m%d %H:%M:%S"))
     except ValueError:
-        pass
-
+        try:
+            return strftime(datetime_format, 
+                            strptime(text.split('.')[0], "%Y%m%d %H:%M:%S"))
+        except:
+            pass
+    
     format = "%b %d %Y %H:%M:%S"
 
     tz = text.split()[-1]

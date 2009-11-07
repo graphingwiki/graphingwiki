@@ -208,7 +208,8 @@ def expand_include(request, pagename, args):
 SPECIAL_ATTRS = ["gwikilabel", "gwikisides", "gwikitooltip", "gwikiskew",
                  "gwikiorientation", "gwikifillcolor", 'gwikiperipheries',
                  'gwikishapefile', "gwikishape", "gwikistyle", 
-                 'gwikicategory', 'gwikiURL']
+                 'gwikicategory', 'gwikiURL', 'gwikiimage', 'gwikiinlinks',
+                 'gwikicoordinates']
 nonguaranteeds_p = lambda node: filter(lambda y: y not in
                                        SPECIAL_ATTRS, dict(node))
 

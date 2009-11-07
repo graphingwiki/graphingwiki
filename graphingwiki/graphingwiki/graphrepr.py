@@ -36,32 +36,9 @@ import os
 from graphingwiki.util import encode_page, decode_page, get_url_ns
 from graphingwiki.editing import ordervalue
 
-gv_found = True
-
-# 32bit and 64bit versions
-try:
-    sys.path.append('/usr/lib/graphviz/python')
-    sys.path.append('/usr/local/lib/graphviz/python') # OSX
-    import gv
-except ImportError:
-    sys.path[-1] = '/usr/lib64/graphviz/python'
-    try:
-        import gv
-    except ImportError:
-        gv_found = False
-        pass
-
-igraph_found = False
-try:
-    import igraph
-    igraph_found = True
-except:
-    pass
-
-if gv_found:
-    # gv needs libag to be initialised before using any read methods,
-    # making a graph here seems to ensure aginit() is called
-    gv.graph(' ')
+# Checking whether these exist and can be used should be done by
+# actions and macros using this library.
+from graphingwiki import gv, igraph
 
 import graph
 

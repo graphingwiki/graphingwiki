@@ -50,9 +50,15 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.request import Clock
 cl = Clock()
 
+from graphingwiki import gv_found, igraph_found, geoip_found, GeoIP
+
 from graphingwiki.graph import Graph
-from graphingwiki.graphrepr import GraphRepr, Graphviz, gv_found, igraph_found, IGraphRepr
-from graphingwiki.util import attachment_file, attachment_url, url_parameters, get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, category_regex, encode_page, make_tooltip, cache_exists, cache_key
+from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
+
+from graphingwiki.util import attachment_file, attachment_url, url_parameters,\
+    get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, \
+    NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, \
+    category_regex, encode_page, make_tooltip, cache_exists, cache_key
 from graphingwiki.editing import ordervalue
 
 import math
@@ -82,6 +88,15 @@ form_end = u"""<div class="showgraph-buttons">\n
   }
 </script>""" % (igraph_found and 
                 '<input type=submit name=overview value="%s">' or '')
+
+graphvizshapes = ["box", "polygon", "circle", "egg", "triangle",
+                  "diamond", "trapezium", "parallelogram",
+                  "house", "pentagon", "hexagon", "septagon",
+                  "octagon", "doublecircle", "doubleoctagon",
+                  "tripleoctagon", "invtriangle", "invtrapezium",
+                  "invhouse", "Mdiamond", "Msquare", "Mcircle",
+                  "rectangle", "note", "tab", "folder",
+                  "box3d", "component"]
 
 def form_optionlist(request, name, data, comparison, 
                     default_args=dict(), radio=False):
@@ -172,7 +187,8 @@ class GraphShower(object):
 
         self.request = request
         self.graphengine = graphengine
-        self.available_formats = ['png', 'svg', 'dot', 'zgr']
+        self.available_formats = ['png', 'svg', 'dot', 'zgr', 'kml']
+        self.nonwrapped_formats = ['dot', 'kml']
         self.format = 'png'
         self.limit = ''
         self.unscale = 0
@@ -195,11 +211,14 @@ class GraphShower(object):
         self.depth = 1
         self.orderby = ''
         self.colorby = ''
+        self.shapeby = ''
 
         self.orderreg = ""
         self.ordersub = ""
         self.colorreg = ""
         self.colorsub = ""
+        self.shapereg = ""
+        self.shapesub = ""
 
         # Lists for the graph layout
         self.nodes_in_edge = set()
@@ -207,6 +226,7 @@ class GraphShower(object):
         self.filteredges = set()
         self.filterorder = set()
         self.filtercolor = set()
+        self.filtershape = set()
         self.filtercats = set()
         self.dir = 'LR'
         self.nostartnodes = 0
@@ -215,6 +235,7 @@ class GraphShower(object):
         # Lists for the filter values for the form
         self.orderfiltervalues = set()
         self.colorfiltervalues = set()
+        self.shapefiltervalues = set()
 
         # What to add to node URL:s in the graph
         if urladd:
@@ -229,6 +250,11 @@ class GraphShower(object):
         # link/node attributes that have been assigned colors
         self.coloredges = set()
         self.colornodes = set()
+
+        # node attributes that have been assigned shapes
+        self.used_shapenodes = dict()
+        # node attribute values that would need shapes
+        self.shapenodes = dict()
 
         # node attributes
         self.nodeattrs = set()
@@ -283,6 +309,26 @@ class GraphShower(object):
         
             return cl  
         return color_func
+
+    def select_shape(self, value):
+        # Try to select a random shape, but the same for the same value
+        seed(value)
+        rand_shape = choice(graphvizshapes)
+
+        chosen = False
+        while not chosen:
+            chosen = True
+
+            # If the shape is chosen for a value, it's ok ..
+            if rand_shape in self.used_shapenodes:
+                # .. unless the shape is spoken for another value
+                if not value == self.used_shapenodes[rand_shape]:
+                    chosen = False
+            else:
+                # If the attr is unallocated, proceed to do so
+                self.used_shapenodes[rand_shape] = value
+
+        return rand_shape
 
     def hashcolor(self, string):
         magicNumber = 17.31337 / 113.0
@@ -359,7 +405,8 @@ class GraphShower(object):
 
         # String arguments, only include non-empty
         for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
-                    'orderreg', 'ordersub', 'colorreg', 'colorsub']:
+                    'orderreg', 'ordersub', 'colorreg', 'colorsub',
+                    'shapeby', 'shapereg', 'shapesub']:
             if request.form.get(arg):
                 setattr(self, arg, ''.join(request.form[arg]))
 
@@ -397,11 +444,20 @@ class GraphShower(object):
                 error = "Erroneus regexp: s/%s/%s/" % (self.colorreg,
                                                        self.colorsub)
 
+        if self.shapesub and self.shapereg:
+            try:
+                self.re_shape = re.compile(self.shapereg)
+            except:
+                error = "Erroneus regexp: s/%s/%s/" % (self.shapereg,
+                                                       self.shapesub)
+
         # Update filters only if needed
         if self.orderby and request.form.has_key('filterorder'):
             self.filterorder.update(request.form['filterorder'])
         if self.colorby and request.form.has_key('filtercolor'):
             self.filtercolor.update(request.form['filtercolor'])
+        if self.shapeby and request.form.has_key('filtershape'):
+            self.filtershape.update(request.form['filtershape'])
 
         # This is the URL addition to the nodes that have graph data
         if not self.urladd:
@@ -647,6 +703,10 @@ class GraphShower(object):
                                 'CELLSPACING="0" CELLBORDER="0"><TR><TD>'+\
                                 '<IMG SRC="%s"/></TD></TR></TABLE>>' % \
                                 (shapefile)
+                        # Present shapefile URL:s in a different way to KML
+                        elif self.format == 'kml':
+                            obj.gwikiimage = attachment_url(self.request, 
+                                                            page, fname)
                         else:
                             obj.gwikiimage = shapefile
 
@@ -780,6 +840,41 @@ class GraphShower(object):
         for obj in nodes:
             getcolors(obj)
             updatecolors(obj)
+
+        return outgraph
+
+    def shape_nodes(self, outgraph):
+        shapeby = self.shapeby
+
+        nodeshapes = dict()
+
+        # If we should shape nodes, gather nodes with attribute from
+        # the form (ie. variable shapeby)
+        def getshapes(obj):
+            rule = getattr(obj, encode_page(shapeby), None)
+            shape = getattr(obj, 'fillshape', None)
+            if rule and not shape:
+                self.shapefiltervalues.update(rule)
+                rule = ', '.join(sorted(rule))
+                re_color = getattr(self, 're_shape', None)
+                # Add to filterordervalues in the nonmodified form
+                if re_color:
+                    rule = re_shape.sub(self.shapesub, rule)
+                self.shapenodes.setdefault(rule, list()).append(obj)
+                nodeshapes[unicode(obj)] = rule
+
+        nodes = filter(lambda x: hasattr(x, encode_page(shapeby)), 
+                       map(outgraph.nodes.get, outgraph.nodes))
+
+        for obj in nodes:
+            getshapes(obj)
+
+        if len(self.shapenodes) <= graphvizshapes:
+            return outgraph
+
+        for key in self.shapenodes.keys():
+            for obj in self.shapenodes[key]:
+                setattr(obj, 'gwikishape', self.select_shape(key))
 
         return outgraph
 
@@ -939,6 +1034,23 @@ class GraphShower(object):
                     per_row = per_row + 1
             prev = cur
 
+        prev = ''
+        per_row = 0
+
+        for nodetype in self.used_shapenodes:
+            cur = 'self.shapenodes: ' + nodetype
+
+            legend.nodes.add(cur, shape=nodetype, 
+                             label=self.used_shapenodes[nodetype])
+
+            if prev:
+                if per_row == 3:
+                    per_row = 0
+                else:
+                    legend.edges.add((prev, cur), style="invis", dir='none')
+                    per_row = per_row + 1
+            prev = cur
+
         return legendgraph
 
     def send_form(self):
@@ -1082,7 +1194,7 @@ class GraphShower(object):
         request.write(u'<div class="showgraph-panel2">\n')
 	# PANEL 2
         request.write(u'<a href="javascript:toggle(\'tab1\')">' +
-                      u'Color & Order</a><br>\n')
+                      u'Color, Order, Shape</a><br>\n')
         request.write(u'<table border="1" id="tab1"><tr>\n')
 
         # colorby
@@ -1117,7 +1229,27 @@ class GraphShower(object):
             # Fill nodes with shapefiles
             form_checkbox(request, 'fillshapes', '1', self.fillshapes, 
                           _('Fill shapefiles?'))
-	
+
+
+        # shapeby
+        request.write(u"<td valign=top>\n")
+	request.write(u"<u>" + _("Shape by:") + u"</u><br>\n")
+        types = set([x for x in self.nodeattrs])
+        if self.shapeby:
+            types.add(self.shapeby)
+
+        types = sortShuffle(types)
+
+        form_optionlist(request, 'shapeby', types, self.shapeby, 
+                        {'': _("no shape")}, True)
+
+        if self.colorby:
+            request.write(u'</select><br>\n<u>' + _('Shape regexp:') + '</u><br>\n')
+                          
+            form_textbox(request, 'shapereg', 10, str(self.shapereg))
+            request.write(u'<u>' + _('substitution:') + '</u><br>\n')
+            form_textbox(request, 'shapesub', 10, str(self.shapesub))
+
         # orderby
         request.write(u"<td valign=top>\n")
 	request.write(u"<u>" + _("Order by:") + u"</u><br>\n")
@@ -1188,6 +1320,19 @@ class GraphShower(object):
 
             form_optionlist(request, 'filtercolor', allcolor, 
                             self.filtercolor, {NO_TYPE: _("No type")})
+
+        # filter nodes (related to colorby)
+        if self.shapeby:
+            request.write(u"<td valign=top>\n<u>" + 
+                          _('Shaped:') + u"</u><br>\n")
+
+            allshape = set(filter(self.oftype_p, self.filtershape))
+            allshape.update(self.shapefiltervalues)
+            allshape = list(allshape)
+            allshape.sort()
+
+            form_optionlist(request, 'filtershape', allshape, 
+                            self.filtershape, {NO_TYPE: _("No type")})
 
 	# filter nodes (related to orderby)
 	if getattr(self, 'orderby', '_hier') != '_hier':
@@ -1351,6 +1496,132 @@ class GraphShower(object):
 
         return mappi
 
+    def make_kml(self, outgraph):
+        from xml.dom.minidom import Document, DocumentType, getDOMImplementation
+        from graphingwiki.util import SPECIAL_ATTRS
+
+        # Some XML output helpers
+        def node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
+            node = doc.createElement(nodename)
+            for key, value in kw.items():
+                node.setAttribute(key, value)
+            parent.appendChild(node)
+
+            if text:
+                text = doc.createTextNode(text)
+                node.appendChild(text)
+            # Does not work, I'm probably not using it correctly
+            elif cdata:
+                text = doc.createCDATASection(text)
+                node.appendChild(text)
+
+            return node
+
+        def get_coords(text):
+            if text is None:
+                return None
+
+            # Do not accept anything impossible
+            if not re.match('^[a-zA-Z0-9.]+$', text):
+                return None
+
+            try:
+                gir = self.GEO_IP.record_by_name(text)
+            except:
+                return None
+
+            if not gir:
+                return None
+
+            return u"%s,%s" % (gir['longitude'], gir['latitude'])
+
+        # You can implement different coordinate formats here
+        COORDINATE_REGEXES = [
+            # long, lat -> to itself
+            ('(-?\d+\.\d+,-?\d+\.\d+)', lambda x: x.group())
+            ]
+        def verify_coordinates(coords):
+            for regex, replacement in COORDINATE_REGEXES:
+                if re.match(regex, coords):
+                    try:
+                        retval = re.sub(regex, replacement, coords)
+                        return retval
+                    except:
+                        pass
+
+        # First, make the header
+        impl = getDOMImplementation()
+        xml = impl.createDocument(None, 'kml', None)
+        top = xml.documentElement
+        top.setAttribute('xmlns', "http://www.opengis.net/kml/2.2")
+
+        doc = node_id_and_text(xml, top, 'Document')
+
+        for node in outgraph.nodes:
+            description = ''
+            image = ''
+            coords = ''
+
+            # Make a 
+            nodeobj = outgraph.nodes.get(node)
+            for i, rest in nodeobj:
+                if not rest:
+                    continue
+                if i in SPECIAL_ATTRS:
+                    # Insert image as URL
+                    if i == 'gwikiimage':
+                        image = '<img src= %s>' % \
+                            (form_escape(self.request.getQualifiedURL(rest)))
+                    # Get any coordinates manually inserted
+                    elif i == 'gwikicoordinates':
+                        coords = verify_coordinates(rest)
+                    continue
+                description += '<dt>%s</dt>' % (form_escape(i))
+
+                for j in rest:
+                    description += '<dd>%s</dd>' % (form_escape(j))
+
+            # If coordinates on page, get them from geoip
+            if not coords:
+                coords = get_coords(node)
+
+            # No coordinates? Do not enter this page to the KML at all
+            if not coords:
+                continue
+
+            place = node_id_and_text(xml, doc, 'Placemark')
+            node_id_and_text(xml, place, 'name', node)
+
+            if description:
+                description = '<dl>%s</dl>' % (description)
+
+            description = image + description
+
+            if description:
+                desc = node_id_and_text(xml, place, 'description')
+                desc.appendChild(xml.createCDATASection(description))
+
+            point = node_id_and_text(xml, place, 'Point')
+            node_id_and_text(xml, point, 'coordinates', coords)
+        
+#        return xml.toxml('utf-8')
+        return xml.toprettyxml(encoding='utf-8', indent='  ')
+
+    def send_kml(self, outgraph):
+        key = self.cache_key + '-kml'
+        
+        if not cache_exists(self.request, key):
+            gvdata = self.make_kml(outgraph)
+
+            cache.put(self.request, key, gvdata, 
+                      content_type="text/vnd.graphviz")
+        else:
+            gvdatafile = cache._get_datafile(self.request, key)
+            gvdata = gvdatafile.read()
+            gvdatafile.close()
+
+        self.request.write(gvdata)
+
     def send_gv(self, gr):
         key = self.cache_key + '-dot'
 
@@ -1388,7 +1659,7 @@ class GraphShower(object):
         self.request.write(gvdata)
                                    
     def send_footer(self, formatter):
-        if self.format != 'dot' or not gv_found:
+        if self.format not in self.nonwrapped_formats or not gv_found:
             # End content
             self.request.write(formatter.endContent()) # end content div
             # Footer
@@ -1404,7 +1675,7 @@ class GraphShower(object):
         if self.inline:
             return request.formatter
 
-        if self.format != 'dot' or not gv_found:
+        if self.format not in self.nonwrapped_formats or not gv_found:
             request.emit_http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
@@ -1429,12 +1700,17 @@ class GraphShower(object):
             formatter = TextFormatter(request)
             formatter.setPage(self.request.page)
 
+# Should this be changed to:
+#                      "text/vnd.graphviz")
+#                      "application/vnd.google-earth.kml+xml"
+
         return formatter
 
     def node_filters(self, obj):
         # Node filters
         for filt, doby in [(self.filterorder, self.orderby),
-                           (self.filtercolor, self.colorby)]:
+                           (self.filtercolor, self.colorby),
+                           (self.filtershape, self.shapeby)]:
 
             # If no filters, continue
             if not doby or not filt:
@@ -1579,6 +1855,23 @@ class GraphShower(object):
 
         error = self.form_args()
 
+        if self.format == 'kml':
+            # Find GeoIP
+            GEO_IP_PATH = getattr(self.request.cfg, 'gwiki_geoip_path', None)
+
+            if not geoip_found:
+                error = _sysmsg % ('error', 
+                                   _("ERROR: GeoIP Python extensions not installed."))
+                self.format = 'error'
+
+            elif not GEO_IP_PATH:
+                error = _sysmsg % ('error', 
+                                   _("ERROR: GeoIP data file not found."))
+                self.format = 'error'
+
+            else:
+                self.GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
+
         formatter = self.send_headers()
 
         if error:
@@ -1604,11 +1897,15 @@ class GraphShower(object):
             len(outgraph.nodes) >= self.overview_threshold):
             self.format = 'igraph'
 
+        # kml generation considered a special case
+        if self.format == 'kml' and not self.help:
+            # Generate cache key
+            self.cache_key = cache_key(self.request, [outgraph])
         # Perform layout if we have a layout engine and can use it for
         # the selected output
-        if (gv_found or 
-            (igraph_found and 
-             (self.format == 'igraph' or self.help == 'test'))):
+        elif (gv_found or 
+              (igraph_found and 
+               (self.format == 'igraph' or self.help == 'test'))):
 
             cl.start('layout')
             if (self.format == 'igraph' or 
@@ -1622,6 +1919,8 @@ class GraphShower(object):
                 # Stylistic stuff: Color nodes, edges, bold startpages
                 if self.colorby:
                     outgraph = self.color_nodes(outgraph)
+                if self.shapeby:
+                    outgraph = self.shape_nodes(outgraph)
                 outgraph = self.color_edges(outgraph)
                 outgraph = self.edge_tooltips(outgraph)
                 outgraph = self.circle_start_nodes(outgraph)
@@ -1650,7 +1949,7 @@ class GraphShower(object):
             cl.stop('layout')
 
         cl.start('format')
-        if not self.format == 'dot' and not self.inline:
+        if self.format not in self.nonwrapped_formats and not self.inline:
             self.send_form()
 
         if self.help == 'inline':
@@ -1662,12 +1961,15 @@ class GraphShower(object):
             self.test_graph(gr, outgraph)
             self.send_graph(gr)
 
+        elif self.format == 'kml' and not self.help:
+            self.send_kml(outgraph)
+
         elif self.format in self.available_formats:
             if not gv_found:
                 self.request.write(formatter.text(_(\
                     "ERROR: Graphviz Python extensions not installed. " +\
                     "Not performing layout.")))
-
+                
             if self.format == 'dot':
                 self.send_gv(gr)
             else:

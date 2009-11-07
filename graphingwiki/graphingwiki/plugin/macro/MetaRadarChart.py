@@ -32,16 +32,11 @@ from copy import copy
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
+from graphingwiki import cairo, cairo_found
+
 from graphingwiki.util import url_construct
 
 Dependencies = ['metadata']
-
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
 
 def radarchart_args(args):
     urlargs = {u'action': [u'metaRadarChart']}

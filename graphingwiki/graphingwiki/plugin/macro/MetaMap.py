@@ -9,24 +9,13 @@
 import os
 import math
 
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
-
-geoip_found = True
-try:
-    import GeoIP
-except ImportError:
-    geoip_found = False
-    pass
-
 from MoinMoin.action import cache
 from MoinMoin.macro.Include import _sysmsg
 
 import graphingwiki
+
+cairo, GeoIP = graphingwiki.cairo, graphingwiki.GeoIP
+cairo_found, geoip_found = graphingwiki.cairo_found, graphingwiki.geoip_found
 
 from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas

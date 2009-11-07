@@ -26,5 +26,5 @@ fi
 d=`mktemp -d /tmp/gwiki-get-tgz.XXXXX`
 trap "echo deleting temp dir >&2; rm -rf -fr $d" 0
 pkgname=graphingwiki-$branch_id-$1
-svn co -r $1 $repobase $d/$pkgname || exit 1
+svn export -r $1 $repobase $d/$pkgname || exit 1
 tar -C $d -czf $pkgname.tgz $pkgname

@@ -36,15 +36,9 @@ from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.util import url_construct
+from graphingwiki import cairo, cairo_found
 
 from MetaRadarChart import radarchart_args
-
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
 
 Dependencies = ['metadata']
 
@@ -114,24 +108,30 @@ def execute(macro, args):
 
         out.write(macro.formatter.table_row(1))
 
+        pages = pagelist[i*amount:(i+1)*amount]
+
         # First enter page names to first row
-        for page in pagelist[i*amount:(i+1)*amount]:
+        for page in pages:
             out.write(macro.formatter.table_cell(1, {'class': 'meta_page'}))
             out.write(macro.formatter.pagelink(1, page))
             out.write(macro.formatter.text(page))
             out.write(macro.formatter.pagelink(0))
             out.write(macro.formatter.linebreak())
+        for i in range(3 - len(pages)):
+            out.write(macro.formatter.table_cell(1))
 
         out.write(macro.formatter.table_row(1))
 
         # Chart images to the other row
-        for page in pagelist[i*amount:(i+1)*amount]:
+        for page in pages:
             req = copy(request)
             req.page = Page(request, page)
             
             out.write(macro.formatter.table_cell(1, {'class': 'meta_radar'}))
             out.write(u'<img src="%s">' % (url_construct(req, url_args)))
             out.write(macro.formatter.linebreak())
+        for i in range(3 - len(pages)):
+            out.write(macro.formatter.table_cell(1))
 
     out.write(macro.formatter.table(0) + u'</div>')
 

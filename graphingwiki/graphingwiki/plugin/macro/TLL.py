@@ -6,18 +6,12 @@
     @copyright: 2009 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
-
 from MoinMoin.action import cache
 
 from graphingwiki.util import encode_page, form_escape, cache_key, cache_exists
 from graphingwiki.plugin.action.metasparkline import \
     draw_path, cairo_not_found, write_surface, plot_error
+from graphingwiki import cairo, cairo_found
 
 LEVELS = {'2': 'SALAINEN',
           '3': 'LUOTTAMUKSELLINEN',

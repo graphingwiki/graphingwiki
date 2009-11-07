@@ -11,10 +11,61 @@ from MoinMoin.wikiutil import importPlugin, PluginMissingError
 from graphingwiki.editing import underlay_to_pages
 from graphingwiki.util import actionname
 
+import sys
 import os
 import re
 import socket
 import xmlrpclib
+
+# Finding dependencies centrally
+
+gv_found = True
+gv = None
+
+# 32bit and 64bit versions
+try:
+    sys.path.append('/usr/lib/graphviz/python')
+    sys.path.append('/usr/local/lib/graphviz/python') # OSX
+    import gv
+except ImportError:
+    sys.path[-1] = '/usr/lib64/graphviz/python'
+    try:
+        import gv
+    except ImportError:
+        gv_found = False
+        pass
+
+igraph_found = True
+igraph = None
+
+try:
+    import igraph
+except:
+    igraph_found = False
+    pass
+
+if gv_found:
+    # gv needs libag to be initialised before using any read methods,
+    # making a graph here seems to ensure aginit() is called
+    gv.graph(' ')
+
+cairo_found = True
+cairo = None
+
+try:
+    import cairo
+except ImportError:
+    cairo_found = False
+    pass
+
+geoip_found = True
+GeoIP = None
+
+try:
+    import GeoIP
+except ImportError:
+    geoip_found = False
+    pass
 
 # HTTP Auth support to wikisync:
 # http://moinmo.in/FeatureRequests/WikiSyncWithHttpAuth

@@ -35,12 +35,7 @@
 import os
 import urllib
 
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
+from graphingwiki import cairo, cairo_found
 
 from tempfile import mkstemp
 
