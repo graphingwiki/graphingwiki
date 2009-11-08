@@ -28,6 +28,7 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
+from graphingwiki import underlay_to_pages
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
@@ -36,21 +37,6 @@ from graphingwiki.util import category_regex, template_regex
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
-
-def underlay_to_pages(req, p):
-    underlaydir = req.cfg.data_underlay_dir
-    pagedir = os.path.join(req.cfg.data_dir, 'pages')
-
-    pagepath = p.getPagePath()
-
-    # If the page has not been created yet, create its directory and
-    # save the stuff there
-    if underlaydir in pagepath:
-        pagepath = pagepath.replace(underlaydir, pagepath)
-        if not os.path.exists(pagepath):
-            os.makedirs(pagepath)
-
-    return pagepath
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -996,6 +982,20 @@ def ordervalue(value):
         except ignoredExceptionTypes:
             pass
     return value
+
+# You can implement different coordinate formats here
+COORDINATE_REGEXES = [
+    # long, lat -> to itself
+    ('(-?\d+\.\d+,-?\d+\.\d+)', lambda x: x.group())
+    ]
+def verify_coordinates(coords):
+    for regex, replacement in COORDINATE_REGEXES:
+        if re.match(regex, coords):
+            try:
+                retval = re.sub(regex, replacement, coords)
+                return retval
+            except:
+                pass
 
 def metatable_parseargs(request, args,
                         get_all_keys=False,

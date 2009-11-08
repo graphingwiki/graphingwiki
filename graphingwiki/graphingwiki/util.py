@@ -38,6 +38,7 @@ import StringIO
 import cgi
 
 from codecs import getencoder
+from xml.dom.minidom import getDOMImplementation
 
 import MoinMoin.version
 
@@ -52,11 +53,74 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
 
+from graphingwiki import geoip_found, GeoIP
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
 
 SEPARATOR = '-gwikiseparator-'
+
+# Some XML output helpers
+def xml_document(top):
+    # First, make the header
+    impl = getDOMImplementation()
+    xml = impl.createDocument(None, top, None)
+    top = xml.documentElement
+
+    return xml, top
+
+def xml_node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
+    node = doc.createElement(nodename)
+    for key, value in kw.items():
+        node.setAttribute(key, value)
+    parent.appendChild(node)
+
+    if text:
+        text = doc.createTextNode(text)
+        node.appendChild(text)
+    # Does not work, I'm probably not using it correctly
+    elif cdata:
+        text = doc.createCDATASection(text)
+        node.appendChild(text)
+
+    return node
+
+# Some GEOIP helpers
+def geoip_init(request):
+    # Find GeoIP
+    GEO_IP_PATH = getattr(request.cfg, 'gwiki_geoip_path', None)
+
+    error = ''
+    GEO_IP = None
+
+    if not geoip_found:
+        error = _("ERROR: GeoIP Python extensions not installed.")
+
+    elif not GEO_IP_PATH:
+        error = _("ERROR: GeoIP data file not found.")
+
+    else:
+        GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
+
+    return GEO_IP, error
+
+def geoip_get_coords(GEO_IP, text):
+    if text is None:
+        return None
+
+    # Do not accept anything impossible
+    if not re.match('^[a-zA-Z0-9.]+$', text):
+        return None
+
+    try:
+        gir = GEO_IP.record_by_name(text)
+    except:
+        return None
+
+    if not gir:
+        return None
+
+    return u"%s,%s" % (gir['longitude'], gir['latitude'])
 
 # Methods related to Moin cache feature
 def latest_edit(request):

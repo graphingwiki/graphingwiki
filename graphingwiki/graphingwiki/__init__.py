@@ -8,9 +8,6 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
 
-from graphingwiki.editing import underlay_to_pages
-from graphingwiki.util import actionname
-
 import sys
 import os
 import re
@@ -177,6 +174,21 @@ def monkey_patch(original, on_success=ignore, always=ignore):
         return result
     return _patched
 
+def underlay_to_pages(req, p):
+    underlaydir = req.cfg.data_underlay_dir
+    pagedir = os.path.join(req.cfg.data_dir, 'pages')
+
+    pagepath = p.getPagePath()
+
+    # If the page has not been created yet, create its directory and
+    # save the stuff there
+    if underlaydir in pagepath:
+        pagepath = pagepath.replace(underlaydir, pagepath)
+        if not os.path.exists(pagepath):
+            os.makedirs(pagepath)
+
+    return pagepath
+
 # FIXME: A ugly, ugly hack to fix ugly hacks suck as copy(request).
 # Should be removed by removing request copying and such.
 
@@ -292,7 +304,7 @@ def attachfile_filelist(self, result, (args, _)):
         return result
 
     form = u'<form method="GET" action="%s">\n' % \
-        actionname(self, self.page.page_name) + \
+        '%s/%s' % (request.getScriptname(), url_escape(pagename)) + \
         u'<input type=hidden name=action value="AttachFile">'
 
     result = form + result

@@ -50,7 +50,7 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.request import Clock
 cl = Clock()
 
-from graphingwiki import gv_found, igraph_found, geoip_found, GeoIP
+from graphingwiki import gv_found, igraph_found
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
@@ -58,8 +58,9 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
 from graphingwiki.util import attachment_file, attachment_url, url_parameters,\
     get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, \
     NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, \
-    category_regex, encode_page, make_tooltip, cache_exists, cache_key
-from graphingwiki.editing import ordervalue
+    category_regex, encode_page, make_tooltip, cache_exists, SPECIAL_ATTRS,\
+    cache_key, xml_document, xml_node_id_and_text, geoip_init, geoip_get_coords
+from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math
 import colorsys
@@ -844,6 +845,7 @@ class GraphShower(object):
         return outgraph
 
     def shape_nodes(self, outgraph):
+        _ = self.request.getText
         shapeby = self.shapeby
 
         nodeshapes = dict()
@@ -869,14 +871,14 @@ class GraphShower(object):
         for obj in nodes:
             getshapes(obj)
 
-        if len(self.shapenodes) <= graphvizshapes:
-            return outgraph
+        if len(self.shapenodes) >= len(graphvizshapes):
+            return outgraph, _('Shape by: Not enough shapes for value set')
 
         for key in self.shapenodes.keys():
             for obj in self.shapenodes[key]:
                 setattr(obj, 'gwikishape', self.select_shape(key))
 
-        return outgraph
+        return outgraph, ''
 
     def color_edges(self, outgraph):
         # Add color to edges with linktype, gather legend data
@@ -1329,7 +1331,7 @@ class GraphShower(object):
             form_optionlist(request, 'filtercolor', allcolor, 
                             self.filtercolor, {NO_TYPE: _("No type")})
 
-        # filter nodes (related to colorby)
+        # filter nodes (related to shapeby)
         if self.shapeby:
             request.write(u"<td valign=top>\n<u>" + 
                           _('Shaped:') + u"</u><br>\n")
@@ -1505,65 +1507,10 @@ class GraphShower(object):
         return mappi
 
     def make_kml(self, outgraph):
-        from xml.dom.minidom import Document, DocumentType, getDOMImplementation
-        from graphingwiki.util import SPECIAL_ATTRS
-
-        # Some XML output helpers
-        def node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
-            node = doc.createElement(nodename)
-            for key, value in kw.items():
-                node.setAttribute(key, value)
-            parent.appendChild(node)
-
-            if text:
-                text = doc.createTextNode(text)
-                node.appendChild(text)
-            # Does not work, I'm probably not using it correctly
-            elif cdata:
-                text = doc.createCDATASection(text)
-                node.appendChild(text)
-
-            return node
-
-        def get_coords(text):
-            if text is None:
-                return None
-
-            # Do not accept anything impossible
-            if not re.match('^[a-zA-Z0-9.]+$', text):
-                return None
-
-            try:
-                gir = self.GEO_IP.record_by_name(text)
-            except:
-                return None
-
-            if not gir:
-                return None
-
-            return u"%s,%s" % (gir['longitude'], gir['latitude'])
-
-        # You can implement different coordinate formats here
-        COORDINATE_REGEXES = [
-            # long, lat -> to itself
-            ('(-?\d+\.\d+,-?\d+\.\d+)', lambda x: x.group())
-            ]
-        def verify_coordinates(coords):
-            for regex, replacement in COORDINATE_REGEXES:
-                if re.match(regex, coords):
-                    try:
-                        retval = re.sub(regex, replacement, coords)
-                        return retval
-                    except:
-                        pass
-
-        # First, make the header
-        impl = getDOMImplementation()
-        xml = impl.createDocument(None, 'kml', None)
-        top = xml.documentElement
+        xml, top = xml_document('kml')
         top.setAttribute('xmlns', "http://www.opengis.net/kml/2.2")
 
-        doc = node_id_and_text(xml, top, 'Document')
+        doc = xml_node_id_and_text(xml, top, 'Document')
 
         for node in outgraph.nodes:
             description = ''
@@ -1591,14 +1538,14 @@ class GraphShower(object):
 
             # If coordinates on page, get them from geoip
             if not coords:
-                coords = get_coords(node)
+                coords = geoip_get_coords(self.GEO_IP, node)
 
             # No coordinates? Do not enter this page to the KML at all
             if not coords:
                 continue
 
-            place = node_id_and_text(xml, doc, 'Placemark')
-            node_id_and_text(xml, place, 'name', node)
+            place = xml_node_id_and_text(xml, doc, 'Placemark')
+            xml_node_id_and_text(xml, place, 'name', node)
 
             if description:
                 description = '<dl>%s</dl>' % (description)
@@ -1606,11 +1553,11 @@ class GraphShower(object):
             description = image + description
 
             if description:
-                desc = node_id_and_text(xml, place, 'description')
+                desc = xml_node_id_and_text(xml, place, 'description')
                 desc.appendChild(xml.createCDATASection(description))
 
-            point = node_id_and_text(xml, place, 'Point')
-            node_id_and_text(xml, point, 'coordinates', coords)
+            point = xml_node_id_and_text(xml, place, 'Point')
+            xml_node_id_and_text(xml, point, 'coordinates', coords)
         
 #        return xml.toxml('utf-8')
         return xml.toprettyxml(encoding='utf-8', indent='  ')
@@ -1862,23 +1809,13 @@ class GraphShower(object):
                 return
 
         error = self.form_args()
+        warnings = list()
 
         if self.format == 'kml':
-            # Find GeoIP
-            GEO_IP_PATH = getattr(self.request.cfg, 'gwiki_geoip_path', None)
-
-            if not geoip_found:
-                error = _sysmsg % ('error', 
-                                   _("ERROR: GeoIP Python extensions not installed."))
+            self.GEO_IP, geo_error = geoip_init(self.request)
+            if geo_error:
+                error += _sysmsg % ('error', geo_error)
                 self.format = 'error'
-
-            elif not GEO_IP_PATH:
-                error = _sysmsg % ('error', 
-                                   _("ERROR: GeoIP data file not found."))
-                self.format = 'error'
-
-            else:
-                self.GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
 
         formatter = self.send_headers()
 
@@ -1928,7 +1865,9 @@ class GraphShower(object):
                 if self.colorby:
                     outgraph = self.color_nodes(outgraph)
                 if self.shapeby:
-                    outgraph = self.shape_nodes(outgraph)
+                    outgraph, warn = self.shape_nodes(outgraph)
+                    if warn:
+                        warnings.append(warn)
                 outgraph = self.color_edges(outgraph)
                 outgraph = self.edge_tooltips(outgraph)
                 outgraph = self.circle_start_nodes(outgraph)
@@ -1958,6 +1897,8 @@ class GraphShower(object):
 
         cl.start('format')
         if self.format not in self.nonwrapped_formats and not self.inline:
+            for reason in warnings:
+                self.request.write(_sysmsg % ('warning', reason))
             self.send_form()
 
         if self.help == 'inline':
