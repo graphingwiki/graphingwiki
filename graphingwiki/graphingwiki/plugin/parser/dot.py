@@ -33,7 +33,8 @@ from base64 import b64encode
 
 from MoinMoin import wikiutil
 
-from graphingwiki.graphrepr import Graphviz, gv_found
+from graphingwiki import gv_found
+from graphingwiki.graphrepr import Graphviz
 
 Dependencies = ['attachments']
 
