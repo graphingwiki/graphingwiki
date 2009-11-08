@@ -166,8 +166,9 @@ def sendmail(request, template, variables, recipient_filter=lambda x: True):
     message = message_from_string(template)
 
     for key, value in DEFAULT_HEADERS.iteritems():
-        if key in message:
-            continue
+        # see __setitem__ in 7.1.1 of the python library docs
+        if message.has_key(key):
+            del message[key]
         message[key] = replace_variables(value, variables)
 
     charset = Charset(ENCODING)
