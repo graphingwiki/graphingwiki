@@ -221,6 +221,7 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     nessus_files=[]
+    failed = []
     url = ''
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
@@ -263,7 +264,7 @@ def main():
         if options.verbose:
             print "NOTE: Importing metas to", url
 
-        importMetas(collab, metas, template, options.verbose)
+        failed = importMetas(collab, metas, template, options.verbose)
 
         if options.verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page

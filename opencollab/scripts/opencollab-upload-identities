@@ -100,6 +100,7 @@ def main():
     parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
+    failed = []
     metas = Metas()
     if options.config:
         iopts = parse_config(options.config, "creds", "identity")
@@ -140,7 +141,13 @@ def main():
         metas.update(get_identities_from_collab(collab, search))
     if options.verbose:
         print "Uploading identities to collab:", url
-    importMetas(collab, metas, template, options.verbose) 
+    failed = importMetas(collab, metas, template, options.verbose) 
+    if failed:
+        for page in failed:
+            if options.verbose:
+                print "ERROR uploading:",  page, repr(collab_metas[page])
+            else:
+                print "ERROR uploading:", page
 
 if __name__ == "__main__":
     try:

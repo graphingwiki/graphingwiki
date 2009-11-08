@@ -89,6 +89,7 @@ def main():
     iopts={}
     collab_metas = Metas()
     hosts = []
+    failed = []
     if options.config:
         iopts = parse_config(options.config, "creds", "mtr")
     if len(args) > 0:
@@ -139,7 +140,16 @@ def main():
            print error
         else:
 	   collab_metas.update(shred_trace(host, trace)) 
-    importMetas(collab, collab_metas, template, options.verbose, replace=False)
+
+    failed = importMetas(collab, collab_metas, template, options.verbose, replace=False)
+
+    if failed:
+        for page in failed:
+            if options.verbose:
+                print "ERROR uploading:",  page, repr(collab_metas[page])
+            else:
+                print "ERROR uploading:", page
+
 if __name__ == "__main__":
     try:
         main()

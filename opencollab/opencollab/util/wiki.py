@@ -5,16 +5,17 @@ from opencollab.wiki import WikiFailure
 from opencollab.meta import Metas
 
 def importMetas(collab, metas, template, verbose, replace=True):
+    failed = []
     for page, pmeta in metas.iteritems():
         try:
             status = collab.setMeta(page, pmeta, template=template, replace=replace)
         except WikiFailure, msg:
-            error = page + " " + repr(msg)
-            error += repr(pmeta)
-            sys.exit(error)
+            print "ERROR:", page, msg
+            failed.append(page)
         else:
             if verbose:
                 print page, status
+    return failed
 
 def getPages(collab, search_string):
     pages = Metas()

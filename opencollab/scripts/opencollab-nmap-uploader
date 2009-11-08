@@ -167,6 +167,7 @@ def main():
     iopts={}
     nmap_files=[]
     url = ''
+    failed = []
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
@@ -213,8 +214,13 @@ def main():
         metas[xml_page]['TYPE'].add('NMAP Run')
         if options.verbose:
             print "NOTE: Importing metas to", url
-        importMetas(collab, metas, template, options.verbose, replace)
-
+        failed = importMetas(collab, metas, template, options.verbose, replace)
+        if failed:
+            for page in failed:
+                if options.verbose:
+                    print "ERROR uploading:",  page, repr(collab_metas[page])
+                else:
+                    print "ERROR uploading:", page
         if options.verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):

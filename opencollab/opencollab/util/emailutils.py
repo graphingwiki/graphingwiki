@@ -103,6 +103,7 @@ def lexifyTokens(metas):
     quotes = re.compile('(^[\"\']|[\"\']$)')
     markup = re.compile('[\#<>\[\]\(\)\{\}]')
     punct = re.compile('[\.,:;]\s?$')
+    rest = re.compile('[\x12]')
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
         for text in metas[cpage]["text"]:
@@ -115,6 +116,7 @@ def lexifyTokens(metas):
                     token = quotes.sub('', token)
                     token = markup.sub('', token)
                     token = punct.sub('', token)
+                    token = rest.sub('', token)
                     token = token.lower()
                     new_metas[cpage]["Lexeme"].add("[[%s]]" % token) 
                     # Scalability issues. :)

@@ -7,7 +7,7 @@
 import optparse
 from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.util.wiki import importMetas
 from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
 
@@ -45,6 +45,7 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     metas = Metas()
+    failed = []
     if options.config:
         iopts = parse_config(options.config, "creds", "spam")
     if options.imaps_server:
@@ -96,10 +97,16 @@ def main():
             del metas[page]['html']
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    importMetas(collab, metas, template, options.verbose)
+    failed = importMetas(collab, metas, template, options.verbose)
+    if options.verbose:
+        for page in failed:
+            print repr(metas[page])
+    else:
+        for page in failed:
+            print page
 
 if __name__ == "__main__":
     try:
-    main()
+        main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."

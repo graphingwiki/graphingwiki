@@ -50,6 +50,7 @@ def main():
     options, args = parser.parse_args()
     url=None
     iopts={}
+    failed = []
     brackets = re.compile('[\[\]]')
     collab_metas = Metas()
     if options.config:
@@ -93,7 +94,13 @@ def main():
         for m in pages[page][meta]:
             m = brackets.sub('', m)
             collab_metas[m]["TYPE"].add(type)
-    importMetas(collab,collab_metas,template,options.verbose,False)
+    failed = importMetas(collab,collab_metas,template,options.verbose,False)
+    if failed:
+        for page in failed:
+            if options.verbose:
+                print "ERROR uploading:",  page, repr(collab_metas[page])
+            else:
+                print "ERROR uploading:", page
 
 if __name__ == "__main__":
     try:
