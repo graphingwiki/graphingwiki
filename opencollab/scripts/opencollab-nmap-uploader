@@ -218,7 +218,7 @@ def main():
         if failed:
             for page in failed:
                 if options.verbose:
-                    print "ERROR uploading:",  page, repr(collab_metas[page])
+                    print "ERROR uploading:",  page, repr(metas[page])
                 else:
                     print "ERROR uploading:", page
         if options.verbose:
