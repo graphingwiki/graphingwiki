@@ -166,9 +166,15 @@ def sendmail(request, template, variables, recipient_filter=lambda x: True):
     message = message_from_string(template)
 
     for key, value in DEFAULT_HEADERS.iteritems():
-        # see __setitem__ in 7.1.1 of the python library docs
-        if message.has_key(key):
+        # Headers must be unicode for encode_address_field. Must both
+        # delete and set, see __setitem__ in 7.1.1 of the Python
+        # library docs
+        if key in message:
+            msgval = message[key]
             del message[key]
+            message[key] = msgval.decode('utf-8')
+            continue
+
         message[key] = replace_variables(value, variables)
 
     charset = Charset(ENCODING)
