@@ -1650,15 +1650,18 @@ class GraphShower(object):
             request.write(formatter.startContent("content"))
             formatter.setPage(self.request.page)
         else:
-            request.emit_http_headers(["Content-type: text/plain;charset=%s" %
-                                       config.charset])
+            if self.format == 'dot':
+                request.emit_http_headers(["Content-type: text/vnd.graphviz;charset=%s" %
+                                           config.charset])
+            elif self.format == 'kml':
+                request.emit_http_headers(["Content-type: application/vnd.google-earth.kml+xml;charset=%s" %
+                                           config.charset])
+            else:
+                request.emit_http_headers(["Content-type: text/plain;charset=%s" %
+                                           config.charset])
             formatter = TextFormatter(request)
             formatter.setPage(self.request.page)
-
-# Should this be changed to:
-#                      "text/vnd.graphviz")
-#                      "application/vnd.google-earth.kml+xml"
-
+ 
         return formatter
 
     def node_filters(self, obj):
