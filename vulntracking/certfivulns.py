@@ -10,7 +10,7 @@ import urllib, re
 from collections import defaultdict
 from osvdb import textify
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
-import scrapegoat
+import scrapeutil
 
 rssurl='''http://www.cert.fi/rss/haavoittuvuudet.xml'''
 
