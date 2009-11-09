@@ -17,13 +17,8 @@ import cPickle as pickle
 from opencollab.util.config import parse_config
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
+from opencollab.util.wiki import importMetas
  
-def import_metas( wiki, metas, template, verbose ):
-    for page, pmeta in metas.iteritems():
-        status = wiki.setMeta( page, pmeta, template=template, replace=True )
-        if verbose:
-            print status
-
 def parse_nvd_data(fname, metas, sw_keywords=''):
     from lxml import objectify
     objectify.enable_recursive_str()
@@ -141,6 +136,7 @@ def main():
     parser.set_usage("%prog [options]")
     options, args = parser.parse_args()
     iopts={}
+    failed = []
     if options.picklefn and os.path.exists(options.picklefn):
         start = time.time()
         page_metas = pickle.load(open(options.picklefn))
@@ -179,7 +175,13 @@ def main():
     if options.url:
         if options.verbose:
             print "Importing metas to", url
-        import_metas(collab, page_metas, template, options.verbose)
+        failed = importMetas(collab, page_metas, template, options.verbose, False)
+        if failed:
+            for page in failed:
+                if options.verbose:
+                    print "ERROR uploading:",  page, repr(page_metas[page])
+                else:
+                    print "ERROR uploading:", page
     else:
         if options.verbose:
             print 'writing metas to', options.picklefn

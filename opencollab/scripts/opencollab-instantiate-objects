@@ -94,11 +94,11 @@ def main():
         for m in pages[page][meta]:
             m = brackets.sub('', m)
             collab_metas[m]["TYPE"].add(type)
-    failed = importMetas(collab,collab_metas,template,options.verbose,False)
+    failed = importMetas(collab, collab_metas, template, options.verbose, False)
     if failed:
         for page in failed:
             if options.verbose:
-                print "ERROR uploading:",  page, repr(collab_metas[page])
+                print "ERROR uploading:", page, repr(collab_metas[page])
             else:
                 print "ERROR uploading:", page
 

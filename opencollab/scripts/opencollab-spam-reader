@@ -97,13 +97,13 @@ def main():
             del metas[page]['html']
     else:
         parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    failed = importMetas(collab, metas, template, options.verbose)
-    if options.verbose:
+    failed = importMetas(collab, metas, template, options.verbose, True)
+    if failed:
         for page in failed:
-            print repr(metas[page])
-    else:
-        for page in failed:
-            print page
+            if options.verbose:
+                print "ERROR uploading:", repr(metas[page])
+            else:
+                print "ERROR uploading:", page
 
 if __name__ == "__main__":
     try:

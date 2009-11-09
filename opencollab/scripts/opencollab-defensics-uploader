@@ -68,7 +68,7 @@ def parse_notes(dir, file='notes.xml'):
         note_metas[kd].add(description)
     return note_metas
 
-def handle_paths(collab,testplan_page,dirs):
+def handle_paths(collab, testplan_page, dirs, verbose):
     at = re.compile('@')
     flist=[]
     page_metas=Meta()
@@ -118,7 +118,9 @@ def handle_paths(collab,testplan_page,dirs):
                         page_metas["Test Plan"].add('[[%s]]' % page)
                 else:
                     page_metas["Test Plan"].add('[[%s]]' % testplan_page)
-            collab.setMeta(testrun_page, page_metas, template=template, replace=True)
+            status = collab.setMeta(testrun_page, page_metas, template=template, replace=True)
+            if verbose:
+                print testrun_page, status
             page_metas=Meta()
             page_metas["category"].add("CategoryTestRun")
 
@@ -245,7 +247,7 @@ def main():
         dirs = set(dlist)
     if(options.verbose):
         print "Handling: ", dirs
-    handle_paths(collab, testplan_page, dirs)
+    handle_paths(collab, testplan_page, dirs, options.verbose)
 
 if __name__ == "__main__":
     try:

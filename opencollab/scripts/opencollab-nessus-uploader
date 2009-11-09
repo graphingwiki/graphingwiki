@@ -265,6 +265,12 @@ def main():
             print "NOTE: Importing metas to", url
 
         failed = importMetas(collab, metas, template, options.verbose)
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:", page, repr(metas[page])
+                else:
+                    print "ERROR uploading:", page
 
         if options.verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page

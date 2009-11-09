@@ -142,7 +142,6 @@ def main():
 	   collab_metas.update(shred_trace(host, trace)) 
 
     failed = importMetas(collab, collab_metas, template, options.verbose, replace=False)
-
     if failed:
         for page in failed:
             if options.verbose:

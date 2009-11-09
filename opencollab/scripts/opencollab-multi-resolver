@@ -14,17 +14,9 @@ from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
+from opencollab.util.wiki import importMetas
 
-def import_identities(collab,collab_metas,template,category,verbose):
-    for page,pmeta in collab_metas.iteritems():
-        if page:
-            if category is not None:
-                pmeta["category"].add(category)
-            status = collab.setMeta(page,pmeta,template=template,replace=False)
-            if verbose:
-                print "Set meta for: " + repr(page) + "with status: " + repr(status)
-
-def shred_triplets(resolved): 
+def shred_triplets(resolved, category): 
     collab_metas = Metas()
     for triplet in resolved:
         if triplet:
@@ -33,6 +25,7 @@ def shred_triplets(resolved):
                 collab_metas[subj][pred].add(obj)
             else:
                 collab_metas[subj][pred].add('[[%s]]' % obj)
+            collab_metas[subj]["category"].add(category)
     return collab_metas
 
 def expand_ipv4(rr,new):
@@ -180,7 +173,7 @@ def main():
     elif options.config and "category" in iopts["multi-resolver"]:
         category=iopts["multi-resolver"]["category"]
     else:
-        category=None
+        category="CategoryIdentity"
     if options.selection:
         selection = options.selection
     elif options.config and "selection" in iopts["multi-resolver"]:
@@ -224,10 +217,16 @@ def main():
             resolved.add(triplet)
     if options.verbose:
         print "Shredding resolved RDF triplets."
-    collab_metas.update(shred_triplets(resolved))
+    collab_metas.update(shred_triplets(resolved, category))
     if options.verbose:
         print "Importing resolved identities to: " + url
-    import_identities(collab,collab_metas,template,category,options.verbose)
+    failed = importMetas(collab, collab_metas, template, options.verbose, True)
+    if failed:
+        for page in failed:
+            if options.verbose:
+                print "ERROR uploading:", page, repr(collab_metas[page])
+            else:
+                print "ERROR uploading:", page
 
 if __name__ == "__main__":
     try:
