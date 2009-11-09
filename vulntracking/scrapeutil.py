@@ -1,6 +1,9 @@
 import urllib, urlparse, urllib2, cookielib
 from BeautifulSoup import BeautifulStoneSoup, BeautifulSoup
+from collections import defaultdict
 import shelve
+import re
+import sys
 
 class Surfer:
     timeout = 30
@@ -30,3 +33,32 @@ class Surfer:
                 self.cache[url] = BeautifulStoneSoup(r, convertEntities="html")
         self.url = url
         return self.cache[url]
+
+class Bleat(Exception):
+    pass
+
+def update_vulns(s, scrapeiter, keyname, cvekey=None):
+    """
+    Update mapping s with (vuln-id, vulndata) pairs from scrapeiter,
+    and make a link keyname: vuln-id on the CVE entry s[vulndata[CVE ID]]
+    """
+    for vid, data in scrapeiter:
+        s[str(vid)] = data
+        if cvekey and cvekey in data:
+            data['CVE ID'] = data[cvekey]
+            del data[cvekey]
+            
+        for cveid in map(str, data.get('CVE ID', [])):
+            if cveid and cveid[0].isdigit():
+                cveid = 'CVE-' + cveid
+
+            if not re.match(r'(CVE|CAN)-\d{4}-\d+', cveid):
+                raise Bleat("malformed cveid %s" % cveid)
+
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d[keyname].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+            
