@@ -78,6 +78,19 @@ def scrape_row(h, s, url):
         else:
             d.append(w)
 
+def update_vulns(s):
+    for vid, data in scrape():
+        s[str(vid)] = data
+        for cveid in map(str, data.get('CVE ID', [])):
+            if not cveid.startswith('CVE'):
+                cveid = 'CVE-' + cveid
+            if cveid not in s:
+                d = defaultdict(list)
+            else:
+                d = s[cveid]
+            d['OSVDB'].append(u"[[" + vid + u"]]")
+            s[cveid] = d
+
 if __name__ == '__main__':
     for z in scrape():
         print repr(z)
