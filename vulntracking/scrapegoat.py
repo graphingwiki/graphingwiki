@@ -2,31 +2,28 @@
 Vulntracking utils
 """
 
-import logging
 import shelve
+import sys
 
 def main():
-    s = shelve.open("vulns.shelve", "c", protocol=2)
+    import nvd, certfivulns, emergingthreats, milw0rm, osvdb, redhat_rhsa
+    scraperlist = [certfivulns, emergingthreats, milw0rm, osvdb, redhat_rhsa]
 
+    vulnshelf = shelve.open("vulns.shelve", "c", protocol=2)
+
+    print 'doing nvd'
     import nvd
-    nvd.parse_nvd_data(open('nvdcve-2.0-2009.xml'), s)
+    nvd.parse_nvd_data(open('nvdcve-2.0-2009.xml'), vulnshelf)
 
-    import certfivulns
-    certfivulns.update_vulns(s)
+    for scraper in scraperlist:
+        print 'doing', scraper,
+        sys.stdout.flush()
+        scraper.update_vulns(vulnshelf)
+        print '- done'
 
-    import emergingthreats
-    emergingthreats.update_vulns(s)
+    vulnshelf.close()
 
-    import metasploitsvn
-    metasploitsvn.update_vulns(s)
 
-    import milw0rm
-    milw0rm.update_vulns(s)
-
-    import osvdb
-    osvdb.update_vulns(s)
-
-    s.close()
 
 if __name__ == "__main__":
     main()
