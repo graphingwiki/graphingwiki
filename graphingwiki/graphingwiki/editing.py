@@ -27,6 +27,7 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import underlay_to_pages
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
@@ -262,8 +263,6 @@ def edit_categories(request, savetext, action, catlist):
     return u"\n".join(lines) + u"\n"
 
 def formatting_rules(request, parser):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
     rules = parser.formatting_rules.replace('\n', '|')
 
     if request.cfg.bang_meta:
@@ -1115,21 +1114,33 @@ def metatable_parseargs(request, args,
                 # cannot be edited, would appear in metatables, which
                 # is not wanted (old-style eg. [[Page| key: Page]])
 
-                # Either the value itself
-                re_val = "^(%s|" % (re.escape(val)) 
+                # Only allow non-matching regexp for values if they
+                # are WikiWords. Eg. 'WikiWord some text' would match
+                # 'WikiWord', emulating ye olde matching behaviour,
+                # but 'nonwikiword some text' would not match
+                # 'nonwikiword'
+                if re.match(Parser.word_rule_js, val):
+                    re_val = "(%s|" % (re.escape(val)) 
+                else:
+                    re_val = "(^%s$|" % (re.escape(val)) 
                 # or as bracketed link
                 re_val += "(?P<sta>\[\[)%s(?(sta)\]\])|" % (re.escape(val)) 
+
                 # or as commented bracketed link
-                re_val += "(?P<stb>\[\[)%s(?(stb)\|[^\]]*\]\]))$" % \
+                re_val += "(?P<stb>\[\[)%s(?(stb)\|[^\]]*\]\]))" % \
                     (re.escape(val)) 
+                
+                limitregexps.setdefault(
+                    key, set()).add(re.compile(re_val, re.UNICODE))
 
             # else strip the //:s
-            elif len(val) > 1:
-                re_val = val[1:-1]
+            else:
+                if len(val) > 1:
+                    val = val[1:-1]
 
-            limitregexps.setdefault(key, set()).add(re.compile(re_val, 
-                                                               re.IGNORECASE 
-                                                               | re.UNICODE))
+                limitregexps.setdefault(
+                    key, set()).add(re.compile(val, 
+                                               re.IGNORECASE | re.UNICODE))
             continue
 
         # order spec
