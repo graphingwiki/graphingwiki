@@ -21,13 +21,18 @@ def imapAuth(imapserver, imapuser, imappass):
         mailbox = imaplib.IMAP4_SSL(imapserver)
     except imaplib.socket.gaierror:
         error = 'ERROR: No address associated with hostname: ' + imapserver
-        sys.exit(error)
+        raise NameError(error)
+    if imapuser is None:
+            username = raw_input("IMAP username: ")
+            imapuser = username.strip()
     if imappass is None:
         imappass = getpass.getpass()
     try:
         mailbox.login(imapuser, imappass)
     except:
         error = 'ERROR: IMAP login failed: authentication failure'
+        raise NameError(error)
+    if imapuser is None:
         sys.exit(error)
     return mailbox
 
@@ -103,7 +108,7 @@ def lexifyTokens(metas):
     quotes = re.compile('(^[\"\']|[\"\']$)')
     markup = re.compile('[\#<>\[\]\(\)\{\}]')
     punct = re.compile('[\.,:;]\s?$')
-    rest = re.compile('[\x12]')
+    rest = re.compile('[\x12\xab\xbb]')
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
         for text in metas[cpage]["text"]:

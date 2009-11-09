@@ -23,6 +23,8 @@ def parseConfig(config, *sections):
 def parseOptions(specparser, inisection):
     cliopts = {}
     globalopts = {}
+    globalopts[inisection] = {}
+    globalopts["creds"] = {}
     genparser = copy.deepcopy(specparser)
     genparser.add_option( "-c", "--config", action="store",
         type="string", dest="config", default=None,
@@ -39,6 +41,10 @@ def parseOptions(specparser, inisection):
     genparser.add_option("-v", "--verbose", action="store_true", 
         dest="verbose", default=False, help="Enable verbose output." )
     clivalues, args = genparser.parse_args()
+    if args:
+        globalopts[inisection]["args"] = args
+    else:
+        globalopts[inisection]["args"] = None
     for k,v in vars(clivalues).iteritems():
         cliopts[k] = v
     if clivalues.config:
@@ -46,10 +52,23 @@ def parseOptions(specparser, inisection):
         for iopt in iniopts:
             globalopts[iopt] = iniopts[iopt]
     for k,v in cliopts.iteritems():
-        if v is not None:
+        try: 
+            opt = globalopts[inisection][k]
+        except KeyError:
             if k == "url":
-                globalopts["creds"][k] = v
+                if v is not None:
+                    globalopts["creds"][k] = v
+                else:
+                    try:
+                        opt = globalopts["creds"][k]
+                    except KeyError:
+                        globalopts["creds"][k] = v
             else: 
                 globalopts[inisection][k] = v
+        else:
+            if v is not None:
+                if k == "url":
+                    globalopts["creds"][k] = v
+                else: 
+                    globalopts[inisection][k] = v
     return globalopts
-

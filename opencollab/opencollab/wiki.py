@@ -347,6 +347,11 @@ class CLIWiki(GraphingWiki):
 
         if creds is not None:
             self.authenticate(*creds)
+        else:
+            username = None
+            password = None
+            creds = username, password
+            self.authenticate(*creds)
 
     def authenticate(self, username=None, password=None):
         if username is None:

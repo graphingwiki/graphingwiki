@@ -27,47 +27,59 @@ def main():
     ops = {}
     sect = "spam"
     ops = parseOptions(parser, sect)
+    url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     if verbose:
         print "Authenticating to collab."
     if ops[sect]["config"] is not None:
-        collab = CLIWiki(config=ops[sect]["config"])
+        collab = CLIWiki(url, config=ops[sect]["config"])
     else:
-        collab = CLIWiki(ops["creds"]["url"])
-    try:
-        server = ops[sect]["imapserver"]
-        user = ops[sect]["imapuser"]
-    except KeyError:
-        parser.error("You need to specify IMAP server address and username. Use -h for help.")
+        collab = CLIWiki(url)
+    server = ops[sect]["imapserver"]
+    if server is None:
+        parser.error("You need to specify an IMAPv4 server address to connect to. Use -h for help.")
+    user = ops[sect]["imapuser"]
     try:
         password = ops[sect]["imappass"]
     except KeyError:
         password = None
     if verbose:
         print "Reading new spam messages from:", server, user, "INBOX"
-    mailbox = imapAuth(server, user, password)
-    if verbose:
-        print "Uploading message files to collab."
+    while True:
+        try:
+            mailbox = imapAuth(server, user, password)
+        except NameError, msg:
+            print msg
+        else:
+            break
     metas.update(getMessagesAndUpload(mailbox, collab))
-    if verbose:
-        print "Parsing meta data from email messages."
-    metas.update(parseMetaData(metas))
-    metas.update(parseHTML(metas))
-    metas.update(lexifyTokens(metas))
-    metas.update(parseURLs(metas))
-    for page in metas:
-        del metas[page]['msg']
-        del metas[page]['text']
-        del metas[page]['html']
-    if verbose:
-        "Importing metas to collab."
-    failed = importMetas(collab, metas, ops[sect]["template"], verbose)
-    if failed:
-        for page in failed:
-            if verbose:
-                print "ERROR uploading:", repr(metas[page])
-            else:
-                print "ERROR uploading:", page
+    if metas: 
+        if verbose:
+            print "Parsing meta data from downloaded email messages."
+        metas.update(parseMetaData(metas))
+        metas.update(parseHTML(metas))
+        metas.update(lexifyTokens(metas))
+        metas.update(parseURLs(metas))
+        for page in metas:
+            del metas[page]['msg']
+            del metas[page]['text']
+            del metas[page]['html']
+        if verbose:
+            print "Importing metas to collab."
+        if ops[sect]["template"] is None:
+            template = "SpamTemplate"
+        else:
+            template = ops["sect"]["template"]
+        failed = importMetas(collab, metas, template, verbose)
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:", repr(metas[page])
+                else:
+                    print "ERROR uploading:", page
+    else:
+        if verbose:
+            print "No new messages to handle."
 
 if __name__ == "__main__":
     try:
