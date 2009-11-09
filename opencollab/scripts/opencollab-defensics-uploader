@@ -14,7 +14,7 @@ import optparse
 from xml.dom import minidom
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Func
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import getPages
 from gzip import GzipFile
@@ -170,7 +170,7 @@ def main():
     testplan_page = None
     options, args = parser.parse_args()
     if options.config:
-        iopts = parse_config(options.config, "creds", "defensics")
+        iopts = parseConfig(options.config, "creds", "defensics")
     if len(args) > 0:
         for arg in args:
             dlist.append(arg)

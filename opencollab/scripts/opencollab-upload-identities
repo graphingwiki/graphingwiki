@@ -16,7 +16,7 @@ import re
 import sys
 import time
 import optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.util.wiki import importMetas
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Metas
@@ -103,7 +103,7 @@ def main():
     failed = []
     metas = Metas()
     if options.config:
-        iopts = parse_config(options.config, "creds", "identity")
+        iopts = parseConfig(options.config, "creds", "identity")
     if options.path:
         path = options.path
     elif options.config and "input-file" in iopts["identity"]:

@@ -5,7 +5,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import re, sys, optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.wiki import importMetas
@@ -54,7 +54,7 @@ def main():
     brackets = re.compile('[\[\]]')
     collab_metas = Metas()
     if options.config:
-        iopts = parse_config(options.config, "creds", "instantiate-objects")
+        iopts = parseConfig(options.config, "creds", "instantiate-objects")
     if options.meta:
         meta = options.meta
     elif options.config and "meta" in iopts["instantiate-objects"]:

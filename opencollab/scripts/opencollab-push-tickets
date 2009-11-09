@@ -14,11 +14,11 @@ import ConfigParser
 import cStringIO
 from optparse import OptionParser
 from roundup import instance
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
-def parse_config( cpath ):
+def parseConfig( cpath ):
     configparser = ConfigParser.ConfigParser()
     configparser.readfp( open(cpath) )
     uris = dict( configparser.items('dbs') )
@@ -183,7 +183,7 @@ def main():
     options, args = parser.parse_args()
     iopts={}
     if options.config:
-        iopts = parse_config(options.config, "creds", "push-tickets")
+        iopts = parseConfig(options.config, "creds", "push-tickets")
     if options.name:
         tracker = options.name
     elif options.config and "name" in iopts["push-tickets"]:

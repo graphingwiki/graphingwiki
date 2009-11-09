@@ -4,103 +4,67 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import optparse
-from opencollab.util.config import parse_config
+import optparse, sys
+from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Metas
 from opencollab.util.wiki import importMetas
-from opencollab.util.emailutils import imapsAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
+from opencollab.util.emailutils import imapAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        metavar="CONFIG",
-        help="CONFIG  file path.")
-    parser.add_option( "-e", "--imaps-user",
-        action="store",
-        type="string", dest="imaps_user",
-        metavar="IMAPS-USERNAME",
-        help="IMAPS-USERNAME.")
-    parser.add_option( "-i", "--imaps-server",
-        action="store",
-        type="string", dest="imaps_server",
-        metavar="IMAPS-SERVER",
-        help="IMAPS-SERVER name or IP address.")
-    parser.add_option( "-t", "--wiki-template",
-        action="store",
-        type="string", dest="wiki_template",
-        metavar="TEMPLATE",
-        help="Wiki TEMPLATE.")
-    parser.add_option( "-u", "--url",
-        action="store",
-        type="string", dest="url",
-        metavar="COLLAB-URL",
-        help="COLLAB-URL to connect to.")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
+    parser.add_option( "-e", "--imap-user",
+        action="store", type="string", 
+        dest="imapuser", default=None,
+        metavar="IMAPS-USERNAME", help="IMAPS-USERNAME.")
+    parser.add_option( "-i", "--imap-server",
+        action="store", type="string", 
+        dest="imapserver", default=None,
+        metavar="IMAPS-SERVER", help="IMAPS-SERVER name or IP address.")
     parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    iopts={}
     metas = Metas()
     failed = []
-    if options.config:
-        iopts = parse_config(options.config, "creds", "spam")
-    if options.imaps_server:
-        imaps_server = options.imaps_server
-    elif options.config and "imaps-server" in iopts["spam"]:
-        imaps_server = iopts["spam"]["imaps-server"]
+    ops = {}
+    sect = "spam"
+    ops = parseOptions(parser, sect)
+    verbose = ops[sect]["verbose"]
+    if verbose:
+        print "Authenticating to collab."
+    if ops[sect]["config"] is not None:
+        collab = CLIWiki(ops["creds"]["url"], config=ops[sect]["config"])
     else:
-        imaps_server = None
-    if options.imaps_user:
-        imaps_user = options.imaps_user
-    elif options.config and "imaps-user" in iopts["spam"]:
-        imaps_user = iopts["spam"]["imaps-user"]
-    else:
-        imaps_user = None
-    if options.config and "imaps-pass" in iopts["spam"]:
-        imaps_pass = iopts["spam"]["imaps-pass"]
-    else:
-        imaps_pass = None
-    if options.wiki_template:
-        template = options.wiki_template
-    elif options.config and "wiki-template" in iopts["spam"]:
-        template = iopts["spam"]["wiki-template"]
-    else:
-        template = "SpamTemplate"
-    if options.verbose:
-        print "Getting collab credentials."
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-    if imaps_server is not None and imaps_user is not None:
-        if options.verbose:
-            print "Reading new spam messages from:", imaps_server, imaps_user, "INBOX"
-        mailbox = imapsAuth(imaps_server, imaps_user, imaps_pass)
-        if options.verbose:
-            print "Uploading message files to collab."
-        metas.update(getMessagesAndUpload(mailbox, collab))
-        metas.update(parseMetaData(metas))
-        metas.update(parseHTML(metas))
-        metas.update(lexifyTokens(metas))
-        metas.update(parseURLs(metas))
-        for page in metas:
-            del metas[page]['msg']
-            del metas[page]['text']
-            del metas[page]['html']
-    else:
-        parser.error("You need to specify IMAPS-SERVER and IMAPS-USER.")
-    failed = importMetas(collab, metas, template, options.verbose, True)
+        collab = CLIWiki(ops["creds"]["url"])
+    try:
+        server = ops[sect]["imapserver"]
+        user = ops[sect]["imapuser"]
+    except KeyError:
+        parser.error("You need to specify IMAP server address and username. Use -h for help.")
+    try:
+        password = ops[sect]["imappass"]
+    except KeyError:
+        password = None
+    if verbose:
+        print "Reading new spam messages from:", server, user, "INBOX"
+    mailbox = imapAuth(server, user, password)
+    if verbose:
+        print "Uploading message files to collab."
+    metas.update(getMessagesAndUpload(mailbox, collab))
+    if verbose:
+        print "Parsing meta data from email messages."
+    metas.update(parseMetaData(metas))
+    metas.update(parseHTML(metas))
+    metas.update(lexifyTokens(metas))
+    metas.update(parseURLs(metas))
+    for page in metas:
+        del metas[page]['msg']
+        del metas[page]['text']
+        del metas[page]['html']
+    if verbose:
+        "Importing metas to collab."
+    failed = importMetas(collab, metas, ops[sect]["template"], verbose)
     if failed:
         for page in failed:
-            if options.verbose:
+            if verbose:
                 print "ERROR uploading:", repr(metas[page])
             else:
                 print "ERROR uploading:", page

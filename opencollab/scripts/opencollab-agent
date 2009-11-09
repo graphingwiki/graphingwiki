@@ -14,7 +14,7 @@ import pickle
 import random
 import select
 import optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -193,7 +193,7 @@ def main():
     options, args = parser.parse_args()
     iopts = {}
     if options.config:
-        iopts = parse_config(options.config, "creds", "agent")
+        iopts = parseConfig(options.config, "creds", "agent")
     if options.name:
         name = options.name
     elif options.config and "name" in iopts["agent"]:

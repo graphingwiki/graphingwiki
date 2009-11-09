@@ -6,7 +6,7 @@ import optparse
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Func
 
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 
 
 def dfinfo(info):
@@ -118,7 +118,7 @@ def main():
     parser.set_usage("%prog [options] <my hostname>")
 
     if options.config:
-        iopts = parse_config(options.config, "creds", "opencollab-host-agent")
+        iopts = parseConfig(options.config, "creds", "opencollab-host-agent")
 
   
     if options.url:

@@ -11,7 +11,7 @@ import subprocess
 from subprocess import Popen
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.util.wiki import importMetas
 
 def mod_hop(hop):
@@ -91,7 +91,7 @@ def main():
     hosts = []
     failed = []
     if options.config:
-        iopts = parse_config(options.config, "creds", "mtr")
+        iopts = parseConfig(options.config, "creds", "mtr")
     if len(args) > 0:
         for arg in args:
             hosts.append(arg)

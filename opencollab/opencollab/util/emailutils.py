@@ -16,16 +16,16 @@ except:
     import email.Utils
     from email.Utils import getaddresses
 
-def imapsAuth(imaps_server, imaps_user, imaps_pass):
+def imapAuth(imapserver, imapuser, imappass):
     try:
-        mailbox = imaplib.IMAP4_SSL(imaps_server)
+        mailbox = imaplib.IMAP4_SSL(imapserver)
     except imaplib.socket.gaierror:
-        error = 'ERROR: No address associated with hostname: ' + imaps_server
+        error = 'ERROR: No address associated with hostname: ' + imapserver
         sys.exit(error)
-    if imaps_pass is None:
-        imaps_pass = getpass.getpass()
+    if imappass is None:
+        imappass = getpass.getpass()
     try:
-        mailbox.login(imaps_user, imaps_pass)
+        mailbox.login(imapuser, imappass)
     except:
         error = 'ERROR: IMAP login failed: authentication failure'
         sys.exit(error)

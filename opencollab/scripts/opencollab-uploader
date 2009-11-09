@@ -6,7 +6,7 @@
 """
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 import os
 import sys
 import optparse
@@ -50,7 +50,7 @@ def main():
     iopts={}
     ilist=[]
     if options.config:
-        iopts = parse_config(options.config, "creds", "uploader")
+        iopts = parseConfig(options.config, "creds", "uploader")
     if len(args) > 0:
         for arg in args:
             ilist.append(arg)

@@ -9,7 +9,7 @@ import sys
 import re
 import smtplib
 import optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -121,7 +121,7 @@ def main():
     if args:
         url = args[0]
     if options.config:
-        iopts = parse_config(options.config, "creds", "notifier")
+        iopts = parseConfig(options.config, "creds", "notifier")
     if options.sender:
         sender = options.sender
     elif options.config and "sender" in iopts["notifier"]:

@@ -20,7 +20,7 @@ import xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
 
@@ -200,7 +200,7 @@ def main():
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if options.config:
-        iopts = parse_config(options.config, "creds", "ettercap")
+        iopts = parseConfig(options.config, "creds", "ettercap")
     if options.template:
         template = options.template
     elif options.config and "template" in iopts["ettercap"]:

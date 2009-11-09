@@ -14,7 +14,7 @@ import time
 import optparse
 import collections
 import cPickle as pickle
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
 from opencollab.util.wiki import importMetas
@@ -146,7 +146,7 @@ def main():
         page_metas = Metas()
 
     if options.config:
-        iopts = parse_config(options.config, "creds", "import-nvd-xml")
+        iopts = parseConfig(options.config, "creds", "import-nvd-xml")
     if options.path:
         path = options.path
     elif options.config and "path" in iopts["import-nvd-xml"]:

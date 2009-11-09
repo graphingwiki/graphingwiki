@@ -9,7 +9,7 @@ import sys
 import re
 import glob
 import optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta
 
@@ -169,7 +169,7 @@ def main():
     iopts={}
     arena_dirs=[]
     if options.config:
-        iopts = parse_config(options.config, "creds", "arena")
+        iopts = parseConfig(options.config, "creds", "arena")
     if options.arena_dir_glob:
         arena_dir_glob=options.arena_dir_glob
     elif options.config and "arena-dir-glob" in iopts["arena"]:

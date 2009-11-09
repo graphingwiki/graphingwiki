@@ -9,7 +9,7 @@ import socket
 import optparse
 import subprocess
 from subprocess import Popen
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Metas, Meta, Func
 from opencollab.util.network import dns_blacklist, mr_attributes
@@ -147,7 +147,7 @@ def main():
     collab_metas = Metas()
     types = set(("NAME", "IPv4", "AS"))
     if options.config:
-        iopts = parse_config(options.config, "creds", "multi-resolver")
+        iopts = parseConfig(options.config, "creds", "multi-resolver")
     if options.mresolve_path:
         mresolve_path=options.mresolve_path
     elif options.config and "mresolve_path" in iopts["multi-resolver"]:

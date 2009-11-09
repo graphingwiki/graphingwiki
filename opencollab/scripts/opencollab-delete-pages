@@ -8,7 +8,7 @@
 
 import os,sys,re,optparse
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from urllib import quote
 
 def main():
@@ -37,7 +37,7 @@ def main():
     iopts = {}
     columns = re.compile('\|\|.*\|\|')
     if options.config:
-        iopts = parse_config(options.config, "creds", "delete")
+        iopts = parseConfig(options.config, "creds", "delete")
     if options.search_string:
         search_string = options.search_string
     elif options.config and "search-string" in iopts["delete"]:

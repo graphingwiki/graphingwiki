@@ -15,7 +15,7 @@ import md5
 import EXIF
 import optparse
 from PIL import Image
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
 
@@ -150,7 +150,7 @@ def main():
     iopts={}
     flist = []
     if options.config:
-        iopts = parse_config(options.config, "creds", "gallery")
+        iopts = parseConfig(options.config, "creds", "gallery")
     if options.image_directory:
         path = options.image_directory
     elif options.config and "path" in iopts["gallery"]:

@@ -15,7 +15,7 @@ import sys
 import os
 import csv
 import optparse
-from opencollab.util.config import parse_config
+from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
 from opencollab.util.regexp import dig_soaref_re, utctimestamp
@@ -194,7 +194,7 @@ def main():
     iopts={}
     metas = Metas()
     if options.config:
-        iopts = parse_config(options.config, "creds", "import-mresolved")
+        iopts = parseConfig(options.config, "creds", "import-mresolved")
     if options.path:
         path = options.path
     elif options.config and "path" in iopts["import-mresolved"]:
