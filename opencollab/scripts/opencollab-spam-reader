@@ -31,7 +31,7 @@ def main():
     if verbose:
         print "Authenticating to collab."
     if ops[sect]["config"] is not None:
-        collab = CLIWiki(ops["creds"]["url"], config=ops[sect]["config"])
+        collab = CLIWiki(config=ops[sect]["config"])
     else:
         collab = CLIWiki(ops["creds"]["url"])
     try:

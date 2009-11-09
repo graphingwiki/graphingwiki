@@ -324,10 +324,11 @@ class CLIWiki(GraphingWiki):
             configparser = ConfigParser.ConfigParser()
 
             if configparser.read(config):
-                try:
-                    url = configparser.get(configSection, "url")
-                except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                    pass
+                if url is not None:
+                    try:
+                        url = configparser.get(configSection, "url")
+                    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+                        pass
 
                 username = None
                 password = None
