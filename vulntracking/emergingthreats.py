@@ -10,6 +10,7 @@
 import urllib, re, socket
 
 from collections import defaultdict
+import scrapeutil
 
 emerging_url = 'http://www.emergingthreats.net/rules/emerging-all.rules'
 def fix_refs(refs): 
@@ -17,7 +18,7 @@ def fix_refs(refs):
         if refk == 'url': 
             yield 'URL', 'http://%s' % refv
         elif refk == 'cve': 
-            yield 'CVE', 'CVE-%s' % refv
+            yield 'CVE', str(refv)
         elif refk == 'bugtraq': 
             yield 'Bugtraq ID', refv
 
@@ -48,26 +49,18 @@ def scrape():
             zdict = defaultdict(list)
             zdict['feedtype'].append('defense')
             for refk, refv in refs:
-                zdict[refk].append(refv)
+                zdict[refk].append(unicode(refv))
             for x in classtypes:
-                zdict['EmergingThreats-classtype'].append(x)
+                zdict['EmergingThreats-classtype'].append(unicode(x))
             if proto:
-                zdict['EmergingThreats-target'].append("%s:%s" % (proto.upper(), port))
+                zdict['EmergingThreats-target'].append(u"%s:%s" % (proto.upper(), port))
             if (msg.startswith('ET EXPLOIT') or
                 'CVE' in zdict):
                 yield u'EmergingThreats ' + unicode(msg, 'latin-1'), zdict
 
 def update_vulns(s):
-    for vid, data in scrape():
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE', [])):
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['EmergingThreats'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
-
+    scrapeutil.update_vulns(s, scrape(),
+                            keyname="EmergingThreats", cvekey="CVE")
 
 if __name__ == '__main__':
     for z in scrape():

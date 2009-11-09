@@ -12,6 +12,8 @@ from critismunge import format_time
 import urllib, re, urlparse, time
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
+import scrapeutil
+
 remoteurl='''http://www.milw0rm.com/remote.php'''
 localurl='''http://www.milw0rm.com/local.php'''
 
@@ -43,17 +45,8 @@ def scrape_mw(scrapeurl):
 
 def update_vulns(s):
     from itertools import chain
-    for vid, data in chain(scrape_mw(remoteurl),
-                           scrape_mw(remoteurl + '?start=30')):
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE', [])):
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['Milw0rm'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
-            
+    z = chain(scrape_mw(remoteurl), scrape_mw(remoteurl + '?start=30'))
+    scrapeutil.update_vulns(s, z, 'Milw0rm', cvekey='CVE')
 
 if __name__ == '__main__':
 #     scrape_mw(localurl)

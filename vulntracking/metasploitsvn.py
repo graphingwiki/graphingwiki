@@ -8,6 +8,7 @@
 """
 import os, errno, re, subprocess
 from collections import defaultdict
+import scrapeutil
 
 exploits_svn_url = 'http://metasploit.com/svn/framework3/trunk/modules/exploits'
 
@@ -63,17 +64,7 @@ def findcve(rbfile):
         return None
 
 def update_vulns(s):
-    for vid, data in scrape():
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE', [])):
-            cveid = 'CVE-' + cveid
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['Metasploit'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
-
+    scrapeutil.update_vulns(s, scrape(), 'Metasploit', cvekey='CVE')
 
 if __name__ == '__main__':
     for z in scrape():

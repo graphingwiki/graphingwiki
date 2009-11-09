@@ -15,7 +15,7 @@ import scrapeutil
 rssurl='''http://www.cert.fi/rss/haavoittuvuudet.xml'''
 
 def scrape_rss():
-    surfer = scrapegoat.Surfer()
+    surfer = scrapeutil.Surfer()
     for link in surfer.gourl(rssurl).findAll("link"):
         if link.contents[0].startswith('http://www.cert.fi/haavoittuvuudet'):
             yield scrape_one_vuln(surfer.gourl(link.contents[0]), link.contents[0])
@@ -27,7 +27,7 @@ def scrape_one_vuln(soup, url):
     
     vulnid = re.findall(r'(\d+/\d+)', x.string)[0]
     zdict = defaultdict(list)
-    zdict["url"].append(url)
+    zdict["url"].append(unicode(url))
     for tr in soup.find("table", "userdefinedTable").findAll("tr"):
         try:
             za, zb, zc=tr.findAll('td')
@@ -35,7 +35,7 @@ def scrape_one_vuln(soup, url):
             continue
         k = textify(za)[0].rstrip(':')
         for s in textify(zb):
-            zdict[k].append(s.lstrip(u'- '))
+            zdict[k].append(unicode(s.lstrip(u'- ')))
     zdict['CVE ID'] += list(set(
             map(lambda x: unicode(x),
                 soup.findAll('a', text=re.compile(r'^CVE-')))))
@@ -43,16 +43,7 @@ def scrape_one_vuln(soup, url):
     return u'CERT-FI ' + vulnid, zdict
 
 def update_vulns(s):
-    for vid, data in scrape_rss():
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE ID', [])):
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['CERT-FI'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
-            
+    return scrapeutil.update_vulns(s, scrape_rss(), 'CERT-FI')
             
 if __name__ == '__main__':
     for z in scrape_rss():

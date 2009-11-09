@@ -14,6 +14,7 @@ import urllib, urlparse, os, re
 import cPickle as pickle
 from pprint import pprint
 import collections
+import scrapeutil
 
 def adv_id_to_url(adv_id):
     return "http://rhn.redhat.com/errata/%s.html" % adv_id.replace(':', '-')
@@ -91,15 +92,8 @@ def scrapeit(save=False, cachedir="./rhsa_cache"):
         f.close()
 
 def update_vulns(s):
-    for vid, data in scrapeit(True):
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE ID', [])):
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['RHSA'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
+    return scrapeutil.update_vulns(s, scrapeit(True), 'RHSA')
+            
 
 if __name__ == '__main__':
     from pprint import pprint

@@ -10,6 +10,7 @@
 import urllib, urlparse, re
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
+import scrapeutil
 
 indexurl='http://osvdb.org/browse/by_reference_type/CVEID'
 #indexurl='file:///tmp/osv_l.html'
@@ -79,17 +80,7 @@ def scrape_row(h, s, url):
             d.append(w)
 
 def update_vulns(s):
-    for vid, data in scrape():
-        s[str(vid)] = data
-        for cveid in map(str, data.get('CVE ID', [])):
-            if not cveid.startswith('CVE'):
-                cveid = 'CVE-' + cveid
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            d['OSVDB'].append(u"[[" + vid + u"]]")
-            s[cveid] = d
+    return scrapeutil.update_vulns(s, scrape(), 'OSVDB')
 
 if __name__ == '__main__':
     for z in scrape():
