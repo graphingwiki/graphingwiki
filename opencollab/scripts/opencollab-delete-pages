@@ -33,6 +33,13 @@ def main():
         dest="url",
         metavar="COLLAB-URL",
         help="COLLAB-URL to connect to.")
+
+    parser.add_option("-U", "--username",
+        action="store", type="string",
+        dest="username",
+        metavar="USERNAME",
+        help="USERNAME to authenticate as.")
+
     options, args = parser.parse_args()
     iopts = {}
     columns = re.compile('\|\|.*\|\|')
@@ -52,6 +59,10 @@ def main():
         collab = CLIWiki(url, config=options.config)
     else:
         parser.error("Collab needs to be specified. Use -h for help.")
+
+    if options.username:
+        collab.authenticate(username=options.username)
+
     if not columns.findall(search_string):
         search_string += ",||||"
     metas = collab.getMeta(search_string)
