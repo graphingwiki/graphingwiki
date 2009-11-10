@@ -5,20 +5,17 @@
 """
 import sys, copy, optparse, ConfigParser
 
-def parseConfig(config, *sections):
-    iopts={}
+def parseConfig(config):
+    iniopts={}
     configparser = ConfigParser.ConfigParser()
     try:
         configparser.readfp(open(config))
     except IOError:
-        error = "Configuration file: \"" + config + "\" doesn't exist."
-        sys.exit(error)
+        error = "ERROR: Cannot read: " + config
+        raise IOError(error)
     for section in configparser.sections():
-        iopts[section] = dict(configparser.items(section))
-    for section in sections:
-        if section not in iopts:
-            iopts[section] = section
-    return iopts
+        iniopts[section] = dict(configparser.items(section))
+    return iniopts
 
 def parseOptions(specparser, inisection, config=True, category=False, template=False):
     cliopts = {}
@@ -33,7 +30,7 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
     if category:
         genparser.add_option( "-g", "--category", action="store",
             type="string", dest="category", default=None,
-            metavar="CONFIG", help="CONFIG file path.")
+            metavar="CATEGORY", help="CATEGORY.")
     if template:
         genparser.add_option( "-t", "--template", action="store", 
             type="string", dest="template", default=None,
@@ -43,26 +40,35 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
         metavar="COLLABURL", help="COLLABURL to connect to.")
     genparser.add_option("-v", "--verbose", action="store_true", 
         dest="verbose", default=False, help="Enable verbose output." )
-    genparser.set_usage("%prog [options]")
+    genparser.set_usage("%prog [options] [args]")
     clivalues, args = genparser.parse_args()
     # Parse arguments
     if args:
         globalopts[inisection]["args"] = args
     else:
-        globalopts[inisection]["args"] = None
+        globalopts[inisection]["args"] = []
     # Parse CLI options
     for k,v in vars(clivalues).iteritems():
         cliopts[k] = v
     # Parse config
     if config and clivalues.config:
-        iniopts = parseConfig(clivalues.config, "creds", inisection)
-        for iopt in iniopts:
-            globalopts[iopt] = iniopts[iopt]
-    try: 
-        globalopts["creds"]["url"] = cliopts.get("url")
-    except (AttributeError, KeyError):
         try:
-            globalopts["creds"]["url"]
+            iniopts = parseConfig(clivalues.config)
+        except IOError, msg:
+            print msg
+        else:
+            for sect in iniopts:
+                if sect == "creds" or sect == inisection:
+                    for k,v in iniopts[sect].iteritems():
+                        if k == "url" and cliopts.get("url") is not None:
+                            globalopts[sect][k] = cliopts.get("url")
+                        else:
+                            globalopts[sect][k] = v
+    try:
+        url = globalopts["creds"]["url"]
+    except KeyError:
+        try:
+            globalopts["creds"]["url"] = cliopts.get("url")
         except KeyError:
             globalopts["creds"]["url"] = None
     # Iterate CLI options

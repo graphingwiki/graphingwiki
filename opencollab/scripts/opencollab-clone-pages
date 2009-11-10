@@ -4,55 +4,69 @@
     @copyright: 2008 by Jani Kenttälä
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-import opencollab.wiki
-
-import os
-import sys
-import optparse
-import locale
-
-import md5
-
+import os, sys, optparse, locale, md5
 from urllib import quote
 from urllib import unquote
+import opencollab.wiki
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
 
 def main():
     usage = "usage: %prog [options] srcwiki dstwiki metatable-expression"
-
     parser = optparse.OptionParser(usage=usage)
-
     parser.add_option("-n", "--dry-run",
                       dest="dryrun",
                       action="store_true",
                       default=False,
                       help="show what would have been cloned")
-
     parser.add_option("-m", "--move",
                       dest="move",
                       action="store_true",
                       default=False,
                       help="move (delete source page)")
-
     parser.add_option("-o", "--output",
                       dest="output",
                       default=None,
                       metavar="OUTPUT",
                       help="save the file to name OUTPUT in the wiki")
-    
-    options, args = parser.parse_args()
-    if len(args) != 3:
-        parser.error("wiki src url, wiki dst url and pagename have to be defined")
-
-    if options.output is None:
+    ops = {}
+    sect = "clone"
+    ops = parseOptions(parser, sect, config=False, template=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    if len(ops[sect]["args"]) != 3:
+        parser.error("Collab src URL, collab dst URL and page name have to be defined")
+    if ops[sect]["output"] is None:
         basePath = os.getcwd()
     else:
-        basePath = options.output
-        
-    url_src, url_dst, searchstring  = args
+        basePath = ops[sect]["output"]
+    args = ops[sect]["args"]
+    searchstring = args.pop()
+    url = args[0]
+    ops["creds"]["url"] = url
+    print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            src_collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
 
-    wiki_src = opencollab.wiki.CLIWiki(url_src)
-    wiki_dst = opencollab.wiki.CLIWiki(url_dst)
+    url = args[1]
+    ops["creds"]["url"] = url
+    print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            dst_collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
 
     try:
         searchstring = unicode(searchstring, locale.getpreferredencoding())
@@ -60,34 +74,34 @@ def main():
         sys.stdout.write("Could not understand system default encoding")
         sys.exit(1)
 
-    metas = wiki_src.getMeta(searchstring)
+    metas = src_collab.getMeta(searchstring)
 
     for page, v in metas.iteritems():
         content = ""
         sys.stdout.write("%r;" % (page))
-        if not options.dryrun:
+        if not ops[sect]["dryrun"]:
             try:
-                content = wiki_src.getPage(page)
+                content = src_collab.getPage(page)
                 sys.stdout.write("[getPage:ok];")
             except opencollab.wiki.WikiFailure, (strerror):
                 sys.stdout.write("[getPage:failed] %s;" % (strerror))
                 continue
 
-            attachments = wiki_src.listAttachments(page)
+            attachments = src_collab.listAttachments(page)
             for num, attachment in enumerate(attachments):
-                downloadFile(wiki_src, page,attachment, basePath , num+1, len(attachments))
+                downloadFile(src_collab, page,attachment, basePath , num+1, len(attachments))
             try:
-                wiki_dst.putPage(page,content)
+                dst_collab.putPage(page,content)
                 sys.stdout.write("[putPage:ok];")
             except opencollab.wiki.WikiFailure, (strerror):
                 sys.stdout.write( "[putPage:failed]: %s;" % (strerror))
                 continue
             for num, wikiname in enumerate(attachments):
-                uploadFile(wiki_dst, page, wikiname, os.path.join(page,wikiname))
+                uploadFile(dst_collab, page, wikiname, os.path.join(page,wikiname))
                 
-            if options.move:
+            if ops[sect]["move"]:
                 try:
-                    wiki_src.deletePage(page)
+                    src_collab.deletePage(page)
                     sys.stdout.write("[deletePage:ok];")
                 except opencollab.wiki.WikiFailure, (strerror):
                     sys.stdout.write("[deletePage:failed]: %s;" % (strerror))

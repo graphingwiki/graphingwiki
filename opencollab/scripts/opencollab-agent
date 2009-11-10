@@ -5,18 +5,11 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
-import os
-import sys
-import time
-import socket
-import signal
-import pickle
-import random
-import select
+import os, sys, time, socket, signal, pickle, random, select
 import optparse
-from opencollab.util.config import parseConfig
-from opencollab.meta import Meta
 from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Meta
+from opencollab.util.config import parseOptions
 
 def processIsAlive(processId):
     try:
@@ -177,41 +170,32 @@ def runOneTask(agentId, wiki, interval=60.0, dieAfter=10*60.0):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      metavar="CONFIG",
-                      help="CONFIG file path.")
     parser.add_option("-n", "--name",
                       dest="name",
                       default=None,
                       metavar="NAME",
                       help="force the agent's name to NAME")
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      metavar="COLLAB-URL",
-                      help="COLAB-URL to connect to.")
-    options, args = parser.parse_args()
-    iopts = {}
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "agent")
-    if options.name:
-        name = options.name
-    elif options.config and "name" in iopts["agent"]:
-        name = iopts["agent"]["name"]
+    ops = {}
+    sect = "agent"
+    ops = parseOptions(parser, sect)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    if ops[sect]["name"] is not None:
+        name = ops[sect]["name"]
     else:
         name = socket.gethostbyname(socket.gethostname())
         name += "-%d" % random.randint(0, 2**32)
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-
-    print "Getting tasks from %s as agent %s" % (url, name)
-
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
+        print "Getting tasks from %s as agent %s" % (url, name)
     while True:
         runOneTask(name, collab)
 

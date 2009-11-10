@@ -4,14 +4,11 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re
-import socket
-import optparse
-import subprocess
+import re, socket, optparse, subprocess
 from subprocess import Popen
-from opencollab.wiki import CLIWiki
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Metas, Meta, Func
-from opencollab.util.config import parseConfig
+from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
 
 def mod_hop(hop):
@@ -49,103 +46,60 @@ def run_trace(host, mtr, count):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        metavar="CONFIG",
-        help="CONFIG file path.")
     parser.add_option("-m", "--mtr-path",
-                      dest="mtr_path",
-                      default=None,
-                      metavar="MTR-PATH",
-                      help=("MTR-PATH. defaults to /usr/bin/mtr."))
+        dest="mtrpath", default=None, metavar="MTR-PATH",
+        help=("MTR-PATH. defaults to /usr/bin/mtr."))
     parser.add_option("-n", "--number-of-cycles",
-                      dest="count",
-                      default=None,
-                      metavar="COUNT",
-                      help=("COUNT of seconds to run the trace. Defaults to 10 seconds per host."))
-    parser.add_option("-t", "--template",
-                      dest="template",
-                      default=None,
-                      metavar="TEMPLATE",
-                      help=("Optional TEMPLATE to use. Defaults to IdentityTemplate."))
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      default=None,
-                      metavar="COLLAB-URL",
-                      help=("COLLAB-URL to connect to."))
-    parser.add_option("-w", "--wiki-category",
-                      dest="category",
-                      default=None,
-                      metavar="CATEGORY",
-                      help=("Optional CATEGORY to use, e.g. CategoryIdentity"))
-    parser.add_option("-v", "--verbose",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
+        dest="count", default=None, metavar="COUNT",
+        help=("COUNT of seconds to run the trace. Defaults to 10 seconds per host."))
     parser.set_usage("%prog [options] 0..N destination hosts")
-    options, args = parser.parse_args()
-    url=None
-    mtr_path="/usr/bin/mtr"
-    iopts={}
-    collab_metas = Metas()
+    metas = Metas()
     hosts = []
     failed = []
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "mtr")
-    if len(args) > 0:
-        for arg in args:
-            hosts.append(arg)
-    elif options.config and "host" in iopts["mtr"]:
-        hosts.append(iopts["host"]["mtr"])
-    else:
-        parser.error("You need to specify a target host via the configuration file or\n \
-                      via 1..N positional arguments. Use -h for help.")
-    if options.mtr_path:
-        mtr_path=options.mtr_path
-    elif options.config and "mtr-path" in iopts["mtr"]:
-        mtr_path=iopts["mtr"]["mtr-path"]
-    else:
-        mresolve_path="/usr/bin/mtr"
-    if options.count:
-        count = options.count
-    elif options.config and "count" in iopts["mtr"]:
-        count = iopts["mtr"]["count"]
-    else:
+    ops = {}
+    sect = "mtr"
+    ops = parseOptions(parser, sect, template=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    template = ops[sect]["template"]
+    if template is None:
+        template = "IdentityTemplate"
+    mtrpath= ops[sect]["mtrpath"]
+    if mtrpath is None:
+        mtrpath = "/usr/bin/mtr"
+    count = ops[sect]["count"]
+    if count is None:
         count = 10
-    if options.template:
-        template=options.template
-    elif options.config and "template" in iopts["mtr"]:
-        template=iopts["mtr"]["template"]
-    else:
-        template="MtrTemplate"
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-    if options.category:
-        category=options.category
-    elif options.config and "category" in iopts["mtr"]:
-        category=iopts["mtr"]["category"]
-    else:
-        category=None
+    args = ops[sect]["args"]
+    if len(args) < 1:
+        parser.error("You need to specify a target host. Use -h for help.")
+    hosts = args
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
     for host in hosts:
-        if options.verbose:
-           print "Running trace to: ", host 
-        trace,error = run_trace(host, mtr_path, count)
+        if verbose:
+           print "Running trace to:", host 
+        trace,error = run_trace(host, mtrpath, count)
         if error:
            print error
         else:
-	   collab_metas.update(shred_trace(host, trace)) 
-
-    failed = importMetas(collab, collab_metas, template, options.verbose, replace=False)
+	   metas.update(shred_trace(host, trace)) 
+    if verbose:
+        print "Importing identities to collab."
+    failed = importMetas(collab, metas, template, verbose, replace=False)
     if failed:
         for page in failed:
-            if options.verbose:
-                print "ERROR uploading:",  page, repr(collab_metas[page])
+            if verbose:
+                print "ERROR uploading:",  page, repr(metas[page])
             else:
                 print "ERROR uploading:", page
 

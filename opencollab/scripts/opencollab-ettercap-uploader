@@ -11,16 +11,12 @@
  
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re
-import os
-import sys
-import string
-import optparse
+import re, os, sys, string, optparse 
 import xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
 from opencollab.meta import Metas
-from opencollab.wiki import CLIWiki
-from opencollab.util.config import parseConfig
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
 
@@ -169,85 +165,62 @@ def parse_xml(file, ettercaprun_page):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store", type="string", 
-        dest="config",
-        metavar = "CONFIG",
-        help="CONFIG file path.")
-    parser.add_option( "-t", "--wiki-template",
-        action="store", type="string", 
-        dest="template",
-        metavar = "TEMPLATE",
-        help="Wiki TEMPLATE, e.g. EttercapTemplate.")
-    parser.add_option( "-u", "--url",
-        action="store", type="string", 
-        dest="url",
-        metavar = "COLLAB-URL",
-        help="COLLAB-URL")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
-    parser.add_option( "-w", "--wiki-category",
-        action="store", type="string", 
-        dest="category",
-        metavar = "CATEGORY",
-        help="Wiki CATEGORY, e.g. EttercapRun.")
-    parser.set_usage("%prog [options] ETTERCAP-XML-FILES")
-    options, args = parser.parse_args()
-    iopts={}
     ettercap_files=[]
-    url = ''
-    if len(args) < 1:
-        parser.error("At least one XML input file path needs to be specified.")
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "ettercap")
-    if options.template:
-        template = options.template
-    elif options.config and "template" in iopts["ettercap"]:
-        template = iopts["ettercap"]["template"]
-    else:
+    ops = {}
+    sect = "ettercap-uploader"
+    ops = parseOptions(parser, sect, template=True, category=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    template = ops[sect]["template"]
+    if template is None:
         template = "EttercapTemplate"
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified.")
-    if options.category:
-        category = options.category
-    elif options.config and "category" in iopts["ettercap"]:
-        category = iopts["ettercap"]["category"]
-    else:
-        category = None
-    if options.verbose:
+    category = ops[sect]["category"]
+    if category is None:
+        category = "CategoryEttercap"
+    args = ops[sect]["args"]
+    if len(args) <1:
+        parser.error("At least one XML input file path needs to be specified.")
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
         print "NOTE: Processing input files."
     for arg in args:
         ettercap_files.append(arg)
     for file in ettercap_files:
         xml_page = hashFile(file)
         fname = os.path.basename(file)
-        if options.verbose:
+        if verbose:
             print "NOTE: Parsing", file
         metas, attach = parse_xml(file, xml_page)
         if category is not None:
             for page in metas:
                 metas[page]["category"].add(category)
         metas[xml_page]['TYPE'].add('Ettercap Run')
-        if options.verbose:
+        if verbose:
             print "NOTE: Importing metas to", url
-
         failed = importMetas(collab, metas, template, options.verbose)
-
-        if options.verbose:
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:", repr(metas[page])
+                else:
+                    print "ERROR uploading:", page
+        if verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
             print "ERROR: Failed to patch xml file, uploading orginal instead"
-            if options.verbose:
+            if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
             uploadFile(collab, xml_page, file, fname)
-
         for page in attach:
             for fname in attach[page]:
                 uploadFile(collab, page, attach[page][fname], fname)

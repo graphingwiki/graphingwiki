@@ -301,8 +301,6 @@ class GraphingWiki(Wiki):
                             createPageOnDemand, categoryMode, categories,
                             template)
 
-import ConfigParser
-
 def redirected(func, *args, **keys):
     oldStdout = sys.stdout
     sys.stdout = sys.stderr
@@ -317,47 +315,35 @@ class CLIWiki(GraphingWiki):
     # usage. Automatically asks url, username and password should the
     # wiki need it.
 
-    def __init__(self, url=None, config=None, configSection="creds", **keys):
-        creds = None
+    def __init__(self, ops=None, **keys):
 
-        if config is not None:
-            configparser = ConfigParser.ConfigParser()
-
-            if configparser.read(config):
-                if url is not None:
-                    try:
-                        url = configparser.get(configSection, "url")
-                    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                        pass
-
-                username = None
-                password = None
-                try:
-                    username = configparser.get(configSection, "username")
-                    password = configparser.get(configSection, "password")
-                except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
-                    pass
-
-                creds = username, password
-
-        if url is None:
-            url = redirected(raw_input, "Wiki:")
-
+        try:
+            url = ops["creds"]["url"]
+        except (KeyError, TypeError):
+            url = redirected(raw_input, "Collab URL: ")
+        else:
+            if url is None:
+                url = redirected(raw_input, "Collab URL: ")
         super(CLIWiki, self).__init__(url, **keys)
 
-        if creds is not None:
-            self.authenticate(*creds)
-        else:
+        try:
+            username = ops["creds"]["username"]
+        except (KeyError, TypeError):
             username = None
+
+        try:
+            password = ops["creds"]["password"]
+        except (KeyError, TypeError):
             password = None
-            creds = username, password
-            self.authenticate(*creds)
+
+        creds = username, password
+        self.authenticate(*creds)
 
     def authenticate(self, username=None, password=None):
         if username is None:
-            username = redirected(raw_input, "Username:")
+            username = redirected(raw_input, "Username: ")
         if password is None:
-            password = redirected(getpass.getpass, "Password:")
+            password = redirected(getpass.getpass, "Password: ")
         return super(CLIWiki, self).authenticate(username, password)
 
     def request(self, name, *args):

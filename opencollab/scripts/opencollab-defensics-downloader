@@ -4,17 +4,10 @@
     @copyright: 2008 Marko Laakso, Mika Seppänen, Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-import os
-import re
-import sys
-import gzip
-import string
-import time
-import optparse
-from opencollab.wiki import CLIWiki
+import os, re, sys, gzip, string, time, optparse, socket
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Metas
-from opencollab.util.config import parseConfig
+from opencollab.util.config import parseOptions
 from opencollab.util.wiki import getPages
 from opencollab.util.file import downloadFile
 
@@ -56,71 +49,50 @@ def create_dir(results_dir, suite_name, ts):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        help="Config file path.")
     parser.add_option("-s", "--search-string",
-        action="store",
-        type="string", dest="search_string", default=None,
-        metavar="SEARCH-STRING",
-        help="MetaTable SEARCH-STRING." )
-    parser.add_option("-u", "--url",
-        action="store",
-        type="string", dest="url", default=None,
-        metavar="COLLAB-URL",
-        help="COLLAB-URL to connect to.")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output.")
-    parser.set_usage("%prog [options]  Defensics results directory")
-    url = None
-    iopts={}
-    search_string = None
-    results_dir = None
+        action="store", type="string", dest="search", default=None,
+        metavar="SEARCH-STRING", help="MetaTable SEARCH-STRING." )
+    ops = {}
+    sect = "defensics-downloader" 
+    ops = parseOptions(parser, sect)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    search_string = ops[sect]["search"]
+    if search_string is None:
+        parser.error("You need to specify a MetaTable search string. Use -h for help.")
+    args = ops[sect]["args"]
     pages = Metas()
-    options, args = parser.parse_args()
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "defensics-downloader")
-    if len(args) > 0:
+    if len(args) == 1:
         results_dir = args.pop()
-    elif options.config and "testrun-results" in iopts["defensics-downloader"]:
-        results_dir = (iopts["defensics-downloader"]["testrun-results"])
     else:
-        parser.error("You need to specify a testrun directory via a\n \
-                      positional argument or configuration file variable. Use -h for help.")
-    if options.search_string:
-        search_string = options.search_string
-    elif options.config and "search-string" in iopts["defensics-downloader"]:
-        search_string = iopts["defensics-downloader"]["search-string"]
-    else:
-        parser.error("You need to specify a MetaTable search string.\n \
-                      Use -h for help.")
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified.\n \
-                      Use -h for help.")
-    if options.verbose:
+        parser.error("You need to specify a testrun directory.")
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
         print "NOTE: Getting pages with:", search_string, "\nfrom", url
     pages.update(getPages(collab, search_string))
-    if options.verbose:
+    if verbose:
         print "NOTE: Downloading testrun results to:", results_dir
     for page in pages:
         if pages[page]["Summary XML"]:
             suite_name = pages[page]["Test suite name"]
             ts = pages[page]["Test run started"]
             dpath = create_dir(results_dir, suite_name, ts)
-            if options.verbose:
+            if verbose:
                 print "NOTE: Download destination is", dpath
             attachments = collab.listAttachments(page)
             for attachment in attachments:
                 downloadFile(collab, dpath, page, attachment)
-            if options.verbose:
+            if verbose:
                 print "NOTE: Decompressing main.log.gz"
             decompressFile(dpath, "main.log.gz")
 

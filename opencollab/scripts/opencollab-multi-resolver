@@ -4,16 +4,13 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re
-import socket
-import optparse
-import subprocess
+import re, socket, optparse, subprocess
 from subprocess import Popen
-from opencollab.util.config import parseConfig
-from opencollab.wiki import CLIWiki
-from opencollab.meta import Metas, Meta, Func
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Metas
 from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
+from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
 
 def shred_triplets(resolved, category): 
@@ -102,129 +99,87 @@ def read_input():
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        metavar="CONFIG",
-        help="CONFIG file path.")
     parser.add_option("-m", "--mresolve-path",
-                      dest="mresolve_path",
-                      default=None,
-                      metavar="MRESOLVE-PATH",
-                      help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
+        dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
+        help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
         help="Perform queries recursively." )
     parser.add_option("-s", "--selection",
-                      dest="selection",
-                      default=None,
-                      metavar="SEARCH",
-                      help=("Use MetaTable SEARCH arguments to fetch input from a collab instead reading them from STDIN."))
-    parser.add_option("-t", "--template",
-                      dest="template",
-                      default=None,
-                      metavar="TEMPLATE",
-                      help=("Optional TEMPLATE to use. Defaults to IdentityTemplate."))
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      default=None,
-                      metavar="COLLAB-URL",
-                      help=("COLLAB-URL to connect to."))
-    parser.add_option("-w", "--wiki-category",
-                      dest="category",
-                      default=None,
-                      metavar="CATEGORY",
-                      help=("Optional CATEGORY to use, e.g. CategoryIdentity"))
-    parser.add_option("-v", "--verbose",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
+        dest="selection", default=None, metavar="SEARCH",
+        help=("Use MetaTable SEARCH arguments to fetch input from a collab instead reading them from STDIN."))
     parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    new = []
-    url=None
-    mresolve_path="/usr/bin/mresolve"
-    iopts={}
-    collab_metas = Metas()
     types = set(("NAME", "IPv4", "AS"))
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "multi-resolver")
-    if options.mresolve_path:
-        mresolve_path=options.mresolve_path
-    elif options.config and "mresolve_path" in iopts["multi-resolver"]:
-        mresolve_path=iopts["multi-resolver"]["mresolve-path"]
-    else:
-        mresolve_path="/usr/bin/mresolve"
-    if options.template:
-        template=options.template
-    elif options.config and "template" in iopts["multi-resolver"]:
-        template=iopts["multi-resolver"]["template"]
-    else:
-        template="IdentityTemplate"
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-    if options.category:
-        category=options.category
-    elif options.config and "category" in iopts["multi-resolver"]:
-        category=iopts["multi-resolver"]["category"]
-    else:
-        category="CategoryIdentity"
-    if options.selection:
-        selection = options.selection
-    elif options.config and "selection" in iopts["multi-resolver"]:
-        selection = iopts["multi-resolver"]["selection"]
-    else:
-        selection = None
+    metas = Metas()
+    new = []
+    ops = {}
+    sect = "multi-resolver"
+    ops = parseOptions(parser, sect, template=True, category=True)
+    url=ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    mresolvepath=ops[sect]["mresolvepath"]
+    template = ops[sect]["template"]
+    if template is None:
+        template = "IdentityTemplate"
+    category = ops[sect]["category"]
+    if category is None:
+        category = "CategoryIdentity"
+    selection = ops[sect]["selection"]
+    recurse = ops[sect]["recurse"]
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
     if selection is None:
-        if options.verbose:
+        if verbose:
             print "Reading input identities from STDIN."
         new = read_input()
     else:
-        if options.verbose:
+        if verbose:
             print "Fetching identities from collab."
         pages = collab.getMeta(selection)
         for page in pages:
             if pages[page]["TYPE"].single() in types:
                 new.append(page)
             else:
-                if options.verbose:
+                if verbose:
                     print page, " identity type is not supported."
     if not new:
-        if options.verbose:
+        if verbose:
             print "No input identities, no work. Exiting."
         sys.exit()
-    if options.verbose:
+    if verbose:
         print "Expanding initial requests."
     expanded,resolved = seed_initial(new)
-    if options.recurse:
-        if options.verbose:
+    if recurse:
+        if verbose:
             print "Resolving requests recursively."
         while expanded:
-            new,err = resolve_requests(expanded,mresolve_path)
-            if options.verbose:
+            new,err = resolve_requests(expanded,mresolvepath)
+            if verbose:
                 print err
             expanded,resolved = generate_requests(resolved,new)
     else:
-        if options.verbose:
+        if verbose:
             print "Resolving requests."
-        new,err = resolve_requests(expanded,mresolve_path)
+        new,err = resolve_requests(expanded,mresolvepath)
         for triplet in new.split('\n'):
             resolved.add(triplet)
-    if options.verbose:
+    if verbose:
         print "Shredding resolved RDF triplets."
-    collab_metas.update(shred_triplets(resolved, category))
-    if options.verbose:
+    metas.update(shred_triplets(resolved, category))
+    if verbose:
         print "Importing resolved identities to: " + url
-    failed = importMetas(collab, collab_metas, template, options.verbose, True)
+    failed = importMetas(collab, metas, template, verbose, True)
     if failed:
         for page in failed:
-            if options.verbose:
-                print "ERROR uploading:", page, repr(collab_metas[page])
+            if verbose:
+                print "ERROR uploading:", page, repr(metas[page])
             else:
                 print "ERROR uploading:", page
 

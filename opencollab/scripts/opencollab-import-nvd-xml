@@ -7,14 +7,10 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
-import sys
-import os
-import csv
-import time
-import optparse
+import sys, os, csv, time, optparse
 import collections
 import cPickle as pickle
-from opencollab.util.config import parseConfig
+from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
 from opencollab.util.wiki import importMetas

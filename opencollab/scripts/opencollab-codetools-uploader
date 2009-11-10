@@ -4,13 +4,9 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os
-import sys
-import re
-import glob
-import optparse
-from opencollab.util.config import parseConfig
-from opencollab.wiki import CLIWiki
+import os, sys, re, glob, optparse, socket
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta
 
 def read_file(htaccess):
@@ -59,7 +55,7 @@ def uploadFile(collab,page_name,filename,path):
     file.close()
     return parts_uploaded
 
-def upload_files(collab, arena_dirs, marker):
+def upload_files(collab, arena_dirs, marker, template):
     flist =[]
     jar = re.compile('\.jar')
     iso = re.compile('iso\.bz2')
@@ -77,7 +73,6 @@ def upload_files(collab, arena_dirs, marker):
         tmp = dir.rsplit('/', 2) 
         page_name = "/".join(tmp[1:3])
         changes = False
-        page_template = "CodenomiconArenaTemplate"
         page_metas["category"].add("CategoryCodenomiconArena")
         if 'release.txt' in flist:
             fname = dir + "/release.txt"
@@ -130,22 +125,18 @@ def upload_files(collab, arena_dirs, marker):
             if marker:
                 page_metas[marker].add('')
             
-        collab.setMeta(page_name, page_metas, template=page_template, replace=True)
+        collab.setMeta(page_name, page_metas, template=template, replace=True)
         page_metas = Meta()
 
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-a", "--arena-dir-glob",
-                      dest="arena_dir_glob",
+                      dest="arenadirglob",
                       default=None,
                       metavar="ARENA-DIR-GLOB",
                       help=("ARENA-DIR-GLOB, i.e. \"/path/to/arena/*/*/.htaccess\""))
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        help="Config file path.")
     parser.add_option("-e", "--arena-user",
-                      dest="arena_user",
+                      dest="arenauser",
                       default=None,
                       metavar="ARENA-USER",
                       help=("ARENA-USER username."))
@@ -154,60 +145,45 @@ def main():
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
-    parser.add_option( "-u", "--url",
-                       action="store",
-                       default=None,
-                       metavar="COLLAB-URL",
-                       type="string", dest="url",
-                       help="COLLAB-URL to connect to.")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
-    parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    url=None
-    iopts={}
     arena_dirs=[]
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "arena")
-    if options.arena_dir_glob:
-        arena_dir_glob=options.arena_dir_glob
-    elif options.config and "arena-dir-glob" in iopts["arena"]:
-        arena_dir_glob = iopts["arena"]["arena-dir-glob"]
+    sect = "arena"
+    ops = parseOptions(parser, sect, template=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    if ops[sect]["template"] is None:
+        template = "CodenomiconArenaTemplate"
     else:
-        arena_dir_glob = None
-    if options.arena_user:
-        arena_user = options.arena_user
-    elif options.config and "arena-user" in iopts["arena"]:
-        arena_user = iopts["arena"]["arena-user"]
-    else:
-        arena_user = None
-    if options.marker:
-        marker = options.marker
-    elif options.config and "marker" in iopts["arena"]:
-        marker = iopts["arena"]["marker"]
-    else:
-        marker = None
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab needs to be specified. Use -h for help.")
-    if arena_dir_glob is not None and arena_user is not None:
+        template = ops[sect]["template"]
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    arena_dir_glob = ops[sect]["arenadirglob"]
+    if arena_dir_glob == None:
+        parser.error("Arena dir glob must be specified. Use -h for help.")
+    arena_user = ops[sect]["arenauser"]
+    if arena_user == None:
+        parser.error("Arena user must be specified i.e. f.l@example.invalid. Use -h for help.")
+    marker = ops[sect]["marker"]
+    arena_dirs = enum_dirs(arena_dir_glob, arena_user)
+    if arena_dirs:
         if marker is not None:
             print "Removing meta key <" + marker + \
                 "> for pages with changes in attachments"
-        if options.verbose:
+        if verbose:
             print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
-        arena_dirs = enum_dirs(arena_dir_glob, arena_user)
+        if verbose:
+            print "Uploading tool data from: " + str(arena_dirs) + " to " + url
+        upload_files(collab, arena_dirs, marker, template)
     else:
-        parser.error("Arena dir glob and user need to be specified.")
-    if options.verbose:
-        print "Uploading tool data from: " + str(arena_dirs) + " to " + url
-    upload_files(collab, arena_dirs, marker)
+        print "No source directories from arena dir glob enumeration. Nothing to upload."
 
 if __name__ == "__main__":
     try:

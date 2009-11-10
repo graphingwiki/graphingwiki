@@ -4,71 +4,46 @@
     @copyright: 2008 by Jani Kenttälä
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-
-import os,sys,re,optparse
+import os,sys,re,optparse,socket
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util.config import parseConfig
+from opencollab.util.config import parseOptions
 from urllib import quote
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        metavar = "CONFIG",
-        help="CONFIG file path.")
-    parser.add_option( "-s", "--wiki-search-string",
-        action="store",
-        type="string", dest="search_string",
-        metavar = "SEARCH-STRING",
-        help="SEARCH-STRING for getMeta().")
+    parser.add_option( "-s", "--search-string",
+        action="store", type="string", dest="search", default=None,
+        metavar = "SEARCH-STRING", help="SEARCH-STRING for getMeta().")
     parser.add_option("-n", "--dry-run",
-        dest="dryrun",
-        action="store_true",
-        default=False,
-        help="show what would have been deleted")
-    parser.add_option("-u", "--url",
-        action="store", type="string",
-        dest="url",
-        metavar="COLLAB-URL",
-        help="COLLAB-URL to connect to.")
-
-    parser.add_option("-U", "--username",
-        action="store", type="string",
-        dest="username",
-        metavar="USERNAME",
-        help="USERNAME to authenticate as.")
-
-    options, args = parser.parse_args()
-    iopts = {}
-    columns = re.compile('\|\|.*\|\|')
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "delete")
-    if options.search_string:
-        search_string = options.search_string
-    elif options.config and "search-string" in iopts["delete"]:
-        search_string = iopts["delete"]["search-string"]
-    else:
+        dest="dryrun", action="store_true",
+        default=False, help="Show what would have been deleted.")
+    ops = {}
+    sect = "delete"
+    ops = parseOptions(parser, sect)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    dryrun = ops[sect]["dryrun"]
+    search_string = ops[sect]["search"]
+    if search_string is None:
         parser.error("Search string needs to be specified. Use -h for help.")
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab needs to be specified. Use -h for help.")
-
-    if options.username:
-        collab.authenticate(username=options.username)
-
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    columns = re.compile('\|\|.*\|\|')
     if not columns.findall(search_string):
         search_string += ",||||"
     metas = collab.getMeta(search_string)
     for page in metas:
         print "Deleting %r..." % (page),
-        if not options.dryrun:
+        if not dryrun:
             try:
                 collab.deletePage(page)
                 print "[ok].",

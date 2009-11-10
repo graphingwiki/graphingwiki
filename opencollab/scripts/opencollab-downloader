@@ -4,13 +4,10 @@
     @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os
-import sys
-import md5
-import optparse
-from opencollab.util.config import parseConfig
-from opencollab.wiki import CLIWiki
+import os, sys, md5, optparse, socket
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta
+from opencollab.util.config import parseOptions
 from urllib import unquote
 
 def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
@@ -87,58 +84,36 @@ def downloadFile(collab, page, quotedFile, basePath, num, count):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        metavar = "CONFIG",                    
-        help = "CONFIG file path.")
     parser.add_option("-o", "--output",
-        dest="output",
-        default=None,
-        metavar="PATH",
+        dest="output", default=None, metavar="PATH",
         help="Save the downloaded files under PATH instead of CWD.")
     parser.add_option( "-p", "--download-from-page",
-        action="store",
-        type="string", dest="page",
-        metavar = "PAGE",                    
-        help = "PAGE to download attachments from.")
-    parser.add_option( "-u", "--url",
-        action="store",
-        type="string", dest="url",
-        metavar = "COLLAB-URL",                    
-        help = "COLLAB-URL to connect to.")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
-    parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    iopts={}
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "downloader")
-    if options.output:
-        basePath = options.output
-    elif options.config and "output" in iopts["downloader"]:
-        basePath = iopts["downloader"]["output"]
-    else:
+        action="store", type="string", dest="page",
+        metavar = "PAGE", help = "PAGE to download attachments from.")
+    ops = {}
+    sect = "downloader"
+    ops = parseOptions(parser, sect)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    basePath = ops[sect]["output"]
+    if basePath is None:
         basePath = os.getcwd()
-    if options.page:
-        page = options.page
-    elif options.config and "page" in iopts["downloader"]:
-        page = iopts["downloader"]["page"]
-    else:
+    page = ops[sect]["page"]
+    if page is None:
         parser.error("Page to download from needs to be specified. Use -h for help.")
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified.")
-    if options.verbose:
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
         print "Enumerating attachments from collab: " + url + page
     attachments = collab.listAttachments(page)
-    if options.verbose:
+    if verbose:
        print "Downloading attachments from:", page
     for num, attachment in enumerate(attachments):
         downloadFile(collab, page, attachment, basePath, num+1, len(attachments))

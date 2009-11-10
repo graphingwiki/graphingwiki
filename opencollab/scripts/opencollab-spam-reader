@@ -4,10 +4,10 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import optparse, sys
-from opencollab.util.config import parseOptions
-from opencollab.wiki import CLIWiki
+import optparse, sys, socket
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
+from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
 from opencollab.util.emailutils import imapAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
 
@@ -31,13 +31,18 @@ def main():
     if ops[sect]["template"] is None:
         template = "SpamTemplate"
     else:
-        template = ops["sect"]["template"]
+        template = ops[sect]["template"]
     if verbose:
-        print "Authenticating to collab."
-    if ops[sect]["config"] is not None:
-        collab = CLIWiki(url, config=ops[sect]["config"])
-    else:
-        collab = CLIWiki(url)
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
     server = ops[sect]["imapserver"]
     if server is None:
         parser.error("You need to specify an IMAPv4 server address. Use -h for help.")
