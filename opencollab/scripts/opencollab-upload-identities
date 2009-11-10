@@ -11,15 +11,11 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
-import os
-import re
-import sys
-import time
-import optparse
-from opencollab.util.config import parseConfig
+import os, re, sys, time, optparse, socket
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Metas
+from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
-from opencollab.wiki import CLIWiki
-from opencollab.meta import Meta, Metas
 
 def shred_email_address(addr):
     metas = Metas()
@@ -68,86 +64,53 @@ def get_identities_from_collab(collab, search):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-	default = None,
-	metavar="CONFIG",
-        help="CONFIG file path.")
-    parser.add_option("-f", "--file",
-                      dest="path",
-                      default=None,
-                      metavar="FILE",
-                      help=("Input FILE path."))
-    parser.add_option("-s", "--search",
-                      dest="search",
-                      default=None,
-                      metavar="SEARCH",
-                      help=("MetaTable SEARCH argument."))
-    parser.add_option("-t", "--template",
-                      dest="template",
-                      default=None,
-                      metavar="TEMPLATE",
-                      help=("Wiki TEMPLATE."))
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      default=None,
-                      metavar="COLLAB-URL",
-                      help=("COLLAB-URL to connect to."))
-    parser.add_option("-v", 
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." ) 
-    parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    iopts={}
+    parser.add_option("-s", "--search-string",
+        dest="selection", default=None, metavar="SEARCH",
+        help=("MetaTable SEARCH argument."))
+    parser.set_usage("%prog [options] <input-file>")
+    metas = Metas()
     failed = []
-    metas = Metas()
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "identity")
-    if options.path:
-        path = options.path
-    elif options.config and "input-file" in iopts["identity"]:
-        path = iopts["identity"]["input-file"]
-    else:
-        path = None
-    if options.search:
-        search = options.search
-    elif options.config and "search" in iopts["identity"]:
-        search = iopts["identity"]["search"]
-    else:
-        search = None
-    if options.template:
-        template = options.template
-    elif options.config and "template" in iopts["identity"]:
-        template = iopts["identity"]["template"]
-    else:
+    sect = "upload-identities"
+    ops = {}
+    ops = parseOptions(parser, sect, template=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    template = ops[sect]["template"]
+    if template is None:
         template = "IdentityTemplate"
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
+    selection = ops[sect]["selection"]
+    args = ops[sect]["args"]
+    while True:
+        try:
+            collab = CLIWiki(ops)
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if len(args) == 1:
+        file = args.pop()
+        if verbose:
+            print "NOTE: Parsing input file:", file
+        metas.update(parse_input_file(file))
+    if selection is not None:
+        if verbose:
+            print "NOTE: Getting identities with:", search, "from\n", url
+        metas.update(get_identities_from_collab(collab, selection))
+    if metas:
+        if verbose:
+            print "NOTE: Uploading identities to collab:", url
+        failed = importMetas(collab, metas, template, verbose) 
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:",  page, repr(collab_metas[page])
+                else:
+                    print "ERROR uploading:", page
     else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-    metas = Metas()
-    if path is not None:
-        if options.verbose:
-            print "Parsing input file:", path
-        metas.update(parse_input_file(path))
-    if search is not None:
-        if options.verbose:
-            print "Getting identities with:", search, "from\n", url
-        metas.update(get_identities_from_collab(collab, search))
-    if options.verbose:
-        print "Uploading identities to collab:", url
-    failed = importMetas(collab, metas, template, options.verbose) 
-    if failed:
-        for page in failed:
-            if options.verbose:
-                print "ERROR uploading:",  page, repr(collab_metas[page])
-            else:
-                print "ERROR uploading:", page
+        if verbose:
+            print "NOTE: No identities to upload."
 
 if __name__ == "__main__":
     try:
