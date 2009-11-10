@@ -21,14 +21,17 @@ def main():
         action="store", type="string", 
         dest="imapserver", default=None,
         metavar="IMAPS-SERVER", help="IMAPS-SERVER name or IP address.")
-    parser.set_usage("%prog [options]")
     metas = Metas()
     failed = []
     ops = {}
     sect = "spam"
-    ops = parseOptions(parser, sect)
+    ops = parseOptions(parser, sect, template=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
+    if ops[sect]["template"] is None:
+        template = "SpamTemplate"
+    else:
+        template = ops["sect"]["template"]
     if verbose:
         print "Authenticating to collab."
     if ops[sect]["config"] is not None:
@@ -37,7 +40,7 @@ def main():
         collab = CLIWiki(url)
     server = ops[sect]["imapserver"]
     if server is None:
-        parser.error("You need to specify an IMAPv4 server address to connect to. Use -h for help.")
+        parser.error("You need to specify an IMAPv4 server address. Use -h for help.")
     user = ops[sect]["imapuser"]
     try:
         password = ops[sect]["imappass"]
@@ -66,10 +69,6 @@ def main():
             del metas[page]['html']
         if verbose:
             print "Importing metas to collab."
-        if ops[sect]["template"] is None:
-            template = "SpamTemplate"
-        else:
-            template = ops["sect"]["template"]
         failed = importMetas(collab, metas, template, verbose)
         if failed:
             for page in failed:
