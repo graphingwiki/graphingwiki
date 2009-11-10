@@ -22,18 +22,28 @@ def shred_trace(host, trace):
     collab_metas = Metas()
     lines = trace.split('\n')
     s = []
+    prev = "@PAGE@"
+    source = None
     for line in lines[1:]:
         s = line.split()
         if s:
             hop = mod_hop(s[0])
-            collab_metas[s[1]]["MTR HOP"].add(hop)
-            collab_metas[s[1]]["MTR DEST"].add('[[%s]]' % host)
-            collab_metas[s[1]]["MTR LOSS"].add(s[2])
-            collab_metas[s[1]]["MTR SENT"].add(s[3])
-            collab_metas[s[1]]["MTR AVG"].add(s[4])
-            collab_metas[s[1]]["MTR BEST"].add(s[5])
-            collab_metas[s[1]]["MTR WORST"].add(s[6])
-            collab_metas[s[1]]["MTR STDDEV"].add(s[7])
+            cur = s[1]
+            if source is not None:
+                cur = src
+            collab_metas[cur]["MTR SRC"].add("[[%s]]" % source)
+            collab_metas[cur]["MTR HOP"].add(hop)
+            collab_metas[cur]["MTR DST"].add('[[%s]]' % host)
+            collab_metas[cur]["MTR LOSS"].add(s[2])
+            collab_metas[cur]["MTR SENT"].add(s[3])
+            collab_metas[cur]["MTR AVG"].add(s[4])
+            collab_metas[cur]["MTR BEST"].add(s[5])
+            collab_metas[cur]["MTR WORST"].add(s[6])
+            collab_metas[cur]["MTR STDDEV"].add(s[7])
+            if prev != cur:
+                collab_metas[cur]["PREV HOP"].add("[[%s]]" % prev)
+            prev = cur
+            collab_metas[cur]["TYPE"].add("IPv4")
     return collab_metas
 
 def run_trace(host, mtr, count):

@@ -144,11 +144,15 @@ def main():
             print "Fetching identities from collab."
         pages = collab.getMeta(selection)
         for page in pages:
-            if pages[page]["TYPE"].single() in types:
-                new.append(page)
+            try:
+                type = pages[page]["TYPE"].single() 
+            except ValueError:
+                print "ERROR:", page, "has no type."
             else:
-                if verbose:
-                    print page, " identity type is not supported."
+                if type in types:
+                    new.append(page)
+                else:
+                    print "ERROR:", page, "'s type is not supported."
     if not new:
         if verbose:
             print "No input identities, no work. Exiting."
