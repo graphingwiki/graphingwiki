@@ -60,9 +60,9 @@ def scrapeit(save=False, cachedir="./rhsa_cache"):
         s2 = BS(open(cachefn))
         absolutify_urls(s2, errata_baseurl + cachefn)
         d = collections.defaultdict(list)
-        d['CVE ID'] = sorted(set(
-                map(unicode, s2.findAll(text=re.compile(r'^CVE-\d')))))
-
+        cvestrings = u' '.join(map(unicode, s2.findAll(text=re.compile(r'^(CVE|CAN)-\d'))))
+        d['CVE ID'] = sorted(set(re.findall(ur'(CVE|CAN)-\d{4}-\d+', cvestrings)))
+    
         d['Feed type'].append('Vulnerability')
 
         # try to find updates for rhel 5
