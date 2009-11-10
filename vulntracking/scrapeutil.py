@@ -47,7 +47,7 @@ def update_vulns(s, scrapeiter, keyname, cvekey=None):
         if cvekey and cvekey in data:
             data['CVE ID'] = data[cvekey]
             del data[cvekey]
-            
+
         for cveid in map(str, data.get('CVE ID', [])):
             if cveid and cveid[0].isdigit():
                 cveid = 'CVE-' + cveid
@@ -59,6 +59,8 @@ def update_vulns(s, scrapeiter, keyname, cvekey=None):
                 d = defaultdict(list)
             else:
                 d = s[cveid]
-            d[keyname].append(u"[[" + vid + u"]]")
+            link = u"[[" + vid + u"]]"
+            if link not in d[keyname]:
+                d[keyname].append(link)
             s[cveid] = d
             

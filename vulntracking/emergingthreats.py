@@ -23,7 +23,8 @@ def fix_refs(refs):
             yield 'Bugtraq ID', refv
 
 def scrape():
-    for line in open("emerging-all.rules"): #urllib.urlopen(emerging_url):
+#    for line in open("emerging-all.rules"): #urllib.urlopen(emerging_url):
+    for line in urllib.urlopen(emerging_url):
         refs  = re.findall(r'reference:(\w+),([^; ]*)[; ]', line)
         x = re.search(r'msg:"([^"]*)"', line)
         if not x:
