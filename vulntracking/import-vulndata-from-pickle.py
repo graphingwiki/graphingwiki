@@ -94,12 +94,6 @@ def main():
                       metavar="SHELVE-FILENAME",
                       help="SHELVE-FILENAME to load data from")
 
-    parser.add_option("-U", "--username",
-        action="store", type="string",
-        dest="username",
-        metavar="USERNAME",
-        help="USERNAME to authenticate as.")
-
     parser.add_option("-l", "--linked-only",
         action="store_true", dest="linked_only", default=False,
         help="Exclude CVEs that aren't linked to by other vuln data." )
@@ -136,8 +130,6 @@ def main():
     if not url:
         parser.error("Collab URL needs to be specified. Use -h for help.")
 
-    if options.username:
-        collab.authenticate(username=options.username)
 
     if options.config and "url" in iopts["creds"]:
         cves = file(iopts["creds"]["url"]).readlines()
@@ -162,8 +154,9 @@ def main():
     if options.url:
         if options.verbose:
             print "Importing metas to", url
+
         import_metas(collab, page_metas, template, options.verbose, pagenames,
-                     options.linked_only, metafiltspec)
+                     metafiltspec, options.linked_only)
 
 if __name__ == "__main__":
     try:
