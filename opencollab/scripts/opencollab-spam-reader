@@ -28,10 +28,9 @@ def main():
     ops = parseOptions(parser, sect, template=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
-    if ops[sect]["template"] is None:
+    template = ops[sect]["template"]
+    if template is None:
         template = "SpamTemplate"
-    else:
-        template = ops[sect]["template"]
     if verbose:
         print "Authenticating to: " + repr(url)
     while True:
