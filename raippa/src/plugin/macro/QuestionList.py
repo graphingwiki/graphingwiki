@@ -164,16 +164,17 @@ def question_list_editor(macro, task):
     jsQlist = list()
     for qpage in questionlist:
         question = Question(request, qpage)
-        qname = question.title().replace("'", "\'")
+        qname = question.title().replace("'", "\\'")
+        page = qpage.replace("'", "\\'")
         incomplete = "false"
         if not page_exists(request, qpage + '/options'):
             incomplete = "true"
-        jsQlist.append("{'page' : '%s','title' : '%s', 'incomplete' : %s}" % (qpage, qname, incomplete))
+        jsQlist.append("{'page' : '%s','title' : '%s', 'incomplete' : %s}" % (page, qname, incomplete))
 
     res.append(f.div(True, id="editList"))
     prefix =request.cfg.url_prefix_static 
     old_type = task.options().get('type', u'')
-    consecutive = task.consecutive()
+    consecutive = task.options().get("consecutive", False)
     deadline, alldeadlines = task.deadline()
     if deadline == None:
         deadline = ""
@@ -194,7 +195,8 @@ window.addEvent('domready', function(){
 });
 
 function questionQuery(){
-     var questionQuery = new Request.JSON({
+     var query = new Request.JSON({
+        url: '?action=searchMetasJSON',
         onSuccess : function(questions){
             questions.each(function(q){
                 if (questionListData.get("selected").some(function(selected){
@@ -209,7 +211,8 @@ function questionQuery(){
                 field.fireEvent('keyup');
             }
         }
-        }).get({'action': 'searchMetasJSON' , 'args' : 'questions'});
+        });
+     query.get({'args' : 'questions'});
     }
 
 var qSortList = new Class({
@@ -269,12 +272,18 @@ var qSortList = new Class({
         var thislist = this;
         li.store("page", page);
         if(incomplete){
-            namespan.grab(new Element('span',{
+            namespan.grab(new Element('a',{
                 'text' : ' (incomplete)',
+                'href' : page,
                 'styles' :{
                     'color' : 'red',
                     'font-style' : 'italic'
 
+                    },
+                'events' : {
+                        'click' : function(){
+                            return confirm("Disgard changes and go to edit question '"+ page+"'?");
+                            }
                     }
                 }));
             }
@@ -476,7 +485,7 @@ function editQuestionList(){
     var consecutiveCont = new Element('div',{'id': 'consecutiveCont'}).adopt(
             new Element('label', {
                 'for' : 'consecutiveCheck',
-                'text' : 'Is consecutive '
+                'text' : 'Is consecutive: '
                 }),
             new Element('input', {
                 'type' : 'checkbox',
