@@ -196,7 +196,7 @@ def draw_answer_edit_ui(macro, question):
             types :  ["checkbox", "radio", "text", "file"],
             redo : %s,
             type: '%s',
-            shuffle: '%s',
+            shuffle: %s,
             answers : [%s]
         };
     </script>''' % (redo, qtype, shuffle, ",".join(ans_js))))
