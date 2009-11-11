@@ -30,6 +30,7 @@ def save_new_question(request, pagename):
 
 
 def execute(pagename, request):
+    raise ValueError, request.form
   
     user = User(request, request.user.name)
     success = False
@@ -40,9 +41,7 @@ def execute(pagename, request):
                 name = name[:240]
             success, msg =  save_new_question(request, name)
             
-            page = Page(request, pagename)
-            request.theme.add_msg(msg)
-            Page(request, pagename).send_page()
+            Page(request, pagename).send_page(msg=msg)
             return
 
         question_options = dict()
@@ -50,13 +49,12 @@ def execute(pagename, request):
         anstype = request.form.get("answertype", [u""])[0]
         question_options["answertype"] = [anstype]
         
-        
-        answer_data = list()
+        answer_data = dict()
         if anstype != u"file":
             for key in request.form:
                 if key.startswith("answer"):
                     try:
-                        index = unicode(int(key[6:]))
+                        index = int(key[6:])
                     except (ValueError):
                         continue
 
@@ -64,23 +62,71 @@ def execute(pagename, request):
                     if not answer:
                         continue
 
-                    tip = sanitize(request.form.get("tip" + index, [u""])[0])
-                    comment = sanitize(request.form.get("comment" + index, [u""])[0])
-                    value = sanitize(request.form.get("value" + index, [u""])[0])
-                    old_page = request.form.get("page" + index, [u""])[0]
-                    answer_data.append({
-                        "answer": [answer],
-                        "value" : [value],
-                        "tip" : [tip],
-                        "comment" : [comment],
-                        "old_page" : [old_page]})
+                    tip = sanitize(request.form.get("tip%i" % index, [u""])[0])
+                    comment = sanitize(request.form.get("comment%i" % index, [u""])[0])
+                    value = sanitize(request.form.get("value%i" % index, [u""])[0])
+                    answer_options = request.form.get("option%i" % index, [u""])
+
+                    answer_options = [x for x in answer_options if x in ["regexp", "latex"]] 
+                    answer_data[index] = {"answer": [answer],
+                                          "value" : [value],
+                                          "tip" : [tip],
+                                          "comment" : [comment],
+                                          "option" : answer_options}
 
         else:
-            filetest = unicode(request.form.get("answer", [u""])[0])
-            answer_data.append({"answer": [filetest]})
+            for key in request.form.keys():
+                if key.endswith('__filename__'):
+                    if key.startswith("infile"):
+                        index = 4
+                        test_number = int(key[6:].split("_")[0])
+                        file_number = int(key[6:].split("_")[1])
+                    elif key.startswith("outfile"):
+                        index = 5
+                        test_number = int(key[7:].split("_")[0])
+                        file_number = int(key[7:].split("_")[1])
+                    else:
+                        continue
+
+                    filekey = key[:-12]
+                    filename = request.form.get(key, unicode())
+   
+                    file = request.form.get(filekey, list())
+                    if len(file) < 1:
+                        continue 
+
+                    content = file[1].value
+
+                    if test_number != None and not answer_data.get(test_number, None):
+                        answer_data[test_number] = ["", "", "", "", dict(), dict()]
+
+                    answer_data[test_number][index][filename] = content
+
+                else:
+                    test_number = None
+                    index = None
+
+                    if key.startswith('name') and request.form[key][0]:
+                        test_number = int(key[4:])
+                        index = 0
+                    elif key.startswith('cmd') and request.form[key][0]:
+                        test_number = int(key[3:])
+                        index = 1
+                    elif key.startswith('input') and request.form[key][0]:
+                        test_number = int(key[5:])
+                        index = 2
+                    elif key.startswith('output') and request.form[key][0]:
+                        test_number = int(key[6:])
+                        index = 3
+
+                    if test_number != None and not answer_data.get(test_number, None):
+                        answer_data[test_number] = ["", "", "", "", dict(), dict()]
+
+                    if test_number != None and index != None:
+                        answer_data[test_number][index] = request.form[key][0]
 
         question = Question(request, pagename)
-        success, msg = question.save_question(answer_data, question_options)
+        success, msg = question.save(answer_data, question_options)
         if success:
             msg = u"Question saved successfully."
         else:
@@ -88,12 +134,10 @@ def execute(pagename, request):
     else:
         msg = u"You need to be teacher to edit questions."
 
-    page = Page(request, pagename)
 
     if not success:
         request.theme.add_msg(msg, 'error')
         Page(request, pagename).send_page()
     else:
-        request.theme.add_msg(msg)
-        Page(request, pagename).send_page()
+        Page(request, pagename).send_page(msg=msg)
 

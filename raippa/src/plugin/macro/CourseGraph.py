@@ -142,8 +142,8 @@ def get_student_data(request, course, user):
                         done, value = user.has_done(task)
                         if done:
                             graph[taskpage]['label'] = u'done'
-                            graph[taskpage]['fillcolor'] = u'darkolivegreen4'
-                            tooltip += u'You have passed this task.'
+                            graph[taskpage]['fillcolor'] = u'firebrick'
+                            tooltip += u'You have passed this task.<br>Deadline to this task is gone.'
                             graph[taskpage]['tooltip'] = tooltip 
                         else:
                             graph[taskpage]['label'] = u''

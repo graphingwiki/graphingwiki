@@ -3,9 +3,11 @@
 import time, re
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.action.AttachFile import add_attachment
 from MoinMoin.user import User as MoinUser
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
-from raippa import removelink, addlink, running_pagename, pages_in_category, rename_page, delete_page
+from raippa import removelink, addlink, running_pagename, pages_in_category
+from raippa import rename_page, delete_page, attachment_list
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
@@ -62,7 +64,7 @@ class Answer:
         elif len(questions) > 1:
             raise TooManyValuesException(u'Too many pages linking in to %s.' % self.pagename)
         else:
-            raise PageDoesNotExistException(u"Answer %s is missing a question" % self.pagename)
+            return None
 
     def answer(self):
         answertype = self.question().options().get('answertype', 'text')
@@ -80,15 +82,49 @@ class Answer:
             else:
                 raise MissingMetaException(u'''Page %s doesn't have "answer" -meta.''' % self.pagename)
         else:
-            #TODO new file answer
-            answer = Page(self.request, self.pagename).get_raw_body()
-            regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
-            raw_answer = regexp.search(answer)
+            keys = ['testname', 'parameters', 'input', 'output']
+            metas = get_metas(self.request, self.pagename, keys, checkAccess=False)
 
-            if raw_answer:
-                answer = raw_answer.groups()[0]
-            if not answer:
-                raise ValueError, u'Missing answer text in page %s' % self.pagename
+            answer = ["", "", "", "", list(), list()]
+
+            for key in keys:
+                values = metas.get(key, list())
+                value = ""
+
+                if len(values) == 1:
+                    value = removelink(values[0])
+                elif len(values) > 1:
+                    raise TooManyValuesException(u'Page %s has too many "%s" -metas.' % (key, self.pagename))
+
+                if key == "testname":
+                    if not value:
+                        raise MissingMetaException(u'''Page %s doesn't have "testname" -meta.''' % self.pagename)
+                    answer[0] = value
+
+                elif key == "parameters":
+                    answer[1] = value
+
+                elif key == "input":
+                    if value and Page(self.request, value).exists():
+                        raw_input = Page(self.request, value).get_raw_body()
+                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)     
+                        match = regexp.search(raw_input)
+
+                        if match:
+                            answer[2] = match.groups()[0]
+
+                        answer[4] = attachment_list(self.request, value)
+
+                elif key == "output":
+                    if value and Page(self.request, value).exists():
+                        raw_output = Page(self.request, value).get_raw_body()
+                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+                        match = regexp.search(raw_output)
+
+                        if match:
+                            answer[3] = match.groups()[0]
+
+                        answer[5] = attachment_list(self.request, value)
 
         return answer
 
@@ -247,6 +283,113 @@ class Question:
 
         return overallvalue, success_dict 
 
+    def save(self, answer_data, options):
+        old_answers = self.answers()
+        answertype = options.get("answertype", [u""])[0]
+
+        remove = {self.optionspage: get_keys(self.request, self.optionspage)}
+
+        add = {self.optionspage: {"answer": list(),
+                                  "question": [addlink(self.pagename)],
+                                  "gwikicategory": [rc['questionoptions']]}}
+        for key in options:
+            add[self.optionspage][key] = options[key]
+
+        for index, key in enumerate(sorted(answer_data.keys())):
+            pagename = "%s/%s/%.3i" % (self.pagename, "answer", index)
+
+            add[self.optionspage]["answer"].append(addlink(pagename))
+
+            if pagename in old_answers:
+                old_answers.remove(pagename)
+                remove[pagename] = get_keys(self.request, pagename)
+
+            if answertype != 'file':
+                answer = answer_data[key]
+
+                if not answer.get("answer", list()):
+                    raise ValueError, "Missing answer."
+
+                if not answer.get("value", list()):
+                    raise ValueError, "Missing value."
+
+                add[pagename] = {"question": [addlink(self.pagename)],
+                                 "gwikicategory": [rc['answer']]}
+
+                for key in answer:
+                    add[pagename][key] = answer[key]
+
+            else:
+                answer = answer_data[key]
+
+                if not answer[0]:
+                    raise ValueError, "Missing test name."
+
+                add[pagename] = {"question": [addlink(self.pagename)],
+                                 "testname": [answer[0]],
+                                 "parameters": [answer[1]],
+                                 "gwikicategory": [rc['answer']]}
+
+                if answer[2] or answer[4]:
+                    inputpage = pagename+"/input"
+                    add[pagename]["input"] = [addlink(inputpage)]
+
+                    filelinks = unicode()
+                    if answer[4]:
+                        for filename in answer[4]:
+                            content = answer[4][filename]
+                            fname, s = add_attachment(self.request, inputpage, filename, content)
+                            filelinks += " file:: [[attachment:%s]]" % filename
+
+                    pagecontent = u'''
+{{{
+%s
+}}}
+----
+ answer:: %s
+%s
+----
+%s
+''' % (answer[2], addlink(pagename), filelinks, rc['testinput'])
+
+                    page = PageEditor(self.request, inputpage)
+                    msg = page.saveText(pagecontent, page.get_real_rev())
+
+                if answer[3] or answer[5]:
+                    outputpage = pagename+"/output"
+                    add[pagename]["output"] = [addlink(outputpage)]
+
+                    filelinks = unicode()
+                    if answer[5]:
+                        for filename in answer[5]:
+                            content = answer[5][filename]
+                            fname, s = add_attachment(self.request, outputpage, filename, content)
+                            filelinks += " file:: [[attachment:%s]]" % filename
+
+                    pagecontent = u'''
+{{{
+%s
+}}}
+----
+ answer:: %s
+%s
+----
+%s
+''' % (answer[3], addlink(pagename), filelinks, rc['testoutput'])
+
+                    page = PageEditor(self.request, outputpage)
+                    msg = page.saveText(pagecontent, page.get_real_rev())
+
+        success, msg = set_metas(self.request, remove, dict(), add)
+
+        if success:
+            for old_answer in old_answers:
+                rm_success, rm_msg = PageEditor(self.request, old_answer).deletePage()
+                if not rm_success:
+                    return False, rm_msg
+
+        return success, msg
+
     def save_question(self, answers_data, options):
         save_data = dict()
         save_data[self.optionspage] = dict()
@@ -266,7 +409,7 @@ class Question:
             answerpages = list()
 
             for anspage in old_answers:
-                remove[anspage] = ["value", "answer", "comment", "tip", "question"]
+                remove[anspage] = ["value", "answer", "comment", "tip", "question", "option"]
 
             for ans in answers_data:
                 try:
@@ -284,6 +427,7 @@ class Question:
                         "value" : ans.get("value", [u""]),
                         "tip" : ans.get("tip", [u""]),
                         "comment" : ans.get("comment", [u""]),
+                        "option" : ans.get("options",[u""]),
                         "gwikicategory" : [rc['answer']]
                         }
                 else:
@@ -309,7 +453,7 @@ class Question:
             remove[self.optionspage].extend(["redo", "answertype"])
             save_data[self.optionspage]["redo"] =  options.get("redo", [u"True"])
             save_data[self.optionspage]["answertype"] = options.get("answertype", [u""])
-            save_data[self.optionspage]["question"] =  [self.pagename]
+            save_data[self.optionspage]["question"] =  [addlink(self.pagename)]
             save_data[self.optionspage]["gwikicategory"] =  [rc['questionoptions']]
 
         success, msg =  set_metas(self.request, remove, dict(), save_data)

@@ -7,6 +7,8 @@ forbidden = ['CategoryTaskFlow',
              'CategoryTaskOptions',
              'CategoryQuestionOptions',
              'CategoryAnswer',
+             'CategoryTestInput',
+             'CategoryTestOutput',
              'CategoryHistory',
              'CategoryDeadline',
              'CategoryBotComment']
@@ -19,6 +21,8 @@ raippacategories = {"task": "CategoryTask",
                     "question": "CategoryQuestion",
                     "questionoptions": "CategoryQuestionOptions",
                     "answer": "CategoryAnswer",
+                    "testinput": "CategoryTestInput",
+                    "testoutput": "CategoryTestOutput",
                     "timetrack": "CategoryTimetrack",
                     "student": "CategoryStudent",
                     "deadline": "CategoryDeadline"}
@@ -33,6 +37,7 @@ def to_json(arg):
     def parse(raw): 
        
         if isinstance(raw, (unicode,str)):
+            raw = raw.replace("\r", '')
             raw = raw.replace("\n", '\\n')
             raw = raw.replace('\\' ,'\\\\')
             raw = raw.replace('"' ,'\\"')
