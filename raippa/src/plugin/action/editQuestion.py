@@ -30,8 +30,6 @@ def save_new_question(request, pagename):
 
 
 def execute(pagename, request):
-    raise ValueError, request.form
-  
     user = User(request, request.user.name)
     success = False
     if user.is_teacher():
@@ -45,7 +43,9 @@ def execute(pagename, request):
             return
 
         question_options = dict()
-        question_options["redo"] = [request.form.get("redo", [u"False"])[0]]
+        if request.form.get("redo", [u'False'])[0] == u'True':
+            question_options["option"] = ["redo"]
+
         anstype = request.form.get("answertype", [u""])[0]
         question_options["answertype"] = [anstype]
         

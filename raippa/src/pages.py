@@ -390,80 +390,6 @@ class Question:
 
         return success, msg
 
-    def save_question(self, answers_data, options):
-        save_data = dict()
-        save_data[self.optionspage] = dict()
-        remove = dict()
-        remove[self.pagename] = list()
-        remove[self.optionspage] = list()
-        pages_to_delete = list()
-        old_answers = list()
-        anstype = options.get("answertype", [u""])[0]
-
-        answer_pages = list()
-        old_answers = self.answers()
-        remove[self.optionspage].append("answer")
-
-        if len(answers_data) > 0:
-            new_answers = list()
-            answerpages = list()
-
-            for anspage in old_answers:
-                remove[anspage] = ["value", "answer", "comment", "tip", "question", "option"]
-
-            for ans in answers_data:
-                try:
-                    old_page = ans.get("old_page", [u""])[0]
-                    anspage = old_answers.pop(old_answers.index(old_page))
-                except:
-                    anspage = running_pagename(self.request, self.pagename+"/answer", answer_pages)
-
-                answer_pages.append(anspage)
-
-                if anstype != "file":
-                    save_data[anspage] ={
-                        "question" : [addlink(self.pagename)],
-                        "answer" : ans.get("answer", [u""]),
-                        "value" : ans.get("value", [u""]),
-                        "tip" : ans.get("tip", [u""]),
-                        "comment" : ans.get("comment", [u""]),
-                        "option" : ans.get("options",[u""]),
-                        "gwikicategory" : [rc['answer']]
-                        }
-                else:
-                    #TODO new file answer
-                    pagecontent = u'''
-{{{
-%s
-}}}
-----
- question:: %s
-----
-%s
-''' % (ans.get("answer", [u""])[0], addlink(self.pagename), rc['answer'])
-
-                    page = PageEditor(self.request, anspage)
-                    msg = page.saveText(pagecontent, page.get_real_rev())
-
-                new_answers.append(addlink(anspage))
-
-            save_data[self.optionspage]["answer"] = new_answers
-
-        if options:
-            remove[self.optionspage].extend(["redo", "answertype"])
-            save_data[self.optionspage]["redo"] =  options.get("redo", [u"True"])
-            save_data[self.optionspage]["answertype"] = options.get("answertype", [u""])
-            save_data[self.optionspage]["question"] =  [addlink(self.pagename)]
-            save_data[self.optionspage]["gwikicategory"] =  [rc['questionoptions']]
-
-        success, msg =  set_metas(self.request, remove, dict(), save_data)
-
-        if success:
-            for page in old_answers:
-                rm_success, rm_msg = PageEditor(self.request,page).deletePage()
-
-        return success, msg
-
     def rename(self, newname, comment=""):
         title = self.title()
 
@@ -553,40 +479,31 @@ class Question:
 
         return True, u'Question "%s" was successfully deleted!' % title
 
-    def redo(self):
-        if not Page(self.request, self.optionspage).exists():
-            return False
-
-        metas = get_metas(self.request, self.optionspage, ['redo'], checkAccess=False)
-
-        values = metas.get('redo', list())
-        if len(values) > 1:
-            raise TooManyValuesException(u'Question %s has too many redo options.' %self.pagename)
-        elif len(values) < 1:
-            raise MissingMetaException(u"Question %s doesn't have redo option." % self.pagename)
-        else:
-            if values[0] == "True":
-                return True
-            else:
-                return False
-
     def options(self):
         options = dict()
 
         if not Page(self.request, self.optionspage).exists():
             return options
 
-        optionkeys = ['answertype', 'redo']
+        optionkeys = ['answertype', 'redo', 'option']
         metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
 
-        for key in optionkeys:
-            values = metas.get(key, list())
-            if len(values) == 1:
-                options[key] = values[0]
-            elif len(values) > 1:
-                raise TooManyValuesException(u'Question %s has too many %s options.' % (self.pagename, key))          
-            elif len(values) < 1:
-                raise MissingMetaException(u"Question %s doesn't have %s option." % (self.pagename, key))
+        answertypes = metas.get('answertype', list())
+        if len(answertypes) == 1:
+            options['answertype'] = answertypes[0]
+        elif len(answertypes) > 1:
+            raise TooManyValuesException(u'Question %s has too many answertypes.' % self.pagename)
+        elif len(answertypes) < 1:
+            raise MissingMetaException(u"Question %s is missing a answertype." % self.pagename) 
+
+        redos = metas.get('redo', list())
+        if len(redos) == 1:
+            options['redo'] = redos[0]
+        elif len(redos) > 1:
+            raise TooManyValuesException(u'Question %s has too many redos.' % self.pagename)
+            
+        for key in metas.get('option', list()):
+            options[key] = True
 
         return options
 
@@ -834,49 +751,31 @@ class Task:
 
         return overall, deadlines
 
-    def consecutive(self):
-        if not Page(self.request, self.optionspage).exists():
-            return False 
-
-        metas = get_metas(self.request, self.optionspage, ["option"], checkAccess=False)
-
-        if 'consecutive' in metas.get('option', list()):
-            return True
-
-        return False
-
     def options(self):
         options = dict()
 
         if not Page(self.request, self.optionspage).exists():
             return options
 
-        optionkeys = ['type', 'prerequisite']
+        optionkeys = ['type', 'prerequisite', 'option']
         metas = get_metas(self.request, self.optionspage, optionkeys, checkAccess=False)
 
-        for key in optionkeys:
-            values = list()
+        prerequisites = metas.get('prerequisite', list())
+        if len(prerequisites) > 0:
+            options['prerequisite'] = list()
+            for prerequisite in prerequisites:
+                options['prerequisite'].append(removelink(prerequisite))
 
-            for value in metas.get(key, list()):
-                values.append(removelink(value))
+        types = metas.get('types', list())
+        if len(types) == 1:
+            options['type'] = types[0] 
+        elif len(types) > 1:
+            raise TooManyValuesException(u'Task %s has too many types.' % self.pagename) 
+        else:
+            options['type'] = u'basic'
 
-            if key == 'prerequisite':
-                if len(values) > 0:
-                    options[key] = values
-            elif key == 'type':
-               if len(values) == 1:
-                   options[key] = values[0]
-               elif len(values) > 1:
-                   raise TooManyValuesException(u'Task %s has too many %s options.' % (self.pagename, key))
-               elif len(values) < 1:
-                   options['type'] = u'basic'
-            else:
-                if len(values) == 1:
-                    options[key] = values[0]
-                elif len(values) > 1:
-                    raise TooManyValuesException(u'Task %s has too many %s options.' % (self.pagename, key))
-                elif len(values) < 1:
-                    raise MissingMetaException(u"Task %s doesn't have %s option." % (self.pagename, key))
+        for option in metas.get('option', list()):
+            options[option] = True
 
         return options
 

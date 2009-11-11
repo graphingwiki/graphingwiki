@@ -234,8 +234,7 @@ class User:
                 done, info = self.has_done(question)
 
                 if done:
-                    redo = question.options().get('redo', unicode())
-                    if redo == "True":
+                    if question.options().get('redo', False):
                         may = True
                         reason = "redo"
                 else:
@@ -265,23 +264,23 @@ class User:
             if not may:
                 return False, info
 
-            redo = instance.options().get('redo', unicode())
+            redo = instance.options().get('redo', False)
             done, value = self.has_done(instance)
 
             if done:
-                if redo != "True":
+                if not redo:
                     return False, "done"
                 else:
                     return True, "redo"
             else:
-                if redo == "True" and value == "pending":
+                if redo and value == "pending":
                     return True, "pending"
                 elif value in ["picked", "pending"]:
                     return False, value
 
             tasktype = task.options().get('type', None)
 
-            if tasktype in ['basic', 'questionary'] and task.consecutive():
+            if tasktype in ['basic', 'questionary'] and task.options().get('consecutive', False):
                 questionlist = task.questionlist()
                 prerequisites = questionlist[:questionlist.index(instance.pagename)]
                 prerequisites.reverse()
