@@ -101,6 +101,7 @@ var Stats = new Class({
             opacity : 0
         });
 		
+		window.accord = this.accordion;
 		this.container.setStyle('display', tmpdisplay);
         
 		var search = new Element('input');
@@ -180,8 +181,9 @@ var Stats = new Class({
                 'text' : data.name + ' ('+ id+')'
             });
         this.statBoxes.push(id);
-        this.accordion.addSection(title,box);
-        this.accordion.display(box);
+        this.accordion.injectSection(title,box);
+        //this.accordion.display(1);
+		this.accordion.display(box);
 	},
 	filter: function(search){
 		var results = $H();
