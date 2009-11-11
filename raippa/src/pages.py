@@ -498,7 +498,10 @@ class Question:
 
         redos = metas.get('redo', list())
         if len(redos) == 1:
-            options['redo'] = redos[0]
+            if redos[0] == "True":
+                options['redo'] = True
+            else:
+                options['redo'] = False
         elif len(redos) > 1:
             raise TooManyValuesException(u'Question %s has too many redos.' % self.pagename)
             
@@ -900,44 +903,10 @@ class Task:
                 if not success:
                     return success, msg
 
-        #rename links
-        pagedata = self.request.graphdata.getpage(self.pagename)
-        linkcomment = "changed links: %s -> %s" % (self.pagename, newname)
+        success, msg = rename_page(self.request, self.pagename, newname, comment)
 
-        pages = list()
-        for type in pagedata.get('in', {}):
-            for pagename in pagedata['in'][type]:
-                pages.append(pagename)
-
-        for pagename in pages:
-            page = PageEditor(self.request, pagename)
-            old_text = page.get_raw_body()
-            savetext = old_text.replace(addlink(self.pagename), addlink(newname))
-
-            msg = page.saveText(savetext, 0, comment=linkcomment, notify=False)
-
-        #rename subpages
-        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
-        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
-
-        for subpage in subpages:
-            page = PageEditor(self.request, subpage)
-            if page.exists():
-                new_subpage = subpage.replace(self.pagename, newname, 1)
-                success, msg = page.renamePage(new_subpage, comment)
-
-                if not success:
-                    return success, msg
-                            
-        #rename taskpage
-        pagedata = self.request.graphdata.getpage(self.pagename)
-
-        page = PageEditor(self.request, self.pagename)
-        if page.exists():
-            success, msg = page.renamePage(newname, comment)
-            
-            if not success:
-                return success, msg
+        if not success:
+            return success, msg
 
         return True, u'Task "%s" was successfully renamed!' % title
 
@@ -1003,26 +972,6 @@ class Task:
             if not success:
                 return success, msg
 
-        #remove subpages
-        filterfn = re.compile(ur"^%s/.*$" % re.escape(self.pagename), re.U).match
-        subpages = self.request.rootpage.getPageList(user='', exists=1, filter=filterfn)
-            
-        for subpage in subpages:
-            page = PageEditor(self.request, subpage, do_editor_backup=0)
-            if page.exists():
-                success, msg = page.deletePage(comment)
-                
-                if not success:
-                    return success, msg
-
-        #remove taskpage 
-        page = PageEditor(self.request, self.pagename, do_editor_backup=0)
-        if page.exists():
-            success, msg = page.deletePage(comment)
-
-            if not success:
-                return success, msg
-
         #remove questionpages
         if delete_questions:
             for questionpage in self.questionlist():
@@ -1031,6 +980,11 @@ class Task:
                 
                     if not success:
                         return success, msg
+
+        success, msg = delete_page(self.request, self.pagename, comment)
+
+        if not success:
+            return success, msg
                 
         return True, u'Task "%s" was successfully deleted!' % title
 
