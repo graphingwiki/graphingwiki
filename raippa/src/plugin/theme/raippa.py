@@ -7,6 +7,19 @@
 """
 
 from MoinMoin.theme import ThemeBase
+from MoinMoin import wikiutil
+from MoinMoin.Page import Page
+from graphingwiki.editing import get_metas
+
+forbidden = ['CategoryTaskFlow',
+             'CategoryTaskOptions',
+             'CategoryQuestionOptions',
+             'CategoryAnswer',
+             'CategoryTestInput',
+             'CategoryTestOutput',
+             'CategoryHistory',
+             'CategoryDeadline',
+             'CategoryBotComment']
 
 class Theme(ThemeBase):
 
@@ -88,6 +101,63 @@ class Theme(ThemeBase):
             self.startPage(),
         ]
         return u'\n'.join(html)
+
+    def trail(self, d):
+        """ Assemble page trail
+        
+        @param d: parameter dictionary
+        @rtype: unicode
+        @return: trail html
+        """
+        request = self.request
+        user = request.user
+        html = ''
+        if not user.valid or user.show_page_trail:
+            trail = user.getTrail()
+            if trail:
+                items = []
+
+                for pagename in trail:
+                    #hide forbidden pages from trail
+                    if request.user.name not in request.cfg.superuser:
+                        if not Page(request, pagename).exists():
+                            continue
+
+                        metas = get_metas(request, pagename, ['gwikicategory'], checkAccess=False)
+                        page_categories = metas.get('gwikicategory', list())
+                        
+                        skip = False
+                        for category in page_categories:
+                            if category in forbidden:
+                                skip = True
+                                continue
+
+                        if skip:
+                            continue
+
+                    try:
+                        interwiki, page = wikiutil.split_interwiki(pagename)
+                        if interwiki != request.cfg.interwikiname and interwiki != 'Self':
+                            link = (self.request.formatter.interwikilink(True, interwiki, page) +
+                                    self.shortenPagename(page) +
+                                    self.request.formatter.interwikilink(False, interwiki, page))
+                            items.append('<li>%s</li>' % link)
+                            continue
+                        else:
+                            pagename = page
+
+                    except ValueError:
+                        pass
+                    page = Page(request, pagename)
+                    title = page.split_title()
+                    title = self.shortenPagename(title)
+                    link = page.link_to(request, title)
+                    items.append('<li>%s</li>' % link)
+                html = '''
+<ul id="pagetrail">
+%s
+</ul>''' % ''.join(items)
+        return html
 
     def footer(self, d, **keywords):
         """ Assemble wiki footer
