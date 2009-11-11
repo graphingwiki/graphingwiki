@@ -666,7 +666,8 @@ class GraphShower(object):
             # Add page categories to selection choices in the form
             # (for local pages only, ie. existing and saved)
             if pagedata.get('saved', False):
-                self.categories_add(orig_obj.gwikicategory)
+                if hasattr(orig.obj, 'gwikicategory'):
+                    self.categories_add(orig_obj.gwikicategory)
 
             tooldata = make_tooltip(self.request, pagedata, self.format)
             if tooldata and not hasattr(orig_obj, 'gwikitooltip'):
