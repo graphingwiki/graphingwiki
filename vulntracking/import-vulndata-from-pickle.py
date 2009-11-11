@@ -18,7 +18,7 @@ from opencollab.util.config import parseConfig
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
  
-def import_metas(wiki, metas, template, verbose, include_pages, metafiltspec,
+def import_metas(wiki, metas, verbose, include_pages, metafiltspec,
                  linked_only=False):
     def page_included(pagename):
         if include_pages and pagename not in include_pages:
@@ -50,7 +50,22 @@ def import_metas(wiki, metas, template, verbose, include_pages, metafiltspec,
                 continue
 
         print 'import_metas: doing page', page
-        status = wiki.setMeta( page, pmeta, template=template, replace=True )
+        
+        kw = {'replace': True}
+        if page.startswith('CVE-') or page.startswith('CAN-'):
+            kw['template'] = 'CveTemplate'
+
+
+        def linkify(text):
+            if not text.startswith(u'[['):
+                text = u'[[' + text + u']]'
+            return text
+            
+        for mk in pmeta:
+            if mk == 'CVE ID':
+                pmeta[mk] = map(linkify, pmeta[mk])
+
+        status = wiki.setMeta(page, pmeta, **kw)
         if verbose:
             print status
 
@@ -63,11 +78,6 @@ def main():
         metavar="CONFIG",
         help="CONFIG file path.")
 
-    parser.add_option("-t", "--template",
-                      dest="template",
-                      default=None,
-                      metavar="TEMPLATE",
-                      help="Wiki TEMPLATE.")
     parser.add_option("-u", "--url",
                       dest="url",
                       default=None,
@@ -114,12 +124,6 @@ def main():
     if options.config:
         iopts = parseConfig(options.config, "creds", "import-vulndata-from-pickle")
 
-    if options.template:
-        template = options.template
-    elif options.config and "template" in iopts["import-nvd-xml"]:
-        template = iopts["import-nvd-xml"]["template"]
-    else:
-        template = "CveTemplate"
     url = None
     if options.url:
         url = options.url
@@ -155,7 +159,7 @@ def main():
         if options.verbose:
             print "Importing metas to", url
 
-        import_metas(collab, page_metas, template, options.verbose, pagenames,
+        import_metas(collab, page_metas, options.verbose, pagenames,
                      metafiltspec, options.linked_only)
 
 if __name__ == "__main__":

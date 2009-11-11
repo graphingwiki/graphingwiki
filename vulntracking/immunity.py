@@ -1,14 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    Scraper for Core security exploit feed
+    Scraper for Immunity exploits
 
     @copyright: 2009 Erno Kuusela, Jussi Eronen
     @license: GPLv2
 """
 
 from critismunge import format_time
-
+import scrapeutil
 import urllib, re, urlparse, time
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
@@ -30,7 +30,7 @@ def textify(s):
             out += textify(elt)
     return out
 
-def scrape_mw(scrapeurl):
+def scrape(scrapeurl):
     if 1:
         f = urllib.urlopen(scrapeurl)
     else:
@@ -45,21 +45,25 @@ def scrape_mw(scrapeurl):
     for text in textify(data):
         if text == None:
             if zdict['Date']:
-                if zdict['CVE']:
-                    yield "Immunity-%s" % (zdict['Date'].split()[0]), zdict
+                if zdict['CVE ID']:
+                    yield "Immunity-%s" % (zdict['Date'][0].split()[0]), zdict
 
             zdict = defaultdict(list)
             zdict['Feed type'].append('Exploit')
             date_next = True
         elif date_next:
-            zdict['Date'] = format_time(text)
+            zdict['Date'].append(format_time(text))
             date_next = False
         else:
-            zdict['CVE'].extend(x for x in 
+            zdict['CVE ID'].extend(x for x in 
                                 re.findall(r'(?i)(CVE-\D{0,4}\d+-\d+)', text))
             zdict['MS'].extend(x.replace('_', '-') for x in 
                                re.findall(r'(?i)(MS\D{0,4}\d+[-_]\d+)', text))
 
+
+def update_vulns(s):
+    scrapeutil.update_vulns(s, scrape(remoteurl), 'ImmunitySec')
+
 if __name__ == '__main__':
-    for z in scrape_mw(remoteurl):
+    for z in scrape(remoteurl):
         print z

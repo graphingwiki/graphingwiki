@@ -8,7 +8,7 @@
 """
 
 from critismunge import format_time
-
+import scrapeutil
 import urllib, re, urlparse, time
 from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
@@ -26,15 +26,18 @@ def scrape_mw(scrapeurl):
         descr = link.contents[0]
         URL = urlparse.urljoin("http://www.coresecurity.com", link['href'])
         data = urllib.urlopen(URL).read()
-        cves = set([('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', data)])
+        cves = set([unicode('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', data)])
 
         zdict = defaultdict(list)
-        zdict['CVE'].extend(cves)
-        zdict['URL'] = URL
-        zdict['Description'] = descr
-        zdict['Date'] = format_time(date)
-        zdict['Feed type'].append('Exploit')
+        zdict['CVE ID'].extend(cves)
+        zdict['URL'].append(unicode(URL))
+        zdict['Description'].append(unicode(descr))
+        zdict['Date'].append(unicode(format_time(date)))
+        zdict['Feed type'].append(unicode('Exploit'))
         yield "Core-%s" % (link['href'].split('/')[-1]), zdict
+
+def update_vulns(s):
+    scrapeutil.update_vulns(s, scrape_mw(remoteurl), 'CoreSecurity', cvekey='CVE')
 
 if __name__ == '__main__':
     for z in scrape_mw(remoteurl):

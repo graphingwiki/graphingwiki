@@ -35,9 +35,9 @@ def scrape_mw(scrapeurl):
         data = urllib.urlopen(urlparse.urljoin(remoteurl, link)).read()
         cves = set([('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', data)])
         zdict = defaultdict(list)
-        zdict['CVE'].extend(cves)
+        zdict['CVE ID'].extend(cves)
         zdict['URL'] = urlparse.urljoin("http://www.milw0rm.com", link)
-        zdict['Description'] = descr
+        zdict['Description'].append(descr)
         zdict['Date'] = format_time(date)
         zdict['Feed type'].append('Exploit')
         yield "Milw0rm-%s" % (link.split('/')[-1]), zdict
@@ -46,7 +46,7 @@ def scrape_mw(scrapeurl):
 def update_vulns(s):
     from itertools import chain
     z = chain(scrape_mw(remoteurl), scrape_mw(remoteurl + '?start=30'))
-    scrapeutil.update_vulns(s, z, 'Milw0rm', cvekey='CVE')
+    scrapeutil.update_vulns(s, z, 'Milw0rm')
 
 if __name__ == '__main__':
 #     scrape_mw(localurl)

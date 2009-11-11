@@ -45,7 +45,7 @@ def scrape():
 def findcve(rbfile):
     seen_refs=0
     zdict = defaultdict(list)
-    zdict['feedtype'] = 'attack'
+    zdict['feedtype'].append('attack')
     gotany=0
     for line in open(rbfile):
         if not seen_refs and "'References'" in line and '=>' in line:
@@ -54,7 +54,7 @@ def findcve(rbfile):
             if '=>' in line or (']' in line and '[' not in line):
                 break
             m = re.search(r"'([^']*)'\s*,\s*'([^']*)'", line)
-            if m:
+            if m and m.group(1) and m.group(2):
                 zdict[m.group(1)].append(m.group(2))
                 gotany=1
     if gotany:
@@ -69,3 +69,4 @@ def update_vulns(s):
 if __name__ == '__main__':
     for z in scrape():
         print z
+

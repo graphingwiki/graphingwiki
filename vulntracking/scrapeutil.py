@@ -53,7 +53,8 @@ def update_vulns(s, scrapeiter, keyname, cvekey=None):
                 cveid = 'CVE-' + cveid
 
             if not re.match(r'(CVE|CAN)-\d{4}-\d+', cveid):
-                raise Bleat("malformed cveid %s" % cveid)
+#                raise Bleat("malformed cveid %s" % repr(cveid))
+                print "malformed cveid %s" % repr(cveid)
 
             if cveid not in s:
                 d = defaultdict(list)
@@ -63,4 +64,30 @@ def update_vulns(s, scrapeiter, keyname, cvekey=None):
             if link not in d[keyname]:
                 d[keyname].append(link)
             s[cveid] = d
+
+        data[cvekey] = [u"[[" + vid + u"]]" for vid in data.get(cvekey, [])]
+
+
             
+
+def score_all_cves(s):
+    for vid in s.iterkeys():
+        if not vid.startswith('CVE-'):
+            continue
+        score_cve(vid, s)
+
+def score_cve(vid, s):
+    scoretab = {
+        'exploit-available': has_exploit,
+        'remote-compromise': remote_compromise,
+    }
+
+def has_remote_compromise(cveid, s):
+    pass
+
+def has_exploit(cveid, s):
+    # xxx check packetstorm, xforce, securityfocus
+    return 'Milw0rm' in s[cveid] or 'MetaSploit' in s[cveid]
+
+
+

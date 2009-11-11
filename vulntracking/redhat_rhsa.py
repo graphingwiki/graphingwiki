@@ -61,7 +61,7 @@ def scrapeit(save=False, cachedir="./rhsa_cache"):
         absolutify_urls(s2, errata_baseurl + cachefn)
         d = collections.defaultdict(list)
         cvestrings = u' '.join(map(unicode, s2.findAll(text=re.compile(r'^(CVE|CAN)-\d'))))
-        d['CVE ID'] = sorted(set(re.findall(ur'(CVE|CAN)-\d{4}-\d+', cvestrings)))
+        d['CVE ID'] = sorted(set(re.findall(ur'(?:CVE|CAN)-\d{4}-\d+', cvestrings)))
     
         d['Feed type'].append('Vulnerability')
 
