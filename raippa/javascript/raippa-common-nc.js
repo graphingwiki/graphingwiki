@@ -1791,7 +1791,7 @@ this.Tips = new Class({
 	},
 
 	fireForParent: function(event, element){
-		if (!element) return;
+		if (!element || ! element.getParent) return;
 		parentNode = element.getParent();
 		if (parentNode == document.body) return;
 		if (parentNode.retrieve('tip:enter')) parentNode.fireEvent('mouseenter', event);
@@ -2046,7 +2046,7 @@ Tips = new Class({
 	Extends: Tips,
 	initialize: function(elements, options){
 	 	options = options || $H();
-		options.merge($H({
+		options.combine($H({
 		title: function(element){
 			element.store("title_backp", element.get("title"));
 			return element.get("title") ? element.get("title").split("::")[0] || element.get("title") :"";
