@@ -42,9 +42,12 @@ def execute(pagename, request):
             Page(request, pagename).send_page(msg=msg)
             return
 
-        question_options = dict()
+        question_options = {"option":list()} 
         if request.form.get("redo", [u'False'])[0] == u'True':
-            question_options["option"] = ["redo"]
+            question_options["option"].append("redo")
+
+        if request.form.get("shuffle", [u'False'])[0] == u'True':
+            question_options["option"].append("shuffle")
 
         anstype = request.form.get("answertype", [u""])[0]
         question_options["answertype"] = [anstype]

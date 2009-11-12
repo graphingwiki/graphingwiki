@@ -147,7 +147,6 @@ def draw_answer_edit_ui(macro, question):
     f = macro.formatter
     res = list()
 
-
     ans_js = []
     if qtype in ["checkbox", "radio", "text"]:
     #generating old answers using javascript
@@ -233,7 +232,9 @@ def draw_answers(macro, user, question):
     #possible types: radio,checkbox, text (+file?)
     
     if qtype in ["checkbox", "radio"]:
-        random.shuffle(answers)
+        if question.options().get("shuffle", False):
+            random.shuffle(answers)
+
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage)
 
