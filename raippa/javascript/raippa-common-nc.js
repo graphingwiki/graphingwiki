@@ -2042,11 +2042,10 @@ var modalizer = new Class({
 	
 });
 
-Tips = new Class({
+window.Tips = new Class({
 	Extends: Tips,
 	initialize: function(elements, options){
-	 	options = options || $H();
-		options.combine($H({
+		options = $merge(options,{
 		title: function(element){
 			element.store("title_backp", element.get("title"));
 			return element.get("title") ? element.get("title").split("::")[0] || element.get("title") :"";
@@ -2055,7 +2054,7 @@ Tips = new Class({
 			var txt = element.retrieve("title_backp") ? element.retrieve("title_backp") : "";
 			return txt.split("::")[1] || element.get("rel")||element.get("href");
 		}
-		}));
+		});
 		this.parent(elements,options);
 	}
 });
