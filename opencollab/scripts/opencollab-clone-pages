@@ -47,7 +47,7 @@ def main():
     print "Authenticating to: " + repr(url)
     while True:
         try:
-            src_collab = CLIWiki(ops)
+            src_collab = CLIWiki(**ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

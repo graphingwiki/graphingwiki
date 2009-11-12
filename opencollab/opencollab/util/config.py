@@ -22,6 +22,7 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
     globalopts = {}
     globalopts[inisection] = {}
     globalopts["creds"] = {}
+    creds = set(['url', 'username', 'password'])
     genparser = copy.deepcopy(specparser)
     if config:
         genparser.add_option( "-c", "--config", action="store",
@@ -60,20 +61,21 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
             for sect in iniopts:
                 if sect == "creds" or sect == inisection:
                     for k,v in iniopts[sect].iteritems():
-                        if k == "url" and cliopts.get("url") is not None:
-                            globalopts[sect][k] = cliopts.get("url")
+                        if k in creds and cliopts.get(k) is not None:
+                            globalopts[sect][k] = cliopts.get(k)
                         else:
                             globalopts[sect][k] = v
-    try:
-        url = globalopts["creds"]["url"]
-    except KeyError:
+    for c in creds:
         try:
-            globalopts["creds"]["url"] = cliopts.get("url")
+            k = globalopts["creds"][c]
         except KeyError:
-            globalopts["creds"]["url"] = None
+            try:
+                globalopts["creds"][c] = cliopts.get(c)
+            except KeyError:
+                globalopts["creds"][c] = None
     # Iterate CLI options
     for k,v in cliopts.iteritems():
-        if k == "url":
+        if k in creds:
             pass
         else:
             try: 

@@ -153,7 +153,7 @@ def main():
         parser.error("At least one XML input file path needs to be specified.")
     while True:
         try:
-            collab = CLIWiki(ops)
+            collab = CLIWiki(**ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

@@ -187,7 +187,7 @@ def main():
         name += "-%d" % random.randint(0, 2**32)
     while True:
         try:
-            collab = CLIWiki(ops)
+            collab = CLIWiki(**ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

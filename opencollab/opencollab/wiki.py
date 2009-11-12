@@ -315,27 +315,9 @@ class CLIWiki(GraphingWiki):
     # usage. Automatically asks url, username and password should the
     # wiki need it.
 
-    def __init__(self, ops=None, **keys):
+    def __init__(self, url=None, username=None, password=None, **keys):
 
-        try:
-            url = ops["creds"]["url"]
-        except (KeyError, TypeError):
-            url = redirected(raw_input, "Collab URL: ")
-        else:
-            if url is None:
-                url = redirected(raw_input, "Collab URL: ")
         super(CLIWiki, self).__init__(url, **keys)
-
-        try:
-            username = ops["creds"]["username"]
-        except (KeyError, TypeError):
-            username = None
-
-        try:
-            password = ops["creds"]["password"]
-        except (KeyError, TypeError):
-            password = None
-
         creds = username, password
         self.authenticate(*creds)
 

@@ -44,7 +44,7 @@ def main():
         parser.error("You need to specify the object type for the new objects, i.e. NAME. Use -h for help.")
     while True:
         try:
-            collab = CLIWiki(ops)
+            collab = CLIWiki(**ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
