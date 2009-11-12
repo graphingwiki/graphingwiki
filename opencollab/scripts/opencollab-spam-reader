@@ -21,6 +21,7 @@ def main():
         action="store", type="string", 
         dest="imapserver", default=None,
         metavar="IMAPS-SERVER", help="IMAPS-SERVER name or IP address.")
+    parser.set_usage("%prog [options]")
     metas = Metas()
     failed = []
     ops = {}

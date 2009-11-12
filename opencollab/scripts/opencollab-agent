@@ -175,6 +175,7 @@ def main():
                       default=None,
                       metavar="NAME",
                       help="force the agent's name to NAME")
+    parser.set_usage("%prog [options]")
     ops = {}
     sect = "agent"
     ops = parseOptions(parser, sect)

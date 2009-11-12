@@ -80,6 +80,7 @@ def main():
     parser.add_option("-s", "--subject",
         dest="subject", default=None, metavar="SUBJECT",
         help=("Notify email SUBJECT."))
+    parser.set_usage("%prog [options]")
     pages = Metas() 
     page_marker = Meta()
     page_content = {}

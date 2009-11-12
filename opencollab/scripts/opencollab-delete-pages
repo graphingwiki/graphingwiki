@@ -17,6 +17,7 @@ def main():
     parser.add_option("-n", "--dry-run",
         dest="dryrun", action="store_true",
         default=False, help="Show what would have been deleted.")
+    parser.set_usage("%prog [options]")
     ops = {}
     sect = "delete"
     ops = parseOptions(parser, sect)

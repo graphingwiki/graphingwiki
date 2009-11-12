@@ -52,6 +52,7 @@ def main():
     parser.add_option("-s", "--search-string",
         action="store", type="string", dest="search", default=None,
         metavar="SEARCH-STRING", help="MetaTable SEARCH-STRING." )
+    parser.set_usage("%prog [options] <results-directory>")
     ops = {}
     sect = "defensics-downloader" 
     ops = parseOptions(parser, sect)

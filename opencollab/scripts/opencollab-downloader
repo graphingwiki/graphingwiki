@@ -90,6 +90,7 @@ def main():
     parser.add_option( "-p", "--download-from-page",
         action="store", type="string", dest="page",
         metavar = "PAGE", help = "PAGE to download attachments from.")
+    parser.set_usage("%prog [options]")
     ops = {}
     sect = "downloader"
     ops = parseOptions(parser, sect)

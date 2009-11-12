@@ -22,6 +22,7 @@ def main():
     parser.add_option("-y", "--type",
         dest="type", default=None, metavar="TYPE",
         help=("Object TYPE to instantiate, e.g. TYPE=NAME."))
+    parser.set_usage("%prog [options]")
     brackets = re.compile('[\[\]]')
     ops={}
     failed = []

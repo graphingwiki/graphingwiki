@@ -39,9 +39,11 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
     genparser.add_option( "-u", "--url", action="store", 
         type="string", dest="url", default=None,
         metavar="COLLABURL", help="COLLABURL to connect to.")
+    genparser.add_option( "-U", "--username", action="store", 
+        type="string", dest="username", default=None,
+        metavar="USERNAME", help="USERNAME to use in collab auth.")
     genparser.add_option("-v", "--verbose", action="store_true", 
         dest="verbose", default=False, help="Enable verbose output." )
-    genparser.set_usage("%prog [options] [args]")
     clivalues, args = genparser.parse_args()
     # Parse arguments
     if args:

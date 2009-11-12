@@ -139,6 +139,7 @@ def main():
         metavar="SEARCH-STRING", help="MetaTable SEARCH-STRING." )
     parser.add_option("-r", action="store_true", dest="recursive", default=False,
         help="Enable recursion on input directories.")
+    parser.set_usage("%prog [options] <1..N input directories>")
     dlist=[]
     sect = "defensics"
     ops = {}

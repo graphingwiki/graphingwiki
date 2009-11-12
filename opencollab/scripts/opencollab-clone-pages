@@ -12,8 +12,7 @@ from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 
 def main():
-    usage = "usage: %prog [options] srcwiki dstwiki metatable-expression"
-    parser = optparse.OptionParser(usage=usage)
+    parser = optparse.OptionParser()
     parser.add_option("-n", "--dry-run",
                       dest="dryrun",
                       action="store_true",
@@ -29,6 +28,7 @@ def main():
                       default=None,
                       metavar="OUTPUT",
                       help="save the file to name OUTPUT in the wiki")
+    parser.set_usage("usage: %prog [options] srcwiki dstwiki metatable-expression")
     ops = {}
     sect = "clone"
     ops = parseOptions(parser, sect, config=False, template=True)

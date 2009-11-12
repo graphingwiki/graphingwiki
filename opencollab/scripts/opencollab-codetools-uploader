@@ -145,6 +145,7 @@ def main():
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
+    parser.set_usage("%prog [options]")
     arena_dirs=[]
     sect = "arena"
     ops = parseOptions(parser, sect, template=True)
