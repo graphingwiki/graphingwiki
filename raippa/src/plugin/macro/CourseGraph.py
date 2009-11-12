@@ -322,14 +322,13 @@ def macro_CourseGraph(macro):
     url_prefix = request.cfg.url_prefix_static
 
     tooltip = u'''
-<script type="text/javascript" src="%s/raippajs/mootools-1.2-more.js"></script>
 <script type="text/javascript">
 window.addEvent('domready', function(){
 var links = $$('area');
 var tips = new Tips(links);
 });
 </script>
-''' % (url_prefix)
+'''
     result.append(tooltip)
 
     if course.flow:
