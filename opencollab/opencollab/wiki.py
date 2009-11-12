@@ -317,6 +317,8 @@ class CLIWiki(GraphingWiki):
 
     def __init__(self, url=None, username=None, password=None, **keys):
 
+        if url is None: 
+            url = redirected(raw_input, "Collab URL:")
         super(CLIWiki, self).__init__(url, **keys)
         creds = username, password
         self.authenticate(*creds)
