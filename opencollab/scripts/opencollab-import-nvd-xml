@@ -7,8 +7,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
-import sys, os, csv, time, optparse
-import collections
+import sys, os, csv, time, optparse, copy, socket
 import cPickle as pickle
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -16,16 +15,18 @@ from opencollab.meta import Meta, Metas
 from opencollab.util.wiki import importMetas
  
 def parse_nvd_data(fname, metas, sw_keywords=''):
+    new_metas = copy.deepcopy(metas)
     from lxml import objectify
     objectify.enable_recursive_str()
     tree = objectify.parse(open(fname))
     e = tree.getroot().entry
-    do_nvd_entry(e, metas)
+    do_nvd_entry(e, new_metas)
     while 1:
         e = e.getnext()
         if e is None:
             break
-        do_nvd_entry(e, metas, sw_keywords)
+        do_nvd_entry(e, new_metas, sw_keywords)
+    return new_metas
 
 def do_nvd_entry(e, metas, sw_keywords=''):
     cveid = e.get('id')
@@ -94,30 +95,8 @@ def do_nvd_entry(e, metas, sw_keywords=''):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        default = None,
-        metavar="CONFIG",
-        help="CONFIG file path.")
-
-    parser.add_option("-f", "--file",
-                      dest="path",
-                      default=None,
-                      metavar="FILE",
-                      help="Input FILE path.")
-    parser.add_option("-t", "--template",
-                      dest="template",
-                      default=None,
-                      metavar="TEMPLATE",
-                      help="Wiki TEMPLATE.")
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      default=None,
-                      metavar="COLLAB-URL",
-                      help="COLLAB-URL to connect to.")
     parser.add_option("-k", "--sw-keywords",
-                      dest="sw_keywords",
+                      dest="swkeywords",
                       default='',
                       metavar="KEYWORDS",
                       help="Only include entries with one of KEYWORDS in the 'vulnerable-software' field")
@@ -126,66 +105,58 @@ def main():
                       default=None,
                       metavar="PICKLE-FILENAME",
                       help="PICKLE-FILENAME to use instead of wiki")
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
-    parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    iopts={}
+    parser.set_usage("%prog [options] 1..N input files")
     failed = []
-    if options.picklefn and os.path.exists(options.picklefn):
-        start = time.time()
-        page_metas = pickle.load(open(options.picklefn))
-        print 'loaded %d metas from %s in %.2f s' % (len(metas), picklefn, time.time() - start)
-    else:
-        #page_metas = collections.defaultdict(Meta)
-        page_metas = Metas()
-
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "import-nvd-xml")
-    if options.path:
-        path = options.path
-    elif options.config and "path" in iopts["import-nvd-xml"]:
-        path = iopts["import-nvd-xml"]["path"]
-    else:
-        parser.error("Input file name needs to be specified. Use -h for help.")
-    if options.template:
-        template = options.template
-    elif options.config and "template" in iopts["import-nvd-xml"]:
-        template = iopts["import-nvd-xml"]["template"]
-    else:
+    sect = "import-nvd-xml"
+    ops = parseOptions(parser, sect, template=True)
+    url = ops['creds']['url']
+    verbose = ops[sect]['verbose']
+    template = ops[sect]["template"]
+    if template is None:
         template = "CveTemplate"
-    url = None
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    if not (url or options.picklefn):
-        parser.error("Collab URL or pickle needs to be specified. Use -h for help.")
-    if options.verbose:
-        print "Parsing data from", path
-    parse_nvd_data(path, page_metas, options.sw_keywords)
-
-    if options.url:
-        if options.verbose:
-            print "Importing metas to", url
-        failed = importMetas(collab, page_metas, template, options.verbose, False)
+    sw_keywords = ops[sect]["swkeywords"]
+    picklefn = ops[sect]["picklefn"]
+    args = ops[sect]["args"]
+    if picklefn and os.path.exists(picklefn):
+        start = time.time()
+        metas = pickle.load(open(picklefn))
+        if verbose:
+            print 'NOTE: Loaded %d metas from %s in %.2f s' % (len(metas), picklefn, time.time() - start)
+    else:
+        metas = Metas()
+    if len(args) < 1:
+       parser.error("You need to specify 1..N input files. Use -h for help.") 
+    else:
+        for file in args:
+            metas.update(parse_nvd_data(file, metas, sw_keywords))
+    if picklefn and os.path.exists(picklefn):
+        if verbose:
+            print 'NOTE: Writing metas to', picklefn
+        start = time.time()
+        f=open(picklefn, 'w')
+        pickle.dump(metas, f, 2)
+        f.close()
+        if verbose:
+            print 'NOTE: done (%.2f s)' % (time.time() - start)
+    else:
+        while True:
+            try:
+                collab = CLIWiki(**ops['creds'])
+            except WikiFailure:
+                print "ERROR: Authentication failed."
+            except (UnicodeError, socket.gaierror):
+                sys.exit("ERROR: Not a valid URL.")
+            else:
+                break
+        if verbose:
+            print "NOTE: Importing metas to", url
+        failed = importMetas(collab, metas, template, verbose, False)
         if failed:
             for page in failed:
-                if options.verbose:
-                    print "ERROR uploading:",  page, repr(page_metas[page])
+                if verbose:
+                    print "ERROR: Uploading",  page, "metas", repr(metas[page]), "failed."
                 else:
-                    print "ERROR uploading:", page
-    else:
-        if options.verbose:
-            print 'writing metas to', options.picklefn
-        start = time.time()
-        f=open(options.picklefn, 'w')
-        pickle.dump(page_metas, f, 2)
-        f.close()
-        print 'done (%.2f s)' % (time.time() - start)
+                    print "ERROR: Uploading:", page, "metas failed."
 
 if __name__ == "__main__":
     try:
