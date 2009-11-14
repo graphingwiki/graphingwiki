@@ -77,7 +77,7 @@ def handle_paths(collab, testplan_page, dirs, verbose):
             fpath = os.path.join(dir, 'summary.xml')
             page_metas["Summary XML"].add('[[attachment:summary.xml]]')
             testrun_page = hashFile(fpath)
-            uploadFile(collab, testrun_page, fpath, 'summary.xml')
+            uploadFile(collab, testrun_page, fpath, 'summary.xml', verbose)
             page_metas.update(parse_tool_options(page_metas))
             if('main.log.gz' in flist):
                 pass
@@ -89,23 +89,23 @@ def handle_paths(collab, testplan_page, dirs, verbose):
                     gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                     gzipped.write(open(os.path.join(dir, "main.log")).read())
                     gzipped.close()
-                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz')
+                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz', verbose)
             if('run.set' in flist):
                 page_metas["Settings"].add('[[attachment:run.set]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set')
+                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set', verbose)
             if('runinfo' in flist):
                 page_metas["Settings"].add('[[attachment:runinfo]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo')
+                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo', verbose)
             if('statistics.csv' in flist):
                 page_metas["Statistics"].add('[[attachment:statistics.csv]]')
-                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv')
+                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv',verbose)
             if('summary.txt' in flist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt')
+                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt',verbose)
             if 'notes.xml' in flist:
                 page_metas["Notes"].add('[[attachment:notes.xml]]')
                 page_metas.update(parse_notes(dir))
-                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml')
+                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml',verbose)
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
                     tmp = at.sub('', testplan_page) 

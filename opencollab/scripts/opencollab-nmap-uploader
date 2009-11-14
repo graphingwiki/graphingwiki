@@ -189,7 +189,7 @@ def main():
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname)
+            uploadFile(collab, xml_page, file, fname, verbose)
 
 if __name__ == "__main__":
     try:

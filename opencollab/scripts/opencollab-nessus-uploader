@@ -244,10 +244,10 @@ def main():
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname)
+            uploadFile(collab, xml_page, file, fname, verbose)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, attach[page][fname], fname)
+                uploadFile(collab, page, attach[page][fname], fname, verbose)
 
 if __name__ == "__main__":
     try:
