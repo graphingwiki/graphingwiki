@@ -92,7 +92,10 @@ def main():
                 print "NOTE: Download destination is", dpath
             attachments = collab.listAttachments(page)
             for attachment in attachments:
-                downloadFile(collab, dpath, page, attachment)
+                try:
+                    downloadFile(collab, page, attachment, dpath, verbose)
+                except OSError:
+                    sys.exit("ERROR: couldn't download %s" % attachment)
             if verbose:
                 print "NOTE: Decompressing main.log.gz"
             decompressFile(dpath, "main.log.gz")

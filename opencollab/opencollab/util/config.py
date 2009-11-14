@@ -17,7 +17,7 @@ def parseConfig(config):
         iniopts[section] = dict(configparser.items(section))
     return iniopts
 
-def parseOptions(specparser, inisection, config=True, category=False, template=False):
+def parseOptions(specparser, inisection, config=True, category=False, search=False, template=False):
     cliopts = {}
     globalopts = {}
     globalopts[inisection] = {}
@@ -32,6 +32,10 @@ def parseOptions(specparser, inisection, config=True, category=False, template=F
         genparser.add_option( "-g", "--category", action="store",
             type="string", dest="category", default=None,
             metavar="CATEGORY", help="CATEGORY.")
+    if search:
+        genparser.add_option( "-s", "--search-string", action="store", 
+            type="string", dest="search", default=None,
+            metavar="SearchString", help="Metatable() SearchString.")
     if template:
         genparser.add_option( "-t", "--template", action="store", 
             type="string", dest="template", default=None,

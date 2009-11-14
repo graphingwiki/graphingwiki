@@ -4,47 +4,39 @@
     @copyright: 2008 by Jani Kenttälä
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os, sys, optparse, locale, md5
+import os, sys, optparse, locale, md5, tempfile, socket
 from urllib import quote
 from urllib import unquote
 import opencollab.wiki
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
+from opencollab.util.file import downloadFile, uploadFile
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-d", "--destination-url",
+        dest="destination", default=None, metavar="DSTURL",
+        help="Destination collab DSTURL.")
     parser.add_option("-n", "--dry-run",
-                      dest="dryrun",
-                      action="store_true",
-                      default=False,
-                      help="show what would have been cloned")
+        dest="dryrun", action="store_true", default=False,
+        help="show what would have been cloned")
     parser.add_option("-m", "--move",
-                      dest="move",
-                      action="store_true",
-                      default=False,
-                      help="move (delete source page)")
-    parser.add_option("-o", "--output",
-                      dest="output",
-                      default=None,
-                      metavar="OUTPUT",
-                      help="save the file to name OUTPUT in the wiki")
-    parser.set_usage("usage: %prog [options] srcwiki dstwiki metatable-expression")
+        dest="move", action="store_true", default=False,
+        help="move (delete source page)")
+    parser.set_usage("usage: %prog [options]")
     ops = {}
     sect = "clone"
-    ops = parseOptions(parser, sect, config=False, template=True)
+    ops = parseOptions(parser, sect, config=False, template=True, search=True)
     url = ops["creds"]["url"]
+    dsturl = ops[sect]["destination"]
     verbose = ops[sect]["verbose"]
-    if len(ops[sect]["args"]) != 3:
-        parser.error("Collab src URL, collab dst URL and page name have to be defined")
-    if ops[sect]["output"] is None:
-        basePath = os.getcwd()
-    else:
-        basePath = ops[sect]["output"]
     args = ops[sect]["args"]
-    searchstring = args.pop()
-    url = args[0]
-    ops["creds"]["url"] = url
-    print "Authenticating to: " + repr(url)
+    search = ops[sect]['search']
+    if search is None:
+        parser.error("MetaTable search string needs to be specified. Use -h for help.")
+
+    if verbose:
+        print "Authenticating to SRC URL:", url
     while True:
         try:
             src_collab = CLIWiki(**ops['creds'])
@@ -55,12 +47,12 @@ def main():
         else:
             break
 
-    url = args[1]
-    ops["creds"]["url"] = url
-    print "Authenticating to: " + repr(url)
+    ops['creds']['url'] = dsturl
+    if verbose:
+        print "Authenticating to DST URL:", dsturl
     while True:
         try:
-            dst_collab = CLIWiki(ops)
+            dst_collab = CLIWiki(**ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -69,141 +61,82 @@ def main():
             break
 
     try:
-        searchstring = unicode(searchstring, locale.getpreferredencoding())
+        search = unicode(search, locale.getpreferredencoding())
     except UnicodeDecodeError:
-        sys.stdout.write("Could not understand system default encoding")
+        sys.stdout.write("ERROR: Could not understand system default encoding")
         sys.exit(1)
 
-    metas = src_collab.getMeta(searchstring)
+    if verbose:
+        print "NOTE: Getting pages from", url, "with", repr(search)
+    metas = src_collab.getMeta(search)
 
+    basedir = tempfile.mkdtemp(prefix="temp") 
     for page, v in metas.iteritems():
         content = ""
-        sys.stdout.write("%r;" % (page))
+        if verbose:
+            print "NOTE: Handling page", page
         if not ops[sect]["dryrun"]:
             try:
                 content = src_collab.getPage(page)
-                sys.stdout.write("[getPage:ok];")
             except opencollab.wiki.WikiFailure, (strerror):
-                sys.stdout.write("[getPage:failed] %s;" % (strerror))
+                print "ERROR:", strerror
                 continue
-
+            else:
+                if verbose:
+                    print "NOTE: Getting page content for", page, "succeeeded."
+            if verbose:
+                print "NOTE: downloading attachments for page", page
             attachments = src_collab.listAttachments(page)
+            dpath = os.path.abspath(basedir + "/" + page)
+            if not dpath.startswith(basedir):
+                sys.exit("%s not under temporary base directory." % dpath)
+            try:
+                os.makedirs(dpath)
+            except OSError, error:
+                sys.exit("ERROR: Couldn't create directory %s" % dpath)
+            else:
+                if verbose:
+                    print "NOTE: Created temporary directory", dpath
             for num, attachment in enumerate(attachments):
-                downloadFile(src_collab, page,attachment, basePath , num+1, len(attachments))
+                try:
+                    downloadFile(src_collab, page, attachment, dpath, verbose)
+                except IOError, error:
+                    sys.exit(error)
+            if verbose:
+                print "NOTE: creating page", page, "in", dsturl
             try:
                 dst_collab.putPage(page,content)
-                sys.stdout.write("[putPage:ok];")
             except opencollab.wiki.WikiFailure, (strerror):
-                sys.stdout.write( "[putPage:failed]: %s;" % (strerror))
-                continue
+                print "ERROR: Couldn't create page", repr(page), strerror
+                pass
+            else:
+                print "NOTE: Page", page, "created successfully."
+            if verbose:
+                print "NOTE: Uploading attachments to page", page
             for num, wikiname in enumerate(attachments):
-                uploadFile(dst_collab, page, wikiname, os.path.join(page,wikiname))
-                
+                file = os.path.join(dpath,wikiname)
+                uploadFile(dst_collab, page, file, wikiname, verbose)
+                try:
+                    os.unlink(file)
+                except OSError:
+                    print "ERROR: Couldn't remove", file
+                else:
+                    print "NOTE: Removed", file, "successfully."
+            try:
+                os.removedirs(dpath)
+            except OSError:
+                print "ERROR: Couldn't remove directory", dpath
+            else:
+                print "NOTE: Removed", dpath, "successfully."
             if ops[sect]["move"]:
                 try:
                     src_collab.deletePage(page)
-                    sys.stdout.write("[deletePage:ok];")
                 except opencollab.wiki.WikiFailure, (strerror):
-                    sys.stdout.write("[deletePage:failed]: %s;" % (strerror))
+                    print "ERROR:", strerror
                     continue
-            print
-
-    print
-
-#stolen from opencollab-downloader, module material?
-
-def uploadFile(wiki, page, filename, path):
-    file = open(path, "rb")
-
-    for current, total in wiki.putAttachmentChunked(page, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.flush()
-
-    sys.stdout.write("done\n")
-    sys.stdout.flush()
-
-    file.close()
-
-#stolen from opencollab-downloader, module material?
-#slight modification to enable attachment downloads to <page>/<attachment>
-
-def downloadFile(wiki, page, quotedFile, basePath, num, count):
-    # Canonize the file path
-    attachment = quotedFile
-    filePath = unquote(quotedFile)
-    filePath = os.path.join(page,filePath)
-    filePath = os.path.abspath(filePath)
-
-    # Canonize the base path
-    basePath = os.path.abspath(basePath)
-
-    # Check that the file path starts with the base path
-    directory, _ = os.path.split(filePath)
-    directory = os.path.join(directory, "")
-    basePath = os.path.join(basePath, "")
-    if not directory.startswith(basePath):
-        raise IOError("file path '%s' not under the base path" % filePath)
-
-    shortName = filePath[len(basePath):]
-
-    # Check whether the file actually already exists
-    if fileExists(wiki, page, quotedFile, filePath):
-        sys.stdout.write("%d/%d file %s already exists, skipping\n" % (num, count, repr(shortName)))
-        sys.stdout.flush()
-        return
-    print "DIR", repr(directory)
-
-    print "filePath", repr(filePath)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    file = open(filePath, "wb")
-    sys.stdout.write("%d/%d downloading %s\n" % (num, count, repr(shortName)))
-    sys.stdout.write("\rstarting download...")
-    sys.stdout.flush()
-
-    for data, current, total in wiki.getAttachmentChunked(page, attachment):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-
-        file.write(data)
-
-        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
-        sys.stdout.flush()
-
-    sys.stdout.write("\n")
-    sys.stdout.flush()
-
-    file.close()
-
-def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
-    if not os.path.exists(filename):
-        return False
-
-    digest, size = wiki.getAttachmentInfo(page, attachment)
-    opened = open(filename, "rb")
-    hashed = md5.new()
-    total = 0
-
-    while True:
-        data = opened.read(chunkSize)
-        if not data:
-            break
-
-        total += len(data)
-        hashed.update(data)
-
-    opened.close()
-    
-    if total != size:
-        return False
-
-    if hashed.hexdigest() != digest:
-        return False
-
-    return True
+                else:
+                    if verbose:
+                        print "NOTE: Page deleted successfully from", url
 
 if __name__ == "__main__":
     try:

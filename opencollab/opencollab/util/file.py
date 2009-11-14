@@ -38,26 +38,29 @@ def uploadFile(collab, page_name, file, file_name, verbose=False):
         if parts_uploaded == True:
             sys.stdout.write("\n")
         else:
-            sys.stdout.write("Already uploaded %s\n" % file_name)
+            sys.stdout.write("NOTE: Already uploaded %s\n" % file_name)
     sys.stdout.flush()
     file_obj.close()
     return parts_uploaded
 
-def downloadFile(collab, dpath, page, attachment):
+def downloadFile(collab, page, attachment, dpath, verbose=False):
     fp = os.path.join(dpath, attachment)
     try:
         file = open(fp, "wb")
     except IOError:
-        error = "Couldn't open " + fp + " for writing."
-        sys.exit(error)
-    sys.stdout.write("Downloading %s\n" % attachment)
+        error = "ERROR: Couldn't open " + fp + " for writing."
+        raise IOError(error)
+    if verbose:
+        print "NOTE: Downloading", attachment
     for data, current, total in collab.getAttachmentChunked(page, attachment):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
         file.write(data)
-        sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
-        sys.stdout.flush()
-    sys.stdout.write("\n")
+        if verbose:
+            sys.stdout.write("\rreceived %d/%d bytes (%.02f%%)" % status)
+            sys.stdout.flush()
+    if verbose:
+        sys.stdout.write("\n")
     sys.stdout.flush()
     file.close()
 
