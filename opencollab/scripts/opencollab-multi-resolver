@@ -175,7 +175,7 @@ def main():
         print "Shredding resolved RDF triplets."
     metas.update(shred_triplets(resolved, category))
     if verbose:
-        print "Importing resolved identities to: " + url
+        print "Importing resolved identities to collab." 
     failed = importMetas(collab, metas, template, verbose, True)
     if failed:
         for page in failed:
