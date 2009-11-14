@@ -49,13 +49,10 @@ def create_dir(results_dir, suite_name, ts):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-s", "--search-string",
-        action="store", type="string", dest="search", default=None,
-        metavar="SEARCH-STRING", help="MetaTable SEARCH-STRING." )
     parser.set_usage("%prog [options] <results-directory>")
     ops = {}
     sect = "defensics-downloader" 
-    ops = parseOptions(parser, sect)
+    ops = parseOptions(parser, sect, search=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     search_string = ops[sect]["search"]
