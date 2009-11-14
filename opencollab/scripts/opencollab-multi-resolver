@@ -105,16 +105,13 @@ def main():
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
         help="Perform queries recursively." )
-    parser.add_option("-s", "--selection",
-        dest="selection", default=None, metavar="SEARCH",
-        help=("Use MetaTable SEARCH arguments to fetch input from a collab instead reading them from STDIN."))
     parser.set_usage("%prog [options]")
     types = set(("NAME", "IPv4", "AS"))
     metas = Metas()
     new = []
     ops = {}
     sect = "multi-resolver"
-    ops = parseOptions(parser, sect, template=True, category=True)
+    ops = parseOptions(parser, sect, search=True, template=True, category=True)
     url=ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     mresolvepath=ops[sect]["mresolvepath"]
@@ -124,7 +121,7 @@ def main():
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    selection = ops[sect]["selection"]
+    search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
     while True:
         try:
@@ -135,14 +132,14 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break
-    if selection is None:
+    if search is None:
         if verbose:
             print "Reading input identities from STDIN."
         new = read_input()
     else:
         if verbose:
             print "Fetching identities from collab."
-        pages = collab.getMeta(selection)
+        pages = collab.getMeta(search)
         for page in pages:
             try:
                 type = pages[page]["TYPE"].single() 

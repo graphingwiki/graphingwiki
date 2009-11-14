@@ -16,9 +16,6 @@ def main():
     parser.add_option("-m", "--meta-name",
         dest="metakey", default=None, metavar="META",
         help=("META key whose value used for object instantiation."))
-    parser.add_option("-s", "--search-string",
-        dest="search", default=None, metavar="SEARCH", 
-        help=("Use MetaTable SEARCH arguments to fetch a list of pages from collab."))
     parser.add_option("-y", "--type",
         dest="type", default=None, metavar="TYPE",
         help=("Object TYPE to instantiate, e.g. TYPE=NAME."))
@@ -28,7 +25,7 @@ def main():
     failed = []
     collab_metas = Metas()
     sect = "instantiate-objects"
-    ops = parseOptions(parser, sect, template=True) 
+    ops = parseOptions(parser, sect, search=True, template=True) 
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
@@ -37,8 +34,8 @@ def main():
     meta = ops[sect]["metakey"]
     if meta is None:
         parser.error("You need to specify the meta key to look for on the selected pages. Use -h for help.")
-    selection = ops[sect]["search"]
-    if selection is None:
+    search = ops[sect]["search"]
+    if search is None:
         parser.error("You need to specify the MetaTable search string. Use -h for help.")
     type = ops[sect]["type"]
     if type is None:
@@ -54,7 +51,7 @@ def main():
             break
     if verbose:
         print "Fetching identities from collab."
-    pages = collab.getMeta(selection)
+    pages = collab.getMeta(search)
     for page in pages:
         for m in pages[page][meta]:
             m = brackets.sub('', m)

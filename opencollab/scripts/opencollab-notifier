@@ -62,8 +62,6 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-a", "--arguments", dest="selection", default=None,
-        metavar="ARGUMENTS", help=("Metatable search ARGUMENTS."))
     parser.add_option("-f", "--from", dest="sender", default= None,
         metavar="SENDER", help=("Email SENDER address."))
     parser.add_option("-F", "--FOOTER", dest="footer", default=None, 
@@ -77,7 +75,7 @@ def main():
     parser.add_option("-r", "--recipient",
         dest="recipient", default=None,
         metavar="RECIPIENT", help=("Email notify RECIPIENT."))
-    parser.add_option("-s", "--subject",
+    parser.add_option("-S", "--subject",
         dest="subject", default=None, metavar="SUBJECT",
         help=("Notify email SUBJECT."))
     parser.set_usage("%prog [options]")
@@ -86,11 +84,11 @@ def main():
     page_content = {}
     ops = {}
     sect = "notifier"
-    ops = parseOptions(parser, sect)
+    ops = parseOptions(parser, sect, search=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
-    selection = ops[sect]["selection"]
-    if selection is None:
+    search = ops[sect]["search"]
+    if search is None:
         parser.error("You must specify MetaTable search arguments. Use -h for help.")
     sender = ops[sect]["sender"]
     if sender is None:
@@ -123,7 +121,7 @@ def main():
         print "NOTE: sender is " + sender
         print "NOTE: Recipient is " + recipient
         print "NOTE: Subject is '" + subject + "'"
-    pages = collab.getMeta(selection)
+    pages = collab.getMeta(search)
     for page in pages:
         if pages[page][k] == page_marker[k]:
             pass

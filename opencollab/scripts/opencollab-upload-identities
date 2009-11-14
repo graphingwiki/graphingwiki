@@ -64,21 +64,18 @@ def get_identities_from_collab(collab, search):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-s", "--search-string",
-        dest="selection", default=None, metavar="SEARCH",
-        help=("MetaTable SEARCH argument."))
     parser.set_usage("%prog [options] <input-file>")
     metas = Metas()
     failed = []
     sect = "upload-identities"
     ops = {}
-    ops = parseOptions(parser, sect, template=True)
+    ops = parseOptions(parser, sect, search=True, template=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
         template = "IdentityTemplate"
-    selection = ops[sect]["selection"]
+    search = ops[sect]["search"]
     args = ops[sect]["args"]
     while True:
         try:
@@ -94,10 +91,10 @@ def main():
         if verbose:
             print "NOTE: Parsing input file:", file
         metas.update(parse_input_file(file))
-    if selection is not None:
+    if search is not None:
         if verbose:
             print "NOTE: Getting identities with:", search, "from\n", url
-        metas.update(get_identities_from_collab(collab, selection))
+        metas.update(get_identities_from_collab(collab, search))
     if metas:
         if verbose:
             print "NOTE: Uploading identities to collab:", url

@@ -11,16 +11,13 @@ from urllib import quote
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-s", "--search-string",
-        action="store", type="string", dest="search", default=None,
-        metavar = "SEARCH-STRING", help="SEARCH-STRING for getMeta().")
     parser.add_option("-n", "--dry-run",
         dest="dryrun", action="store_true",
         default=False, help="Show what would have been deleted.")
     parser.set_usage("%prog [options]")
     ops = {}
     sect = "delete"
-    ops = parseOptions(parser, sect)
+    ops = parseOptions(parser, sect, search=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     dryrun = ops[sect]["dryrun"]

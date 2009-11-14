@@ -134,16 +134,13 @@ def main():
     parser.add_option("-p", "--prompt", action="store_true", 
         dest="prompt", default=False,
         help="Prompt for selecting the test plan from search results obtained via -s.")
-    parser.add_option("-s", "--search-string",
-        action="store", type="string", dest="search", default=None,
-        metavar="SEARCH-STRING", help="MetaTable SEARCH-STRING." )
     parser.add_option("-r", action="store_true", dest="recursive", default=False,
         help="Enable recursion on input directories.")
     parser.set_usage("%prog [options] <1..N input directories>")
     dlist=[]
     sect = "defensics"
     ops = {}
-    ops = parseOptions(parser, sect, template=True)
+    ops = parseOptions(parser, sect, search=True, template=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     dlist = ops[sect]["args"]
