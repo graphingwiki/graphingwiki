@@ -96,6 +96,23 @@ def attachment_content(request, pagename, filename):
 
     return content
 
+def delete_attachment(request, pagename, filename):
+    if isinstance(filename, unicode):
+        filename = filename.encode(config.charset)
+
+    if request.page and pagename == request.page.page_name:
+        page = request.page
+    else:
+        page = Page(request, pagename)
+
+    attachdir = page.getPagePath("attachments", check_create=1)
+    fpath = os.path.join(attachdir, filename)
+
+    if not os.path.isfile(fpath):
+        raise ValueError, "Attachment '%s' does not exist!" % filename
+
+    os.remove(fpath)
+
 def attachment_list(request, pagename):
     if request.page and pagename == request.page.page_name:
         page = request.page
@@ -159,7 +176,7 @@ def rename_page(request, pagename, newname, comment=""):
 def delete_page(request, pagename, comment=""):
     msg = str()
 
-    #remove subpages
+    #delete subpages
     filterfn = re.compile(ur"^%s/.*$" % re.escape(pagename), re.U).match
     subpages = request.rootpage.getPageList(user='', exists=1, filter=filterfn)
             
@@ -168,7 +185,11 @@ def delete_page(request, pagename, comment=""):
         if not success:
             return success, msg
 
-    #remove page 
+    #delete attachments
+    for attachment in attachment_list(request, pagename):
+        delete_attachment(request, pagename, attachment)
+
+    #delete page 
     page = PageEditor(request, pagename, do_editor_backup=0)
     if page.exists():
          success, msg = page.deletePage(comment)

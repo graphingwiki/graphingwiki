@@ -15,8 +15,6 @@ def sanitize(input):
     input = input.replace("\n", " ")
     return input.strip()
 
-
-
 def save_new_question(request, pagename):
     page = PageEditor(request, pagename)
     template = Page(request, "QuestionTemplate").get_raw_body()
@@ -27,7 +25,6 @@ def save_new_question(request, pagename):
         return False, unicode(e)
 
     return True, msg
-
 
 def execute(pagename, request):
     user = User(request, request.user.name)
@@ -104,6 +101,20 @@ def execute(pagename, request):
                         answer_data[test_number] = ["", "", "", "", dict(), dict()]
 
                     answer_data[test_number][index][filename] = content
+
+                elif key.startswith('old_infiles'):
+                    test_number = int(key[11:].split("_")[0])
+
+                    for filename in request.form[key]:
+                        if answer_data[test_number][4].get(filename, None) == None:
+                            answer_data[test_number][4][filename] = None
+
+                elif key.startswith('old_outfiles'):
+                    test_number = int(key[12:].split("_")[0])
+
+                    for filename in request.form[key]:
+                        if answer_data[test_number][5].get(filename, None) == None:
+                            answer_data[test_number][5][filename] = None
 
                 else:
                     test_number = None

@@ -7,7 +7,7 @@ from MoinMoin.action.AttachFile import add_attachment
 from MoinMoin.user import User as MoinUser
 from graphingwiki.editing import get_revisions, get_metas, get_keys, set_metas 
 from raippa import removelink, addlink, running_pagename, pages_in_category
-from raippa import rename_page, delete_page, attachment_list
+from raippa import rename_page, delete_page, delete_attachment, attachment_list
 from raippa import raippacategories as rc
 from raippa.flow import Flow
 
@@ -276,7 +276,6 @@ class Question:
             raise ValueError, "Incorrect answertype." 
 
         if save_history:
-            #TODO: check if save was successfull
             success, msg = user.save_answers(self, overallvalue, save_dict, usedtime)
             if not success:
                 raise SaveException, msg
@@ -335,11 +334,15 @@ class Question:
                     add[pagename]["input"] = [addlink(inputpage)]
 
                     filelinks = unicode()
-                    if answer[4]:
-                        for filename in answer[4]:
-                            content = answer[4][filename]
-                            fname, s = add_attachment(self.request, inputpage, filename, content)
-                            filelinks += " file:: [[attachment:%s]]" % filename
+                    for filename in answer[4].keys():
+                        content = answer[4][filename]
+                        if content != None:
+                            f, s = add_attachment(self.request, inputpage, filename, content, 1)
+                        filelinks += " file:: [[attachment:%s]]\n" % filename
+
+                    for filename in attachment_list(self.request, inputpage):
+                        if filename not in answer[4].keys():
+                            delete_attachment(self.request, inputpage, filename)
 
                     pagecontent = u'''
 {{{
@@ -349,22 +352,32 @@ class Question:
  answer:: %s
 %s
 ----
-%s
-''' % (answer[2], addlink(pagename), filelinks, rc['testinput'])
+%s''' % (answer[2], addlink(pagename), filelinks, rc['testinput'])
 
                     page = PageEditor(self.request, inputpage)
                     msg = page.saveText(pagecontent, page.get_real_rev())
+
+                else:
+                    if Page(self.request, pagename+"/input").exists():
+                        rsuccess, rmsg = delete_page(self.request, pagename+"/input")
+        
+                        if not rsuccess:
+                            return rsuccess, rmsg
 
                 if answer[3] or answer[5]:
                     outputpage = pagename+"/output"
                     add[pagename]["output"] = [addlink(outputpage)]
 
                     filelinks = unicode()
-                    if answer[5]:
-                        for filename in answer[5]:
-                            content = answer[5][filename]
-                            fname, s = add_attachment(self.request, outputpage, filename, content)
-                            filelinks += " file:: [[attachment:%s]]" % filename
+                    for filename in answer[5]:
+                        content = answer[5][filename]
+                        if content != None:
+                            f, s = add_attachment(self.request, outputpage, filename, content, 1)
+                        filelinks += " file:: [[attachment:%s]]" % filename
+
+                    for filename in attachment_list(self.request, outputpage):
+                        if filename not in answer[5].keys():
+                            delete_attachment(self.request, outputpage, filename)
 
                     pagecontent = u'''
 {{{
@@ -374,11 +387,17 @@ class Question:
  answer:: %s
 %s
 ----
-%s
-''' % (answer[3], addlink(pagename), filelinks, rc['testoutput'])
+%s''' % (answer[3], addlink(pagename), filelinks, rc['testoutput'])
 
                     page = PageEditor(self.request, outputpage)
                     msg = page.saveText(pagecontent, page.get_real_rev())
+
+                else:
+                    if Page(self.request, pagename+"/output").exists():
+                        rsuccess, rmsg = delete_page(self.request, pagename+"/output")
+
+                        if not rsuccess:
+                            return rsuccess, rmsg
 
         success, msg = set_metas(self.request, remove, dict(), add)
 
