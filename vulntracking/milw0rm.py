@@ -39,14 +39,32 @@ def scrape_mw(scrapeurl):
         zdict['URL'] = urlparse.urljoin("http://www.milw0rm.com", link)
         zdict['Description'].append(descr)
         zdict['Date'] = format_time(date)
-        zdict['Feed type'].append('Exploit')
+        zdict['feedtype'].append('Exploit')
         yield "Milw0rm-%s" % (link.split('/')[-1]), zdict
 
 
 def update_vulns(s):
     from itertools import chain
     z = chain(scrape_mw(remoteurl), scrape_mw(remoteurl + '?start=30'))
-    scrapeutil.update_vulns(s, z, 'Milw0rm')
+    scrapeutil.update_vulns(s, z, 'Milw0rm', template=wiki_template)
+
+wiki_template = ("Milw0rmVulnTemplate","""
+= @PAGE@ =
+
+ CVE ID::
+ feedtype::
+
+ Description:: 
+ URL:: 
+
+<<LinkedIn>>
+
+----
+CategoryVuln
+CategoryMilw0rmVuln
+
+""")
+
 
 if __name__ == '__main__':
 #     scrape_mw(localurl)

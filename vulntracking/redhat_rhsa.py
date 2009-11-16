@@ -63,7 +63,7 @@ def scrapeit(save=False, cachedir="./rhsa_cache"):
         cvestrings = u' '.join(map(unicode, s2.findAll(text=re.compile(r'^(CVE|CAN)-\d'))))
         d['CVE ID'] = sorted(set(re.findall(ur'(?:CVE|CAN)-\d{4}-\d+', cvestrings)))
     
-        d['Feed type'].append('Vulnerability')
+        d['feedtype'].append('Vulnerability')
 
         # try to find updates for rhel 5
 #         [x.parent for x in s.findAll(text=re.compile("Red.*v. 5.*server\)"))
@@ -92,8 +92,29 @@ def scrapeit(save=False, cachedir="./rhsa_cache"):
         f.close()
 
 def update_vulns(s):
-    return scrapeutil.update_vulns(s, scrapeit(True), 'RHSA')
+    return scrapeutil.update_vulns(s, scrapeit(True), 'RHSA',
+                                   template=wiki_template)
             
+wiki_template = ("RhsaVulnTemplate",u"""
+= @PAGE@ =
+
+ CVE ID::
+ feedtype::
+ issued:: 
+ 
+ severity:: 
+ affected::
+
+ Description:: 
+ URL:: 
+
+<<LinkedIn>>
+
+----
+CategoryVuln
+CategoryRhsaVuln
+
+""")
 
 if __name__ == '__main__':
     from pprint import pprint

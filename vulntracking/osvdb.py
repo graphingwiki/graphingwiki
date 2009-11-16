@@ -52,7 +52,8 @@ def scrape_one(url):
                 # Skip NVD links
                 if not v.startswith('NVD'):
                     zdict[k].append(v)
-    zdict['Feed type'].append('Vulnerability')
+    zdict['feedtype'].append('Vulnerability')
+    
     return zdict
 
 def scrape_row(h, s, url):
@@ -80,7 +81,26 @@ def scrape_row(h, s, url):
             d.append(w)
 
 def update_vulns(s):
-    return scrapeutil.update_vulns(s, scrape(), 'OSVDB')
+    return scrapeutil.update_vulns(s, scrape(), 'OSVDB',
+                                   template=wiki_template)
+
+wiki_template = ("OsvdbVulnTemplate","""
+= @PAGE@ =
+
+ CVE ID::
+ feedtype::
+
+ Bugtraq ID::
+ Secunia Advisory ID:: 
+ Other Advisory URL::
+ Vendor Specific Advisory URL:: 
+
+<<LinkedIn>>
+
+----
+CategoryVuln
+CategoryOsvdbVuln
+""")
 
 if __name__ == '__main__':
     for z in scrape():

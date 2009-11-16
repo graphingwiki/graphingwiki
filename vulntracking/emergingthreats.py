@@ -16,11 +16,12 @@ emerging_url = 'http://www.emergingthreats.net/rules/emerging-all.rules'
 def fix_refs(refs): 
     for refk, refv in refs: 
         if refk == 'url': 
-            yield 'URL', 'http://%s' % refv
+            yield 'ref-url', 'http://%s' % refv
         elif refk == 'cve': 
-            yield 'CVE', str(refv)
+            yield 'CVE ID', str(refv)
         elif refk == 'bugtraq': 
             yield 'Bugtraq ID', refv
+            
 
 def scrape():
 #    for line in open("emerging-all.rules"): #urllib.urlopen(emerging_url):
@@ -59,9 +60,28 @@ def scrape():
                 'CVE' in zdict):
                 yield u'EmergingThreats ' + unicode(msg, 'latin-1'), zdict
 
+
+wiki_template = ("EmergingThreatsVulnTemplate","""
+= @PAGE@ =
+
+ CVE ID::
+ feedtype::
+
+ URL:: 
+ EmergingThreats-classtype::
+ EmergingThreats-target:: 
+ 
+
+<<LinkedIn>>
+
+----
+CategoryVuln
+CategoryEmergingThreatsVuln
+""")
+
 def update_vulns(s):
-    scrapeutil.update_vulns(s, scrape(),
-                            keyname="EmergingThreats", cvekey="CVE")
+    scrapeutil.update_vulns(s, scrape(), scraperkey="EmergingThreats",
+                            template=wiki_template)
 
 if __name__ == '__main__':
     for z in scrape():

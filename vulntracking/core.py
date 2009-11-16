@@ -33,11 +33,12 @@ def scrape_mw(scrapeurl):
         zdict['URL'].append(unicode(URL))
         zdict['Description'].append(unicode(descr))
         zdict['Date'].append(unicode(format_time(date)))
-        zdict['Feed type'].append(unicode('Exploit'))
+        zdict['feedtype'].append(unicode('Exploit'))
         yield "Core-%s" % (link['href'].split('/')[-1]), zdict
 
 def update_vulns(s):
     scrapeutil.update_vulns(s, scrape_mw(remoteurl), 'CoreSecurity', cvekey='CVE')
+
 
 if __name__ == '__main__':
     for z in scrape_mw(remoteurl):

@@ -24,6 +24,7 @@ def do_nvd_entry(e, shelf):
     m = defaultdict(list)
     m['feedsource'].append('nvd')
     m['feedtype'].append('Vulnerability')
+    m['gwikitemplate'].append(wiki_template[0])
     cveid = e.get('id')
 
     for s in 'published-datetime', 'last-modified-datetime', 'security-protection', 'summary', 'severity':
@@ -80,6 +81,32 @@ def main():
     s = shelve.open("parsednvd.shelve")
     parse_nvd_data(open('nvdcve-2.0-2009.xml'), s)
     s.close()
+
+wiki_template = ("CveTemplate", """
+= @PAGE@ =
+
+ last-modified-datetime::
+ published-datetime::
+ summary::
+ security-protection::
+
+ cvss-score::
+ cvss-access-vector::
+ cvss-integrity-impact::
+ cvss-availability-impact::
+ cvss-access-complexity::
+ cvss-availability-impact::
+ cvss-confidentiality-impact::
+
+ vulnerable-software::
+ reference::
+
+<<LinkedIn>>
+
+----
+CategoryCve
+
+""")
 
 if __name__ == "__main__":
     try:

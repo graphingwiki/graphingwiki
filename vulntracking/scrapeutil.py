@@ -37,38 +37,54 @@ class Surfer:
 class Bleat(Exception):
     pass
 
-def update_vulns(s, scrapeiter, keyname, cvekey=None):
+
+def normalize_cveid(cveid):
+    cveid = cveid.strip()
+    if cveid.startswith(u'[[') and cveid.endswith(u']]'):
+        # strip these now, will be re-added later
+        cveid = cveid[2:-2]
+    if cveid[0].isdigit():
+        cveid = 'CVE-' + cveid
+    return cveid
+
+def update_vulns(s, scrapeiter, scraperkey, cvekey="CVE ID",
+                 template=None):
     """
     Update mapping s with (vuln-id, vulndata) pairs from scrapeiter,
-    and make a link keyname: vuln-id on the CVE entry s[vulndata[CVE ID]]
+    and make a link scraperkey: vuln-id on the CVE entry s[vulndata[CVE ID]]
     """
-    for vid, data in scrapeiter:
-        s[str(vid)] = data
-        if cvekey and cvekey in data:
-            data['CVE ID'] = data[cvekey]
-            del data[cvekey]
 
-        for cveid in map(str, data.get('CVE ID', [])):
-            if cveid and cveid[0].isdigit():
-                cveid = 'CVE-' + cveid
+    def append_uniq(l, item):
+        if item not in l:
+            l.append(item)
 
-            if not re.match(r'(CVE|CAN)-\d{4}-\d+', cveid):
-#                raise Bleat("malformed cveid %s" % repr(cveid))
-                print "malformed cveid %s" % repr(cveid)
+    if not template:
+        template = generic_vuln_template
 
-            if cveid not in s:
-                d = defaultdict(list)
-            else:
-                d = s[cveid]
-            link = u"[[" + vid + u"]]"
-            if link not in d[keyname]:
-                d[keyname].append(link)
-            s[cveid] = d
+    s[template[0]] = template[1]
+    for vid, scrapedata in scrapeiter:
+        scrapedata['gwikitemplate'].append(template[0])
+        print 'template', vid, template[0]
+        if cvekey in scrapedata:
+            cvelist = map(normalize_cveid, scrapedata[cvekey])
+            del scrapedata[cvekey]
 
-        data[cvekey] = [u"[[" + vid + u"]]" for vid in data.get(cvekey, [])]
+            for cveid in cvelist:
+                if not re.match(r'(CVE|CAN)-\d{4}-\d+', cveid):
+                    # raise Bleat("malformed cveid %s" % repr(cveid))
+                    print "malformed cveid %s in %s" % (repr(cveid), repr(vid))
+                    continue
 
+                cvedata = s.setdefault(str(cveid), defaultdict(list))
 
-            
+                vid_link = u"[[" + vid + u"]]"
+                cve_link = u"[[" + cveid + u"]]"
+                
+                append_uniq(cvedata[scraperkey], vid_link)
+                append_uniq(scrapedata["CVE ID"], cve_link)
+
+        s[str(vid)] = scrapedata
+    assert 'gwikitemplate' in s[str(vid)]
 
 def score_all_cves(s):
     for vid in s.iterkeys():
@@ -90,4 +106,20 @@ def has_exploit(cveid, s):
     return 'Milw0rm' in s[cveid] or 'MetaSploit' in s[cveid]
 
 
+
+generic_vuln_template = ("GenericVulnTemplate",u"""
+= @PAGE@ =
+
+ CVE ID::
+ feedtype::
+
+ Description::
+ URL::
+
+ 
+<<LinkedIn>>
+
+----
+CategoryVuln
+""")
 

@@ -19,7 +19,9 @@ from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Meta, Metas
  
 def import_metas(wiki, metas, verbose, include_pages, metafiltspec,
-                 linked_only=False):
+                 linked_only=False, delete_first=False):
+    uploaded_templates = []
+    
     def page_included(pagename):
         if include_pages and pagename not in include_pages:
             return False
@@ -35,6 +37,9 @@ def import_metas(wiki, metas, verbose, include_pages, metafiltspec,
             return True
 
     for page, pmeta in metas.iteritems():
+        if page.endswith('Template'):
+            continue
+        
         if not page_included(page):
             #print "skip", page, "(filter)"
             continue
@@ -52,9 +57,25 @@ def import_metas(wiki, metas, verbose, include_pages, metafiltspec,
         print 'import_metas: doing page', page
         
         kw = {'replace': True}
-        if page.startswith('CVE-') or page.startswith('CAN-'):
-            kw['template'] = 'CveTemplate'
 
+        z = 'gwikitemplate'
+        x = pmeta.get(z)
+        if x:
+            kw['template'] = templatename = x[0]
+            del pmeta[z]
+        else:
+            kw['template'] = templatename =  u'GenericVulnTemplate'
+            
+        if templatename not in uploaded_templates:
+            print 'upload template', templatename
+            try:
+                wiki.getPage(templatename)
+            except opencollab.wiki.WikiFault, what:
+                if 'No such page' in str(what):
+                    wiki.putPage(templatename, metas[str(templatename)])
+                else:
+                    raise
+            uploaded_templates.append(templatename)
 
         def linkify(text):
             if not text.startswith(u'[['):
@@ -65,6 +86,10 @@ def import_metas(wiki, metas, verbose, include_pages, metafiltspec,
             if mk == 'CVE ID':
                 pmeta[mk] = map(linkify, pmeta[mk])
 
+        if delete_first:
+            status = wiki.deletePage(page)
+            if verbose:
+                print 'delete:', status
         status = wiki.setMeta(page, pmeta, **kw)
         if verbose:
             print status
@@ -107,6 +132,10 @@ def main():
     parser.add_option("-l", "--linked-only",
         action="store_true", dest="linked_only", default=False,
         help="Exclude CVEs that aren't linked to by other vuln data." )
+
+    parser.add_option("-d", "--delete-first",
+        action="store_true", dest="delete_first", default=False,
+        help="Replace pages by deleting them first (for changing templates)" )
 
     parser.add_option("-v",
         action="store_true", dest="verbose", default=False,
@@ -160,7 +189,7 @@ def main():
             print "Importing metas to", url
 
         import_metas(collab, page_metas, options.verbose, pagenames,
-                     metafiltspec, options.linked_only)
+                     metafiltspec, options.linked_only, options.delete_first)
 
 if __name__ == "__main__":
     try:
