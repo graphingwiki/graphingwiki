@@ -23,8 +23,15 @@ def hashFile(f):
 def uploadFile(collab, page_name, file, file_name, verbose=False):
     try:
         file_obj = open(file, "rb")
-    except(IOError, TypeError):
-        file_obj = cStringIO.StringIO(file)
+    except IOError, msg:
+        raise IOError(msg)
+    except TypeError:
+        try:
+            file_obj = cStringIO.StringIO(file)
+        except IOError, msg:
+            raise IOError(msg)
+        except RuntimeError, msg:
+            raise RuntimeError(msg)
     parts_uploaded = False
     for current, total in collab.putAttachmentChunked(page_name, file_name, file_obj):
         percent = 100.0 * current / float(max(total, 1))
