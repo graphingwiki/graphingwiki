@@ -27,7 +27,6 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
-from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import underlay_to_pages
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
@@ -263,6 +262,8 @@ def edit_categories(request, savetext, action, catlist):
     return u"\n".join(lines) + u"\n"
 
 def formatting_rules(request, parser):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     rules = parser.formatting_rules.replace('\n', '|')
 
     if request.cfg.bang_meta:
@@ -1106,6 +1107,7 @@ def metatable_parseargs(request, args,
             # Assume that value limits are regexps, if
             # not, escape them into exact regexp matches
             if not regexp_re.match(val):
+                from MoinMoin.parser.text_moin_wiki import Parser
 
                 # If the value is a page, make it a non-matching
                 # regexp so that all link variations will generate a
