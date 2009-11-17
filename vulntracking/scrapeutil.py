@@ -105,6 +105,28 @@ def has_exploit(cveid, s):
     # xxx check packetstorm, xforce, securityfocus
     return 'Milw0rm' in s[cveid] or 'MetaSploit' in s[cveid]
 
+from hashlib import sha256
+import struct
+
+def hash_name(s):
+    # truncate sha1 to 64 bits and convert to base-36 (a-z + 0-9)
+    bytes = sha256(s).digest()[:8]
+    n = struct.unpack('!Q', bytes)[0]
+    return base36encode(n).zfill(13)
+
+# from http://en.wikipedia.org/wiki/Base_36
+def base36encode(number):
+    if number < 0:
+        raise ValueError('number must be positive')
+ 
+    alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
+ 
+    base36 = ''
+    while number:
+        number, i = divmod(number, 36)
+        base36 = alphabet[i] + base36
+ 
+    return base36 or alphabet[0]
 
 
 generic_vuln_template = ("GenericVulnTemplate",u"""

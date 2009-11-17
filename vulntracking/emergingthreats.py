@@ -56,9 +56,10 @@ def scrape():
                 zdict['EmergingThreats-classtype'].append(unicode(x))
             if proto:
                 zdict['EmergingThreats-target'].append(u"%s:%s" % (proto.upper(), port))
+            zdict['msg'].append(msg)
             if (msg.startswith('ET EXPLOIT') or
                 'CVE' in zdict):
-                yield u'EmergingThreats ' + unicode(msg, 'latin-1'), zdict
+                yield 'EmergingThreats-' + scrapeutil.hash_name(msg), zdict
 
 
 wiki_template = ("EmergingThreatsVulnTemplate","""
@@ -66,6 +67,7 @@ wiki_template = ("EmergingThreatsVulnTemplate","""
 
  CVE ID::
  feedtype::
+ msg:: 
 
  URL:: 
  EmergingThreats-classtype::

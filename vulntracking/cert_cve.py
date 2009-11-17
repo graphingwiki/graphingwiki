@@ -25,6 +25,7 @@ def scrape():
                 continue
             url = urlparse.urljoin('http://www.cert.fi', year_links[i])
             urldata = urllib.urlopen(url)
+            print url
             cves = set([('CVE-' + x) for x in re.findall(r'(?i)cve\D{0,4}(\d+-\d+)', urldata.read())])
             temp_count += len(cves)
             yield cves, year

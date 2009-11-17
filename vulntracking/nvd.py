@@ -19,6 +19,8 @@ def parse_nvd_data(fob, shelf):
     for entry in tree.getroot().getchildren():
         cveid, zdict = do_nvd_entry(entry, shelf)
         shelf[cveid] = zdict
+
+    shelf[wiki_template[0]] = wiki_template[1]
             
 def do_nvd_entry(e, shelf):
     m = defaultdict(list)
