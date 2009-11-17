@@ -31,14 +31,14 @@
 import os
 import re
 from urllib import quote as url_quote
-from savegraphdata import encode
 
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki.util import actionname
+from graphingwiki import actionname
+from graphingwiki.util import encode
 
 from unifier import Unifier
 

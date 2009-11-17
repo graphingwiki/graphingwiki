@@ -176,19 +176,10 @@ def exit_page(request, pagename):
     request.theme.send_footer(pagename)
     request.theme.send_closing_html()
 
-# Get action name
-def actionname(request, pagename):
-    return '%s/%s' % (request.getScriptname(), url_escape(pagename))
-
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
-
-def url_escape(text):
-    # Escape characters that break links in html values fields, 
-    # macros and urls with parameters
-    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
 
 def form_escape(text):
     # Escape characters that break value fields in html forms

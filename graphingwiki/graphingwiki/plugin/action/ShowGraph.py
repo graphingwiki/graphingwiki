@@ -50,16 +50,16 @@ from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.request import Clock
 cl = Clock()
 
-from graphingwiki import gv_found, igraph_found
+from graphingwiki import gv_found, igraph_found, actionname, url_escape
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
 
 from graphingwiki.util import attachment_file, attachment_url, url_parameters,\
-    get_url_ns, url_escape, load_parents, load_children, nonguaranteeds_p, \
-    NO_TYPE, actionname, form_escape, load_node, decode_page, template_regex, \
-    category_regex, encode_page, make_tooltip, cache_exists, SPECIAL_ATTRS,\
-    cache_key, xml_document, xml_node_id_and_text, geoip_init, geoip_get_coords
+    get_url_ns, load_parents, load_children, nonguaranteeds_p, NO_TYPE, \
+    form_escape, load_node, decode_page, template_regex, category_regex, \
+    encode_page, make_tooltip, cache_exists, SPECIAL_ATTRS, cache_key, \
+    xml_document, xml_node_id_and_text, geoip_init, geoip_get_coords
 from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math

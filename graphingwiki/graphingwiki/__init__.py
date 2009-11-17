@@ -14,6 +14,15 @@ import re
 import socket
 import xmlrpclib
 
+# Get action name
+def actionname(request, pagename):
+    return '%s/%s' % (request.getScriptname(), url_escape(pagename))
+
+def url_escape(text):
+    # Escape characters that break links in html values fields, 
+    # macros and urls with parameters
+    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
 # Finding dependencies centrally
 
 gv_found = True
@@ -304,7 +313,7 @@ def attachfile_filelist(self, result, (args, _)):
         return result
 
     form = u'<form method="GET" action="%s">\n' % \
-        '%s/%s' % (request.getScriptname(), url_escape(pagename)) + \
+        actionname(self, self.page.page_name) + \
         u'<input type=hidden name=action value="AttachFile">'
 
     result = form + result

@@ -16,7 +16,8 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki.util import encode, actionname, SEPARATOR
+from graphingwiki import actionname
+from graphingwiki.util import encode, SEPARATOR
 from graphingwiki.util import form_writer as wr
 
 from savegraphdata import parse_text

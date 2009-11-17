@@ -21,7 +21,7 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
-from graphingwiki.util import actionname
+from graphingwiki import actionname
 from graphingwiki.util import form_writer as wr
 
 Dependencies = ["time"]

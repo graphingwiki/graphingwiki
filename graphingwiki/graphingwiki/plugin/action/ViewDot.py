@@ -39,9 +39,9 @@ from MoinMoin.request.request_modpython import Request as RequestModPy
 from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.error import InternalError
 
-from graphingwiki.graphrepr import Graphviz, gv_found
-from graphingwiki.util import actionname, enter_page, \
-    exit_page, url_parameters, encode_page
+from graphingwiki import gv_found, actionname
+from graphingwiki.graphrepr import Graphviz
+from graphingwiki.util import enter_page, exit_page, url_parameters, encode_page
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
