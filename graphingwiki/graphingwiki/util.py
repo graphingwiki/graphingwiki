@@ -53,7 +53,7 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
 
-from graphingwiki import geoip_found, GeoIP
+from graphingwiki import geoip_found, GeoIP, url_escape
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))

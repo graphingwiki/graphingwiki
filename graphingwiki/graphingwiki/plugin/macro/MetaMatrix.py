@@ -11,8 +11,9 @@ import re
 from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
 
+from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import format_wikitext, url_escape
+from graphingwiki.util import format_wikitext
 from graphingwiki.editing import ordervalue
 
 Dependencies = ['metadata']
