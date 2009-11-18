@@ -14,22 +14,6 @@ from collections import defaultdict
 from BeautifulSoup import BeautifulStoneSoup as BSS, BeautifulSoup as BS
 remoteurl='''http://www.immunitysec.com/news-latest.shtml'''
 
-def textify(s):
-    out = []
-    for elt in s.contents:
-        if isinstance(elt, basestring):
-            s = unicode(elt).strip()
-            if s:
-                out.append(s)
-        elif elt.name == 'br':
-            out.append(u'\n')
-        elif elt.name == 'b':
-            out.append(None)
-            out.append(elt.string)
-        else:
-            out += textify(elt)
-    return out
-
 def scrape(scrapeurl):
     if 1:
         f = urllib.urlopen(scrapeurl)
@@ -42,7 +26,7 @@ def scrape(scrapeurl):
     date_next = False
     zdict = defaultdict(list)
 
-    for text in textify(data):
+    for text in scrapeutil.textify(data):
         if text == None:
             if zdict['Date']:
                 if zdict['CVE ID']:

@@ -7,7 +7,7 @@ import sys
 
 class Surfer:
     timeout = 30
-    def __init__(self, cachepath=None):
+    def __init__(self, cachepath="./scrapesurfer.cache"):
         if cachepath:
             self.cache = shelve.open(cachepath, 'c')
         else:
@@ -27,12 +27,14 @@ class Surfer:
             r = self.opener.open(url,
                       urllib.urlencode(postparams) if postparams else None,
                       self.timeout)
-            if 'html' in r.info()['content-type']:
-                self.cache[url] = BeautifulSoup(r, convertEntities="html")
-            else:
-                self.cache[url] = BeautifulStoneSoup(r, convertEntities="html")
+            self.cache[url] = r.read(), r.info()['content-type']
+        data, ctype = self.cache[url]
+        if 'html' in ctype:
+            soup = BeautifulSoup(data, convertEntities="html")
+        else:
+            soup = BeautifulStoneSoup(data, convertEntities="html")
         self.url = url
-        return self.cache[url]
+        return soup
 
 class Bleat(Exception):
     pass
@@ -64,11 +66,9 @@ def update_vulns(s, scrapeiter, scraperkey, cvekey="CVE ID",
     s[template[0]] = template[1]
     for vid, scrapedata in scrapeiter:
         scrapedata['gwikitemplate'].append(template[0])
-        print 'template', vid, template[0]
         if cvekey in scrapedata:
             cvelist = map(normalize_cveid, scrapedata[cvekey])
             del scrapedata[cvekey]
-
             for cveid in cvelist:
                 if not re.match(r'(CVE|CAN)-\d{4}-\d+', cveid):
                     # raise Bleat("malformed cveid %s" % repr(cveid))
@@ -82,9 +82,9 @@ def update_vulns(s, scrapeiter, scraperkey, cvekey="CVE ID",
                 
                 append_uniq(cvedata[scraperkey], vid_link)
                 append_uniq(scrapedata["CVE ID"], cve_link)
+                s[str(cveid)] = cvedata # shelve quirk
 
         s[str(vid)] = scrapedata
-    assert 'gwikitemplate' in s[str(vid)]
 
 def score_all_cves(s):
     for vid in s.iterkeys():
@@ -127,6 +127,22 @@ def base36encode(number):
         base36 = alphabet[i] + base36
  
     return base36 or alphabet[0]
+
+def textify(s):
+    out = []
+    for elt in s.contents:
+        if isinstance(elt, basestring):
+            s = unicode(elt).strip()
+            if s:
+                out.append(s)
+        elif elt.name == 'br':
+            out.append(u'\n')
+        elif elt.name == 'b':
+            out.append(None)
+            out.append(elt.string)
+        else:
+            out += textify(elt)
+    return out
 
 
 generic_vuln_template = ("GenericVulnTemplate",u"""
