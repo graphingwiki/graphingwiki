@@ -1252,6 +1252,9 @@ def metatable_parseargs(request, args,
                 if not clear:
                     break
 
+        if not clear:
+            continue
+
         if limitops:
             # We're sure we have access to read the page, don't check again
             metas = get_metas(request, page, limitops, checkAccess=False)
