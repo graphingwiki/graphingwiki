@@ -55,7 +55,7 @@ def execute(macro, args):
             args = ",".join(args.split(",")[1:])
 
     # Note, metatable_parseargs deals with permissions
-    pagelist, keys, s = metatable_parseargs(request, args, get_all_keys=True, checkAccess=False)
+    pagelist, keys, s = metatable_parseargs(request, args, get_all_keys=True, checkAccess=True)
     _ = request.getText
 
     out = request
