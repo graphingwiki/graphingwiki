@@ -11,10 +11,9 @@ from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
-from graphingwiki.editing import get_keys
-from graphingwiki.editing import set_metas
 
 from raippa import raippacategories as rc
+from raippa import addlink
 
 def _enter_page(request, pagename):
     _ = request.getText
@@ -76,10 +75,7 @@ def savedata(request):
 
     if edit:
         pagename = edit
-        oldkeys = get_keys(request, pagename)
-        remove = {pagename: oldkeys}
     else:
-        remove = dict()
         i = 0
         #generating unique pagename
         while True:
@@ -89,6 +85,8 @@ def savedata(request):
                 break
 
     content = u'%s\n----\n' % title 
+
+    content += u' User:: %s\n' % addlink(request.user.name)
 
     if date:
         content += u' Date:: %s\n' % date

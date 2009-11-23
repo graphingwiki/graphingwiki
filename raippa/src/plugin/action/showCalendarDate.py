@@ -155,7 +155,7 @@ def execute(pagename, request):
 
     thisdate = request.form.get('date', [None])[0]
 
-    categories = request.form.get('categories', [None])
+    categories = request.form.get('categories', [])
     categories = ','.join(categories)
 
     

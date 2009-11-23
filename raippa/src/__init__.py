@@ -3,6 +3,8 @@ from MoinMoin import config, wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 
+raippausers = "admin", "teacher", "student"
+
 forbidden = ['CategoryTaskFlow',
              'CategoryTaskOptions',
              'CategoryQuestionOptions',
@@ -23,7 +25,8 @@ raippacategories = {"task": "CategoryTask",
                     "answer": "CategoryAnswer",
                     "testinput": "CategoryTestInput",
                     "testoutput": "CategoryTestOutput",
-                    "timetrack": "CategoryTimetrack",
+                    "timetrack": "CategoryTimeTrack",
+                    "group": "CategoryGroup",
                     "student": "CategoryStudent",
                     "deadline": "CategoryDeadline"}
 
@@ -128,6 +131,18 @@ def attachment_list(request, pagename):
         files = list() 
     return files
 
+def users_in_group(request, group):
+    raw = Page(request, group).get_raw_body()
+    users = list()
+
+    for line in raw.split("\n"):
+        if line.startswith(" * "):
+            name = line[3:].rstrip()
+
+            users.append(removelink(name))
+
+    return users
+
 def unicode_form(form):
     new_form = dict()
     for key in form:
@@ -197,7 +212,6 @@ def delete_page(request, pagename, comment=""):
              return success, msg
 
     return True, msg
-
 
 def pages_in_category(request, category):
     page = request.graphdata.getpage(category)

@@ -14,6 +14,7 @@ def save_new_task(request, pagename):
 
     try:
         msg = page.saveText(template, page.get_real_rev())
+        page = Page(request, pagename)
     except Exception, e:
         return False, unicode(e)
 
@@ -32,8 +33,7 @@ def execute(pagename, request):
                 name = name[:240]
             success, msg =  save_new_task(request, name)
             
-            page = Page(request, pagename)
-            request.theme.add_msg(msg)
+            request.theme.add_msg(msg, 'dialog')
             Page(request, pagename).send_page()
             return
 
@@ -60,12 +60,10 @@ def execute(pagename, request):
     else:
         msg = u"You need to be teacher to edit question list."
 
-    page = Page(request, pagename)
-
     if not success:
         request.theme.add_msg(msg, 'error')
         Page(request, pagename).send_page()
     else:
-        request.theme.add_msg(msg)
+        request.theme.add_msg(msg, 'dialog')
         Page(request, pagename).send_page()
 

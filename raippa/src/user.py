@@ -3,7 +3,7 @@ import datetime, time
 from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment
 from graphingwiki.editing import get_keys, get_metas, set_metas
-from raippa import removelink, addlink
+from raippa import pages_in_category, removelink, addlink
 from raippa import raippacategories as rc
 from raippa.pages import Task, Question
 
@@ -33,6 +33,30 @@ class User:
         metas = get_metas(self.request, self.name, ["gwikicategory"], checkAccess=False)
         if rc['student'] in metas.get('gwikicategory', list()):
             return True
+        return False
+
+    def groups(self):
+        all_groups = pages_in_category(rc['group'])
+
+        groups = list()
+        for group in all_groups:
+            if in_group(group):
+                groups.append(group)
+
+        return groups
+
+    def in_group(self, group):
+        raw = Page(self.request, group).get_raw_body()
+                
+        for line in raw.split("\n"):
+            if line.startswith(" * "):
+                name = line[3:].rstrip()
+
+                name = removelink(name)
+                
+                if name == self.name:
+                    return True
+
         return False
 
     def save_answers(self, question, overallvalue, save_dict, usedtime):
