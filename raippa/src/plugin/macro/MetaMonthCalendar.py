@@ -26,27 +26,17 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import re
 import calendar, datetime, time
 
 
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
 from MoinMoin.Page import Page
-from MoinMoin import config
-from MoinMoin import wikiutil
-from MoinMoin.parser.text_moin_wiki import Parser
+from graphingwiki.editing import get_metas, metatable_parseargs
+from raippa import to_json
 
-
-from graphingwiki.editing import metatable_parseargs
-from graphingwiki.editing import get_metas
-
-Dependencies = ['metadata', 'time']
-
-def execute(macro, args):
+def macro_MetaMonthCalendar(macro, args):
     request = macro.request
     action = 'showCalendarDate'
+
     if args is None:
         args = ''
     else:
@@ -56,10 +46,6 @@ def execute(macro, args):
 
     # Note, metatable_parseargs deals with permissions
     pagelist, keys, s = metatable_parseargs(request, args, get_all_keys=True, checkAccess=True)
-    _ = request.getText
-
-    out = request
-
     entries = dict()
 
     for page in pagelist:
@@ -95,22 +81,8 @@ def execute(macro, args):
     year = now.year
     month = now.month
     
-    if 'm' and 'y' in macro.form:
-        month = int(macro.form['m'][0])
-        year = int(macro.form['y'][0])
- 
-    cal = calendar.monthcalendar(year, month)
-
-    try:
-        last_date = now.replace(month = month + 1, day = 1)
-    except ValueError:
-        last_date = now.replace(month = 1, year = year + 1, day = 1)
-
-    # counting week numbers
-
-    first_date = now.replace(day = 1, year = year, month = month)
-
-    weeknum = first_date.isocalendar()[1]
+    last_date = now.replace(year = year + 1, day = 1)
+    first_date = now.replace(day = 1, year = year -1, month = month)
 
     #adding reoccurring events to dict
 
@@ -157,21 +129,14 @@ def execute(macro, args):
 
     categories = [x.strip() for x in args.split(',') if 'Category' in x]
     categories = ','.join(categories)
-    
-    html = u'''
-  <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
-  <script type="text/javascript" src="%s/common/js/mootools-1.2-more.js"></script>
 
-<script type="text/javascript">
-addLoadEvent(function(){
-var dates = new Hash();
-    \n''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static)
+    data = {}
 
     for date, d in entries.iteritems():
-        html += u'dates.set("%s","' % date
+        data[date] = []
         for i, cont in enumerate(d):
             if i == 4:
-                html += u'<br><b>%s more...</b>' % (len(d) - i)
+                data[date].append(u'<br><b>%s more...</b>' % (len(d) - i))
                 break
             try:
                 start_time = cont['Time']
@@ -195,113 +160,22 @@ var dates = new Hash();
             except:
                 desc = "?"
 
-            html += u'<b>%s :</b> %s<br>%s%s' % (start_time,desc,location,cap)
+            data[date].append(u'<b>%s :</b> %s<br>%s%s' % (start_time,desc,location,cap))
 
-        html += u'");\n'
-    html += u'''
-   var links = $$('table#cat-%s > tbody > tr > td > a');
-  var links = links.filter(function(el){
-    return el.href.match("action=%s") != null;
+    dateUrl = '?action=' +action + '&date=%Y-%m-%d&categories=' + categories
+    html = u'''
+    <div id="MetaMonthCalendarCont"></div>
+    <script type="text/javascript" src="%s/raippajs/MetaMonthCalendar.js"></script>
+    <script>
+    window.addEvent('domready', function(){
+        var div = $('MetaMonthCalendarCont').set('id','');
+        var cal = new MetaMonthCalendar(div, {
+            tipContent : %s,
+            dateUrl : '%s'
+            });
     });
-  var tips = new Tips(links);
-  var content = '';
- links.each(function(el){
-   topic = el.href.match(/\d{4}[-]\d\d[-]\d\d/)[0].clean();
-   el.store('tip:title',topic);
-  try{
-  content = dates.get(topic);
-  }catch(e){
-  content = '';
-    }
-   if(content){
-     td = el.getParent('td');
-     td.setStyles({
-       'background-color' : '#FFB6C1'
-       });
-     el.addEvents({
-       'mouseenter': function(){
-         el.setStyle('color', 'green');
-         },
-       'mouseleave': function(){
-         el.setStyle('color','');
-         }
-      });
-   }else{
-    content = "No events"; 
-   }
-   el.store('tip:text',content);
-   });
-});
-  </script>
-   \n''' % (categories,action)
-    out.write(html)
+    </script>
+    ''' % (request.cfg.url_prefix_static, to_json(data), dateUrl)
 
-    output = ""
-    #output += macro.formatter.table(1, {'id' : 'cat-%s' %categories})
-    output += macro.formatter.rawHTML('<div><table id="cat-%s"><tbody>' %categories)
+    return html
 
-    output += macro.formatter.table_row(1)
-
-    prev_month = month -1
-    prev_year = year
-    next_month = month +1
-    next_year = year
-
-    if month == 12:
-        next_month = 1
-        next_year = year +1
-    elif month == 1:
-        prev_month = 12
-        prev_year = year - 1
-
-    output += macro.formatter.rawHTML('<th colspan="8" class="calendar-month"><a href="?y=%s&m=%s"><</a> %s / %s <a href="?y=%s&m=%s">></a></th>' % (prev_year, prev_month, year, month, next_year, next_month))
-    output += macro.formatter.table_row(0)
-
-    output += macro.formatter.table_row(1)
-
-    output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
-    output += macro.formatter.table_cell(0)
-
-    for i in 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun':
-        if i in ['Sat', 'Sun']:
-            output += macro.formatter.table_cell(1, {'class': 'calendar-topic-weekend'})
-        else:
-            output += macro.formatter.table_cell(1, {'class': 'calendar-topic-workday'})
-
-        output += macro.formatter.text(i)
-        output += macro.formatter.table_cell(0)
-    output += macro.formatter.table_row(0)
-
-    for week in cal:
-        output += macro.formatter.table_row(1)
-        output += macro.formatter.table_cell(1, {'class': 'calendar-weeknumber'})
-        output += macro.formatter.text("%2d" % weeknum)
-        output += macro.formatter.table_cell(0)
-        if weeknum >= 53 or (weeknum >= 52 and week[6] <= 7):
-            weeknum = 1
-        else:
-            weeknum += 1
-
-        for i,day in enumerate(week):
-            if day and str(day) == str(now.day) and now.month == month and now.year == year:
-                output += macro.formatter.table_cell(1, {'class' : 'calendar-today'})
-            elif not day:
-                output += macro.formatter.table_cell(1, {'class': 'calendar-empty'})
-            elif i in [5,6]:
-                output += macro.formatter.table_cell(1, {'class': 'calendar-weekend'})
-            else:
-                output += macro.formatter.table_cell(1, {'class': 'calendar-day'})
-            timestamp = u'%04d-%02d-%02d' % (year, month, day)
-            if day:
-                urldict = dict(pagename = request.page.page_name, action = action, date = timestamp, categories = categories)
-                url = macro.request.getQualifiedURL() + '/' + '%(pagename)s?action=%(action)s&date=%(date)s&categories=%(categories)s' % urldict
-                output += macro.formatter.url(1, url, u'metamonthcalendar_noentry_url')
-                output += macro.formatter.text(u'%d' % day)
-                output += macro.formatter.url(0)
-            output += macro.formatter.table_cell(0)
-        output += macro.formatter.table_row(1)
-    output += macro.formatter.table_row(0)
-    output += macro.formatter.table(0)
-
-
-    return output
