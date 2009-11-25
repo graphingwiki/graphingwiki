@@ -22,7 +22,7 @@ def user_gui(request, f, user, entries, new_table=True):
     result.append(f.table_cell(1))
     result.append(f.strong(1))
     result.append(f.text("%s (" % username))
-    result.append(f.pagelink(1, "ecode"))
+    result.append(f.pagelink(1, user))
     result.append(f.text("%s" % user))
     result.append(f.pagelink(0, user))
     result.append(f.text(")"))
@@ -197,7 +197,7 @@ def macro_TimeTrack(macro, args):
         result.extend(group_gui(request, formatter, entries))
     elif rc['student'] in categories:
         entries = timetrack_entries(request, [target])
-        result.extend(user_gui(request, formatter, target, entries[target]))
+        result.extend(user_gui(request, formatter, target, entries.get(target, list())))
     else:
         return "Invalid input page %s." % target 
 

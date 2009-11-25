@@ -33,16 +33,14 @@ from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas, metatable_parseargs
 from raippa import to_json
 
-def macro_MetaMonthCalendar(macro, args):
+def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
     request = macro.request
-    action = 'showCalendarDate'
+    defaultaction = 'showCalendarDate'
 
-    if args is None:
-        args = ''
-    else:
-        if args.startswith("action="):
-            action = args.split(",")[0].split("=")[1]
-            args = ",".join(args.split(",")[1:])
+    args = ",".join(_trailing_args)
+
+    if not action:
+        action = defaultaction
 
     # Note, metatable_parseargs deals with permissions
     pagelist, keys, s = metatable_parseargs(request, args, get_all_keys=True, checkAccess=True)

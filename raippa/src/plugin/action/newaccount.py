@@ -8,6 +8,7 @@
 
 from MoinMoin import user, wikiutil, util
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.widget import html
 from MoinMoin.security.textcha import TextCha
 from MoinMoin.auth import MoinAuth
@@ -28,8 +29,6 @@ def _create_user(request):
     if not TextCha(request).check_answer_from_form():
         return _('TextCha: Wrong answer! Go back and try again...')
 
-    userdata = {'gwikicategory': [rc['student']]}
-
     # Create user profile
     theuser = user.User(request, auth_method="new-user")
 
@@ -37,7 +36,6 @@ def _create_user(request):
     try:
         name = int(form['name'][0])
         theuser.name = form['name'][0]
-        userdata['number'] = [theuser.name]
     except KeyError:
         return _("Empty student number. Please enter your student number.")
     except ValueError:
@@ -53,10 +51,12 @@ Student number may contain only numeric characters.
     if user.getUserId(request, theuser.name):
         return _("Account for this student number already exists.")
 
+    template = Page(request, "StudentTemplate").get_raw_body()
+
     # Require non-empty name
     try:
         theuser.aliasname = form['aliasname'][0]
-        userdata['name'] = [theuser.aliasname]
+        template = template.replace("name::", "name:: %s" % theuser.aliasname)
     except KeyError:
         return _("Empty name. Please enter your name.")
 
@@ -87,7 +87,7 @@ Student number may contain only numeric characters.
     # try to get the email, for new users it is required
     email = wikiutil.clean_input(form.get('email', [''])[0])
     theuser.email = email.strip()
-    userdata['email'] = [theuser.email]
+    template = template.replace("email::", "email:: %s" % theuser.email)
 
     if not theuser.email and 'email' not in request.cfg.user_form_remove:
         return _("Please provide your email address. If you lose your"
@@ -100,19 +100,19 @@ Student number may contain only numeric characters.
 
     # save data
     theuser.save()
-
-    usermetas = {theuser.name: userdata}
-
-    success, msg = set_metas(request, dict(), dict(), usermetas)
     result = _("Account created! Use your student number to login.")
 
-    if not success:
-        result += _("Failed to create student page.")
+    page = PageEditor(request, theuser.name)
+
+    try:
+        msg = page.saveText(template, page.get_real_rev())
+        result += msg
+    except Exception, e:
+        result += unicode(e)
 
     if _debug:
         result = result + util.dumpFormData(form)
     return result
-
 
 def _create_form(request):
     _ = request.getText
