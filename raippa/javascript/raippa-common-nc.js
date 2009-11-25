@@ -2602,8 +2602,25 @@ var RaippaAccordion = new Class({
 			toggler.inject(this.container);
 			element.inject(this.container);
 		}
-		this.addSection(toggler, element);
+
+		this.togglers.include(toggler);
+		this.elements.include(element);
+		var idx = this.togglers.indexOf(toggler);
+		var displayer = this.display.bind(this, element);
+		toggler.store('accordion:display', displayer);
+		toggler.addEvent(this.options.trigger, displayer);
+		if (this.options.height) element.setStyles({'padding-top': 0, 'border-top': 'none', 'padding-bottom': 0, 'border-bottom': 'none'});
+		if (this.options.width) element.setStyles({'padding-left': 0, 'border-left': 'none', 'padding-right': 0, 'border-right': 'none'});
+		element.fullOpacity = 1;
+		if (this.options.fixedWidth) element.fullWidth = this.options.fixedWidth;
+		if (this.options.fixedHeight) element.fullHeight = this.options.fixedHeight;
+		element.setStyle('overflow', 'hidden');
+		if (!test){
+			for (var fx in this.effects) element.setStyle(fx, 0);
+		}
 		return this;
+		
+		
 	}
 });
 

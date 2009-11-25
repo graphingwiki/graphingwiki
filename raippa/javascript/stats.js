@@ -5,11 +5,12 @@
  * to show data in human readable way.
  */
 
-var Stats = new Class({
+var RaippaStats = new Class({
 	Implements: [Options],
 	Binds: ['getData', 'createUI', 'hideStatBox', 'showStatBox', 'filter', 'showStatBox','studentHasDone'],
 	options: {
         maxBoxCount : 3,
+		query_url : '?action=searchMetasJSON',
 		query_args: 'stats',
 		containerStyles: {
 			'width' : '600px',
@@ -41,7 +42,7 @@ var Stats = new Class({
 		passedCheck: true,
 		passedCheckLabel: " Not yet passed",
 		countCheck : true,
-		countCheckLabel: " Has a lot of tries"
+		countCheckLabel: " Has a lot of tries",
 	},
 	stats: {},
 	statBoxes: [],
@@ -173,16 +174,22 @@ var Stats = new Class({
         var data = this.stats.items[id];
         var box = new Element('div', {
             'id' : 'statbox_' + id,
-            'class' : 'statbox',
-            'html' : this.showItemData(data)
+            'class' : 'statbox'
         });
+		
+		var itemContent =  this.showItemData(data);
+		if (["element","array"].contains($type(itemContent))) {
+			box.adopt(itemContent);
+		}else{
+			box.set('html', itemContent);
+		}
+		
         var title = new Element('h3', {
                 'class' : 'statboxtitle',
                 'text' : data.name + ' ('+ id+')'
             });
         this.statBoxes.push(id);
         this.accordion.injectSection(title,box);
-        //this.accordion.display(1);
 		this.accordion.display(box);
 	},
 	filter: function(search){
@@ -228,7 +235,7 @@ var Stats = new Class({
         this.statsContainer.grab(spinner);
 
 		var query = new Request.JSON({
-			url: '?action=searchMetasJSON',
+			url: this.options.query_url,
 			async: true,
 			onSuccess: function(json){
 				this.stats = this.parseData(json);
@@ -253,7 +260,7 @@ var Stats = new Class({
 });
 
 var QuestionStats = new Class({
-    Implements : Stats,
+    Implements : RaippaStats,
 	formatItem : function(value,key){
 		var item = new Element('a', {
 				'text': value.name,
@@ -397,7 +404,7 @@ var QuestionStats = new Class({
 });
 
 var TaskStats = new Class({
-    Implements: Stats,
+    Implements: RaippaStats,
 	studentHasDone : function(student){
 		var done = $H(this.stats.items[student].doing).getLength() == 0 || false;
 		return done;
@@ -515,3 +522,40 @@ var TaskStats = new Class({
     }
     
 });
+
+var CourseStats = new Class({
+    Extends: RaippaStats,
+	
+	initialize: function(el, options){
+		this.parent(el, $merge(options,{
+			'query_args': 'list_students',
+			'passedCheck': false
+			}));
+	},
+	parseData: function(data){
+		return $H({
+			'total' : this.options.overallStats,
+			'items' : $H(data)
+		});
+	},
+	showTotalData: function(data){
+		return $(this.options.overallStats).clone();
+	},
+	showItemData: function(item){
+        var spinner = new Element('span', { 
+            "html" : "&nbsp;&nbsp;&nbsp;&nbsp;",
+            'class' : 'ajax_loading',
+            'styles' : {
+                'display' : 'block',
+                'width': '100%'
+            }
+        });
+		var img =  new Asset.image(
+			'?action=drawgraphIE&type=stats&student='+ item.number,{
+				'onload': function(){
+					spinner.destroy();
+				}	
+			});
+		return [spinner, img];
+	}
+	});

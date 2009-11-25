@@ -113,25 +113,28 @@ var courseEditor = new Class({
 		
 		this.setOptions(options);
 		this.coursename = window.location.pathname;
-		this.getTasks();
-		this.createUi();
-		//this.restoreCurrent();
-		(function(){
-			if (this.container.getStyle('display') == 'none'){
-				var vis = this.container.getStyle('visibility');
-				this.container.setStyle('visibility', 'hidden');
-				this.container.setStyle('display', '');
-				
-				this.restoreCurrent();
-				
-				this.container.setStyle('visibility', vis);
-				this.container.setStyle('display', 'none');				
 
-			}else{
-				this.restoreCurrent();
-			}
+		var callback = function(){
+			this.createUi();
+			(function(){
+				if (this.container.getStyle('display') == 'none') {
+					var vis = this.container.getStyle('visibility');
+					this.container.setStyle('visibility', 'hidden');
+					this.container.setStyle('display', '');
+					
+					this.restoreCurrent();
+					
+					this.container.setStyle('visibility', vis);
+					this.container.setStyle('display', 'none');
+					
+				}
+				else {
+					this.restoreCurrent();
+				}
 			}).delay(100, this);
-	
+		};
+		this.getTasks(callback.bind(this));
+
 	},
 	restoreCurrent : function(){
 		var sel = this.tasks.selected;
@@ -171,15 +174,17 @@ var courseEditor = new Class({
                         async : false
                         });
 					taskAddForm.send();
-					this.getTasks();
-					
+					var callback = function(){
 					//add newly created tasks to list: a task without both list_item and element must be new
 					this.tasks.data.each(function(value, key){
 						if (!value.element && !value.list_item){
 							this.taskListAdd(key);
 						}
-					}, this);
-					
+					}, this);					
+						
+					}
+					this.getTasks(callback.bind(this));
+									
                     field.set('value','');
 				}.bindWithEvent(this)
 			}
@@ -841,12 +846,12 @@ var courseEditor = new Class({
 		
 	},
 	/* Retrieves available tasks using json ajax query*/
-	getTasks: function(){
+	getTasks: function(callback){
 		var editor = this;
 		
 		var query = new Request.JSON({
 			url: '?action=searchMetasJSON',
-			async: false,
+			async: true,
 			onSuccess: function(json){
 				editor.tasks["free"] = $H(json.free);
 				editor.tasks["selected"] = $H(json.selected);
@@ -857,6 +862,7 @@ var courseEditor = new Class({
 						});
 				//combining new and old data, old data is not overwritten
 				editor.tasks.data.combine(data);
+				callback.run();
 			}
 		});
 		query.get({'args':'tasks'});
@@ -1009,10 +1015,13 @@ var courseEditor = new Class({
 	},
 	submitData: function(){
 		var form = new Element('form', {
-			'action' : '?action=editCourseFlow',
 			'method': 'post'
 		});
-		
+		form.grab(new Element('input', {
+			'type' : 'hidden',
+			'name' : 'action',
+			'value': 'editCourseFlow'
+		}));	
 		sel = this.flow;
 		var tmp = [this.options.firstNode];
 		while (tmp.length > 0) {

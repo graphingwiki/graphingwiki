@@ -407,12 +407,14 @@ td.calendar-today {
 td.calendar-topic-workday {
     border-style: solid;
     width: 30px;
+	height: 18px;
     background-color: #DDDDFF;
     text-align: center;
 }
 
 td.calendar-topic-weekend {
     width: 30px;
+	height: 18px;
     background-color: #FFDDDD;
     text-align: center;
 }
@@ -423,13 +425,20 @@ td.calendar-weekend{
 td.calendar-weeknumber {
     background-color: #CCFFCC;
     height: 15px;
+	width: 22px;
 }
 
 td.calendar-empty {
     background-color: #DEDEDE;
 }
 
-
+table.month-container > tbody > tr >td ,
+table.month-container td table {
+	border: none;
+	padding: 0 0 0 0;
+	margin: 0 0 0 0;
+	width: 100%;
+}
 
 /* table without borders*/
 table.no_border, table.no_border td, table.no_border tr {
