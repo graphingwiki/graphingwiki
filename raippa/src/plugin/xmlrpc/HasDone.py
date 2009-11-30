@@ -18,7 +18,7 @@ def execute(xmlrpcobj, username, pagename):
     request = xmlrpcobj.request
     _ = request.getText
 
-    if not Page(reqeust, pagename).exists():
+    if not Page(request, pagename).exists():
         return xmlrpclib.Fault(1, _('No such page %s' % pagename))
 
     if not getUserId(request, username):
