@@ -13,11 +13,11 @@ def execute(xmlrpcobj, username, pagename):
     request = xmlrpcobj.request
     _ = request.getText
     
-    metas = get_metas(pagename)
+    metas = get_metas(request, pagename, ['gwikicategory'])
     
     user = User(request, username)
 
-    if rc['question'] in metas.values()['gwikicategory']:
+    if rc['question'] in metas['gwikicategory']:
         page = Question(request, pagename)
 
         return user.hasdone(user, page)
