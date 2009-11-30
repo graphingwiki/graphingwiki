@@ -37,6 +37,11 @@ def user_gui(request, f, user, entries, new_table=True):
 
     result.append(f.table_cell(1))
     result.append(f.strong(1))
+    result.append(f.text("Task"))
+    result.append(f.strong(0))
+
+    result.append(f.table_cell(1))
+    result.append(f.strong(1))
     result.append(f.text("Description"))
     result.append(f.strong(0))
 
@@ -63,8 +68,15 @@ def user_gui(request, f, user, entries, new_table=True):
             hours += 1
             minutes = minutes - 60
 
+        task = removelink(entry[2])
         result.append(f.table_cell(1))
-        result.append(f.text(entry[2]))
+        result.append(f.pagelink(1, task))
+        result.append(f.text("%s" % task))
+        result.append(f.pagelink(0, task))
+        result.append(f.table_cell(0))
+
+        result.append(f.table_cell(1))
+        result.append(f.text(entry[3]))
         result.append(f.table_cell(0))
         result.append(f.table_row(0))
 
@@ -125,7 +137,7 @@ def group_gui(request, f, entries):
 def timetrack_entries(request, users):
     pages = pages_in_category(request, rc['timetrack'])
     temp = dict()
-    keys = ['Date', 'Time', 'Duration', 'User']
+    keys = ['Date', 'Task','Time', 'Duration', 'User']
 
     for page in pages:
         metas = get_metas(request, page, keys, checkAccess=False)
@@ -133,17 +145,26 @@ def timetrack_entries(request, users):
         if not user or user not in users:
             continue
 
-        date = metas.get('Date', [""])[0]
+        date = metas.get('Date', [""])
         if not date:
             continue
+        date = date[0]
 
-        time = metas.get('Time', [""])[0]
+        time = metas.get('Time', [""])
         if not time:
             continue
+        time = time[0]
 
-        duration = metas.get('Duration', [""])[0]
+        duration = metas.get('Duration', [""])
         if not duration:
             continue
+        duration = duration[0]
+
+        task = metas.get('Task', [""])
+        if not task:
+            task = ""
+        else:
+            task = task[0]
 
         if not temp.get(user, None):
             temp[user] = dict()
@@ -156,7 +177,7 @@ def timetrack_entries(request, users):
 
         if not temp.get(user, None):
             temp[user] = dict()
-        temp[user][datetime] = (duration, content)
+        temp[user][datetime] = (duration, task, content)
 
     entries = dict()
     for user in temp:
@@ -164,8 +185,8 @@ def timetrack_entries(request, users):
         user_entries = temp[user]
 
         for entry in sorted(user_entries.keys()):
-            entries[user].append([entry, user_entries[entry][0], user_entries[entry][1]])
-    
+            single_entry = user_entries[entry]
+            entries[user].append([entry, single_entry[0], single_entry[1], single_entry[2]])
 
     return entries 
 

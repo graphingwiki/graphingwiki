@@ -9,6 +9,9 @@ from MoinMoin.parser.text_moin_wiki import Parser
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
 
+from raippa import removelink
+from raippa.pages import Task
+
 def _enter_page(request, pagename):
     _ = request.getText
 	   
@@ -65,7 +68,7 @@ def printEntries(entries, date, pagename, request):
     request.write(u'<table id="calEventList">')
     request.write(u'''<tr><th colspan="6">%s</th></tr>
     <tr>
-    <th>Time</th><th>Description</th>
+    <th>Time</th><th>Task</th><th>Description</th>
     <th colspan="2"></th>
     </tr>
     ''' % date)
@@ -93,12 +96,20 @@ def printEntries(entries, date, pagename, request):
             else:
                 writeCell('?')
 
-            writeCell(request.formatter.text(entry['Content'], width="40%"))
+            if entry.get('Task', None):
+                task = entry['Task']
+                tasktitle = Task(request, task).title()
+                if not tasktitle:
+                    tasktitle = task
 
-            if 'Capacity' in entry:
-                capacity = entry['Capacity']
+                taskhtml = request.formatter.pagelink(1, task)
+                taskhtml += request.formatter.text("%s" % tasktitle)
+                taskhtml += request.formatter.pagelink(0, task)
+                writeCell(taskhtml)
             else:
-                capacity = '?'
+                writeCell(request.formatter.text(""))
+
+            writeCell(request.formatter.text(entry['Content'], width="40%"))
 
             #edit link
             writeCell('<a href="?action=editTimeTrackEntry&edit=%s&categories=%s">edit</a>' % (entry['Page'], request.form.get('categories',[u''])[0].encode()))
@@ -152,7 +163,7 @@ def execute(pagename, request):
             for meta in metas:
                 if not metas[meta]:
                     continue
-                entrycontent[meta] = metas[meta][0]
+                entrycontent[meta] = removelink(metas[meta][0])
             datedata.append(entrycontent)
 
     #Getting current month
@@ -165,48 +176,6 @@ def execute(pagename, request):
         end_date = now.replace(month = month + 1, day = 1)
     except ValueError:
         end_date = now.replace(month = 1, year = year + 1)
-
-
-    #adding reoccurring events to dict
-
-    new_entries = dict()
-
-    for date in entries.values():
-        for entry in date:
-            if not 'Type' in entry:
-                continue
-
-            type = entry['Type']
-
-            if type == 'Once' or type == '0':
-                continue
-
-            until = None
-            if 'Until' in entry:
-                until = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Until'], '%Y-%m-%d')))
-                
-            try:
-                type = int(type)
-            except ValueError:
-                continue
-            
-            curdate = datetime.datetime.fromtimestamp(time.mktime(time.strptime(entry['Date'], '%Y-%m-%d')))
-
-            delta = datetime.timedelta(days = type)
-
-            while curdate <= end_date:
-                if until:
-                    if curdate >= until:
-                        break
-                curdate += delta
-                newdate = curdate.strftime('%Y-%m-%d')
-                
-                new_entries.setdefault(newdate, list())
-                new_entries[newdate].append(entry)
-
-    for entry in new_entries:
-        entries.setdefault(entry, list())
-        entries[entry].extend(new_entries[entry])
 
     if 'Time' in entries:
         entries.sort(key = lambda x: x['Time'])

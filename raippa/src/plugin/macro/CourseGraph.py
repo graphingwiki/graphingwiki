@@ -188,7 +188,7 @@ def get_stat_data(request, course, user=None):
             if user:
                 user_done = int()
                 for question, students in done.iteritems():
-                    if user in students:
+                    if user.name in students.keys():
                         user_done += 1
 
                 if user_done == len(questions):
@@ -265,12 +265,17 @@ def draw_teacher_ui(request, course):
 
     result.append(f.rawHTML(''' 
  <script type="text/javascript" src="%s/raippajs/moocanvas.js"></script>
+ <script type="text/javascript" src="%s/raippajs/stats.js"></script>
  <script type="text/javascript" src="%s/raippajs/course_edit.js"></script>
 <script type="text/javascript">
 function editor(view){
     var edit = new Element('div');
-    var stats = $('statsBox').clone().removeClass('hidden'); 
-    var modal = new modalizer([edit, stats], { 
+    var overall = $('statsBox').clone().removeClass('hidden'); 
+    var statsdiv = new Element('div');
+    var stats = new CourseStats(statsdiv,{
+            'overallStats' : overall
+        });
+    var modal = new modalizer([edit, statsdiv], { 
         tabLabels : ["edit", "stats"],
         defTab : view
         });
@@ -281,7 +286,7 @@ function editor(view){
     <a class="jslink" onclick="editor(0);">edit</a>
     &nbsp;
     <a class="jslink" onclick="editor(1);">stats</a>
-    ''' % (prefix, prefix)))
+    ''' % (prefix, prefix, prefix)))
     #stats
     result.append(f.div(1,css_class='hidden',id="statsBox"))
     if 'MSIE' in request.getUserAgent():
