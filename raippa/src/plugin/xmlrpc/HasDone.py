@@ -7,7 +7,7 @@ import xmlrpclib
 from MoinMoin.Page import Page
 from MoinMoin.user import getUserId
 
-from raippa.user import RaippaUser
+from raippa.user import User as RaippaUser
 from raippa.pages import Task, Question
 from raippa import raippacategories as rc
 
