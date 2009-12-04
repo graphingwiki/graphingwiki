@@ -225,6 +225,16 @@ def list_tasks(request, search, all):
 
     return result
 
+def list_students(request):
+    result = dict()
+    students = pages_in_category(request, 'CategoryStudent')
+    for student in students:
+        metas = get_metas(request, student, ["name", "number"])
+        result[student] = {"name" : metas.get("name", [u""])[0], "number" : metas.get("number", [u""])[0]}
+    
+    return result
+
+
 def search_meta_value(request, search):
     graphdata = request.graphdata
     graphdata.reverse_meta()
@@ -273,6 +283,9 @@ def execute(pagename, request):
         elif raippacategories["task"] in categories:
             request.write(to_json(task_stats(request, Task(request, pagename))))
 
+    elif args == "list_students":
+        request.write(to_json(list_students(request)))
+    
     else:
         request.write(to_json(""))
     
