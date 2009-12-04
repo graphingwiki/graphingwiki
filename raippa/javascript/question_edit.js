@@ -333,6 +333,11 @@ var QuestionEditor = new Class({
     },
     
     addFileAnswer: function(name, cmd, input, output, infiles, outfiles){
+		var re = /\\n/g;
+		input = input ? input.replace(re, '\n') : "";
+		output = output ? output.replace(re, '\n') : "";
+		
+		
         infiles = infiles || [];//["file1", "file2"];
         outfiles = outfiles || [];//["file3", "file4"];
         var tbody = this.filetable;
@@ -403,8 +408,8 @@ var QuestionEditor = new Class({
             var span = new Element('span').setStyle('display', 'block');
             
             var field = new Element('input', {
-                'name': 'infile' + num + '_' + index,
-                'disabled': 'true',
+                'name': 'old_infiles' + num,
+                'readonly': 'true',
                 'value': file
             });
             var rm = rmlink.clone().addEvent('click', function(){
@@ -419,8 +424,8 @@ var QuestionEditor = new Class({
             var span = new Element('span').setStyle('display', 'block');
             
             var field = new Element('input', {
-                'name': 'outfile' + num + '_' + index,
-                'disabled': 'true',
+                'name': 'old_outfiles' + num,
+                'readonly': 'true',
                 'value': file
             });
             var rm = rmlink.clone().addEvent('click', function(){
@@ -435,7 +440,7 @@ var QuestionEditor = new Class({
             var currentfields = $$('input[name^=' + basename + ']');
             var index = 0;
             if (currentfields.length > 0) {
-                index = currentfields.getLast().retrieve('index');
+                index = currentfields.getLast().retrieve('index') +1;
             }
                      
             var field = new Element('input', {
@@ -541,11 +546,9 @@ var QuestionEditor = new Class({
 				
 				//it's ok to not have a name if all the fields are empty
 				var i = txt.get('name').replace('name','');
-				var allempty = this.filetable.getElements('textarea[name$='+i+'], input[type=file]').every(function(field){
-					field = $(field)
-					return field.get('value') == "";
-				});
-				return allempty;
+				var vals = this.filetable.getElements('textarea[name$='+i+'], input[name^=infile'+i+'], input[nam^=outfile'+i+']')
+							.get('value').erase("");
+				return vals.length == 0;
 			}, this);
 			
 			if (!hasName){
