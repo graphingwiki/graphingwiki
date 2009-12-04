@@ -42,7 +42,7 @@ var RaippaStats = new Class({
 		passedCheck: true,
 		passedCheckLabel: " Not yet passed",
 		countCheck : true,
-		countCheckLabel: " Has a lot of tries",
+		countCheckLabel: " Has a lot of tries"
 	},
 	stats: {},
 	statBoxes: [],

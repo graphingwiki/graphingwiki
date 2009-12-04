@@ -534,13 +534,37 @@ var courseEditor = new Class({
 		if (el.retrieve('value')){
 			cCnt = this.flow[el.retrieve('value')].length -1 ;
 		}
-		var ppos = $(element).getCoordinates(this.graphContainer);
-		result.x =  ppos.left +Math.ceil(cCnt/2) * 100 * Math.pow( -1, cCnt);
-		result.y=  ppos.top + this.options.taskVerticalDistance + this.options.elSize.height;
-		if(result.x < 100){
-			result.x = Math.abs(result.x - 100)  + 100;
-			result.y += 100;
-		}
+		var yDist = this.options.taskVerticalDistance + this.options.elSize.height;
+		var elements = this.container.getElements('DIV[id^=item]');
+		var doesOverlapp = false;
+		do {
+			var ppos = $(element).getCoordinates(this.graphContainer);
+			result.x = ppos.left + Math.ceil(cCnt / 2) * 100 * Math.pow(-1, cCnt);
+			result.y = ppos.top + yDist;
+			if (result.x < 100) {
+				result.x = Math.abs(result.x - 100) + 100;
+				result.y += yDist;
+			}
+			if(result.x > 400){
+				result.y += yDist * (result.x /400).round();
+				result.x = 400 - result.x % 400;
+			}
+			cCnt++;
+			doesOverlapp = elements.some(function(element){
+
+				var pos = element.getCoordinates(this.graphContainer);
+				if((pos.left - this.options.elSize.width /2)< result.x && (pos.left + this.options.elSize.width ) > result.x
+					&& (pos.top - yDist) < result.y && (pos.top + yDist) > result.y
+				){
+					return true;
+				}else if(pos.top < result.y && (pos.top + yDist) > result.y 
+				&& (pos.left + this.options.elSize.width)> result.x && pos.left < result.x){
+					return true;
+				} else{
+					return false;
+				}
+			}, this);
+		}while (doesOverlapp);
 		return result;
 	},
 	/* Draws lines between task balls*/
