@@ -18,77 +18,15 @@ import traceback
 
 from optparse import OptionParser
 
-from opencollab.wiki import CLIWiki
 import opencollab.wiki
+import opencollab.util
 
+#rmlrpc is broken. this monkey patch should fix it
 orig_feed = xmlrpclib.ExpatParser.feed
 
 def monkey_feed(self, data):
     return orig_feed(self, re.sub(ur'[\x00-\x08\x0b-\x19]', '?', data))
 xmlrpclib.ExpatParser.feed = monkey_feed
-
-utils = """# -*- coding: utf-8 -*-
-import subprocess
-import errno
-import signal
-import os
-
-class Timeout(Exception):
-    pass
-
-def handler(signum, frame):
-    raise Timeout
-
-def runProgram(myInput="", myFile='ratkaisu.py', printReturnValue = False, parameters = []):
-    #signal.signal(signal.SIGALRM, handler)
-    p = subprocess.Popen(["python", myFile] + parameters, shell=False, stdout = subprocess.PIPE, stderr = subprocess.PIPE, stdin = subprocess.PIPE)
-    #signal.alarm(30)
-    try:
-        result = p.communicate(myInput)
-    except Timeout:
-        result = ("Timeout!", "Timeout!")
-        os.kill(p.pid, signal.SIGKILL)
-    except OSError, e:
-        if e.errno == errno.EPIPE:
-            result = (p.stdout.read(), p.stderr.read())
-        else:
-            raise
-
-    #signal.alarm(0)
-
-    if printReturnValue:
-        return result + (p.returncode,) 
-
-    return result
-
-def writefile(fName, fCont): f = open(fName,"w"); f.write(fCont); f.close()
-"""
-
-run = """import os
-import sys
-import doctest
-import signal
-import os
-
-class Timeout(Exception):
-    pass
-
-def handler(signum, frame):
-    os.system("touch handler-called")
-    raise Timeout  
-
-signal.signal(signal.SIGALRM, handler)
-
-signal.alarm(20)
-
-sys.path.append(os.getcwd())
-
-result = doctest.testfile("tests.txt")
-
-signal.alarm(0)
-
-sys.stderr.write(repr(result) + "\\n")
-"""
 
 def error(msg):
     date = datetime.datetime.now().isoformat()[:19]
@@ -99,84 +37,40 @@ def info(msg):
     print "%s [info] %s" % (date, msg)
 
 def removeLink(line):
-    if line.startswith('[['):
-        return line[13:-2]
+    #For old fashined history pages. Previously the file wasnot a
+    #link but now it is. This can removed in the next iteration
+    if line.startswith('[['): return line[13:-2]
     return line
 
-def parseTests(content):
-    #Match the stuff between {{{ and }}} the docttest should be there
-    test_regex = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
-    return test_regex.search(content).groups()[0]
-
 def run_runpy(tempdir, timeout=10):
-    ofn = os.path.join(tempdir, "out.txt")
-    efn = os.path.join(tempdir, "err.txt")
-    of = open(ofn, "w")
-    ef = open(efn, "w")
-    p = subprocess.Popen(["python", "run.py"], shell=False, stdout=of, stderr=ef, stdin=open("/dev/null"))
-    timedout=1
-    for i in range(10):
+    #open files for stdout and stderr
+    outpath = os.path.join(tempdir, "out.txt")
+    errpath = os.path.join(tempdir, "err.txt")
+    outfile = open(outpath, "w")
+    errfile = open(errpath, "w")
+
+    p = subprocess.Popen(["python", "run.py"], shell=False, stdout=outfile, stderr=errfile, stdin=open("/dev/null"))
+ 
+   timedout = 1
+
+    for i in range(timeout):
         if p.poll() is not None:
             timedout=0
             break
         time.sleep(1)
-    of.close()
-    ef.close()
+
+    outfile.close()
+    errfile.close()
+
     if timedout:
         os.kill(p.pid, 9)
-    return open(ofn).read(), open(efn).read(), timedout
 
+    return open(outfile).read(), open(errfile).read(), timedout
 
-def checkAnswer(code, tests):
-    #This is mostly legacy stuff from previous version. I'm not 100%
-    #sure what it does :)
+def readConfig(file):
+    opts = opencollab.util.parseConfig(file)
+    return opts
 
-    path = tempfile.mkdtemp()
-    cwd = os.getcwd()
-    os.chdir(path)
-    info("Created tempdir %s" % path)
-
-    open(os.path.join(path, "tests.txt"), "w").write(tests)
-    open(os.path.join(path, "tarkistaUtils.py"), "w").write(utils)
-    open(os.path.join(path, "run.py"), "w").write(run)
-
-    open(os.path.join(path, "ratkaisu.py"), "w").write("pass\n")
-
-    stdout, stderr, timedout = run_runpy(path)
-    compiled = os.path.join(path, "ratkaisu.pyc")
-    if os.path.exists(compiled):
-        os.remove(compiled)
-
-    try:
-        failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
-    except ValueError:
-        failed = total = trivialTests = 0
-    else:
-        trivialTests = total - failed
-    info("Found %d trivial tests" % (trivialTests))
-
-    open(os.path.join(path, "ratkaisu.py"), "w").write(code)
-
-    stdout, stderr, timedout = run_runpy(path)
-
-    info("Removing tempdir %s" % path)
-    os.chdir(cwd)
-    shutil.rmtree(path)
-
-    try:
-        failed, total = map(lambda x: int(x), stderr.strip().strip("()").split(", "))
-    except ValueError:
-        failed = total
-        succeeded = 0
-
-    succeeded = total - failed
-    succeeded = max(succeeded - trivialTests, 0)
-    total = total - trivialTests
-
-    if not stdout:
-        stdout = 'Timeout! Your program propably was stucked in an infinete loop.\n'
-
-    return succeeded, total, stdout, stderr
 
 def checking_loop(wiki):
     url = wiki.host
@@ -196,49 +90,59 @@ def checking_loop(wiki):
         for page in picked_pages:
             info('%s: picked %s' % (url, page))
 
+            path = tempfile.mkdtemp()
+	    cwd = os.getcwd()
+	    os.chdir(path)
+	    
+            info("Created tempdir %s" % path)
+
             #change the status to picked
             wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
 
             metas = picked_pages[page]
-            
+
             # get the attachment filename from the file meta
-            attachment_file = metas['file'].single()
-            attachment_file = removeLink(attachment_file)
-            #get the source code
-            info("Fetching sourcode from %s" % attachment_file)
-            try:
-                code = wiki.getAttachment(page, attachment_file)
-            except opencollab.wiki.WikiFault, e:
-                if 'There was an error in the wiki side (Nonexisting attachment' in e.args[0]:
-                    code = ''
-                else:
-                    raise
+            info('Writing files')
+            for filename in rmetas['file']:
+                attachment_file = removeLink(attachment_file)
+                #get the source code
+                info("Fetching sourcode from %s" % attachment_file)
+                try:
+                    code = wiki.getAttachment(page, attachment_file)
+                except opencollab.wiki.WikiFault, e:
+                    if 'There was an error in the wiki side (Nonexisting attachment' in e.args[0]:
+                        code = ''
+                    else:
+                        raise
+
+                open(filename, 'w').write(code)
+
 
             #if there is wrong amount of question page linksd, leave
             #the returned assignment as picked so that other
             #assignments can be checked. 
 
             if len(metas['question']) != 1:
-                error('Invalid meta data in %s! There were %d values!\n' 
+                error('Invalid meta data in %s! There we %d values!\n' 
                       % (page, len(metas['question'])))
                 continue
             
             #get the question pagenmae
             question = metas['question'].single(None)
             question = question.strip('[]')
-
+            
             #find associataed answerpages
-            answer_meta = wiki.getMeta('CategoryAnswer, question=%s' 
-                                       % question)
-
+            
+            answer_metas = wiki.getMeta(question +'/options').values()
+            
+            for _, link in [x, y.single() for x, y in answer_metas.items() if x‘ == 'answer'] 
             #Get the page name
-            answer_page = answer_meta.keys()[0]
+            answer_page = answer_meta.keys()
             info('Getting answer from %s' % answer_page)
 
-            #get the tests
-            tests = parseTests(wiki.getPage(answer_page))
             
-            succeeded, total, stdout, stderr = checkAnswer(code, tests)
+            
+            stdout, stderr = checkAnswer(code, tests)
             info("Result %d of %d tests succeeded" % (succeeded, total))
 
             report = stdout.replace("\\n", "\n")
@@ -279,7 +183,7 @@ def checking_loop(wiki):
             time.sleep(5)
 
 def main():
-
+    #parse commandline parameters
     parser = OptionParser()
     parser.add_option("-u", "--url-to-wiki", dest="url",
                       help="connect to URL", metavar="URL", default = None)
@@ -309,7 +213,7 @@ def main():
     else:
         while True:
             try:
-                wiki = CLIWiki(options.url, config = options.file)
+                wiki = GraphingWiki(options.url)
             except socket.error, e:
                 error(e)
                 time.sleep(10)
@@ -329,11 +233,12 @@ def main():
         except socket.error:
             error('CONNECTION PROBLEMS')
             traceback.print_exc()
-        #except KeyboardInterrupt:
-        #    raise
-        #    sys.exit(0)
         time.sleep(10)
         
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print 'Bye!'
+    
