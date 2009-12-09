@@ -2,11 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-This script starts the needed tcpdump on the its1 machine.
-It also is responsible on starting the vm-images for
-TIS and VIC
+Part of TIS. Use at your peril!
+
+This script starts the needed tcpdump on the vmware server machine.
+It also is responsible on starting the vm-images for TIS and VIC
 
 At the moment only 1 TIS / VIC pair is supported
+
+    @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
 """
 import graphingwiki.editing
 import os, signal, time, md5, string, re

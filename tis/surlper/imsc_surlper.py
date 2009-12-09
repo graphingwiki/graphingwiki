@@ -1,4 +1,9 @@
 #coding=utf-8
+'''
+    @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+'''
+
 
 import os, time
 import sys

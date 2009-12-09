@@ -1,3 +1,11 @@
+'''
+	Wikifier, test script for putting results to the gwiki using xmlrpc
+
+    @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+'''
+
+
 if __name__ == "__main__":
     import sys
     import xmlrpclib

@@ -6,6 +6,9 @@ SURLPER
 Secure url pillaging extreme roboto
 
 This script is run on the machine having access to the vmware-cmd
+
+    @copyright: 2008 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import graphingwiki.editing
 import os, signal, time, md5, string, re

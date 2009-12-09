@@ -9,6 +9,9 @@ It needs to log the following events:
  - The IP address of the client
  - the name of the malware
  - signal time
+ 
+     @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
 #""" Adopted from 'Programmin Python' (page 550)  """

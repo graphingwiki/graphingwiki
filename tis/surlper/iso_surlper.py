@@ -3,7 +3,10 @@
 
 """
 SURLPER
-Secure url pillaging extreme roboto
+Secure url pillaging extreme roboto (or something)
+
+    @copyright: 2008 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import graphingwiki.editing
 import os, signal, time, md5, string, re

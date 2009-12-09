@@ -1,4 +1,12 @@
 #coding=utf-8
+'''
+	Short script installed into victim-images startfolder, automatically executed on startup.
+	Handles uploading the malware from the TIS, unzipping if necessary and executing it.
+
+    @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+'''
 
 import os, time
 import sys

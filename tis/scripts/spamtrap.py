@@ -1,5 +1,16 @@
 #s!/usr/bin/python
 # -*- coding: utf-8 -*-
+'''
+    Spamtrap reads emails from hardscripted folders, and puts spam with attachments into
+	predefined folders. Useful mostly as a model, at your own peril.
+
+
+    @copyright: 2007 by Mirko Sailio
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+'''
+
+
 
 import sys, os, md5
 import email.Parser
