@@ -157,7 +157,6 @@ def sendmail(request, template, variables, recipient_filter=lambda x: True):
     DEFAULT_HEADERS = dict()
     DEFAULT_HEADERS["To"] = "@INVITEDEMAIL@"
     DEFAULT_HEADERS["From"] = "@INVITEREMAIL@"
-    DEFAULT_HEADERS["BCC"] = "@INVITEREMAIL@"
 
     ENCODING = "utf-8"
 
