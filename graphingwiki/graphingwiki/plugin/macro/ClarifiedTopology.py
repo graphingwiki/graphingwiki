@@ -169,7 +169,10 @@ def draw_topology(request, args, key):
         if page in aliases:
             ctx.set_source_rgb(0, 0, 0)
             ctx.move_to(start_x, start_y + h + 10)
-            ctx.show_text(aliases[page])
+            ## FIXME, should parse links more nicely, now just removes
+            ## square brackets
+            text = aliases[page].lstrip('[').rstrip(']')
+            ctx.show_text(text)
 
     s2 = surface
 # Proto for scaling and rotating code
