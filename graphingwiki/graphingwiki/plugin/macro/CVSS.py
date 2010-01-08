@@ -221,15 +221,16 @@ def buildVector(av,ac,au):
     return vector
 
 def execute(macro, args):
+    tset = set(['score', 'vector'])
     request = macro.request
     _ = request.getText
 
     if args:
         args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
-    if not args or len(args) not in [1]:
+    if not args or len(args) not in [1,2]:
         return _sysmsg % ('error', 
-                          _("CVSS: Need to specify page"))
+                          _("CVSS: Need to specify a page or page and type (score|vector)."))
 
     # Get all non-empty args
     args = [x for x in args if x]
@@ -237,20 +238,29 @@ def execute(macro, args):
     # If not page specified, defaulting to current page
     if len(args) == 1:
         page = request.page.page_name
+    elif len(args) ==2:
+        page = request.page.page_name
+        type = args[1]
+        if type not in tset:
+            return _sysmsg % ('error', 
+                _("CVSS: The type needs to be either score or vector."))
     # Faulty args
     else:
         return _sysmsg % ('error', 
-                          _("CVSS: Need to specify page."))
+                          _("CVSS: Need to specify a page or page and type (score|vector)."))
 
     av = get_metas(request, page, ["Access Vector"])
     ac = get_metas(request, page, ["Access Complexity"])
     au = get_metas(request, page, ["Authentication"])
     vector = buildVector(av,ac,au)
     if vector is not None:
-	cvss = parse_cvss(vector)
-        bscore = basescore(cvss)
-	bstring = "%s" % bscore
-        return format_wikitext(request, bstring)
+        if type == "vector":
+            return format_wikitext(request, vector)
+        else:
+	    cvss = parse_cvss(vector)
+            bscore = basescore(cvss)
+	    bstring = "%s" % bscore
+            return format_wikitext(request, bstring)
     else:
         return _sysmsg % ('error', 
                           _("CVSS: Invalid value(s) in Base Metrics."))
