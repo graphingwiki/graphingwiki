@@ -178,6 +178,9 @@ class GraphingWiki(Wiki):
         return self.request("AttachFile", page, filename, 
                             "save", data, overwrite)
 
+    def deleteAttachment(self, page, filename):
+        return self.request("AttachFile", page, filename, "delete", "", False)
+
     def listAttachments(self, page):
         return self.request("AttachFile", page, "", "list", "", False)
 
