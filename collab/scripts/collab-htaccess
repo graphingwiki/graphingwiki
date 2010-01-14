@@ -1,0 +1,145 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+collab-htaccess: An utility to create filesystem dump of collab instance meta
+
+@copyright: 2008-2010 by Marko Laakso <fenris@iki.fi>
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import re
+import difflib
+import string
+
+import posix, pwd
+
+import ConfigParser
+
+config = ConfigParser.RawConfigParser()
+config.read('/etc/local/collab/collab.ini')
+
+mylogconf = config.get('collab', 'logconf')
+myhtmldir = config.get('collab', 'htmldir')
+mywikidir = config.get('collab', 'wikidir')
+      
+from MoinMoin import log
+log.load_config(mylogconf) 
+
+from MoinMoin.user import User
+from MoinMoin import wikidicts
+from MoinMoin.config import multiconfig
+from MoinMoin.request.request_cli import Request
+
+from graphingwiki.editing import metatable_parseargs, get_metas
+
+def diffandstore(filename, newtext):
+
+    msg = []
+
+    try:
+        f = open(filename, 'r')
+        oldtext = f.read()
+        f.close()
+    except IOError:
+        oldtext = ''
+
+    newtext = newtext.encode('iso8859-15')
+    
+    if oldtext != newtext:
+        diff = difflib.ndiff(oldtext.splitlines(1), newtext.splitlines(1))
+        for line in diff:
+            if line[:1] not in string.whitespace:
+                msg.append(line)
+        f = open(filename, 'w')
+        f.write(newtext)
+        f.close()
+
+    return msg
+
+######
+
+os.chdir(myhtmldir)
+username = pwd.getpwuid(posix.getuid())[0]
+
+for dent in os.listdir("."):
+    mydata = os.path.join(mywikidir, dent)
+    mytemplate = os.path.join(mydata, 'collab-htaccess-template')
+    myhtaccess = os.path.join(dent, '.htaccess')
+    mytitle = os.path.join(dent, '.title')
+    mymotd = os.path.join(dent, '.motd')
+    myurl = os.path.join(dent, '.url')
+    
+    if not os.path.isdir(dent) or not os.path.isdir(mydata):
+        continue
+
+    if not os.path.isfile(mytemplate):
+        continue
+
+    sys.path.insert(0, os.path.join(mydata, 'config'))
+
+    multiconfig._url_re_cache = None
+    multiconfig._farmconfig_mtime = None
+    multiconfig._config_cache = {}
+
+    try:
+        import wikiconfig
+        reload(wikiconfig)
+    except:
+        pass
+
+    try:
+        import farmconfig
+        reload(farmconfig)
+    except:
+        pass
+
+    req = Request(pagename='AccessGroup')
+    req.user = User(req, auth_username=username)
+    #req.form = { 'action': ['raw'] }
+    #req.run()
+
+    msg = []
+    members = []
+
+    isgroup = req.cfg.cache.page_group_regexact.search
+    
+    for member in req.dicts.members("AccessGroup"):
+        if isgroup(member):
+            continue
+        members.append('require user ' + re.sub('[^\w@.\-\']', '', member))
+        
+    members.sort()
+
+    f = open(mytemplate, 'r')
+    newtext = f.read()
+    f.close()
+
+    for member in members:
+        newtext = newtext + member + '\n'
+
+    msg.extend(diffandstore(myhtaccess, newtext))
+                
+    pagelist, metakeys, _ = \
+                metatable_parseargs(req, 'CollabFacts', get_all_keys=True)
+
+    if pagelist:
+        metas = get_metas(req, pagelist[0], ['name', 'description', 'URL'])
+        if metas['name']:
+            val = metas['name'][0]
+            msg.extend(diffandstore(mytitle, val  + '\n'))
+        if metas['description']:
+            val = metas['description'][0]
+            msg.extend(diffandstore(mymotd, val  + '\n'))
+        if metas['URL']:
+            val = metas['URL'][0]
+            msg.extend(diffandstore(myurl, val + '\n'))
+
+    if msg:
+        print '*** ' + dent + ' ***'
+        sys.stdout.writelines(msg)
+
+    req.finish()
+
+    sys.path.remove(os.path.join(mydata, 'config'))

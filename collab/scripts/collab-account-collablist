@@ -1,0 +1,27 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2009-2010 by Jani Kenttälä, Marko Laakso
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+myerr() {
+  echo $@ 2>&1
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+if [ $# -ne 1 ]; then
+  myerr "Usage: $0 <username>"
+fi
+
+MYUSER=$1
+
+grep ${MYUSER} ${htmldir}/*/.htaccess | \
+    cut -d"/" -f7- | sed -e 's%/[^:]*%%g'| uniq

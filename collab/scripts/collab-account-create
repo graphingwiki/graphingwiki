@@ -1,0 +1,37 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2009-2010 by Marko Laakso
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+umask 007
+
+myerr() {
+
+  echo $@ 1>&2
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <username>" 1>&2
+  exit 1
+fi
+
+NAME=$1
+
+echo ${NAME} | grep -q '@' || myerr "please use email address with '@'"
+
+read -s -p "Password: " PASSWORD
+
+echo
+echo "Creating ${NAME}"
+moin --config-dir=${baseinstancedir}/config account create --name ${NAME} --email ${NAME} --password ${PASSWORD}
+echo "done"
