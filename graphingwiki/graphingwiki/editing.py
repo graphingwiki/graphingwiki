@@ -710,6 +710,13 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {u'test': [u'a']},
     ...               {u'test': [u'a', u'']})
     u'<<MetaTable(Case672/A, Case672/B, Case672/C)>>\n\n test:: a\n'
+
+    Regression test, bug #739
+    >>> replace_metas(request,
+    ...               u' a:: k\n{{{\n#!wiki comment\n}}}\n b:: \n',
+    ...               {'a': [u'k'], 'gwikicategory': []},
+    ...               {'a': [u'', 'b'], 'gwikicategory': []})
+    u' a:: b\n{{{\n#!wiki comment\n}}}\n b::\n'
     """
 
     text = text.rstrip()
@@ -728,6 +735,21 @@ def replace_metas(request, text, oldmeta, newmeta):
             replaced_values.append(keys_to_markers.get(value, value))
         replaced_metas[key] = replaced_values
     oldmeta = replaced_metas
+
+    # Make clustering replaced and added values work
+    # Example: Case739, where 
+    # oldmeta['a'] = ['k'] and 
+    # newmeta['a'] = ['', 'b']
+    # need to revert the newmeta so that the value is replaced,
+    # instead of first the value k getting removed and then the
+    # value b cannot cluster as the key is there no more
+    new_metas = dict()
+    for key, values in newmeta.iteritems():
+        if len(newmeta.get(key, [])) > len(oldmeta.get(key, [])):
+            if values[0] == '':
+                values.reverse()
+        new_metas[key] = values
+    newmeta = new_metas
 
     # Replace the values we can
     def dl_subfun(mo):
