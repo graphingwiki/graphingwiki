@@ -198,22 +198,22 @@ def basescore(cvss, impact=None):
 
     return round(base, 1)
 
-def buildVector(av,ac,au):
+def buildVector(base_metas):
     vector = ""
     avset = set(['Local', 'Network', 'Adjacent Network'])
     acset = set(['High', 'Medium', 'Low'])
     auset = set(['Multiple', 'Single', 'None'])
-    avv = av["Access Vector"].pop()
+    avv = av["Access Vector"][:1]
     if avv not in avset:
         return None
     else:
         vector += "AV:" + avv[0] + "/"
-    acv = ac["Access Complexity"].pop()
+    acv = ac["Access Complexity"][:1]
     if acv not in acset:
         return None
     else:
         vector += "AC:" + acv[0] + "/"
-    auv = au["Authentication"].pop()
+    auv = au["Authentication"][:1]
     if auv not in auset:
         return None
     else:
@@ -249,10 +249,8 @@ def execute(macro, args):
         return _sysmsg % ('error', 
                           _("CVSS: Need to specify a page or page and type (score|vector)."))
 
-    av = get_metas(request, page, ["Access Vector"])
-    ac = get_metas(request, page, ["Access Complexity"])
-    au = get_metas(request, page, ["Authentication"])
-    vector = buildVector(av,ac,au)
+    base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication"])
+    vector = buildVector(base_metas)
     if vector is not None:
         if type == "vector":
             return format_wikitext(request, vector)
