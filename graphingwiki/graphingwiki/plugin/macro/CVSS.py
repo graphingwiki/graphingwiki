@@ -256,7 +256,7 @@ def execute(macro, args):
             return format_wikitext(request, vector)
         cvss = parse_cvss(vector)
         bscore = basescore(cvss)
-	    bstring = "%s" % bscore
+        bstring = "%s" % bscore
         return format_wikitext(request, bstring)
     else:
         return _sysmsg % ('error', 
