@@ -241,11 +241,13 @@ def execute(macro, args):
     # Get all non-empty args
     args = [x for x in args if x]
 
-    # If not page specified, defaulting to current page
+    # If page is not specified, defaulting to current page
+    if len(args) == 0:
+        page = request.page.page_name
     if len(args) == 1:
-        page = request.page.page_name
-    elif len(args) ==2:
-        page = request.page.page_name
+        page = args[0]
+    elif len(args) == 2:
+        page = args[0]
         type = args[1]
         if type not in tset:
             return _sysmsg % ('error', 
