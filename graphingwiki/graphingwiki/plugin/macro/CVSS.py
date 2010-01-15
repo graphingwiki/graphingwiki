@@ -203,17 +203,17 @@ def buildVector(base_metas):
     avset = set(['Local', 'Network', 'Adjacent Network'])
     acset = set(['High', 'Medium', 'Low'])
     auset = set(['Multiple', 'Single', 'None'])
-    avv = av["Access Vector"][:1]
+    avv = base_metas["Access Vector"][:1]
     if avv not in avset:
         return None
     else:
         vector += "AV:" + avv[0] + "/"
-    acv = ac["Access Complexity"][:1]
+    acv = base_metas["Access Complexity"][:1]
     if acv not in acset:
         return None
     else:
         vector += "AC:" + acv[0] + "/"
-    auv = au["Authentication"][:1]
+    auv = base_metas["Authentication"][:1]
     if auv not in auset:
         return None
     else:
