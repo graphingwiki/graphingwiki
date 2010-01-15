@@ -234,7 +234,7 @@ def execute(macro, args):
     if args:
         args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
-    if not args or len(args) not in [1,2]:
+    if len(args) not in [0,1,2]:
         return _sysmsg % ('error', 
                           _("CVSS: Need to specify a page or page and type (score|vector)."))
 
@@ -244,18 +244,16 @@ def execute(macro, args):
     # If page is not specified, defaulting to current page
     if len(args) == 0:
         page = request.page.page_name
-    if len(args) == 1:
+        type = "score"
+    elif len(args) == 1:
         page = args[0]
-    elif len(args) == 2:
+        type = "score"
+    else:
         page = args[0]
         type = args[1]
         if type not in tset:
             return _sysmsg % ('error', 
                 _("CVSS: The type needs to be either score or vector."))
-    # No args, or odd args.
-    else:
-        page = request.page.page_name
-        type = "score"
 
     base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication"])
     vector = buildVector(base_metas)
