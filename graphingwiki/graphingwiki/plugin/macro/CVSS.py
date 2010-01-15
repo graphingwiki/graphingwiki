@@ -203,21 +203,24 @@ def buildVector(base_metas):
     avset = set(['Local', 'Network', 'Adjacent Network'])
     acset = set(['High', 'Medium', 'Low'])
     auset = set(['Multiple', 'Single', 'None'])
-    avv = base_metas["Access Vector"][:1]
-    if avv not in avset:
-        return None
+    av = base_metas["Access Vector"][:1]
+    avs = set(av)
+    if avs.subset(avset):
+        vector += "AV:" + av[0] + "/"
     else:
-        vector += "AV:" + avv[0] + "/"
-    acv = base_metas["Access Complexity"][:1]
-    if acv not in acset:
         return None
+    ac = base_metas["Access Complexity"][:1]
+    acs = set(ac)
+    if acs.subset(acset):
+        vector += "AC:" + ac[0] + "/"
     else:
-        vector += "AC:" + acv[0] + "/"
-    auv = base_metas["Authentication"][:1]
-    if auv not in auset:
         return None
+    au = base_metas["Authentication"][:1]
+    aus = set(au)
+    if aus.subset(auset):
+        vector += "Au:" + au[0] + "/C:C/I:C/A:C"
     else:
-        vector += "Au:" + auv[0] + "/C:C/I:C/A:C"
+        return None
     return vector
 
 def execute(macro, args):
