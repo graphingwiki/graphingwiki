@@ -205,20 +205,23 @@ def buildVector(base_metas):
     auset = set(['Multiple', 'Single', 'None'])
     av = base_metas["Access Vector"][:1]
     avs = set(av)
-    if avs.subset(avset):
-        vector += "AV:" + av[0] + "/"
+    if len(avs) > 0 and avs <= avset:
+        avv = av.pop()
+        vector += "AV:" + avv[0] + "/"
     else:
         return None
     ac = base_metas["Access Complexity"][:1]
     acs = set(ac)
-    if acs.subset(acset):
-        vector += "AC:" + ac[0] + "/"
+    if len(acs) > 0 and acs <= acset:
+        acv = ac.pop()
+        vector += "AC:" + acv[0] + "/"
     else:
         return None
     au = base_metas["Authentication"][:1]
     aus = set(au)
-    if aus.subset(auset):
-        vector += "Au:" + au[0] + "/C:C/I:C/A:C"
+    if len(aus) > 0 and aus <= auset:
+        auv = au.pop()
+        vector += "Au:" + auv[0] + "/C:C/I:C/A:C"
     else:
         return None
     return vector
