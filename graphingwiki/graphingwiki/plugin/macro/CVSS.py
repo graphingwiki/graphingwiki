@@ -244,21 +244,20 @@ def execute(macro, args):
         if type not in tset:
             return _sysmsg % ('error', 
                 _("CVSS: The type needs to be either score or vector."))
-    # Faulty args
+    # No args, or odd args.
     else:
-        return _sysmsg % ('error', 
-                          _("CVSS: Need to specify a page or page and type (score|vector)."))
+        page = request.page.page_name
+        type = "score"
 
     base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication"])
     vector = buildVector(base_metas)
     if vector is not None:
         if type == "vector":
             return format_wikitext(request, vector)
-        else:
-	    cvss = parse_cvss(vector)
-            bscore = basescore(cvss)
+        cvss = parse_cvss(vector)
+        bscore = basescore(cvss)
 	    bstring = "%s" % bscore
-            return format_wikitext(request, bstring)
+        return format_wikitext(request, bstring)
     else:
         return _sysmsg % ('error', 
                           _("CVSS: Invalid value(s) in Base Metrics."))
