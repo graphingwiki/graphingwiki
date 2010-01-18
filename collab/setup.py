@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from distutils.core import setup
 
-setup(name='collab', version='1790',
+setup(name='collab', version='$Rev$',
       author='Marko Laakso, Jani Kenttälä',
       author_email='contact@clarifiednetworks.com',
       description='Collab Backend',
