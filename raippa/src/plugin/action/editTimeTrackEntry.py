@@ -13,7 +13,8 @@ from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
 
 from raippa import raippacategories as rc
-from raippa import addlink
+from raippa import addlink, pages_in_category
+from raippa.pages import Task
 
 def _enter_page(request, pagename):
     _ = request.getText
@@ -24,9 +25,8 @@ def _enter_page(request, pagename):
     request.theme.send_title(title, pagename=pagename, 
     html_head=u'''<link rel="stylesheet" type="text/css" charset="utf-8"
     media="all" href="%s/raippa/css/calendar.css">
-    <script type="text/javascript" src="%s/common/js/mootools-1.2-core-yc.js"></script>
-    <script type="text/javascript" src="%s/common/js/calendar.js"></script>
-    ''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static, request.cfg.url_prefix_static))
+    <script type="text/javascript" src="%s/raippajs/calendar.js"></script>
+    ''' % (request.cfg.url_prefix_static, request.cfg.url_prefix_static))
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -52,6 +52,7 @@ def savedata(request):
     time = request.form.get('start_time', [u''])[0]
     duration = request.form.get('duration', [u''])[0]
     title = request.form.get('description', [u''])[0]
+    task = request.form.get('task', [u''])[0]
     edit = request.form.get('edit', [u''])[0]
     category = request.form.get('categories', [rc['timetrack']])[0]
     if not category:
@@ -92,6 +93,8 @@ def savedata(request):
         content += u' Date:: %s\n' % date
     if time:
         content += u' Time:: %s\n' % time
+    if task:
+        content += u' Task:: %s\n' % addlink(task)
     if duration:
         content += u' Duration:: %s\n' % duration
     if category:
@@ -151,6 +154,17 @@ def show_entryform(request):
             if t.find(def_time) != -1:
                 t += ' selected'
             time_opts += u'<option value=%s>%02d:%s</option>\n' % (t,h,m)
+
+    tasklist = unicode()
+    for task in pages_in_category(request, rc['task']):
+        tasktitle = Task(request, task).title()
+        if not tasktitle:
+            tasktitle = task
+
+        tasklist += "    <option value='%s'>%s</option>\n" % (task, tasktitle)
+
+        pass
+
     html = u'''
 <script type="text/javascript">
 window.addEvent('domready', function(){
@@ -282,7 +296,16 @@ function formcheck(){
 <tr>
   <td>Description:</td>
   <td colspan="2"><input id="description" style="width:100%%" type="text"
-  name="description" value="%s">
+  name="description" value="%s"></td>
+</tr>
+<tr>
+  <td>Task:</td>
+  <td colspan="2">
+  <select name="task">
+    <option value="" selected></option>
+%s
+  </select>
+  </td>
 </tr>
 <tr>
   <td>Start:</td>
@@ -305,7 +328,7 @@ function formcheck(){
 </table>
 <input type="submit" name="save" value="save">
 ''' % (action_name, request.form.get('categories',[u''])[0], edit_page, title, 
-def_date, time_opts, def_date, time_opts, duration)
+tasklist, def_date, time_opts, def_date, time_opts, duration)
     request.write(html)
 
 def execute(pagename, request):
