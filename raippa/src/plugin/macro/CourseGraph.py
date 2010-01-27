@@ -9,6 +9,9 @@ import gv
 from graphingwiki.editing import set_metas, get_metas
 from graphingwiki.util import encode_page
 
+from MoinMoin.Page import Page
+from MoinMoin.user import User as MoinUser
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin import config
 
 from raippa.pages import Course, Task, Question
@@ -303,6 +306,18 @@ function editor(view){
     result.append(f.div(0))
     return result
 
+def create_user_page(userpage, request):
+    user = request.user
+    template = Page(request, "StudentTemplate").get_raw_body()
+
+    template = template.replace("email::", "email:: %s" % user.email)
+    template = template.replace("name::", "name:: %s" % user.aliasname)
+
+    page = PageEditor(request, userpage)
+
+    page.saveText(template, page.get_real_rev())
+
+
 def macro_CourseGraph(macro):
     request = macro.request
     formatter = macro.formatter
@@ -314,6 +329,11 @@ def macro_CourseGraph(macro):
 
     user = User(request, request.user.name)
     teacher = user.is_teacher()
+
+    #find out if the user has an user page
+    userpage = Page(request, request.user.name)
+    if not userpage.exists():
+        create_user_page(userpage.page_name, request)
 
     course = Course(request, request.cfg.raippa_config)
 
