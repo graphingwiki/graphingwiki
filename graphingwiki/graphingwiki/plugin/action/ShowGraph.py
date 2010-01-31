@@ -90,14 +90,13 @@ form_end = u"""<div class="showgraph-buttons">\n
 </script>""" % (igraph_found and 
                 '<input type=submit name=overview value="%s">' or '')
 
-graphvizshapes = ["box", "polygon", "circle", "egg", "triangle",
+graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "diamond", "trapezium", "parallelogram",
                   "house", "pentagon", "hexagon", "septagon",
                   "octagon", "doublecircle", "doubleoctagon",
                   "tripleoctagon", "invtriangle", "invtrapezium",
                   "invhouse", "Mdiamond", "Msquare", "Mcircle",
-                  "rectangle", "note", "tab", "folder",
-                  "box3d", "component"]
+                  "rectangle", "note", "tab", "box3d", "component"]
 
 def form_optionlist(request, name, data, comparison, 
                     default_args=dict(), radio=False):
@@ -314,10 +313,10 @@ class GraphShower(object):
     def select_shape(self, value):
         # Try to select a random shape, but the same for the same value
         seed(value)
-        rand_shape = choice(graphvizshapes)
 
         chosen = False
         while not chosen:
+            rand_shape = choice(graphvizshapes)
             chosen = True
 
             # If the shape is chosen for a value, it's ok ..
@@ -818,7 +817,7 @@ class GraphShower(object):
                 self.colorfiltervalues.update(rule)
                 rule = ', '.join(sorted(rule))
                 re_color = getattr(self, 're_color', None)
-                # Add to filterordervalues in the nonmodified form
+                # Add to filtercolorvalues in the nonmodified form
                 if re_color:
                     rule = re_color.sub(self.colorsub, rule)
                 self.colornodes.add(rule)
@@ -841,6 +840,8 @@ class GraphShower(object):
                        map(outgraph.nodes.get, outgraph.nodes))
         for obj in nodes:
             getcolors(obj)
+
+        for obj in nodes:
             updatecolors(obj)
 
         return outgraph
@@ -848,8 +849,6 @@ class GraphShower(object):
     def shape_nodes(self, outgraph):
         _ = self.request.getText
         shapeby = self.shapeby
-
-        nodeshapes = dict()
 
         # If we should shape nodes, gather nodes with attribute from
         # the form (ie. variable shapeby)
@@ -859,12 +858,11 @@ class GraphShower(object):
             if rule and not shape:
                 self.shapefiltervalues.update(rule)
                 rule = ', '.join(sorted(rule))
-                re_color = getattr(self, 're_shape', None)
+                re_shape = getattr(self, 're_shape', None)
                 # Add to filterordervalues in the nonmodified form
-                if re_color:
+                if re_shape:
                     rule = re_shape.sub(self.shapesub, rule)
                 self.shapenodes.setdefault(rule, list()).append(obj)
-                nodeshapes[unicode(obj)] = rule
 
         nodes = filter(lambda x: hasattr(x, encode_page(shapeby)), 
                        map(outgraph.nodes.get, outgraph.nodes))
@@ -995,6 +993,7 @@ class GraphShower(object):
         subrank = self.pagename.count('/')
 
         colorURL = get_url_ns(self.request, self.app_page, self.colorby)
+        shapeURL = get_url_ns(self.request, self.app_page, self.shapeby)
         per_row = 0
 
 	# Formatting features here! 
@@ -1051,7 +1050,7 @@ class GraphShower(object):
         for nodetype in self.used_shapenodes:
             cur = 'self.shapenodes: ' + nodetype
 
-            legend.nodes.add(cur, shape=nodetype, 
+            legend.nodes.add(cur, shape=nodetype, URL=shapeURL,
                              label=self.used_shapenodes[nodetype])
 
             if prev:
@@ -1822,7 +1821,7 @@ class GraphShower(object):
                 self.format = 'error'
 
         formatter = self.send_headers()
-
+        
         if error:
             self.fail_page(error)
             return

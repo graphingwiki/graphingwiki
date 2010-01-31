@@ -1354,8 +1354,12 @@ def metatable_parseargs(request, args,
 
         def comparison(page1, page2):
             for dir, key in orderspec:
-                values1 = orderpages[page1][key]
-                values2 = orderpages[page2][key]
+                reverse = False
+                if dir == ">>":
+                    reverse = True
+
+                values1 = sorted(orderpages[page1][key], reverse=reverse)
+                values2 = sorted(orderpages[page2][key], reverse=reverse)
             
                 result = cmp(values1, values2)
                 if result == 0:
@@ -1366,7 +1370,7 @@ def metatable_parseargs(request, args,
                 if not values2:
                     return -1
 
-                if dir == ">>":
+                if reverse:
                     return -result
                 return result
             return cmp(ordervalue(page1), ordervalue(page2))
