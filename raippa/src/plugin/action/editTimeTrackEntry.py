@@ -60,6 +60,7 @@ def savedata(request):
 
     daterexp = re.compile('\d{4}-\d\d-\d\d')
     timerexp = re.compile('([0-1][0-9]|2[0-3]):([0-5]\d|60)')
+    durrexp = re.compile('\d+:([0-5]\d|60)')
     errors = unicode()
 
     if daterexp.match(date) is None:
@@ -67,6 +68,9 @@ def savedata(request):
 
     if timerexp.match(time) is None:
         errors += u'Invalid time!\n'
+
+    if durrexp.match(duration) is None:
+        errors += u'Invalid duration %s! Correct format is HH:MM\n' %s
 
     if not title:
         errors += u'Missing title!\n'
@@ -194,8 +198,10 @@ window.addEvent('domready', function(){
       }
       });
   
-  $('duration').addEvent('change',function(){
-    setDuration('start_time', true);
+  $('duration').addEvents({
+      'change':function(){
+            setDuration('start_time', true);
+        }
   });
 
   setDuration('start_time', true);
@@ -234,8 +240,13 @@ function setDuration(absolute_time, reverse){
 
     //setting end time based on duration and start time
     if(reverse == true){
-        hours = dur.value.split(':')[0].toInt();
-        mins = dur.value.split(':')[1].toInt();
+        hours = (dur.value.split(':')[0] || 0).toInt();
+        mins = (dur.value.split(':')[1] || 0).toInt();
+        
+        //fix incorrect formatting
+        dur.value = hours < 10 ? '0' + hours : '' + hours;
+        dur.value += mins <10 ? ':0' + mins : ':' + mins;
+
         if(hours > -1 && mins > -1){
           end_time = new Date(start_time.valueOf() + hours * 3600000 + mins * 60000);
           eh = end_time.getHours(); 
@@ -279,9 +290,14 @@ function setDuration(absolute_time, reverse){
 function formcheck(){
   //setDuration('start_time');
   var desc = $('description');
+  var dur = $('duration').value;
   
   if(desc.value.length < 1){
     alert('No description!');
+    return false;
+    }
+  if(dur.test(/\d+:([0-5]\d|60)/) !== true){
+    alert('Invalid duration ' + dur +'! Correct format is HH:MM');
     return false;
     }
   return true;
