@@ -15,11 +15,13 @@ import shutil
 import tempfile
 import time
 import traceback
+import ConfigParser
 
 from optparse import OptionParser
 
 import opencollab.wiki
 import opencollab.util
+
 
 #rmlrpc is broken. this monkey patch should fix it
 orig_feed = xmlrpclib.ExpatParser.feed
@@ -42,35 +44,48 @@ def removeLink(line):
     if line.startswith('[['): return line[13:-2]
     return line
 
-def run_runpy(tempdir, timeout=10):
+def run(args, input, tempdir, timeout=10):
+
+    error = str()
+    output = str()
+
     #open files for stdout and stderr
     outpath = os.path.join(tempdir, "out.txt")
     errpath = os.path.join(tempdir, "err.txt")
-    outfile = open(outpath, "w")
-    errfile = open(errpath, "w")
+    inpath = os.path.join(tempdir, '__input__')
 
-    p = subprocess.Popen(["python", "run.py"], shell=False, stdout=outfile, stderr=errfile, stdin=open("/dev/null"))
+    for arg in args.split('&&'):    
+
+        outfile = open(outpath, "w")
+        errfile = open(errpath, "w")
+        
+        open(inpath, 'w').write(input)
+        infile = open(inpath, 'r')
+        arg = [x.strip() for x in arg.split()]
+        print arg
+
+        p = subprocess.Popen(arg, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
-   timedout = 1
+        for i in range(timeout):
+            if p.poll() is not None:
+                timedout=0
+                break
+            time.sleep(1)
 
-    for i in range(timeout):
-        if p.poll() is not None:
-            timedout=0
-            break
-        time.sleep(1)
+        if timedout:
+            os.kill(p.pid, 9)
 
-    outfile.close()
-    errfile.close()
+        outfile.close()
+        errfile.close()
 
-    if timedout:
-        os.kill(p.pid, 9)
-
-    return open(outfile).read(), open(errfile).read(), timedout
+        error += open(errpath).read()
+        output += open(outpath).read()
+        
+    return output, error, timedout
 
 def readConfig(file):
     opts = opencollab.util.parseConfig(file)
     return opts
-
 
 def checking_loop(wiki):
     url = wiki.host
@@ -93,18 +108,19 @@ def checking_loop(wiki):
             path = tempfile.mkdtemp()
 	    cwd = os.getcwd()
 	    os.chdir(path)
-	    
+
             info("Created tempdir %s" % path)
 
             #change the status to picked
-            wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
+            # FIXME wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
 
             metas = picked_pages[page]
 
             # get the attachment filename from the file meta
             info('Writing files')
-            for filename in rmetas['file']:
-                attachment_file = removeLink(attachment_file)
+ 
+            for filename in metas['file']:
+                attachment_file = removeLink(filename)
                 #get the source code
                 info("Fetching sourcode from %s" % attachment_file)
                 try:
@@ -114,9 +130,8 @@ def checking_loop(wiki):
                         code = ''
                     else:
                         raise
-
-                open(filename, 'w').write(code)
-
+                # get rid of the _rev<number> in filenames
+                open(re.sub('(_rev\d+)', '', removeLink(filename)), 'w').write(code)
 
             #if there is wrong amount of question page linksd, leave
             #the returned assignment as picked so that other
@@ -132,17 +147,28 @@ def checking_loop(wiki):
             question = question.strip('[]')
             
             #find associataed answerpages
+           
+            answer_pages = wiki.getMeta(question +'/options').values()[0]['answer']
+            print answer_pages
             
-            answer_metas = wiki.getMeta(question +'/options').values()
-            
-            for _, link in [x, y.single() for x, y in answer_metas.items() if x‘ == 'answer'] 
-            #Get the page name
-            answer_page = answer_meta.keys()
-            info('Getting answer from %s' % answer_page)
+            inputre = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
 
+            for page in [x.strip('[]') for x in answer_pages]:
+                print page
+
+                answer_meta = wiki.getMeta(page).values()[0]
+                #write input files
+
+                args = answer_meta['parameters'].single()
+                input = ''
+                if answer_meta['input']:
+                    content = wiki.getPage(page + '/input')
+                    input = inputre.search(content).group(1)
+
+                print run(args, input, path)
             
-            
-            stdout, stderr = checkAnswer(code, tests)
+            1/0
+
             info("Result %d of %d tests succeeded" % (succeeded, total))
 
             report = stdout.replace("\\n", "\n")
@@ -203,17 +229,19 @@ def main():
 
     if not options.file:
         try:
-            wiki = CLIWiki(options.url)
+            wiki = opencollab.wiki.CLIWiki(options.url)
         except socket.error, e:
             sys.stderr.write(e + '\n')
             sys.exit(1)
-       
-        success = wiki.authenticate()
 
     else:
+        config = ConfigParser.RawConfigParser()
+        config.read(options.file)
+        uname = config.get('creds', 'username')
+        passwd = config.get('creds', 'password')
         while True:
             try:
-                wiki = GraphingWiki(options.url)
+                wiki = opencollab.wiki.CLIWiki(options.url, uname, passwd)
             except socket.error, e:
                 error(e)
                 time.sleep(10)
