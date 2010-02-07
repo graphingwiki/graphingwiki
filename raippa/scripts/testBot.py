@@ -22,6 +22,16 @@ from optparse import OptionParser
 import opencollab.wiki
 import opencollab.util
 
+outputtemplate = '''
+{{{
+%s
+}}}
+----
+ testname:: %s
+ file::
+----
+CategoryTestOutput
+'''
 
 #rmlrpc is broken. this monkey patch should fix it
 orig_feed = xmlrpclib.ExpatParser.feed
@@ -54,32 +64,29 @@ def run(args, input, tempdir, timeout=10):
     errpath = os.path.join(tempdir, "err.txt")
     inpath = os.path.join(tempdir, '__input__')
 
-    for arg in args.split('&&'):    
 
-        outfile = open(outpath, "w")
-        errfile = open(errpath, "w")
-        
-        open(inpath, 'w').write(input)
-        infile = open(inpath, 'r')
-        arg = [x.strip() for x in arg.split()]
-        print arg
+    outfile = open(outpath, "w")
+    errfile = open(errpath, "w")
+    
+    open(inpath, 'w').write(input)
+    infile = open(inpath, 'r')
 
-        p = subprocess.Popen(arg, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
+    p = subprocess.Popen(args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
-        for i in range(timeout):
-            if p.poll() is not None:
-                timedout=0
-                break
-            time.sleep(1)
+    for i in range(timeout):
+        if p.poll() is not None:
+            timedout=0
+            break
+        time.sleep(1)
+        
+    if timedout:
+        os.kill(p.pid, 9)
+            
+    outfile.close()
+    errfile.close()
 
-        if timedout:
-            os.kill(p.pid, 9)
-
-        outfile.close()
-        errfile.close()
-
-        error += open(errpath).read()
-        output += open(outpath).read()
+    error += open(errpath).read()
+    output += open(outpath).read()
         
     return output, error, timedout
 
@@ -115,6 +122,7 @@ def checking_loop(wiki):
             # FIXME wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
 
             metas = picked_pages[page]
+            user = metas['user'].single().strip('[]')
 
             # get the attachment filename from the file meta
             info('Writing files')
@@ -151,60 +159,84 @@ def checking_loop(wiki):
             answer_pages = wiki.getMeta(question +'/options').values()[0]['answer']
             print answer_pages
             
-            inputre = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+            regex = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
 
-            for page in [x.strip('[]') for x in answer_pages]:
-                print page
+            wrong = list()
+            right = list()
+            outputs = list()
 
-                answer_meta = wiki.getMeta(page).values()[0]
-                #write input files
+            #TODO file handling
+            for apage in [x.strip('[]') for x in answer_pages]:
+                info('getting answers from %s' % apage)
+                answer_meta = wiki.getMeta(apage).values()[0]
+                testname = answer_meta['testname'].single()
+                
+                outputpage = None
+                inputpage = None
+
+                if 'output' in answer_meta:
+                    outputpage = answer_meta['output'].single().strip('[]')
+
+                if 'input' in answer_meta:
+                    inputpage =  answer_meta['input'].single().strip('[]')
 
                 args = answer_meta['parameters'].single()
+
                 input = ''
+
                 if answer_meta['input']:
-                    content = wiki.getPage(page + '/input')
-                    input = inputre.search(content).group(1)
+                    content = wiki.getPage(inputpage)
+                    input = regex.search(content).group(1)
 
-                print run(args, input, path)
-            
-            1/0
+                output = ''
+                if answer_meta['output']:
+                    content = wiki.getPage(outputpage)
+                    output = regex.search(content).group(1)
+                
+                goutput, gerror, timeout = run(args, input, path)
+                
+                goutput = goutput.strip('\n')
+                output = output.strip('\n')
+                
+                if goutput != output:
+                    info("Test %s failed" % testname)
+                    wrong.append(testname)
+                else:
+                    info("Test %s succeeded" % testname)
+                    right.append(testname)
 
-            info("Result %d of %d tests succeeded" % (succeeded, total))
+                #put user output to wiki
 
-            report = stdout.replace("\\n", "\n")
-            report = '''{{{
-        %s
-        }}}''' % report
-            
+                outputs.append('[[%s]]' % (user + '/' + outputpage,))
+                try:
+                    wiki.putPage(user + '/' + outputpage, outputtemplate % (goutput, testname))
+                except opencollab.wiki.WikiFault, error_message:
+                    # It's ok if the comment does not change
+                    if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
+                        pass
+                    else:
+                        raise
+
+
             metas = dict()
             
-            if succeeded == total or succeeded > 0:
+            if len(wrong) == 0:
                 metas['overallvalue'] = ['success']
             else:
-                metas['overallvalue'] = ['failed']
+                metas['overallvalue'] = ['failure']
 
-            #wrong = amount of failed tests, right = succeeded tests
-            metas['wrong'] = [str(total - succeeded)]
-            metas['right'] = [str(succeeded)]
-                    
-            metas["comment"] = ["[[%s]]" % (page + "/comment")]
+            if outputs:
+                metas['output'] = outputs
+
+            if wrong:
+                metas['wrong'] = wrong
+
+            if right:
+                metas['right'] = right
 
             #add metas
             wiki.setMeta(page, metas, True)
             
-            # "add" the page to comment category. This is propably
-            # silly maybe this should be done using setMeta
-            report = report + '\n----\nCategoryBotComment'
-
-            # Put the comment page
-            try:
-                wiki.putPage(page + "/comment", report)
-            except opencollab.wiki.WikiFault, error_message:
-                # It's ok if the comment does not change
-                if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
-                    pass
-                else:
-                    raise
             info('Done')
             time.sleep(5)
 
