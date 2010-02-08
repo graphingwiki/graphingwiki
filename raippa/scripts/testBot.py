@@ -119,7 +119,7 @@ def checking_loop(wiki):
             info("Created tempdir %s" % path)
 
             #change the status to picked
-            # FIXME wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
+            wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
 
             metas = picked_pages[page]
             user = metas['user'].single().strip('[]')
@@ -209,13 +209,14 @@ def checking_loop(wiki):
 
                 outputs.append('[[%s]]' % (user + '/' + outputpage,))
                 try:
-                    wiki.putPage(user + '/' + outputpage, outputtemplate % (goutput, testname))
+                    wiki.putPage(user + '/' + outputpage, outputtemplate % (re.sub(ur'[\x00-\x08\x0b-\x19]', '?', goutput), testname))
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
                     if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
                         pass
                     else:
                         raise
+            shuti.rmtree(path)
 
 
             metas = dict()
