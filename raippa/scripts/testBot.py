@@ -219,7 +219,10 @@ def checking_loop(wiki):
 
 
             metas = dict()
-            
+    
+            #clear old info
+            wiki.setMeta(page, {'wrong': [], 'right': []}, True)
+        
             if len(wrong) == 0:
                 metas['overallvalue'] = ['success']
             else:
