@@ -333,10 +333,8 @@ var QuestionEditor = new Class({
     },
     
     addFileAnswer: function(name, cmd, input, output, infiles, outfiles){
-		var re = /\\n/g;
-		input = input ? input.replace(re, '\n') : "";
-		output = output ? output.replace(re, '\n') : "";
-		
+		input = input || "";
+		output = output || "";
 		
         infiles = infiles || [];//["file1", "file2"];
         outfiles = outfiles || [];//["file3", "file4"];

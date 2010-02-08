@@ -107,7 +107,7 @@ class Answer:
                 elif key == "input":
                     if value and Page(self.request, value).exists():
                         raw_input = Page(self.request, value).get_raw_body()
-                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)     
+                        regexp = re.compile('{{{\s?(.*?)\s?}}}', re.DOTALL)
                         match = regexp.search(raw_input)
 
                         if match:
@@ -118,7 +118,7 @@ class Answer:
                 elif key == "output":
                     if value and Page(self.request, value).exists():
                         raw_output = Page(self.request, value).get_raw_body()
-                        regexp = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+                        regexp = re.compile('{{{\s?(.*?)\s?}}}', re.DOTALL)
                         match = regexp.search(raw_output)
 
                         if match:

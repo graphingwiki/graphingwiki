@@ -41,8 +41,8 @@ def to_json(arg):
        
         if isinstance(raw, (unicode,str)):
             raw = raw.replace("\r", '')
-            raw = raw.replace("\n", '\\n')
             raw = raw.replace('\\' ,'\\\\')
+            raw = raw.replace("\n", '\\n')
             raw = raw.replace('"' ,'\\"')
             return '"%s"' %raw
 
