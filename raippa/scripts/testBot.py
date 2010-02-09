@@ -4,6 +4,11 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+#TODO
+# * File handling
+# * stderr handling
+# * better handling for error bytes in data (monkey_feed, etc)
+
 import socket
 import os
 import sys
@@ -49,21 +54,15 @@ def info(msg):
     print "%s [info] %s" % (date, msg)
 
 def removeLink(line):
-    #For old fashined history pages. Previously the file wasnot a
-    #link but now it is. This can removed in the next iteration
     if line.startswith('[['): return line[13:-2]
     return line
 
 def run(args, input, tempdir, timeout=10):
 
-    error = str()
-    output = str()
-
     #open files for stdout and stderr
     outpath = os.path.join(tempdir, "out.txt")
     errpath = os.path.join(tempdir, "err.txt")
     inpath = os.path.join(tempdir, '__input__')
-
 
     outfile = open(outpath, "w")
     errfile = open(errpath, "w")
@@ -79,15 +78,23 @@ def run(args, input, tempdir, timeout=10):
             break
         time.sleep(1)
         
+    output = str()
+    error = str()
+
     if timedout:
         os.kill(p.pid, 9)
             
     outfile.close()
     errfile.close()
 
-    error += open(errpath).read()
-    output += open(outpath).read()
-        
+    error = open(errpath).read()
+    output = open(outpath).read()
+
+    #clean files
+    os.remove(outpath)
+    os.remove(errpath)
+    os.remove(inpath)
+
     return output, error, timedout
 
 def readConfig(file):
@@ -113,7 +120,6 @@ def checking_loop(wiki):
             info('%s: picked %s' % (url, page))
 
             path = tempfile.mkdtemp()
-	    cwd = os.getcwd()
 	    os.chdir(path)
 
             info("Created tempdir %s" % path)
@@ -157,8 +163,8 @@ def checking_loop(wiki):
             #find associataed answerpages
            
             answer_pages = wiki.getMeta(question +'/options').values()[0]['answer']
-            print answer_pages
-            
+            info("Found %d answer pages" % len(answer_pages))
+
             regex = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
 
             wrong = list()
@@ -176,6 +182,7 @@ def checking_loop(wiki):
 
                 if 'output' in answer_meta:
                     outputpage = answer_meta['output'].single().strip('[]')
+                    outfilesatt = wiki.listAttachments
 
                 if 'input' in answer_meta:
                     inputpage =  answer_meta['input'].single().strip('[]')
@@ -184,12 +191,19 @@ def checking_loop(wiki):
 
                 input = ''
 
-                if answer_meta['input']:
+                if inputpage:
                     content = wiki.getPage(inputpage)
                     input = regex.search(content).group(1)
+                    input_meta = wiki.getMeta(inputpage)
+                    filelist = input_meta[inputpage]['file']
+                    for attachment in filelist:
+                        filename = removeLink(attachment)
+                        content = wiki.getAttachment(inputpage, filename)
+                        info('Writing input file %s' % filename)
+                        open(os.path.join(path, filename), 'w').write(content)
 
                 output = ''
-                if answer_meta['output']:
+                if outputpage:
                     content = wiki.getPage(outputpage)
                     output = regex.search(content).group(1)
                 
@@ -197,6 +211,10 @@ def checking_loop(wiki):
                 
                 goutput = goutput.strip('\n')
                 output = output.strip('\n')
+                goutput = gerror.strip('\n') + output
+
+                if timeout:
+                    goutput = "***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
                 
                 if goutput != output:
                     info("Test %s failed" % testname)
@@ -216,12 +234,14 @@ def checking_loop(wiki):
                         pass
                     else:
                         raise
-            shuti.rmtree(path)
 
+            info('Removing ' + path)
+            shutil.rmtree(path)
 
             metas = dict()
-    
+            
             #clear old info
+            info('Clearing old metas')
             wiki.setMeta(page, {'wrong': [], 'right': []}, True)
         
             if len(wrong) == 0:
@@ -238,6 +258,7 @@ def checking_loop(wiki):
             if right:
                 metas['right'] = right
 
+            info('Setting new metas')
             #add metas
             wiki.setMeta(page, metas, True)
             
