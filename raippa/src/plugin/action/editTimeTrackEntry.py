@@ -13,7 +13,7 @@ from graphingwiki.editing import metatable_parseargs
 from graphingwiki.editing import get_metas
 
 from raippa import raippacategories as rc
-from raippa import addlink, pages_in_category
+from raippa import addlink, pages_in_category, removelink
 from raippa.pages import Task
 
 def _enter_page(request, pagename):
@@ -115,6 +115,7 @@ def show_entryform(request):
     duration = u'00:00'
     edit_page = u''
     title = u''
+    def_task = u''
     time_opts = unicode()
     categories = categories = request.form.get('categories', [rc['timetrack']])[0]
 
@@ -124,7 +125,11 @@ def show_entryform(request):
     elif request.form.has_key('edit'):
         edit =  request.form.get('edit')[0].encode()
         edit_page = u'<input type="hidden" name="edit" value="%s">' % edit
-        def_date = edit.split('_')[0]
+        defdate_rexp = re.compile('(\d{4}-\d{2}-\d{2})_')
+        match = defdate_rexp.search(edit)
+        if match:
+            def_date = match.groups()[0]
+        
         #categories = ','.join(categories)
         pagelist, metakeys, styles = metatable_parseargs(request, categories, get_all_keys=True)
         meta = get_metas(request, edit, metakeys, display=False, checkAccess=True)
@@ -134,13 +139,19 @@ def show_entryform(request):
                 try:
                     duration = meta[u'Duration'][0]
                 except:
-                    None
+                    pass
 
             if meta.has_key(u'Time'):
                 try:
                     def_time = meta[u'Time'][0]
                 except:
-                    None
+                    pass
+
+            if meta.has_key(u'Task'):
+                try:
+                    def_task = removelink(meta[u'Task'][0])
+                except:
+                    pass
 
             body = PageEditor(request, edit).get_raw_body()
             if '----' in body:
@@ -161,18 +172,20 @@ def show_entryform(request):
 
     tasklist = unicode()
     for task in pages_in_category(request, rc['task']):
+        selected = u""
+        if task == def_task:
+            selected = u"selected"
         tasktitle = Task(request, task).title()
         if not tasktitle:
             tasktitle = task
 
-        tasklist += "    <option value='%s'>%s</option>\n" % (task, tasktitle)
+        tasklist += "    <option value='%s' %s>%s</option>\n" % (task, selected, tasktitle)
 
         pass
 
     html = u'''
 <script type="text/javascript">
 window.addEvent('domready', function(){
-  $('end-tr').setStyle('display', '');
  var Cal = new Class({
    Extends : Calendar,
    write : function(cal){
@@ -203,6 +216,8 @@ window.addEvent('domready', function(){
             setDuration('start_time', true);
         }
   });
+  //unhiding end-date selector if javascript works
+  $('end-tr').setStyle('display', '');
 
   setDuration('start_time', true);
 });
