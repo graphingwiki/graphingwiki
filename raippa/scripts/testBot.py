@@ -21,6 +21,7 @@ import tempfile
 import time
 import traceback
 import ConfigParser
+import string
 
 from optparse import OptionParser
 
@@ -38,11 +39,22 @@ outputtemplate = '''
 CategoryTestOutput
 '''
 
+ok_chars = string.printable + '\n'
+def esc(in_s): 
+    out_s = ''   
+    for c in in_s:
+        if c not in ok_chars:
+            out_s += '\\x' + hex(ord(c)).zfill(4)
+        else:
+            out_s += c
+    return out_s
+
+
 #rmlrpc is broken. this monkey patch should fix it
 orig_feed = xmlrpclib.ExpatParser.feed
 
 def monkey_feed(self, data):
-    return orig_feed(self, re.sub(ur'[\x00-\x08\x0b-\x19]', '?', data))
+    return orig_feed(self, esc(data))
 xmlrpclib.ExpatParser.feed = monkey_feed
 
 def error(msg):
@@ -211,7 +223,9 @@ def checking_loop(wiki):
                 
                 goutput = goutput.strip('\n')
                 output = output.strip('\n')
-                goutput = gerror.strip('\n') + output
+                goutput = gerror.strip('\n') + goutput
+
+                print goutput
 
                 if timeout:
                     goutput = "***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
@@ -227,7 +241,7 @@ def checking_loop(wiki):
 
                 outputs.append('[[%s]]' % (user + '/' + outputpage,))
                 try:
-                    wiki.putPage(user + '/' + outputpage, outputtemplate % (re.sub(ur'[\x00-\x08\x0b-\x19]', '?', goutput), testname))
+                    wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(goutput), testname))
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
                     if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
