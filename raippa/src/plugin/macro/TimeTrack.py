@@ -62,7 +62,8 @@ def user_gui(request, f, user, entries, new_table=True):
         result.append(f.table_cell(0))
 
         hours += int(entry[1].split(":")[0])
-        minutes += int(entry[1].split(":")[1])
+        if len(entry[1].split(":")) == 2:
+            minutes += int(entry[1].split(":")[1])
 
         if minutes > 59:
             hours += 1
@@ -97,7 +98,6 @@ def user_gui(request, f, user, entries, new_table=True):
 def group_gui(request, f, entries):
     users = entries.keys()
     result = list()
-
     hours = int()
     minutes = int()
 
@@ -106,7 +106,8 @@ def group_gui(request, f, entries):
 
         for entry in entries[user]:
             hours += int(entry[1].split(":")[0])
-            minutes += int(entry[1].split(":")[1])
+            if len(entry[1].split(":")) == 2:
+                minutes += int(entry[1].split(":")[1])
 
             if minutes > 59:
                 hours += 1
