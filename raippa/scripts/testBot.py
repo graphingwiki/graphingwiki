@@ -225,8 +225,6 @@ def checking_loop(wiki):
                 output = output.strip('\n')
                 goutput = gerror.strip('\n') + goutput
 
-                print goutput
-
                 if timeout:
                     goutput = "***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
                 
