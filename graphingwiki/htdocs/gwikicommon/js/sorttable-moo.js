@@ -85,7 +85,7 @@ var sortableTable = new Class({
 						'id': 'hide',
 						'styles': {
 							'color': 'green',
-							'cursor': 'hand',
+							'cursor': 'pointer',
 							'margin-left' : '2px'
 						}
 					}).addEvent('click', this.hide.bind(this,[i,el]))
@@ -226,7 +226,11 @@ var sortableTable = new Class({
 		el.empty();
 		el.grab(new Element('a',{
 			'html':'&#8250;',
-			'class':'jslink'
+			'styles': {
+				'color': 'green',
+				'cursor': 'pointer',
+				'margin-left' : '2px'
+			}
 		}).addEvent('click',this.unhide.bind(this,[index,el])));
 		this.elements.each(function(row){
 			col = row.getElements('td')[index];
