@@ -231,7 +231,7 @@ def checking_loop(wiki):
                 if timeout:
                     goutput = goutput + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
               
-                if len(goutput > 1024*100):
+                if len(goutput) > 1024*100:
                     goutput = "***** Your program produced more than 100kB of output data *****\n(Meaning that your program failed)\nPlease check your code before returning it\n" 
                     info('Excess output!')
 
