@@ -84,9 +84,10 @@ def run(args, input, tempdir, timeout=10):
 
     p = subprocess.Popen(args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
+    timedout = True
     for i in range(timeout):
         if p.poll() is not None:
-            timedout=0
+            timedout = False
             break
         time.sleep(1)
         
@@ -94,6 +95,7 @@ def run(args, input, tempdir, timeout=10):
     error = str()
 
     if timedout:
+        info('Timed out!')
         os.kill(p.pid, 9)
             
     outfile.close()
@@ -219,6 +221,7 @@ def checking_loop(wiki):
                     content = wiki.getPage(outputpage)
                     output = regex.search(content).group(1)
                 
+                info('Running test')
                 goutput, gerror, timeout = run(args, input, path)
                 
                 goutput = goutput.strip('\n')
@@ -226,7 +229,7 @@ def checking_loop(wiki):
                 goutput = gerror.strip('\n') + goutput
 
                 if timeout:
-                    goutput = "***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
+                    goutput = goutput + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
                 
                 if goutput != output:
                     info("Test %s failed" % testname)
