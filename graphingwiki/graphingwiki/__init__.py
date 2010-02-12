@@ -32,6 +32,8 @@ gv = None
 try:
     sys.path.append('/usr/lib/graphviz/python')
     sys.path.append('/usr/local/lib/graphviz/python') # OSX
+    sys.path.append('/usr/lib/pyshared/python2.6') # Ubuntu 9.10
+    sys.path.append('/usr/lib/pyshared/python2.5') # Ubuntu 9.10
     import gv
 except ImportError:
     sys.path[-1] = '/usr/lib64/graphviz/python'

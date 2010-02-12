@@ -20,7 +20,7 @@ class Parser(WikiParser):
         self.curdef = ''
         self.prevdef = ''
         self.ddline = 0
-
+        
         # Cannot use super as the Moin classes are old-style
         apply(WikiParser.__init__, (self, raw, request), kw)
         
@@ -193,23 +193,33 @@ class Parser(WikiParser):
         return u''
 
     _big_repl = __add_textmeta
+    _big_on_repl = __add_textmeta
+    _big_off_repl = __add_textmeta
     _emph_ibb_repl = __add_textmeta
     _emph_ibi_repl = __add_textmeta
     _emph_ib_or_bi_repl = __add_textmeta
     _emph_repl = __add_textmeta
     _small_repl = __add_textmeta
+    _small_on_repl = __add_textmeta
+    _small_off_repl = __add_textmeta
     _smiley_repl = __add_textmeta
     _strike_repl = __add_textmeta
+    _strike_on_repl = __add_textmeta
+    _strike_off_repl = __add_textmeta
 
-    _comment_repl = __add_meta
     _entity_repl = __add_meta
-    _heading_repl = __add_meta
     _remark_repl = __add_meta
+    _remark_on_repl = __add_meta
+    _remark_off_repl = __add_meta
     _sgml_entity_repl = __add_meta
     _sub_repl = __add_meta
+    _sub_text_repl = __add_meta
     _sup_repl = __add_meta
+    _sup_text_repl = __add_meta
     _tt_bt_repl = __add_meta
+    _tt_bt_text_repl = __add_meta
     _tt_repl = __add_meta
+    _tt_text_repl = __add_meta
     _u_repl = __add_meta
 
     def _dl_repl(self, match, groups):
