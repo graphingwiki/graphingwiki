@@ -1,0 +1,49 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2010 by Marko Laakso
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+myerr() {
+  echo $@ 2>&1
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+if [ $# -ne 1 ]; then
+  myerr "Usage: $0 <collabname>"
+fi
+
+MYCOLLAB=$1
+MYCOLLABWIKIDIR=${wikidir}/${MYCOLLAB}
+MYCOLLABHTMLDIR=${htmldir}/${MYCOLLAB}
+
+if [ -d ${MYCOLLABWIKIDIR} ]; then
+  cd ${wikidir}
+  tar jcvf ${archivedir}/${MYCOLLAB}-`date '+%Y-%m-%d'`.tar.bz2  ${MYCOLLAB}
+  echo "Remove ${MYCOLLABWIKIDIR}? (y/N)"
+  read sure
+  if [ "${sure}blah" = "yblah" ]; then
+    rm -rf ${MYCOLLABWIKIDIR}
+  fi
+else
+  echo "ERR: No ${MYCOLLABWIKIDIR}"
+fi
+
+if [ -d ${MYCOLLABHTMLDIR} ]; then
+  echo "Remove ${MYCOLLABHTMLDIR}? (y/N)"
+  read sure
+  if [ "${sure}blah" = "yblah" ]; then
+    rm -rf ${MYCOLLABHTMLDIR}
+  fi
+else
+  echo "ERR: No ${MYCOLLABHTMLDIR}"
+fi
+
