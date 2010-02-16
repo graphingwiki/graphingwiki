@@ -263,7 +263,6 @@ def checking_loop(wiki):
                 passed = True
                 if goutput != output:
                     info("Test %s failed" % testname)
-                    wrong.append(testname)
                     failed = False 
 
                 # compare output files
@@ -272,6 +271,7 @@ def checking_loop(wiki):
                         info("A file is missing")
                         passed = False
                         break
+
                     if content != gfiles[filename]:
                         info("Output file does not match")
                         passed = False
