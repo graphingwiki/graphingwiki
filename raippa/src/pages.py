@@ -355,8 +355,10 @@ class Question:
 %s''' % (answer[2], addlink(pagename), filelinks, rc['testinput'])
 
                     page = PageEditor(self.request, inputpage)
-                    msg = page.saveText(pagecontent, page.get_real_rev())
-
+                    try:
+                        msg = page.saveText(pagecontent, page.get_real_rev())
+                    except PageEditor.Unchanged:
+                        pass
                 else:
                     if Page(self.request, pagename+"/input").exists():
                         rsuccess, rmsg = delete_page(self.request, pagename+"/input")
@@ -390,8 +392,10 @@ class Question:
 %s''' % (answer[3], addlink(pagename), filelinks, rc['testoutput'])
 
                     page = PageEditor(self.request, outputpage)
-                    msg = page.saveText(pagecontent, page.get_real_rev())
-
+                    try:
+                        msg = page.saveText(pagecontent, page.get_real_rev())
+                    except PageEditor.Unchanged:
+                        pass
                 else:
                     if Page(self.request, pagename+"/output").exists():
                         rsuccess, rmsg = delete_page(self.request, pagename+"/output")
