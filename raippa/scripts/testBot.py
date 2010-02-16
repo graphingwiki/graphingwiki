@@ -191,7 +191,7 @@ def checking_loop(wiki):
             answer_pages = wiki.getMeta(question +'/options').values()[0]['answer']
             info("Found %d answer pages" % len(answer_pages))
 
-            regex = re.compile('{{{\s*(.*)\s*}}}', re.DOTALL)
+            regex = re.compile('{{{\s*(.*)\s?}}}', re.DOTALL)
 
             wrong = list()
             right = list()
@@ -249,9 +249,9 @@ def checking_loop(wiki):
                 info('Running test')
                 goutput, gerror, timeout, gfiles = run(args, input, path)
 
-                goutput = goutput.strip('\n')
-                output = output.strip('\n')
-                goutput = gerror.strip('\n') + goutput
+                goutput = goutput
+                output = output
+                goutput = gerror + goutput
 
                 if timeout:
                     goutput = goutput + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
