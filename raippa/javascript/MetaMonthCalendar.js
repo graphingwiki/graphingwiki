@@ -166,6 +166,10 @@
 				if(lastWeekNum < weekNum){
 					weekNum = weekNum - lastWeekNum;
 				}
+				//fix week number 0
+				if(weekNum == 0){
+					weekNum = date.clone().decrement('year').set('month',11).set('date',31).getFinWeek();
+				}
 				tr.grab(new Element('td',{
 					'class' : this.options.weekNumClass,
 					'text': weekNum
