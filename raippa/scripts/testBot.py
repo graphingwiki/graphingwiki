@@ -109,7 +109,17 @@ def run(args, input, tempdir, timeout=10):
     os.remove(errpath)
     os.remove(inpath)
 
-    return output, error, timedout
+
+    # get generated files
+    files = dict()
+
+    for filename in os.listdir('.'):
+        content = open(filename).read()
+        if len(content) > 1024*100:
+            content = '***** THIS FILE was over 100kB long *****\nThis test failed\n'
+        files[filename] = content
+
+    return output, error, timedout, files
 
 def readConfig(file):
     opts = opencollab.util.parseConfig(file)
@@ -161,6 +171,8 @@ def checking_loop(wiki):
                 # get rid of the _rev<number> in filenames
                 open(re.sub('(_rev\d+)', '', removeLink(filename)), 'w').write(code)
 
+            revision = re.search('_rev(\d+)', removeLink(filename)).group(1)
+
             #if there is wrong amount of question page linksd, leave
             #the returned assignment as picked so that other
             #assignments can be checked. 
@@ -185,7 +197,6 @@ def checking_loop(wiki):
             right = list()
             outputs = list()
 
-            #TODO file handling
             for apage in [x.strip('[]') for x in answer_pages]:
                 info('getting answers from %s' % apage)
                 answer_meta = wiki.getMeta(apage).values()[0]
@@ -216,13 +227,27 @@ def checking_loop(wiki):
                         info('Writing input file %s' % filename)
                         open(os.path.join(path, filename), 'w').write(content)
 
+
+
                 output = ''
                 if outputpage:
                     content = wiki.getPage(outputpage)
                     output = regex.search(content).group(1)
+
+                    output_meta = wiki.getMeta(outputpage)
+                  
+                    # get output files
+                    output_files = dict()
+
+                    filelist = output_meta[outputpage]['file']
+
+                    for attachment in filelist:
+                        filename = removeLink(attachment)
+                        content = wiki.getAttachment(outputpage, filename)
+                        output_files[filename] = content
                 
                 info('Running test')
-                goutput, gerror, timeout = run(args, input, path)
+                goutput, gerror, timeout, gfiles = run(args, input, path)
                 
                 goutput = goutput.strip('\n')
                 output = output.strip('\n')
@@ -230,29 +255,57 @@ def checking_loop(wiki):
 
                 if timeout:
                     goutput = goutput + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
-              
+
                 if len(goutput) > 1024*100:
                     goutput = "***** Your program produced more than 100kB of output data *****\n(Meaning that your program failed)\nPlease check your code before returning it\n" 
                     info('Excess output!')
 
+                passed = True
                 if goutput != output:
                     info("Test %s failed" % testname)
                     wrong.append(testname)
-                else:
+                    failed = False 
+
+                # compare output files
+                for filename, content in output_files.items():
+                    if filename not in gfiles:
+                        info("A file is missing")
+                        passed = False
+                        break
+                    if content != gfiles[filename]:
+                        info("Output file does not match")
+                        passed = False
+                        break
+
+                if passed:
                     info("Test %s succeeded" % testname)
                     right.append(testname)
+                else:
+                    info("Test %s failed" % testname)
+                    wrong.append(testname)
 
-                #put user output to wiki
+                #put user output to wiki. 
 
                 outputs.append('[[%s]]' % (user + '/' + outputpage,))
                 try:
                     wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(goutput), testname))
+
+                    for ofilename, ocontent in gfiles.items():
+                        wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent)
+                    
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
                     if 'There was an error in the wiki side (You did not change the page content, not saved!)' in error_message:
                         pass
+                    elif 'There was an error in the wiki side (Attachment not saved, file exists)' in error_message:
+                        pass
                     else:
                         raise
+
+            # put output file metas to output page
+
+            wiki.setMeta(user + '/' + outputpage, {'file' : ['[[attachment:%s]]' % x for x in gfiles.keys()]})
+
 
             info('Removing ' + path)
             shutil.rmtree(path)
@@ -262,7 +315,7 @@ def checking_loop(wiki):
             #clear old info
             info('Clearing old metas')
             wiki.setMeta(page, {'wrong': [], 'right': []}, True)
-        
+
             if len(wrong) == 0:
                 metas['overallvalue'] = ['success']
             else:
