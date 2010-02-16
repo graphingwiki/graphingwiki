@@ -248,7 +248,9 @@ def checking_loop(wiki):
                 
                 info('Running test')
                 goutput, gerror, timeout, gfiles = run(args, input, path)
-                
+                print gout
+
+
                 goutput = goutput.strip('\n')
                 output = output.strip('\n')
                 goutput = gerror.strip('\n') + goutput
@@ -262,8 +264,7 @@ def checking_loop(wiki):
 
                 passed = True
                 if goutput != output:
-                    info("Test %s failed" % testname)
-                    failed = False 
+                    passed = False 
 
                 # compare output files
                 for filename, content in output_files.items():
