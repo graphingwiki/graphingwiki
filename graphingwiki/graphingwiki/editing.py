@@ -21,7 +21,6 @@ import operator
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
-from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil

@@ -786,7 +786,8 @@ def delete_moin_caches(request, pageitem):
     pageitem.set_raw_body(None)
 
     # clean the in memory acl cache
-    pageitem.clean_acl_cache()
+    # XXX gone in moin 1.9
+    # pageitem.clean_acl_cache()
 
     request.graphdata.cache = dict()
 
