@@ -2,8 +2,8 @@
 
 import MoinMoin.wikisync  
 import MoinMoin.wikiutil as wikiutil
-  
-from MoinMoin.request import RequestBase
+import MoinMoin.web.contexts
+
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
@@ -200,25 +200,6 @@ def underlay_to_pages(req, p):
 
     return pagepath
 
-# FIXME: A ugly, ugly hack to fix ugly hacks suck as copy(request).
-# Should be removed by removing request copying and such.
-
-def request_copy(self):
-    from copy import copy
-
-    graphdata = self.graphdata
-    self._graphdata = None
-
-    del RequestBase.__copy__
-
-    new_request = copy(self)
-    new_request._graphdata = graphdata
-
-    RequestBase.__copy__ = request_copy
-
-    self._graphdata = graphdata
-    return new_request
-RequestBase.__copy__ = request_copy
 
 # Functions for properly opening, closing, saving and deleting
 # graphdata. NB: Do not return anything in functions used in
@@ -232,6 +213,7 @@ def graphdata_getter(self):
     return self.__dict__["_graphdata"]
 
 def graphdata_close(self):
+    print "graphdata_close called"
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
         graphdata.closedb()
@@ -355,6 +337,9 @@ def attachfile_filelist(self, result, (args, _)):
 
 _hooks_installed = False
 
+
+import MoinMoin.wsgiapp
+
 def install_hooks():
     global _hooks_installed
 
@@ -364,13 +349,7 @@ def install_hooks():
     # Monkey patch the request class to have the property "graphdata"
     # which, if used, is then closed properly when the request
     # finishes.
-    RequestBase.graphdata = property(graphdata_getter)
-    RequestBase.finish = monkey_patch(RequestBase.finish, 
-                                      always=graphdata_close)
-    # Patch RequestBase.run too, just in case finally might not get
-    # called in case of a crash.
-    RequestBase.run = monkey_patch(RequestBase.run, 
-                                   always=graphdata_close)
+    MoinMoin.web.contexts.Context.graphdata = property(graphdata_getter)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
@@ -393,4 +372,12 @@ def install_hooks():
     PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
                                                 variable_insert)
 
+    orig_wsgiapp_init = MoinMoin.wsgiapp.init
+    def patched_init(request):
+        c = orig_wsgiapp_init(request)
+        c.finish = lambda: graphdata_close(c)
+        return c
+    
+    MoinMoin.wsgiapp.init = patched_init
     _hooks_installed = True
+
