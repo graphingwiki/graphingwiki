@@ -948,7 +948,7 @@ def save_template(request, page, template):
 
     return msg
 
-def savetext(request, pagename, newtext):
+def savetext(request, pagename, newtext, **kw):
     """ Savetext - a function to be used by local CLI scripts that
     modify page content directly.
 
@@ -957,7 +957,7 @@ def savetext(request, pagename, newtext):
     page = PageEditor(request, pagename)
 
     try:
-        msg = page.saveText(newtext, 0)
+        msg = page.saveText(newtext, 0, **kw)
     except page.Unchanged:
         msg = u'Unchanged'
 

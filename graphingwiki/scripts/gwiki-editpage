@@ -13,12 +13,14 @@ from graphingwiki.editing import savetext
 from MoinMoin.request.request_cli import Request as RequestCLI
 
 if __name__ == '__main__':
-    usage = "usage: %prog <path to wiki> <pagename>"
+    usage = "usage: %prog [-c <comment>] <path to wiki> <pagename>"
     parser = OptionParser(usage=usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                       help="Report success")
     parser.add_option("-a", "--auth", action="store_true", dest="auth",
                       help="Use local user-based wiki authentication")
+    parser.add_option("-c", "--comment", dest="comment",
+                      help="Optional change comment for the edit")
 
     (options, args) = parser.parse_args()
 
@@ -45,4 +47,8 @@ if __name__ == '__main__':
         req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
 
     mytext = unicode(sys.stdin.read(), sys.getfilesystemencoding())
-    savetext(req, pagename, mytext)
+
+    if comment:
+        savetext(req, pagename, mytext, comment=comment)
+    else:
+        savetext(req, pagename, mytext)
