@@ -49,6 +49,6 @@ if __name__ == '__main__':
     mytext = unicode(sys.stdin.read(), sys.getfilesystemencoding())
 
     if options.comment:
-        savetext(req, pagename, mytext, comment=options.comment)
+        savetext(req, pagename, mytext, comment=unicode(options.comment))
     else:
         savetext(req, pagename, mytext)
