@@ -13,7 +13,7 @@ from graphingwiki.editing import savetext
 from MoinMoin.request.request_cli import Request as RequestCLI
 
 if __name__ == '__main__':
-    usage = "usage: %prog [-c <comment>] <path to wiki> <pagename>"
+    usage = "usage: %prog [options] <path to wiki> <pagename>"
     parser = OptionParser(usage=usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                       help="Report success")
@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     mytext = unicode(sys.stdin.read(), sys.getfilesystemencoding())
 
-    if comment:
-        savetext(req, pagename, mytext, comment=comment)
+    if options.comment:
+        savetext(req, pagename, mytext, comment=options.comment)
     else:
         savetext(req, pagename, mytext)
