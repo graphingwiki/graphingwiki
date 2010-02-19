@@ -83,6 +83,7 @@ def run(args, input, tempdir, timeout=10):
     open(inpath, 'w').write(input)
     infile = open(inpath, 'r')
 
+    # TODO aja erikseen
     p = subprocess.Popen('ulimit -f 50;' + args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
     timedout = True
@@ -115,7 +116,6 @@ def run(args, input, tempdir, timeout=10):
     os.remove(outpath)
     os.remove(errpath)
     os.remove(inpath)
-
 
     # get generated files
     files = dict()
@@ -234,8 +234,6 @@ def checking_loop(wiki):
                         info('Writing input file %s' % filename)
                         open(os.path.join(path, filename), 'w').write(content)
 
-
-
                 output = ''
                 if outputpage:
                     content = wiki.getPage(outputpage)
@@ -256,8 +254,12 @@ def checking_loop(wiki):
                 info('Running test')
                 goutput, gerror, timeout, gfiles = run(args, input, path)
 
-                goutput = goutput
-                output = output
+
+                #FIXME. Must check that editors in raippa do not add
+                #newlines in output. If not. These lines can be removed
+                goutput = goutput.strip('\n')
+                output = output.strip('\n')
+
                 goutput = gerror + goutput
 
                 if timeout:
