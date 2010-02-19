@@ -22,6 +22,7 @@ import time
 import traceback
 import ConfigParser
 import string
+import signal
 
 from optparse import OptionParser
 
@@ -82,7 +83,7 @@ def run(args, input, tempdir, timeout=10):
     open(inpath, 'w').write(input)
     infile = open(inpath, 'r')
 
-    p = subprocess.Popen(args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
+    p = subprocess.Popen('ulimit -f 50;' + args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
     timedout = True
     for i in range(timeout):
@@ -94,10 +95,16 @@ def run(args, input, tempdir, timeout=10):
     output = str()
     error = str()
 
+    # if timeout then kill 
     if timedout:
         info('Timed out!')
-        os.kill(p.pid, 9)
-            
+        os.kill(p.pid, signal.SIGTERM)
+        time.sleep(2)
+        try:
+            os.kill(p.pid, signal.SIGKILL)
+        except OSError:
+            pass
+
     outfile.close()
     errfile.close()
 
