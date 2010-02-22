@@ -70,22 +70,21 @@ def removeLink(line):
     if line.startswith('[['): return line[13:-2]
     return line
 
-def run(args, input, tempdir, timeout=10):
+def run(arg, input, tempdir, timeout):
 
     #open files for stdout and stderr
-    outpath = os.path.join(tempdir, "out.txt")
-    errpath = os.path.join(tempdir, "err.txt")
-    inpath = os.path.join(tempdir, '__input__')
-
+    outpath = os.path.join(tempdir, '__out__')
+    errpath = os.path.join(tempdir, '__err__')
+    inpath = os.path.join(tempdir, '__in__')
+    
     outfile = open(outpath, "w")
     errfile = open(errpath, "w")
     
     open(inpath, 'w').write(input)
     infile = open(inpath, 'r')
-
-    # TODO aja erikseen
-    p = subprocess.Popen('ulimit -f 50;' + args, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
  
+    p = subprocess.Popen('ulimit -f 50;' + arg, shell=True, stdout=outfile, stderr=errfile, stdin=infile)
+    
     timedout = True
     for i in range(timeout):
         if p.poll() is not None:
@@ -93,67 +92,83 @@ def run(args, input, tempdir, timeout=10):
             break
         time.sleep(1)
         
-    output = str()
-    error = str()
-
     # if timeout then kill 
     if timedout:
         info('Timed out!')
         os.kill(p.pid, signal.SIGTERM)
         time.sleep(2)
+        p.poll()
         try:
             os.kill(p.pid, signal.SIGKILL)
         except OSError:
+            info('Killed by SIGTERM')
             pass
-
+        else:
+            info('Killed by SIGKILL')
+        
     outfile.close()
     errfile.close()
-
+    
     error = open(errpath).read()
     output = open(outpath).read()
-
+    
     #clean files
     os.remove(outpath)
     os.remove(errpath)
     os.remove(inpath)
 
-    # get generated files
-    files = dict()
+    return output, error, timedout
+    
+def run_test(codes, args, input, input_files, tempdir, timeout=10):
 
-    for filename in os.listdir('.'):
-        content = open(filename).read()
+    for filename, content in input_files.items():
+        info('Writing input file %s' % filename)
+        open(os.path.join(tempdir, filename), 'w').write(content)
+
+    for filename, content in codes.items():
+        open(os.path.join(tempdir, filename), 'w').write(content)
+      
+    for arg in args.split('&&'):
+        output, error, timedout = run(arg, input, tempdir, timeout)
+    
+    files = dict()
+    
+    for filename in os.listdir(tempdir):
+        content = open(os.path.join(tempdir, filename)).read()
         if len(content) > 1024*100:
             content = '***** THIS FILE was over 100kB long *****\nThis test failed\n'
+            info('file %s is too big' % filename)
         files[filename] = content
+
+    #clean all files (input files, code files, and outputfiles)
+
+    for filename in os.listdir(tempdir):
+        os.remove(os.path.join(tempdir, filename))
 
     return output, error, timedout, files
 
-def readConfig(file):
-    opts = opencollab.util.parseConfig(file)
-    return opts
-
 def checking_loop(wiki):
-    url = wiki.host
+    wikiname = wiki.host + ''.join(wiki.path.rsplit('?')[:-1])
 
     while True:
         #Get all new history pages with pending status
-        info('Lookig for pages')
+        info('Lookig for pages in %s' % wikiname)
         picked_pages = wiki.getMeta('CategoryHistory, overallvalue=pending')
         info('Found %d pages' % len(picked_pages))
 
         if not picked_pages:
-            info('No pages. Sleeping')
+            info('Sleeping')
             time.sleep(10)
             continue
-        
+
         #go thgrough all new pages
         for page in picked_pages:
-            info('%s: picked %s' % (url, page))
+            info('%s: picked %s' % (wikiname, page))
 
-            path = tempfile.mkdtemp()
-	    os.chdir(path)
+            tempdir = tempfile.mkdtemp()
+            info("Created tempdir %s" % tempdir)
+            os.chdir(tempdir)
 
-            info("Created tempdir %s" % path)
 
             #change the status to picked
             wiki.setMeta(page, {'overallvalue' : ['picked']}, True)
@@ -164,6 +179,8 @@ def checking_loop(wiki):
             # get the attachment filename from the file meta
             info('Writing files')
  
+            codes = dict()
+            
             for filename in metas['file']:
                 attachment_file = removeLink(filename)
                 #get the source code
@@ -176,7 +193,7 @@ def checking_loop(wiki):
                     else:
                         raise
                 # get rid of the _rev<number> in filenames
-                open(re.sub('(_rev\d+)', '', removeLink(filename)), 'w').write(code)
+                codes[re.sub('(_rev\d+)', '', removeLink(filename))] = code
 
             revision = re.search('_rev(\d+)', removeLink(filename)).group(1)
 
@@ -191,6 +208,10 @@ def checking_loop(wiki):
             
             #get the question pagenmae
             question = metas['question'].single(None)
+            if not question:
+                error('NO QUESTION PAGE IN HISTORY %s!' % page)
+                continue
+            
             question = question.strip('[]')
             
             #find associataed answerpages
@@ -204,9 +225,9 @@ def checking_loop(wiki):
             right = list()
             outputs = list()
 
-            for apage in [x.strip('[]') for x in answer_pages]:
-                info('getting answers from %s' % apage)
-                answer_meta = wiki.getMeta(apage).values()[0]
+            for answer_page in [x.strip('[]') for x in answer_pages]:
+                info('getting answers from %s' % answer_page)
+                answer_meta = wiki.getMeta(answer_page).values()[0]
                 testname = answer_meta['testname'].single()
                 
                 outputpage = None
@@ -222,6 +243,8 @@ def checking_loop(wiki):
                 args = answer_meta['parameters'].single()
 
                 input = ''
+                
+                input_files = dict()
 
                 if inputpage:
                     content = wiki.getPage(inputpage)
@@ -231,10 +254,11 @@ def checking_loop(wiki):
                     for attachment in filelist:
                         filename = removeLink(attachment)
                         content = wiki.getAttachment(inputpage, filename)
-                        info('Writing input file %s' % filename)
-                        open(os.path.join(path, filename), 'w').write(content)
+
+                        input_files[filename] = content
 
                 output = ''
+
                 if outputpage:
                     content = wiki.getPage(outputpage)
                     output = regex.search(content).group(1)
@@ -252,35 +276,35 @@ def checking_loop(wiki):
                         output_files[filename] = content
                 
                 info('Running test')
-                goutput, gerror, timeout, gfiles = run(args, input, path)
+                stu_output, stu_error, timeout, stu_files = run_test(codes, args, input, input_files, tempdir)
 
 
                 #FIXME. Must check that editors in raippa do not add
                 #newlines in output. If not. These lines can be removed
-                goutput = goutput.strip('\n')
+                stu_output = stu_output.strip('\n')
                 output = output.strip('\n')
 
-                goutput = gerror + goutput
+                stu_output = stu_error + stu_output
 
                 if timeout:
-                    goutput = goutput + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n" + goutput
+                    stu_output = stu_output + "\n***** TIMEOUT *****\nYOUR PROGRAM TIMED OUT!\n\n"
 
-                if len(goutput) > 1024*100:
-                    goutput = "***** Your program produced more than 100kB of output data *****\n(Meaning that your program failed)\nPlease check your code before returning it\n" 
+                if len(stu_output) > 1024*100:
+                    stu_output = "***** Your program produced more than 100kB of output data *****\n(Meaning that your program failed)\nPlease check your code before returning it\n" 
                     info('Excess output!')
 
                 passed = True
-                if goutput != output:
+                if stu_output != output:
                     passed = False 
 
                 # compare output files
                 for filename, content in output_files.items():
-                    if filename not in gfiles:
-                        info("A file is missing")
+                    if filename not in stu_files:
+                        info("%s is missing" % filename)
                         passed = False
                         break
 
-                    if content != gfiles[filename]:
+                    if content != stu_files[filename]:
                         info("Output file does not match")
                         passed = False
                         break
@@ -296,9 +320,9 @@ def checking_loop(wiki):
 
                 outputs.append('[[%s]]' % (user + '/' + outputpage,))
                 try:
-                    wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(goutput), testname))
+                    wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(stu_output), testname))
 
-                    for ofilename, ocontent in gfiles.items():
+                    for ofilename, ocontent in stu_files.items():
                         wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent)
                     
                 except opencollab.wiki.WikiFault, error_message:
@@ -312,11 +336,11 @@ def checking_loop(wiki):
 
             # put output file metas to output page
 
-            wiki.setMeta(user + '/' + outputpage, {'file' : ['[[attachment:%s]]' % x for x in gfiles.keys()]})
+            wiki.setMeta(user + '/' + outputpage, {'file' : ['[[attachment:%s]]' % x for x in stu_files.keys()]})
 
 
-            info('Removing ' + path)
-            shutil.rmtree(path)
+            info('Removing ' + tempdir)
+            #shutil.rmtree(tempdir)
 
             metas = dict()
             
