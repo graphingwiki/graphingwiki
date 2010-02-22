@@ -240,7 +240,11 @@ def checking_loop(wiki):
                 if 'input' in answer_meta:
                     inputpage =  answer_meta['input'].single().strip('[]')
 
-                args = answer_meta['parameters'].single()
+                try:
+                    args = answer_meta['parameters'].single()
+                except ValueError:
+                    error('No params!')
+                    continue
 
                 input = ''
                 
@@ -323,7 +327,7 @@ def checking_loop(wiki):
                     wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(stu_output), testname))
 
                     for ofilename, ocontent in stu_files.items():
-                        wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent)
+                        wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent, True)
                     
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
@@ -340,7 +344,7 @@ def checking_loop(wiki):
 
 
             info('Removing ' + tempdir)
-            #shutil.rmtree(tempdir)
+            shutil.rmtree(tempdir)
 
             metas = dict()
             
@@ -367,7 +371,7 @@ def checking_loop(wiki):
             wiki.setMeta(page, metas, True)
             
             info('Done')
-            time.sleep(5)
+            time.sleep(10)
 
 def main():
     #parse commandline parameters
