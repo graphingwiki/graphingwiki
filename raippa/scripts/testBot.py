@@ -5,9 +5,7 @@
 """
 
 #TODO
-# * File handling
-# * stderr handling
-# * better handling for error bytes in data (monkey_feed, etc)
+# handle situations where there is no outputpage 
 
 import socket
 import os
@@ -128,8 +126,15 @@ def run_test(codes, args, input, input_files, tempdir, timeout=10):
     for filename, content in codes.items():
         open(os.path.join(tempdir, filename), 'w').write(content)
       
+    error = str()
+    output = str()
+
+    timedout = False
     for arg in args.split('&&'):
-        output, error, timedout = run(arg, input, tempdir, timeout)
+        run_output, run_error, run_timedout = run(arg, input, tempdir, timeout)
+        error += run_error
+        output += run_output
+        timedout = timedout or run_timedout
     
     files = dict()
     
@@ -325,6 +330,10 @@ def checking_loop(wiki):
                 outputs.append('[[%s]]' % (user + '/' + outputpage,))
                 try:
                     wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(stu_output), testname))
+
+                    #clean old attachments before adding new ones
+                    for old_attachment in wiki.listAttachments(user + '/' + outputpage):
+                        wiki.deleteAttachment(old_attachment)
 
                     for ofilename, ocontent in stu_files.items():
                         wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent, True)
