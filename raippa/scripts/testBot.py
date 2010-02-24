@@ -327,16 +327,18 @@ def checking_loop(wiki):
 
                 #put user output to wiki. 
 
-                outputs.append('[[%s]]' % (user + '/' + outputpage,))
+                stu_outputpage = user + '/' + outputpage
+
+                outputs.append('[[%s]]' % stu_outputpage)
                 try:
-                    wiki.putPage(user + '/' + outputpage, outputtemplate % (esc(stu_output), testname))
+                    wiki.putPage(stu_outputpage, outputtemplate % (esc(stu_output), testname))
 
                     #clean old attachments before adding new ones
-                    for old_attachment in wiki.listAttachments(user + '/' + outputpage):
-                        wiki.deleteAttachment(old_attachment)
+                    for old_attachment in wiki.listAttachments(stu_outputpage):
+                        wiki.deleteAttachment(stu_outputpageold_attachment)
 
                     for ofilename, ocontent in stu_files.items():
-                        wiki.putAttachment(user + '/' + outputpage, ofilename, ocontent, True)
+                        wiki.putAttachment(stu_outputpage, ofilename, ocontent, True)
                     
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
@@ -349,7 +351,7 @@ def checking_loop(wiki):
 
             # put output file metas to output page
 
-            wiki.setMeta(user + '/' + outputpage, {'file' : ['[[attachment:%s]]' % x for x in stu_files.keys()]})
+            wiki.setMeta(stu_outputpage, {'file' : ['[[attachment:%s]]' % x for x in stu_files.keys()]})
 
 
             info('Removing ' + tempdir)
