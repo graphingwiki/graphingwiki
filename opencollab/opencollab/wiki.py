@@ -8,7 +8,6 @@ import xmlrpclib
 import urllib
 import httplib
 import base64
-import re
 from encodings import idna
 
 class WikiFailure(Exception): pass
@@ -28,8 +27,6 @@ class WikiFault(WikiFailure):
         self.fault = fault
 
 class Wiki(object):
-    WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?)[\,\.]$", re.I)
-
     def __init__(self, url):
         scheme, host, path, _, _, _ = urlparse.urlparse(url)
         if isinstance(host, unicode):
@@ -57,24 +54,12 @@ class Wiki(object):
         self.token = token, username, password
     
     def _authenticate(self, username, password):
-        self.headers.pop("Authorization", None)
+        auth = base64.b64encode(username + ":" + password)
+        self.headers["Authorization"] = "Basic " + auth
         self.token = None
 
         try:
-            try:
-                whoami = self._request("WhoAmI")
-            except HttpAuthenticationFailed:
-                auth = base64.b64encode(username + ":" + password)
-                self.headers["Authorization"] = "Basic " + auth
-                whoami = self._request("WhoAmI")
-                
-            match = self.WHOAMI_FORMAT.match(whoami)
-            if match is None:
-                raise WikiFailure("WhoAmI action returned invalid data")
-
-            valid = match.group(1)
-            if valid == "0":
-                self._wiki_auth(username, password)
+            self._wiki_auth(username, password)
         except:
             self.headers.pop("Authorization", None)
             self.token = None
