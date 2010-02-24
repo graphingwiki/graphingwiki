@@ -335,7 +335,7 @@ def checking_loop(wiki):
 
                     #clean old attachments before adding new ones
                     for old_attachment in wiki.listAttachments(stu_outputpage):
-                        wiki.deleteAttachment(stu_outputpageold_attachment)
+                        wiki.deleteAttachment(stu_outputpage, old_attachment)
 
                     for ofilename, ocontent in stu_files.items():
                         wiki.putAttachment(stu_outputpage, ofilename, ocontent, True)
