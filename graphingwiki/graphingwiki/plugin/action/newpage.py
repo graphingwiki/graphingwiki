@@ -19,7 +19,7 @@ def execute(pagename, request):
     if editaction:
         # MoinMoin.action.newpage left no choice but to edit the URL
         # action on-the-fly in request.http_redirect
-        newreq.http_redirect_real = newreq.http_redirect
+        request.http_redirect_real = request.http_redirect
         
         def redirect_editaction(url):
             url = url.replace('action=edit', 'action=%s' % editaction)
