@@ -13,7 +13,6 @@ import sys
 import urllib2
 import string
 from socket import *
-#import socket
 from urlparse import urlparse
 
 debug = 'true'
@@ -25,8 +24,7 @@ port = 45552
 #else:
 #    local_file = sys.argv[1]
 
-remote_path = 'http://foo.invalid/malwarezor/'#hot path
-#remote_host = 'localhost'
+remote_path = 'http://foo.invalid/malwarezor/'#hot path: points to TIS malware path
 remote_host = urlparse(remote_path)[1]
 
 notify_addr = (remote_host, port)
@@ -56,31 +54,15 @@ s.close()
 # If name is only a hash, let's try making it a executable.
 extension = mw_filename.split( '.' )
 if( not len( extension ) > 1 ):
-    mw_filename += ".exe"
-    
+    mw_filename += ".exe"    
 localfolder = "C:/Documents and Settings/PelleSec/Desktop/mw/"
 localfile =  localfolder + mw_filename
-
-
-
-
 
 if( os.path.isfile( localfile ) == 0 ):
     writeHandle = open( localfile, 'wb' )
     remote_file = urllib2.urlopen( remote_file )
+    # parsing the size
     size = remote_file.info()
-    
-    # readlineä sizestä --> 6. rivi on Content length, pituus on ':' n jälkeen
-    # info gives a HTMLelement, thaT LOOKS LIKE DIS:
-    # Date: Thu, 31 May 2007 07:53:29 GMT
-    # Server: Apache/2.0.59 (Unix) mod_python/3.3.1 Python/2.5.1 PHP/5.2.2 DAV/2
-    # Last-Modified: Wed, 07 Feb 2007 09:54:43 GMT
-    # ETag: "6c38a1-a62d-ea71fec0"
-    # Accept-Ranges: bytes
-    # Content-Length: 42541
-    # Connection: close
-    # Content-Type: application/pdf
-
     size = str( size ).split( "\n" )
     size = size[5].split( ":" )
     size = int( size[1] )
@@ -88,18 +70,14 @@ if( os.path.isfile( localfile ) == 0 ):
     a = remote_file.read( min( size, 1500 ) )
     while  size > 0:
         writeHandle.write( a )
-        #print size
-        size -= len(a)#1500 
+        size -= len(a)#max 1500 
         a = remote_file.read( 1500 )
     print "File", localfile, "copied from" ,remote_path
     writeHandle.close()
-    #s.send("running")
-    
     
 else:
     print localfile, "exists and could not be loaded."
     sys.exit( 2 )
-
 
 # If it's a zip, we needs to unzip it, like now.
 #
@@ -109,6 +87,7 @@ if( mw_filename[-4:] == ".zip" ):
     #os.wait()
     os.rename( localfile, "C:/Documents and Settings/PelleSec/Desktop/extractedzip.zip" )
 
+# start ALL the files
 for malwarefiles in os.listdir( localfolder ):
     print localfolder + "/" + malwarefiles
     os.startfile( localfolder + "/" + malwarefiles )
