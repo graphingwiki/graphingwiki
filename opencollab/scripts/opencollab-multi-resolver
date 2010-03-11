@@ -4,7 +4,7 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, socket, optparse, subprocess
+import re, socket, optparse, subprocess, IPy
 from subprocess import Popen
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.meta import Metas
@@ -31,11 +31,28 @@ def expand_ipv4(rr,new):
     rev.reverse()
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
 
+def expand_ipv6(rr,new):
+    rev = []
+    prr = IPy.IP(rr).strCompressed()
+    new.append(prr + ";PTR")
+    parts = re.split(':', rr)
+    for s in parts:
+        pad = s.rjust(4, "0")
+        part = re.findall('[\d\w]', pad)
+        part.reverse()
+        rev.append('.'.join(part))
+    rev.reverse()
+    addr = '.'.join(rev)
+    new.append(addr + ".origin6.asn.cymru.com;TXT")
+    print new
+    sys.exit()
+
 def expand_as(rr,new):
     new.append(rr.upper() + ".asn.cymru.com;TXT")
 
 def expand_name(rr,new):
     new.append(rr + ";A")
+    new.append(rr + ";AAAA")
     new.append(rr + ";MX")
     new.append(rr + ";SOA")
 
@@ -58,6 +75,7 @@ def resolve_requests(expanded,mresolve):
 def generate_requests(resolved,new):
     expanded = []
     rr_type = re.compile(';TYPE;')
+    ipv6_re = re.compile(':')
     for triplet in new.split('\n'):
         if triplet:
             subj, pred, obj = triplet.split(';')
@@ -66,14 +84,17 @@ def generate_requests(resolved,new):
         if rr_type.search(triplet):
             if triplet not in resolved:
                 try:
-                    socket.inet_aton(subj)
+                    socket.inet_pton(socket.AF_INET, subj)
                 except socket.error:
-                    if dns_re.search(subj):
-                        expand_name(subj,expanded)
-                    elif as_re.search(subj):
-                        expand_as(subj,expanded)
+                    try:
+                        socket.inet_pton(socket.AF_INET6, subj)
+                    except socket.error:
+                        if dns_re.search(subj):
+                            expand_name(subj,expanded)
+                        elif as_re.search(subj):
+                            expand_as(subj,expanded)
                     else:
-                        pass
+                        expand_ipv6(subj,expanded)
                 else:
                     expand_ipv4(subj,expanded)
         resolved.add(triplet)
@@ -84,18 +105,22 @@ def seed_initial(new,srv):
     resolved = set([])
     for rr in new:
         try:
-            socket.inet_aton(rr)
+            socket.inet_pton(socket.AF_INET, rr)
         except socket.error:
-            if dns_re.search(rr):
-                resolved.add(rr + ";TYPE;NAME")
-                expand_name(rr,expanded)
-                if srv:
-                    expand_srv(rr,expanded)
-            elif as_re.search(rr):
-                resolved.add(rr.upper() + ";TYPE;AS")
-                expand_as(rr,expanded)
+            try:
+                socket.inet_pton(socket.AF_INET6, rr)
+            except socket.error:
+                if dns_re.search(rr):
+                    resolved.add(rr + ";TYPE;NAME")
+                    expand_name(rr,expanded)
+                    if srv:
+                        expand_srv(rr,expanded)
+                elif as_re.search(rr):
+                    resolved.add(rr.upper() + ";TYPE;AS")
+                    expand_as(rr,expanded)
             else:
-                pass
+                resolved.add(rr + ";TYPE;IPv6")
+                expand_ipv6(rr,expanded)
         else:
             resolved.add(rr + ";TYPE;IPv4")
             expand_ipv4(rr,expanded)
