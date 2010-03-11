@@ -44,8 +44,6 @@ def expand_ipv6(rr,new):
     rev.reverse()
     addr = '.'.join(rev)
     new.append(addr + ".origin6.asn.cymru.com;TXT")
-    print new
-    sys.exit()
 
 def expand_as(rr,new):
     new.append(rr.upper() + ".asn.cymru.com;TXT")
