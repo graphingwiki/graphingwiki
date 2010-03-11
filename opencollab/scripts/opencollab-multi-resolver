@@ -33,12 +33,12 @@ def expand_ipv4(rr,new):
 
 def expand_ipv6(rr,new):
     rev = []
-    prr = IPy.IP(rr).strCompressed()
-    new.append(prr + ";PTR")
-    parts = re.split(':', rr)
+    comprr = IPy.IP(rr).strCompressed()
+    exprr = IPy.IP(rr).strFullsize()
+    new.append(comprr + ";PTR")
+    parts = re.split(':', exprr)
     for s in parts:
-        pad = s.rjust(4, "0")
-        part = re.findall('[\d\w]', pad)
+        part = re.findall('[\d\w]', s)
         part.reverse()
         rev.append('.'.join(part))
     rev.reverse()
