@@ -1,0 +1,11 @@
+opencollab (1854) hardy; urgency=low
+
+  * First PPA release.
+
+ -- Lari Huttunen <debian@huttu.net>  Fri, 12 Mar 2010 11:21:34 +0200
+
+opencollab (1786) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Lari Huttunen <debian@huttu.net>  Tue, 05 Jan 2010 15:50:08 +0200
