@@ -1,0 +1,79 @@
+=head1 NAME
+
+B<opencollab-clone-pages> - Clone pages.
+
+=head1 SYNOPSIS
+
+B<opencollab-clone-pages> [options]
+
+=head1 SUMMARY
+
+B<opencollab-clone-pages> - Clone pages with MetaTable args from one collab to another.
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-d URL --destination-url=URL> 
+
+Collab destination URL.
+
+=item B<-h --help> 
+
+Display the help message and exit.
+
+=item B<-m --move> 
+
+Delete pages from source.
+
+=item B<-n --dry-run> 
+
+Perform a dry run and show what would have been cloned.
+
+=item B<-u URL --url=URL> 
+
+Source collab URL.
+
+=item B<-U USERNAME --username=USERNAME> 
+
+Collab USERNAME.
+
+=item B<-v --verbose> 
+
+Print verbose output to STDOUT.
+
+=back
+
+=head1 ARGUMENTS
+
+=over 8
+
+=item B<arg> 
+
+Argument
+
+=back
+
+=head1 FILES
+
+=over 8
+
+=item B</etc/opencollab/opencollab.conf>
+
+The default configuration file.
+
+=back
+
+=head1 SEE ALSO
+
+=over 8
+
+=item python(1)
+
+=back
+
+=head1 BUGS
+
+Bug reports, patches and feature wishes should reported at http://graphingwiki.webfactional.com/ 
+
+=cut

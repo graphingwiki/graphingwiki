@@ -1,3 +1,9 @@
+opencollab (1855) hardy; urgency=low
+
+  * Added /etc/opencollab/opencollab.conf to the packaging. 
+
+ -- Lari Huttunen <debian@huttu.net>  Fri, 12 Mar 2010 11:42:18 +0200
+
 opencollab (1854) hardy; urgency=low
 
   * First PPA release.

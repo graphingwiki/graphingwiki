@@ -1,0 +1,79 @@
+=head1 NAME
+
+B<opencollab-script> - Various opencollab related scripts.
+
+=head1 SYNOPSIS
+
+B<opencollab-script> <options> <arguments>
+
+=head1 SUMMARY
+
+B<opencollab-script> 
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-c CONFIG --config=CONFIG> 
+
+Path to opencollab configuration file, e.g. /etc/opencollab/opencollab.conf.
+
+=item B<-g CATEGORY --category=CATEGORY> 
+
+Collab CATEGORY to use.
+
+=item B<-h --help> 
+
+Display the help message and exit.
+
+=item B<-t TEMPLATE --template=TEMPLATE> 
+
+Collab TEMPLATE to use.
+
+=item B<-u URL --url=URL> 
+
+Collab URL.
+
+=item B<-U USERNAME --url=USERNAME> 
+
+Collab USERNAME.
+
+=item B<-v --verbose> 
+
+Print verbose output to STDOUT.
+
+=back
+
+=head1 ARGUMENTS
+
+=over 8
+
+=item B<arg> 
+
+Argument
+
+=back
+
+=head1 FILES
+
+=over 8
+
+=item B</etc/opencollab/opencollab.conf>
+
+The default configuration file.
+
+=back
+
+=head1 SEE ALSO
+
+=over 8
+
+=item python(1)
+
+=back
+
+=head1 BUGS
+
+Bug reports, patches and feature wishes should reported at http://graphingwiki.webfactional.com/ 
+
+=cut
