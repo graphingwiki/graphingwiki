@@ -1,3 +1,9 @@
+opencollab (1858) hardy; urgency=low
+
+  * opencollab-uploader improved with --delete and --dry-run to mimick rsync.
+
+ -- Lari Huttunen <debian@huttu.net>  Tue, 16 Mar 2010 11:12:42 +0200
+
 opencollab (1855) hardy; urgency=low
 
   * Added /etc/opencollab/opencollab.conf to the packaging. 
