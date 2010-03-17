@@ -6,7 +6,7 @@
 """
 import os, sys, optparse, socket
 from urllib import quote
-from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.wiki import CLIWiki, WikiFailure, WikiFault
 from opencollab.meta import Meta
 from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
@@ -74,8 +74,11 @@ def main():
             if dryrun:
                 print "NOTE: Would've deleted", page + "/" + f
             else:
-                collab.deleteAttachment(page, f)
-                print "NOTE: deleted", page + "/" + f
+                print "NOTE: deleting", page + "/" + f
+                try:
+                    collab.deleteAttachment(page, f)
+                except WikiFault, msg:
+                    sys.exit(msg)
     if dryrun:
         print "NOTE: Dry run. Nothing will really be uploaded to", page
     for filename, wikiname in filelist:
