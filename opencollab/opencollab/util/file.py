@@ -20,7 +20,7 @@ def hashFile(f):
         fobj.close()
     return md5.new(data).hexdigest()
 
-def uploadFile(collab, page_name, file, file_name, verbose=False):
+def uploadFile(collab, page_name, file, file_name, progress=False):
     try:
         file_obj = open(file, "rb")
     except IOError, msg:
@@ -36,16 +36,16 @@ def uploadFile(collab, page_name, file, file_name, verbose=False):
     for current, total in collab.putAttachmentChunked(page_name, file_name, file_obj):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
-        if verbose:
-            sys.stdout.write("\rNOTE: Sent %d/%d bytes (%.02f%%) " % status)
+        if progress:
+            sys.stdout.write("\rSent %d/%d bytes (%.02f%%) " % status)
             sys.stdout.write("of %s" % file_name)
             sys.stdout.flush()
         parts_uploaded = True
-    if verbose:
+    if progress:
         if parts_uploaded == True:
             sys.stdout.write("\n")
         else:
-            sys.stdout.write("NOTE: Already uploaded %s\n" % file_name)
+            sys.stdout.write("Already uploaded %s\n" % file_name)
     sys.stdout.flush()
     file_obj.close()
     return parts_uploaded

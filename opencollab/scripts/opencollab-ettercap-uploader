@@ -166,10 +166,13 @@ def parse_xml(file, ettercaprun_page):
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options]")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     ettercap_files=[]
     ops = {}
     sect = "ettercap-uploader"
     ops = parseOptions(parser, sect, template=True, category=True)
+    progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
@@ -208,7 +211,7 @@ def main():
         metas[xml_page]['TYPE'].add('Ettercap Run')
         if verbose:
             print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, template, options.verbose)
+        failed = importMetas(collab, metas, template, verbose)
         if failed:
             for page in failed:
                 if verbose:
@@ -221,10 +224,10 @@ def main():
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, verbose)
+            uploadFile(collab, xml_page, file, fname, progress)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, attach[page][fname], fname, verbose)
+                uploadFile(collab, page, attach[page][fname], fname, progress)
 
 if __name__ == "__main__":
     try:

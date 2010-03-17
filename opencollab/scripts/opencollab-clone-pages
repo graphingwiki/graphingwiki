@@ -20,6 +20,9 @@ def main():
     parser.add_option("-n", "--dry-run",
         dest="dryrun", action="store_true", default=False,
         help="show what would have been cloned")
+    parser.add_option("-P", "--progress",
+        dest="progress", action="store_true", default=False,
+        help="Show attachment upload progress.")
     parser.add_option("-m", "--move",
         dest="move", action="store_true", default=False,
         help="move (delete source page)")
@@ -32,6 +35,7 @@ def main():
     verbose = ops[sect]["verbose"]
     args = ops[sect]["args"]
     search = ops[sect]['search']
+    progress = ops[sect]['progress']
     if search is None:
         parser.error("MetaTable search string needs to be specified. Use -h for help.")
 
@@ -115,19 +119,21 @@ def main():
                 print "NOTE: Uploading attachments to page", page
             for num, wikiname in enumerate(attachments):
                 file = os.path.join(dpath,wikiname)
-                uploadFile(dst_collab, page, file, wikiname, verbose)
+                uploadFile(dst_collab, page, file, wikiname, progress)
                 try:
                     os.unlink(file)
                 except OSError:
                     print "ERROR: Couldn't remove", file
                 else:
-                    print "NOTE: Removed", file, "successfully."
+                    if verbose:
+                        print "NOTE: Removed", file, "successfully."
             try:
                 os.removedirs(dpath)
             except OSError:
                 print "ERROR: Couldn't remove directory", dpath
             else:
-                print "NOTE: Removed", dpath, "successfully."
+                if verbose:
+                    print "NOTE: Removed", dpath, "successfully."
             if ops[sect]["move"]:
                 try:
                     src_collab.deletePage(page)

@@ -133,6 +133,8 @@ def main():
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     parser.set_usage("%prog [options] NMAP-XML-FILES")
     failed = []
     ops = {}
@@ -140,6 +142,7 @@ def main():
     nmap_files=[]
     ops = parseOptions(parser, sect, template=True, category=True)
     url = ops["creds"]["url"]
+    progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -189,7 +192,10 @@ def main():
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, verbose)
+            try:
+                status = uploadFile(collab, xml_page, file, fname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
 
 if __name__ == "__main__":
     try:

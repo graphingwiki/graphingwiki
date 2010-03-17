@@ -63,7 +63,7 @@ def parse_notes(dir, file='notes.xml'):
         note_metas[kd].add(description)
     return note_metas
 
-def handle_paths(collab, testplan_page, dirs, verbose):
+def handle_paths(collab, testplan_page, dirs, progress):
     at = re.compile('@')
     flist=[]
     page_metas=Meta()
@@ -77,7 +77,7 @@ def handle_paths(collab, testplan_page, dirs, verbose):
             fpath = os.path.join(dir, 'summary.xml')
             page_metas["Summary XML"].add('[[attachment:summary.xml]]')
             testrun_page = hashFile(fpath)
-            uploadFile(collab, testrun_page, fpath, 'summary.xml', verbose)
+            uploadFile(collab, testrun_page, fpath, 'summary.xml', progress)
             page_metas.update(parse_tool_options(page_metas))
             if('main.log.gz' in flist):
                 pass
@@ -89,23 +89,23 @@ def handle_paths(collab, testplan_page, dirs, verbose):
                     gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                     gzipped.write(open(os.path.join(dir, "main.log")).read())
                     gzipped.close()
-                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz', verbose)
+                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
             if('run.set' in flist):
                 page_metas["Settings"].add('[[attachment:run.set]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set', verbose)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set', progress)
             if('runinfo' in flist):
                 page_metas["Settings"].add('[[attachment:runinfo]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo', verbose)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo', progress)
             if('statistics.csv' in flist):
                 page_metas["Statistics"].add('[[attachment:statistics.csv]]')
-                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv',verbose)
+                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv',progress)
             if('summary.txt' in flist):
                 page_metas["Summary"].add('{{attachment:summary.txt}}')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt',verbose)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt',progress)
             if 'notes.xml' in flist:
                 page_metas["Notes"].add('[[attachment:notes.xml]]')
                 page_metas.update(parse_notes(dir))
-                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml',verbose)
+                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml',progress)
             if(testplan_page is not None):
                 if(at.search(testplan_page)):
                     tmp = at.sub('', testplan_page) 
@@ -114,7 +114,7 @@ def handle_paths(collab, testplan_page, dirs, verbose):
                 else:
                     page_metas["Test Plan"].add('[[%s]]' % testplan_page)
             status = collab.setMeta(testrun_page, page_metas, template=template, replace=True)
-            if verbose:
+            if progress:
                 print testrun_page, status
             page_metas=Meta()
             page_metas["category"].add("CategoryTestRun")
@@ -134,6 +134,8 @@ def main():
     parser.add_option("-p", "--prompt", action="store_true", 
         dest="prompt", default=False,
         help="Prompt for selecting the test plan from search results obtained via -s.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     parser.add_option("-r", action="store_true", dest="recursive", default=False,
         help="Enable recursion on input directories.")
     parser.set_usage("%prog [options] <1..N input directories>")
@@ -142,6 +144,7 @@ def main():
     ops = {}
     ops = parseOptions(parser, sect, search=True, template=True)
     url = ops["creds"]["url"]
+    progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     dlist = ops[sect]["args"]
     if len(dlist) < 1:
@@ -204,7 +207,7 @@ def main():
         dirs = set(dlist)
     if(verbose):
         print "Handling: ", dirs
-    handle_paths(collab, testplan_page, dirs, verbose)
+    handle_paths(collab, testplan_page, dirs, progress)
 
 if __name__ == "__main__":
     try:

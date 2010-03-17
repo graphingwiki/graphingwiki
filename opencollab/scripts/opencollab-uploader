@@ -21,6 +21,8 @@ def main():
     parser.add_option("-p", "--page",
         dest="page", default=None, metavar="PAGE",
         help="Upload the file(s) to PAGE.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     parser.set_usage("%prog [options] 1..N optional input directories")
     ops = {}
     sect = "uploader"
@@ -29,6 +31,7 @@ def main():
     delete = ops[sect]["delete"]
     dryrun = ops[sect]["dryrun"]
     page = ops[sect]["page"]
+    progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     if page is None:
         parser.error("Collab page to upload to needs to be specified. Use -h for help.")
@@ -68,29 +71,23 @@ def main():
         d = set(destfiles)
         s = set(wikiflist)
         dead = d - s
-        if dryrun and dead:
-            print "NOTE: Dry run. Nothing will really be deleted from", page
         for f in dead:
-            if dryrun:
-                print "NOTE: Would've deleted", page + "/" + f
-            else:
-                print "NOTE: deleting", page + "/" + f
+            print "NOTE: deleting", page + "/" + f
+            if not dryrun:
                 try:
                     collab.deleteAttachment(page, f)
                 except WikiFault, msg:
                     sys.exit(msg)
-    if dryrun:
-        print "NOTE: Dry run. Nothing will really be uploaded to", page
     for filename, wikiname in filelist:
-        if not dryrun:
+        if dryrun:
+            uploaded = True
+        else:
             try:
-                uploaded = uploadFile(collab, page, filename, wikiname, verbose)
+                uploaded = uploadFile(collab, page, filename, wikiname, progress)
             except (IOError, TypeError, RuntimeError), msg:
                 sys.exit(msg)
-            if uploaded:
-                sys.stdout.write("NOTE: %d/%d uploaded %s as %s\n" % (n, total, filename, wikiname)) 
-        else:
-            sys.stdout.write("NOTE: %d/%d would've uploaded %s as %s\n" % (n, total, filename, wikiname)) 
+        if uploaded:
+            sys.stdout.write("NOTE: %d/%d uploaded %s as %s\n" % (n, total, filename, wikiname)) 
         n += 1 
 
 if __name__ == "__main__":

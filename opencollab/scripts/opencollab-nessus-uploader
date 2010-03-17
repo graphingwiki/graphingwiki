@@ -190,11 +190,14 @@ def parse_xml(file, nessusrun_page):
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] NESSUS-XML-FILES")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     ops = {}
     sect = "nessus-uploader"
     nessus_files=[]
     failed = []
     ops = parseOptions(parser, sect, template=True, category=True)
+    progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
@@ -244,10 +247,10 @@ def main():
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, verbose)
+            uploadFile(collab, xml_page, file, fname, progress)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, attach[page][fname], fname, verbose)
+                uploadFile(collab, page, attach[page][fname], fname, progress)
 
 if __name__ == "__main__":
     try:
