@@ -37,7 +37,7 @@ def uploadFile(collab, page_name, file, file_name, verbose=False):
         percent = 100.0 * current / float(max(total, 1))
         status = current, total, percent
         if verbose:
-            sys.stdout.write("\rSent %d/%d bytes (%.02f%%) " % status)
+            sys.stdout.write("\rNOTE: Sent %d/%d bytes (%.02f%%) " % status)
             sys.stdout.write("of %s" % file_name)
             sys.stdout.flush()
         parts_uploaded = True

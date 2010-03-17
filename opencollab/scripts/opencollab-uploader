@@ -68,20 +68,26 @@ def main():
         d = set(destfiles)
         s = set(wikiflist)
         dead = d - s
-        if verbose and dryrun:
-            print "NOTE: Dry running, nothing will really be deleted from", page
+        if dryrun and dead:
+            print "NOTE: Dry run. Nothing will really be deleted from", page
         for f in dead:
-            if verbose:
-                print "NOTE: deleting", page + "/" + f
-            if not dryrun:
+            if dryrun:
+                print "NOTE: Would've deleted", page + "/" + f
+            else:
                 collab.deleteAttachment(page, f)
-    if dryrun and verbose:
-        print "NOTE: Dry running, nothing will be uploaded for real to", page
+                print "NOTE: deleted", page + "/" + f
+    if dryrun:
+        print "NOTE: Dry run. Nothing will really be uploaded to", page
     for filename, wikiname in filelist:
-        if verbose:
-            sys.stdout.write("NOTE: %d/%d uploading %s as %s\n" % (n, total, filename, wikiname)) 
         if not dryrun:
-            uploadFile(collab, page, filename, wikiname, verbose)
+            try:
+                uploaded = uploadFile(collab, page, filename, wikiname, verbose)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+            if uploaded:
+                sys.stdout.write("NOTE: %d/%d uploaded %s as %s\n" % (n, total, filename, wikiname)) 
+        else:
+            sys.stdout.write("NOTE: %d/%d would've uploaded %s as %s\n" % (n, total, filename, wikiname)) 
         n += 1 
 
 if __name__ == "__main__":
