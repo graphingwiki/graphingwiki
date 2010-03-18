@@ -354,9 +354,9 @@ def checking_loop(wiki):
                     else:
                         raise
 
-            # put output file metas to output page
+                # put output file metas to output page
 
-            wiki.setMeta(stu_outputpage, {'file' : ['[[attachment:%s]]' % esc(x) for x in stu_files.keys()]})
+                wiki.setMeta(stu_outputpage, {'file' : ['[[attachment:%s]]' % esc(x) for x in stu_files.keys()]})
 
 
             info('Removing ' + tempdir)
