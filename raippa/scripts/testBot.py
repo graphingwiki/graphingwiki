@@ -5,7 +5,10 @@
 """
 
 #TODO
-# handle situations where there is no outputpage 
+# handle situations where there is no outputpage
+# run programs without shell
+# catch httplib.CannotSendRequest 
+# stdout + stderr not the other way around
 
 import socket
 import os
@@ -38,7 +41,9 @@ outputtemplate = '''
 CategoryTestOutput
 '''
 
-ok_chars = string.printable + '\n'
+ok_chars = string.printable
+# remove some printable characters that cause problems in xmlrpc
+ok_chars = ok_chars.replace('\x0b', '').replace('\x0c', '')
 def esc(in_s): 
     out_s = ''   
     for c in in_s:
@@ -290,8 +295,8 @@ def checking_loop(wiki):
 
                 #FIXME. Must check that editors in raippa do not add
                 #newlines in output. If not. These lines can be removed
-                stu_output = stu_output.strip('\n')
-                output = output.strip('\n')
+                stu_output = stu_output.lstrip('\n')
+                output = output.lstrip('\n')
 
                 stu_output = stu_error + stu_output
 
@@ -338,7 +343,7 @@ def checking_loop(wiki):
                         wiki.deleteAttachment(stu_outputpage, old_attachment)
 
                     for ofilename, ocontent in stu_files.items():
-                        wiki.putAttachment(stu_outputpage, ofilename, ocontent, True)
+                        wiki.putAttachment(stu_outputpage, ofilename, esc(ocontent), True)
                     
                 except opencollab.wiki.WikiFault, error_message:
                     # It's ok if the comment does not change
@@ -351,7 +356,7 @@ def checking_loop(wiki):
 
             # put output file metas to output page
 
-            wiki.setMeta(stu_outputpage, {'file' : ['[[attachment:%s]]' % x for x in stu_files.keys()]})
+            wiki.setMeta(stu_outputpage, {'file' : ['[[attachment:%s]]' % esc(x) for x in stu_files.keys()]})
 
 
             info('Removing ' + tempdir)
