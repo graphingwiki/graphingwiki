@@ -128,12 +128,19 @@ try:
 
         srcWiki, _ = xmlrpc_conninit(wiki, username, password)
 
+        pages = list()
+
         # Data in next rows
         for row in reader:
+            if not row:
+                continue
+
             input = dict()
 
             # First column == page name
             page = unicode(row[0], config.charset)
+
+            pages.append(page)
 
             # enumerate values, ignore first column
             for i, val in enumerate(row[1:]):
@@ -144,8 +151,22 @@ try:
                            category_edit, catlist,
                            template)
 
-            for res in srcWiki():
-                print res
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        resultset = list()
+
+        for res in srcWiki():
+            resultset.append(res)
+
+        print
+        if isinstance(resultset[0], basestring):
+            print resultset[0]
+            resultset = resultset[1:]
+        
+        for page, results in zip(pages, resultset):
+            for result in results:
+                print page, result
 
     elif options.repl_page or options.app_page:
         if options.app_page:
