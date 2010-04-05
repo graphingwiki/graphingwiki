@@ -38,11 +38,8 @@ class CollabBackend(object):
         self.config = ConfigParser.RawConfigParser()
         self.config.read('/etc/local/collab/collab.ini')
 
-        self._logconf = self.config.get('collab', 'logconf')
         self.wikidir = self.config.get('collab', 'wikidir')
-
-        from MoinMoin import log
-        log.load_config(self._logconf) 
+        self.logconf = self.config.get('collab', 'logconf')
 
 
 class Collab(object):
@@ -52,8 +49,9 @@ class Collab(object):
         self.configdir = os.path.join(self.instancedir, 'config')
         sys.path.insert(0, self.configdir)
 
+	from MoinMoin import log
+	log.load_config(myinfra.logconf)
+
     def getwsgiconfig(self):
         self.config = MyWsgiConfig()
         return self.config
-
-        
