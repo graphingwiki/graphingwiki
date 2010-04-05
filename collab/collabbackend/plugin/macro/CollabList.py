@@ -12,7 +12,7 @@
 
 Dependencies = ['myfilesystem']
 
-from collabbackend.xmlrpc.collabList import listCollabs
+from collabbackend.plugin.xmlrpc.collabList import listCollabs
 
 def formatCollabList(f, user, collabs):
     if not collabs:

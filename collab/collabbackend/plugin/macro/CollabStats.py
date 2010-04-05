@@ -10,7 +10,7 @@
 Dependencies = ['myfilesystem']
 
 from MoinMoin import user
-from collabbackend.xmlrpc.collabList import listCollabs
+from collabbackend.plugin.xmlrpc.collabList import listCollabs
 
 def execute(self, modearg):
     myuser = self.request.user.name

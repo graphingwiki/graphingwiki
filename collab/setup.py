@@ -4,6 +4,7 @@
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>
 """
 
+import os
 from distutils.core import setup
 
 ## Helpers copied from MoinMoin setup.py (http://moinmo.in)
@@ -60,7 +61,7 @@ setup(name='collab', version='$Rev$',
       packages=['collabbackend'],
       package_dir={'collabbackend': 'collabbackend'},
       package_data={'collabbackend': ['plugin/*/*.py', 'plugin/__init__.py']},
-      data_files=makeDataFiles('share/moin/htdocs', 'htdocs')
+      data_files=makeDataFiles('share/moin/htdocs', 'htdocs'),
       scripts=[ 'scripts/collab-archive',
         'scripts/collab-account-collablist',
         'scripts/collab-account-create',
