@@ -1863,25 +1863,25 @@ class GraphShower(object):
 
                 # Graph unique if the following are equal: edges
                 key_parts = [gr.edges]
-            else:
-                # Stylistic stuff: Color nodes, edges, bold startpages
-                if self.colorby:
-                    outgraph = self.color_nodes(outgraph)
-                if self.shapeby:
-                    outgraph, warn = self.shape_nodes(outgraph)
-                    if warn:
-                        warnings.append(warn)
-                outgraph = self.color_edges(outgraph)
-                outgraph = self.edge_tooltips(outgraph)
-                outgraph = self.circle_start_nodes(outgraph)
 
-                # Fix URL:s
-                outgraph = self.fix_node_urls(outgraph)
+            # Stylistic stuff: Color nodes, edges, bold startpages
+            if self.colorby:
+                outgraph = self.color_nodes(outgraph)
+            if self.shapeby:
+                outgraph, warn = self.shape_nodes(outgraph)
+                if warn:
+                    warnings.append(warn)
+            outgraph = self.color_edges(outgraph)
+            outgraph = self.edge_tooltips(outgraph)
+            outgraph = self.circle_start_nodes(outgraph)
 
-                # Graph unique if the following are equal: content, layout
-                # format, images, ordering
-                key_parts = [outgraph, self.graphengine, 
-                             self.shapefiles, self.orderby]
+            # Fix URL:s
+            outgraph = self.fix_node_urls(outgraph)
+
+            # Graph unique if the following are equal: content, layout
+            # format, images, ordering
+            key_parts = [outgraph, self.graphengine, 
+                         self.shapefiles, self.orderby]
 
             # Generate cache key
             self.cache_key = cache_key(self.request, key_parts)
