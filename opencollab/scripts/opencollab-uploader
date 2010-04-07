@@ -53,7 +53,8 @@ def main():
     wikiflist = list()
     for path in args:
         if os.path.isfile(path):
-            wikiname = quote(path, safe="")
+            _, filename = os.path.split(path)
+            wikiname = quote(filename, safe="")
             filelist.append((path, wikiname))
             wikiflist.append(wikiname)
         else:
