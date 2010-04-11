@@ -66,5 +66,4 @@ setup(name='collab', version='$Rev$',
         'scripts/collab-account-collablist',
         'scripts/collab-account-create',
         'scripts/collab-account-password',
-        'scripts/collab-htaccess',
-        'scripts/collab-htpasswd'])
+        'scripts/collab-htaccess'])
