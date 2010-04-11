@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-collab-htaccess: An utility to create filesystem dump of collab instance meta
+collab-htaccess: Filesystem dump of collab instance meta / htpasswd / htaccess
 
 @copyright: 2008-2010 by Marko Laakso <fenris@iki.fi>
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -12,6 +12,18 @@ import sys
 import re
 import difflib
 import string
+import signal
+import atexit
+import time
+
+def cleanup_handler(signum, frame):
+    sys.exit(0)
+
+def delpid():
+    try:
+        os.remove(mypidfile)
+    except OSError:
+        pass
 
 import posix, pwd
 
@@ -21,20 +33,48 @@ config = ConfigParser.RawConfigParser()
 config.read('/etc/local/collab/collab.ini')
 
 mylogconf = config.get('collab', 'logconf')
+mybaseinstancedir = config.get('collab', 'baseinstancedir')
+myhtpasswd = config.get('collab', 'htpasswd')
 myhtmldir = config.get('collab', 'htmldir')
 mywikidir = config.get('collab', 'wikidir')
-      
+mypiddir = config.get('collab', 'piddir')
+
+mypidfile = os.path.join(mypiddir, "collab-htaccess.pid")
+
+try:
+    f = file(mypidfile, 'r')
+    pid = int(f.read().strip())
+    statinfo = os.fstat(f.fileno())
+    pidage = time.time() - statinfo.st_ctime
+    f.close()
+
+    if pidage > 60 * 5:
+        print "Walking over pid=%d with age=%d (secs) in pidfile=%s" \
+              % (pid, pidage, mypidfile)
+    else:
+        sys.exit(1)
+except IOError:
+    pid = None
+
+signal.signal(signal.SIGTERM, cleanup_handler)
+atexit.register(delpid)
+
+pid = str(os.getpid())
+f = open(mypidfile, 'w+')
+f.write(pid + '\n')
+f.close()
+
 from MoinMoin import log
 log.load_config(mylogconf) 
 
-from MoinMoin.user import User
+from MoinMoin.user import User, getUserList, isValidName
 from MoinMoin import wikidicts
 from MoinMoin.config import multiconfig
 from MoinMoin.request.request_cli import Request
 
 from graphingwiki.editing import metatable_parseargs, get_metas
 
-def diffandstore(filename, newtext):
+def diffandstore(filename, newtext, dryrun=True):
 
     msg = []
 
@@ -52,13 +92,45 @@ def diffandstore(filename, newtext):
         for line in diff:
             if line[:1] not in string.whitespace:
                 msg.append(line)
-        f = open(filename, 'w')
-        f.write(newtext)
-        f.close()
+        if not dryrun:
+            f = open(filename, 'w')
+            f.write(newtext)
+            f.close()
 
     return msg
 
-######
+###### htpasswd
+
+os.chdir(mybaseinstancedir)
+sys.path.insert(0, os.path.join(mybaseinstancedir, 'config'))
+
+# Make a new request for the page
+req = Request(pagename='FrontPage')
+
+# Auth
+import posix, pwd
+req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
+
+content = ""
+
+for id in getUserList(req):
+    myuser = User(req, id=id)
+    myuser.load_from_id()
+    if myuser.valid and isValidName(req, myuser.name) and myuser.enc_password:
+        content = content + myuser.name + ":" + \
+                  myuser.enc_password + os.linesep
+
+msg = diffandstore(myhtpasswd, content)
+
+if msg:
+    print "Access DIFF for .htpasswd:"
+    sys.stdout.writelines(msg)
+
+req.finish()
+
+sys.path.remove(os.path.join(mybaseinstancedir, 'config'))
+
+###### htaccess & CollabFacts
 
 os.chdir(myhtmldir)
 username = pwd.getpwuid(posix.getuid())[0]
@@ -83,22 +155,11 @@ for dent in os.listdir("."):
     multiconfig._farmconfig_mtime = None
     multiconfig._config_cache = {}
 
-    try:
-        import wikiconfig
-        reload(wikiconfig)
-    except:
-        pass
-
-    try:
-        import farmconfig
-        reload(farmconfig)
-    except:
-        pass
+    import farmconfig
+    reload(farmconfig)
 
     req = Request(pagename='AccessGroup')
     req.user = User(req, auth_username=username)
-    #req.form = { 'action': ['raw'] }
-    #req.run()
 
     msg = []
     members = []
@@ -121,20 +182,16 @@ for dent in os.listdir("."):
 
     msg.extend(diffandstore(myhtaccess, newtext))
                 
-    pagelist, metakeys, _ = \
-                metatable_parseargs(req, 'CollabFacts', get_all_keys=True)
-
-    if pagelist:
-        metas = get_metas(req, pagelist[0], ['name', 'description', 'URL'])
-        if metas['name']:
-            val = metas['name'][0]
-            msg.extend(diffandstore(mytitle, val  + '\n'))
-        if metas['description']:
-            val = metas['description'][0]
-            msg.extend(diffandstore(mymotd, val  + '\n'))
-        if metas['URL']:
-            val = metas['URL'][0]
-            msg.extend(diffandstore(myurl, val + '\n'))
+    metas = get_metas(req, 'CollabFacts', ['name', 'description', 'URL'])
+    if metas['name']:
+        val = metas['name'][0]
+        msg.extend(diffandstore(mytitle, val  + '\n'))
+    if metas['description']:
+        val = metas['description'][0]
+        msg.extend(diffandstore(mymotd, val  + '\n'))
+    if metas['URL']:
+        val = metas['URL'][0]
+        msg.extend(diffandstore(myurl, val + '\n'))
 
     if msg:
         print '*** ' + dent + ' ***'
