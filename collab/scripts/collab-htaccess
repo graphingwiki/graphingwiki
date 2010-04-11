@@ -74,7 +74,7 @@ from MoinMoin.request.request_cli import Request
 
 from graphingwiki.editing import metatable_parseargs, get_metas
 
-def diffandstore(filename, newtext, dryrun=True):
+def diffandstore(filename, newtext, dryrun=False):
 
     msg = []
 
