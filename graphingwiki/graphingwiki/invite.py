@@ -73,7 +73,7 @@ def add_user_to_group(request, myuser, group, create_link=True, comment=""):
 
     if comment:
         page.saveText(text, 0, comment=comment)
-    else
+    else:
         page.saveText(text, 0)
 
 def invite_user_to_wiki(request, page, email, new_template, old_template, **custom_vars):
