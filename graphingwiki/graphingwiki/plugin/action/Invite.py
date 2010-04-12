@@ -58,7 +58,7 @@ class Invite(ActionBase):
                 myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
                 mycomment = "%s invited by %s" % (email, self.request.user.name)
                 try:
-                    add_user_to_group(self.request, myuser, pagename)
+                    add_user_to_group(self.request, myuser, pagename, comment=mycomment)
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
                     return True, tmp % (email, pagename, unicode(ge))
