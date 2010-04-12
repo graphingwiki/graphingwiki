@@ -55,7 +55,8 @@ class Invite(ActionBase):
             old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
             
             if wikiutil.isGroupPage(self.request, pagename):
-                myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template) 
+                myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
+                mycomment = "%s invited by %s" % (email, self.request.user.name)
                 try:
                     add_user_to_group(self.request, myuser, pagename)
                 except GroupException, ge:

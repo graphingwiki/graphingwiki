@@ -40,7 +40,7 @@ def generate_password(length=8):
 class GroupException(Exception):
     pass
 
-def add_user_to_group(request, myuser, group, create_link=True):
+def add_user_to_group(request, myuser, group, create_link=True, comment=""):
     if not wikiutil.isGroupPage(request, group):
         raise GroupException("Page '%s' is not a group page." % group)
     if not (request.user.may.read(group) and request.user.may.write(group)):
@@ -70,7 +70,11 @@ def add_user_to_group(request, myuser, group, create_link=True):
     head.insert(insertion_point, template % myuser.name)
 
     text = "\n".join(head + tail)
-    page.saveText(text, 0)
+
+    if comment:
+        page.saveText(text, 0, comment=comment)
+    else
+        page.saveText(text, 0)
 
 def invite_user_to_wiki(request, page, email, new_template, old_template, **custom_vars):
     check_inviting_enabled(request)
