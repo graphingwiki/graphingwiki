@@ -20,6 +20,7 @@ def main():
     nmap_files=[]
     ops = parseOptions(parser, sect, template=True, category=True)
     verbose = ops[sect]["verbose"]
+    args = ops[sect]["args"]
     while True:
         try:
             collab = CLIWiki(**ops['creds'])
@@ -33,7 +34,10 @@ def main():
         print "NOTE: Grabbing pages from collab."
 
     # Crappy regexp, I know
-    ipv4_regexp = "/\d\d?\d?\./"
+    if args:
+        ipv4_regexp = args
+    else:
+        ipv4_regexp = "/\d\d?\d?\./"
 
     try:
         all = getPages(collab, ipv4_regexp)
