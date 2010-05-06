@@ -39,6 +39,8 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break
+    if verbose:
+        print "NOTE: Resolving BlueTooth services."
     services = bluetooth.find_service()
     for svc in services:
         host = svc["host"]
