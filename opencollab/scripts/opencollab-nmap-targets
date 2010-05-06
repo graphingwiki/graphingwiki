@@ -50,7 +50,7 @@ def main():
                 continue
             # TODO: prune ip addresses to ranges etc
             result.append(ip)
-        print 'Paste this to your nmap script: -oA resultfile', (','.join(result))
+        print 'Paste this to your nmap script: -oA resultfile', (' '.join(result))
         print 'Then give the resulting xml file to opencollab-nmap-uploader'
     except (IOError, TypeError, RuntimeError), msg:
         sys.exit(msg)
