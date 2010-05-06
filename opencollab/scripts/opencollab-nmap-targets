@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re, os, sys, string, optparse, socket
+from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
+from opencollab.util.file import hashFile, uploadFile
+from opencollab.util.wiki import getPages
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] NMAP-XML-FILES")
+    failed = []
+    ops = {}
+    sect = "nmap-targets"
+    nmap_files=[]
+    ops = parseOptions(parser, sect, template=True, category=True)
+    verbose = ops[sect]["verbose"]
+    while True:
+        try:
+            collab = CLIWiki(**ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
+        print "NOTE: Grabbing pages from collab."
+
+    # Crappy regexp, I know
+    ipv4_regexp = "/\d\d?\d?\./"
+
+    try:
+        all = getPages(collab, ipv4_regexp)
+        result = list()
+        # Verify that they are all ipv4 addresses
+        for ip in all:
+            try:
+                socket.inet_aton(ip)
+            except:
+                continue
+            # TODO: 
+            result.append(ip)
+        print 'Paste this to your nmap script: -oA resultfile', (','.join(result))
+        print 'Then give the resulting xml file to opencollab-nmap-uploader'
+    except (IOError, TypeError, RuntimeError), msg:
+        sys.exit(msg)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+
