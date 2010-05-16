@@ -3,10 +3,19 @@
     @copyright: 2009 Lari Huttunen, Marko Laakso
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import md5
 import os
 import sys
 import cStringIO
+
+def md5obj(data=''):
+    major, minor = sys.version_info[:2]
+    # md5 is deprecated since version 2.5
+    if major > 2 or (major == 2 and minor > 5):
+        import hashlib
+        return hashlib.md5(data)
+
+    import md5
+    return md5.new(data)
 
 def hashFile(f):
     """
@@ -18,20 +27,32 @@ def hashFile(f):
         fobj = file(f,'rb')
         data = fobj.read()
         fobj.close()
-    return md5.new(data).hexdigest()
+    return md5obj(data).hexdigest()
 
-def uploadFile(collab, page_name, file, file_name, progress=False):
-    try:
-        file_obj = open(file, "rb")
-    except IOError, msg:
-        raise IOError(msg)
-    except TypeError:
+def uploadFile(collab, page_name, file, file_name, progress=False, data=None):
+    if file and data:
+        raise RuntimeError("Parameter error: Both file and data specified!")
+
+    if data:
         try:
-            file_obj = cStringIO.StringIO(file)
+            file_obj = cStringIO.StringIO(data)
         except IOError, msg:
             raise IOError(msg)
         except RuntimeError, msg:
             raise RuntimeError(msg)
+    else:
+        try:
+            file_obj = open(file, "rb")
+        except IOError, msg:
+            raise IOError(msg)
+        except TypeError:
+            try:
+                file_obj = cStringIO.StringIO(file)
+            except IOError, msg:
+                raise IOError(msg)
+            except RuntimeError, msg:
+                raise RuntimeError(msg)
+
     parts_uploaded = False
     for current, total in collab.putAttachmentChunked(page_name, file_name, file_obj):
         percent = 100.0 * current / float(max(total, 1))

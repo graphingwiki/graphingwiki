@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2010 Juhani Eronen
+
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re, os, sys, time, socket, optparse
+from subprocess import Popen, PIPE, STDOUT
+
+from opencollab.meta import Metas
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
+from opencollab.util.file import md5obj, uploadFile
+from opencollab.util.wiki import importMetas
+
+def parse_iwlist(data, xml_page):
+    metas = Metas()
+    output_re = re.compile('^\s+Cell \d+ - ', re.M)
+    # Item key has at least two letters, may have spaces, 
+    # ends in a letter
+    item_re = re.compile('^\s+(\w[\w ]*\w):', re.M)
+
+    stations = output_re.split(data)[1:]
+    for station in stations:
+        items = item_re.split(station)
+        address, items = items[0], items[1:]
+        address = address.split(': ')[1].strip()
+
+        while items:
+            key, value = items[:2]
+            items = items[2:]
+
+            value = re.sub('\s+', ' ', value).strip()
+
+            if key in ['Bit Rates']:
+                continue
+
+            if key == 'Frequency':
+                value, extra = value.split('(')
+                extra = extra.split(') ')[1]
+                for subkey in ['Quality', 'Signal level']:
+                    subval = extra.split(subkey)[1].split()[0].strip('=')
+                    if subval:
+                        metas[address][subkey].add(subval.strip())
+
+            elif key == 'ESSID':
+                value = value.strip('"')
+            elif key in  ['Extra', 'IE']:
+                extra = value.split(':')[0].split('=')[0]
+
+                # Needed? Skip values that might be unhelpful
+                if extra in ['Last beacon', 'Unknown', 'tsf']:
+                    continue
+
+                if 'Cipher' in value:
+                    key = 'Encryption'
+
+            if not key or not value:
+                continue
+
+            metas[address][key].add(value.strip())
+
+    return metas
+
+def main():
+    IWLIST_COMMAND = 'iwlist scan'
+
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] [iwlist-output-files]\n       - "
+                     "if output files are omitted, a wlan scan is performed.")
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-P", "--progress", action="store_true",
+                      dest="progress", default=False, 
+                      help="Display file upload progress information." )
+    ops = {}
+    sect = "iwlist"
+    iwlist_files=[]
+    failed = []
+    ops = parseOptions(parser, sect, template=True, category=True)
+    progress = ops[sect]["progress"]
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    template = ops[sect]["template"]
+    if template is None:
+        template = "IdentityTemplate"
+    category = ops[sect]["category"]
+    if category is None:
+        category = "CategoryIdentity"
+    command = IWLIST_COMMAND
+    replace = ops[sect]["lasteditwins"] 
+    args = ops[sect]["args"]
+
+    while True:
+        try:
+            collab = CLIWiki(**ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+
+    timestamp = ''
+    # If no file args, do the scan now
+    if not len(args):
+        if verbose:
+            print 'NOTE: scanning with command "%s"' % (command)
+        timestamp = time.time()
+        p = Popen(command, shell=True, 
+                  stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+        files = [p.stdout]
+    else:
+        files = [file(x, 'r') for x in args]
+
+    for i, inputfile in enumerate(files):
+        data = inputfile.read()
+        inputfile.close()
+        xml_page = md5obj(data).hexdigest()
+
+        # Retain real file name information, if available
+        fname = "%s.txt" % xml_page
+        if args:
+            fname = os.path.basename(args[i])
+            timestamp = os.stat(fname).st_ctime
+
+        if verbose:
+            print "NOTE: Parsing", fname
+
+        metas = parse_iwlist(data, xml_page)
+
+        if category is not None:
+            for page in metas:
+                metas[page]["category"].add(category)
+
+        metas[xml_page]['TYPE'].add('iwlist scan')
+        metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % timestamp)
+
+        if verbose:
+            print "NOTE: Importing metas to", url
+        failed = importMetas(collab, metas, template, verbose)
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:", page, repr(metas[page])
+                else:
+                    print "ERROR uploading:", page
+
+        uploadFile(collab, xml_page, '', fname, progress, data=data)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."

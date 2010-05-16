@@ -136,12 +136,12 @@ class Wiki(object):
         return True    
 
 import re
-import md5
 import sys
 import random
 import getpass
 
 from meta import Meta 
+from util.file import md5obj
 
 class GraphingWiki(Wiki):
     DEFAULT_CHUNK = 256 * 1024
@@ -188,7 +188,7 @@ class GraphingWiki(Wiki):
             if not data:
                 break
 
-            digest = md5.new(data).hexdigest()
+            digest = md5obj(data).hexdigest()
             digests.append(digest)
 
             length = len(data)
@@ -224,7 +224,7 @@ class GraphingWiki(Wiki):
     def getAttachmentChunked(self, page, filename, chunkSize=DEFAULT_CHUNK):
         digest, size = self.getAttachmentInfo(page, filename)
 
-        dataDigest = md5.new()
+        dataDigest = md5obj()
         current = 0
 
         while True:
