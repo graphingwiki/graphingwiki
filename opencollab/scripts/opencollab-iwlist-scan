@@ -131,12 +131,19 @@ def main():
 
         metas = parse_iwlist(data, xml_page)
 
-        if category is not None:
-            for page in metas:
-                metas[page]["category"].add(category)
-
         metas[xml_page]['TYPE'].add('iwlist scan')
         metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % timestamp)
+        metas[xml_page]['gwikicategory'] = ['CategoryScan']
+        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
+
+        if category is not None:
+            for page in metas:
+                if not 'gwikicategory' in metas[page]:
+                    metas[page]["gwikicategory"].add(category)
+        if template is not None:
+            for page in metas:
+                if not 'gwikitemplate' in metas[page]:
+                    metas[page]["gwikitemplate"].add(template)
 
         if verbose:
             print "NOTE: Importing metas to", url

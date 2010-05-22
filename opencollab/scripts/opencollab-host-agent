@@ -6,12 +6,9 @@ import optparse
 from opencollab.wiki import CLIWiki
 from opencollab.meta import Meta, Func
 
-from opencollab.util.config import parseConfig
-
+from opencollab.util.config import parseOptions
 
 def dfinfo(info):
-
-
    df = '/bin/df'
    w,r = os.popen2('%s -lk' %(df))
    w.close()
@@ -53,6 +50,7 @@ def ifconfiginfo(info):
       info.append(("ifconfig-ip", ip))
 
    return info
+
 def getOSXInfo():
    info = []
    info = dfinfo(info)
@@ -67,7 +65,8 @@ def getOSXInfo():
        ".*?Total Number Of Cores: ([^\n].*?)\n" + \
        ".*?Memory: ([^\n].*?)\n" + \
        ".*?Serial Number: ([^\n].*?)\n" 
-   (model, processor, cpus, memory, serial) = re.findall(hardwarere,system_profiler_output,re.S)[0]
+   (model, processor, cpus, memory, serial) = \
+       re.findall(hardwarere,system_profiler_output,re.S)[0]
 
    info.append(("cores", cpus))
    info.append(("cpu model", processor))
@@ -78,7 +77,6 @@ def getOSXInfo():
    return info
 
 def getLinuxInfo():
-
    info = []
    cpuinfo = open('/proc/cpuinfo','r').read()
    cpu_number = re.findall("cpu cores\s+:(.*)",cpuinfo)[0]
@@ -99,41 +97,38 @@ def getLinuxInfo():
    info = ifconfiginfo(info)
 
    return info
+
 def main():
-
     parser = optparse.OptionParser()
-
-    parser.add_option( "-c", "--config",
-                       action="store",
-                       type="string", dest="config",
-                       help="Config file path.")
-
-    parser.add_option("-u", "--url",
-        action="store",
-        type="string", dest="url", default=None,
-        metavar="COLLAB-URL",
-        help="COLLAB-URL to connect to.")
-
-    options, args = parser.parse_args()
     parser.set_usage("%prog [options] <my hostname>")
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", 
+        help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
 
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "opencollab-host-agent")
-
-  
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-        
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-
+    ops = {}
+    sect = "opencollab-host-agent"
+    ops = parseOptions(parser, sect, template=True, category=True)
+    url = ops["creds"]["url"]
+    verbose = ops[sect]["verbose"]
+    replace = ops[sect]["lasteditwins"] 
+    args = ops[sect]["args"]
     if len(args) != 1:
-        sys.stderr.write("Please define hostname\n")
-        sys.exit(1)
+        parser.error("Please define hostname\n")
+
+    if verbose:
+        print "Authenticating to: " + repr(url)
+    while True:
+        try:
+            collab = CLIWiki(**ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
+        print "NOTE: Performing lookups."
 
     page = args[0]
     if sys.platform == 'linux2':
@@ -144,24 +139,17 @@ def main():
     else:
        sys.stderr.write("Unsupported platform %s." % (sys.platform)) 
 
-    
     metas = Meta()
     metas['platform'] = sys.platform
-
        
     for key,value in info:
        metas[key].add(value)
-    metas["category"].add("CategoryContainer")
+    metas["gwikicategory"].add("CategoryContainer")
 
-    collab.setMeta(page,metas)
+    collab.setMeta(page, metas, replace=replace)
     
 if __name__ == "__main__":
     try:
        main()
     except KeyboardInterrupt:
        print "Script interrupted via CTRL-C."
-
-					        
-
-
-

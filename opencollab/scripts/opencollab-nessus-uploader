@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2009 Juhani Eronen, based opencollab-nmap-uploader
+    @copyright: 2009, 2010 Juhani Eronen, based opencollab-nmap-uploader
     by Lari Huttunen 
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -14,14 +14,129 @@ from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
 
-def getText(nodelist):
+SEVERITY_MAPPING = {'1': 'Note',
+                    '2': 'Warning',
+                    '3': 'Hole'}
+
+def plugin_19506(nessusrun_page, data, metas, attach):
+    """
+    Parse Nessus scan data given by plugin 19506
+    """
+
+    for line in re.split('[\t\n]+', data):
+        line = line.strip()
+        if not ' : ' in line:
+            continue
+
+        key, value = line.split(' : ')
+
+        # Filters
+        if key.lower() in ['scan duration']:
+            continue
+
+        if 'ip' in key.lower():
+            value = '[[%s]]' % value
+        metas[nessusrun_page][key].add(value)
+
+    return '', metas, attach
+
+def get_synopsis(data):
+    """
+    The newer Nessus plugins have synopsis data in their output.
+    """
+    syn_re = re.compile('Synopsis :\n\n(.+?)\n\n', re.S)
+    synopsis = syn_re.findall(data)
+    if not data:
+        return ''
+    synopsis = ' '.join(synopsis).replace('\n', ' ').strip()
+    risk = re.findall('Risk factor :\n\n(.+?)[ \n]', data)
+    if not risk:
+        return synopsis
+    return '%s (Risk %s) ' % (synopsis, ' '.join(risk))
+
+def list_plugins():
+    return [x.split('_')[-1] for x in globals() if x.startswith('plugin_')]
+
+def getText(nodelist, strip=True):
     rc = ""
     if not nodelist:
         return rc
     for node in nodelist[0].childNodes:
         if node.nodeType == node.TEXT_NODE:
             rc = rc + node.data
-    return rc
+    if strip:
+        return rc.replace('\n', ' ').strip()
+    return rc.strip()
+
+def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp, 
+               service, portString, severities, 
+               severity=None, cves=None, addon=None):
+    # Skip Nessus GPL nag in old version
+    if id in ['9999']:
+        return metas, attach
+
+    if severity in SEVERITY_MAPPING:
+        severity = SEVERITY_MAPPING[severity]
+
+    # Skip unwanted (but not scan info)
+    if not severity in severities and not id in ['19506']:
+        return metas, attach
+
+    # Grab the description, modify a bit
+    infoData = '\n'.join(x.strip() for x in infoData.split('\n'))
+    infoData = infoData.strip().replace('\\n', '\n')
+
+    if id in list_plugins():
+        infoData, metas, attach = \
+            globals()['plugin_%s' % id](nessusrun_page, infoData, metas, attach)
+
+    inforows = infoData.split('\n')
+    # Strip out "PORT OPEN" reports - this seems to do the trick
+    if not infoData or infoData == 'PORT' or \
+            (len(inforows) < 4 and 
+             (' running on this port' in inforows[0] or
+              ' answered on this port' in inforows[0])):
+        return metas, attach
+
+    # Grab CVE:s (if not supplied) from info, add them as links
+    if not cves:
+        cves = re.findall('((?:CVE|CAN)-\d{4}-\d{4})', infoData)
+    cve_links = ["[[%s]]" % x for x in cves]
+    for cve in cve_links:
+        metas[hostIp]["Nessus Vulnerability"].add(cve)
+
+    # Add informational severity descriptions with
+    # longer nessus descriptions as attachments
+    attach_name = "nessus-%s.txt" % id
+
+    infoData = infoData.encode('utf-8')
+    attach.setdefault(hostIp, dict())[attach_name] = infoData
+
+    vulnstring = "[[attachment:%s]]" % (attach_name)
+    if service and portString:
+        vulnstring = "%s: %s on %s" % (vulnstring, service, portString)
+    elif service:
+        vulnstring = "%s: %s" % (vulnstring, service)
+    elif portString: 
+        vulnstring = "%s: %s" % (vulnstring, portString)
+
+    if not addon:
+        addon = get_synopsis(infoData)
+
+    if addon:
+        vulnstring = addon + vulnstring
+
+    # Include also external links to MITRE vuln database
+    if cves:
+        mitre = "http://cve.mitre.org/cgi-bin/cvename.cgi?name="
+        cve_links = ["[[%s%s|%s]]" % (mitre, x, x) 
+                     for x in cves]
+
+        vulnstring += " (%s)" % ", ".join(cve_links)
+
+    metas[hostIp]["Nessus %s" % severity].add(vulnstring)
+
+    return metas, attach    
 
 def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
     try:
@@ -55,7 +170,7 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
 
     stylesheet_data = open(stylesheet).read()
 
-    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nesssus.xsl"'
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nessus.xsl"'
     node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
 
     xml_data = doc.toxml()
@@ -64,7 +179,192 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "nessus.xsl", stylesheet_data, True)
     return True
 
-def parse_xml(file, nessusrun_page):
+def select_nessus_parser(file, nessusrun_page, severities):
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+
+    # Various Nessus formats encountered
+    if doc.getElementsByTagName('info'):
+        return parse_xml_old(doc, nessusrun_page, severities)
+    if doc.getElementsByTagName('NessusClientData'):
+        return parse_xml_v1(doc, nessusrun_page, severities)
+    if doc.getElementsByTagName('NessusClientData_v2'):
+        return parse_xml_v2(doc, nessusrun_page, severities)
+
+    print >>sys.stderr, "Nessus format not supported!"
+    sys.exit(1)
+
+def parse_xml_v1(doc, nessusrun_page, severities):
+    metas = Metas()
+    attach = dict()
+
+    results = doc.getElementsByTagName('ReportHost')
+    for result in results:
+        hostIp = getText(result.getElementsByTagName('HostName'))
+
+        startText = getText(result.getElementsByTagName('startTime'))
+        endText = getText(result.getElementsByTagName('stopTime'))
+
+        metas[hostIp]['Nessus Start'].add(startText)
+        metas[hostIp]['Nessus End'].add(endText)
+
+        nbName = result.getElementsByTagName('netbios_name')
+        if nbName:
+            metas[hostIp]['NBNAME'].add(getText(nbName))
+
+        mac = result.getElementsByTagName('mac_addr')
+        if mac:
+            metas[hostIp]['Packet vertical'].add(getText(mac))
+
+        dns = result.getElementsByTagName('dns_name')
+        if dns:
+            metas[hostIp]['PTR'].add(getText(dns))
+
+        osname = result.getElementsByTagName('os_name')
+        if osname:
+            metas[hostIp]['Nessus OS'].add(getText(osname))
+
+        reportElements = result.getElementsByTagName('ReportItem')
+        for item in reportElements:
+            port = item.getElementsByTagName('port')
+
+            service = ''
+            if port:
+                portString = getText(port)
+
+            if portString.startswith('general'):
+                portString = ''
+
+            if portString:
+                service = portString.split()
+                if len(service) > 1:
+                    service = service[0]
+                else:
+                    service = ''
+
+                portString = portString.split('(')[-1].rstrip(')')
+                portString = ':'.join(x.upper() for x 
+                                      in reversed(portString.split('/')))
+
+                if portString:
+                    metas[hostIp]['listens to'].add('[[%s]]' % portString)
+
+            id = getText(item.getElementsByTagName('pluginID'))
+
+            data = getText(item.getElementsByTagName('data'))
+
+            # Grab the severity
+            severity = getText(item.getElementsByTagName('severity'))
+            severity = severity.split()[-1]
+            
+            metas, attach = parse_info(nessusrun_page, metas, attach, data, id, 
+                                       hostIp, service, portString, severities,
+                                       severity=severity)
+
+
+    return metas, attach
+
+
+def parse_xml_v2(doc, nessusrun_page, severities):
+    metas = Metas()
+    attach = dict()
+    
+    results = doc.getElementsByTagName('ReportHost')
+    for result in results:
+        hostIp = result.getAttribute('name')
+
+        info = result.getElementsByTagName('HostProperties')[0]
+        for tag in info.getElementsByTagName('tag'):
+            name = tag.getAttribute('name')
+            key = ''
+            links = False
+
+            if name == 'HOST_START':
+                key = 'Nessus Start'
+            elif name == 'HOST_END':
+                key = 'Nessus End'
+            elif name == 'operating-system':
+                key = 'Nessus OS'
+            elif name == 'mac-address':
+                key = 'Packet vertical'
+                links = True
+            elif name == 'fqdn':
+                key = 'PTR'
+                links = True
+            elif name == 'netbios-name':
+                key = 'NBNAME'
+                links = True
+
+            if key:
+                for item in tag.childNodes:
+                    values = [x.strip() 
+                              for x in item.data.split('\n') 
+                              if x.strip()]
+                    if links:
+                        values = ["[[%s]]" % x for x in values]
+ 
+                    metas[hostIp][key].update(values)
+
+        reportElements = result.getElementsByTagName('ReportItem')
+        for item in reportElements:
+            port = item.getAttribute('port')
+            proto = item.getAttribute('protocol')
+
+            service = ''
+            svc_name = item.getAttribute('svc_name')
+            if svc_name not in ['general']:
+                service = svc_name
+
+            portString = ''
+            if port not in ['0']:
+                portString = "[[%s:%s]]" % (proto.upper(), port)
+                metas[hostIp]['listens to'].add(portString)
+            
+            id = item.getAttribute('pluginID')
+
+            # Port scan information - no need for further processing
+            if id in ['0']:
+                continue
+
+            severity = item.getAttribute('severity')
+
+            synopsis = getText(item.getElementsByTagName('synopsis'))
+            solution = getText(item.getElementsByTagName('solution'))
+
+            description = getText(
+                item.getElementsByTagName('description'), False)
+            output = getText(
+                item.getElementsByTagName('plugin_output'), False)
+            seealso = getText(item.getElementsByTagName('see_also'))
+
+            version = getText(item.getElementsByTagName('plugin_version'))
+            plugindate = getText(item.getElementsByTagName(
+                    'plugin_modification_date'))
+            if plugindate:
+                version = "%s %s" % (version, plugindate)
+            
+            data = '\n\n'.join([x for x in 
+                                [synopsis, solution, description, 
+                                 seealso, output, version]
+                                if x])
+            
+            cves = getText(item.getElementsByTagName('cve')).split()
+            risk = getText(item.getElementsByTagName('risk_factor'))
+            if risk not in ['']:
+                risk = '%s (Risk %s) ' % (synopsis, risk)
+            else:
+                risk = synopsis
+
+            metas, attach = parse_info(nessusrun_page, metas, attach, data, id, 
+                                       hostIp, service, portString, severities, 
+                                       severity=severity, cves=cves, addon=risk)
+
+    return metas, attach
+
+def parse_xml_old(doc, nessusrun_page, severities):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
@@ -72,11 +372,6 @@ def parse_xml(file, nessusrun_page):
     metas = Metas()
     attach = dict()
 
-    try:
-        doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e) 
-        sys.exit(error)
     results = doc.getElementsByTagName('result')
     for result in results:
         hosts = result.getElementsByTagName('host')
@@ -130,85 +425,79 @@ def parse_xml(file, nessusrun_page):
                 for info in informationElements:
                     id = getText(info.getElementsByTagName('id'))
 
-                    # Skip common Nessus caveats
-                    if id in ['19506', '9999']:
-                        continue
+                    data = getText(info.getElementsByTagName('data'))
 
                     # Grab the severity
                     severity = getText(info.getElementsByTagName('severity'))
                     severity = severity.split()[-1]
 
-                    # Grab the description, modify a bit
-                    infoData = getText(info.getElementsByTagName('data'))
-                    infoData = '\n'.join(x.strip() for x in 
-                                         infoData.split('\n'))
-                    infoData = infoData.strip()
+                    metas, attach = parse_info(nessusrun_page, metas, attach, 
+                                               data, id, hostIp, service, 
+                                               portString, severities,
+                                               severity=severity)
 
-                    # Grab CVE:s from info, add them as links
-                    cves = re.findall('((?:CVE|CAN)-\d{4}-\d{4})', infoData)
-                    cve_links = ["[[%s]]" % x for x in cves]
-                    for cve in cve_links:
-                        metas[hostIp]["Nessus Vulnerability"].add(cve)
-
-                    # Add informational severity descriptions with
-                    # longer nessus descriptions as attachments
-                    attach_name = "nessus-%s.txt" % id
-
-                    try:
-                        infoData = infoData.decode('iso-8859-1').encode('utf-8')
-                    except:
-                        pass
-
-                    attach.setdefault(hostIp, dict())[attach_name] = infoData
-
-                    vulnstring = "[[attachment:%s]]: %s on %s" % \
-                        (attach_name, service, portString)
-
-                    # Include also external links to MITRE vuln database
-                    if cves:
-                        mitre = "http://cve.mitre.org/cgi-bin/cvename.cgi?name="
-                        cve_links = ["[[%s%s|%s]]" % (mitre, x, x) 
-                                     for x in cves]
-
-                        vulnstring += " (%s)" % ", ".join(cve_links)
-
-                    metas[hostIp]["Nessus %s" % severity].add(vulnstring)
-
-    # Get general statistics
+    # Get general statistics, the force was not strong with the 19506
+    # plugin in the old version
     info = doc.getElementsByTagName('info')[0]
-    metas[nessusrun_page]['Version'].add(getText(info.getElementsByTagName('version')))
+    metas[nessusrun_page]['Version'].add(
+        getText(info.getElementsByTagName('version')))
     hostinfo = info.getElementsByTagName('host')[0]
-    metas[nessusrun_page]['Host'].add(getText(hostinfo.getElementsByTagName('name')))
-    metas[nessusrun_page]['OS Name'].add(getText(hostinfo.getElementsByTagName('osname')))
-    metas[nessusrun_page]['OS Version'].add(getText(hostinfo.getElementsByTagName('osvers')))
+    metas[nessusrun_page]['Host'].add(
+        getText(hostinfo.getElementsByTagName('name')))
+    metas[nessusrun_page]['OS Name'].add(
+        getText(hostinfo.getElementsByTagName('osname')))
+    metas[nessusrun_page]['OS Version'].add(
+        getText(hostinfo.getElementsByTagName('osvers')))
     dateinfo = info.getElementsByTagName('date')[0]
-    metas[nessusrun_page]['Run Started'].add(getText(dateinfo.getElementsByTagName('start')))
-    metas[nessusrun_page]['Run Ended'].add(getText(dateinfo.getElementsByTagName('end')))
-
+    metas[nessusrun_page]['Run Started'].add(
+        getText(dateinfo.getElementsByTagName('start')))
+    metas[nessusrun_page]['Run Ended'].add(
+        getText(dateinfo.getElementsByTagName('end')))
+    
     return metas, attach
 
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] NESSUS-XML-FILES")
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", 
+        help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, help="Display file upload progress information." )
+        dest="progress", default=False, 
+        help="Display file upload progress information." )
+    parser.add_option("-s", "--severity", dest="severities", 
+                      help="A comma-separated list of severities to include: "+
+                      ", ".join("%s=%s" % (x, SEVERITY_MAPPING[x]) 
+                                for x in SEVERITY_MAPPING))
+
     ops = {}
     sect = "nessus-uploader"
     nessus_files=[]
     failed = []
+    severities = SEVERITY_MAPPING.values()
     ops = parseOptions(parser, sect, template=True, category=True)
     progress = ops[sect]["progress"]
+    if ops[sect]["severities"]:
+        severities = set()
+        for severity in ops[sect]["severities"].split(','):
+            if severity in SEVERITY_MAPPING:
+                severities.add(SEVERITY_MAPPING[severity])
+            else:
+                severities.add(severity)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
-        template = "NessusTemplate"
+        template = "IdentityTemplate"
     category = ops[sect]["category"]
     if category is None:
-        template = "CategoryNessus"
+        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"] 
     args = ops[sect]["args"]
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
+
     while True:
         try:
             collab = CLIWiki(**ops['creds'])
@@ -218,23 +507,36 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break
+
     if verbose:
         print "NOTE: Processing input files."
     for arg in args:
         nessus_files.append(arg)
     for file in nessus_files:
         xml_page = hashFile(file)
+
         fname = os.path.basename(file)
         if verbose:
             print "NOTE: Parsing", file
-        metas, attach = parse_xml(file, xml_page)
+
+        metas, attach = select_nessus_parser(file, xml_page, severities)
+
+        metas[xml_page]['TYPE'].add('Nessus Run')
+        metas[xml_page]['gwikicategory'] = ['CategoryNessus', 'CategoryScan']
+        metas[xml_page]['gwikitemplate'] = ['NessusTemplate']
+
         if category is not None:
             for page in metas:
-                metas[page]["category"].add(category)
-        metas[xml_page]['TYPE'].add('Nessus Run')
+                if not 'gwikicategory' in metas[page]:
+                    metas[page]["gwikicategory"].add(category)
+        if template is not None:
+            for page in metas:
+                if not 'gwikitemplate' in metas[page]:
+                    metas[page]["gwikitemplate"].add(template)
+
         if verbose:
             print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, template, verbose)
+        failed = importMetas(collab, metas, '', verbose, replace)
         if failed:
             for page in failed:
                 if verbose:
@@ -242,7 +544,8 @@ def main():
                 else:
                     print "ERROR uploading:", page
         if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+            print "NOTE: Fixing stylesheet and uploading", file, \
+                "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
@@ -250,11 +553,11 @@ def main():
             uploadFile(collab, xml_page, file, fname, progress)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, attach[page][fname], fname, progress)
+                uploadFile(collab, page, '', fname, progress, 
+                           attach[page][fname])
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

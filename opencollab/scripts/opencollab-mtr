@@ -56,6 +56,9 @@ def run_trace(host, mtr, count):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-m", "--mtr-path",
         dest="mtrpath", default=None, metavar="MTR-PATH",
         help=("MTR-PATH. defaults to /usr/bin/mtr."))
@@ -74,6 +77,10 @@ def main():
     template = ops[sect]["template"]
     if template is None:
         template = "IdentityTemplate"
+    category = ops[sect]["category"]
+    if category is None:
+        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"] 
     mtrpath= ops[sect]["mtrpath"]
     if mtrpath is None:
         mtrpath = "/usr/bin/mtr"
@@ -105,7 +112,7 @@ def main():
 	   metas.update(shred_trace(host, trace)) 
     if verbose:
         print "Importing identities to collab."
-    failed = importMetas(collab, metas, template, verbose, replace=False)
+    failed = importMetas(collab, metas, template, verbose, replace)
     if failed:
         for page in failed:
             if verbose:
