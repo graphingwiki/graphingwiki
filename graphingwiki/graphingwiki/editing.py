@@ -717,6 +717,13 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {'a': [u'k'], 'gwikicategory': []},
     ...               {'a': [u'', 'b'], 'gwikicategory': []})
     u' a:: b\n{{{\n#!wiki comment\n}}}\n b::\n'
+
+    Metas should not have ':: ' as it could cause problems with dl markup
+    >>> replace_metas(request, 
+    ...               u' test:: 1\n test:: 2', 
+    ...               {}, 
+    ...               {u"koo:: ": [u"a"]})
+    u' test:: 1\n test:: 2\n koo:: a\n'
     """
 
     text = text.rstrip()
@@ -745,6 +752,9 @@ def replace_metas(request, text, oldmeta, newmeta):
     # value b cannot cluster as the key is there no more
     new_metas = dict()
     for key, values in newmeta.iteritems():
+        # Keys should not end in ':: ' as this markup is reserved
+        key = key.rstrip(':: ').strip()
+
         if len(newmeta.get(key, [])) > len(oldmeta.get(key, [])):
             if values[0] == '':
                 values.reverse()
@@ -883,7 +893,7 @@ def set_metas(request, cleared, discarded, added):
         
         # Template clears might make sense at some point, not implemented
         if TEMPLATE_KEY in pageCleared:
-            del pageCleared[TEMPLATE_KEY]
+            pageCleared.remove(TEMPLATE_KEY)
         # Template changes might make sense at some point, not implemented
         if TEMPLATE_KEY in pageDiscarded:
             del pageDiscarded[TEMPLATE_KEY]
