@@ -1,65 +1,63 @@
 #!/usr/bin/python
 
-import sys,re,os
+import sys, re, os, socket
 import optparse
 
-from opencollab.wiki import CLIWiki
-from opencollab.meta import Meta, Func
+from subprocess import Popen, PIPE
+
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.meta import Metas, Func
 
 from opencollab.util.config import parseOptions
 
-def dfinfo(info):
-   df = '/bin/df'
-   w,r = os.popen2('%s -lk' %(df))
-   w.close()
-   i=0
-   for line in r.readlines():
-      if i == 0:
-         i += 1
+# Lists of possible commands to try per section
+COMMANDS = {'darwin': {'info': ['system_profiler SPHardwareDataType'],
+                       'df': ['/bin/df -lk'],
+                       'ifconfig': ['/bin/ifconfig -a'],
+                       'arp': ['arp -a'],
+                       },
+            'linux': {'info': ['cat /proc/cpuinfo'],
+                      'df': ['/bin/df -lk'],                      
+                      'ifconfig': ['/bin/ifconfig -a', '/sbin/ifconfig -a'],
+                      'arp': ['arp -a'],
+                      'netstat': ['netstat -putoan'],
+                      'route': ['netstat -r'],
+                      },
+            }
+
+def try_commands(plat, section):
+   if not plat in COMMANDS or not section in COMMANDS[plat]:
+      return None
+
+   for command in COMMANDS[plat][section]:
+      p = Popen(command, shell=True, stdin=PIPE, 
+                stdout=PIPE, stderr=PIPE, close_fds=True)
+      p.stdin.close()
+      # Assuming that non-zero error codes are not good, so continue
+      # trying the next commands
+      if p.wait() != 0:
          continue
-      columns = re.split("\s+",line)
-      device = columns[0]
-      size = columns[3]
-      full = columns[4]
-      mountpoint = columns[5]
-      info.append(("disk-%s-device" % str(i), device))
-      info.append(("disk-%s-size" % str(i), size))
-      info.append(("disk-%s-full" % str(i) ,full))
 
-      i += 1
+      return p.stdout
+
+   return None
+
+def error(str, fatal=False):
+   print >>sys.stderr, str
+   if fatal:
+      sys.exit(1)
+
+def getinfo_darwin(info, page, plat='darwin', iface=''):
+   info = dfinfo(info, plat)
+   info = ifconfiginfo(info, plat)
+
+   r = try_commands(plat, 'info')
+
+   if not r:
+      error("ERROR: Could not get cpuinfo", fatal=True)
+
+   system_profiler_output = r.read()
    r.close()
-   return info
-
-def ifconfiginfo(info):
-   ## ifconfig
-   if os.path.exists('/sbin/ifconfig'): ifconfig = '/sbin/ifconfig'
-   if os.path.exists('/bin/ifconfig'): ifconfig = '/bin/ifconfig'
-   w,r = os.popen2('%s -a' %(ifconfig))
-   ifconfig_output = r.read()
-   r.close()
-   w.close()
-   
-   ipregexp = "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
-   macregexp = "([^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2})"
-   macs= re.findall(macregexp,ifconfig_output,re.S)
-   ips = re.findall(ipregexp,ifconfig_output,re.S)
-
-   for mac in macs: 
-      info.append(("ifconfig-mac",mac))
-   for ip in ips:     
-      info.append(("ifconfig-ip", ip))
-
-   return info
-
-def getOSXInfo():
-   info = []
-   info = dfinfo(info)
-   info = ifconfiginfo(info)
-
-   w,r = os.popen2('system_profiler SPHardwareDataType')
-   system_profiler_output=r.read()
-   r.close()
-   w.close()
    hardwarere = "Model Identifier:\s(\S+).*?"+ \
        "Processor Name: ([^\n].*?)\n" + \
        ".*?Total Number Of Cores: ([^\n].*?)\n" + \
@@ -68,43 +66,183 @@ def getOSXInfo():
    (model, processor, cpus, memory, serial) = \
        re.findall(hardwarere,system_profiler_output,re.S)[0]
 
-   info.append(("cores", cpus))
-   info.append(("cpu model", processor))
-   info.append(("Model", model))
-   info.append(("Total memory", memory))
-   info.append(("Serial", serial))
+   info[page]["cores"].add(cpus)
+   info[page]["cpu model"].add(processor)
+   info[page]["Model"].add(model)
+   info[page]["Total memory"].add(memory)
+   info[page]["Serial"].add(serial)
 
    return info
 
-def getLinuxInfo():
-   info = []
-   cpuinfo = open('/proc/cpuinfo','r').read()
-   cpu_number = re.findall("cpu cores\s+:(.*)",cpuinfo)[0]
-   cpu_model = re.findall("model name\s+:(.*)",cpuinfo)[0]
+def getinfo_linux(info, page, plat='linux', iface=''):
+   r = try_commands(plat, 'info')
 
-   info.append(('cores', cpu_number))
-   info.append(('cpu model', cpu_model))
-   
+   if not r:
+      error("ERROR: Could not get cpuinfo", fatal=True)
+
+   cpuinfo = r.read()
+   cpu_number = re.findall("cpu cores\s+:(.*)", cpuinfo)[0].strip()
+   cpu_model = re.findall("model name\s+:(.*)", cpuinfo)[0].strip()
+
+   info[page]['cores'].add(cpu_number)
+   info[page]['cpu model'].add(re.sub('\s+', ' ', cpu_model))
    
    meminfo = open('/proc/meminfo','r').read()
-   memtotal = re.findall("MemTotal:\s+(.*)",meminfo)[0]
+   memtotal = re.findall("MemTotal:\s+(.*)", meminfo)[0].strip()
 
-   info.append(('Total memory', memtotal))
+   info[page]['Total memory'].add(memtotal)
 
    ## df
 
-   info = dfinfo(info)
-   info = ifconfiginfo(info)
+   info = dfinfo(info, page, plat)
+   info = ifconfiginfo(info, page, plat)
+   info = netstatinfo(info, page, plat, iface)
+   info = netstatinfo(info, page, plat, iface)
+
+   return info
+
+def get_platform():
+   plat = sys.platform
+   if plat in ['win32', 'cygwin']:
+      plat = 'win32'
+   elif plat[-1].isdigit():
+      plat = plat[:-1]
+
+   return plat
+
+def get_platfunc():
+   plat = get_platform()
+   platfunc = "getinfo_%s" % (plat)
+   if platfunc in globals():
+      return plat, globals()[platfunc]
+
+   return plat, None
+
+def netstatinfo(info, page, plat, iface):
+   r = try_commands(plat, 'netstat')
+
+   if not r:
+      error("ERROR: Could not get netstat info")
+      return info
+
+   data = r.readlines()
+
+   # Take all lines with 
+   lines = [x.strip() for x in data if x and 
+            x.split()[0].lower() in ['tcp', 'udp', 'tcp6', 'udp6']]
+
+   ips = [x.lstrip('[').rstrip(']') for x in info[page]['ifconfig-ip']]
+
+   if iface:
+      ips.extend(iface)
+
+   for line in lines:
+      if line.startswith('udp'):
+         _, _, _, src, dst, proc, _, _ = re.split('\s+', line)
+         proto = 'UDP'
+      else:
+         _, _, _, src, dst, state, proc, _, _ = re.split('\s+', line)
+         proto = 'TCP'
+
+      srcport = src.split(':')[-1]
+      srcip = ':'.join(src.split(':')[:-1])
+      dstport = dst.split(':')[-1]
+      dstip = ':'.join(dst.split(':')[:-1])
+
+      # Skip intra-host connections
+      if srcip in ips and dstip in ips:
+         continue
+
+      if proto == 'UDP':
+         if srcip in ips or srcip in ['::', '::1', '0.0.0.0']:
+            state = 'LISTEN'
+
+      if state == 'LISTEN':
+         listen = '[[%s]] [[%s:%s]]' % (srcip, proto, srcport)
+         if proc != '-':
+            listen = "%s (%s)" % (listen, proc.split('/')[-1])
+         info[page]['listens to'].add(listen)
+      else:
+         if srcip in ips:
+            established = '[[%s]] [[%s:%s]]' % (dstip, proto, dstport)
+            info[page]['talks to'].add(established)
+         elif dstip in ips:
+            established = '[[%s]] [[%s:%s]]' % (srcip, proto, srcport)
+            info[dstip]['talks to'].add(established)
+         else:
+            error("Error in netstat line (iface not found), skipping: %s" % 
+                  (line))
+            continue
+
+   return info
+   
+def dfinfo(info, page, plat):
+   r = try_commands(plat, 'df')
+
+   if not r:
+      error("ERROR: Could not get volume info")
+      return info
+
+   # Need to have regexes, because df may have multiline entries, eg.
+   # /dev/mapper/localhost-root
+   #                  x  x  x  x% /x
+   dfline_re = re.compile('^[^\s+].+?\% [/\w]+$', re.M|re.S)
+
+   data = '\n'.join(r.readlines()[1:])
+
+   for i, line in enumerate(dfline_re.findall(data)):
+      if not line.strip():
+         continue
+
+      # Remove extra formatting linefeeds
+      line = line.replace('\n', '')
+      columns = re.split("\s+", line)
+      device = columns[0]
+      size = columns[3]
+      full = columns[4]
+      mountpoint = columns[5]
+
+      infostr = "mount %s device %s size %s/%s" % \
+          (mountpoint, device, size, full)
+
+      info[page]["volume"].add(infostr)
+
+      i += 1
+   r.close()
+   return info
+
+def ifconfiginfo(info, page, plat):
+   r = try_commands(plat, 'ifconfig')
+
+   if not r:
+      error("ERROR: Could not get interface info")
+      return info
+
+   ifconfig_output = r.read()
+   r.close()
+   
+   ipregexp = "addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+   macregexp = "([^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2})"
+   macs= re.findall(macregexp, ifconfig_output,re.S)
+   ips = re.findall(ipregexp, ifconfig_output,re.S)
+
+   for mac in macs: 
+      info[page]["ifconfig-mac"].add("[[%s]]" % mac)
+   for ip in ips:     
+      info[page]["ifconfig-ip"].add("[[%s]]" % (ip))
 
    return info
 
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] <my hostname>")
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", 
         help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-i", "--interface", dest="interface", 
+                      metavar="INTERFACE", action="append",
+                      help="Define additional interface by hand")
 
     ops = {}
     sect = "opencollab-host-agent"
@@ -112,6 +250,7 @@ def main():
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     replace = ops[sect]["lasteditwins"] 
+    iface = ops[sect]["interface"] 
     args = ops[sect]["args"]
     if len(args) != 1:
         parser.error("Please define hostname\n")
@@ -130,21 +269,22 @@ def main():
     if verbose:
         print "NOTE: Performing lookups."
 
+    metas = Metas()
+
     page = args[0]
-    if sys.platform == 'linux2':
-      info  = getLinuxInfo()
+    plat, platInfoFunc = get_platfunc()
+    if not platInfoFunc:
+       sys.stderr.write("Unsupported platform %s." % (plat)) 
 
-    elif sys.platform == 'darwin':
-       info = getOSXInfo()
-    else:
-       sys.stderr.write("Unsupported platform %s." % (sys.platform)) 
+    metas = platInfoFunc(metas, page, plat, iface)
 
-    metas = Meta()
-    metas['platform'] = sys.platform
-       
-    for key,value in info:
-       metas[key].add(value)
-    metas["gwikicategory"].add("CategoryContainer")
+    metas[page]['platform'] = get_platform()
+    metas[page]["gwikicategory"].add("CategoryContainer")
+
+    for page in metas:
+       print page
+       print metas[page]
+    sys.exit(0)
 
     collab.setMeta(page, metas, replace=replace)
     
