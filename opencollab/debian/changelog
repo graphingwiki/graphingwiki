@@ -1,23 +1,30 @@
+opencollab (1859) lucid; urgency=low
+
+  * New release.
+
+ -- Lari Huttunen <debian@huttu.net> Mon, 31 May 2010 07:58:38 +0300
+
 opencollab (1858) hardy; urgency=low
 
   * opencollab-uploader improved with --delete and --dry-run to mimick rsync.
 
- -- Lari Huttunen <debian@huttu.net>  Tue, 16 Mar 2010 11:12:42 +0200
+ -- Lari Huttunen <debian@huttu.net> Tue, 16 Mar 2010 11:12:42 +0200
 
 opencollab (1855) hardy; urgency=low
 
-  * Added /etc/opencollab/opencollab.conf to the packaging. 
+  * Added /etc/opencollab/opencollab.conf to the packaging.
 
- -- Lari Huttunen <debian@huttu.net>  Fri, 12 Mar 2010 11:42:18 +0200
+ -- Lari Huttunen <debian@huttu.net> Fri, 12 Mar 2010 11:42:18 +0200
 
 opencollab (1854) hardy; urgency=low
 
   * First PPA release.
 
- -- Lari Huttunen <debian@huttu.net>  Fri, 12 Mar 2010 11:21:34 +0200
+ -- Lari Huttunen <debian@huttu.net> Fri, 12 Mar 2010 11:21:34 +0200
 
 opencollab (1786) unstable; urgency=low
 
   * Initial Release.
 
- -- Lari Huttunen <debian@huttu.net>  Tue, 05 Jan 2010 15:50:08 +0200
+ -- Lari Huttunen <debian@huttu.net> Tue, 05 Jan 2010 15:50:08 +0200
+
