@@ -1,13 +1,13 @@
 Source: opencollab
-XS-Python-Version: >= 2.5
 Section: python
 Priority: extra
 Maintainer: Lari Huttunen <debian@huttu.net>
 Build-Depends: debhelper (>= 5), python-central, dh-make, dpkg-dev, debconf, perl
-Standards-Version: 3.7.2
+Standards-Version: 3.8.1
+XS-Python-Version: current
 
 Package: opencollab
-XS-Python-Version: >= 2.5
+XB-Python-Version: current
 Architecture: all
 Depends: python (>=2.5), python-ipy 
 Recommends: mtr, multi-resolver

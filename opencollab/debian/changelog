@@ -1,4 +1,10 @@
-opencollab (1859) lucid; urgency=low
+opencollab (1897) lucid; urgency=low
+
+ * Fixed an issue with XS-Python-Version
+
+ -- Lari Huttunen <debian@huttu.net>  Fri, 04 Jun 2010 12:40:01 +0300
+
+opencollab (1896) lucid; urgency=low
 
   * New release.
 
