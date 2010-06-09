@@ -55,7 +55,7 @@ def render(req, f, content, parent='', depth=0):
             result += f.listitem(1, **fileentryfmt)
             link = getAttachUrl(f.page.page_name,
                                 quote(fullname.encode("iso-8859-15"), safe=""),
-                                req, escaped=1)
+                                req)
             result += f.url(1, link, 'attachtree_link')
             result += f.text(entry)
             result += f.url(0)
