@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+collab-auth-ejabberd: Provide external auth for ejabberd against collab
+
+@copyright: 2009-2010 by Mika Seppänen, Marko Laakso
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+from struct import *
+
+import ConfigParser
+
+config = ConfigParser.RawConfigParser()
+config.read('/etc/local/collab/collab.ini')
+
+mylogconf = config.get('collab', 'logconf')
+mybaseinstancedir = config.get('collab', 'baseinstancedir')
+mywikidir = config.get('collab', 'wikidir')
+myjabberdomain = config.get('jabber', 'jabberdomain')
+myconferencedomain = config.get('jabber', 'conferencedomain')
+
+from MoinMoin import log
+log.load_config(mylogconf) 
+logging = log.getLogger("collab-auth")
+logging.debug("collab-auth started")
+
+from MoinMoin.user import User
+from MoinMoin.config import multiconfig
+from MoinMoin.request.request_cli import Request
+
+def initWiki(wiki, pagename, checkWiki=True):
+    mydata = os.path.join(mywikidir, wiki)
+
+    ## this used to check instance is under collab/* URLs not just any instance
+    ## now this just checks there there is config dir for the instance
+    ## --marko
+    if checkWiki:
+        if not os.path.join(mydata, 'config'):
+            return False
+
+    sys.path.insert(0, os.path.join(mydata, 'config'))
+
+    multiconfig._url_re_cache = None
+    multiconfig._farmconfig_mtime = None
+    multiconfig._config_cache = {}
+
+    try:
+        import wikiconfig
+        reload(wikiconfig)
+    except:
+        pass
+
+    try:
+        import farmconfig
+        reload(farmconfig)
+    except:
+        pass
+
+    return Request(pagename=pagename)
+
+def finishWiki(wiki, r):
+    mydata = os.path.join(mywikidir, wiki)
+    r.finish()
+    sys.path.remove(os.path.join(mydata, 'config'))
+
+
+def checkAccess(user, wiki):
+    r = initWiki(wiki, 'AccessGroup')
+    if not r:
+        return False
+
+    isgroup = r.cfg.cache.page_group_regexact.search
+    members = [m for m in r.dicts.members("AccessGroup") if not isgroup(m)]
+   
+    finishWiki(wiki, r)
+    return user in members
+
+def from_ejabberd():
+    input_length = sys.stdin.read(2)
+    (size,) = unpack('>h', input_length)
+    return sys.stdin.read(size).split(':', 1)
+
+def to_ejabberd(bool):
+    answer = 0
+    if bool:
+        answer = 1
+    token = pack('>hh', 2, answer)
+    sys.stdout.write(token)
+    sys.stdout.flush()
+
+def to_ejabberd_string(string):
+    token = pack('>h', len(string)) + string
+    sys.stdout.write(token)
+    sys.stdout.flush()
+
+def convertUsername(username):
+    return username.replace("%", "@")
+
+def auth(args):
+    try:
+        username, server, password = args.split(':', 2)
+    except ValueError:
+        logging.error("got invalid args for auth: %s" % repr(args))
+        return False
+
+    r = initWiki("collab", "FrontPage", False)
+    r.user = User(r, name=convertUsername(username), password=password)
+    result = False
+    if r.user.valid:
+        result = True
+    finishWiki("collab", r)
+    logging.info("auth from user %s@%s returned %s" % (username, server, result))
+    return result
+
+def isuser(args):
+    try:
+        username, server = args.split(':', 1)
+    except ValueError:
+        logging.error("got invalid args for isuser: %s" % repr(args))
+        return False
+
+    r = initWiki("collab", "FrontPage", False)
+    result = User(r, name=convertUsername(username)).exists()
+    finishWiki("collab", r)
+    logging.info("isuser from user %s@%s returned %s" % (username, server, result))
+    return result
+
+def setpass(args):
+    try:
+        username, server, password = args.split(':', 2)
+    except ValueError:
+        logging.error("got invalid args for setpass: %s" % repr(args))
+        return False
+
+    logging.info("setpass from user %s@%s ignored" % (username, server))
+    return False
+
+def getaff(args):
+    try:
+        username, server, room, roomServer = args.split(':', 3)
+    except ValueError:
+        logging.error("got invalid args for getaff: %s" % repr(args))
+        return "none"
+
+    username = convertUsername(username)
+    result = "none"
+    if server != myjabberdomain:
+        result = "none"
+    elif roomServer != myconferencedomain:
+        result = "none"
+    elif checkAccess(convertUsername(username), room.split(".", 1)[0]):
+        result = "member"
+
+    logging.info("getaff from user %s@%s and room %s@%s returned %s" % (username, server, room, roomServer, result))
+    return result
+
+while True:
+    data = from_ejabberd()
+    try:
+        func, args = data
+    except ValueError:
+        logging.error("got invalid data from ejabberd: %s" % repr(data))
+        to_ejabberd(False)
+        continue
+
+    success = False
+    if func == "auth":
+        success = auth(args)
+    elif func == "isuser":
+        success = isuser(args)
+    elif func == "setpass":
+        success = setpass(args)
+    elif func == "getaff":
+        result = getaff(args)
+        to_ejabberd_string(result)
+        continue
+    to_ejabberd(success)
