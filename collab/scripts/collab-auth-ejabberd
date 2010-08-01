@@ -19,6 +19,7 @@ config.read('/etc/local/collab/collab.ini')
 mylogconf = config.get('collab', 'logconf')
 mybaseinstancedir = config.get('collab', 'baseinstancedir')
 mywikidir = config.get('collab', 'wikidir')
+myhtmldir = config.get('collab', 'htmldir')
 myjabberdomain = config.get('jabber', 'jabberdomain')
 myconferencedomain = config.get('jabber', 'conferencedomain')
 
@@ -31,17 +32,19 @@ from MoinMoin.user import User
 from MoinMoin.config import multiconfig
 from MoinMoin.request.request_cli import Request
 
+os.chdir(myhtmldir)
+
 def initWiki(wiki, pagename, checkWiki=True):
     mydata = os.path.join(mywikidir, wiki)
-
-    ## this used to check instance is under collab/* URLs not just any instance
-    ## now this just checks there there is config dir for the instance
-    ## --marko
+    myconfig = os.path.join(mydata, 'config')
+    
+    ## check that instance is under collab/* URLs not just any instance
+    ## and check that there is config a dir for the instance
     if checkWiki:
-        if not os.path.join(mydata, 'config'):
+        if not os.path.isdir(wiki) or not os.path.isdir(myconfig):
             return False
 
-    sys.path.insert(0, os.path.join(mydata, 'config'))
+    sys.path.insert(0, myconfig)
 
     multiconfig._url_re_cache = None
     multiconfig._farmconfig_mtime = None

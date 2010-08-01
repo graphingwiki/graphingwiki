@@ -35,6 +35,7 @@ config.read('/etc/local/collab/collab.ini')
 mylogconf = config.get('collab', 'logconf')
 mybaseinstancedir = config.get('collab', 'baseinstancedir')
 myhtpasswd = config.get('collab', 'htpasswd')
+myhtgroup = config.get('collab', 'htgroup')
 myhtmldir = config.get('collab', 'htmldir')
 mywikidir = config.get('collab', 'wikidir')
 mypiddir = config.get('collab', 'piddir')
@@ -98,6 +99,15 @@ def diffandstore(filename, newtext, dryrun=False):
             f.close()
 
     return msg
+
+###### htgroup
+
+content = ""
+msg = diffandstore(myhtpasswd, content)
+
+if msg:
+    print "Access DIFF for .group:"
+    sys.stdout.writelines(msg)
 
 ###### htpasswd
 
