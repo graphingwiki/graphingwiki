@@ -103,7 +103,7 @@ def diffandstore(filename, newtext, dryrun=False):
 ###### htgroup
 
 content = ""
-msg = diffandstore(myhtpasswd, content)
+msg = diffandstore(myhtgroup, content)
 
 if msg:
     print "Access DIFF for .group:"
