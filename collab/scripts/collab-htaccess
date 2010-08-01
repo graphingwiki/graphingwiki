@@ -106,7 +106,7 @@ content = "dummygroup: dummyuser"
 msg = diffandstore(myhtgroup, content)
 
 if msg:
-    print "Access DIFF for .group:"
+    print "Access DIFF for .htgroup:"
     sys.stdout.writelines(msg)
 
 ###### htpasswd
