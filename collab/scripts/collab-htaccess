@@ -102,7 +102,7 @@ def diffandstore(filename, newtext, dryrun=False):
 
 ###### htgroup
 
-content = ""
+content = "dummygroup: dummyuser"
 msg = diffandstore(myhtgroup, content)
 
 if msg:
