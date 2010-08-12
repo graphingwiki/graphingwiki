@@ -37,7 +37,7 @@ def enum_dirs(arena_dir_glob,arena_user):
             arena_dirs.append(dir)
     return arena_dirs
 
-def upload_files(collab, arena_dirs, marker, template, progress, tools):
+def upload_files(collab, arena_dirs, marker, template, progress, notools):
     flist =[]
     jar = re.compile('\.jar')
     iso = re.compile('iso\.bz2')
@@ -66,7 +66,7 @@ def upload_files(collab, arena_dirs, marker, template, progress, tools):
                 fname = dir + "/" + txt_file
                 page_metas["Text Document"].add('[[attachment:%s]]' % txt_file)
                 changes |= uploadFile(collab,page_name,fname,txt_file,progress)
-        if tools:
+        if notools is None:
             jar_files = filter(jar.search, flist) 
             for jar_file in jar_files:
                 fname = dir + "/" + jar_file
@@ -141,14 +141,14 @@ def main():
     parser.add_option("-P", "--progress", action="store_true",
         dest="progress", default=False, help="Display file upload progress information." )
     parser.add_option("-N", "--no-tools", action="store_true",
-        dest="tools", default=True, help="Do not upload tool files, only release notes." )
+        dest="notools", help="Do not upload tool files, only release notes." )
     parser.set_usage("%prog [options]")
     arena_dirs=[]
     sect = "arena"
     ops = parseOptions(parser, sect, template=True)
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
-    tools = ops[sect]["tools"]
+    notools = ops[sect]["notools"]
     verbose = ops[sect]["verbose"]
     if ops[sect]["template"] is None:
         template = "CodenomiconArenaTemplate"
@@ -181,7 +181,7 @@ def main():
             print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
         if verbose:
             print "Uploading tool data from: " + str(arena_dirs) + " to " + url
-        upload_files(collab, arena_dirs, marker, template, progress, tools)
+        upload_files(collab, arena_dirs, marker, template, progress, notools)
     else:
         print "No source directories from arena dir glob enumeration. Nothing to upload."
 
