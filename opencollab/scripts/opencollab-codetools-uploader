@@ -37,7 +37,7 @@ def enum_dirs(arena_dir_glob,arena_user):
             arena_dirs.append(dir)
     return arena_dirs
 
-def upload_files(collab, arena_dirs, marker, template, progress, notools):
+def upload_files(collab, arena_dirs, marker, template, progress, notools, blacklist, verbose):
     flist =[]
     jar = re.compile('\.jar')
     iso = re.compile('iso\.bz2')
@@ -49,8 +49,15 @@ def upload_files(collab, arena_dirs, marker, template, progress, notools):
     bnf = re.compile('\.bnf')
     html = re.compile('\.html?')
     txt = re.compile('\.txt')
+    blre = re.compile('%s' % blacklist)
     page_metas = Meta()
     for dir in arena_dirs:
+        if blre.search(dir):
+            if verbose:
+                print "NOTE: Blacklisting", dir
+            continue
+        elif verbose:
+            print "NOTE: Handling", dir
         flist = os.listdir(dir)
         tmp = dir.rsplit('/', 2) 
         page_name = "/".join(tmp[1:3])
@@ -138,6 +145,9 @@ def main():
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
+    parser.add_option( "-b", "--blacklist", action="store", 
+            type="string", dest="blacklist", default=None,
+            help="Blacklist string to suppress uploading certain tools, which match the expression.")
     parser.add_option("-P", "--progress", action="store_true",
         dest="progress", default=False, help="Display file upload progress information." )
     parser.add_option("-N", "--no-tools", action="store_true",
@@ -150,6 +160,7 @@ def main():
     url = ops["creds"]["url"]
     notools = ops[sect]["notools"]
     verbose = ops[sect]["verbose"]
+    blacklist = ops[sect]["blacklist"]
     if ops[sect]["template"] is None:
         template = "CodenomiconArenaTemplate"
     else:
@@ -178,10 +189,9 @@ def main():
             print "Removing meta key <" + marker + \
                 "> for pages with changes in attachments"
         if verbose:
-            print "Enumerating Arena dirs from: " + str(arena_dir_glob) + " for " + arena_user
-        if verbose:
-            print "Uploading tool data from: " + str(arena_dirs) + " to " + url
-        upload_files(collab, arena_dirs, marker, template, progress, notools)
+            print "NOTE: Enumerating Arena dirs from: " + str(arena_dir_glob) + " for user " + arena_user
+
+        upload_files(collab, arena_dirs, marker, template, progress, notools, blacklist, verbose)
     else:
         print "No source directories from arena dir glob enumeration. Nothing to upload."
 

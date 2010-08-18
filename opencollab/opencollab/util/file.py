@@ -66,7 +66,7 @@ def uploadFile(collab, page_name, file, file_name, progress=False, data=None):
         if parts_uploaded == True:
             sys.stdout.write("\n")
         else:
-            sys.stdout.write("Already uploaded %s\n" % file_name)
+            sys.stdout.write("NOTE: Already uploaded %s\n" % file_name)
     sys.stdout.flush()
     file_obj.close()
     return parts_uploaded
