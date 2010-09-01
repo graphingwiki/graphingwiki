@@ -220,7 +220,7 @@ def execute(macro, args):
                       macro.formatter.table(1))
         if silent:
             t_cell(macro, ["%s" % _("No matches")])
-        else
+        else:
             t_cell(macro, ["%s '%s'" % (_("No matches for"), args)])
         request.write(macro.formatter.table(0) + 
                       u'</div>')
