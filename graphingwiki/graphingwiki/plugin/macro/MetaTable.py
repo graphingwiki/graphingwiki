@@ -194,7 +194,13 @@ def execute(macro, args):
     if args is None:
         args = ''
 
+    silent = False
     editlink = True
+
+    # loathful positional stripping (requires specific order of args), sorry
+    if args.strip().endswith('gwikisilent'):
+        silent = True
+        args = ','.join(args.split(',')[:-1])
 
     if args.strip().endswith('noeditlink'):
         editlink = False
@@ -212,7 +218,10 @@ def execute(macro, args):
         request.write(macro.formatter.linebreak() +
                       u'<div class="metatable">' +
                       macro.formatter.table(1))
-        t_cell(macro, ["%s (%s)" % (_("Metatable has no contents"), args)])
+        if silent:
+            t_cell(macro, ["%s" % _("No matches")])
+        else
+            t_cell(macro, ["%s '%s'" % (_("No matches for"), args)])
         request.write(macro.formatter.table(0) + 
                       u'</div>')
 
