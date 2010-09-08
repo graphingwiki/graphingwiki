@@ -11,6 +11,7 @@ from optparse import OptionParser
 from graphingwiki.editing import savetext
 
 from MoinMoin.request.request_cli import Request as RequestCLI
+from MoinMoin.Page import Page
 
 if __name__ == '__main__':
     usage = "usage: %prog [options] <path to wiki> <pagename>"
@@ -35,10 +36,11 @@ if __name__ == '__main__':
         cp = cp2
     sys.path.append(cp)
 
-    pagename = args[1]
+    pagename = unicode(args[1], sys.getfilesystemencoding())
 
     # Make a new request for the page
     req = RequestCLI(pagename)
+    req.page = Page(req, pagename)
 
     # Auth
     if options.auth:
@@ -52,3 +54,6 @@ if __name__ == '__main__':
         savetext(req, pagename, mytext, comment=unicode(options.comment))
     else:
         savetext(req, pagename, mytext)
+
+    # Must finish the request to ensure that metadata is saved
+    req.finish()

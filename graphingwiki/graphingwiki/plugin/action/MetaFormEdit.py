@@ -17,8 +17,10 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
 from graphingwiki import actionname
-from graphingwiki.util import encode, SEPARATOR
+from graphingwiki.util import encode, SEPARATOR, format_wikitext
 from graphingwiki.util import form_writer as wr
+
+from graphingwiki.editing import get_properties
 
 from savegraphdata import parse_text
 
@@ -117,6 +119,7 @@ def execute(pagename, request):
     # page is not sent as it is
     out = StringIO.StringIO()
     newreq.redirect(out)
+    request.sent_headers = True
     newreq.page.send_page()
     newreq.redirect()
 
@@ -133,31 +136,91 @@ def execute(pagename, request):
                 for val in data[page]['meta'][key]:
                     vals_on_keys.setdefault(key, set()).add(val)
 
+    # Form types
+    def form_selection(request, pagekey, curval, values, description=''):
+        msg = wr('<select name="%s">', pagekey)
+        msg += wr('<option value=" ">%s</option>', _("None"))
+        
+        for keyval, showval in values:
+            msg += wr('<option value="%s"%s>%s</option>',
+                      keyval, curval == keyval and ' selected' or '',
+                      showval)
+
+        msg += '</select>'
+
+        return msg
+
+    def form_checkbox(request, pagekey, curval, values, description=''):
+        msg = ''
+
+        for keyval, showval in values:
+            msg += wr(
+                '<input type="checkbox" name="%s" value="%s"%s>',
+                pagekey, keyval, curval == keyval and ' checked' or '') + \
+                format_wikitext(request, showval)
+
+        return msg
+
+    def form_radio(request, pagekey, curval, values, description=''):
+        msg = ''
+
+        for keyval, showval in values:
+            msg += wr(
+                '<input type="radio" name="%s" value="%s"%s>',
+                pagekey, keyval, curval == keyval and ' checked' or '') + \
+                format_wikitext(request, showval)
+
+        return msg
+
+    def form_textbox(request, pagekey, curval, values, description=''):
+        return wr('<input type="text" name="%s" value="%s">',
+                  pagekey, curval)
+
+    def form_textarea(request, pagekey, curval, values, description=''):
+        return wr('<textarea rows=20 cols=70 name="%s">%s</textarea>',
+                  pagekey, curval)
+
+    formtypes = {'selection': form_selection,
+                 'checkbox': form_checkbox,
+                 'textbox': form_textbox,
+                 'textarea': form_textarea,
+                 'radio': form_radio} 
+    #, 'textarea', 'file']
+
     def repl_subfun(mo):
         pagekey, val = mo.groups()
 
         msg = ""
         key = pagekey.split(SEPARATOR)[1]
 
+        properties = get_properties(request, key)
+
+        values = list()
+
         # Placeholder key key
         if key in vals_on_keys:
-            msg += wr('<select name="%s">', pagekey)
-            msg += wr('<option value=" ">%s</option>', _("None"))
-
             for keyval in sorted(vals_on_keys[key]):
                 keyval = keyval.strip()
                 if len(keyval) > 30:
                     showval = keyval[:27] + '...'
                 else:
                     showval = keyval
-                msg += wr('<option value="%s"%s>%s</option>',
-                          keyval, val == keyval and ' selected' or '',
-                          showval)
 
-            msg += '</select>'
+                values.append((keyval, showval))
 
-        msg += wr('<input class="metavalue" type="text" ' + \
-                      'name="%s" value="">', pagekey)
+        formtype = properties.get('hint')
+
+        if not formtype in formtypes:
+            msg += form_selection(request, pagekey, val, values)
+        else:
+            msg += formtypes[formtype](request, pagekey, val, values)
+
+        constraint = properties.get('constraint')
+
+        if (not constraint == 'existing' and 
+            not formtype in ['textbox', 'textarea']):
+            msg += wr('<input class="metavalue" type="text" ' + \
+                          'name="%s" value="">', pagekey)
 
         return msg
 

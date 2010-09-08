@@ -554,7 +554,8 @@ class GraphRepr(object):
                 out[key] = value
         return out
 
-    def order_graph(self, ordernodes, unordernodes, request, pagename, orderby):
+    def order_graph(self, ordernodes, unordernodes, request, 
+                    pagename, orderby, ordershape=''):
         # Ordering the nodes into ranks. 
         orderkeys = ordernodes.keys()
         orderkeys.sort()
@@ -571,11 +572,20 @@ class GraphRepr(object):
             cur_ordernode = 'orderkey: ' + label
             sg = self.graphviz.subg.add(cur_ordernode, rank='same')
 
+            kw = dict()
+            if ordershape:
+                if ordershape == 'none':
+                    label = ''
+                    orderURL = ''
+                    kw = {'style': 'invis', 'shape': 'point'}
+                else:
+                    kw = {'shape': ordershape}
+
             if orderby != 'gwikicategory':
-                sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+                sg.nodes.add(cur_ordernode, label=label, URL=orderURL, **kw)
             else:
                 sg.nodes.add(cur_ordernode, label=label, 
-                             URL=get_url_ns(request, pagename, label))
+                             URL=get_url_ns(request, pagename, label), **kw)
 
             for node in ordernodes[key]:
                 sg.nodes.add(node)

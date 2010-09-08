@@ -184,7 +184,11 @@ def encode(str):
 def form_escape(text):
     # Escape characters that break value fields in html forms
     #return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
-    return cgi.escape(text, quote=True)
+    text = cgi.escape(text, quote=True)
+
+    # http://bugs.python.org/issue9061
+    text = text.replace("'", '&#x27;').replace('/', '&#x2F;')
+    return text
 
 def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))
@@ -332,7 +336,7 @@ def get_url_ns(request, pagename, link):
     if filter_categories(request, [link]):
         return '../' * subrank + './' + link
     else:
-        return '../' * subrank + './Property' + link
+        return '../' * subrank + './%sProperty' % (link)
 
 def format_wikitext(request, data):
     from MoinMoin.parser.text_moin_wiki import Parser

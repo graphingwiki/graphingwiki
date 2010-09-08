@@ -100,13 +100,14 @@ try:
         for page in pagelist:
             pageobj = Page(request, page)
             if not pageobj.exists():
-                raise UserInputException
+                raise UserInputException(page)
             pageobjs.append(pageobj)
 
         pages = pageobjs
         retain_shelve = True
 
-except UserInputException:
+except UserInputException, page:
+    print >> sys.stderr, "page %s does not exist" % (page)
     parser.print_help()
     sys.exit(2)
 

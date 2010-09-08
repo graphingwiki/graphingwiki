@@ -92,7 +92,7 @@ form_end = u"""<div class="showgraph-buttons">\n
 
 graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "diamond", "trapezium", "parallelogram",
-                  "house", "pentagon", "hexagon", "septagon",
+                  "house", "pentagon", "septagon",
                   "octagon", "doublecircle", "doubleoctagon",
                   "tripleoctagon", "invtriangle", "invtrapezium",
                   "invhouse", "Mdiamond", "Msquare", "Mcircle",
@@ -210,6 +210,7 @@ class GraphShower(object):
 
         self.depth = 1
         self.orderby = ''
+        self.ordershape = ''
         self.colorby = ''
         self.shapeby = ''
 
@@ -391,6 +392,12 @@ class GraphShower(object):
             legend = request.form['legend'][0]
             if legend in self.legend_positions:
                 self.legend = legend
+
+        # legend
+        if request.form.has_key('ordershape'):
+            shape = request.form['ordershape'][0]
+            if shape in graphvizshapes + ['none']:
+                self.ordershape = shape
 
         # Categories
         if request.form.has_key('categories'):
@@ -651,6 +658,11 @@ class GraphShower(object):
             # the page from where the action is called.
             if self.nostartnodes:
                 if objname in self.startpages:
+                    delete.add(objname)
+                    continue
+
+            if self.noorignode:
+                if objname == self.request.page.page_name:
                     delete.add(objname)
                     continue
 
@@ -1135,18 +1147,18 @@ class GraphShower(object):
         form_checkbox(request, 'edgelabels', '1', self.edgelabels, 
                       _('Edge labels'))
 
-        request.write(u"<br><u>" + _("Nodes:") + u"</u><br>\n")
-        # filter unconnected nodes
-        form_checkbox(request, 'noloners', '1', self.noloners, 
-                      _('Filter lonely'))
+        request.write(u"<br><u>" + _("Pages:") + u"</u><br>\n")
+        # filter the start page nodes
+        form_checkbox(request, 'noorignode', '1', self.noorignode, 
+                      _('Filter this page'))
         request.write(u"<br>\n")
         # filter startnodes nodes
         form_checkbox(request, 'nostartnodes', '1', self.nostartnodes, 
-                      _('Filter startnodes'))
+                      _('Filter all startpages'))
         request.write(u"<br>\n")
-        # filter the start page nodes
-        form_checkbox(request, 'noorignode', '1', self.noorignode, 
-                      _('Anonymous graph'))
+        # filter unconnected nodes
+        form_checkbox(request, 'noloners', '1', self.noloners, 
+                      _('Filter unlinked pages'))
 
         # Include
 	request.write(u"<td valign=top>\n")
@@ -1271,6 +1283,22 @@ class GraphShower(object):
 
         form_optionlist(request, 'orderby', types, self.orderby, 
                         {'': _("no ordering"), '_hier': _("hierarchical")},True)
+
+        request.write(_("Ordernode type") + u"<br>\n")
+        request.write(u'<select name="ordershape"><br>\n')
+        for type in graphvizshapes:
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (form_escape(type),
+                           type == self.ordershape and " selected>" or ">",
+                           form_escape(type)))
+
+        addendum = {'': _("default"), 'none': _("none")}
+        for val, pr in addendum.iteritems():
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (form_escape(val),
+                           val == self.ordershape and " selected>" or ">",
+                           form_escape(pr)))
+        request.write(u'</select><br>\n')
 	
         if self.orderby:
 	    request.write(u"<td valign=top>\n")
@@ -1374,7 +1402,8 @@ class GraphShower(object):
                            self.unordernodes,
                            self.request,
                            self.app_page,
-                           self.orderby)
+                           self.orderby,
+                           self.ordershape)
 
         return gr
 
@@ -1724,10 +1753,6 @@ class GraphShower(object):
 
         # Add startpages, even if unconnected
         for node in nodes:
-            if self.noorignode:
-                if node == self.request.page.page_name:
-                    continue
-
             newnodes.add(node)
 
             # Make sure that startnodes get loaded

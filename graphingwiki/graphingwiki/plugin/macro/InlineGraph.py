@@ -36,6 +36,7 @@ from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.util import form_escape, url_construct
+from graphingwiki import url_unescape
 
 Dependencies = ['metadata']
 
@@ -47,7 +48,7 @@ def uri_params(uri):
         argstr = argstr.split('&')
 
         for arg in argstr:
-            key, val = arg.split('=')
+            key, val = map(url_unescape, arg.split('='))
             args.setdefault(key, list()).append(val)
 
     return uri, args

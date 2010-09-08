@@ -34,7 +34,6 @@ from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex
 
-
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
 
@@ -101,6 +100,17 @@ def get_revisions(request, page):
     metakeys = sorted(metakeys, key=ordervalue)
 
     return pagelist, metakeys
+
+def get_properties(request, key):
+    properties = get_metas(request, '%sProperty' % (key), 
+                           ['constraint', 'description', 'hint'])
+    for property in properties:
+        if not properties[property]:
+            properties[property] = ''
+        else:
+            properties[property] = properties[property][0]
+
+    return properties
 
 def getmeta_to_table(input):
     keyoccur = dict()
@@ -724,6 +734,27 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {}, 
     ...               {u"koo:: ": [u"a"]})
     u' test:: 1\n test:: 2\n koo:: a\n'
+
+    Tests for different kinds of line feeds. Metas should not have \r
+    or \n as it would cause problems. This is contrary to general
+    MoinMoin logic to minimise user confusion.
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\r\n\r\nmore text']})
+    u' a:: text  more text\n'
+
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\r\rmore text']})
+    u' a:: textmore text\n'
+
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\n\nmore text']})
+    u' a:: text  more text\n'
     """
 
     text = text.rstrip()
@@ -758,7 +789,17 @@ def replace_metas(request, text, oldmeta, newmeta):
         if len(newmeta.get(key, [])) > len(oldmeta.get(key, [])):
             if values[0] == '':
                 values.reverse()
-        new_metas[key] = values
+
+        newvalues = list()
+        for value in values:
+            # Convert \r and \n to safe values, 
+            # strip leading and trailing spaces
+            value = value.replace("\r\n", " ")
+            value = value.replace("\n", " ")
+            value = value.replace("\r", "").strip()
+            newvalues.append(value)
+
+        new_metas[key] = newvalues
     newmeta = new_metas
 
     # Replace the values we can
@@ -782,10 +823,11 @@ def replace_metas(request, text, oldmeta, newmeta):
         except ValueError:
             return all
         
-        newval = newmeta[key][index].replace("\n", " ").strip()
+        newval = newmeta[key][index]
+
         del oldmeta[key][index]
         del newmeta[key][index]
-
+        
         if not newval:
             return ""
 
@@ -943,6 +985,8 @@ def save_template(request, page, template):
     if not raw_body:
         # Start writing
         request.graphdata.writelock()
+
+        ## TODO: Add data on template to the text of the saved page?
 
         raw_body = ' '
         p = PageEditor(request, page)

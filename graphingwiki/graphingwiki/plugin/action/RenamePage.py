@@ -34,7 +34,8 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if rel_newpagename.startswith('/'):
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
                         return match[1].replace(
                             wikiutil.RelPageName(page, oldpagename), 
                             rel_newpagename)
@@ -58,7 +59,8 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if rel_newpagename.startswith('/'):
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
                         return match[0].replace(
                             wikiutil.RelPageName(page, oldpagename), 
                             rel_newpagename)
@@ -82,7 +84,8 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if rel_newpagename.startswith('/'):
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
                         return match[0].replace(
                             wikiutil.RelPageName(page, oldpagename), 
                             rel_newpagename)

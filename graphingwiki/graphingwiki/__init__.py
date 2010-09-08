@@ -23,6 +23,9 @@ def url_escape(text):
     # macros and urls with parameters
     return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
 
+def url_unescape(text):
+    return re.sub(r"%([0-9a-f]{2})", lambda mo: chr(int(mo.group(1), 16)), text)
+
 # Finding dependencies centrally
 
 gv_found = True
@@ -244,6 +247,9 @@ def _get_save_plugin(self):
         return
 
     return graphsaver
+
+## TODO: Hook PageEditor.sendEditor to add data on template to the
+## text of the saved page?
 
 def graphdata_save(self, result, _):
     graphsaver = _get_save_plugin(self)

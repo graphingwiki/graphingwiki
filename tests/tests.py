@@ -11,7 +11,7 @@ import re
 from xmlrpclib import ServerProxy, Error, Binary
 
 # Server URL
-server = ServerProxy("http://localhost:8080/?action=xmlrpc2")
+server = ServerProxy("http://localhost/wiki?action=xmlrpc2")
 
 
 class GwikiTests(unittest.TestCase):

@@ -14,10 +14,8 @@ from MoinMoin import wikiutil
 from string import rsplit
 
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
-from graphingwiki.util import resolve_iw_url, category_regex, SEPARATOR
-
-def htmlquote(s):
-    return cgi.escape(s, 1)
+from graphingwiki.util import resolve_iw_url, category_regex, \
+    SEPARATOR, form_escape
 
 Dependencies = []
 
@@ -106,8 +104,8 @@ class Parser(wikiParser):
 
         return apply(wikiParser._dl_repl, (self, match, groups)) + \
                '\n<input class="metavalue" type="text" name="' + \
-               htmlquote('%s%s%s' % (self.pagename, SEPARATOR, dt)) + \
-                         '" value="'
+               form_escape('%s%s%s' % (self.pagename, SEPARATOR, dt)) + \
+               '" value="'
 
     def __real_val(self, word):
         if not word.strip():
