@@ -274,7 +274,7 @@ def execute(pagename, request):
                 oldkey = pagename + SEPARATOR + key
                 oldvals = old.get(key, list())
                 if not oldvals:
-                    vals = [x.strip() for x in form[oldkey]
+                    vals = [x.strip() for x in form[form_escape(oldkey)]
                             if x.strip()]
                     if vals:
                         added.setdefault(pagename, dict()).setdefault(key, list()).extend(vals)

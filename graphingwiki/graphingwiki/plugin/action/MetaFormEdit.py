@@ -24,7 +24,7 @@ from graphingwiki.editing import get_properties
 
 from savegraphdata import parse_text
 
-value_re = re.compile('<input class="metavalue" type="text" ' +
+value_re = re.compile('(<dt>.+?</dt>\s*<dd>\s*)<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.*?)\s*">')
 
 # Override Page.py to change the parser. This method has the advantage
@@ -188,12 +188,15 @@ def execute(pagename, request):
     #, 'textarea', 'file']
 
     def repl_subfun(mo):
-        pagekey, val = mo.groups()
+        dt, pagekey, val = mo.groups()
 
-        msg = ""
+        msg = dt
         key = pagekey.split(SEPARATOR)[1]
 
         properties = get_properties(request, key)
+
+        if properties.get('hidden'):
+            return ""
 
         values = list()
 

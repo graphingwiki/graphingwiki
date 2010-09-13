@@ -103,7 +103,7 @@ def get_revisions(request, page):
 
 def get_properties(request, key):
     properties = get_metas(request, '%sProperty' % (key), 
-                           ['constraint', 'description', 'hint'])
+                           ['constraint', 'description', 'hint', 'hidden'])
     for property in properties:
         if not properties[property]:
             properties[property] = ''
