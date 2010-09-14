@@ -89,6 +89,15 @@ def main():
                     val = "%s.%s" % (timegm(val.utctimetuple()), 
                                      val.microsecond)
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
+            elif key in ['memoryfree', 'memorysize', 'swapfree', 'swapsize']:
+                nro, mgn = values[key].split()
+                nro = float(nro)
+                if mgn == 'GB':
+                    nro = 1024 * nro
+                if mgn == 'TB':
+                    nro = 1024 * 1024 * nro
+                nro = str(int(round(nro)))
+                metas[page][key].add(nro)
             else:
                 metas[page][key].add(values[key].strip())
 
