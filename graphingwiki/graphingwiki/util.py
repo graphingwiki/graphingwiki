@@ -190,6 +190,14 @@ def form_escape(text):
     text = text.replace("'", '&#x27;').replace('/', '&#x2F;')
     return text
 
+def id_escape(text):
+    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
+    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
+
+def id_unescape(text):
+    chr_re = re.compile('_([0-9a-f]{2})_')
+    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
+
 def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))
     return fmt % args
@@ -364,6 +372,16 @@ def format_wikitext(request, data):
     request.redirect()
 
     return data.getvalue().strip()
+
+def wrap_span(request, key, data, id):
+    if not key:
+        return format_wikitext(request, data)
+
+    return '<span id="' + \
+        id_escape('%(page)s%(sepa)s%(key)s%(sepa)s%(id)s' % 
+                  {'page': request.page.page_name, 'sepa': SEPARATOR, 
+                   'id': id, 'key': key}) + '">' + \
+                   format_wikitext(request, data) + '</span>'
 
 def absolute_attach_name(name, target):
     abs_method = target.split(':')[0]

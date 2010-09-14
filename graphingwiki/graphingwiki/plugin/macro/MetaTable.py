@@ -33,11 +33,11 @@ from MoinMoin.Page import Page
 
 from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import format_wikitext
+from graphingwiki.util import format_wikitext, wrap_span
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style=None, rev=''):
+def t_cell(macro, vals, head=0, style=None, rev='', key=''):
     out = macro.request
 
     if style is None:
@@ -57,7 +57,7 @@ def t_cell(macro, vals, head=0, style=None, rev=''):
 
     first_val = True
 
-    for data in sorted(vals):
+    for i, data in sorted(enumerate(vals), cmp=lambda x,y: cmp(x[1], y[1])):
 
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
@@ -83,7 +83,7 @@ def t_cell(macro, vals, head=0, style=None, rev=''):
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(1))
 
-            out.write(format_wikitext(out, data))
+            out.write(wrap_span(out, key, data, i))
 
             if cellstyle == 'list':
                 out.write(macro.formatter.listitem(0))
@@ -180,7 +180,7 @@ def construct_table(macro, pagelist, metakeys,
             if key == 'gwikipagename':
                 t_cell(macro, [page], head=1, style=style)
             else:
-                t_cell(macro, metas[key], style=style)
+                t_cell(macro, metas[key], style=style, key=key)
 
         request.write(macro.formatter.table_row(0))
 
