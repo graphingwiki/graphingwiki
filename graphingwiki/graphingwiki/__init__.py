@@ -7,6 +7,7 @@ from MoinMoin.request import RequestBase
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
+from MoinMoin.security import ACLStringIterator
 
 import sys
 import os
@@ -314,6 +315,17 @@ def variable_insert(self, result, _):
 
     return result
 
+def acl_user_expand(self, result, _):
+    """
+    Expand @ME@ user variable, which can result into problems when
+    viewing template pages with acl:s
+    """
+    modifier, entries, rights = result
+
+    entries = [x.replace('@ME@', 'All') for x in entries]
+
+    return (modifier, entries, rights)
+
 def attachfile_filelist(self, result, (args, _)):
     _ = self.getText
     attachments = re.findall('do=view&amp;target=([^"]+)', result)
@@ -398,5 +410,9 @@ def install_hooks():
     # configurable in some fashion.
     PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
                                                 variable_insert)
+
+    # Fix user variables in template acl strings
+    ACLStringIterator.next = monkey_patch(ACLStringIterator.next,
+                                          acl_user_expand)
 
     _hooks_installed = True
