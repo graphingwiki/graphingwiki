@@ -53,12 +53,10 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
 
-from graphingwiki import geoip_found, GeoIP, url_escape
+from graphingwiki import geoip_found, GeoIP, url_escape, id_escape, SEPARATOR
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
-
-SEPARATOR = '-gwikiseparator-'
 
 # Some XML output helpers
 def xml_document(top):
@@ -189,14 +187,6 @@ def form_escape(text):
     # http://bugs.python.org/issue9061
     text = text.replace("'", '&#x27;').replace('/', '&#x2F;')
     return text
-
-def id_escape(text):
-    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
-    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
-
-def id_unescape(text):
-    chr_re = re.compile('_([0-9a-f]{2})_')
-    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
 def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))

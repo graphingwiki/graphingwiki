@@ -15,6 +15,8 @@ import re
 import socket
 import xmlrpclib
 
+SEPARATOR = '-gwikiseparator-'
+
 # Get action name
 def actionname(request, pagename):
     return '%s/%s' % (request.getScriptname(), url_escape(pagename))
@@ -26,6 +28,14 @@ def url_escape(text):
 
 def url_unescape(text):
     return re.sub(r"%([0-9a-f]{2})", lambda mo: chr(int(mo.group(1), 16)), text)
+
+def id_escape(text):
+    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
+    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
+
+def id_unescape(text):
+    chr_re = re.compile('_([0-9a-f]{2})_')
+    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
 # Finding dependencies centrally
 
@@ -325,6 +335,7 @@ def acl_user_expand(self, result, _):
     entries = [x.replace('@ME@', 'All') for x in entries]
 
     return (modifier, entries, rights)
+
 
 def attachfile_filelist(self, result, (args, _)):
     _ = self.getText
