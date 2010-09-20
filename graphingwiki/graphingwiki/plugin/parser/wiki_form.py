@@ -9,11 +9,11 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import cgi
- 
-from MoinMoin import wikiutil
 from string import rsplit
 
+from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
+
 from graphingwiki.util import resolve_iw_url, category_regex, form_escape
 from graphingwiki import SEPARATOR
 
@@ -348,7 +348,7 @@ class Parser(wikiParser):
 
     # Catch the wiki parser within the parsed content, register this
     # class as its handler instead of text_moin_wiki
-    def _parser_content_repl(self, line):
+    def _parser_content(self, line):
         if self.in_pre == 'search_parser' and line.strip():
             if line.strip().startswith("#!"):
                 parser_name = line.strip()[2:].split()[0]
@@ -356,4 +356,4 @@ class Parser(wikiParser):
                     self.in_pre = 'found_parser'
                     self.parser_name = 'wiki_form'
 
-        return apply(wikiParser._parser_content_repl, (self, word, groups))
+        return apply(wikiParser._parser_content, (self, line))
