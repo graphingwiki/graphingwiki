@@ -2,213 +2,99 @@
 # -*- coding: utf-8 -*-
 """
     opencollab-push-tickets is an attempt to learn 
-    roundup data retrieval for push semantics 
-    wautomation to MoinMoin over XML-RPC.
+    roundup data retrieval for push semantics based 
+    on a customer username or organisation name.
 
-    @copyright: 2008 Lari Huttunen
+    @copyright: 2008-2010 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import sys
-import re
-import ConfigParser
-import cStringIO
-from optparse import OptionParser
+import sys, socket, re, optparse, cStringIO
+import roundup
 from roundup import instance
 from opencollab.util.config import parseConfig
-from opencollab.meta import Meta
+from opencollab.meta import Meta, Metas
+from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
 
-def parseConfig( cpath ):
-    configparser = ConfigParser.ConfigParser()
-    configparser.readfp( open(cpath) )
-    uris = dict( configparser.items('dbs') )
-    tracker = uris.pop("tracker")
-    tpath = uris.pop("tpath")
-    return username, password, tracker, tpath, wiki
-
-def open_db( tpath ):
-    tracker = instance.open( tpath )
-    db = tracker.open( "admin" )
-    return db
-
-def handle_unknown( odata, object, tracker, oname, target, key ): 
-    if object is not None:
-        odata[oname].add(target)
-
-def handle_link( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        if re.search('@', object):
-            odata[oname].add(link)   ## this does not make sense? Where does 'link' come from?
-        else:
-            odata[oname].add('[[' + tracker + '/' + target + object + ']]')
-
-def handle_multilink( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        links = map(lambda x: '[[' + tracker + '/' + target + '%s]]' % x, object)
-        for t in links:
-            odata[oname].add( t )
-
-def handle_number( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        odata[oname].add( str(object) )
-
-def handle_interval( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        odata[oname].add( str(object) )
-
-def handle_password( odata, object, tracker, oname, target, key ):
-    odata[oname].add( "REMOVED BY WAUTOMATION" )
-
-def handle_date( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        odata[oname].add( str(object) )
-
-def handle_string( odata, object, tracker, oname, target, key ):
-    if object is not None:
-        if oname == "content" and (key == "file" or key == "msg"):
-            odata[oname].add( object )
-        else:
-            odata[oname].add(str(object))
-
-def get_handler( type ):
-    fname = "handle_"
-    handlers = [
-    'handle_link',
-    'handle_multilink',
-    'handle_number',
-    'handle_interval',
-    'handle_password',
-    'handle_date',
-    'handle_string'
-    ]
-    hset = set( handlers )
-    if re.search( '(Multi)?[Ll]ink', repr(type) ):
-        p1 = re.compile('<roundup\.hyperdb\.(\w+ ?.*)>') 
-        p2 = re.compile('\s+\w+\s+')
-        tmp = p1.sub( r'\1', repr(type) )
-        tmp2, target = p2.split( tmp )
-        target = re.sub( '"', '', target )
-        fname += tmp2
+def openDB(tpath):
+    try:
+        tracker = instance.open( tpath )
+    except roundup.configuration.NoConfigError, e:
+        sys.exit(e)
     else:
-        p1 = re.compile('<roundup\.hyperdb\.(\w+) ?.*>') 
-        fname += p1.sub( r'\1', repr(type))
-        target = "None"
-    fname = fname.lower()
-    target = target.lower()
-    if fname in hset:
-        return fname.lower(), target.lower()
-    else:
-        print fname
-        fname = "handle_unknown"
-        target = "FixMe"
-        return fname, target 
+        db = tracker.open( "admin" )
+        return db
 
-def push_object( odata, pname, collab, tracker, category, verbose ):
-    ptemplate = tracker.capitalize() + "TrackerTemplate"
-    status = ""
-    fcontent = ""
-    odata["category"].add(category)
-    if re.search( 'file|msg', pname ):
-        if "content" in odata:
-            if "name" in odata:
-                fname = odata.get("name").single()
-            else:
-                fname = "raw"
-            fcontent = cStringIO.StringIO( odata.pop("content").single() )
-            odata["content"].add("[[attachment:" + fname + "]]")
-            for current, total in collab.putAttachmentChunked( pname, fname, fcontent ):
-                percent = 100.0 * current / float(max(total, 1))
-                status = current, total, percent
-                if verbose:
-                    sys.stdout.write("\rsent %d/%d bytes (%.02f%%)" % status)
-                    sys.stdout.flush()
-            if verbose:
-                sys.stdout.write("\ndone\n")
-                sys.stdout.flush()
-    status = collab.setMeta( pname, odata, template=ptemplate, replace=True )
-    if verbose:
-        print status
+def getUser(db, user):
+    #['username', 'creation', 'alternate_addresses', 'realname', 'roles', 
+    # 'creator', 'organisation', 'address', 'actor', 'phone', 'activity', 
+    # 'queries', 'timezone', 'password', 'id']
+    udata = Meta()
+    unode = db.user.getnode(user)
+    attr = ['username', 'realname', 'organisation', 'phone', 'id']
+    for k in attr:
+        udata[k].add(unode.get(k))
+    return udata
 
-def transfer_data( db, tracker, collab, verbose ):
-    odata = Meta()
-    for (key, cl) in db.classes.iteritems():
-        name = getattr( db, cl.classname )
-        category = "Category" + tracker.capitalize() + key.capitalize()
-        existing = collab.getMeta( category )
-        for id in name.list()[:42]:
-            entry = name.getnode( id )
-            upload = True
-            for (oname, type) in cl.properties.iteritems():
-                handler, target = get_handler( type )
-                if handler == "handle_multilink":
-                    object = entry.get( oname, [] )
-                else:
-                    object = entry.get( oname )
-                handler = globals().get(handler, handle_unknown)
-                handler( odata, object, tracker, oname, target, key )
-            pname = tracker + "/" + key + id
-            if pname in existing and odata == existing[pname]:
-                    upload = False 
-            if upload:
-                push_object( odata, pname, collab, tracker, category, verbose )
-            odata = Meta()
+def filterIssues(db, filter):
+    issues = []
+    mfilter = Meta()
+    mfilter[filter] = filter
+    mkey = mfilter[filter]
+    # DB classes:
+    # "status", "timelog", "keyword", "priority", "user", 
+    # "file", "msg", "query", "issue"
+    for issue_id in db.issue.list(): 
+        # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
+        # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
+        # 'activity', 'superseder', 'id', 'files']
+        issue = db.issue.getnode(issue_id)
+        customer = issue.get('customer')
+        if customer:
+            idata = Meta()
+            idata.update(getUser(db, customer.pop()))
+            username = idata['username']
+            organisation = idata['organisation']
+            if mkey in username or mkey in organisation:
+                issues.append(issue_id)
+    return issues
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-c", "--config",
-        action="store",
-        type="string", dest="config",
-        default = None,
-        metavar="CONFIG",
-        help="CONFIG file path.")
+    parser.add_option("-f", "--filter",
+                      dest="filter", default=None,
+                      metavar="FILTER", help=("Organisation name or username to FILTER by."))
     parser.add_option("-n", "--tracker-name",
-                      dest="name",
-                      default=None,
-                      metavar="NAME",
-                      help=("Tracker NAME."))
+                      dest="tracker", default=None,
+                      metavar="NAME", help=("Tracker NAME."))
     parser.add_option("-p", "--tracker-path",
-                      dest="path",
-                      default=None,
-                      metavar="PATH",
-                      help=("Tracker directory PATH."))
-    parser.add_option("-u", "--url",
-                      dest="url",
-                      default=None,
-                      metavar="COLLAB-URL",
-                      help=("COLLAB-URL to connect to."))
-    parser.add_option("-v",
-        action="store_true", dest="verbose", default=False,
-        help="Enable verbose output." )
+                      dest="configpath", default=None,
+                      metavar="PATH", help=("Tracker configuration directory PATH."))
     parser.set_usage("%prog [options]")
-    options, args = parser.parse_args()
-    iopts={}
-    if options.config:
-        iopts = parseConfig(options.config, "creds", "push-tickets")
-    if options.name:
-        tracker = options.name
-    elif options.config and "name" in iopts["push-tickets"]:
-        tracker = iopts["push-tickets"]["name"]
+    sect = "push-tickets"
+    ops = parseOptions(parser, sect, template=True) 
+    url = ops["creds"]["url"]
+    filter = ops[sect]["filter"]
+    tracker = ops[sect]["tracker"]
+    configpath = ops[sect]["configpath"]
+    while True:
+        try:
+            collab = CLIWiki(**ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if filter is None:
+        parser.error("Use -f or --filter to select issues by customer organisation or username.")
+    if configpath is not None:
+        db = openDB(configpath)
+        issueids = set(filterIssues(db, filter))
+        print issueids
+        db.close()
     else:
-        parser.error("Tracker name needs to be specified. Use -h for help.")
-    if options.path:
-        path = options.path
-    elif options.config and "path" in iopts["push-tickets"]:
-        path = iopts["push-tickets"]["path"]
-    else:
-        parser.error("Tracker path needs to be specified. Use -h for help.")
-    db = open_db( path )
-    if options.url:
-        url = options.url
-        collab = CLIWiki(url)
-    elif options.config and "url" in iopts["creds"]:
-        url = iopts["creds"]["url"]
-        collab = CLIWiki(url, config=options.config)
-    else:
-        parser.error("Collab URL needs to be specified. Use -h for help.")
-    if options.verbose:
-        print "Transfering ticker from:", tracker, "to", url
-    transfer_data(db, tracker, collab, options.verbose)
-    db.close()
+        parser.error(" Use -p or --tracker-path to specify the tracker configuration path.")
 
 if __name__ == "__main__":
     try:
