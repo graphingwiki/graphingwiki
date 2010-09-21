@@ -44,6 +44,7 @@ def getUser(db, user):
         if key is None:
             key = "None"
         udata[k].add(key)
+    udata['gwikilabel'].add(unode.get('realname'))
     return udata
 
 def filterIssues(db, filter):
@@ -105,6 +106,7 @@ def getFile(db, f):
     #fileobj['attachment'].add(attachment)
     name = fobj.get('name')
     fileobj['content'].add('[[attachment:%s]]' % name)
+    fileobj['gwikilabel'].add(name)
     fileobj['type'].add(fobj.get('type'))
     attr = ['creator', 'actor']
     for u in attr:
@@ -124,12 +126,14 @@ def getMetaData(db):
         page = "priority" + m
         metadata[page]['order'].add(order)
         metadata[page]['name'].add(name)
+        metadata[page]['gwikilabel'].add(name)
     for m in db.status.list():
         order = unicode(db.status.getnode(m).get('order'))
         name = db.status.getnode(m).get('name')
         page = "status" + m
         metadata[page]['order'].add(order)
         metadata[page]['name'].add(name)
+        metadata[page]['gwikilabel'].add(name)
     return metadata
 
 def main():
