@@ -15,6 +15,7 @@ from opencollab.util.config import parseConfig
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.wiki import importMetas
 
 def openDB(tpath):
     try:
@@ -30,7 +31,10 @@ def getUser(db, user):
     unode = db.user.getnode(user)
     attr = ['username', 'realname', 'organisation', 'phone']
     for k in attr:
-        udata[k].add(unode.get(k))
+        key = unode.get(k)
+        if key is None:
+            key = "None"
+        udata[k].add(key)
     return udata
 
 def filterIssues(db, filter):
@@ -68,6 +72,8 @@ def getMessage(db, msg):
     strings = ['inreplyto', 'summary', 'messageid', 'type']
     for s in strings:
         string = msgobj.get(s)
+        if string is None:
+            string = "None"
         message[s].add(string)
     content = msgobj.get('content')
     message['content'].add('{{{\n%s\n}}}' % content)
@@ -93,6 +99,9 @@ def main():
     parser.add_option("-f", "--filter",
                       dest="filter", default=None,
                       metavar="FILTER", help=("Organisation name or username to FILTER by."))
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-n", "--tracker-name",
                       dest="tracker", default=None,
                       metavar="NAME", help=("Tracker NAME."))
@@ -100,13 +109,13 @@ def main():
                       dest="configpath", default=None,
                       metavar="PATH", help=("Tracker configuration directory PATH."))
     parser.set_usage("%prog [options]")
-    userdata = Metas()
     issues = Metas()
-    files = Metas()
-    messages = Metas()
     sect = "push-tickets"
     ops = parseOptions(parser, sect, template=True) 
+    verbose = ops[sect]["verbose"]
     url = ops["creds"]["url"]
+    template = ops[sect]["template"]
+    replace = ops[sect]["lasteditwins"]
     filter = ops[sect]["filter"]
     tracker = ops[sect]["tracker"]
     configpath = ops[sect]["configpath"]
@@ -121,31 +130,64 @@ def main():
             break
     if filter is None:
         parser.error("Use -f or --filter to select issues by customer organisation or username.")
+    if tracker is None:
+        parser.error("Use -n or --tracker-name to specify the RoundUp tracker name.")
     if configpath is not None:
         # DB classes:
         # "status", "timelog", "keyword", "priority", "user", 
         # "file", "msg", "query", "issue"
         db = openDB(configpath)
         issueids = set(filterIssues(db, filter))
+        if verbose:
+            print "NOTE: Getting issue data from the", tracker, "tracker."
         for id in issueids:
             # Issue properties:
             # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
             # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
             # 'activity', 'superseder', 'id', 'files']
             issue = db.issue.getnode(id)
+            ipage = "issue" + id
             statuspage = "status" + issue.get("status")
-            issues[id]["status"].add('[[%s]]' % statuspage)
-            issues[id]["title"].add(issue.get("title"))
+            issues[ipage]["TYPE"].add("RoundupIssue")
+            issues[ipage]["TRACKER"].add(tracker)
+            issues[ipage]["status"].add('[[%s]]' % statuspage)
+            issues[ipage]["title"].add(issue.get("title"))
+    if configpath is not None:
+        # DB classes:
+        # "status", "timelog", "keyword", "priority", "user", 
+        # "file", "msg", "query", "issue"
+        db = openDB(configpath)
+        issueids = set(filterIssues(db, filter))
+        if verbose:
+            print "NOTE: Getting issue data from the", tracker, "tracker."
+        for id in issueids:
+            # Issue properties:
+            # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
+            # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
+            # 'activity', 'superseder', 'id', 'files']
+            issue = db.issue.getnode(id)
+            ipage = "issue" + id
+            statuspage = "status" + issue.get("status")
+            issues[ipage]["TYPE"].add("RoundupIssue")
+            issues[ipage]["TRACKER"].add(tracker)
+            issues[ipage]["status"].add('[[%s]]' % statuspage)
+            issues[ipage]["title"].add(issue.get("title"))
             #creation = issue.get("creation")
-            #issues[id]["creation"].add(issue.get(creation))
+            #issues[ipage]["creation"].add(issue.get(creation))
             for msg in issue.get("messages"):
-                issues[id]["message"].add('[[msg%s]]' % msg)
-                messages[msg].update(getMessage(db, msg))
+                mpage = "msg" + msg
+                issues[ipage]["message"].add('[[msg%s]]' % msg)
+                issues[mpage].update(getMessage(db, msg))
+                issues[mpage]["TYPE"].add("RoundupMessage")
+                issues[mpage]["TRACKER"].add(tracker)
             priority = issue.get("priority")
-            issues[id]["priority"].add('[[priority%s]]' % priority)
+            issues[ipage]["priority"].add('[[priority%s]]' % priority)
             for file in issue.get("files"):
-                issues[id]["file"].add('[[file%s]]' % file)
-                files[file].update(getFile(db, file))
+                fpage = "file" + file
+                issues[ipage]["file"].add('[[file%s]]' % file)
+                issues[fpage].update(getFile(db, file))
+                issues[fpage]["TYPE"].add("RoundupFile")
+                issues[fpage]["TRACKER"].add(tracker)
             # User properties:
             #['username', 'creation', 'alternate_addresses', 'realname', 'roles', 
             # 'creator', 'organisation', 'address', 'actor', 'phone', 'activity', 
@@ -160,14 +202,26 @@ def main():
                 except IndexError:
                     continue
                 userpage = "user" + userid
-                issues[id][a].add('[[%s]]' % userpage)
-                userdata[userpage].update(getUser(db, userid))
+                issues[ipage][a].add('[[%s]]' % userpage)
+                issues[userpage].update(getUser(db, userid))
+                issues[userpage]["TYPE"].add("RoundupUser")
+                issues[userpage]["TRACKER"].add(tracker)
             nosy = issue.get('nosy')
             for userid in nosy:
                 userpage = "user" + userid
-                issues[id]["nosy"].add('[[%s]]' % userpage)
-                userdata[userpage].update(getUser(db, userid))
+                issues[ipage]["nosy"].add('[[%s]]' % userpage)
+                issues[userpage].update(getUser(db, userid))
         db.close()
+        if verbose:
+            print "NOTE: Importing metas to", url
+        failed = importMetas(collab, issues, template, verbose, replace)
+        if failed:
+            for page in failed:
+                if verbose:
+                    print "ERROR uploading:",  page, repr(metas[page])
+                else:
+                    print "ERROR uploading:", page
+
     else:
         parser.error(" Use -p or --tracker-path to specify the tracker configuration path.")
 
