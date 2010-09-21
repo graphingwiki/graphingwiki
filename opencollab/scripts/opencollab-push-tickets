@@ -8,7 +8,7 @@
     @copyright: 2008-2010 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import sys, socket, re, optparse, cStringIO, base64
+import sys, socket, re, optparse, cStringIO
 import roundup
 from roundup import instance
 from opencollab.util.config import parseConfig
@@ -94,8 +94,9 @@ def getMessage(db, msg):
     return message
 
 def getFile(db, f):
-    """ File properties:
-        ['name', 'creator', 'creation', 'actor', 'content', 'activity', 'type', 'id']
+    """
+    File properties:
+    ['name', 'creator', 'creation', 'actor', 'content', 'activity', 'type', 'id']
     """
     fileobj = Meta()
     fobj = db.file.getnode(f)
@@ -107,8 +108,28 @@ def getFile(db, f):
     attr = ['creator', 'actor']
     for u in attr:
         user = fobj.get(u)
-        fileobj[u].add('[[%s]]' % user)
+        fileobj[u].add('[[user%s]]' % user)
     return fileobj
+
+def getMetaData(db):
+    """
+    Metadata classes: 
+    ['priority', 'status']
+    """
+    metadata = Metas() 
+    for m in db.priority.list():
+        order = unicode(db.priority.getnode(m).get('order'))
+        name = db.priority.getnode(m).get('name')
+        page = "priority" + m
+        metadata[page]['order'].add(order)
+        metadata[page]['name'].add(name)
+    for m in db.status.list():
+        order = unicode(db.status.getnode(m).get('order'))
+        name = db.status.getnode(m).get('name')
+        page = "status" + m
+        metadata[page]['order'].add(order)
+        metadata[page]['name'].add(name)
+    return metadata
 
 def main():
     parser = optparse.OptionParser()
@@ -164,8 +185,8 @@ def main():
             issue = db.issue.getnode(id)
             ipage = "issue" + id
             statuspage = "status" + issue.get("status")
-            issues[ipage]["TYPE"].add("RoundupIssue")
-            issues[ipage]["TRACKER"].add(tracker)
+            issues[ipage]["gwikicategory"].add("CategoryRoundupIssue")
+            issues[ipage]["tracker"].add(tracker)
             issues[ipage]["status"].add('[[%s]]' % statuspage)
             issues[ipage]["title"].add(issue.get("title"))
     if configpath is not None:
@@ -184,8 +205,8 @@ def main():
             issue = db.issue.getnode(id)
             ipage = "issue" + id
             statuspage = "status" + issue.get("status")
-            issues[ipage]["TYPE"].add("RoundupIssue")
-            issues[ipage]["TRACKER"].add(tracker)
+            issues[ipage]["gwikicategory"].add("CategoryRoundupIssue")
+            issues[ipage]["tracker"].add(tracker)
             issues[ipage]["status"].add('[[%s]]' % statuspage)
             issues[ipage]["title"].add(issue.get("title"))
             #creation = issue.get("creation")
@@ -194,15 +215,15 @@ def main():
                 mpage = "msg" + msg
                 issues[ipage]["message"].add('[[msg%s]]' % msg)
                 issues[mpage].update(getMessage(db, msg))
-                issues[mpage]["TYPE"].add("RoundupMessage")
-                issues[mpage]["TRACKER"].add(tracker)
+                issues[mpage]["gwikicategory"].add("CategoryRoundupMessage")
+                issues[mpage]["tracker"].add(tracker)
             priority = issue.get("priority")
             issues[ipage]["priority"].add('[[priority%s]]' % priority)
             for file in issue.get("files"):
                 fpage = "file" + file
                 issues[ipage]["file"].add('[[file%s]]' % file)
                 issues[fpage].update(getFile(db, file))
-                issues[fpage]["TYPE"].add("RoundupFile")
+                issues[fpage]["gwikicategory"].add("CategoryRoundupFile")
                 issues[fpage]["TRACKER"].add(tracker)
             attr = ['customer', 'actor', 'assignedto', 'creator']
             for a in attr:
@@ -216,13 +237,15 @@ def main():
                 userpage = "user" + userid
                 issues[ipage][a].add('[[%s]]' % userpage)
                 issues[userpage].update(getUser(db, userid))
-                issues[userpage]["TYPE"].add("RoundupUser")
-                issues[userpage]["TRACKER"].add(tracker)
+                issues[userpage]["gwikicategory"].add("CategoryRoundupUser")
+                issues[userpage]["tracker"].add(tracker)
             nosy = issue.get('nosy')
             for userid in nosy:
                 userpage = "user" + userid
                 issues[ipage]["nosy"].add('[[%s]]' % userpage)
                 issues[userpage].update(getUser(db, userid))
+            metadata = ['priority', 'status']
+        issues.update(getMetaData(db))
         db.close()
         if verbose:
             print "NOTE: Importing metas to", url
