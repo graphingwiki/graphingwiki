@@ -249,6 +249,7 @@ def main():
                 userpage = "user" + userid
                 issues[ipage]["nosy"].add('[[%s]]' % userpage)
                 issues[userpage].update(getUser(db, userid))
+                issues[userpage]["gwikicategory"].add("CategoryRoundupUser")
             metadata = ['priority', 'status']
         issues.update(getMetaData(db))
         db.close()
