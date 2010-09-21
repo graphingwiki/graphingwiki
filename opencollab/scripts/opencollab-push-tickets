@@ -83,14 +83,15 @@ def getMessage(db, msg):
     for u in users:
         user = msgobj.get(u)
         message[u].add('[[user%s]]' % user)
-    strings = ['inreplyto', 'summary', 'messageid', 'type']
+    #strings = ['inreplyto', 'summary', 'messageid', 'type']
+    strings = ['inreplyto', 'messageid', 'type']
     for s in strings:
         string = msgobj.get(s)
         if string is None:
             string = "None"
         message[s].add(string)
-    content = msgobj.get('content')
-    message['content'].add('{{{\n%s\n}}}' % content)
+    #content = msgobj.get('content')
+    #message['content'].add('{{{\n%s\n}}}' % content)
     return message
 
 def getFile(db, f):
