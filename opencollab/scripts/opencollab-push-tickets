@@ -8,7 +8,7 @@
     @copyright: 2008-2010 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import sys, socket, re, optparse, cStringIO
+import sys, socket, re, optparse, cStringIO, base64
 import roundup
 from roundup import instance
 from opencollab.util.config import parseConfig
@@ -26,12 +26,9 @@ def openDB(tpath):
         return db
 
 def getUser(db, user):
-    #['username', 'creation', 'alternate_addresses', 'realname', 'roles', 
-    # 'creator', 'organisation', 'address', 'actor', 'phone', 'activity', 
-    # 'queries', 'timezone', 'password', 'id']
     udata = Meta()
     unode = db.user.getnode(user)
-    attr = ['username', 'realname', 'organisation', 'phone', 'id']
+    attr = ['username', 'realname', 'organisation', 'phone']
     for k in attr:
         udata[k].add(unode.get(k))
     return udata
@@ -41,13 +38,7 @@ def filterIssues(db, filter):
     mfilter = Meta()
     mfilter[filter] = filter
     mkey = mfilter[filter]
-    # DB classes:
-    # "status", "timelog", "keyword", "priority", "user", 
-    # "file", "msg", "query", "issue"
     for issue_id in db.issue.list(): 
-        # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
-        # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
-        # 'activity', 'superseder', 'id', 'files']
         issue = db.issue.getnode(issue_id)
         customer = issue.get('customer')
         if customer:
@@ -58,6 +49,44 @@ def filterIssues(db, filter):
             if mkey in username or mkey in organisation:
                 issues.append(issue_id)
     return issues
+
+def getMessage(db, msg):
+    message = Meta()
+    # Message properties:
+    # ['files', 'inreplyto', 'recipients', 'author', 'creation', 'actor',
+    # 'summary', 'content', 'creator', 'messageid', 'date', 'activity',
+    # 'type', 'id']
+    msgobj = db.msg.getnode(msg)
+    for f in msgobj.get('files'):
+        message['file'].add('[[file%s]]' % f)
+    for r in msgobj.get('recipients'):
+        message['recipient'].add('[[user%s]]' % r)
+    users = ['author', 'actor', 'creator']
+    for u in users:
+        user = msgobj.get(u)
+        message[u].add('[[user%s]]' % user)
+    strings = ['inreplyto', 'summary', 'messageid', 'type']
+    for s in strings:
+        string = msgobj.get(s)
+        message[s].add(string)
+    content = msgobj.get('content')
+    message['content'].add('{{{\n%s\n}}}' % content)
+    return message
+
+def getFile(db, f):
+    fileobj = Meta()
+    # File properties:
+    # ['name', 'creator', 'creation', 'actor', 'content', 'activity', 'type', 'id']
+    fobj = db.file.getnode(f)
+    content = fobj.get('content')
+    fileobj['name'].add(fobj.get('name'))
+    fileobj['type'].add(fobj.get('type'))
+    fileobj['content'].add(base64.b64encode(content))
+    attr = ['creator', 'actor']
+    for u in attr:
+        user = fobj.get(u)
+        fileobj[u].add('[[%s]]' % user)
+    return fileobj
 
 def main():
     parser = optparse.OptionParser()
@@ -71,6 +100,10 @@ def main():
                       dest="configpath", default=None,
                       metavar="PATH", help=("Tracker configuration directory PATH."))
     parser.set_usage("%prog [options]")
+    userdata = Metas()
+    issues = Metas()
+    files = Metas()
+    messages = Metas()
     sect = "push-tickets"
     ops = parseOptions(parser, sect, template=True) 
     url = ops["creds"]["url"]
@@ -89,9 +122,51 @@ def main():
     if filter is None:
         parser.error("Use -f or --filter to select issues by customer organisation or username.")
     if configpath is not None:
+        # DB classes:
+        # "status", "timelog", "keyword", "priority", "user", 
+        # "file", "msg", "query", "issue"
         db = openDB(configpath)
         issueids = set(filterIssues(db, filter))
-        print issueids
+        for id in issueids:
+            # Issue properties:
+            # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
+            # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
+            # 'activity', 'superseder', 'id', 'files']
+            issue = db.issue.getnode(id)
+            statuspage = "status" + issue.get("status")
+            issues[id]["status"].add('[[%s]]' % statuspage)
+            issues[id]["title"].add(issue.get("title"))
+            #creation = issue.get("creation")
+            #issues[id]["creation"].add(issue.get(creation))
+            for msg in issue.get("messages"):
+                issues[id]["message"].add('[[msg%s]]' % msg)
+                messages[msg].update(getMessage(db, msg))
+            priority = issue.get("priority")
+            issues[id]["priority"].add('[[priority%s]]' % priority)
+            for file in issue.get("files"):
+                issues[id]["file"].add('[[file%s]]' % file)
+                files[file].update(getFile(db, file))
+            # User properties:
+            #['username', 'creation', 'alternate_addresses', 'realname', 'roles', 
+            # 'creator', 'organisation', 'address', 'actor', 'phone', 'activity', 
+            # 'queries', 'timezone', 'password', 'id']
+            attr = ['customer', 'actor', 'assignedto', 'creator']
+            for a in attr:
+                uid = issue.get(a)
+                try:
+                    userid = uid.pop()
+                except AttributeError:
+                    userid = uid
+                except IndexError:
+                    continue
+                userpage = "user" + userid
+                issues[id][a].add('[[%s]]' % userpage)
+                userdata[userpage].update(getUser(db, userid))
+            nosy = issue.get('nosy')
+            for userid in nosy:
+                userpage = "user" + userid
+                issues[id]["nosy"].add('[[%s]]' % userpage)
+                userdata[userpage].update(getUser(db, userid))
         db.close()
     else:
         parser.error(" Use -p or --tracker-path to specify the tracker configuration path.")
