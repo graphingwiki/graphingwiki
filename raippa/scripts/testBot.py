@@ -435,12 +435,9 @@ def main():
 
     while True:
         try:
-            checking_loop(wiki)
-        except opencollab.wiki.WikiFailure:
-            error('WIKI PROBLEMS')
-            traceback.print_exc()
-        except socket.error:
-            error('CONNECTION PROBLEMS')
+             checking_loop(wiki)
+        except Exception:
+            error('PROBLEMS?')
             traceback.print_exc()
         time.sleep(10)
         
