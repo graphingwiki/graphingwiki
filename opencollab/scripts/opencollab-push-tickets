@@ -182,27 +182,7 @@ def main():
         # "status", "timelog", "keyword", "priority", "user", 
         # "file", "msg", "query", "issue"
         db = openDB(configpath)
-        issueids = set(filterIssues(db, filter))
-        if verbose:
-            print "NOTE: Getting issue data from the", tracker, "tracker."
-        for id in issueids:
-            # Issue properties:
-            # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
-            # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
-            # 'activity', 'superseder', 'id', 'files']
-            issue = db.issue.getnode(id)
-            ipage = "issue" + id
-            statuspage = "status" + issue.get("status")
-            issues[ipage]["gwikicategory"].add("CategoryRoundupIssue")
-            issues[ipage]["tracker"].add(tracker)
-            issues[ipage]["status"].add('[[%s]]' % statuspage)
-            issues[ipage]["title"].add(issue.get("title"))
-    if configpath is not None:
-        # DB classes:
-        # "status", "timelog", "keyword", "priority", "user", 
-        # "file", "msg", "query", "issue"
-        db = openDB(configpath)
-        issueids = set(filterIssues(db, filter))
+        issueids = set(filterIssues(db, filter, verbose))
         if verbose:
             print "NOTE: Getting issue data from the", tracker, "tracker."
         for id in issueids:
@@ -232,7 +212,7 @@ def main():
                 issues[ipage]["file"].add('[[file%s]]' % file)
                 issues[fpage].update(getFile(db, file))
                 issues[fpage]["gwikicategory"].add("CategoryRoundupFile")
-                issues[fpage]["TRACKER"].add(tracker)
+                issues[fpage]["tracker"].add(tracker)
             attr = ['customer', 'actor', 'assignedto', 'creator']
             for a in attr:
                 uid = issue.get(a)
