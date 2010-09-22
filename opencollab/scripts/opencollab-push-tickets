@@ -40,14 +40,14 @@ def getUser(db, user):
     unode = db.user.getnode(user)
     attr = ['username', 'realname', 'organisation', 'phone']
     for k in attr:
-        key = unode.get(k)
-        if key is None:
-            key = "None"
-        udata[k].add(key)
+        v = unode.get(k)
+        if v is None:
+            v = "None"
+        udata[k].add(v)
     udata['gwikilabel'].add(unode.get('realname'))
     return udata
 
-def filterIssues(db, filter):
+def filterIssues(db, filter, verbose):
     """
     Filter issues based on a customer organisation or useraname.
     """
@@ -65,6 +65,9 @@ def filterIssues(db, filter):
             organisation = idata['organisation']
             if mkey in username or mkey in organisation:
                 issues.append(issue_id)
+        else:
+            if verbose:
+                print 'NOTE: issue' + issue_id, "skipped, since there is no customer."
     return issues
 
 def getMessage(db, msg):
