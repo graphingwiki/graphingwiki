@@ -134,8 +134,12 @@ def shelve_remove_out(new_data, (frm, to), linktype):
 
 def strip_meta(key, val):
     key = key.strip()
-    if key != 'gwikilabel':
-        val = val.strip()
+    val = val.strip()
+
+    # retain empty labels
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
     return key, val
 
 def shelve_set_attribute(new_data, node, key, val):
@@ -158,8 +162,10 @@ def shelve_set_attribute(new_data, node, key, val):
 def add_meta(new_data, pagename, (key, val)):
 
     # Do not handle empty metadata, except empty labels
-    if key != 'gwikilabel':
-        val = val.strip()
+    val = val.strip()
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
     if not val:
         return
 

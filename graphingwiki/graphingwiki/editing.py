@@ -492,7 +492,7 @@ def get_pages(request):
 
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
-    preformatted_re = re.compile('({{{.*?}}})', re.M|re.S)
+    preformatted_re = re.compile('((^ [^:]+?:: )?({{{[^{]*?}}}))', re.M|re.S)
     wiki_preformatted_re = re.compile('{{{\s*\#\!wiki', re.M|re.S)
 
     keys_to_markers = dict()
@@ -500,12 +500,18 @@ def remove_preformatted(text):
 
     # Replace with unique format strings per preformatted area
     def replace_preformatted(mo):
-        key = mo.group(0)
+        key, preamble, rest = mo.groups()
 
-        # Do not remove wiki-formatted areas
+        # Cases 594, 596, 759: ignore preformatted section starting on
+        # the metakey line
+        if preamble:
+            return key
+
+        # Do not remove wiki-formatted areas, we need the keys in them
         if wiki_preformatted_re.search(key):
             return key
 
+        # All other areas should be removed
         marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
         while marker in text:
             marker = "%d-%s" % (mo.start(), md5.new(marker).hexdigest())
@@ -514,6 +520,7 @@ def remove_preformatted(text):
         markers_to_keys[marker] = key
 
         return marker
+
     text = preformatted_re.sub(replace_preformatted, text)
 
     return text, keys_to_markers, markers_to_keys
@@ -755,12 +762,47 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {u'a': [u'text']},
     ...               {u'a': [u'text\n\nmore text']})
     u' a:: text  more text\n'
+
+    # Just in case - regression of spaces at the end of metas
+    >>> replace_metas(request, 
+    ...               u'kk\n a:: Foo \n<<MetaTable>>',
+    ...               {u'a': [u'Foo']},
+    ...               {u'a': [u'Foo ', u'']})
+    u'kk\n a:: Foo\n<<MetaTable>>\n'
+
+    # Case759 regressions
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{ weohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{ weohweovd']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{ weohwe', u'']})
+    u' key:: {{{ weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{ \nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{ weohwe', u'']})
+    u' key:: {{{ weohwe\nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{#!wiki \nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
+    u' key:: {{{#!wiki weohwe\nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{#!wiki weohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki weohweovd']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
+    u' key:: {{{#!wiki weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
     """
 
     text = text.rstrip()
     # Annoying corner case with dl:s
     if text.endswith('::'):
         text = text + " \n"
+
+    oldtext = text
 
     # Work around the metas whose values are preformatted fields (of
     # form {{{...}}})
