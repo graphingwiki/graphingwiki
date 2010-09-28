@@ -289,6 +289,25 @@ class GraphingWiki(Wiki):
                             createPageOnDemand, categoryMode, categories,
                             template)
 
+    def incSetMeta(self, cleared, discarded, added):
+        clearedDict = dict()
+        for page, keys in cleared.iteritems():
+            clearedDict[page] = list(keys)
+
+        discardedDict = dict()
+        for page, meta in discarded.iteritems():
+            discardedDict[page] = dict()
+            for key, values in meta.iteritems():
+                discardedDict[page][key] = list(values)
+
+        addedDict = dict()
+        for page, meta in added.iteritems():
+            addedDict[page] = dict()
+            for key, values in meta.iteritems():
+                addedDict[page][key] = list(values)
+
+        return self.request("IncSetMeta", clearedDict, discardedDict, addedDict)
+
 def redirected(func, *args, **keys):
     oldStdout = sys.stdout
     sys.stdout = sys.stderr

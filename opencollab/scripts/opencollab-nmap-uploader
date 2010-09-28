@@ -7,11 +7,18 @@
 import re, os, sys, string, optparse, socket
 import xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
+
+NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
+             "NMAP Run", "NMAP Version", "NMAP traceroute",
+             "OS Accuracy", "OS Family", "OS Generation",
+             "OS Type", "OS Vendor", "PTR", "Run Arguments",
+             "Run Ended", "Run Started", "TYPE", "Vendor",
+             "XML Output Version", "listens to", "serves"]
 
 def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
     try:
@@ -212,13 +219,15 @@ def main():
 
     for arg in args:
         nmap_files.append(arg)
+
+    metas = Metas()
     for file in nmap_files:
         xml_page = hashFile(file)
         fname = os.path.basename(file)
         if verbose:
             print "NOTE: Parsing", file
 
-        metas = parse_xml(file, xml_page)
+        metas.update(parse_xml(file, xml_page))
         metas[xml_page]['TYPE'].add('NMAP Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNmap', 'CategoryScan']
         metas[xml_page]['gwikitemplate'] = ['NmapTemplate']
@@ -233,25 +242,26 @@ def main():
                     metas[page]["gwikitemplate"].add(template)
 
         if verbose:
-            print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, '', verbose, replace)
-        if failed:
-            for page in failed:
-                if verbose:
-                    print "ERROR uploading:",  page, repr(metas[page])
-                else:
-                    print "ERROR uploading:", page
-
-        if verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            print "NOTE: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
             try:
                 status = uploadFile(collab, xml_page, file, fname, progress)
             except (IOError, TypeError, RuntimeError), msg:
                 sys.exit(msg)
+
+    if verbose:
+        print "NOTE: Importing metas to", url
+    
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = NMAP_KEYS
+
+    collab.incSetMeta(cleared, Metas(), metas)
+
 
 if __name__ == "__main__":
     try:
