@@ -138,6 +138,7 @@ def getMetaData(db):
         metadata[page]['order'].add(order)
         metadata[page]['name'].add(name)
         metadata[page]['gwikilabel'].add(name)
+        metadata[page]['gwikicategory'].add('CategoryRoundupPriority')
     for m in db.status.list():
         order = unicode(db.status.getnode(m).get('order'))
         name = db.status.getnode(m).get('name')
@@ -145,6 +146,7 @@ def getMetaData(db):
         metadata[page]['order'].add(order)
         metadata[page]['name'].add(name)
         metadata[page]['gwikilabel'].add(name)
+        metadata[page]['gwikicategory'].add('CategoryRoundupStatus')
     return metadata
 
 def main():
