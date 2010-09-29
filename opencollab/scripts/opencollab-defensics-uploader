@@ -8,11 +8,13 @@
 import os, sys, re, string, optparse
 from xml.dom import minidom
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta
+from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import getPages
 from gzip import GzipFile
+
+DEFENSICS_KEYS = []
 
 def getText(nodelist):
     rc = ""
@@ -63,61 +65,54 @@ def parse_notes(dir, file='notes.xml'):
         note_metas[kd].add(description)
     return note_metas
 
-def handle_paths(collab, testplan_page, dirs, progress):
+def handle_paths(collab, testplan, dirs, progress):
     at = re.compile('@')
     flist=[]
-    page_metas=Meta()
-    template = "TestRunTemplate"
-    page_metas["category"].add("CategoryTestRun")
+    metas=Metas()
     for dir in dirs:
         flist = os.listdir(dir)
         if 'summary.xml' in flist:
             print "Handling directory: " + dir
-            page_metas.update(parse_summary(dir))
             fpath = os.path.join(dir, 'summary.xml')
-            page_metas["Summary XML"].add('[[attachment:summary.xml]]')
-            testrun_page = hashFile(fpath)
-            uploadFile(collab, testrun_page, fpath, 'summary.xml', progress)
-            page_metas.update(parse_tool_options(page_metas))
+            testrun = hashFile(fpath)
+            metas[testrun].update(parse_summary(dir))
+            metas[testrun]["Summary XML"].add('[[attachment:summary.xml]]')
+            uploadFile(collab, testrun, fpath, 'summary.xml', progress)
+            metas[testrun].update(parse_tool_options(metas[testrun]))
             if('main.log.gz' in flist):
                 pass
             if('main.log' in flist):
-                page_metas["Main Log"].add('[[attachment:main.log.gz]]')
+                metas[testrun]["Main Log"].add('[[attachment:main.log.gz]]')
                 if('main.log.gz' in flist):
                     pass
                 else:
                     gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                     gzipped.write(open(os.path.join(dir, "main.log")).read())
                     gzipped.close()
-                uploadFile(collab,testrun_page, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
+                uploadFile(collab,testrun, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
             if('run.set' in flist):
-                page_metas["Settings"].add('[[attachment:run.set]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'run.set'), 'run.set', progress)
+                metas[testrun]["Settings"].add('[[attachment:run.set]]')
+                uploadFile(collab, testrun, os.path.join(dir, 'run.set'), 'run.set', progress)
             if('runinfo' in flist):
-                page_metas["Settings"].add('[[attachment:runinfo]]')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'runinfo'), 'runinfo', progress)
+                metas[testrun]["Settings"].add('[[attachment:runinfo]]')
+                uploadFile(collab, testrun, os.path.join(dir, 'runinfo'), 'runinfo', progress)
             if('statistics.csv' in flist):
-                page_metas["Statistics"].add('[[attachment:statistics.csv]]')
-                uploadFile(collab,testrun_page, os.path.join(dir, 'statistics.csv'), 'statistics.csv',progress)
+                metas[testrun]["Statistics"].add('[[attachment:statistics.csv]]')
+                uploadFile(collab,testrun, os.path.join(dir, 'statistics.csv'), 'statistics.csv',progress)
             if('summary.txt' in flist):
-                page_metas["Summary"].add('{{attachment:summary.txt}}')
-                uploadFile(collab, testrun_page, os.path.join(dir, 'summary.txt'), 'summary.txt',progress)
+                metas[testrun]["Summary"].add('{{attachment:summary.txt}}')
+                uploadFile(collab, testrun, os.path.join(dir, 'summary.txt'), 'summary.txt',progress)
             if 'notes.xml' in flist:
-                page_metas["Notes"].add('[[attachment:notes.xml]]')
-                page_metas.update(parse_notes(dir))
-                uploadFile(collab, testrun_page, os.path.join(dir, 'notes.xml'), 'notes.xml',progress)
-            if(testplan_page is not None):
-                if(at.search(testplan_page)):
-                    tmp = at.sub('', testplan_page) 
-                    for page in page_metas[tmp]:
-                        page_metas["Test Plan"].add('[[%s]]' % page)
-                else:
-                    page_metas["Test Plan"].add('[[%s]]' % testplan_page)
-            status = collab.setMeta(testrun_page, page_metas, template=template, replace=True)
-            if progress:
-                print testrun_page, status
-            page_metas=Meta()
-            page_metas["category"].add("CategoryTestRun")
+                metas[testrun]["Notes"].add('[[attachment:notes.xml]]')
+                metas[testrun].update(parse_notes(dir))
+                uploadFile(collab, testrun, os.path.join(dir, 'notes.xml'), 'notes.xml',progress)
+            if testplan is not None:
+                metas[testrun]["Test Plan"].add('[[%s]]' % testplan)
+            else:
+                metas[testrun]["Test Plan"].add("FixMe")
+            metas[testrun]["gwikicategory"].add("CategoryTestRun")
+            metas[testrun]["gwikitemplate"].add("TestRunTemplate")
+    return metas
 
 def walk_dirs(path):
     dlist=[]
@@ -128,6 +123,9 @@ def walk_dirs(path):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-n", "--testplan-page-name", action="store",
         type="string", dest="testplan", default=None,
         metavar="TESTPLAN-PAGE", help="Specify a TESTPLAN-PAGE name to link the test runs to." )
@@ -142,15 +140,17 @@ def main():
     dlist=[]
     sect = "defensics"
     ops = {}
-    ops = parseOptions(parser, sect, search=True, template=True)
+    metas = Metas()
+    ops = parseOptions(parser, sect, search=True)
     url = ops["creds"]["url"]
     progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
+    replace = ops[sect]["lasteditwins"]
     dlist = ops[sect]["args"]
     if len(dlist) < 1:
         parser.error("You must supply 1..N input directories. Use -h for help.")
     search_string = ops[sect]["search"]
-    testplan_page = ops[sect]["testplan"]
+    testplan = ops[sect]["testplan"]
     if verbose:
         print "Authenticating to: " + repr(url)
     while True:
@@ -189,7 +189,7 @@ def main():
                     print "Your selection must be between 0 and ", nro
                 else:
                     if((answer >= 0) and (answer <= nro)):
-                        testplan_page = pnames[answer][0]
+                        testplan = pnames[answer][0]
                         cont = False
                     else:
                         print "Your selection must be between 0 and ", nro
@@ -207,7 +207,14 @@ def main():
         dirs = set(dlist)
     if(verbose):
         print "Handling: ", dirs
-    handle_paths(collab, testplan_page, dirs, progress)
+    metas = handle_paths(collab, testplan, dirs, progress)
+    if verbose:
+        print "NOTE: Importing metas to", url
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = DEFENSICS_KEYS
+    collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
     try:
