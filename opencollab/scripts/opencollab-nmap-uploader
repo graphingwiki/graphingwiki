@@ -11,7 +11,6 @@ from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import importMetas
 
 NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
              "NMAP Run", "NMAP Version", "NMAP traceroute",
