@@ -15,7 +15,15 @@ from opencollab.util.config import parseConfig
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util.wiki import importMetas
+
+ROUNDUP_KEYS = [
+    'activity', 'actor', 'address', 'alternate_addresses',
+    'author', 'content', 'creation', 'creator', 'date',
+    'files', 'gwikilabel', 'id', 'inreplyto', 'messageid',
+    'name', 'order', 'organisation', 'password', 'phone',
+    'queries', 'realname', 'recipients', 'roles', 'summary',
+    'timezone', 'type', 'username'
+]
 
 def openDB(tpath):
     """"
@@ -156,10 +164,10 @@ def main():
     parser.set_usage("%prog [options]")
     issues = Metas()
     sect = "push-tickets"
-    ops = parseOptions(parser, sect, template=True) 
+    ops = parseOptions(parser, sect) 
     verbose = ops[sect]["verbose"]
     url = ops["creds"]["url"]
-    template = ops[sect]["template"]
+    template = "RoundupTemplate"
     replace = ops[sect]["lasteditwins"]
     filter = ops[sect]["filter"]
     tracker = ops[sect]["tracker"]
@@ -194,6 +202,7 @@ def main():
             ipage = "issue" + id
             statuspage = "status" + issue.get("status")
             issues[ipage]["gwikicategory"].add("CategoryRoundupIssue")
+            issues[ipage]["gwikitemplate"].add(template)
             issues[ipage]["tracker"].add(tracker)
             issues[ipage]["status"].add('[[%s]]' % statuspage)
             issues[ipage]["title"].add(issue.get("title"))
@@ -212,6 +221,7 @@ def main():
                 issues[ipage]["file"].add('[[file%s]]' % file)
                 issues[fpage].update(getFile(db, file))
                 issues[fpage]["gwikicategory"].add("CategoryRoundupFile")
+                issues[fpage]["gwikitemplate"].add(template)
                 issues[fpage]["tracker"].add(tracker)
             attr = ['customer', 'actor', 'assignedto', 'creator']
             for a in attr:
@@ -226,6 +236,7 @@ def main():
                 issues[ipage][a].add('[[%s]]' % userpage)
                 issues[userpage].update(getUser(db, userid))
                 issues[userpage]["gwikicategory"].add("CategoryRoundupUser")
+                issues[userpage]["gwikitemplate"].add(template)
                 issues[userpage]["tracker"].add(tracker)
             nosy = issue.get('nosy')
             for userid in nosy:
@@ -233,18 +244,18 @@ def main():
                 issues[ipage]["nosy"].add('[[%s]]' % userpage)
                 issues[userpage].update(getUser(db, userid))
                 issues[userpage]["gwikicategory"].add("CategoryRoundupUser")
+                issues[userpage]["gwikitemplate"].add(template)
             metadata = ['priority', 'status']
         issues.update(getMetaData(db))
         db.close()
+
         if verbose:
             print "NOTE: Importing metas to", url
-        failed = importMetas(collab, issues, template, verbose, replace)
-        if failed:
-            for page in failed:
-                if verbose:
-                    print "ERROR uploading:",  page, repr(metas[page])
-                else:
-                    print "ERROR uploading:", page
+        cleared = Meta()
+        if replace:
+            for page, meta in issues.iteritems():
+                cleared[page] = ROUNDUP_KEYS
+        collab.incSetMeta(cleared, Metas(), issues)
 
     else:
         parser.error(" Use -p or --tracker-path to specify the tracker configuration path.")
