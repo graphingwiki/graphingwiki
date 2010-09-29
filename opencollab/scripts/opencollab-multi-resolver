@@ -7,13 +7,23 @@
 import re, socket, optparse, subprocess, IPy
 from subprocess import Popen
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
 from opencollab.util.config import parseOptions
-from opencollab.util.wiki import importMetas
 
-def shred_triplets(resolved, category): 
+MR_KEYS = [
+    'A', 'AAAA', 'ALLOCATED', 'AS', 'AS-NAME', 'ATTRIBUTION',
+    'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX10', 'MX100',
+    'MX1000', 'MX11', 'MX110', 'MX15', 'MX19', 'MX2', 'MX20',
+    'MX200', 'MX3', 'MX30', 'MX300', 'MX40', 'MX400', 'MX42',
+    'MX5', 'MX50', 'MX60', 'MX69', 'MX90', 'MX900', 'MX999',
+    'NETWORK', 'NS', 'PTR', 'REGISTRY', 'SOA', 'SOA-EMAIL',
+    'SOA-EXPIRE', 'SOA-MINIMUM', 'SOA-REFRESH', 'SOA-RETRY',
+    'SOA-SERIAL', 'SRV', 'TYPE' 
+]
+
+def shred_triplets(resolved): 
     collab_metas = Metas()
     for triplet in resolved:
         if triplet:
@@ -22,7 +32,8 @@ def shred_triplets(resolved, category):
                 collab_metas[subj][pred].add(obj)
             else:
                 collab_metas[subj][pred].add('[[%s]]' % obj)
-            collab_metas[subj]["category"].add(category)
+            collab_metas[subj]["gwikicategory"].add('CategoryIdentity')
+            collab_metas[subj]["gwikitemplate"].add('IdentityTemplate')
     return collab_metas
 
 def expand_ipv4(rr,new):
@@ -135,6 +146,9 @@ def main():
     parser.add_option("-m", "--mresolve-path",
         dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
         help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
         help="Perform queries recursively." )
@@ -147,16 +161,11 @@ def main():
     new = []
     ops = {}
     sect = "multi-resolver"
-    ops = parseOptions(parser, sect, search=True, template=True, category=True)
+    ops = parseOptions(parser, sect, search=True)
     url=ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     mresolvepath=ops[sect]["mresolvepath"]
-    template = ops[sect]["template"]
-    if template is None:
-        template = "IdentityTemplate"
-    category = ops[sect]["category"]
-    if category is None:
-        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"]
     search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
     srv = ops[sect]["srv"]
@@ -210,16 +219,14 @@ def main():
             resolved.add(triplet)
     if verbose:
         print "Shredding resolved RDF triplets."
-    metas.update(shred_triplets(resolved, category))
+    metas.update(shred_triplets(resolved))
     if verbose:
         print "Importing resolved identities to collab." 
-    failed = importMetas(collab, metas, template, verbose, True)
-    if failed:
-        for page in failed:
-            if verbose:
-                print "ERROR uploading:", page, repr(metas[page])
-            else:
-                print "ERROR uploading:", page
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = MR_KEYS
+    collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
     try:
