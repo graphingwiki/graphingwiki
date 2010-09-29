@@ -73,12 +73,11 @@ def handle_script(host_ipv4, script, metas):
     metas[host_ipv4]['NMAP %s' % (scriptid)].add(scriptcontent)                            
     return metas
 
-def parse_xml(file, nmaprun_page):
+def parse_xml(metas, file, nmaprun_page):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
     """
-    metas = Metas()
     try:
         doc = xml.dom.minidom.parse(file)
     except xml.parsers.expat.ExpatError, e:
@@ -227,7 +226,7 @@ def main():
         if verbose:
             print "NOTE: Parsing", file
 
-        metas.update(parse_xml(file, xml_page))
+        metas = parse_xml(metas, file, xml_page)
         metas[xml_page]['TYPE'].add('NMAP Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNmap', 'CategoryScan']
         metas[xml_page]['gwikitemplate'] = ['NmapTemplate']
