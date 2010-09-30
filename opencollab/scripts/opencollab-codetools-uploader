@@ -10,13 +10,6 @@ from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
 
-CODE_KEYS = [
-"Release Notes", "Text Document", "JAR File",
-"ISO File", "TAR Archive", "ZIP Archive",
-"PDF Document", "D3 Install File", "INI File",
-"Hotfix File", "HTML Document"
-]
-
 def read_file(htaccess):
     content=""
     try:
@@ -131,7 +124,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, verbo
         if changes == True:
             print "NOTE: " + page + " attachments were updated"
             if marker:
-                metas[page][marker].add('')
+                metas[page]["changed"].add("True")
     return metas
 
 def main():
@@ -146,9 +139,6 @@ def main():
                       default=None,
                       metavar="ARENA-USER",
                       help=("ARENA-USER username."))
-    parser.add_option( "-l", "--last-edit-wins",
-        action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option( "-m", "--marker",
                        action="store",
                        default=None,
@@ -172,7 +162,6 @@ def main():
     verbose = ops[sect]["verbose"]
     blacklist = ops[sect]["blacklist"]
     arena_dir_glob = ops[sect]["arenadirglob"]
-    replace = ops[sect]["lasteditwins"]
     if arena_dir_glob == None:
         parser.error("ERROR: Arena dir glob must be specified. Use -h for help.")
     arena_user = ops[sect]["arenauser"]
@@ -205,10 +194,11 @@ def main():
         print "NOTE: Updating metas to", url
     cleared = Meta()
     discarded = Metas()
-    if replace:
-        for page, meta in metas.iteritems():
-            cleared[page] = CODE_KEYS
-            #discarded[page]["key"].add("value")
+    for page, meta in metas.iteritems():
+        if metas[page]["changed"]:
+            cleared[page].add(marker)
+            del(metas[page]["changed"])
+        #discarded[page]["key"].add("value")
     collab.incSetMeta(cleared, discarded, metas)
 
 if __name__ == "__main__":
