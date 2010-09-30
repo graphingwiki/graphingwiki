@@ -433,18 +433,17 @@ def main():
         sys.stderr.write('Auhtentication failure\n')
         sys.exit(1)
 
-    while True:
-        try:
-             checking_loop(wiki)
-        except Exception:
-            error('PROBLEMS?')
-            traceback.print_exc()
-        time.sleep(10)
+    checking_loop(wiki)
         
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print 'Bye!'
+    while True:
+        try:
+            main()
+        except Exception:
+            error('PROBLEMS?')
+            traceback.print_exc()
+            time.sleep(60)
+        except KeyboardInterrupt:
+            print 'Bye!'
     
