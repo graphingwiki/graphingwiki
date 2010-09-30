@@ -295,8 +295,8 @@ def checking_loop(wiki):
 
                 #FIXME. Must check that editors in raippa do not add
                 #newlines in output. If not. These lines can be removed
-                stu_output = stu_output.lstrip('\n')
-                output = output.lstrip('\n')
+                stu_output = stu_output.rstrip('\n')
+                output = output.rstrip('\n')
 
                 stu_output = stu_error + stu_output
 
