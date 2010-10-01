@@ -387,7 +387,6 @@ def checking_loop(wiki):
             wiki.setMeta(page, metas, True)
             
             info('Done')
-            time.sleep(10)
 
 def main():
     #parse commandline parameters
