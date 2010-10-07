@@ -25,6 +25,24 @@ ROUNDUP_KEYS = [
     'timezone', 'type', 'username'
 ]
 
+def parseInputFile(inputfile):
+    """
+    If you want to have several customers to filter by, you can
+    use an input file specify that set of customers.
+    """
+    customers = []
+    try:
+        file = open(inputfile, "r")
+        lines = file.readlines()
+        file.close()
+    except IOError:
+        error = "Input file: " + file + " doesn't exist."
+        sys.exit(error)
+    for line in lines:
+        line = line.strip()
+        customers.append(line)
+    return set(customers)
+
 def openDB(tpath):
     """"
     Try to open a Roundup DB from tpath as user admin.
@@ -46,13 +64,16 @@ def getUser(db, user):
     """
     udata = Meta()
     unode = db.user.getnode(user)
-    attr = ['username', 'realname', 'organisation', 'phone']
+    attr = ['username', 'organisation', 'phone']
     for k in attr:
         v = unode.get(k)
         if v is None:
-            v = "None"
+            continue
         udata[k].add(v)
-    udata['gwikilabel'].add(unode.get('realname'))
+    realname = unode.get('realname')
+    if realname is not None:
+        udata['realname'].add(realname)
+        udata['gwikilabel'].add(realname)
     return udata
 
 def filterIssues(db, filter, verbose):
@@ -60,9 +81,6 @@ def filterIssues(db, filter, verbose):
     Filter issues based on a customer organisation or useraname.
     """
     issues = []
-    mfilter = Meta()
-    mfilter[filter] = filter
-    mkey = mfilter[filter]
     for issue_id in db.issue.list(): 
         issue = db.issue.getnode(issue_id)
         customer = issue.get('customer')
@@ -71,7 +89,9 @@ def filterIssues(db, filter, verbose):
             idata.update(getUser(db, customer.pop()))
             username = idata['username']
             organisation = idata['organisation']
-            if mkey in username or mkey in organisation:
+            uset = set(username) | set(organisation)
+            match = uset & filter
+            if match:
                 issues.append(issue_id)
         else:
             if verbose:
@@ -100,7 +120,7 @@ def getMessage(db, msg):
     for s in strings:
         string = msgobj.get(s)
         if string is None:
-            string = "None"
+            continue
         message[s].add(string)
     #content = msgobj.get('content')
     #message['content'].add('{{{\n%s\n}}}' % content)
@@ -154,6 +174,9 @@ def main():
     parser.add_option("-f", "--filter",
                       dest="filter", default=None,
                       metavar="FILTER", help=("Organisation name or username to FILTER by."))
+    parser.add_option("-i", "--input-file",
+                      dest="inputfile", default=None,
+                      metavar="INPUTFILE", help=("An INPUTFILE listing organisation names and/or usernames to FILTER by (one per line)."))
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
@@ -172,6 +195,7 @@ def main():
     template = "RoundupTemplate"
     replace = ops[sect]["lasteditwins"]
     filter = ops[sect]["filter"]
+    inputfile = ops[sect]["inputfile"]
     tracker = ops[sect]["tracker"]
     configpath = ops[sect]["configpath"]
     while True:
@@ -183,18 +207,26 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break
-    if filter is None:
-        parser.error("Use -f or --filter to select issues by customer organisation or username.")
+    if filter is None and inputfile is None:
+        parser.error("Use -f or --filter or -i --input-file to select issues by customer organisation or username.")
     if tracker is None:
         parser.error("Use -n or --tracker-name to specify the RoundUp tracker name.")
+    if inputfile is not None:
+        iset = parseInputFile(inputfile)
+        if filter is not None:
+            filter = set([filter]) | iset
+        else:
+            filter = iset
+    else:
+        filter = set([filter])
     if configpath is not None:
         # DB classes:
         # "status", "timelog", "keyword", "priority", "user", 
         # "file", "msg", "query", "issue"
         db = openDB(configpath)
-        issueids = set(filterIssues(db, filter, verbose))
         if verbose:
             print "NOTE: Getting issue data from the", tracker, "tracker."
+        issueids = set(filterIssues(db, filter, verbose))
         for id in issueids:
             # Issue properties:
             # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
@@ -233,6 +265,8 @@ def main():
                 except AttributeError:
                     userid = uid
                 except IndexError:
+                    continue
+                if userid is None:
                     continue
                 userpage = "user" + userid
                 issues[ipage][a].add('[[%s]]' % userpage)
