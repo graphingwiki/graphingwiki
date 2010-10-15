@@ -267,7 +267,13 @@ def checking_loop(wiki):
                     filelist = input_meta[inputpage]['file']
                     for attachment in filelist:
                         filename = removeLink(attachment)
-                        content = wiki.getAttachment(inputpage, filename)
+                        try:
+                            content = wiki.getAttachment(inputpage, filename)
+                        except opencollab.wiki.WikiFault, error_message:
+                            if "There was an error in the wiki side (Nonexisting attachment:" in error_message:
+                                content = ''
+                            else:
+                                raise
 
                         input_files[filename] = content
 
