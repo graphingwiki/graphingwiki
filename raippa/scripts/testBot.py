@@ -269,7 +269,7 @@ def checking_loop(wiki):
                         filename = removeLink(attachment)
                         try:
                             content = wiki.getAttachment(inputpage, filename)
-                        except opencollab.wiki.WikiFault, error_message:
+                        except opencollab.wiki.WikiFault, error_message.args[0]:
                             if "There was an error in the wiki side (Nonexisting attachment:" in error_message:
                                 content = ''
                             else:
@@ -438,6 +438,13 @@ def main():
                     sys.stderr.write('Auhtentication failure\n')
                     sys.exit(1)
 
+                #when we start the loop make every picked question pending
+                picked = wiki.getMeta('overallvalue=picked')
+                info('Found %i picked pages' % len(picked))
+                 
+                for page in picked:
+                    info('setting %s to pending' % page)
+                    wiki.setMeta(page, {'overallvalue': ['pending']}, True)
                 checking_loop(wiki)
 
             except Exception:
