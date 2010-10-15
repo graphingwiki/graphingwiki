@@ -162,7 +162,7 @@ def checking_loop(wiki):
 
     while True:
         #Get all new history pages with pending status
-        info('Lookig for pages in %s' % wikiname)
+        info('Looking for pages in %s' % wikiname)
         picked_pages = wiki.getMeta('CategoryHistory, overallvalue=pending')
         info('Found %d pages' % len(picked_pages))
 
@@ -312,7 +312,7 @@ def checking_loop(wiki):
                     info('Excess output!')
 
                 passed = True
-                if stu_output.rstrip('\n') != output.rstip('\n'):
+                if stu_output.rstrip('\n') != output.rstrip('\n'):
                     passed = False 
 
                 # compare output files
@@ -423,30 +423,34 @@ def main():
         config.read(options.file)
         uname = config.get('creds', 'username')
         passwd = config.get('creds', 'password')
+
         while True:
             try:
-                wiki = opencollab.wiki.CLIWiki(options.url, uname, passwd)
-            except socket.error, e:
-                error(e)
-                time.sleep(10)
-            else:
-                break
-                
-    if not wiki.token:
-        sys.stderr.write('Auhtentication failure\n')
-        sys.exit(1)
+                while True:
+                    try:
+                        wiki = opencollab.wiki.CLIWiki(options.url, uname, passwd)
+                    except socket.error, e:
+                        error(e)
+                        time.sleep(10)
+                    else:
+                        break
+                if not wiki.token:
+                    sys.stderr.write('Auhtentication failure\n')
+                    sys.exit(1)
 
-    checking_loop(wiki)
+                checking_loop(wiki)
+
+            except Exception:
+                error('PROBLEMS?')
+                traceback.print_exc()
+                time.sleep(60)
+
         
 
 if __name__ == '__main__':
     while True:
         try:
             main()
-        except Exception:
-            error('PROBLEMS?')
-            traceback.print_exc()
-            time.sleep(60)
         except KeyboardInterrupt:
             print 'Bye!'
     
