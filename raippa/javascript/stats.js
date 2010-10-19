@@ -428,6 +428,7 @@ var TaskStats = new Class({
 		var graph_times = [], graph_tries = [], graph_labels = [];
         order.each(function(question){
 			var value = questions[question];
+			if (!value) return;
             var users_doing = users_done = maxtime = maxtries = 0;
                
             users.each(function(userdata, user){
