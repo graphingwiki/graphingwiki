@@ -181,7 +181,7 @@ def main():
     marker = ops[sect]["marker"]
     arena_dirs = enum_dirs(arena_dir_glob, arena_user)
     if arena_dirs:
-        if marker is not None:
+        if marker is not None and verbose:
             print "NOTE: Removing meta key <" + marker + \
                 "> for pages with changes in attachments"
         if verbose:

@@ -74,6 +74,8 @@ def getUser(db, user):
     if realname is not None:
         udata['realname'].add(realname)
         udata['gwikilabel'].add(realname)
+    retired = db.user.is_retired(user)
+    udata['retired'].add('%s' % retired)
     return udata
 
 def filterIssues(db, filter, verbose):
