@@ -22,7 +22,7 @@ ROUNDUP_KEYS = [
     'files', 'gwikilabel', 'id', 'inreplyto', 'messageid',
     'name', 'order', 'organisation', 'password', 'phone',
     'queries', 'realname', 'recipients', 'roles', 'summary',
-    'timezone', 'type', 'username'
+    'timezone', 'type', 'username', 'retired'
 ]
 
 def parseInputFile(inputfile):
