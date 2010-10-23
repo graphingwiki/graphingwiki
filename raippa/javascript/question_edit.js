@@ -13,7 +13,7 @@ var QuestionEditor = new Class({
 		fileAddStyles : {
 			'border': '1px solid gray',
 			'padding': '0.8em',
-			'margin-top' : '2px' 
+			'margin-top' : '2px'
 		}
     },
     type: 'checkbox',
@@ -21,20 +21,20 @@ var QuestionEditor = new Class({
     ansrows: [],
     filerows: [],
     initialize: function(el, options){
-    
-        if (!el) 
+
+        if (!el)
             return false;
         this.container = $(el);
         this.container.setStyles(this.options.containerStyles);
-        
+
         this.setOptions(options);
-        
+
         this.form = new Element('form', {
             'id': 'editForm',
 			'enctype': 'multipart/form-data',
             'method': 'post'
         });
-        
+
         var row = new Element('tr', {
             'id': 'optionrow'
         });
@@ -45,11 +45,11 @@ var QuestionEditor = new Class({
             'id': 'ansTable'
         }).grab(row);
         ;
-        
+
         this.filetable = new Element('tbody', {
             'id': 'fileTable'
         });
-        
+
         var rm = new Element('td').grab(new Element('a', {
             'class': 'jslink',
             'title': 'Remove selected answers',
@@ -67,7 +67,7 @@ var QuestionEditor = new Class({
                 }.bindWithEvent(this)
             }
         }));
-        
+
         this.typesel = new Element('select', {
             'id': 'typeselect',
             'name': 'answertype',
@@ -83,9 +83,9 @@ var QuestionEditor = new Class({
                 'text': value
             }));
         }, this);
-        
+
         var type = new Element('td').appendText("Answer type: ").grab(this.typesel);
-        
+
         var newans = new Element('td').grab(new Element('input', {
             'type': 'button',
             'value': 'new answer',
@@ -98,7 +98,7 @@ var QuestionEditor = new Class({
                         this.addFileAnswer();
                     }
                     this.showFields('last');
-                    
+
                 }.bindWithEvent(this)
             }
         }));
@@ -124,12 +124,12 @@ var QuestionEditor = new Class({
 			'text': 'Shuffle order.'
 		})));
         row.adopt(rm, type, redo, newans)
-        
+
         this.table.adopt(new Element('tbody').grab(row), this.anstable, this.filetable);
         this.form.grab(this.table);
-        
+
         this.container.grab(this.form);
-        
+
         var submit = new Element('input', {
             'type': 'submit',
             'value': 'Save',
@@ -148,7 +148,7 @@ var QuestionEditor = new Class({
                 }
             }
         });
-        
+
         this.form.adopt(submit, cancel);
         //restore old answers
         this.options.answers.each(function(ans){
@@ -159,23 +159,23 @@ var QuestionEditor = new Class({
                 this.addFileAnswer(ans.name, ans.cmd, ans.input, ans.output, ans.infiles, ans.outfiles);
             }
         }, this);
-        
+
         this.addAnswer();
         this.addFileAnswer();
-        
+
         this.changeType(this.options.type);
         this.showFields('last');
-        
+
     },
-    
+
     /* Shows tip and comment fields in given row or n:th answer in current view*/
     showFields: function(index){
         var rows = ["file"].contains(this.typesel.get('value')) ? this.filerows : this.ansrows;
-        if (index == 'last') 
+        if (index == 'last')
             index = rows.length - 1;
         var elm = ($type(index) == 'element') ? index : rows[index] || false;
         if (elm) {
-            
+
 			$$($$(rows).getElements('tr.answerinfo')).addClass('hidden');
             elm.getElements('tr.hidden').removeClass('hidden');
 
@@ -190,11 +190,11 @@ var QuestionEditor = new Class({
             el.set('checked', '');
         });
     },
-    
+
     addAnswer: function(ans, val, tip, comment, page, options){
-		
+
 		options = options || [];
-    
+
         var tbody = this.anstable;
         var num = this.ansrows.length > 0 ? this.ansrows.getLast().retrieve('row') + 1 : 0;
         var row = new Element('tr', {
@@ -202,7 +202,7 @@ var QuestionEditor = new Class({
             'class': 'no_border'
         });
         row.store('row', num);
-        
+
         row.grab(new Element('td').grab(new Element('input', {
             'type': 'checkbox',
             'class': 'rmcheck',
@@ -214,7 +214,7 @@ var QuestionEditor = new Class({
         });
         var tabTbody = new Element('tbody');
         tab.grab(tabTbody);
-        
+
         var ansRow = new Element('tr'), valRow = new Element('tr'), tipRow = new Element('tr', {
             'id': 'tiprow' + num,
             'class': 'answerinfo hidden'
@@ -222,7 +222,7 @@ var QuestionEditor = new Class({
             'id': 'comrow' + num,
             'class': 'answerinfo hidden'
         });
-        
+
         var ansTd = new Element('td', {
             'rowspan': '2'
         }).grab(new Element('textarea', {
@@ -258,20 +258,20 @@ var QuestionEditor = new Class({
             'for': 'wrong' + num,
             'text': 'wrong'
         }));
-        
+
         ansRow.adopt(new Element('th', {
             'rowspan': '2',
             'text': 'Answer:'
         }), ansTd, valTd1);
-        
+
         valRow.grab(valTd2);
-	
-		var reSpan = new Element('span',{ 
+
+		var reSpan = new Element('span',{
 			'class': this.type == "text" ? 'regexp_span': "regexp_span hidden"
 		}),latSpan = new Element('span',{
 			'class': this.type != "text" ? 'latex_span': 'latex_span hidden'
 		});
-		
+
 		reSpan.adopt(new Element('input',{
 			'type': 'checkbox',
 			'name': 'option' +num,
@@ -291,10 +291,10 @@ var QuestionEditor = new Class({
 		}),new Element('label',{
 			'for':'latex'+num,
 			'text': 'Latex'
-		}));   
+		}));
 
 		ansRow.grab(new Element('td').adopt(reSpan, latSpan));
-        
+
         tipRow.adopt(new Element('th', {
             'text': 'Tip:'
         }), new Element('td').grab(new Element('textarea', {
@@ -303,7 +303,7 @@ var QuestionEditor = new Class({
             'cols': 60,
             'rows': 2
         })));
-        
+
         comRow.adopt(new Element('th', {
             'text': 'Comment:'
         }), new Element('td').grab(new Element('textarea', {
@@ -312,13 +312,13 @@ var QuestionEditor = new Class({
             'cols': 60,
             'rows': 2
         })));
-        
+
         tabTbody.adopt(ansRow, valRow, tipRow, comRow);
-        
+
         row.grab(new Element('td', {
             'colspan': 3
         }).grab(new Element('div').grab(tab)));
-        
+
         if (page) {
             row.grab(new Element('input', {
                 'type': 'hidden',
@@ -326,38 +326,38 @@ var QuestionEditor = new Class({
                 'value': page
             }));
         }
-        
+
         this.ansrows.push(row);
         tbody.grab(row);
-        
+
     },
-    
+
     addFileAnswer: function(name, cmd, input, output, infiles, outfiles){
 		input = input || "";
 		output = output || "";
-		
+
         infiles = infiles || [];//["file1", "file2"];
         outfiles = outfiles || [];//["file3", "file4"];
         var tbody = this.filetable;
-        
+
         var num = this.filerows.length > 0 ? this.filerows.getLast().retrieve('row') + 1 : 0;
-        
+
         var row = new Element('tr', {
             'id': 'row' + num
         });
         row.store('row', num);
-        
+
         var rm = new Element('td').grab(new Element('input', {
             'type': 'checkbox',
             'class': 'rmcheck',
             'value': num,
             'name': 'rm' + num
         }));
-        
+
         var table = new Element('table', {
             'class': 'no_border'
         }), tab = new Element('tbody').inject(table), nameTr = new Element('tr'), cmdTr = new Element('tr').addClass('answerinfo'), inputTr = new Element('tr').addClass('answerinfo'), outputTr = new Element('tr').addClass('answerinfo'), infileTr = new Element('tr').addClass('answerinfo'), outfileTr = new Element('tr').addClass('answerinfo');
-        
+
         nameTr.adopt(new Element('th').appendText('Test name: '), new Element('td').grab(new Element('textarea', {
             'name': 'name' + num,
             'text': name,
@@ -369,14 +369,14 @@ var QuestionEditor = new Class({
                 }.bindWithEvent(this)
             }
         })));
-        
+
         cmdTr.adopt(new Element('th').appendText('Run params: '), new Element('td').grab(new Element('textarea', {
             'name': 'cmd' + num,
             'text': cmd,
             'cols': 60,
             'rows': 1
         })));
-        
+
         inputTr.adopt(new Element('th').appendText('Input: '), new Element('td').grab(new Element('textarea', {
             'name': 'input' + num,
             'text': input,
@@ -389,12 +389,12 @@ var QuestionEditor = new Class({
             'cols': 60,
             'rows': 5
         })));
-        
+
         var infileTd = new Element('td'), outfileTd = new Element('td');
-		
+
 		var infileDiv = new Element('div').setStyles(this.options.fileAddStyles).inject(infileTd),
 		 	outfileDiv = new Element('div').setStyles(this.options.fileAddStyles).inject(outfileTd);
-        
+
         var rmlink = new Element('a', {
             'class': 'jslink',
             'html': '&#10006;',
@@ -404,7 +404,7 @@ var QuestionEditor = new Class({
         });
         infiles.each(function(file, index){
             var span = new Element('span').setStyle('display', 'block');
-            
+
             var field = new Element('input', {
                 'name': 'old_infiles' + num,
                 'readonly': 'true',
@@ -413,14 +413,14 @@ var QuestionEditor = new Class({
             var rm = rmlink.clone().addEvent('click', function(){
                 span.destroy();
             });
-            
+
             span.adopt(rm, field);
             infileDiv.adopt(span);
         });
-        
+
         outfiles.each(function(file, index){
             var span = new Element('span').setStyle('display', 'block');
-            
+
             var field = new Element('input', {
                 'name': 'old_outfiles' + num,
                 'readonly': 'true',
@@ -429,7 +429,7 @@ var QuestionEditor = new Class({
             var rm = rmlink.clone().addEvent('click', function(){
                 span.destroy();
             });
-            
+
             span.adopt(rm, field);
             outfileDiv.adopt(span);
         });
@@ -440,7 +440,7 @@ var QuestionEditor = new Class({
             if (currentfields.length > 0) {
                 index = currentfields.getLast().retrieve('index') +1;
             }
-                     
+
             var field = new Element('input', {
                 'type': 'file',
                 'name': basename + '_' + index
@@ -448,7 +448,7 @@ var QuestionEditor = new Class({
                 addFileField(basename, where);
                 this.removeEvents('change');
             });
-			
+
             var rm = rmlink.clone().addEvent('click', function(){
 				/* Calling change event before destroying file input so that we are
 				 * not going to run out of fields.
@@ -457,19 +457,19 @@ var QuestionEditor = new Class({
                 span.destroy();
 
             });
-            
+
 			field.store('index', index);
             where.grab(span.adopt(rm, field));
         };
-        
+
         addFileField("infile" + num, infileDiv);
         addFileField("outfile" + num, outfileDiv);
-        
+
         infileTr.adopt(new Element('th').appendText('Infiles: '), infileTd);
-        
+
         outfileTr.adopt(new Element('th').appendText('Outfiles: '), outfileTd);
         tab.adopt(nameTr, cmdTr, inputTr, outputTr, infileTr, outfileTr);
-        
+
         row.adopt(rm, new Element('td', {
             'colspan': 3
         }).grab(table));
@@ -484,9 +484,9 @@ var QuestionEditor = new Class({
         var filerows = $$(this.filerows);
         var ansrows = $$(this.ansrows);
         this.clearRms();
-		
+
 		var shuffle = $('shuffleTd')
-        
+
         if (newtype == "file") {
             filerows.removeClass('hidden');
             ansrows.addClass('hidden');
@@ -507,12 +507,12 @@ var QuestionEditor = new Class({
                 $$(ansrows.getElements('span.latex_span')).removeClass('hidden');
 
             }
-            
+
         }
     },
-    
+
     submitCheck: function(){
-    
+
         var form = this.form;
         var type = this.typesel.get('value');
         if (type != 'file') {
@@ -541,26 +541,26 @@ var QuestionEditor = new Class({
 			var hasName = ans.every(function(txt){
 				//has name
 				if (txt.get('value') != "") return true;
-				
+
 				//it's ok to not have a name if all the fields are empty
 				var i = txt.get('name').replace('name','');
 				var vals = this.filetable.getElements('textarea[name$='+i+'], input[name^=infile'+i+'], input[nam^=outfile'+i+']')
 							.get('value').erase("");
 				return vals.length == 0;
 			}, this);
-			
+
 			if (!hasName){
 				alert('Name field is required for every test!');
 				return false;
 			}
-			
+
             $$(this.anstab).destroy();
         }
         //trying to prevent double saves
         if (this.saved && this.options.preventDoubleSubmit) {
             return false;
         }
-        
+
         this.form.grab(new Element('input', {
             'type': 'hidden',
             'value': 'editQuestion',
@@ -569,5 +569,5 @@ var QuestionEditor = new Class({
         this.saved = true;
         return true;
     }
-    
+
 });

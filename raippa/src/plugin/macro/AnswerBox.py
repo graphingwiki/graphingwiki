@@ -105,17 +105,26 @@ def draw_teacherui(macro, user, question):
  <script type="text/javascript" src="%s/raippajs/raphael.js"></script>
     <script type="text/javascript">
 
-function editor(view){ 
+var questionModalizer = new Class({
+    Extends: modalizer,
+        click : function() {
+           if (confirm('Discard changes and close question editor?')) {                             this.close();
+           }
+        }
+});
+
+
+function editor(view){
     var editdiv = new Element('div');
-    var statsdiv = new Element('div'); 
-    var modal = new modalizer([editdiv, statsdiv], { 
+    var statsdiv = new Element('div');
+    var modal = new questionModalizer([editdiv, statsdiv], {
         tabLabels : ["edit", "stats"],
         defTab : view,
         destroyOnExit : false
-        });     
-    
+        });
     var edit = new QuestionEditor(editdiv, editoptions);
     var stats = new QuestionStats(statsdiv);
+
     }
 
 </script>
@@ -178,7 +187,6 @@ def draw_answer_edit_ui(macro, question):
     elif qtype == "file":
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage).answer()
-
             ans_js.append(to_json({
                     "name":  answer[0],
                     "cmd" : answer[1],
