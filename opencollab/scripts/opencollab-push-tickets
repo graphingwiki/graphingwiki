@@ -74,7 +74,7 @@ def getUser(db, user):
         udata[k].add(v)
     realname = unode.get('realname')
     if realname is not None:
-        udata['realname'].add(realname)
+        udata['realname'].add('[[%s]]' % realname)
         udata['gwikilabel'].add(realname)
     retired = db.user.is_retired(user)
     udata['retired'].add('%s' % retired)
