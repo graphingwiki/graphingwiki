@@ -25,11 +25,33 @@ var QuestionEditor = new Class({
         if (!el)
             return false;
         this.container = $(el);
-        this.container.setStyles(this.options.containerStyles);
-
+        this.container.setStyles(this.options.containerStyles);                                               
         this.setOptions(options);
+        this.buildElements();
+        
+        //Restore old answers
+        this.options.answers.each(function(ans){
+            if (this.options.type != "file") {
+                this.addAnswer(ans.name, ans.value, ans.tip, ans.comment, ans.page, ans.options);
+            }
+            else {
+                this.addFileAnswer(ans.name, ans.cmd, ans.input, ans.output, ans.infiles, ans.outfiles);
+            }
+        }, this);
 
-        this.form = new Element('form', {
+        this.addAnswer();
+        this.addFileAnswer();
+
+        this.changeType(this.options.type);
+        this.showFields('last');
+        var oldData = this.form.toQueryString();
+        this.trackChanges(oldData, this.form, this.container);
+        
+    },
+
+    buildElements: function() {
+
+       this.form = new Element('form', {
             'id': 'editForm',
 			'enctype': 'multipart/form-data',
             'method': 'post'
@@ -150,22 +172,17 @@ var QuestionEditor = new Class({
         });
 
         this.form.adopt(submit, cancel);
-        //restore old answers
-        this.options.answers.each(function(ans){
-            if (this.options.type != "file") {
-                this.addAnswer(ans.name, ans.value, ans.tip, ans.comment, ans.page, ans.options);
+        
+    },
+
+    trackChanges: function(oldData, data, container){
+       this.container.addEvent('close', function(){
+               if(oldData != data.toQueryString()){
+                   container.addClass('edited');
+               }
             }
-            else {
-                this.addFileAnswer(ans.name, ans.cmd, ans.input, ans.output, ans.infiles, ans.outfiles);
-            }
-        }, this);
-
-        this.addAnswer();
-        this.addFileAnswer();
-
-        this.changeType(this.options.type);
-        this.showFields('last');
-
+       );
+   
     },
 
     /* Shows tip and comment fields in given row or n:th answer in current view*/

@@ -108,8 +108,15 @@ def draw_teacherui(macro, user, question):
 var questionModalizer = new Class({
     Extends: modalizer,
         click : function() {
-           if (confirm('Discard changes and close question editor?')) {                             this.close();
-           }
+            this.els.fireEvent('close');
+            var changed = false;
+            this.els.each(function(el){
+               if(el.hasClass('edited')) changed=true;
+            });
+            if (!changed || confirm('Discard changes and close question editor?')) {
+               this.close();
+            }
+
         }
 });
 
