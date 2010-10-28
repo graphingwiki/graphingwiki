@@ -3,6 +3,13 @@ import re
 import os
 
 from MoinMoin import config
+from MoinMoin import wikiutil
+from MoinMoin.Page import Page
+
+from graphingwiki.util import encode, category_regex, template_regex, \
+    SPECIAL_ATTRS, NO_TYPE, absolute_attach_name, attachment_file, node_type
+from graphingwiki.graph import Graph
+from graphingwiki import actionname
 
 class GraphDataBase(UserDict.DictMixin):
     def __init__(self, request):
@@ -116,11 +123,11 @@ class GraphDataBase(UserDict.DictMixin):
 
         if node.gwikiURL.startswith('attachment:'):
             pagefile = node.gwikiURL.split(':')[1]
-            page, file = attachment_pagefile(pagefile, pagename)
+            page, fname = attachment_pagefile(pagefile, pagename)
 
-            node.gwikilabel = encode(file)
+            node.gwikilabel = encode(fname)
             node.gwikiURL = encode(actionname(self.request, page) + \
-                '?action=AttachFile&do=get&target=' + file)
+                '?action=AttachFile&do=get&target=' + fname)
 
         return graph
 
@@ -154,8 +161,8 @@ class GraphDataBase(UserDict.DictMixin):
 
         # Add links to page
         links = page.get('in', dict())
-        for type in links:
-            for src in links[type]:
+        for linktype in links:
+            for src in links[linktype]:
                 # Filter Category, Template pages
                 if cat_re.search(src) or temp_re.search(src):
                     continue
@@ -163,12 +170,12 @@ class GraphDataBase(UserDict.DictMixin):
                 # Currently pages can have links in them only
                 # from local pages, thus nodetype == page
                 adata = self._add_node(src, adata, urladd, 'page')
-                adata = self._add_link(adata, (src, pagename), type)
+                adata = self._add_link(adata, (src, pagename), linktype)
 
         # Add links from page
         links = page.get('out', dict())
-        for type in links:
-            for i, dst in enumerate(links[type]):
+        for linktype in links:
+            for i, dst in enumerate(links[linktype]):
                 # Filter Category, Template pages
                 if cat_re.search(dst) or temp_re.search(dst):
                     continue
@@ -223,7 +230,7 @@ class GraphDataBase(UserDict.DictMixin):
 
                 # Add page and its metadata
                 adata = self._add_node(dst, adata, urladd, nodetype)
-                adata = self._add_link(adata, (pagename, dst), type)
+                adata = self._add_link(adata, (pagename, dst), linktype)
 
                 if label or gwikiurl or tooltip:
                     node = adata.nodes.get(dst)

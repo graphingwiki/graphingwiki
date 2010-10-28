@@ -1,8 +1,10 @@
+import itertools
 import shelve
 import os
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page
+from graphingwiki.util import encode_page, decode_page, encode
+from graphingwiki import actionname
 
 from MoinMoin.util.lock import ReadLock, WriteLock
 
