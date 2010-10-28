@@ -1,9 +1,14 @@
-from graphdata.backend.basedb import GraphDataBase
+import shelve
+import os
+
+from graphingwiki.backend.basedb import GraphDataBase
+from graphingwiki.util import encode_page
+
 from MoinMoin.util.lock import ReadLock, WriteLock
 
 class GraphData(GraphDataBase):
     def __init__(self, request):
-        BaseDB.__init__(request)
+        GraphDataBase.__init__(self, request)
 
         gddir = os.path.join(request.cfg.data_dir, 'graphdata')
         if not os.path.isdir(gddir):
