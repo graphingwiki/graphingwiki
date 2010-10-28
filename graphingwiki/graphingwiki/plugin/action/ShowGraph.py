@@ -29,15 +29,11 @@
 """
 
 import os
-import shelve
 import re
-import socket
 
 import md5
 from tempfile import mkstemp
 from random import choice, seed
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin.action import cache
 from MoinMoin import config
@@ -1409,7 +1405,7 @@ class GraphShower(object):
 
     def get_layout(self, grapheng, format, addon=''):
         tmp_fileno, tmp_name = mkstemp(addon)
-        grapheng.layout(file=tmp_name, format=format, 
+        grapheng.layout(fname=tmp_name, format=format, 
                         height=self.height, width=self.width)
         f = file(tmp_name)
         data = f.read()

@@ -31,19 +31,15 @@
 
 import re
 import os
-import shelve
-import itertools
-import UserDict
 import StringIO
 import cgi
 
 from codecs import getencoder
 from xml.dom.minidom import getDOMImplementation
 
-import MoinMoin.version
-
 from MoinMoin.action import cache
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
+from MoinMoin import version as MoinVersion
 from MoinMoin import caching
 from MoinMoin import config
 from MoinMoin import wikiutil
@@ -55,7 +51,7 @@ from MoinMoin.logfile import editlog
 from graphingwiki import geoip_found, GeoIP, url_escape, id_escape, SEPARATOR
 from graphingwiki.graph import Graph
 
-MOIN_VERSION = float('.'.join(MoinMoin.version.release.split('.')[:2]))
+MOIN_VERSION = float('.'.join(MoinVersion.release.split('.')[:2]))
 
 # Some XML output helpers
 def xml_document(top):
@@ -84,6 +80,8 @@ def xml_node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
 
 # Some GEOIP helpers
 def geoip_init(request):
+    _ = request.getText
+
     # Find GeoIP
     GEO_IP_PATH = getattr(request.cfg, 'gwiki_geoip_path', None)
 
@@ -278,10 +276,10 @@ NO_TYPE = u'_notype'
 # FIXME: Is this needed?
 def resolve_iw_url(request, wiki, page): 
     res = wikiutil.resolve_interwiki(request, wiki, page) 
-    if res[3] == False: 
-        iw_url = res[1] + res[2] 
-    else: 
+    if res[3]:
         iw_url = './InterWiki' 
+    else: 
+        iw_url = res[1] + res[2] 
         
     return iw_url 
 

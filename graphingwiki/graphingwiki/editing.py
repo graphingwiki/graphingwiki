@@ -13,7 +13,6 @@ import string
 import xmlrpclib
 import urlparse
 import socket
-import urllib
 import getpass
 import copy
 import md5
@@ -28,11 +27,11 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError
 
-from graphingwiki import underlay_to_pages
+from graphingwiki import underlay_to_pages, url_escape, url_unescape
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
-from graphingwiki.util import category_regex, template_regex
+from graphingwiki.util import category_regex, template_regex, encode
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -104,11 +103,11 @@ def get_revisions(request, page):
 def get_properties(request, key):
     properties = get_metas(request, '%sProperty' % (key), 
                            ['constraint', 'description', 'hint', 'hidden'])
-    for property in properties:
-        if not properties[property]:
-            properties[property] = ''
+    for prop in properties:
+        if not properties[prop]:
+            properties[prop] = ''
         else:
-            properties[property] = properties[property][0]
+            properties[prop] = properties[prop][0]
 
     return properties
 
@@ -291,7 +290,7 @@ def formatting_rules(request, parser):
 
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
-        target = url_quote(encode(target))
+        target = url_escape(encode(target))
     
     try:
         targetPage = globaldata.getpage(target)
@@ -309,7 +308,7 @@ def link_to_attachment(globaldata, target):
 
     target = target.strip('"')
     if not target.startswith('attachment:'):
-        target = unicode(url_unquote(target), config.charset)
+        target = unicode(url_unescape(target), config.charset)
     else:
         target = unicode(target, config.charset)
     target = target.replace('\\"', '"')
@@ -317,8 +316,6 @@ def link_to_attachment(globaldata, target):
     return target
 
 def absolute_attach_name(quoted, target):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
     abs_method = target.split(':')[0]
 
     # Pages from MetaRevisions may have ?action=recall, breaking attach links
@@ -333,12 +330,12 @@ def absolute_attach_name(quoted, target):
 def inlinks_key(request, loadedPage, checkAccess=True):
     inLinks = set()
     # Gather in-links regardless of type
-    for type in loadedPage.get("in", dict()):
-        for page in loadedPage['in'][type]:
+    for linktype in loadedPage.get("in", dict()):
+        for page in loadedPage['in'][linktype]:
             if checkAccess:
                 if not request.user.may.read(page):
                     continue
-            inLinks.add((type, page))
+            inLinks.add((linktype, page))
 
     inLinks = ['[[%s]]' % (y) for x, y in inLinks]
 
@@ -480,7 +477,7 @@ def get_keys(request, name):
     return keys
 
 def get_pages(request):
-    def filter(name):
+    def group_filter(name):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
             return False
@@ -488,7 +485,7 @@ def get_pages(request):
             return False
         return request.user.may.read(name)
 
-    return request.rootpage.getPageList(filter=filter)
+    return request.rootpage.getPageList(filter=group_filter)
 
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
@@ -802,8 +799,6 @@ def replace_metas(request, text, oldmeta, newmeta):
     if text.endswith('::'):
         text = text + " \n"
 
-    oldtext = text
-
     # Work around the metas whose values are preformatted fields (of
     # form {{{...}}})
     text, keys_to_markers, markers_to_keys = remove_preformatted(text)
@@ -846,14 +841,14 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Replace the values we can
     def dl_subfun(mo):
-        all, key, val = mo.groups()
+        alltext, key, val = mo.groups()
 
         key = key.strip()
         val = val.strip()
 
         # Don't touch unmodified keys
         if key not in oldmeta:
-            return all
+            return alltext
 
         # Don't touch placeholders
         if not val:
@@ -863,7 +858,7 @@ def replace_metas(request, text, oldmeta, newmeta):
         try:
             index = oldmeta[key].index(val)
         except ValueError:
-            return all
+            return alltext
         
         newval = newmeta[key][index]
 
@@ -874,7 +869,7 @@ def replace_metas(request, text, oldmeta, newmeta):
             return ""
 
         retval = " %s:: %s\n" % (key, newval)
-        if all.startswith('\n'):
+        if alltext.startswith('\n'):
             retval = '\n' + retval
 
         return retval
@@ -908,11 +903,11 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Fill in the prototypes
     def dl_fillfun(mo):
-        all, key = mo.groups()
+        alltext, key = mo.groups()
         key = key.strip()
 
         if key not in newmeta or not newmeta[key]:
-            return all
+            return alltext
 
         newval = newmeta[key].pop(0).replace("\n", " ").strip()
 
@@ -921,19 +916,19 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Add clustered values
     def dl_clusterfun(mo):
-        all, key, val = mo.groups()
+        alltext, key, val = mo.groups()
 
         key = key.strip()
         if key not in newmeta:
-            return all
+            return alltext
 
         for value in newmeta[key]:
             value = value.replace("\n", " ").strip()
             if value:
-                all += " %s:: %s\n" % (key, value)
+                alltext += " %s:: %s\n" % (key, value)
 
         newmeta[key] = list()
-        return all
+        return alltext
     text = dl_re.sub(dl_clusterfun, text)
 
     # Add values we couldn't cluster
@@ -995,7 +990,6 @@ def set_metas(request, cleared, discarded, added):
         new = dict()
         for key in old:
             values = old.pop(key)
-            key = key
             old[key] = values
             new[key] = set(values)
         for key in pageCleared:
@@ -1433,7 +1427,7 @@ def metatable_parseargs(request, args,
     if not orderspec:
         pagelist = sorted(pagelist, key=ordervalue)
     else:
-        orderkeys = [key for (dir, key) in orderspec]
+        orderkeys = [key for (direction, key) in orderspec]
         orderpages = dict()
 
         for page in pagelist:
@@ -1445,9 +1439,9 @@ def metatable_parseargs(request, args,
             orderpages[page] = ordermetas
 
         def comparison(page1, page2):
-            for dir, key in orderspec:
+            for direction, key in orderspec:
                 reverse = False
-                if dir == ">>":
+                if direction == ">>":
                     reverse = True
 
                 values1 = sorted(orderpages[page1][key], reverse=reverse)

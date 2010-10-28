@@ -201,7 +201,6 @@ def monkey_patch(original, on_success=ignore, always=ignore):
 
 def underlay_to_pages(req, p):
     underlaydir = req.cfg.data_underlay_dir
-    pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
     pagepath = p.getPagePath()
 
