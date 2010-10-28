@@ -1026,7 +1026,6 @@ def save_template(request, page, template):
     msg = ''
     if not raw_body:
         # Start writing
-        request.graphdata.writelock()
 
         ## TODO: Add data on template to the text of the saved page?
 
@@ -1039,9 +1038,6 @@ def save_template(request, page, template):
                 raw_body = temp_body
 
         msg = p.saveText(raw_body, 0)
-
-        # Stop writing
-        request.graphdata.readlock()
 
     return msg
 

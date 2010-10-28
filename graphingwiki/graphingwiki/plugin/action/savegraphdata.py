@@ -428,8 +428,6 @@ def execute(pagename, request, text, pagedir, pageitem):
     temp[u'mtime'] = cur_time
     temp[u'saved'] = True
 
-    # Release ReadLock (from the previous reads), make WriteLock
-    request.graphdata.writelock()
 
     request.graphdata[pagename] = temp
 

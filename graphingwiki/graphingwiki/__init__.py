@@ -240,7 +240,7 @@ RequestBase.__copy__ = request_copy
 # patched function
 
 def graphdata_getter(self):
-    from graphingwiki.util import GraphData
+    from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
@@ -248,7 +248,7 @@ def graphdata_getter(self):
 def graphdata_close(self):
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
-        graphdata.closedb()
+        graphdata.commit()
 
 def _get_save_plugin(self):
     # Save to graph file if plugin available.
