@@ -1912,7 +1912,7 @@ class GraphShower(object):
 
             if (self.format == 'igraph' or 
                 (igraph_found and self.help == 'test')):
-                pass
+                gr = 42.9
             else:
                 # Do the layout
                 gr = self.generate_layout(outgraph)

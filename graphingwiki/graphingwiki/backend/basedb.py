@@ -11,6 +11,16 @@ from graphingwiki.util import encode, category_regex, template_regex, \
 from graphingwiki.graph import Graph
 from graphingwiki import actionname
 
+def strip_meta(key, val):
+    key = key.strip()
+    val = val.strip()
+
+    # retain empty labels
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
+    return key, val
+
 class GraphDataBase(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request
@@ -53,6 +63,9 @@ class GraphDataBase(UserDict.DictMixin):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
         return self.get(pagename, dict())
+
+    def add_link(self, new_data, pagename, nodename, linktype):
+        raise NotImplemented()
 
     def reverse_meta(self):
 
@@ -131,19 +144,57 @@ class GraphDataBase(UserDict.DictMixin):
 
         return graph
 
-    def _add_link(self, adata, edge, type):
-        # Add edge if it does not already exist
-        e = adata.edges.get(*edge)
-        if not e:
-            e = adata.edges.add(*edge)
-            e.linktype = set([type])
+    def set_attribute(self, new_data, node, key, val):
+        key, val = strip_meta(key, val)
+
+        temp = new_data.get(node, {})
+
+        if not temp.has_key(u'meta'):
+            temp[u'meta'] = {key: [val]}
+        elif not temp[u'meta'].has_key(key):
+            temp[u'meta'][key] = [val]
+        # a page can not have more than one label, shapefile etc
+        elif key in SPECIAL_ATTRS:
+            temp[u'meta'][key] = [val]
         else:
-            e.linktype.add(type)
-        return adata
+            temp[u'meta'][key].append(val)
+
+        new_data[node] = temp
+
+    def add_meta(self, new_data, pagename, (key, val)):
+        
+        # Do not handle empty metadata, except empty labels
+        val = val.strip()
+        if key == 'gwikilabel' and not val:
+            val = ' '        
+
+        if not val:
+            return
+
+        # Values to be handled in graphs
+        if key in SPECIAL_ATTRS:
+            self.set_attribute(new_data, pagename, key, val)
+            # If color defined, set page as filled
+            if key == 'fillcolor':
+                self.set_attribute(new_data, pagename, 'style', 'filled')
+            return
+
+        # Save to shelve's metadata list
+        self.set_attribute(new_data, pagename, key, val)
 
     def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):
             return None
+
+        def add_adata_link(adata, edge, type):
+            # Add edge if it does not already exist
+            e = adata.edges.get(*edge)
+            if not e:
+                e = adata.edges.add(*edge)
+                e.linktype = set([type])
+            else:
+                e.linktype.add(type)
+            return adata
 
         cat_re = category_regex(self.request)
         temp_re = template_regex(self.request)
@@ -170,8 +221,7 @@ class GraphDataBase(UserDict.DictMixin):
                 # Currently pages can have links in them only
                 # from local pages, thus nodetype == page
                 adata = self._add_node(src, adata, urladd, 'page')
-                adata = self._add_link(adata, (src, pagename), linktype)
-
+                adata = add_adata_link(adata, (src, pagename), linktype)
         # Add links from page
         links = page.get('out', dict())
         for linktype in links:
@@ -230,8 +280,7 @@ class GraphDataBase(UserDict.DictMixin):
 
                 # Add page and its metadata
                 adata = self._add_node(dst, adata, urladd, nodetype)
-                adata = self._add_link(adata, (pagename, dst), linktype)
-
+                adata = add_adata_link(adata, (pagename, dst), linktype)
                 if label or gwikiurl or tooltip:
                     node = adata.nodes.get(dst)
 

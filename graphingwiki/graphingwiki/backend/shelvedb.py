@@ -8,6 +8,11 @@ from graphingwiki import actionname
 
 from MoinMoin.util.lock import ReadLock, WriteLock
 
+from time import time
+
+
+from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
+
 class GraphData(GraphDataBase):
     def __init__(self, request):
         GraphDataBase.__init__(self, request)
@@ -114,4 +119,100 @@ class GraphData(GraphDataBase):
 
         self.cache.clear()
         self.writing = False
+
+    def add_link(self, new_data, pagename, nodename, linktype):
+        edge = [pagename, nodename]
+
+        self.add_in(new_data, edge, linktype)
+        self.add_out(new_data, edge, linktype)
+
+    
+    def add_in(self, new_data, (frm, to), linktype):
+        "Add in-links from current node to local nodes"
+        if not linktype:
+            linktype = NO_TYPE
+
+        temp = new_data.get(to, {})
+
+        if not temp.has_key(u'in'):
+            temp[u'in'] = {linktype: [frm]}
+        elif not temp[u'in'].has_key(linktype):
+            temp[u'in'][linktype] = [frm]
+        else:
+            temp[u'in'][linktype].append(frm)
+
+        # Notification that the destination has changed
+        temp[u'mtime'] = time()
+
+        new_data[to] = temp
+
+    
+    def add_out(self, new_data, (frm, to), linktype):
+        "Add out-links from local nodes to current node"
+        if not linktype:
+            linktype = NO_TYPE
+
+        temp = new_data.get(frm, {})
+
+        if not temp.has_key(u'out'):
+            temp[u'out'] = {linktype: [to]}
+        elif not temp[u'out'].has_key(linktype):
+            temp[u'out'][linktype] = [to]
+        else:
+            temp[u'out'][linktype].append(to)
+
+        new_data[frm] = temp
+
+    
+    def remove_in(new_data, (frm, to), linktype):
+        "Remove in-links from local nodes to current node"
+
+        temp = new_data.get(to, {})
+        if not temp.has_key(u'in'):
+            return
+
+        for type in linktype:
+            # sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
+            # eg. when the shelve is just started, it's empty
+            if not temp[u'in'].has_key(type):
+                # sys.stderr.write("No such type: %s\n" % type)
+                continue
+            if frm in temp[u'in'][type]:
+                temp[u'in'][type].remove(frm)
+
+                # Notification that the destination has changed
+                temp[u'mtime'] = time()
+
+            if not temp[u'in'][type]:
+                del temp[u'in'][type]
+
+
+        # sys.stderr.write("Hey man, I think I did it!\n")
+        new_data[to] = temp
+
+    def remove_out(new_data, (frm, to), linktype):
+        "remove outlinks"
+        temp = new_data.get(frm, {})
+
+        if not temp.has_key(u'out'):
+            return 
+
+        for type in linktype:
+            # print "Removing %s %s %s" % (frm, to, linktype)
+            # eg. when the shelve is just started, it's empty
+            if not temp[u'out'].has_key(type):
+                # print "No such type: %s" % type
+                continue
+            if to in temp[u'out'][type]:
+                i = temp[u'out'][type].index(to)
+                del temp[u'out'][type][i]
+
+                # print "removed %s" % (repr(to))
+
+            if not temp[u'out'][type]:
+                del temp[u'out'][type]
+                # print "%s empty" % (type)
+                # print "Hey man, I think I did it!"
+
+        new_data[frm] = temp
 
