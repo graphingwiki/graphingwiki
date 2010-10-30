@@ -10,6 +10,12 @@ from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
 
+CODETOOLS_KEYS = [
+    'Text Document', 'D3 Install File', 'JAR File', 'TAR Archive',
+    'ZIP Archive', 'PDF Document', 'INI File', 'Hotfix File',
+    'HTML Document'     
+]
+
 def read_file(htaccess):
     content=""
     try:
@@ -40,7 +46,6 @@ def enum_dirs(arena_dir_glob,arena_user):
 def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, verbose):
     flist =[]
     jar = re.compile('\.jar')
-    iso = re.compile('iso\.bz2')
     tar_gz = re.compile('tar\.gz')
     zip = re.compile('\.zip')
     pdf = re.compile('\.pdf')
@@ -49,6 +54,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, verbo
     bnf = re.compile('\.bnf')
     html = re.compile('\.html?')
     txt = re.compile('\.txt')
+    d3 = re.compile('d3-')
     blre = re.compile('%s' % blacklist)
     metas = Metas()
     for dir in arena_dirs:
@@ -75,16 +81,25 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, verbo
                 metas[page]["Text Document"].add('[[attachment:%s]]' % txt_file)
                 changes |= uploadFile(collab,page,fname,txt_file,progress)
         if notools is None:
-            jar_files = filter(jar.search, flist) 
-            for jar_file in jar_files:
-                fname = dir + "/" + jar_file
-                metas[page]["JAR File"].add('[[attachment:%s]]' % jar_file)
-                changes |= uploadFile(collab,page,fname,jar_file,progress)
-            iso_files = filter(iso.search, flist) 
-            for iso_file in iso_files:
-                fname = dir + "/" + iso_file
-                metas[page]["ISO File"].add('[[attachment:%s]]' % iso_file)
-                changes |= uploadFile(collab,page,fname,iso_file,progress)
+            install_files = filter(install.search, flist) 
+            for install_file in install_files:
+                fname = dir + "/" + install_file
+                metas[page]["D3 Install File"].add('[[attachment:%s]]' % install_file)
+                if d3.search(install_file):
+                    metas[page]["TYPE"].add('D3 Suite')
+                else:
+                    metas[page]["TYPE"].add('D2 Suite')
+                changes |= uploadFile(collab,page,fname,install_file,progress)
+            if not install_files:
+                jar_files = filter(jar.search, flist) 
+                for jar_file in jar_files:
+                    fname = dir + "/" + jar_file
+                    metas[page]["JAR File"].add('[[attachment:%s]]' % jar_file)
+                    changes |= uploadFile(collab,page,fname,jar_file,progress)
+                    if d3.search(jar_file):
+                        metas[page]["TYPE"].add('D3 Monitor')
+                    else:
+                        metas[page]["TYPE"].add('D2 Suite')
             tar_gz_files = filter(tar_gz.search, flist) 
             for tar_gz_file in tar_gz_files:
                 fname = dir + "/" + tar_gz_file
@@ -100,11 +115,6 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, verbo
                 fname = dir + "/" + pdf_file
                 metas[page]["PDF Document"].add('[[attachment:%s]]' % pdf_file)
                 changes |= uploadFile(collab,page,fname,pdf_file,progress)
-            install_files = filter(install.search, flist) 
-            for install_file in install_files:
-                fname = dir + "/" + install_file
-                metas[page]["D3 Install File"].add('[[attachment:%s]]' % install_file)
-                changes |= uploadFile(collab,page,fname,install_file,progress)
             ini_files = filter(ini.search, flist) 
             for ini_file in ini_files:
                 fname = dir + "/" + ini_file
@@ -195,6 +205,8 @@ def main():
     cleared = Meta()
     discarded = Metas()
     for page, meta in metas.iteritems():
+        for k in CODETOOLS_KEYS:
+            cleared[page].add(k)
         if metas[page]["changed"]:
             cleared[page].add(marker)
             del(metas[page]["changed"])
