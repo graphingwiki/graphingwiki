@@ -53,6 +53,16 @@ from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinVersion.release.split('.')[:2]))
 
+
+import logging
+log = logging.getLogger("graphingwiki")
+
+# configure default logger as advised in logger docs
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+log.addHandler(NullHandler())
+
 # Some XML output helpers
 def xml_document(top):
     # First, make the header

@@ -10,7 +10,6 @@ from MoinMoin.util.lock import ReadLock, WriteLock
 
 from time import time
 
-
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
 
 class GraphData(GraphDataBase):
@@ -108,7 +107,7 @@ class GraphData(GraphDataBase):
             self.db = self.shelveopen(self.graphshelve, "c")
             self.writing = True
 
-    def commit(self):
+    def close(self):
         if self.lock is not None and self.lock.isLocked():
             self.lock.release()
             self.lock = None

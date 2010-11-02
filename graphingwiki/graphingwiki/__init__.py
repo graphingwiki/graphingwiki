@@ -247,7 +247,7 @@ def graphdata_getter(self):
 def graphdata_close(self):
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
-        graphdata.commit()
+        graphdata.close()
 
 def _get_save_plugin(self):
     # Save to graph file if plugin available.
