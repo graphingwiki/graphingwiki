@@ -3,7 +3,7 @@ import shelve
 import os
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, encode
+from graphingwiki.util import encode_page, decode_page, encode, log
 from graphingwiki import actionname
 
 from MoinMoin.util.lock import ReadLock, WriteLock
@@ -14,6 +14,7 @@ from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
 
 class GraphData(GraphDataBase):
     def __init__(self, request):
+        log.debug("shelve graphdb init")
         GraphDataBase.__init__(self, request)
 
         gddir = os.path.join(request.cfg.data_dir, 'graphdata')
@@ -39,18 +40,18 @@ class GraphData(GraphDataBase):
 
         self.cache = dict()
         self.writing = False
-        
         self.readlock()
 
     def __getitem__(self, item):
         page = encode_page(item)
-        
+
         if page not in self.cache:
             self.cache[page] = self.db[page]
 
         return self.cache[page]
 
     def __setitem__(self, item, value):
+        log.debug("setitem %s = %s" % (repr(item), repr(value)))
         self.writelock()
         page = encode_page(item)
 
@@ -63,6 +64,7 @@ class GraphData(GraphDataBase):
         self.cache[page] = value
 
     def __delitem__(self, item):
+        log.debug("delitem %s" % (repr(item),))
         self.writelock()
         page = encode_page(item)
 
