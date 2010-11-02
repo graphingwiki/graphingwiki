@@ -25,8 +25,6 @@ class GraphDataBase(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request
 
-        from MoinMoin.parser.text_moin_wiki import Parser
-
     def __getitem__(self, item):
         raise NotImplemented()
 
