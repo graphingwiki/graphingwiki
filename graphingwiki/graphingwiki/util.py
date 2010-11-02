@@ -302,19 +302,24 @@ def decode_page(page):
     return unicode(page, config.charset)
 
 
-from MoinMoin.parser.text_moin_wiki import Parser
-# Ripped off from Parser
-url_pattern = u'|'.join(config.url_schemas)
-url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
-    'url_guard': u'(^|(?<!\w))',
-    'url': url_pattern,
-    'punct': Parser.punct_pattern,
-}
-url_re = re.compile(url_rule)
+_url_re = None
+def get_url_re():
+    global _url_re
+    if not _url_re:
+        from MoinMoin.parser.text_moin_wiki import Parser
+        # Ripped off from Parser
+        url_pattern = u'|'.join(config.url_schemas)
+        url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
+            'url_guard': u'(^|(?<!\w))',
+            'url': url_pattern,
+            'punct': Parser.punct_pattern,
+        }
+        _url_re = re.compile(url_rule)
+    return _url_re
 
 def node_type(request, nodename):
     if ':' in nodename:
-        if url_re.search(nodename):
+        if get_url_re().search(nodename):
             return 'url'
 
         start = nodename.split(':')[0]
