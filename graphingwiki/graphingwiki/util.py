@@ -301,9 +301,20 @@ def encode_page(page):
 def decode_page(page):
     return unicode(page, config.charset)
 
+# Ripped off from Parser
+url_pattern = u'|'.join(config.url_schemas)
+
+url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
+    'url_guard': u'(^|(?<!\w))',
+    'url': url_pattern,
+    'punct': Parser.punct_pattern,
+}
+
+url_re = re.compile(url_rule)
+
 def node_type(request, nodename):
     if ':' in nodename:
-        if request.graphdata.url_re.search(nodename):
+        if url_re.search(nodename):
             return 'url'
 
         start = nodename.split(':')[0]

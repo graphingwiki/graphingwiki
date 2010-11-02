@@ -27,17 +27,6 @@ class GraphDataBase(UserDict.DictMixin):
 
         from MoinMoin.parser.text_moin_wiki import Parser
 
-        # Ripped off from Parser
-        url_pattern = u'|'.join(config.url_schemas)
-
-        url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
-            'url_guard': u'(^|(?<!\w))',
-            'url': url_pattern,
-            'punct': Parser.punct_pattern,
-        }
-
-        self.url_re = re.compile(url_rule)
-
     def __getitem__(self, item):
         raise NotImplemented()
 
