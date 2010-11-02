@@ -98,7 +98,7 @@ def parse_text(request, page, text):
                     request.graphdata.add_link(new_data, pagename, dnode, 
                              u"gwikicategory")
             elif type == 'meta':
-                request.graphdata.add_meta(new_data, pagename, (metakey, item))
+                add_meta(new_data, pagename, (metakey, item))
             elif type == 'include':
                 # No support for regexp includes, for now!
                 if not item[0].startswith("^"):
@@ -109,6 +109,44 @@ def parse_text(request, page, text):
                 request.graphdata.add_link(new_data, pagename, dnode, metakey)
 
     return new_data
+
+def set_attribute(new_data, node, key, val):
+    key, val = strip_meta(key, val)
+
+    temp = new_data.get(node, {})
+
+    if not temp.has_key(u'meta'):
+        temp[u'meta'] = {key: [val]}
+    elif not temp[u'meta'].has_key(key):
+        temp[u'meta'][key] = [val]
+    # a page can not have more than one label, shapefile etc
+    elif key in SPECIAL_ATTRS:
+        temp[u'meta'][key] = [val]
+    else:
+        temp[u'meta'][key].append(val)
+
+    new_data[node] = temp
+
+def add_meta(new_data, pagename, (key, val)):
+
+    # Do not handle empty metadata, except empty labels
+    val = val.strip()
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
+    if not val:
+        return
+
+    # Values to be handled in graphs
+    if key in SPECIAL_ATTRS:
+        set_attribute(new_data, pagename, key, val)
+        # If color defined, set page as filled
+        if key == 'fillcolor':
+            set_attribute(new_data, pagename, 'style', 'filled')
+        return
+
+    # Save to shelve's metadata list
+    set_attribute(new_data, pagename, key, val)
 
 def changed_meta(request, pagename, old_data, new_data):
     add_out = dict()
@@ -192,7 +230,7 @@ def changed_meta(request, pagename, old_data, new_data):
 
     # Deleted edges
     for key in old_keys.difference(new_keys):
-        for val in old_data[u'out'][key]:
+        for val in old_data.get(u'out')[key]:
 
             del_out[pagename].append((key, val))
 
@@ -276,7 +314,7 @@ def execute(pagename, request, text, pagedir, pageitem):
     new_data = parse_text(request, pageitem, text)
 
     # Get a copy of current data
-    old_data = request.graphdata.get(pagename, {})
+    old_data = request.graphdata.getpage(pagename)
 
     changed_new_out, changed_del_out, changed_new_in, changed_del_in = \
         changed_meta(request, pagename, old_data, new_data)
@@ -284,14 +322,10 @@ def execute(pagename, request, text, pagedir, pageitem):
     # Insert metas and other stuff from parsed content
     cur_time = time()
 
-    temp = request.graphdata.get(pagename, {})
-    temp[u'meta'] = new_data.get(pagename, dict()).get(u'meta', dict())
-    temp[u'acl'] = new_data.get(pagename, dict()).get(u'acl', '')
-    temp[u'mtime'] = cur_time
-    temp[u'saved'] = True
-
-
-    request.graphdata[pagename] = temp
+    request.graphdata.set_page_meta_and_acl_and_mtime_and_saved(pagename,
+                                                                new_data.get(pagename, dict()).get(u'meta', dict()),
+                                                                new_data.get(pagename, dict()).get(u'acl', ''),
+                                                                cur_time, True)
 
     # Save the links that have truly changed
     for page in changed_del_out:

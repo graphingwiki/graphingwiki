@@ -28,8 +28,10 @@ class GraphDataBase(UserDict.DictMixin):
     def __getitem__(self, item):
         raise NotImplemented()
 
-    def __setitem__(self, item, value):
+    def savepage(self, pagename, pagedict):
         raise NotImplemented()
+
+    __setitem__ = savepage
 
     def __delitem__(self, item):
         raise NotImplemented()
@@ -130,44 +132,6 @@ class GraphDataBase(UserDict.DictMixin):
                 '?action=AttachFile&do=get&target=' + fname)
 
         return graph
-
-    def set_attribute(self, new_data, node, key, val):
-        key, val = strip_meta(key, val)
-
-        temp = new_data.get(node, {})
-
-        if not temp.has_key(u'meta'):
-            temp[u'meta'] = {key: [val]}
-        elif not temp[u'meta'].has_key(key):
-            temp[u'meta'][key] = [val]
-        # a page can not have more than one label, shapefile etc
-        elif key in SPECIAL_ATTRS:
-            temp[u'meta'][key] = [val]
-        else:
-            temp[u'meta'][key].append(val)
-
-        new_data[node] = temp
-
-    def add_meta(self, new_data, pagename, (key, val)):
-        
-        # Do not handle empty metadata, except empty labels
-        val = val.strip()
-        if key == 'gwikilabel' and not val:
-            val = ' '        
-
-        if not val:
-            return
-
-        # Values to be handled in graphs
-        if key in SPECIAL_ATTRS:
-            self.set_attribute(new_data, pagename, key, val)
-            # If color defined, set page as filled
-            if key == 'fillcolor':
-                self.set_attribute(new_data, pagename, 'style', 'filled')
-            return
-
-        # Save to shelve's metadata list
-        self.set_attribute(new_data, pagename, key, val)
 
     def load_graph(self, pagename, urladd, load_origin=True):
         if not self.request.user.may.read(pagename):

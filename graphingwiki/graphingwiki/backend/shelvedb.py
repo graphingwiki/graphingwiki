@@ -51,12 +51,15 @@ class GraphData(GraphDataBase):
         return self.cache[page]
 
     def __setitem__(self, item, value):
-        log.debug("setitem %s = %s" % (repr(item), repr(value)))
-        self.writelock()
-        page = encode_page(item)
+        self.savepage(item, value)
 
-        self.db[page] = value
-        self.cache[page] = value
+    def savepage(self, pagename, pagedict):
+        log.debug("savepage %s = %s" % (repr(pagename), repr(pagedict)))
+        self.writelock()
+        page = encode_page(pagename)
+
+        self.db[page] = pagedict
+        self.cache[page] = pagedict
 
     def cacheset(self, item, value):
         page = encode_page(item)
@@ -64,9 +67,12 @@ class GraphData(GraphDataBase):
         self.cache[page] = value
 
     def __delitem__(self, item):
-        log.debug("delitem %s" % (repr(item),))
+        self.delpage(item)
+
+    def delpage(self, pagename):
+        log.debug("delpage %s" % (repr(pagename),))
         self.writelock()
-        page = encode_page(item)
+        page = encode_page(pagename)
 
         del self.db[page]
         self.cache.pop(page, None)
@@ -80,6 +86,14 @@ class GraphData(GraphDataBase):
     def __contains__(self, item):
         page = encode_page(item)
         return page in self.cache or page in self.db
+
+    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
+        pagedata = self.getpage(pagename)
+        pagedata[u'meta'] = newmeta
+        pagedata[u'acl'] = acl
+        pagedata[u'mtime'] = mtime
+        pagedata[u'saved'] = saved
+        self.savepage(pagename, pagedata)
 
     def readlock(self):
         if self.lock is None or not self.lock.isLocked():
