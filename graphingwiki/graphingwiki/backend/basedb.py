@@ -11,16 +11,6 @@ from graphingwiki.util import encode, category_regex, template_regex, \
 from graphingwiki.graph import Graph
 from graphingwiki import actionname
 
-def strip_meta(key, val):
-    key = key.strip()
-    val = val.strip()
-
-    # retain empty labels
-    if key == 'gwikilabel' and not val:
-        val = ' '        
-
-    return key, val
-
 class GraphDataBase(UserDict.DictMixin):
     def __init__(self, request):
         self.request = request

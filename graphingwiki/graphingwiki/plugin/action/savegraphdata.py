@@ -110,6 +110,16 @@ def parse_text(request, page, text):
 
     return new_data
 
+def strip_meta(key, val):
+    key = key.strip()
+    val = val.strip()
+
+    # retain empty labels
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
+    return key, val
+
 def set_attribute(new_data, node, key, val):
     key, val = strip_meta(key, val)
 
