@@ -172,8 +172,10 @@ class GraphServer(asyncore.dispatcher):
 if __name__ == '__main__':
     #logging.basicConfig(level=logging.DEBUG, format="%(asctime)-15s %(levelname)-5s %(message)s")
     import sys
-    s = GraphServer(sys.argv[1], MockDB())
+    d = MockDB()
+    s = GraphServer(sys.argv[1], d)
     try:
         asyncore.loop()
     except KeyboardInterrupt:
         log.info("break")
+    pprint.pprint(d.dbdict)

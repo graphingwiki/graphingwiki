@@ -239,6 +239,7 @@ RequestBase.__copy__ = request_copy
 # patched function
 
 def graphdata_getter(self):
+#    from graphingwiki.backend.durusclient import GraphData
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
@@ -247,7 +248,13 @@ def graphdata_getter(self):
 def graphdata_close(self):
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
+        graphdata.commit()
         graphdata.close()
+
+def graphdata_commit(self, *args):
+    graphdata = self.__dict__.pop("_graphdata", None)
+    if graphdata is not None:
+        graphdata.commit()
 
 def _get_save_plugin(self):
     # Save to graph file if plugin available.
@@ -393,8 +400,12 @@ def install_hooks():
     # which, if used, is then closed properly when the request
     # finishes.
     RequestBase.graphdata = property(graphdata_getter)
+
+    # XXX "always" callback is called before the "on_success" one,
+    # which pops _graphdata attr out in addition to closing the db
+    # connection
     RequestBase.finish = monkey_patch(RequestBase.finish, 
-                                      always=graphdata_close)
+                                      always=graphdata_close)#, on_success=graphdata_commit)
     # Patch RequestBase.run too, just in case finally might not get
     # called in case of a crash.
     RequestBase.run = monkey_patch(RequestBase.run, 

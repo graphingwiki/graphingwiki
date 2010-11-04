@@ -16,35 +16,41 @@ class GraphDataBase(UserDict.DictMixin):
         self.request = request
 
     def __getitem__(self, item):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def savepage(self, pagename, pagedict):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     __setitem__ = savepage
 
     def __delitem__(self, item):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def keys(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def __iter__(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def __contains__(self, item):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def commit(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
+    def abort(self):
+        raise NotImplementedError()
+
+    def close(self):
+        raise NotImplementedError()
+ 
     def getpage(self, pagename):
         # Always read data here regardless of user rights,
         # they should be handled elsewhere.
         return self.get(pagename, dict())
 
-    def add_link(self, new_data, pagename, nodename, linktype):
-        raise NotImplemented()
+    def get_out(self, pagename):
+        return self.getpage(pagename).get(u'out', {})
 
     def reverse_meta(self):
 
