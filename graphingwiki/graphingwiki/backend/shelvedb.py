@@ -61,6 +61,34 @@ class GraphData(GraphDataBase):
         self.db[page] = pagedict
         self.cache[page] = pagedict
 
+    def is_saved(self, pagename):
+        return self.getpage(pagename).get('saved', False)
+
+    def get_out(self, pagename):
+        return self.getpage(pagename).get(u'out', {})
+
+    def get_in(self, pagename):
+        return self.getpage(pagename).get(u'in', {})
+
+    def get_meta(self, pagename):
+        return self.getpage(pagename).get(u'meta', {})
+
+    def get_metakeys(self, name):
+        """
+        Return the complete set of page's (non-link) meta keys, plus gwiki category.
+        """
+
+        page = self.getpage(name)
+        keys = set(page.get('meta', dict()))
+
+        if page.get('out', dict()).has_key('gwikicategory'):
+            keys.add('gwikicategory')
+
+        return keys
+
+    def pagenames(self):
+        return self.iterkeys()
+
     def cacheset(self, item, value):
         page = encode_page(item)
 

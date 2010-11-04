@@ -94,7 +94,7 @@ def get_revisions(request, page):
 
     metakeys = set()
     for page in pagelist:
-        for key in get_keys(request, page):
+        for key in request.graphdata.get_metakeys(page):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=ordervalue)
 
@@ -374,11 +374,14 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
     # Make a real copy of loadedOuts and loadedMeta for tracking indirection
     loadedOuts = dict()
-    for key in loadedPage.get('out', dict()):
-        loadedOuts[key] = [x for x in loadedPage['out'][key]]
+    outs = request.graphdata.get_out(name)
+    for key in outs:
+        loadedOuts[key] = list(outs[key])
+
     loadedMeta = dict()
-    for key in loadedPage.get('meta', dict()):
-        loadedMeta[key] = [x for x in loadedPage['meta'][key]]
+    metas = request.graphdata.get_meta(name)
+    for key in metas:
+        loadedMeta[key] = list(metas[key])
 
     loadedOutsIndir = dict()
     for key in loadedOuts:
@@ -409,9 +412,7 @@ def get_metas(request, name, metakeys, checkAccess=True,
                 else:
                     linked, target_key = args[:2]
 
-                pagedata = request.graphdata.getpage(curpage)
-
-                pages = pagedata.get('out', dict()).get(linked, set())
+                pages = request.graphdata.get_out(curpage).get(linked, set())
 
                 for indir_page in set(pages):
                     # Relative pages etc
@@ -462,19 +463,6 @@ def get_metas(request, name, metakeys, checkAccess=True,
                             list()).extend(loadedOuts['gwikicategory'])
             
     return pageMeta
-
-def get_keys(request, name):
-    """
-    Return the complete set of page's meta keys.
-    """
-
-    page = request.graphdata.getpage(name)
-    keys = set(page.get('meta', dict()))
-
-    if page.get('out', dict()).has_key('gwikicategory'):
-        keys.add('gwikicategory')
-
-    return keys
 
 def get_pages(request):
     def group_filter(name):
@@ -1287,14 +1275,14 @@ def metatable_parseargs(request, args,
     def is_saved(name):
         if include_unsaved:
             return True
-        return request.graphdata.getpage(name).has_key('saved')
+        return request.graphdata.is_saved(name)
 
     def can_be_read(name):
         return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pages = filter(is_saved, request.graphdata)
+        pages = filter(is_saved, request.graphdata.pagenames())
         if checkAccess:
             # Filter out the pages the user may not read
             pages = filter(can_be_read, pages)
@@ -1307,7 +1295,7 @@ def metatable_parseargs(request, args,
 
         for arg in categories:
             page = request.graphdata.getpage(arg)
-            newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
+            newpages = page.get_in().get(CATEGORY_KEY, list())
 
             for newpage in newpages:
                 # Check that the page is not a category or template page
@@ -1408,11 +1396,11 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in get_keys(request, name):
+                for key in request.graphdata.get_metakeys(name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in (x for x in get_keys(request, name)
+                for key in (x for x in request.graphdata.get_metakeys(name)
                             if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 

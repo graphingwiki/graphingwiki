@@ -54,11 +54,12 @@ class Metas(PersistentDict):
 class GraphData:
     use_dict_api = False
 
-    def __init__(self, request):
-        self.durus_storage = durus.client_storage.ClientStorage(address=os.path.join(request.cfg.data_dir, 'durus.sock'))
+    def __init__(self, request=None, address=None):
+        if not address:
+            address=os.path.join(request.cfg.data_dir, 'durus.sock')
+        self.durus_storage = durus.client_storage.ClientStorage(address=address)
         self.durus_conn = durus.connection.Connection(self.durus_storage)
         self.dbroot = self.durus_conn.get_root()
-        self.request = request
 
         indices = 'metasbyname', 'pagename_by_metakey', 'pagename_by_metaval', 'pagename_by_regexp'
         for i in indices:
@@ -72,6 +73,16 @@ class GraphData:
 
     def get_out(self, pagename):
         return self.getpage(pagename).outlinks
+
+    def get_in(self, pagename):
+        "return mapping of metakey -> [frompage1, frompage2, ...]"
+        inlinks = {}
+        for pname in self.pagename_by_metaval.get(pagename, []):
+            for k, vals in self.get_out(pname).iteritems():
+                if pagename in vals:
+                    inlinks.setdefault(k, []).append(pname)
+        return inlinks
+
 
     def __getitem__(self, item):
         if not self.use_dict_api:
@@ -107,10 +118,33 @@ class GraphData:
             raise NotImplementedError()
         return self.keys()
 
+    def pagenames(self):
+        return self.metasbyname.iterkeys()
+
     def __contains__(self, item):
         if not self.use_dict_api:
             raise NotImplementedError()
         return item in self.metasbyname
+
+    def is_saved(self, pagename):
+        return self.getpage(pagename).saved
+
+    def get_metakeys(self, name):
+        """
+        Return the complete set of page's (non-link) meta keys, plus gwiki category.
+        """
+
+        page = self.getpage(name)
+        keys = set(page.unlinks)
+        if 'gwikicategory' in page.outlinks:
+            keys.add('gwikicategory')
+        return keys
+
+    def get_meta(self, pagename):
+        return self.getpage(pagename).unlinks
+
+    def get_out(self, pagename):
+        return self.getpage(pagename).outlinks
 
     def commit(self):
         log.info("commit")
@@ -157,3 +191,33 @@ class GraphData:
         from pprint import pformat
         log.debug("db dump:")
         log.debug(dict(self.dbroot.items()))
+
+    def post_save(self, pagename):
+        self.index_pagename(pagename)
+
+    def index_pagename(self, pagename):
+        pm = self.getpage(pagename)
+        ol, ul = pm.outlinks, pm.unlinks
+
+        # set-ify to eliminate dups
+        for metakey in set(pm.outlinks.keys() + pm.unlinks.keys()):
+            pl = self.pagename_by_metakey.setdefault(metakey, PersistentList())
+
+            # add page name to metakey index
+            if pagename not in pl:
+                pl.append(pagename)
+
+            # add page to metaval index
+            for val in set(ol.get(metakey, []) + ul.get(metakey, [])):
+                self.pagename_by_metaval.setdefault(
+                    val, PersistentList()).append(pagename)
+
+    def delpagemeta(self, pagename):
+        ol, ul = pm.outlinks, pm.unlinks
+        for metakey in ol.keys() + ul.keys():
+            self.pagename_by_metakey.get(metakey, []).remove(pagename)
+
+            for val in ol.get(metakey, []) + ul.get(metakey, []):
+                self.pagename_by_metaval[val].remove(pagename)
+
+

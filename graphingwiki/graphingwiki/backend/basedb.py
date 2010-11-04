@@ -49,8 +49,32 @@ class GraphDataBase(UserDict.DictMixin):
         # they should be handled elsewhere.
         return self.get(pagename, dict())
 
+    def is_saved(self, pagename):
+        raise NotImplementedError()
+
+    def pagenames(self):
+        raise NotImplementedError()
+
+    def get_metakeys(self, name):
+        """
+        Return the complete set of page's (non-link) meta keys, plus gwiki category.
+        """
+        raise NotImplementedError()
+ 
+    def get_out(self, pagename):
+        raise NotImplementedError()
+
+    def get_meta(self, pagename):
+        raise NotImplementedError()
+
+    def get_in(self, pagename):
+        return self.getpage(pagename).get(u'in', {})
+       
     def get_out(self, pagename):
         return self.getpage(pagename).get(u'out', {})
+
+    def post_save(self, pagename):
+        pass
 
     def reverse_meta(self):
 

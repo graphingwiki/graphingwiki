@@ -514,8 +514,9 @@ def execute2(pagename, request, text, pagedir, pageitem):
         if rev != 99999999:
             if not exists:
                 _clear_page(request, pagename)
-
+    
     delete_moin_caches(request, pageitem)
+    request.graphdata.post_save(pagename)
 
 # - code below lifted from MetaFormEdit -
 
