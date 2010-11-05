@@ -1294,8 +1294,7 @@ def metatable_parseargs(request, args,
         other = argset - categories
 
         for arg in categories:
-            page = request.graphdata.getpage(arg)
-            newpages = page.get_in().get(CATEGORY_KEY, list())
+            newpages = request.graphdata.get_in(arg).get(CATEGORY_KEY, list())
 
             for newpage in newpages:
                 # Check that the page is not a category or template page
