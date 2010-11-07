@@ -273,12 +273,19 @@ def draw_teacher_ui(request, course):
 <script type="text/javascript">
 
 var courseModalizer = new Class({
-    Extends: modalizer,
-     click : function() {
-                if (confirm('Discard changes and close course editor?')) {
-                   this.close();
-                }
-             }
+        Extends: modalizer,
+        click : function() {
+            this.els.fireEvent('close');
+            var changed = false;
+            this.els.each(function(el){
+               if(el.hasClass('edited')) changed=true;
+            });
+            if (!changed || confirm('Discard changes and close course editor?')) {
+               this.close();
+            }
+
+        }
+
 });
 
 function editor(view){
