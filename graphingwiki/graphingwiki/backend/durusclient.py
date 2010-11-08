@@ -45,7 +45,7 @@ class Metas(PersistentDict):
             raise ValueError, typ, 'has multiple values'
         return val[0]
 
-class GraphData(GraphDataBase):
+class GraphData:
     use_dict_api = False
 
     def __init__(self, request=None, address=None):
