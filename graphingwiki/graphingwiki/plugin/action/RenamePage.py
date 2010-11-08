@@ -165,8 +165,9 @@ class RenamePage(RenamePageBasic):
 
             # List pages that link to the renamed page
             pages = set()
-            for type in pdata.get('in', {}):
-                pages.update(pdata['in'][type])
+            inlinks = self.request.graphdata.get_in(self.pagename)
+            for type in inlinks:
+                pages.update(inlinks[type])
 
             # Update listed pages
             for page in pages:

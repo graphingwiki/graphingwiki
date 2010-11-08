@@ -124,16 +124,16 @@ def execute(pagename, request):
     newreq.redirect()
 
     graphdata = request.graphdata
-    graphdata.reverse_meta()
-    vals_on_keys = graphdata.vals_on_keys
+    vals_on_keys = graphdata.get_vals_on_keys()
 
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
         data = parse_text(newreq, newreq.page, newreq.page.get_raw_body())
         for page in data:
-            for key in data[page].get('meta', dict()):
-                for val in data[page]['meta'][key]:
+            pagemeta = graphdata.get_meta(page)
+            for key in pagemeta:
+                for val in pagemeta[key]:
                     vals_on_keys.setdefault(key, set()).add(val)
 
     # Form types

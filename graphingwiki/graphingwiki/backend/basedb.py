@@ -76,6 +76,13 @@ class GraphDataBase(UserDict.DictMixin):
     def post_save(self, pagename):
         pass
 
+    def get_vals_on_keys(self):
+        self.reverse_meta()
+        return self.vals_on_keys
+
+    def clear_metas(self):
+        pass
+
     def reverse_meta(self):
 
         self.keys_on_pages = dict()

@@ -1,11 +1,11 @@
 import itertools
 import os
 from time import time
+from collections import defaultdict
 
 from graphingwiki.backend.basedb import GraphDataBase
 from graphingwiki.util import encode_page, decode_page, encode
 from graphingwiki import actionname
-
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, log
 
 import durus.client_storage, durus.connection
@@ -55,13 +55,19 @@ class GraphData:
         self.durus_storage = durus.client_storage.ClientStorage(address=address)
         self.durus_conn = durus.connection.Connection(self.durus_storage)
         self.dbroot = self.durus_conn.get_root()
+        self.init_db()
 
+    def init_db(self):
         indices = 'metasbyname', 'pagename_by_metakey', 'pagename_by_metaval', 'pagename_by_regexp'
         for i in indices:
             if i not in self.dbroot:
                 self.dbroot[i] = DurusBTree()
             t = self.dbroot[i]
             setattr(self, i, t)
+
+    def clear_metas(self):
+        self.dbroot.clear()
+        self.init_db()
 
     def getpage(self, pagename):
         return self.metasbyname.setdefault(pagename, PageMeta())
@@ -162,16 +168,15 @@ class GraphData:
         p.saved = saved
 
     def remove_out(self, (frm, to), types):
-        assert self is ignored
-        log.info("remove_out %s %s" % (fromname, toname))
-        outlinks = self.getpage(fromname).outlinks
+        #log.info("remove_out %s %s" % (frm, to))
+        outlinks = self.getpage(frm).outlinks
         for tp in types:
-            if tp not in outlinks or toname not in outlinks[tp]:
+            if tp not in outlinks or to not in outlinks[tp]:
                 continue
-            outlinks[tp].remove(toname)
+            outlinks[tp].remove(to)
             if not outlinks[tp]:
                 del outlinks[tp]
-    
+
     def remove_in(self, (fromname, toname), types):
         pass
 
@@ -180,7 +185,7 @@ class GraphData:
 
     def add_out(self, (frompage, topage), linktype):
         self.getpage(frompage).outlinks.add(linktype, topage)
-        log.info("%s outlinks %s" % (frompage, self.metasbyname[frompage].outlinks.items()))
+        #log.info("%s outlinks %s" % (frompage, self.metasbyname[frompage].outlinks.items()))
         
     def dump_db(self):
         from pprint import pformat
@@ -190,6 +195,14 @@ class GraphData:
     def post_save(self, pagename):
         self.index_pagename(pagename)
 
+    def get_vals_on_keys(self):
+        "mapping of { metakey1: set(metaval1, metaval2, ...), ... }"
+        out = defaultdict(set)
+        for pm in self.metasbyname.itervalues():
+            for mkey, mvals in pm.unlinks.iteritems():
+                out[mkey].update(mvals)
+        return out
+                
     def index_pagename(self, pagename):
         pm = self.getpage(pagename)
         ol, ul = pm.outlinks, pm.unlinks
@@ -207,7 +220,8 @@ class GraphData:
                 self.pagename_by_metaval.setdefault(
                     val, PersistentList()).append(pagename)
 
-    def delpagemeta(self, pagename):
+    def clear_page(self, pagename):
+        pm = self.getpage(pagename)
         ol, ul = pm.outlinks, pm.unlinks
         for metakey in ol.keys() + ul.keys():
             self.pagename_by_metakey.get(metakey, []).remove(pagename)
