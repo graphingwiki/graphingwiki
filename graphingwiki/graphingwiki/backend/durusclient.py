@@ -25,12 +25,6 @@ class PageMeta(Persistent):
     def asdict(self):
         return {u'meta': self.unlinks.asdict(), u'out': self.outlinks.asdict()}
 
-    def get(self, what, default=None):
-        if what == 'out':
-            return self.outlinks
-        else:
-            raise ValueError(what)
-
 class Metas(PersistentDict):
     def add(self, typ, val):
         try:
@@ -51,12 +45,13 @@ class Metas(PersistentDict):
             raise ValueError, typ, 'has multiple values'
         return val[0]
 
-class GraphData:
+class GraphData(GraphDataBase):
     use_dict_api = False
 
     def __init__(self, request=None, address=None):
         if not address:
             address=os.path.join(request.cfg.data_dir, 'durus.sock')
+        self.request = request
         self.durus_storage = durus.client_storage.ClientStorage(address=address)
         self.durus_conn = durus.connection.Connection(self.durus_storage)
         self.dbroot = self.durus_conn.get_root()

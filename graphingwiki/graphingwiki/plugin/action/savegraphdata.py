@@ -500,6 +500,7 @@ def execute2(pagename, request, text, pagedir, pageitem):
             linktype, src = edge
             add_in(request.graphdata, [src, page], linktype)
 
+
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
     # Deleting == saving a revision with the text 'deleted/n', then 

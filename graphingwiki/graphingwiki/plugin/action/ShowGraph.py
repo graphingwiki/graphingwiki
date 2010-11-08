@@ -518,8 +518,7 @@ class GraphShower(object):
         pagename = self.pagename
 
         def get_categories(nodename):
-            pagedata = self.request.graphdata.getpage(nodename)
-            return pagedata.get('out', dict()).get('gwikicategory', list())
+            pagedata = self.request.graphdata.get_out(nodename).get('gwikicategory', list())
 
         for nodename in self.otherpages:
             self.startpages.append(nodename)
@@ -539,9 +538,9 @@ class GraphShower(object):
             # Permissions
             if not self.request.user.may.read(cat):
                 continue
-            catpage = self.request.graphdata.getpage(cat)
-            for type in catpage.get('in', dict()):
-                for newpage in catpage['in'][type]:
+            cat_in = self.request.graphdata.get_in(cat)
+            for type in cat_in.keys():
+                for newpage in cat_in[type]:
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
                         load_node(self.request, self.graphdata, 
@@ -672,11 +671,11 @@ class GraphShower(object):
 
             # Add page categories to selection choices in the form
             # (for local pages only, ie. existing and saved)
-            if pagedata.get('saved', False):
+            if self.request.graphdata.is_saved(objname):
                 if hasattr(orig_obj, 'gwikicategory'):
                     self.categories_add(orig_obj.gwikicategory)
 
-            tooldata = make_tooltip(self.request, pagedata, self.format)
+            tooldata = make_tooltip(self.request, objname, self.format)
             if tooldata and not hasattr(orig_obj, 'gwikitooltip'):
                 obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 

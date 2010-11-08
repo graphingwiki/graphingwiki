@@ -222,17 +222,19 @@ def url_construct(request, args, name=''):
 
     return request.getQualifiedURL(req_url)
 
-def make_tooltip(request, pagedata, format=''):
+def make_tooltip(request, pagename, format=''):
     _ = request.getText
 
     # Add tooltip, if applicable
     # Only add non-guaranteed attrs to tooltip
     pagemeta = dict()
-    for key in pagedata.get('meta', dict()):
-        pagemeta[key] = [x for x in pagedata['meta'][key]]
+    metas = request.graphdata.get_meta(pagename)
+    for key in metas:
+        pagemeta[key] = [x for x in metas[key]]
     for key in ['gwikicategory', '_notype']:
-        if key in pagedata.get('out', dict()):
-            pagemeta.setdefault(key, list()).extend(pagedata['out'][key])
+        pageout = request.graphdata.get_out(pagename)
+        if key in pageout:
+            pagemeta.setdefault(key, list()).extend(pageout[key])
 
     tooldata = str()
     if pagemeta:
@@ -438,7 +440,7 @@ def load_node(request, graph, node, urladd):
         load_origin = True
 
     # Get new data for current node
-    adata = request.graphdata.load_graph(node, urladd, load_origin)
+    adata = load_graph(request, node, urladd, load_origin)
 
     if adata:
         nodeitem.update(adata.nodes.get(node))
@@ -562,3 +564,174 @@ def category_regex(request, act=False):
             request.cfg.page_category_regex = u'^Category[A-Z]'
 
     return re.compile(request.cfg.page_category_regex, re.UNICODE)
+
+
+def _add_node(request, pagename, graph, urladd="", nodetype=""):
+    # Don't bother if the node has already been added
+    if graph.nodes.get(pagename):
+        return graph
+
+    node = graph.nodes.add(pagename)
+    # Add metadata
+    for key, val in request.graphdata.get_meta(pagename).iteritems():
+        if key in SPECIAL_ATTRS:
+            node.__setattr__(key, ''.join(val))
+        else:
+            node.__setattr__(key, val)
+
+    # Add links as metadata
+    for key, val in request.graphdata.get_out(pagename).iteritems():
+        if key == NO_TYPE:
+            continue
+        if key in SPECIAL_ATTRS:
+            node.__setattr__(key, ''.join(val))
+        else:
+            node.__setattr__(key, val)
+
+    # Shapefile is an extra special case
+    for shape in request.graphdata.get_meta(pagename).get('gwikishapefile', list()):
+        node.gwikishapefile = shape
+    # so is category
+    node.gwikicategory = \
+         request.graphdata.get_out(pagename).get('gwikicategory', list())
+
+    # Configuration for local pages next, 
+    # return known to be something else
+    if not nodetype == 'page':
+        return graph
+
+    # Local nonexistent pages must get URL-attribute
+    if not hasattr(node, 'gwikiURL'):
+        node.gwikiURL = './' + pagename
+
+    if request.graphdata.is_saved(pagename):
+        node.gwikiURL += urladd
+        # FIXME: Is this needed?
+        # node.gwikiURL = './' + node.gwikiURL
+    elif Page(request, pagename).isStandardPage():
+        # try to be helpful and add editlinks to non-underlay pages
+        node.gwikiURL += u"?action=edit"
+        node.gwikitooltip = request.getText('Add page')
+
+    if node.gwikiURL.startswith('attachment:'):
+        pagefile = node.gwikiURL.split(':')[1]
+        page, fname = attachment_pagefile(pagefile, pagename)
+
+        node.gwikilabel = encode(fname)
+        node.gwikiURL = encode(actionname(request, page) + \
+            '?action=AttachFile&do=get&target=' + fname)
+
+    return graph
+
+def load_graph(request, pagename, urladd, load_origin=True):
+    if not request.user.may.read(pagename):
+        return None
+
+    def add_adata_link(adata, edge, type):
+        # Add edge if it does not already exist
+        e = adata.edges.get(*edge)
+        if not e:
+            e = adata.edges.add(*edge)
+            e.linktype = set([type])
+        else:
+            e.linktype.add(type)
+        return adata
+
+    cat_re = category_regex(request)
+    temp_re = template_regex(request)
+
+    page = request.graphdata.getpage(pagename)
+    if not page:
+        return None
+
+    # Make graph, initialise head node
+    adata = Graph()
+    if load_origin:
+        adata = _add_node(request, pagename, adata, urladd, 'page')
+    else:
+        adata.nodes.add(pagename)
+
+    # Add links to page
+    links = request.graphdata.get_in(pagename)
+    for linktype in links:
+        for src in links[linktype]:
+            # Filter Category, Template pages
+            if cat_re.search(src) or temp_re.search(src):
+                continue
+            # Add page and its metadata
+            # Currently pages can have links in them only
+            # from local pages, thus nodetype == page
+            adata = _add_node(request, src, adata, urladd, 'page')
+            adata = add_adata_link(adata, (src, pagename), linktype)
+    # Add links from page
+    links = request.graphdata.get_out(pagename)
+    for linktype in links:
+        #print "add_node", pagename, dst
+        for i, dst in enumerate(links[linktype]):
+            # Filter Category, Template pages
+            if cat_re.search(dst) or temp_re.search(dst):
+                continue
+
+            # Fix links to everything but pages
+            label = ''
+            gwikiurl = ''
+            tooltip = ''
+            nodetype = node_type(request, dst)
+
+            if nodetype == 'attachment':
+                # get the absolute name ie both page and filename
+                gwikiurl = absolute_attach_name(pagename, dst)
+                att_parts = gwikiurl.split(':')[1].split('/')
+                att_page = '/'.join(att_parts[:-1])
+                att_file = att_parts[-1]
+
+                if pagename == att_page:
+                    label = "Attachment: %s" % (att_file)
+                else:
+                    label = "Attachment: %s/%s" % (att_page, att_file)
+
+                _, exists = attachment_file(request, 
+                                            att_page, att_file)
+
+                # For existing attachments, have link to view it
+                if exists:
+                    gwikiurl = "./%s?action=AttachFile&do=get&target=%s" % \
+                        (att_page, att_file)
+                    tooltip = request.getText('View attachment')
+                # For non-existing, have a link to upload it
+                else:
+                    gwikiurl = "./%s?action=AttachFile&rename=%s" % \
+                        (att_page, att_file)
+                    tooltip = request.getText('Add attachment')
+
+            elif nodetype == 'interwiki':
+                # Get effective URL:s to interwiki URL:s
+                iwname = dst.split(':')
+                iw_list = wikiutil.load_wikimap(request)
+                
+                gwikiurl = iw_list[iwname[0]] + iwname[1]
+                tooltip = iwname[1] + ' ' + \
+                    request.getText('page on') + \
+                    ' ' + iwname[0] + ' ' + \
+                    request.getText('wiki')
+
+            elif nodetype == 'url':
+                # URL:s have the url already, keep it
+                gwikiurl = dst
+                tooltip = dst
+
+            # Add page and its metadata
+            adata = _add_node(request, dst, adata, urladd, nodetype)
+            adata = add_adata_link(adata, (pagename, dst), linktype)
+            if label or gwikiurl or tooltip:
+                node = adata.nodes.get(dst)
+
+            # Add labels, gwikiurls and tooltips
+            if label:
+                node.gwikilabel = label
+            if gwikiurl:
+                node.gwikiURL = gwikiurl
+            if tooltip:
+                node.gwikitooltip = tooltip
+
+    return adata
