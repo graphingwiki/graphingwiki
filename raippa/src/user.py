@@ -1,6 +1,7 @@
 import datetime, time
 
 from MoinMoin.Page import Page
+from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.AttachFile import add_attachment
 from graphingwiki.editing import get_keys, get_metas, set_metas
 from raippa import pages_in_category, removelink, addlink
@@ -62,22 +63,20 @@ class User:
     def save_answers(self, question, overallvalue, save_dict, usedtime):
         histories = self.histories(question.pagename)
 
-        if len(histories) == 1:
-            history = histories[0]
-            remove = {history: get_keys(self.request, history)}
-        elif len(histories) < 1:
+        if len(histories) < 1:
             history = self.name+"/"+question.pagename
             history = history[:255]
-            remove = dict()
         else:
-            raise TooManyLinksException, "User %s has too many historypages linking to question %s" % (self.name, question.pagename)
+            history = histories[0]
 
+
+        page = PageEditor(self.request, history)
+        
         historydata = {"user": [addlink(self.name)],
                        "question": [addlink(question.pagename)],
                        "overallvalue": [unicode(overallvalue)],
                        "useragent": [self.request.getUserAgent()],
-                       "time": [time.strftime("%Y-%m-%d %H:%M:%S")],
-                       "gwikicategory": [rc['history']]}
+                       "time": [time.strftime("%Y-%m-%d %H:%M:%S")]}
 
         if usedtime:
             if usedtime > 1800:
@@ -85,8 +84,7 @@ class User:
             historydata["usedtime"] = [str(usedtime)]
 
         if question.options().get('answertype', None) == 'file':
-            historydata = {history: historydata}
-            historydata[history]['file'] = list()
+            historydata['file'] = list()
 
             #TODO: check success
             revision = Page(self.request, history).get_real_rev()
@@ -102,13 +100,11 @@ class User:
                 else:
                     filename = u"%s_rev%i.%s" % (".".join(parts[:-1]), revision, parts[-1])
 
-                filename, size = add_attachment(self.request, history, filename, content)
-                historydata[history]['file'].append("[[attachment:%s]]" % filename)
+                filename, size = add_attachment(self.request, history, filename, content, True)
+
+                historydata['file'].append("[[attachment:%s]]" % filename)
                 #TODO: check success with filesize
 
-            success, msg = set_metas(self.request, remove, dict(), historydata)
-
-            return success, msg
         else:
             historydata['right'] = list()
             historydata['wrong'] = list()
@@ -116,9 +112,26 @@ class User:
             for value, user_answers in save_dict.iteritems():
                 historydata[value].extend(user_answers)
 
-            historydata = {history: historydata}
+        raw = list()
+        for key,values in historydata.iteritems():
+            if type(values) != type(list()):
+                values = [values]
 
-            return set_metas(self.request, remove, dict(), historydata)
+            for value in values:
+                raw.append(u' %s:: %s' % (key, value))
+
+        raw.append(u'----\n%s' % rc['history'])
+
+        try:
+            msg = page.saveText("\n".join(raw), page.get_real_rev())
+            success = True
+        except page.Unchanged:
+            msg = u"Failed to save answers"
+            success = False
+        except page.EditConflict:
+            success = True
+
+        return success, msg
 
     def histories(self, questionpage=None):
         histories = list()
