@@ -200,28 +200,44 @@ def basescore(cvss, impact=None):
 
 def buildVector(base_metas):
     vector = ""
-    avset = set(['Local', 'Network', 'Adjacent Network'])
-    acset = set(['High', 'Medium', 'Low'])
-    auset = set(['Multiple', 'Single', 'None'])
-    av = base_metas["Access Vector"][:1]
+    avset = set(['L', 'A', 'N'])
+    acset = set(['H', 'M', 'L'])
+    auset = set(['M', 'S', 'N'])
+    ciaset = set(['C', 'P', 'N'])
+    av = base_metas["Option cvss-AV"]
     avs = set(av)
     if len(avs) > 0 and avs <= avset:
-        avv = av.pop()
-        vector += "AV:" + avv[0] + "/"
+        vector += "AV:" + av.pop() + "/"
     else:
         return None
-    ac = base_metas["Access Complexity"][:1]
+    ac = base_metas["Option cvss-AC"]
     acs = set(ac)
     if len(acs) > 0 and acs <= acset:
-        acv = ac.pop()
-        vector += "AC:" + acv[0] + "/"
+        vector += "AC:" + ac.pop() + "/"
     else:
         return None
-    au = base_metas["Authentication"][:1]
+    au = base_metas["Option cvss-Au"]
     aus = set(au)
     if len(aus) > 0 and aus <= auset:
-        auv = au.pop()
-        vector += "Au:" + auv[0] + "/C:C/I:C/A:C"
+        vector += "Au:" + au.pop() + "/"
+    else:
+        return None
+    c = base_metas["Option cvss-C"]
+    cs = set(c)
+    if len(cs) > 0 and cs <= ciaset:
+        vector += "C:" + c.pop() + "/"
+    else:
+        return None
+    i = base_metas["Option cvss-I"]
+    ise = set(i)
+    if len(ise) > 0 and ise <= ciaset:
+        vector += "I:" + i.pop() + "/"
+    else:
+        return None
+    a = base_metas["Option cvss-A"]
+    ase = set(a)
+    if len(ase) > 0 and ase <= ciaset:
+        vector += "A:" + a.pop() + "/"
     else:
         return None
     return vector
@@ -255,7 +271,7 @@ def execute(macro, args):
             return _sysmsg % ('error', 
                 _("CVSS: The type needs to be either score or vector."))
 
-    base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication"])
+    base_metas = get_metas(request, page, ["Option cvss-AV", "Option cvss-AC", "Option cvss-Au", "Option cvss-C", "Option cvss-I", "Option cvss-A"])
     vector = buildVector(base_metas)
     if vector is not None:
         if type == "vector":
