@@ -375,7 +375,7 @@ class Question:
                         content = answer[5][filename]
                         if content != None:
                             f, s = add_attachment(self.request, outputpage, filename, content, 1)
-                        filelinks += " file:: [[attachment:%s]]" % filename
+                        filelinks += " file:: [[attachment:%s]]\n" % filename
 
                     for filename in attachment_list(self.request, outputpage):
                         if filename not in answer[5].keys():
