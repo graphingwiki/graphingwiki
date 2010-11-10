@@ -36,7 +36,45 @@ def parse_summary(dir, file='summary.xml'):
             summary_metas[label].add(getText(cfact.childNodes))
     return summary_metas
 
+def mapCVSS(k,v):
+    keys = {
+        'cvss-AV': 'Access Vector',
+        'cvss-AC': 'Access Complexity',
+        'cvss-Au': 'Authentication',
+        'cvss-C': 'Confidentiality',
+        'cvss-I': 'Integrity',
+        'cvss-A': 'Availability',
+        'cvss-E': 'Exploitability',
+        'cvss-RL': 'Remediation Level', 
+        'cvss-RC': 'Report Confidence',
+        'cvss-CDP': 'Collateral Damage Potential',
+        'cvss-TD': 'Target Distribution',
+        'cvss-CR': 'Confidentiality Requirement',
+        'cvss-IR': 'Integrity Requirement',
+        'cvss-AR': 'Availability Requirement'
+    }
+    values = {
+        'AV': 'Access Vector',
+        'AC': 'Access Complexity',
+        'Au': 'Authentication',
+        'C': 'Confidentiality',
+        'I': 'Integrity',
+        'A': 'Availability',
+        'E': 'Exploitability',
+        'RL': 'Remediation Level', 
+        'RC': 'Report Confidence',
+        'CDP': 'Collateral Damage Potential',
+        'TD': 'Target Distribution',
+        'CR': 'Confidentiality Requirement',
+        'IR': 'Integrity Requirement',
+        'AR': 'Availability Requirement',
+        'X': 'Invalid',
+        'ND': 'Not Defined'
+    }
+    return(keys(k), values(v))
+
 def parse_tool_options(page_metas):
+    cvssre = re.compile('cvss')
     options=[]
     tmp=[]
     option_metas = Meta()
@@ -47,9 +85,14 @@ def parse_tool_options(page_metas):
     for opt in options:
         tmp = opt.split()
         if(tmp):
-            opt_key = "Option "
-            opt_key = opt_key + " ".join(tmp[0:1])
-            opt_value = " ".join(tmp[1:])
+            k = tmp[0:1]
+            v = tmp[1:]
+            if cvssre.search(key): 
+                (opt_key, opt_value) = mapCVSS(k,v)
+            else:
+                opt_key = "Option "
+                opt_key = opt_key + " ".join(k)
+                opt_value = " ".join(v)
             option_metas[opt_key].add(opt_value)
     return option_metas
 
