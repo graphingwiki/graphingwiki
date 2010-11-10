@@ -237,7 +237,7 @@ def buildVector(base_metas):
     a = base_metas["Option cvss-A"]
     ase = set(a)
     if len(ase) > 0 and ase <= ciaset:
-        vector += "A:" + a.pop() + "/"
+        vector += "A:" + a.pop()
     else:
         return None
     return vector
