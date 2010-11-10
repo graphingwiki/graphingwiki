@@ -37,23 +37,10 @@ def parse_summary(dir, file='summary.xml'):
     return summary_metas
 
 def mapCVSS(k,v):
+    if k.startswith("cvss-"):
+        k = k[5:]
+
     keys = {
-        'cvss-AV': 'Access Vector',
-        'cvss-AC': 'Access Complexity',
-        'cvss-Au': 'Authentication',
-        'cvss-C': 'Confidentiality',
-        'cvss-I': 'Integrity',
-        'cvss-A': 'Availability',
-        'cvss-E': 'Exploitability',
-        'cvss-RL': 'Remediation Level', 
-        'cvss-RC': 'Report Confidence',
-        'cvss-CDP': 'Collateral Damage Potential',
-        'cvss-TD': 'Target Distribution',
-        'cvss-CR': 'Confidentiality Requirement',
-        'cvss-IR': 'Integrity Requirement',
-        'cvss-AR': 'Availability Requirement'
-    }
-    values = {
         'AV': 'Access Vector',
         'AC': 'Access Complexity',
         'Au': 'Authentication',
@@ -67,11 +54,67 @@ def mapCVSS(k,v):
         'TD': 'Target Distribution',
         'CR': 'Confidentiality Requirement',
         'IR': 'Integrity Requirement',
-        'AR': 'Availability Requirement',
+        'AR': 'Availability Requirement'
+    }
+    
+    values = {'AV': {'L': "Local access",
+                     'A': "Adjacent network",
+                     'N': "Network"},
+              'AC': {'H': "High",
+                     'M': "Medium",
+                     'L': "Low"},
+              'Au': {'N': "None required",
+                     'S': "Requires single instance",
+                     'M': "Requires multiple instances"},
+              'C': {'N': "None",
+                     'P': "Partial",
+                     'C': "Complete"},
+              'I': {'N': "None",
+                     'P': "Partial",
+                     'C': "Complete"},
+              'A': {'N': "None",
+                     'P': "Partial",
+                     'C': "Complete"},
+              'E': {'U': 'Unproven',
+                    'P': 'Proof-of-concept',
+                    'F': 'Functional',
+                    'W': 'Widespread'},
+              'RL': {'O': 'Official-fix',
+                     'T': 'Temporary-fix',
+                     'W': 'Workaround',
+                     'U': 'Unavailable'},
+              'RC': {'N': 'Not confirmed',
+                     'U': 'Uncorroborated',
+                     'C': 'Confirmed'},
+              'CD': {'N': 'None',
+                     'L': 'Low',
+                     'LM': 'Low-Medium',
+                     'MH': 'Medium-High',
+                     'H': 'High'},
+              'TD': {'N': 'None',
+                     'L': 'Low',
+                     'M': 'Medium',
+                     'H': 'High'},
+              'CR': {'L': 'Low',
+                     'M': 'Medium',
+                     'H': 'High'},
+              'IR': {'L': 'Low',
+                     'M': 'Medium',
+                     'H': 'High'},
+              'AR': {'L': 'Low',
+                     'M': 'Medium',
+                     'H': 'High'}
+              }
+
+    commonValues = {
         'X': 'Invalid',
         'ND': 'Not Defined'
     }
-    return(keys(k), values(v))
+
+    key = keys.get(k, k)
+    value = commonValues.get(v, values.get(k, dict()).get(v, v))
+     
+    return key, value
 
 def parse_tool_options(page_metas):
     cvssre = re.compile('cvss')
@@ -83,16 +126,16 @@ def parse_tool_options(page_metas):
     opt_str = str(tmp.pop())
     options = opt_str.split('--')
     for opt in options:
-        tmp = opt.split()
-        if(tmp):
-            k = tmp[0:1]
-            v = tmp[1:]
-            if cvssre.search(key): 
+        opt = opt.strip()
+        tmp = opt.split(" ", 1)
+        if len(tmp) == 2:
+            k, v = tmp
+            if cvssre.search(k): 
                 (opt_key, opt_value) = mapCVSS(k,v)
             else:
                 opt_key = "Option "
-                opt_key = opt_key + " ".join(k)
-                opt_value = " ".join(v)
+                opt_key = opt_key + k
+                opt_value = v
             option_metas[opt_key].add(opt_value)
     return option_metas
 
