@@ -177,6 +177,8 @@ def parse_xml(metas, file, nmaprun_page):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-A", "--audit", dest="audit", default= None,
+        metavar="AUDIT", help=("AUDIT name to tag identities with."))
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
@@ -193,6 +195,7 @@ def main():
     progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
+    audit = ops[sect]["audit"]
     if template is None:
         template = "IdentityTemplate"
     category = ops[sect]["category"]
@@ -238,6 +241,10 @@ def main():
             for page in metas:
                 if not 'gwikitemplate' in metas[page]:
                     metas[page]["gwikitemplate"].add(template)
+
+        if audit is not None:
+            for page in metas:
+                metas[page]["Audit"].add(audit)
 
         if verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
