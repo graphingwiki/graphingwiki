@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-"
 """
-    SetMeta xmlrpc plugin to MoinMoin/Graphingwiki
+    setMetaJSON action plugin for MoinMoin/Graphingwiki
      - Appends metadata from pages or replaces them
 
+    @copyright: 2010 by Erno Kuusela <erno@iki.fi>
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """

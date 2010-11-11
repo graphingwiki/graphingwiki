@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-"
 """
-    showMetasJson
-      - Shows meta values in a metatable kind a fasion in JSON 
+    getMetaJSON action for graphingwiki
 
-    @copyright: 2008  <therauli@ee.oulu.fi>
+    @copyright: 2010 Erno Kuusela <erno@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
