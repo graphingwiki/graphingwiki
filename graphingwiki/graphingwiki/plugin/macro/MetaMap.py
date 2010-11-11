@@ -120,8 +120,7 @@ def execute(macro, args):
 
             for name in allcoords[coord]:
 
-                pagedata = request.graphdata.getpage(name)
-                text = make_tooltip(request, pagedata)
+                text = make_tooltip(request, name)
 
                 area_key = "%s,%s,%s" % (int(x), int(y), radius)
 

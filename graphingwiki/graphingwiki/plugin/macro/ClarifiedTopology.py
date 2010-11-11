@@ -158,8 +158,7 @@ def draw_topology(request, args, key):
         
         ctx.rectangle(start_x, start_y, w, h)
 
-        pagedata = request.graphdata.getpage(page)
-        text = make_tooltip(request, pagedata)
+        text = make_tooltip(request, page)
 
         areas["%s,%s,%s,%s" % (start_x, start_y, start_x + w, start_y + h)] = \
             [page, text, 'rect']
