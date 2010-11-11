@@ -57,8 +57,8 @@ def mapCVSS(k,v):
         'AR': 'Availability Requirement'
     }
     
-    values = {'AV': {'L': "Local access",
-                     'A': "Adjacent network",
+    values = {'AV': {'L': "Local",
+                     'A': "Adjacent Network",
                      'N': "Network"},
               'AC': {'H': "High",
                      'M': "Medium",
