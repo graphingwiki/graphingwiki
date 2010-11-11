@@ -233,7 +233,7 @@ def buildVector(base_metas):
     else:
         vector += "C:C/"
     i = base_metas["Integrity"][:1]
-    ins = set(c)
+    ins = set(i)
     if len(ins) > 0 and ins <= ciaset:
         inv = i.pop()
         vector += "I:" + inv[0] + "/"
