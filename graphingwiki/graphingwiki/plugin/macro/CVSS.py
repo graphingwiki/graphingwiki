@@ -236,14 +236,14 @@ def buildVector(base_metas):
     ins = set(c)
     if len(ins) > 0 and ins <= ciaset:
         inv = i.pop()
-        vector += "I:" + i[0] + "/"
+        vector += "I:" + inv[0] + "/"
     else:
         vector += "I:C/"
     a = base_metas["Availability"][:1]
     avas = set(a)
     if len(avas) > 0 and avas <= ciaset:
         avav = a.pop()
-        vector += "A:" + a[0]
+        vector += "A:" + avav[0]
     else:
         vector += "A:C"
     return vector
