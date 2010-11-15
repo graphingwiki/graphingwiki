@@ -449,11 +449,6 @@ border: none;
 width: 99%;
 }
 
-/* Spinner class for ajax requests*/
-.ajax_loading {
-background: url(../img2/spinner.gif) no-repeat center;
-}
-
 /* Course editor task list */
 
 .tasklist {

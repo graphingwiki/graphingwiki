@@ -253,6 +253,7 @@ var QuestionEditor = new Class({
                 }.bindWithEvent(this)
             }
         }));
+
         var rightChk = !val || val == "right" ? true : false;
         var wrongChk = rightChk ? false : true;
         var valTd1 = new Element('td').adopt(new Element('input', {
@@ -332,9 +333,10 @@ var QuestionEditor = new Class({
 
         tabTbody.adopt(ansRow, valRow, tipRow, comRow);
 
-        row.grab(new Element('td', {
-            'colspan': 3
-        }).grab(new Element('div').grab(tab)));
+		var mainTd = new Element('td',{
+			'colspan' : 3
+		});
+        row.grab(mainTd.grab(new Element('div').grab(tab)));
 
         if (page) {
             row.grab(new Element('input', {
@@ -346,6 +348,16 @@ var QuestionEditor = new Class({
 
         this.ansrows.push(row);
         tbody.grab(row);
+
+		var updateBgColor = function (){
+			var isRight = row.getElement('#right' + num).checked;
+			mainTd.addClass(isRight ? "green-bg" : "red-bg");
+			mainTd.removeClass(!isRight ? "green-bg" : "red-bg");
+		};
+
+		row.getElements('input[name=value' + num +']')
+			.addEvent('change', updateBgColor)
+			.fireEvent('change');
 
     },
 

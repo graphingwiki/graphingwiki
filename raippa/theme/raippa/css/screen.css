@@ -538,6 +538,7 @@ div#footer {
 
 .answer-diff {
     width:99%;
+	font-family: monospace;
 }
 
 .answer-diff-expected {
@@ -565,4 +566,23 @@ table.navigation {
         
 h1 {
 	line-height: 1.1em;
+}
+
+/* Spinner class for ajax requests*/
+.ajax_loading {
+background: url(../img2/spinner.gif) no-repeat center;
+}
+
+
+/* raippa question editor */
+.green-bg {
+	background-color: lightgreen;
+}
+
+.red-bg {
+	background-color: lightpink;
+}
+
+.bottom-border {
+	border-bottom: solid 1pt;
 }
