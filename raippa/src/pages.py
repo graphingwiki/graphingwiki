@@ -209,7 +209,7 @@ class Question:
         if not questiontype:
             raise MissingMetaException(u"Question %s doesn't have answertype option." % self.pagename)
 
-        if questiontype in ['checkbox', 'radio', 'text']:
+        if questiontype in ['checkbox', 'radio', 'text', 'longtext']:
             answerpages = self.answers()
             save_dict = {"right":list(), "wrong":list()}
             overallvalue = "success"
@@ -218,7 +218,7 @@ class Question:
                 answer = Answer(self.request, answerpage)
 
                 answer_options = answer.options()
-                if questiontype == 'text' and 'regexp' in answer_options:
+                if questiontype in ['text', 'longtext'] and 'regexp' in answer_options:
                     regexp = re.compile(answer.answer(), re.DOTALL)
 
                     if answer.value() == "right":        

@@ -127,7 +127,7 @@ function editor(view){
     var modal = new questionModalizer([editdiv, statsdiv], {
         tabLabels : ["edit", "stats"],
         defTab : view,
-        destroyOnExit : false
+        destroyOnExit : true
         });
     var edit = new QuestionEditor(editdiv, editoptions);
     var stats = new QuestionStats(statsdiv);
@@ -164,7 +164,7 @@ def draw_answer_edit_ui(macro, question):
     res = list()
 
     ans_js = []
-    if qtype in ["checkbox", "radio", "text"]:
+    if qtype in ["checkbox", "radio", "text", "longtext"]:
     #generating old answers using javascript
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage)
@@ -207,7 +207,7 @@ def draw_answer_edit_ui(macro, question):
     res.append(f.rawHTML('''
     <script type="text/javascript">
     var editoptions = {
-            types :  ["checkbox", "radio", "text", "file"],
+            types :  ["checkbox", "radio", "text", "longtext", "file"],
             redo : %s,
             type: '%s',
             shuffle: %s,
@@ -269,6 +269,10 @@ def draw_answers(macro, user, question):
 
     elif qtype == "text":
         res.append(f.rawHTML('<input name="answer">'))
+        res.append(f.linebreak(0))
+
+    elif qtype == "longtext":
+        res.append(f.rawHTML('<textarea name="answer" cols=80 rows=5></textarea>'))
         res.append(f.linebreak(0))
 
     elif qtype == "file":
