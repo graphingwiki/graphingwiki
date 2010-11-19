@@ -105,12 +105,18 @@ def execute(pagename, request):
                 elif key.startswith('old_infiles'):
                     test_number = int(key[11:].split("_")[0])
 
+                    if test_number != None and not answer_data.get(test_number, None):
+                        answer_data[test_number] = ["", "", "", "", dict(), dict()]
+
                     for filename in request.form[key]:
                         if answer_data[test_number][4].get(filename, None) == None:
                             answer_data[test_number][4][filename] = None
 
                 elif key.startswith('old_outfiles'):
                     test_number = int(key[12:].split("_")[0])
+
+                    if test_number != None and not answer_data.get(test_number, None):
+                        answer_data[test_number] = ["", "", "", "", dict(), dict()]
 
                     for filename in request.form[key]:
                         if answer_data[test_number][5].get(filename, None) == None:
