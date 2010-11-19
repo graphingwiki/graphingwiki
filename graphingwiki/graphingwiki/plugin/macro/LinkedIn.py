@@ -44,10 +44,11 @@ def execute(macro, args):
     nodes = set()
     # User rights are not checked here as the page will not be
     # displayed at all if user does not have rights
-    pdata = request.graphdata.getpage(pagename)
 
-    for type in pdata.get('in', {}):
-        for page in pdata['in'][type]:
+    page_in = request.graphdata.get_in(pagename)
+
+    for type in page_in:
+        for page in page_in[type]:
 
             # User rights _ARE_ checked here!
             if not request.user.may.read(page):
