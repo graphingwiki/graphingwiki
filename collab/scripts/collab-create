@@ -1,0 +1,141 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2007-2010 Marko Laakso in adm (at) clarifiednetworks.com role
+##  @copyright: 2006 Marko Laakso in adm (at) ee.oulu.fi role
+##  @copyright: 2005 Jani Kenttala in adm (at) ee.oulu.fi role
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+error() {
+  echo "$@" 1>&2
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+if [ "blah$1" = "blah-f" ]; then
+  FACILITATED=yes
+  shift
+fi
+
+if [ $# -lt 2 -o $# -gt 3 ]; then
+
+  echo "Usage: $0 [-f(acilitated)] <user> <wikiname> [theme]" 1>&2
+  exit 1
+fi
+
+set -e
+
+umask 007 
+
+MYUSER=$1
+shift
+WIKINAME=$1
+shift
+
+if [ $# -gt 0 ]; then
+  MYTHEME=$1
+  shift
+fi
+
+MOIN_PREFIX=/usr
+SHARE=${MOIN_PREFIX}/share/moin
+
+DEST=${htmldir}/${WIKINAME}
+DATA=${wikidir}/${WIKINAME}
+FARMCONFIGDIR=`dirname ${farmconf}`
+MYTEMPLATE=${DATA}/collab-htaccess-template
+
+myname=`basename $0`
+
+[ -d ${DEST} ] && error "${myname}: ${DEST} already exists, aborting.."
+mkdir -p ${DEST}
+
+[ -d ${DATA} ] && error "${myname}: ${DATA} already exists, aborting.."
+mkdir -p ${DATA}/config
+
+cat <<EOF >> ${DEST}/wsgi
+import collabbackend
+
+myinfra = collabbackend.CollabBackend()
+mycollab = collabbackend.Collab(myinfra, collabbackend.pathbasename(__file__))
+
+config = mycollab.getwsgiconfig()
+application = collabbackend.wsgiapplication
+EOF
+
+cat <<EOF >> ${MYTEMPLATE}
+## Templated - edit template
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ wsgi/\$1 [QSA,PT,L]
+
+<Files wsgi>
+  SetHandler wsgi-script
+</Files>
+
+EOF
+
+if [ ! -f ${farmconf} ]; then
+  error "Required ${farmconf} missing ..."
+fi
+
+cat > ${DATA}/config/${WIKINAME}.py <<EOF
+import sys
+sys.path.insert(0, '${FARMCONFIGDIR}')
+from collabfarm import FarmConfig
+
+class Config(FarmConfig):
+    sitename = u'${WIKINAME} Collab'
+    interwikiname = '${WIKINAME}'
+    data_dir = '${DATA}/data'
+EOF
+
+cat <<EOF > ${DATA}/config/farmconfig.py
+wikis = [
+    ("${WIKINAME}", r".*")
+]
+EOF
+
+if [ "${MYTHEME}blah" != "blah" ]; then
+  cat >> ${DATA}/config/${WIKINAME}.py <<EOF
+    theme_default = '${MYTHEME}'
+EOF
+fi
+
+cp -r ${MOIN_PREFIX}/share/moin/data ${DATA}/
+chmod -R g=u ${DATA}/data
+find ${DATA}/data -type d -exec chmod g+s {} \;
+
+if [ "blah${FACILITATED}" = "blahyes" ]; then
+  cat <<EOF | gwiki-editpage -a ${DATA} FacilitatorGroup
+#acl FacilitatorGroup:admin,revert,read,write,invite All:read
+
+This is a group page. It is used for access control.
+
+## ${helperuser} is internal for automata
+ * [[${helperuser}]]
+ * [[${MYUSER}]]
+EOF
+
+  cat <<EOF | gwiki-editpage -a ${DATA} AccessGroup
+#acl FacilitatorGroup:admin,revert,read,write,invite All:none
+
+Users who can access this wiki.
+
+ * [[${MYUSER}]]
+EOF
+
+else
+  printf "Users who can access this wiki.\n\n * [[${MYUSER}]]\n" | \
+    gwiki-editpage -a ${DATA} AccessGroup
+fi
+
+gwiki-rehash ${DATA}
