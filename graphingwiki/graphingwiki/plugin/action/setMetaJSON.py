@@ -17,7 +17,7 @@ from graphingwiki.editing import save_template
 import json
 
 def execute(pagename, request):
-    indata = request.form.get('json', [None])[0]
+    indata = request.form.get('args', [None])[0]
     if not indata:
         request.write('No data')
         return
