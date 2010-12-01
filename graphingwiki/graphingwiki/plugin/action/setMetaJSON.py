@@ -16,6 +16,11 @@ from graphingwiki.editing import save_template
 
 import json
 
+def simple_to_traditional(indict):
+    for pagename in indict.keys():
+        yield pagename, {'metas': indict[pagename].copy(), 'action': 'set'}
+
+
 def execute(pagename, request):
     indata = request.form.get('args', [None])[0]
     if not indata:
@@ -24,6 +29,20 @@ def execute(pagename, request):
 
     indata = json.loads(indata)
 
+    if 'metas' not in indata:
+        msg = []
+        for xpagename, metadict in indata.items():
+            r = doit(request, xpagename, {'metas': metadict, 'action': 'set'})
+            if type(r) is list:
+                msg += r
+            else:
+                msg.append(r)
+    else:
+        msg = doit(request, pagename, indata)
+
+    json.dump(dict(status="ok", msg=msg), request)
+
+def doit(request, pagename, indata):
     template = indata.get('template')
     createpage = indata.get('createpage')    
     action = indata.get('action', 'add')
@@ -75,5 +94,4 @@ def execute(pagename, request):
         added[pagename]['gwikitemplate'] = template
    
     _, msg = set_metas(request, cleared, discarded, added)
-
-    json.dump(dict(status="ok", msg=msg), request)
+    return msg
