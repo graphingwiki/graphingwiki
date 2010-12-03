@@ -36,6 +36,8 @@ import cgi
 
 from codecs import getencoder
 from xml.dom.minidom import getDOMImplementation
+from xml.sax.saxutils import escape as cgi_escape
+from xml.sax.saxutils import unescape as cgi_unescape
 
 from MoinMoin.action import cache
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
@@ -186,14 +188,19 @@ encoder = getencoder(config.charset)
 def encode(str):
     return encoder(str, 'replace')[0]
 
+
+# See also http://bugs.python.org/issue9061
+QUOTEDATTRS = {'"': '&#x22;', "'": '&#x27;', '/': '&#x2F;'}
+UNQUOTEDATTRS = dict()
+UNQUOTEDATTRS.update([(y, x) for x, y in QUOTEDATTRS.items()])
+
 def form_escape(text):
     # Escape characters that break value fields in html forms
-    #return re.sub('["]', lambda mo: '&#x%02x;' % ord(mo.group()), text)
-    text = cgi.escape(text, quote=True)
+    return cgi_escape(text, QUOTEDATTRS)
 
-    # http://bugs.python.org/issue9061
-    text = text.replace("'", '&#x27;').replace('/', '&#x2F;')
-    return text
+def form_unescape(text):
+    # Unescape characters that break value fields in html forms
+    return cgi_unescape(text, UNQUOTEDATTRS)
 
 def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))

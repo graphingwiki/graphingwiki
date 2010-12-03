@@ -17,14 +17,15 @@ from MoinMoin.Page import Page
 from graphingwiki import actionname, SEPARATOR
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
-from graphingwiki.util import form_escape, decode_page, enter_page, exit_page
+from graphingwiki.util import form_escape, form_unescape, decode_page, enter_page, exit_page
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
     # (Moin 1.5 request.form has its values - but not keys - decoded
     # into unicode, which tends to lead to hilarious situational
     # comedy).
-    return dict([(decode_page(key), value) for (key, value) in form.items()])
+    return dict([(form_unescape(decode_page(key)), value) 
+                 for (key, value) in form.items()])
 
 def parse_editform(request, form):
     r"""
@@ -271,7 +272,6 @@ def execute(pagename, request):
 
             for key in keys:
                 oldkey = pagename + SEPARATOR + key
-                oldkey = form_escape(oldkey)
                 oldvals = old.get(key, list())
                 if not oldvals:
                     vals = [x.strip() for x in form[oldkey]

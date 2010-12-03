@@ -17,7 +17,7 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
 from graphingwiki import actionname, SEPARATOR
-from graphingwiki.util import encode, format_wikitext
+from graphingwiki.util import encode, format_wikitext, form_unescape
 from graphingwiki.util import form_writer as wr
 
 from graphingwiki.editing import get_properties
@@ -192,6 +192,7 @@ def execute(pagename, request):
 
         msg = dt
         key = pagekey.split(SEPARATOR)[1]
+        key = form_unescape(key)
 
         properties = get_properties(request, key)
 
