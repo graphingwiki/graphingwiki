@@ -1,1 +1,1 @@
-collab http://localhost/collab/
+collab https://localhost/collab/

@@ -111,7 +111,7 @@ class FarmConfig(DefaultConfig):
     #mimetypes_embed.add('application/x-shockwave-flash')
     
     collab_basedir = '/srv/wikis/collab/htdocs'
-    collab_baseurl = 'http://localhost/collab/'
+    collab_baseurl = 'https://localhost/collab/'
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
 

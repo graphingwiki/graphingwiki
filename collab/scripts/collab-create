@@ -44,7 +44,9 @@ if [ $# -gt 0 ]; then
   shift
 fi
 
-MOIN_PREFIX=/usr
+if [ "${MOIN_PREFIX+set}" != "set" ]; then
+    MOIN_PREFIX=/usr
+fi
 SHARE=${MOIN_PREFIX}/share/moin
 
 DEST=${htmldir}/${WIKINAME}
