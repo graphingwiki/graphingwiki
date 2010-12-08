@@ -20,14 +20,21 @@ else
   myerr "No ${CFG}"
 fi
 
+if [ "blah$1" = "blah-f" ]; then
+  FORCE_EMAIL=yes
+  shift
+fi
+
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 <username>" 1>&2
+  echo "Usage: $0 [-f(orce emailaddr usernames)] <username>" 1>&2
   exit 1
 fi
 
 NAME=$1
 
-echo ${NAME} | grep -q '@' || myerr "please use email address with '@'"
+if [ "blah${FORCE_EMAIL}" = "blahyes" ]; then
+    echo ${NAME} | grep -q '@' || myerr "please use email address with '@'"
+fi
 
 read -s -p "Password: " PASSWORD
 
