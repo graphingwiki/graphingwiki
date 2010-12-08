@@ -16,7 +16,7 @@ CFG=/etc/local/collab/collab.ini
 if [ -f ${CFG} ]; then
   . ${CFG} 2> /dev/null
 else
-  myerr "No ${CFG}"
+  error "No ${CFG}"
 fi
 
 if [ "blah$1" = "blah-f" ]; then
