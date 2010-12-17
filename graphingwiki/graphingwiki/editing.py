@@ -14,6 +14,7 @@ import xmlrpclib
 import urlparse
 import socket
 import getpass
+import copy
 import md5
 import operator
 
@@ -936,15 +937,6 @@ def replace_metas(request, text, oldmeta, newmeta):
     # beginning of this function, not doing so causes extra edits.
     return text.rstrip() + '\n'
 
-def uniq(seq):  
-    seen = set()
-    result = []
-    for elt in seq:
-        if elt in seen: continue
-        seen.add(elt)
-        result.append(elt)
-    return result
-
 def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
 
@@ -987,19 +979,18 @@ def set_metas(request, cleared, discarded, added):
         for key in old:
             values = old.pop(key)
             old[key] = values
-            new[key] = uniq(values)
+            new[key] = set(values)
         for key in pageCleared:
-            new[key] = list()
+            new[key] = set()
         for key, values in pageDiscarded.iteritems():
             for v in values:
-                if v in new[key]:
-                    new[key].remove(v)
+                new[key].difference_update(values) 
 
         for key, values in pageAdded.iteritems():
-            new[key].extend(values)
+            new[key].update(values)
 
         for key, values in new.iteritems():
-            ordered = old[key][:]
+            ordered = copy.copy(old[key])
             
             for index, value in enumerate(ordered):
                 if value not in values:
