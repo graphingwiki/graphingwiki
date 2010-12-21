@@ -3,12 +3,13 @@
 """
 collab-auth-ejabberd: Provide external auth for ejabberd against collab
 
-@copyright: 2009-2010 by Mika Seppänen, Marko Laakso
+@copyright: 2009-2010 by Mika Seppänen, Marko Laakso, Joachim Viide
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
 import os
 import sys
+import time
 from struct import *
 
 import ConfigParser
@@ -20,6 +21,7 @@ mylogconf = config.get('collab', 'logconf')
 mybaseinstancedir = config.get('collab', 'baseinstancedir')
 mywikidir = config.get('collab', 'wikidir')
 myhtmldir = config.get('collab', 'htmldir')
+mycacherefreshtime = config.getfloat('collab', 'cacherefreshtime')
 myjabberdomain = config.get('jabber', 'jabberdomain')
 myconferencedomain = config.get('jabber', 'conferencedomain')
 
@@ -34,51 +36,78 @@ from MoinMoin.request.request_cli import Request
 
 os.chdir(myhtmldir)
 
-def initWiki(wiki, pagename, checkWiki=True):
-    mydata = os.path.join(mywikidir, wiki)
-    myconfig = os.path.join(mydata, 'config')
+class RequestCache(object):
+    def __init__(self, refresh_interval=0):
+        self.refresh_interval = refresh_interval
+
+        self.cache = dict()
+        self.last_check = float("-inf")
+        self.next_refresh = float("-inf")
+
+    def _load(self, wikiname, pagename, checkWiki):
+        mydata = os.path.join(mywikidir, wikiname)
+        myconfig = os.path.join(mydata, 'config')
     
-    ## check that instance is under collab/* URLs not just any instance
-    ## and check that there is config a dir for the instance
-    if checkWiki:
-        if not os.path.isdir(wiki) or not os.path.isdir(myconfig):
-            return False
+        ## check that instance is under collab/* URLs not just any instance
+        ## and check that there is config a dir for the instance
+        if checkWiki:
+            if not os.path.isdir(wikiname) or not os.path.isdir(myconfig):
+                return False
 
-    sys.path.insert(0, myconfig)
+        sys.path.insert(0, myconfig)
 
-    multiconfig._url_re_cache = None
-    multiconfig._farmconfig_mtime = None
-    multiconfig._config_cache = {}
+        reload(multiconfig)
+        
+        try:
+            import wikiconfig
+            reload(wikiconfig)
+        except:
+            pass
 
-    try:
-        import wikiconfig
-        reload(wikiconfig)
-    except:
-        pass
+        try:
+            import farmconfig
+            reload(farmconfig)
+        except:
+            pass
 
-    try:
-        import farmconfig
-        reload(farmconfig)
-    except:
-        pass
+        request = Request(pagename=pagename)
+        sys.path.remove(myconfig)
+        return request
 
-    return Request(pagename=pagename)
+    def _unload(self, request):
+        request.finish()
 
-def finishWiki(wiki, r):
-    mydata = os.path.join(mywikidir, wiki)
-    r.finish()
-    sys.path.remove(os.path.join(mydata, 'config'))
+    def get(self, wikiname, pagename, checkWiki=True):
+        now = time.time()
 
+        if not self.last_check < now < self.next_refresh:
+            # Either there is something weird going on with the time
+            # or we need to refresh.
+            for value in self.cache.values():
+                self._unload(value)
+            self.cache.clear()
+
+            if self.refresh_interval > 0:
+                until = self.refresh_interval - now % self.refresh_interval
+                self.next_refresh = now  + until
+            else:
+                self.next_refresh = float("-inf")
+        self.last_check = now
+
+        key = wikiname, pagename
+        if key not in self.cache:
+            self.cache[key] = self._load(wikiname, pagename, checkWiki)
+        return self.cache[key]
+
+request_cache = RequestCache(mycacherefreshtime)
 
 def checkAccess(user, wiki):
-    r = initWiki(wiki, 'AccessGroup')
+    r = request_cache.get(wiki, 'AccessGroup')
     if not r:
         return False
 
     isgroup = r.cfg.cache.page_group_regexact.search
     members = [m for m in r.dicts.members("AccessGroup") if not isgroup(m)]
-   
-    finishWiki(wiki, r)
     return user in members
 
 def from_ejabberd():
@@ -109,12 +138,8 @@ def auth(args):
         logging.error("got invalid args for auth: %s" % repr(args))
         return False
 
-    r = initWiki("collab", "FrontPage", False)
-    r.user = User(r, name=convertUsername(username), password=password)
-    result = False
-    if r.user.valid:
-        result = True
-    finishWiki("collab", r)
+    r = request_cache.get("collab", "FrontPage", False)
+    result = User(r, name=convertUsername(username), password=password).valid
     logging.info("auth from user %s@%s returned %s" % (username, server, result))
     return result
 
@@ -125,9 +150,8 @@ def isuser(args):
         logging.error("got invalid args for isuser: %s" % repr(args))
         return False
 
-    r = initWiki("collab", "FrontPage", False)
+    r = request_cache.get("collab", "FrontPage", False)
     result = User(r, name=convertUsername(username)).exists()
-    finishWiki("collab", r)
     logging.info("isuser from user %s@%s returned %s" % (username, server, result))
     return result
 
