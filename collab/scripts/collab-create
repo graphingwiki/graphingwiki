@@ -32,7 +32,7 @@ fi
 
 set -e
 
-umask 007 
+umask 007
 
 MYUSER=$1
 shift
@@ -45,8 +45,19 @@ if [ $# -gt 0 ]; then
 fi
 
 if [ "${MOIN_PREFIX+set}" != "set" ]; then
+  if [ -d /usr/share/moin ]; then
     MOIN_PREFIX=/usr
+  elif  [ -d /usr/local/share/moin ]; then
+    MOIN_PREFIX=/usr/local
+  else
+    cat <<EOF 1>&2
+Can't find /usr/share/moin or /usr/local/share/moin.
+Please set MOIN_PREFIX or install MoinMoin in the standard location.
+EOF
+   exit 1
+  fi
 fi
+
 SHARE=${MOIN_PREFIX}/share/moin
 
 DEST=${htmldir}/${WIKINAME}

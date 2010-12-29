@@ -20,13 +20,17 @@ else
   myerr "No ${CFG}"
 fi
 
+if [ "blah$1" = "blah-h" ]; then
+  shift
+fi
+
 if [ "blah$1" = "blah-f" ]; then
   FORCE_EMAIL=yes
   shift
 fi
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [-f(orce emailaddr usernames)] <username>" 1>&2
+  echo "Usage: $0 [-f(orce username without @)] <username>" 1>&2
   exit 1
 fi
 
