@@ -66,15 +66,17 @@ def getUser(db, user):
     """
     udata = Meta()
     unode = db.user.getnode(user)
-    attr = ['username', 'organisation', 'phone']
+    attr = ['organisation', 'phone']
     for k in attr:
         v = unode.get(k)
         if v is None:
             continue
         udata[k].add(v)
+    username = unode.get('username')
+    udata['username'].add('[[%s]]' % username)
     realname = unode.get('realname')
     if realname is not None:
-        udata['realname'].add('[[%s]]' % realname)
+        udata['realname'].add(realname)
         udata['gwikilabel'].add(realname)
     retired = db.user.is_retired(user)
     udata['retired'].add('%s' % retired)
@@ -89,14 +91,17 @@ def filterIssues(db, filter, verbose):
         issue = db.issue.getnode(issue_id)
         customer = issue.get('customer')
         if customer:
-            idata = Meta()
-            idata.update(getUser(db, customer.pop()))
-            username = idata['username']
-            organisation = idata['organisation']
-            uset = set(username) | set(organisation)
-            match = uset & filter
-            if match:
+            if None in filter:
                 issues.append(issue_id)
+            else:
+                idata = Meta()
+                idata.update(getUser(db, customer.pop()))
+                username = idata['username']
+                organisation = idata['organisation']
+                uset = set(username) | set(organisation)
+                match = uset & filter
+                if match:
+                    issues.append(issue_id)
         else:
             if verbose:
                 print 'NOTE: issue' + issue_id, "skipped, since there is no customer."
@@ -211,8 +216,6 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break
-    if filter is None and inputfile is None:
-        parser.error("Use -f or --filter or -i --input-file to select issues by customer organisation or username.")
     if tracker is None:
         parser.error("Use -n or --tracker-name to specify the RoundUp tracker name.")
     if inputfile is not None:
