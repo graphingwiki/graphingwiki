@@ -7,7 +7,12 @@ def execute(pagename, request):
         request.write("no shapefile")
     else:
         AttachFile = wikiutil.importPlugin(request.cfg, "action", "AttachFile")
-        sf_wikilink = outlinks[sfname][0].split('/')[-1]
+        x = outlinks[sfname][0].rsplit('/', 1)
+        if len(x) == 1:
+            sf_wikilink = x[0]
+        elif len(x) == 2:
+            sf_wikilink = x[1]
+            pagename = x[0].strip('{').strip('[[').strip('attachment:')
         sf_wikilink = sf_wikilink.rstrip('}').rstrip(']]')
         request.form['target'] = [sf_wikilink]
         request.form['do'] = ['get']
