@@ -195,6 +195,9 @@ def main():
     parser.add_option("-p", "--tracker-path",
                       dest="configpath", default=None,
                       metavar="PATH", help=("Tracker configuration directory PATH."))
+    parser.add_option( "-D", "--data",
+        action="store_true", dest="data", default=False,
+        metavar = "DATA", help="Push issue message and file objects, not just links to them.")
     parser.set_usage("%prog [options]")
     issues = Metas()
     sect = "push-tickets"
@@ -207,6 +210,7 @@ def main():
     inputfile = ops[sect]["inputfile"]
     tracker = ops[sect]["tracker"]
     configpath = ops[sect]["configpath"]
+    origdata = ops[sect]["data"]
     while True:
         try:
             collab = CLIWiki(**ops['creds'])
@@ -252,18 +256,20 @@ def main():
             for msg in issue.get("messages"):
                 mpage = "msg" + msg
                 issues[ipage]["message"].add('[[msg%s]]' % msg)
-                issues[mpage].update(getMessage(db, msg))
-                issues[mpage]["gwikicategory"].add("CategoryRoundupMessage")
-                issues[mpage]["tracker"].add(tracker)
+                if origdata:
+                    issues[mpage].update(getMessage(db, msg))
+                    issues[mpage]["gwikicategory"].add("CategoryRoundupMessage")
+                    issues[mpage]["tracker"].add(tracker)
             priority = issue.get("priority")
             issues[ipage]["priority"].add('[[priority%s]]' % priority)
             for file in issue.get("files"):
                 fpage = "file" + file
                 issues[ipage]["file"].add('[[file%s]]' % file)
-                issues[fpage].update(getFile(db, file))
-                issues[fpage]["gwikicategory"].add("CategoryRoundupFile")
-                issues[fpage]["gwikitemplate"].add(template)
-                issues[fpage]["tracker"].add(tracker)
+                if origdata:
+                    issues[fpage].update(getFile(db, file))
+                    issues[fpage]["gwikicategory"].add("CategoryRoundupFile")
+                    issues[fpage]["gwikitemplate"].add(template)
+                    issues[fpage]["tracker"].add(tracker)
             attr = ['customer', 'actor', 'assignedto', 'creator']
             for a in attr:
                 uid = issue.get(a)
