@@ -27,11 +27,11 @@ def shred_email_address(addr):
         sname = ' '.join( id )
     else:
         sname = local
-    metas[addr]["ATTRIBUTION"].add('<<DateTime(%s)>>' % epoch)
-    metas[addr]["SMTP DOMAIN"].add('[[%s]]' % domain.lower())
-    metas[addr]["SMTP LOCAL PART"].add(local)
-    metas[addr]["SEE ALSO"].add('[[%s]]' % sname)
-    metas[addr]["TYPE"].add("EMAIL")
+    metas[addr]["Name"].add(sname)
+    metas[addr]["attribution"].add('<<DateTime(%s)>>' % epoch)
+    metas[addr]["smtp domain"].add('[[%s]]' % domain.lower())
+    metas[addr]["smtp local part"].add(local)
+    metas[addr]["type"].add("user")
     return metas
 
 def parse_input_file(path):
