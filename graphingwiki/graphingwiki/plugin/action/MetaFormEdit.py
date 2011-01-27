@@ -139,7 +139,7 @@ def execute(pagename, request):
     # Form types
     def form_selection(request, pagekey, curval, values, description=''):
         msg = wr('<select name="%s">', pagekey)
-        msg += wr('<option value=" ">%s</option>', _("None"))
+        msg += wr('<option value=""> </option>')
         
         for keyval, showval in values:
             msg += wr('<option value="%s"%s>%s</option>',
@@ -210,22 +210,42 @@ def execute(pagename, request):
                 else:
                     showval = keyval
 
-                values.append((keyval, showval))
+                    values.append((keyval, showval))
 
         formtype = properties.get('hint')
+        constraint = properties.get('constraint')
+        desc = properties.get('description')
+        hidden = False
+
+        if formtype == "hidden":
+            hidden = True
 
         if not formtype in formtypes:
-            msg += form_selection(request, pagekey, val, values)
-        else:
-            msg += formtypes[formtype](request, pagekey, val, values)
+            formtype = "selection"
 
-        constraint = properties.get('constraint')
+        if (not formtype == "radio" and
+            not (formtype == "checkbox" and constraint == "existing")):
+            cssclass = "metaformedit-cloneable"
+        else:
+            cssclass = "metaformedit-notcloneable"
+       
+        if desc:
+            desc = desc.replace('"', '&quot;"')
+            msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
+            msg = msg.replace('<dt>', '<dt class="mt-tooltip" title="%s" rel="%s">' %(key, desc))
+
+        msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
+
+        msg += formtypes[formtype](request, pagekey, val, values)
+
 
         if (not constraint == 'existing' and 
             not formtype in ['textbox', 'textarea']):
             msg += wr('<input class="metavalue" type="text" ' + \
                           'name="%s" value="">', pagekey)
 
+        if hidden:
+            msg = request.formatter.div(1, css_class='comment') + msg + request.formatter.div(0)
         return msg
 
     data = out.getvalue()

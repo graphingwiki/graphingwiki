@@ -9,12 +9,18 @@ USABILITY ADDON INSTALLATION
     html_head = '' # omit if you already have something
 
     for script in ['js/mootools-core-yc.js', \
+                   'js/mootools-more-yc.js', \
+                   'js/gwiki-common.js', \
                    'js/sorttable-moo.js', \
                    'js/mootree.js', \
                    'simile/timeline/timeline_ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
+
+    for style in ['css/common.css']:
+        html_head += '<link href="%s" type="text/css" rel="stylesheet">' \
+                     % (url_prefix_static + '/gwikicommon/' + style)
 
 DESCRIPTION
 
