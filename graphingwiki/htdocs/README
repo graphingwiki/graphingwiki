@@ -18,9 +18,9 @@ USABILITY ADDON INSTALLATION
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
 
-    for style in ['css/common.css']:
-        html_head += '<link href="%s" type="text/css" rel="stylesheet">' \
-                     % (url_prefix_static + '/gwikicommon/' + style)
+    stylesheets = [
+        ('all', url_prefix_static + '/gwikicommon/css/common.css')
+    ]
 
 DESCRIPTION
 

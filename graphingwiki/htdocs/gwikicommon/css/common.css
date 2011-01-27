@@ -6,7 +6,7 @@
 
 /* Mootools tooltips */
 
-div.tip {
+.mootip div.tip {
     position: absolute;
     color: #fff;
     width: 150px;
@@ -22,7 +22,7 @@ div.tip {
 
 }
 
-div.tip-title {
+.mootip div.tip-title {
     font-weight: bold;
     font-size: 11px;
     margin: 0;
@@ -30,7 +30,7 @@ div.tip-title {
     padding: 6px 6px 3px;
 }
 
-div.tip-text {
+.mootip div.tip-text {
     font-size: 11px;
     padding: 3px 6px 6px;
 }

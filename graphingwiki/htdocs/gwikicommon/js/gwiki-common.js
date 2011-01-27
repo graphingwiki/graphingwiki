@@ -10,8 +10,8 @@ window.addEvent('domready', function() {
 	var fields = $$('.metaformedit-cloneable');
 	if (fields.length > 0) new MetaFormEdit(fields[0].getParent('form'));
 
-	/* */
-	var tooltips = new Tips('.mt-tooltip');
+	/* Apply MooTools tooltips to elements with .mt-tooltip class */
+	var tooltips = new Tips('.mt-tooltip', {'className': 'mootip'});
 });
 
 /*
