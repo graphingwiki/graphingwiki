@@ -210,7 +210,7 @@ def execute(pagename, request):
                 else:
                     showval = keyval
 
-                    values.append((keyval, showval))
+                values.append((keyval, showval))
 
         formtype = properties.get('hint')
         constraint = properties.get('constraint')
