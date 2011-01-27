@@ -10,13 +10,14 @@ import os
 import re
 import sys
 import string
-import xmlrpclib
-import urlparse
 import socket
-import getpass
 import copy
-import md5
 import operator
+
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
@@ -497,9 +498,9 @@ def remove_preformatted(text):
             return key
 
         # All other areas should be removed
-        marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
+        marker = "%d-%s" % (mo.start(), md5(repr(key)).hexdigest())
         while marker in text:
-            marker = "%d-%s" % (mo.start(), md5.new(marker).hexdigest())
+            marker = "%d-%s" % (mo.start(), md5(marker).hexdigest())
 
         keys_to_markers[key] = marker
         markers_to_keys[marker] = key
@@ -1520,91 +1521,6 @@ def list_attachments(request, pagename):
         return files
 
     return []
-
-class WikiRpcException:
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
-
-def xmlrpc_conninit(wiki, username, password):
-    # Action-unrelated connection code
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(wiki)
-
-    netloc = "%s:%s@%s" % (username, password, netloc)
-
-    action = "action=xmlrpc2"
-    url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
-    srcWiki = xmlrpclib.ServerProxy(url)
-
-    try:
-        token = srcWiki.getAuthToken(username, password)
-    except xmlrpclib.ProtocolError, e:
-        faultString = 'Cannot connect to server at %s (%d %s)' % \
-                      (wiki, e.errcode, e.errmsg)
-        raise WikiRpcException(faultCode=4, faultString=faultString)
-        
-    mc = xmlrpclib.MultiCall(srcWiki)
-    if token:
-        mc.applyAuthToken(token)
-
-    return mc, url
-
-def xmlrpc_connect(func, wiki, *args, **kwargs):
-    try:
-        func(*args, **kwargs)
-    except xmlrpclib.ProtocolError, e:
-        raise WikiRpcException(faultCode=4,
-                               faultString=
-                               'Cannot connect to server at %s (%d %s)' %
-                               (wiki, e.errcode, e.errmsg))
-    except socket.error, e:
-        # Socket.error does not return two values consistently
-        # it might return also ('timed out',), so I'm preparing
-        # for the flying elephants here
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            raise WikiRpcException(faultCode='666',
-                                   faultString=''.join(args))
-        else:
-            raise WikiRpcException(faultCode=args[0],
-                                   faultString=args[1])
-    except socket.gaierror, e:
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            raise WikiRpcException(faultCode='666',
-                                   faultString=''.join(args))
-        else:
-            raise WikiRpcException(faultCode=args[0],
-                                   faultString=args[1])
-
-def xmlrpc_attach(wiki, page, fname, username, password, method,
-                  content='', overwrite=False):
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
-    if content:
-        content = xmlrpclib.Binary(content)
-
-    xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
-                   method, content, overwrite)
-
-    ret = srcWiki()
-    if ret[0] == 'SUCCESS':
-        return ret[1:]
-
-    return ret
-
-def xmlrpc_error(error):
-    return error.faultCode, error.faultString
-
-def getuserpass(username=''):
-    # Redirecting stdout to stderr for these queries
-    old_stdout = sys.stdout
-    sys.stdout = sys.stderr
-
-    if not username:
-        username = raw_input("Username:")
-    password = getpass.getpass("Password:")
-
-    sys.stdout = old_stdout
-    return username, password
 
 def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):
