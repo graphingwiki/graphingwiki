@@ -155,3 +155,17 @@ var MetaFormEdit = new Class({
 		el.destroy();
 	}
 });
+
+//Fixing Date to output week numbers in correct (finnish) way
+Date.implement({
+    getFinWeek : function(){
+        //if first day of year is before friday (<4) => first week number is 1
+        var firstDay = this.clone().set('month',0).set('date',1);
+        var weeknum =((this.get('dayOfYear')+ firstDay.getFinDay())/7).ceil();
+        weeknum =  (firstDay.getFinDay() <4) ? weeknum  : weeknum -1;
+        return weeknum;
+    },
+    getFinDay : function(){
+        return (this.getDay() +6) % 7
+    }
+});

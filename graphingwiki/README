@@ -11,6 +11,8 @@ Preconditions:
    graphviz-python-<version>.rpm. Source installs need to be built
    with --enable-python.
 
+ - Python prior to version 2.6 requires python-json
+
  - MoinMoin 1.8+ installed.
 
  - A MoinMoin wiki installed in directory WIKIDIR (with config
