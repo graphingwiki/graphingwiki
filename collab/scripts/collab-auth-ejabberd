@@ -96,7 +96,11 @@ class RequestCache(object):
 
         key = wikiname, pagename
         if key not in self.cache:
-            self.cache[key] = self._load(wikiname, pagename, checkWiki)
+            result = self._load(wikiname, pagename, checkWiki)
+            if result:
+                self.cache[key] = result 
+            else:
+                return False
         return self.cache[key]
 
 request_cache = RequestCache(mycacherefreshtime)
@@ -132,27 +136,35 @@ def convertUsername(username):
     return username.replace("%", "@")
 
 def auth(args):
+    start = time.time()
     try:
         username, server, password = args.split(':', 2)
     except ValueError:
         logging.error("got invalid args for auth: %s" % repr(args))
         return False
 
+    logging.info("auth from user %s@%s called" % (username, server))
+
     r = request_cache.get("collab", "FrontPage", False)
     result = User(r, name=convertUsername(username), password=password).valid
-    logging.info("auth from user %s@%s returned %s" % (username, server, result))
+    elapsedTime = 1000 * (time.time() - start)
+    logging.info("auth from user %s@%s returned %s in %d ms" % (username, server, result, elapsedTime))
     return result
 
 def isuser(args):
+    start = time.time()
     try:
         username, server = args.split(':', 1)
     except ValueError:
         logging.error("got invalid args for isuser: %s" % repr(args))
         return False
 
+    logging.info("isuser from user %s@%s called" % (username, server))
+
     r = request_cache.get("collab", "FrontPage", False)
     result = User(r, name=convertUsername(username)).exists()
-    logging.info("isuser from user %s@%s returned %s" % (username, server, result))
+    elapsedTime = 1000 * (time.time() - start)
+    logging.info("isuser from user %s@%s returned %s in %d ms" % (username, server, result, elapsedTime))
     return result
 
 def setpass(args):
@@ -166,11 +178,14 @@ def setpass(args):
     return False
 
 def getaff(args):
+    start = time.time()
     try:
         username, server, room, roomServer = args.split(':', 3)
     except ValueError:
         logging.error("got invalid args for getaff: %s" % repr(args))
         return "none"
+
+    logging.info("getaff from user %s@%s and room %s@%s called" % (username, server, room, roomServer))
 
     username = convertUsername(username)
     result = "none"
@@ -181,7 +196,8 @@ def getaff(args):
     elif checkAccess(convertUsername(username), room.split(".", 1)[0]):
         result = "member"
 
-    logging.info("getaff from user %s@%s and room %s@%s returned %s" % (username, server, room, roomServer, result))
+    elapsedTime = 1000 * (time.time() - start)
+    logging.info("getaff from user %s@%s and room %s@%s returned %s in %d ms" % (username, server, room, roomServer, result, elapsedTime))
     return result
 
 while True:
