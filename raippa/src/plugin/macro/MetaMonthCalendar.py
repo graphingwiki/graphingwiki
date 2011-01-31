@@ -31,7 +31,15 @@ import calendar, datetime, time
 
 from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas, metatable_parseargs
-from raippa import to_json
+import json
+
+def to_json(data):
+    try:
+        dump = json.dumps(data)
+    except AttributeError:
+        dump = json.write(data)
+
+    return dump
 
 def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
     request = macro.request
@@ -163,10 +171,10 @@ def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
     dateUrl = '?action=' +action + '&date=%Y-%m-%d&categories=' + categories
     html = u'''
     <div id="MetaMonthCalendarCont"></div>
-    <script type="text/javascript" src="%s/raippajs/MetaMonthCalendar.js"></script>
+    <script type="text/javascript" src="%s/gwikicommon/js/MetaMonthCalendar.js"></script>
     <script>
     window.addEvent('domready', function(){
-        var div = $('MetaMonthCalendarCont').set('id','');
+        var div = document.id('MetaMonthCalendarCont').set('id','');
         var cal = new MetaMonthCalendar(div, {
             tipContent : %s,
             dateUrl : '%s'

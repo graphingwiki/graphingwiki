@@ -1,12 +1,11 @@
 /**
  * @author Lauri Pokka
- * @requires Mootools 1.2 and Raippa common (Mootools more with fixed Date, Binds and Tips)
+ * @requires Mootools 1.2 and Raippa common (Mootools more with fixed Date Tips)
  * 
  */
 
  window.MetaMonthCalendar = new Class({
  	Implements : [Options, Chain],
-	Binds: ['generateMonth', 'showMonth'],
 	
 	//some values for maintaining state
 	currentDate : null,
@@ -96,7 +95,7 @@
 			'text' : '<'
 		}).addEvent('click', function(){
 			this.showMonth(this.currentDate.decrement('month'));
-		}.bindWithEvent(this));
+		}.bind(this));
 		
 		var next = new Element('a',{
 			'class' : 'jslink',
@@ -104,7 +103,7 @@
 			'text' : '>'
 		}).addEvent('click', function(){
 			this.showMonth(this.currentDate.increment('month'));
-		}.bindWithEvent(this));
+		}.bind(this));
 		
 		var dateLabel = this.dateLabel = new Element('span');
 		
