@@ -1,0 +1,15 @@
+div#content p {
+        text-align: justify;
+}
+
+div#content div.left p {
+        text-align: left;
+}
+
+div#content div.center p {
+        text-align: center;
+}
+
+div#content div.right p {
+        text-align: right;
+}

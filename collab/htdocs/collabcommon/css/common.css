@@ -1,0 +1,47 @@
+/* admonition start */
+
+#content div.tlp-red,
+#content div.tlp-amber,
+#content div.tlp-green,
+#content div.tlp-white,
+#content div.stop, 
+#content div.thumbsup, 
+#content div.thumbsdown {
+    border: 1pt solid #E5E5E5;
+    background-color: #F9F9FF;
+    color: black;
+    
+    margin: 10pt 30pt 10pt 30pt;
+    background-repeat: no-repeat;
+    background-position: 8px 8px;
+    min-height: 64px; /*64=48+8+8 but doesn't work with IE*/
+    padding-left: 64px;
+    overflow: auto;
+}
+ 
+#content div.tlp-red p,
+#content div.tlp-amber p,
+#content div.tlp-green p,
+#content div.tlp-white p,
+#content div.stop p,
+#content div.thumbsup p,
+#content div.thumbsdown p {
+    margin-top: 8px; /*to align text with bg graphic*/
+}
+
+#content div.stop { background-image: url("../img/admon-stop.png"); }
+#content div.thumbsup { background-image: url("../img/admon-thumbsup.png"); }
+#content div.thumbsdown { background-image: url("../img/admon-thumbsdown.png"); }
+#content div.tlp-red { background-image: url("../img/admon-tlp-red.png"); }
+#content div.tlp-amber { background-image: url("../img/admon-tlp-amber.png"); }
+#content div.tlp-green { background-image: url("../img/admon-tlp-green.png"); }
+#content div.tlp-white { background-image: url("../img/admon-tlp-white.png"); }
+
+/* admonition end */
+
+#content div.roundrect {
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	padding: 10px;
+}
+

@@ -1,0 +1,83 @@
+/* meta selection */
+
+/*
+div.metaselection_area
+ul.metaselection_list
+li.metaselection_entry
+a.metaselection_link
+*/
+
+ul.metaselection_list {
+	overflow: auto;
+/*	background-color: #d0edff; */
+}
+
+li.metaselection_entry {
+	list-style: none;
+	float: left;
+	display: block;
+	margin: 10px;
+	padding: 5px 15px 5px 15px;
+	border: 2px solid #ccc;
+	-moz-border-radius-topleft: 1em;
+	min-height: 145px;
+	text-align: center;
+	background-color: #fff;
+}
+
+li.metaselection_entry:hover {
+	border: 2px solid #76c2ff;
+/*	border-right: 4px solid #76c2ff; */
+	border-bottom: 4px solid #76c2ff;
+	margin: 10px 10px 8px 10px;
+	padding: 6px 15px 4px 15px;
+}
+
+li.metaselection_entry img.attachment {
+	clear: both;
+	display: block;
+	max-height: 100px;
+	margin: 5px auto 5px auto;
+	padding: 0;
+}
+
+li.metaselection_entry a {
+	padding: 0;
+	margin: 5px;
+}
+
+
+/* Collab menu support */
+
+dl.collab_list {
+  background: #eee;
+  padding: 0px;
+  margin: 0;
+  width: 300px;
+}
+
+dl.collab_list dd.collab_val {
+  display: none;
+}
+
+dl.collab_list:hover dd.collab_val {
+  position: absolute;
+  display: block;
+  background: #fff;
+  border: 1px solid #ccc;
+  width: 400px;
+  margin: -17px 0px 0px 260px;
+  padding: 8px;
+}
+
+dt.collab_key {
+  padding: 4px;
+}
+
+dt.collab_key:hover {
+  background: #ddd;
+}
+
+dd.collab_val {
+  display: none;
+}

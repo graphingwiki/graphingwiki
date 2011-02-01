@@ -49,10 +49,6 @@ img.attachment {
 	margin: 0px 30px 0px 20px;
 }
 
-div#content p {
-        text-align: justify;
-}
-
 /* user interface styles */
 
 #header, #sidebar, #footer, #timings, #credits, #interwiki, #pagelocation {

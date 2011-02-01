@@ -588,9 +588,3 @@ TD.tip {
 #content div.warning { background-image: url("../img/admon-warning.png"); }
 
 /* admonition end */
-
-#content div.roundrect {
-	-moz-border-radius: 10px;
-	-webkit-border-radius: 10px;
-	padding: 10px;
-}
