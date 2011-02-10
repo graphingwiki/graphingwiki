@@ -11,7 +11,8 @@ from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
 
 GROUP_KEYS = [
-    'product',
+    'product', 'type', 'group type',
+    'customer', 
 ]
 
 def read_file(ifile):
@@ -28,7 +29,6 @@ def formatGroupPage():
     page = "#acl SupportGroup:admin,revert,read,write,delete,invite All:none\n"
     page += "<<TableOfContents>>\n= @PAGE@ =\n\n"
     page += "{{{#!wiki note\nThis group page is visible only to the SupportGroup. It is used for access control.\n}}}\n"
-    page += " * SupportGroup\n"
     page += "= Metadata =\n"
     page += "\n----\n<<LinkedIn>>\n----\n"
     return page
@@ -60,12 +60,18 @@ def main():
     lines = content.split("\n")
     pagecontent = formatGroupPage()
     for l in lines:
+        metas[l]["type"].add("customer")
+        metas[l]["gwikitemplate"].add("IdentityTemplate")
+        metas[l]["gwikicategory"].add("CategoryIdentity")
         lgroup = l + "/LicenseGroup"
+        if verbose:
+            print "Editing page: ", lgroup
         try:
             collab.putPage(lgroup,pagecontent)
         except WikiFault:
             pass
-        metas[lgroup]["product"].add('[[%s]]' % l)
+        metas[lgroup]["customer"].add('[[%s]]' % l)
+        metas[lgroup]["group type"].add("customer")
         metas[lgroup]["gwikicategory"].add('CategoryGroup')
     if verbose:
         print "NOTE: Updating metas to", url
