@@ -149,7 +149,6 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
             if notools:
                 if verbose:
                     print "NOTE: Not uploading", fname
-                print notools
             else:
                 changes |= uploadFile(collab,dpage,fname,tar_gz_file,progress)
         zip_files = filter(zip.search, flist) 
