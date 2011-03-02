@@ -1,8 +1,13 @@
 /* common.css
-   - Default styles for graphingwiki's new features
+   - Default styles for graphingwiki's javascriptified features
    Copyright: 2011 by Lauri Pokka
 */
 
+a.jslink {
+    font-size: 12px;
+    color: green;
+    cursor: pointer;
+}
 
 /* Mootools tooltips */
 
@@ -19,7 +24,6 @@
 	-webkit-border-radius: 5px;
 	-moz-border-radius: 5px;
 	border-radius: 5px;
-
 }
 
 .mootip div.tip-title {

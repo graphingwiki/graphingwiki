@@ -401,12 +401,6 @@ width: 240px;
 	display: none;
 }
 
-a.jslink {
-	font-size: 12px;
-	color: green;
-	cursor: pointer;
-}
-
 /* Styling for show calendar date*/
 table#calEventList td {
 	vertical-align: top;
