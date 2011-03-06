@@ -84,7 +84,7 @@ class Wiki(object):
         auth, other = result[0]
         if (not isinstance(auth, (dict, list)) or 
             not isinstance(other, (dict, list))):
-            WikiFailure("unexpected type in multicall result")            
+            raise WikiFailure("unexpected type in multicall result")
 
         if isinstance(auth, dict):
             code = auth.get("faultCode", None)
