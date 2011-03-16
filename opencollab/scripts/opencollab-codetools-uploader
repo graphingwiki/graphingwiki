@@ -91,6 +91,12 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
         changes = False
         tmp = dir.rsplit('/', 1) 
         page = tmp.pop()
+        pagemetas = collab.getMeta(page)
+        try:
+            metas[page][marker].add(pagemetas[page][marker].single())
+        except (KeyError, ValueError):
+            if verbose:
+                print "NOTE: Marker key-value pair for key", marker, "not found on page", page
         suitename = ""
         metas[page]["gwikicategory"].add("CategoryCodenomiconArena")
         metas[page]["gwikitemplate"].add("CodenomiconArenaTemplate")
@@ -126,7 +132,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                 if verbose:
                     print "NOTE: Not uploading", fname
             else:
-                metas[page]["D3 Install File"].add('[[attachment:%s/%s |Download]]' % (dpage, install_file))
+                metas[page]["D3 Install File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, install_file))
                 changes |= uploadFile(collab,dpage,fname,install_file,progress)
         if not install_files:
             jar_files = filter(jar.search, flist) 
