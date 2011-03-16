@@ -116,12 +116,16 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                 changes |= uploadFile(collab,page,fname,txt_file,progress)
         install_files = filter(install.search, flist) 
         dpage = page + "/Download"
-        pcontent = formatDownloadPage(page, dpage)
-        metas[dpage]["gwikicategory"].add("CategoryDownload")
-        try:
-            collab.putPage(dpage,pcontent)
-        except WikiFault:
-            pass
+        if notools:
+            if verbose:
+                print "NOTE: Not creating a /Download page."
+        else:
+            pcontent = formatDownloadPage(page, dpage)
+            metas[dpage]["gwikicategory"].add("CategoryDownload")
+            try:
+                collab.putPage(dpage,pcontent)
+            except WikiFault:
+                pass
         for install_file in install_files:
             fname = dir + "/" + install_file
             if d3.search(install_file):
@@ -142,7 +146,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     if verbose:
                         print "NOTE: Not uploading", fname
                 else:
-                    metas[page]["JAR File"].add('[[attachment:%s/%s|Download]]' % (dpage, jar_file))
+                    metas[page]["JAR File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, jar_file))
                     changes |= uploadFile(collab,dpage,fname,jar_file,progress)
                 if d3.search(jar_file):
                     metas[page]["TYPE"].add('D3 Monitor')
