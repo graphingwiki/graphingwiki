@@ -1,30 +1,57 @@
 #!/usr/bin/env bash
+
 set -e
 
+repobase=https://bitbucket.org/clarifiednetworks/graphingwiki
+
 function usage {
-    echo usage: get-gwiki-tgz '<revision>' '[branch]'
-    echo "To see latest revision, use svn info '$repobase'. If branch is omitted, trunk is assumed."
+
+    cat <<EOF 1>&2
+usage: get-gwiki-tgz [branch-name or tag-name or changeset-id]'
+
+Default branch-name is "tip" (the head of the repository).
+See ${repobase}/ for alternatives.
+EOF
     exit 1
 }
 
-repobase=http://svn.graphingwiki.webfactional.com
-
-if [ "$1" = "-h" ]; then
+if [ "blah$1" = "blah-h" -o "blah$1" = "blah--help" ]; then
    usage
 fi
 
-if [ "$#" = 1 ]; then
-   repobase=$repobase/trunk
-   branch_id=trunk
-elif [ "$#" = 2 ]; then
-   repobase=$repobase/branches/$2
-   branch_id=$2
+if [ "$#" = 0 ]; then
+   branch=tip
+elif [ "$#" = 1 ]; then
+   branch=${1}
 else
    usage
 fi
 
+if [ -x /usr/bin/curl ]; then
+  GETTER=/usr/bin/curl
+  GETTEROPTS="-O"
+else
+  GETTER=wget
+  GETTEROPTS=
+fi
+
+version=`date +"%Y%m%d-%H%M"`
+package=${branch}.tar.gz
+packageversioned=graphingwiki-${branch}-${version}.tgz
+url=$repobase/get/${package}
+
 d=`mktemp -d /tmp/gwiki-get-tgz.XXXXX`
 trap "echo deleting temp dir >&2; rm -rf -fr $d" 0
-pkgname=graphingwiki-$branch_id-$1
-svn export -r $1 $repobase $d/$pkgname || exit 1
-tar -C $d -czf $pkgname.tgz $pkgname
+
+(
+  cd ${d}
+  ${GETTER} ${GETTEROPTS} ${url}
+)
+
+if [ ! -f ${d}/${package} ]; then
+  echo "Failed to get ${package} from ${url}" 1>&2
+  exit 1
+fi
+
+mv ${d}/${package} ${packageversioned}
+echo "Got: ${packageversioned}"
