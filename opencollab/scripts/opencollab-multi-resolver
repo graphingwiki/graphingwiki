@@ -72,6 +72,9 @@ def expand_srv(rr,new):
     new.append("_sips._tcp." + rr + ";SRV")
     new.append("_sip._tcp." + rr + ";SRV")
     new.append("_sip._udp." + rr + ";SRV")
+    new.append("_stuns._tcp." + rr + ";SRV")
+    new.append("_stun._tcp." + rr + ";SRV")
+    new.append("_stun._udp." + rr + ";SRV")
 
 def resolve_requests(expanded,mresolve):
     mr = Popen(mresolve, shell=True, stdin=subprocess.PIPE, 
