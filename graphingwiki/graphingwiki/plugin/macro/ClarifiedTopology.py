@@ -29,12 +29,13 @@
 
 """
 import math
+import csv
 
 from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki.plugin.action.metasparkline import write_surface
+from graphingwiki.plugin.action.metasparkline import write_surface, draw_line
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
     cache_key, cache_exists, latest_edit, encode_page, decode_page
@@ -43,11 +44,15 @@ from graphingwiki import cairo, cairo_found
 Dependencies = ['metadata']
 
 def draw_topology(request, args, key):
-    topology = args
+    manyargs = [x.strip() for x in args.split(',')]
+    if len(manyargs) == 2:
+        topology, flowfile = manyargs
+    else:
+        topology, flowfile = args.strip(), ''
     _ = request.getText
 
     # Get all containers
-    args = 'CategoryContainer, %s=/.+/' % (args)
+    args = 'CategoryContainer, %s=/.+/' % (topology)
 
     #request.write(args)
 
@@ -65,6 +70,15 @@ def draw_topology(request, args, key):
     images = dict()
     aliases = dict()
     areas = dict()
+
+    # Make a context to calculate font sizes with
+    # There must be a better way to do this, I just don't know it!
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
+
+    ctx = cairo.Context(surface)
+    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
+                         cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(12)
 
     allcoords = list()
     for page in pagelist:
@@ -90,6 +104,13 @@ def draw_topology(request, args, key):
 
         img = data.get('gwikishapefile', list())
 
+        alias = data.get('tia-name', list())
+        # Newer versions of analyzer do not use aliases anymore
+        if not alias:
+            alias = [page]
+
+        aliases[page] = alias[0]
+
         if img:
             # Get attachment name, strip link artifacts, find filesys name
             img = img[0].split('/')[-1]
@@ -102,6 +123,11 @@ def draw_topology(request, args, key):
             except cairo.Error:
                 pass
 
+        text_len = ctx.text_extents(aliases[page])[4]
+        text_end = start_x + text_len
+        if text_end > end_x:
+            end_x = text_end
+
         # If there was no image or a problem with loading the image
         if not page in images:
             # Lack of image -> black 10x10 rectangle is drawn
@@ -109,9 +135,22 @@ def draw_topology(request, args, key):
 
         allcoords.append((end_x, end_y))
 
-        alias = data.get('tia-name', list())
-        if alias:
-            aliases[page] = alias[0]
+    if flowfile:
+        flowcoords = list()
+        flowname = AttachFile.getFilename(request, topology, flowfile)
+        try:
+            flows = csv.reader(file(flowname, 'r').readlines(), delimiter=';')
+        except IOError:
+            return False, "", \
+                _sysmsg % ('error', "%s: %s" % 
+                           (_("No such flowfile as attachment on topology page"), 
+                            form_escape(flowfile)))
+
+        flows.next()
+        for line in flows:
+            if not line:
+                continue
+            flowcoords.append((line[0], line[6]))
 
     max_x = max([x[0] for x in allcoords])
     min_x = min([x[0] for x in allcoords])
@@ -135,6 +174,7 @@ def draw_topology(request, args, key):
     ctx.rectangle(0, 0, surface_x, surface_y)
     ctx.fill()
 
+    midcoords = dict()
     for page in pagelist:
         if not coords.has_key(page):
             continue
@@ -155,7 +195,8 @@ def draw_topology(request, args, key):
             h = images[page].get_height()
             w = images[page].get_width()
             ctx.set_source_surface(images[page], start_x, start_y)
-        
+
+        midcoords[page] = (start_x + w / 2, start_y + h / 2)
         ctx.rectangle(start_x, start_y, w, h)
 
         text = make_tooltip(request, page)
@@ -172,6 +213,21 @@ def draw_topology(request, args, key):
             ## square brackets
             text = aliases[page].lstrip('[').rstrip(']')
             ctx.show_text(text)
+
+    if flowfile:
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(0, 0, 0)
+        for start, end in flowcoords:
+            if (not midcoords.has_key(start) or
+                not midcoords.has_key(end)):
+                continue
+            sx, sy = midcoords[start]
+            ex, ey = midcoords[end]
+            ctx.move_to(sx, sy)
+            ctx.line_to(ex, ey)
+            #request.write("%s %s<br>" % (start, end))
+            #request.write("%s %s %s %s<br>" % (sx, sy, ex, ey))
+            ctx.stroke()
 
     s2 = surface
 # Proto for scaling and rotating code
