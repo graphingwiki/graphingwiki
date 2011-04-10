@@ -45,6 +45,9 @@ Dependencies = ['metadata']
 
 def draw_topology(request, args, key):
     args = [x.strip() for x in args.split(',')]
+
+    topology, flowfile = '', ''
+
     # take flow file specification from arguments as flow=k.csv,
     # otherwise assume that the argument specifies the topology
     for arg in args:
