@@ -55,7 +55,8 @@ def draw_topology(request, args, key):
             key, val = arg.split('=', 1)
             if key == 'flow':
                 flowfile = val
-        topology = arg
+        else:
+            topology = arg
 
     _ = request.getText
 
