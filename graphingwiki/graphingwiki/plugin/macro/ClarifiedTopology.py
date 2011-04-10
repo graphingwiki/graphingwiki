@@ -44,11 +44,16 @@ from graphingwiki import cairo, cairo_found
 Dependencies = ['metadata']
 
 def draw_topology(request, args, key):
-    manyargs = [x.strip() for x in args.split(',')]
-    if len(manyargs) == 2:
-        topology, flowfile = manyargs
-    else:
-        topology, flowfile = args.strip(), ''
+    args = [x.strip() for x in args.split(',')]
+    # take flow file specification from arguments as flow=k.csv,
+    # otherwise assume that the argument specifies the topology
+    for arg in args:
+        if '=' in arg:
+            key, val = arg.split('=')
+            if key == 'flow':
+                flowfile = val
+        topology = arg
+
     _ = request.getText
 
     # Get all containers
