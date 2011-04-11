@@ -9,8 +9,7 @@ import yaml
 import optparse
 import os
 
-from calendar import timegm
-from time import strptime
+from email.Utils import mktime_tz, parsedate_tz
 
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -56,10 +55,12 @@ def main():
 
     for i, inputfile in enumerate(args):
         timestamp = os.stat(inputfile).st_ctime
-        data = file(inputfile).readlines()
+        data = ""
 
         # Not valid yaml for some reason, need to strip some ruby stuff
-        data = '\n'.join(x for x in data if not "!ruby" in x)
+        for line in open(inputfile):
+            if line.startswith("-"): continue
+            data += line.replace("!ruby/sym ", "")
 
         xml_page = md5obj(data).hexdigest()
 
@@ -78,16 +79,10 @@ def main():
             elif key == 'interfaces':
                 for iface in values[key].split(','):
                     metas[page][key].add(iface.strip())
-            elif key == ':_timestamp':
+            elif key == '_timestamp':
                 val = values[key]
                 key = 'timestamp'
-                if isinstance(val, basestring):
-                    # FIXME: Add timezone support
-                    val = timegm(strptime(val.split(' +')[0], 
-                                          "%a %b %y %H:%M:%S"))
-                else:
-                    val = "%s.%s" % (timegm(val.utctimetuple()), 
-                                     val.microsecond)
+                val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in ['memoryfree', 'memorysize', 'swapfree', 'swapsize']:
                 nro, mgn = values[key].split()
