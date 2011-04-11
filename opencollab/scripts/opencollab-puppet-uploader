@@ -23,6 +23,9 @@ def main():
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option( "-s", "--short",
+        action="store_true", dest="shortname", default=False,
+        help="Strip domain from page names.")
     parser.add_option("-P", "--progress", action="store_true",
                       dest="progress", default=False, 
                       help="Display file upload progress information." )
@@ -41,6 +44,7 @@ def main():
     if category is None:
         category = "CategoryIdentity"
     replace = ops[sect]["lasteditwins"] 
+    shortname = ops[sect]["shortname"]
     args = ops[sect]["args"]
 
     while True:
@@ -67,14 +71,17 @@ def main():
         if verbose:
             print "NOTE: Parsing", inputfile
 
-        values = yaml.load(data)['values']
-        page = values['fqdn']
+        values = yaml.safe_load(data)['values']
+        page = values['homename']
+
+        if shortname:
+            page = page.split('.')[0]
 
         metas = Metas()
         for key in values:
             if ('address' in key or key.startswith('network') or
                 key.startswith('netmask') or
-                key == 'hostname' or key == 'fqdn'):
+                key == 'homename' or key == 'hostname' or key == 'fqdn'):
                 metas[page][key].add('[[%s]]' % (values[key].strip()))
             elif key == 'interfaces':
                 for iface in values[key].split(','):
