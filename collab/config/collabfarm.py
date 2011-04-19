@@ -95,10 +95,22 @@ class FarmConfig(DefaultConfig):
     except ImportError:
         pass
 
-    plugin_dirs = [
-        '/usr/lib/python2.5/site-packages/graphingwiki/plugin',
-        '/usr/lib/python2.5/site-packages/collabbackend/plugin'
-    ]
+    import os
+
+    plugin_dirs = list()
+
+    libdirs = ['/usr/lib/', '/usr/local/lib']
+    pythonversions = ['python2.5', 'python2.6', 'python2.7']
+    packagedirs = ['site-packages', 'dist-packages']
+    packages = ['graphingwiki', 'collabbackend']
+
+    for i in libdirs:
+        for j in pythonversions:
+            for k in packagedirs:
+                for l in packages:
+                    pdir = os.path.join(i, j, k, l)
+                    if os.path.isdir(pdir):
+                        plugin_dirs.append(pdir)
    
     import mimetypes
     mimetypes.add_type('application/x-x509-ca-cert', '.crt', True)

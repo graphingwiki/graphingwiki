@@ -52,7 +52,7 @@ def draw_topology(request, args, key):
     # otherwise assume that the argument specifies the topology
     for arg in args:
         if '=' in arg:
-            key, val = arg.split('=', 1)
+            key, val = [x.strip() for x in arg.split('=', 1)]
             if key == 'flow':
                 flowfile = val
         else:
