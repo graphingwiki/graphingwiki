@@ -79,10 +79,10 @@ class FarmConfig(DefaultConfig):
     acl_rights_valid = ["read", "write", "delete", "revert", "admin", "invite"]
     acl_rights_default = u"Trusted:admin,read,write,delete,revert,invite" +\
         " collab:admin,read,write All:"
-    acl_rights_before  = u"collab:read,write,admin,delete,revert,invite"
 
-    # super duper
-    superuser = ['collab'] 
+    # Add your superusers to these lines
+    #acl_rights_before  = u"superuser:read,write,admin,delete,revert,invite"
+    superuser = [] 
 
     # for standalone
     port = 10010

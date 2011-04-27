@@ -1,0 +1,178 @@
+# Full installation instructions for graphingwiki on collabbackend
+# The script is assumed to be run as root
+# Tested Ubuntu 10.04 and 10.10. YMMV.
+
+## Install apache, graphingwiki, igraph
+apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
+a2enmod wsgi
+a2enmod ssl
+a2enmod rewrite
+
+# Configure Apache. When running more than one virtual host, it is
+# advised to use directory names such as /srv/www/https/name and
+# /srv/www/log/https/name
+umask 022
+mkdir -p /srv/www/log/https/
+mkdir -p /srv/www/https/
+chown www-data:www-data /srv/www/log/https/ /srv/www/https/
+
+# Simple config including only the wiki. Do not run if you are already
+# serving something else. This is only meant to be a barebone example
+# so that you know what is strictly needed.
+cat <<EOF > /etc/apache2/sites-enabled/000-default
+<IfModule !mod_ssl.c>
+LoadModule ssl_module modules/mod_ssl.so
+</IfModule>
+Listen 443
+<VirtualHost _default_:443>
+DocumentRoot "/srv/www/https/"
+ErrorLog /srv/www/log/https/error_log
+CustomLog /srv/www/log/https/access_log combined
+LogLevel warn
+SSLEngine on
+SSLProtocol all -SSLv2
+SSLCipherSuite ALL:!ADH:!EXPORT:!SSLv2:RC4+RSA:+HIGH:+MEDIUM:+LOW
+SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
+SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+<Files ~ "\.(cgi|shtml|phtml|php3?)$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "/var/www/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+SetEnvIf User-Agent ".*MSIE.*" \
+         nokeepalive ssl-unclean-shutdown \
+         downgrade-1.0 force-response-1.0
+</VirtualHost>                                  
+EOF
+cat <<EOF > /etc/apache2/conf.d/collab.conf
+<Directory "/srv/www/https/collab">
+  Options +ExecCGI
+  AllowOverride All
+</Directory>
+EOF
+cat <<EOF > /etc/apache2/ports.conf
+EOF
+
+## Install graphingwiki. 
+apt-get install libgv-python graphviz
+
+# If the current packages in Ubuntu repos are broken or outdated, the
+# best is to use the precompiled packages from ATT
+# (http://www.graphviz.org/Download_linux_ubuntu.php)
+
+## OPTIONAL: Install igraph, if you want to layout large graphs
+# https://launchpad.net/~igraph/+archive/ppa
+add-apt-repository ppa:igraph/ppa
+apt-get update
+apt-get install python-igraph
+
+## Get moin, gwiki sources. Install.
+mkdir -p /usr/local/src/
+cd /usr/local/src/
+wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/tip.tar.gz -O graphingwiki.tar.gz
+wget -N -q http://static.moinmo.in/files/moin-1.8.8.tar.gz
+mkdir graphingwiki
+tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
+
+# Patch and install moin
+tar -zxvf moin-1.8.8.tar.gz 
+cd moin-1.8.8/
+patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.8.8.patch 
+python setup.py install
+
+# Install graphingwiki, collabbackend and opencollab
+cd ../graphingwiki/graphingwiki
+python setup.py install
+cd ../collab/
+python setup.py install
+cd ../opencollab/
+python setup.py install
+
+## Start bootstrapping collabbackend
+# Make user collab
+useradd -u 812 -s /sbin/nologin -c 'Service Collab' collab
+usermod -a -G collab www-data
+# Moin setup might have left the permissions lacking, so explicitly allowing
+chgrp -R collab /usr/local/share/moin/
+
+# Make the necessary directories
+mkdir -p /etc/local/collab
+mkdir -p /srv/wikis/collab; cd /srv/wikis
+mkdir -p collab/archive collab/cache collab/config collab/docbook collab/htdocs collab/log collab/underlay collab/user collab/wikis collab/run
+# Copy files into their places
+cp /usr/local/src/graphingwiki/collab/config/collab.ini /etc/local/collab/
+cp /usr/local/src/graphingwiki/collab/config/collabfarm.py /srv/wikis/collab/config
+cp /usr/local/src/graphingwiki/collab/config/intermap.txt /srv/wikis/collab/config
+cp /usr/local/src/graphingwiki/collab/config/logging.conf /srv/wikis/collab/config
+sudo chown -R collab:collab collab
+sudo chmod -R 2770 collab/
+
+# Make links to htdocs, collab from document root
+ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
+ln -sf /usr/local/share/moin/htdocs/ /srv/www/https/moin_static
+
+# Make links from gwiki custom styles to moin htdocs
+ln -sf /usr/local/src/graphingwiki/graphingwiki/htdocs/gwikicommon/ /usr/local/share/moin/htdocs/gwikicommon
+
+# Copy moin underlay to collabfarm
+su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
+
+# Make the base collab
+su - collab -s /bin/bash -c "collab-create collab collab"
+su - collab -s /bin/bash -c "cp /srv/wikis/collab/htdocs/collab/wsgi /srv/wikis/collab/htdocs/"
+su - collab -s /bin/bash -c "rm -rf /srv/wikis/collab/htdocs/collab"
+
+# Making collab users. 
+su - collab -s /bin/bash -c "collab-account-create collab"
+su - collab -s /bin/bash -c "collab-htaccess"
+
+# Making htaccess to the base collab
+cat <<EOF > /srv/wikis/collab/htdocs/.htaccess
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ wsgi/\$1 [QSA,PT,L]
+
+<Files wsgi>
+  SetHandler wsgi-script
+</Files>
+
+AuthType        Basic
+AuthName        "Password Required (cancel for help)"
+AuthUserFile    /srv/wikis/collab/run/.htpasswd
+AuthGroupFile   /srv/wikis/collab/run/.htgroup
+
+Require valid-user
+EOF
+
+## OPTIONAL: Install geo ip for use with MetaMap et al
+# Other OS versions might need to use the versions from MaxMind:
+# http://www.maxmind.com/app/installation
+
+wget -N -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
+gzip -c -d GeoLiteCity.dat.gz > /etc/local/collab/GeoLiteCity.dat
+
+apt-get install python-geoip
+
+## Wiki Management
+
+# Most commands require running collab-htaccess after them - you might
+# want to running it in your cron.
+
+## After the initial install, collabs are created like this
+# https://localhost/collab/mointests/
+su - collab -s /bin/bash -c "collab-create collab mointests"
+su - collab -s /bin/bash -c "collab-htaccess"
+
+## After the initial install, users are added like this
+su - collab -s /bin/bash -c "collab-account-create collab"
+su - collab -s /bin/bash -c "collab-htaccess"
+
+## Give users access to wikis by first adding them to the AccessGroup
+#  page of the wiki, and then issuing collab-htaccess
+su - collab -s /bin/bash -c "collab-htaccess"
+
+## User passwords are changed with collab-account-passwd, after which
+#  you need to run collab-htaccess
+su - collab -s /bin/bash -c "collab-account-passwd collab"
+su - collab -s /bin/bash -c "collab-htaccess"
