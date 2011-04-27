@@ -7,156 +7,165 @@
 """
 
 import unittest
-import re
+import re, sys
 from xmlrpclib import ServerProxy, Error, Binary
+from MoinMoin import log
+from MoinMoin.script import MoinScript
 
-# Server URL
-server = ServerProxy("http://localhost/wiki?action=xmlrpc2")
 
+# server_url = "https://mytestuser:mytestpass@localhost/collab/wiki?action=xmlrpc2"
+server_url = "https://localhost/collab/wiki?action=xmlrpc2"
 
-class GwikiTests(unittest.TestCase):
+def start_server():
+    MoinScript(argv=["server", "standalone"]).run()
+
+class GwikiTestCase(unittest.TestCase):
     '''Generic class with setUp() and tearDown() methods to create and
     delete page.'''
 
     def setUp(self):
         '''Create a page into wiki so we have a place to run test. Test page
         is named "Gwiki Unit Test %s" where %s is a test method name.'''
+        self.server = ServerProxy(server_url)
         self.pageName = "Gwiki Unit Test %s" % self.id()
-        server.putPage(self.pageName, '{{{%s}}}' % self.shortDescription())
+        self.server.putPage(self.pageName, '{{{%s}}}' % self.shortDescription())
 
     def tearDown(self):
         '''Remove a page from wiki after test is done.'''
-        server.DeletePage(self.pageName)
+        self.server.DeletePage(self.pageName)
 
 
-class TestSetMeta(GwikiTests):
+class TestSetMeta(GwikiTestCase):
     '''Tests for SetMeta(...) call.'''
 
     def setUp(self):
-        GwikiTests.setUp(self)
+        GwikiTestCase.setUp(self)
         self.metaKey = "testiMeta"   # Default metaKey to use in tests.
                                      # Might be overwritten per test case.
         self.metaData = ["dumdidaa"] # Default metaData to use in tests.
 
     def tearDown(self):
         '''Tear down.. Check the metadata from page and fail if not found.'''
-        res = server.getPage(self.pageName)
+        res = self.server.getPage(self.pageName)
         for md in self.metaData:
             # Check that all metadata is there
             findMeta = re.compile(r"\s*%s:: %s" % (self.metaKey, md))
             self.assert_(findMeta.search(res), "%s:: %s in '%s'" % (self.metaKey, md, res))
-        GwikiTests.tearDown(self)
+        GwikiTestCase.tearDown(self)
 
     def testAdd1(self):
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
 
     def testAdd2(self):
         self.metaData = ["desdi", "dadaa"]
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
 
     def testAdd3(self):
         self.metaKey = "testi foo"
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add')
 
     def testReplace1(self):
         self.metaData = ["desdi", "dadaa"]
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace2(self):
-        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace3(self):
-        server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'repl')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['456']}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace4(self):
         self.metaKey = "testi foo"
-        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace5(self):
         self.metaKey = "testi:foo"
-        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace6(self):
         self.metaKey = u"☠☠☠☠☠☠☃☃☃☃☃äääöööÄÄÄÖÖÖ€€€¶‰"
-        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testReplace7(self):
         self.metaKey = u"“بسملة”"
-        server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
+        self.server.SetMeta(self.pageName, {self.metaKey: ['foobar']}, 'add')
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'repl')
 
     def testAddCategories1(self):
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', False, 'add', ['CategoryUnitTest'])
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', False, 'add', ['CategoryUnitTest'])
 
     def testAddCategories2(self):
-        server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', True, 'add', ['CategoryUnitTest'])
+        self.server.SetMeta(self.pageName, {self.metaKey: self.metaData}, 'add', True, 'add', ['CategoryUnitTest'])
 
 
-class TestGetMeta(GwikiTests):
+class TestGetMeta(GwikiTestCase):
     '''Tests for GetMeta(...) call.'''
 
     def testGet1(self):
-        server.GetMeta(self.pageName, False)
+        self.server.GetMeta(self.pageName, False)
 
     def testGet2(self):
-        server.GetMeta(self.pageName, True)
+        self.server.GetMeta(self.pageName, True)
 
 
-class TestPageCreation(unittest.TestCase):
+class TestPageCreation(GwikiTestCase):
     '''Tests where page will be created in some way or another. The page
     will be deleted after the test.'''
     def setUp(self):
+        GwikiTestCase.setUp(self)
         self.pageName = "Gwiki Unit Test %s" % self.id()
 
     def tearDown(self):
         '''Remove a page from wiki after test is done.'''
-        server.DeletePage(self.pageName)
+        self.server.DeletePage(self.pageName)
 
     def testAddCategories1(self):
-        server.SetMeta(self.pageName, {}, 'add', False, 'add', ['CategoryUnitTest'], "HelpTemplate")
+        self.server.SetMeta(self.pageName, {}, 'add', False, 'add', ['CategoryUnitTest'], "HelpTemplate")
 
     def testAddCategories2(self):
-        server.SetMeta(self.pageName, {}, 'add', True, 'add', ['CategoryUnitTest'], "HelpTemplate")
+        self.server.SetMeta(self.pageName, {}, 'add', True, 'add', ['CategoryUnitTest'], "HelpTemplate")
 
     def testAddCategories3(self):
-        server.SetMeta(self.pageName, {'testMeta': ["desdi dadaa"]}, 'add', False, 'add', ['CategoryUnitTest'], "HelpTemplate")
+        self.server.SetMeta(self.pageName, {'testMeta': ["desdi dadaa"]}, 'add', False, 'add', ['CategoryUnitTest'], "HelpTemplate")
 
     def testAddCategories4(self):
-        server.SetMeta(self.pageName, {'testMeta': ["desdi dadaa"]}, 'add', True, 'add', ['CategoryUnitTest'], "HelpTemplate")
+        self.server.SetMeta(self.pageName, {'testMeta': ["desdi dadaa"]}, 'add', True, 'add', ['CategoryUnitTest'], "HelpTemplate")
 
 
-class TestDeletePage(unittest.TestCase):
+class TestDeletePage(GwikiTestCase):
     def setUp(self):
+        GwikiTestCase.setUp(self)
         self.pageName = "Gwiki Unit Test %s" % self.id()
-        server.putPage(self.pageName, '{{{%s}}}' % self.shortDescription())
+        self.server.putPage(self.pageName, '{{{%s}}}' % self.shortDescription())
 
     def testDelete1(self):
-        server.DeletePage(self.pageName)
+        self.server.DeletePage(self.pageName)
 
     def testDelete2(self):
-        server.DeletePage(self.pageName, u'DELETE PAGE')
+        self.server.DeletePage(self.pageName, u'DELETE PAGE')
 
     def testDelete3(self):
-        server.DeletePage(self.pageName)
+        self.server.DeletePage(self.pageName)
         try:
-            server.DeletePage(u'liipalaapasivujotaeioleolemassa')
+            self.server.DeletePage(u'liipalaapasivujotaeioleolemassa')
         except Error, v:
             # Should check that we have correct error here
             return
 
 
-class TestParsing(unittest.TestCase):
+class TestParsing(GwikiTestCase):
     def setUp(self):
+        GwikiTestCase.setUp(self)
         self.pageName = "Gwiki Unit Test %s" % self.id()
 
     def tearDown(self):
         '''Remove a page from wiki after test is done.'''
-        server.DeletePage(self.pageName)
+        self.server.DeletePage(self.pageName)
 
     def testGetMeta1(self):
         '''Parser should not find meta tags inside {{{source code}}}
@@ -166,8 +175,8 @@ class TestParsing(unittest.TestCase):
  foo:: bar
 }}}
 """
-        server.putPage(self.pageName, pageContents)
-        res = server.GetMeta(self.pageName, True)
+        self.server.putPage(self.pageName, pageContents)
+        res = self.server.GetMeta(self.pageName, True)
         self.assert_(not res[0])
 
     def testMetaData1(self):
@@ -175,41 +184,42 @@ class TestParsing(unittest.TestCase):
         pageContents = """
   link:: http://www.google.com/
 """
-        server.putPage(self.pageName, pageContents)
-        res = server.GetMeta(self.pageName, True)
+        self.server.putPage(self.pageName, pageContents)
+        res = self.server.GetMeta(self.pageName, True)
         self.assert_(res)
 
 
-class TestAttachFile(GwikiTests):
+class TestAttachFile(GwikiTestCase):
     '''Tests for AttachFile(...) call.'''
     
     #Syntax:  AttachFile(<pagename>, <attachment name>, <action> = ("delete" |  "save" | "list" | "load"), <content>, <overwrite> = (True | False) )
     def testSaveLoadDeleteWithNiceData(self):
         niceData = "jee\n"
-        response1 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+        response1 = self.server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
         exception = None
         try:
-            response1_2 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
+            response1_2 = self.server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), False)
         except Exception, e:
             exception = e
-        response1_3 = server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), True)
+        response1_3 = self.server.AttachFile(self.pageName, "niceData", "save",Binary(niceData), True)
 
-        response2 = server.AttachFile(self.pageName, "niceData", "load",Binary(""), False)
-        response3 = server.AttachFile(self.pageName, "niceData", "delete",Binary(""), False)
+        response2 = self.server.AttachFile(self.pageName, "niceData", "load",Binary(""), False)
+        response3 = self.server.AttachFile(self.pageName, "niceData", "delete",Binary(""), False)
         
         self.assertEqual(response2, niceData)
         self.assert_(exception != None)        
 
-# class TestRandomPages(unittest.TestCase):
+# class TestRandomPages(GwikiTestCase):
 #     def setUp(self):
+#         GwikiTestCase.setUp(self)
 #         self.pageName = rStr(16) # A magic number
 #         self.pageCont = rStr(65535) # Another magic number
 
 #     def testAddPage(self):
 #         try:
-#             server.putPage(self.pageName, self.pageCont)
-#             server.getPage(self.pageName)
-#             # server.DeletePage(self.pageName)
+#             self.server.putPage(self.pageName, self.pageCont)
+#             self.server.getPage(self.pageName)
+#             # self.server.DeletePage(self.pageName)
 #         except Error, v:
 #             self.fail(v)
 
@@ -218,4 +228,9 @@ class TestAttachFile(GwikiTests):
 #     return "".join([chr(randrange(256)) for i in range(randrange(1,l+1))])
 
 if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        # kludge against unittest eating and choking on all args
+        server_url = sys.argv[1]
+        del sys.argv[1]
+
     unittest.main()
