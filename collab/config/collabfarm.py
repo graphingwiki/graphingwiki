@@ -90,18 +90,22 @@ class FarmConfig(DefaultConfig):
 
     plugin_dirs = list()
 
+    import os
+
     # Use graphingwiki if installed
     try:
         from graphingwiki import install_hooks
         from graphingwiki import __path__ as graphingwiki_dir
         install_hooks()
-        plugin_dirs.append(graphingwiki_dir)
+        for gdir in graphingwiki_dir:
+            plugin_dirs.append(os.path.join(gdir, 'plugin'))
     except ImportError:
         pass
 
     try:
         from collabbackend import __path__ as collabbackend_dir
-        plugin_dirs.append(collabbackend_dir)
+        for cdir in collabbackend_dir:
+            plugin_dirs.append(os.path.join(cdir, 'plugin'))
     except ImportError:
         pass
    
