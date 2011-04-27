@@ -230,6 +230,9 @@ def url_construct(request, args, name=''):
     return request.getQualifiedURL(req_url)
 
 def make_tooltip(request, pagename, format=''):
+    if not request.user.may.read(pagename):
+        return str()
+
     _ = request.getText
 
     # Add tooltip, if applicable
@@ -469,7 +472,12 @@ def load_children(request, graph, parent, urladd):
     for child in adata.edges.children(parent):
         if not graph.nodes.get(child):
             newnode = graph.nodes.add(child)
-            newnode.update(adata.nodes.get(child))
+            # Parent knows about links even though they might not see
+            # anything about the page being linked to 
+            if request.user.may.read(child):
+                newnode.update(adata.nodes.get(child))
+            else:
+                newnode.gwikiURL = './\N'
 
         newedge = graph.edges.add(parent, child)
         edgedata = adata.edges.get(parent, child)
@@ -493,6 +501,8 @@ def load_parents(request, graph, child, urladd):
     # Add new nodes, edges that are the parents of the current node
     for parent in adata.edges.parents(child):
         if not graph.nodes.get(parent):
+            if not request.user.may.read(parent):
+                continue
             newnode = graph.nodes.add(parent)
             newnode.update(adata.nodes.get(parent))
 

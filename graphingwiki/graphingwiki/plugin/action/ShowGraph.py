@@ -745,6 +745,8 @@ class GraphShower(object):
 
             # Add data on types of edges for which obj is child
             for parent in outgraph.edges.parents(objname):
+                if not self.request.user.may.read(parent):
+                    continue
                 edgeobj = outgraph.edges.get(parent, objname)
                 inlinks = set(getattr(obj, 'gwikiinlinks', list()))
                 inlinks.update(getattr(edgeobj, 'linktype'))
