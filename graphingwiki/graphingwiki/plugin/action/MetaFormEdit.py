@@ -50,9 +50,10 @@ def execute(pagename, request):
 
     formpage = '../' * pagename.count('/') + pagename
 
-    frm = wr(u'<form method="POST" action="%s">\n',
+    frm = wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
              actionname(request, pagename))+\
-          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
+          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')+\
+          wr(u'<input type="hidden" name="gwikiseparator" value="'+ SEPARATOR+'">\n')
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
@@ -180,12 +181,17 @@ def execute(pagename, request):
         return wr('<textarea rows=20 cols=70 name="%s">%s</textarea>',
                   pagekey, curval)
 
+    def form_file(request, pagekey, curval, values, description=''):
+        return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
+                  pagekey, curval)
+
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
                  'textbox': form_textbox,
                  'textarea': form_textarea,
-                 'radio': form_radio} 
-    #, 'textarea', 'file']
+                 'radio': form_radio,
+                 'file': form_file} 
+    #, 'textarea']
 
     def repl_subfun(mo):
         dt, pagekey, val = mo.groups()
@@ -240,7 +246,7 @@ def execute(pagename, request):
 
 
         if (not constraint == 'existing' and 
-            not formtype in ['textbox', 'textarea']):
+            not formtype in ['textbox', 'textarea', 'file']):
             msg += wr('<input class="metavalue" type="text" ' + \
                           'name="%s" value="">', pagekey)
 
