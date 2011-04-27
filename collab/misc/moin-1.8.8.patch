@@ -92,8 +92,8 @@ diff -up ./MoinMoin/xmlrpc/__init__.py-orig ./MoinMoin/xmlrpc/__init__.py
          self.request.cfg.session_handler.after_auth(self.request, id_handler, u)
  
 diff -up auth/http.py-orig auth/http.py
---- auth/http.py-orig   2010-12-15 12:01:30.719630611 +0200
-+++ auth/http.py        2010-12-15 12:03:21.269298026 +0200
+--- ./MoinMoin/auth/http.py-orig   2010-12-15 12:01:30.719630611 +0200
++++ ./MoinMoin/auth/http.py        2010-12-15 12:03:21.269298026 +0200
 @@ -84,7 +84,7 @@ class HTTPAuth(BaseAuth):
                  # when using http auth, we have external user name and password,
                  # we don't use the moin user profile for those attributes.
