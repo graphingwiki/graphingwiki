@@ -26,7 +26,8 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError
+from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import underlay_to_pages, url_escape, url_unescape
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
@@ -358,6 +359,57 @@ def get_links(request, name, metakeys, checkAccess=True, **kw):
             
     return pageLinks
 
+def is_meta_link(value):
+    vals = Parser.scan_re.search(value)
+    if not vals:
+        return str()
+
+    vals = [x for x, y in vals.groupdict().iteritems() if y]
+    for val in vals:
+        if val in ['word', 'link', 'transclude', 'url']:
+            return 'link'
+        if val in ['interwiki', 'email', 'include']:
+            return val
+    return str()
+
+def metas_to_abs_links(request, page, values):
+    new_values = list()
+    for value in values:
+        if is_meta_link(value) != 'link':
+            new_values.append(value)
+            continue
+        if ((value.startswith('[[') and value.endswith(']]')) or
+            (value.startswith('{{') and value.endswith('}}'))):
+            value = value.lstrip('[')
+            value = value.lstrip('{')
+        attachment = ''
+        for scheme in ('attachment:', 'inline:', 'drawing:'):
+            if value.startswith(scheme):
+                if len(value.split('/')) == 1:
+                    value = ':'.join(value.split(':')[1:])
+                    value = "%s%s/%s" % (scheme, page, value)
+                else:
+                    att_page = value.split(':')[1]
+                    if (att_page.startswith('./') or
+                        att_page.startswith('/') or
+                        att_page.startswith('../')):
+                        attachment = scheme
+                        value = ':'.join(value.split(':')[1:])
+        if (value.startswith('./') or
+            value.startswith('/') or
+            value.startswith('../')):
+            value = AbsPageName(page, value)
+        
+
+        value = attachment + value
+        if value.endswith(']'):
+            value = '[[' + value 
+        elif value.endswith('}'):
+            value = '{{' + value 
+        new_values.append(value)
+
+    return new_values
+
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
               includeGenerated=True, **kw):
@@ -429,13 +481,12 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
                         # Add matches at first round
                         if last:
-                            if target_key in outs:
-                                loadedOuts.setdefault(key, list())
-                                loadedOuts[key].extend(outs[target_key])
-
                             if target_key in metas:
                                 loadedMeta.setdefault(key, list())
-                                loadedMeta[key].extend(metas[target_key])
+                                values = metas_to_abs_links(request,
+                                                            indir_page,
+                                                            metas[target_key])
+                                loadedMeta[key].extend(values)
                             continue
 
                         elif not target_key in outs:
