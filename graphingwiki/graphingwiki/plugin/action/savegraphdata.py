@@ -37,6 +37,8 @@ from copy import copy
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin, get_processing_instructions
 from MoinMoin.Page import Page 
+from MoinMoin.wikiutil import AbsPageName
+from MoinMoin import config
 
 # graphlib imports
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, delete_moin_caches
@@ -88,6 +90,24 @@ def parse_text(request, page, text):
 
             if  type in ['url', 'wikilink', 'interwiki', 'email']:
                 dnode = item[1]
+                if '#' in dnode:
+                    # Fix anchor links to point to the anchor page
+                    url = False
+                    for schema in config.url_schemas:
+                        if dnode.startswith(schema):
+                            url = True
+                    if not url:
+                        # Do not fix URLs
+                        if dnode.startswith('#'):
+                            dnode = pagename
+                        else:
+                            dnode = dnode.split('#')[0]
+                if (dnode.startswith('/') or
+                    dnode.startswith('./') or
+                    dnode.startswith('../')):
+                    # Fix relative links
+                    dnode = AbsPageName(pagename, dnode)
+
                 hit = item[0]
             elif type == 'category':
                 # print "adding cat", item, repr(categories)
@@ -147,7 +167,7 @@ def add_in(new_data, (frm, to), linktype):
 
     # Notification that the destination has changed
     temp[u'mtime'] = time()
-
+    
     new_data[to] = temp
 
 
