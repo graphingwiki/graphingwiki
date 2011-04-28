@@ -1,10 +1,8 @@
 USABILITY ADDON INSTALLATION
 
- 1. Copy gwikicommon directory under your moin/htdocs directory. E.g.
+1. setup.py will automatically copy gwikicommon under MoinMoin's htdocs
 
- cp -r gwikicommon /usr/share/moin/htdocs/
-
- 1. Add to html_head of your wikiconfig:
+2. Add to html_head of your wikiconfig:
 
     html_head = '' # omit if you already have something
 
