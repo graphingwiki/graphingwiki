@@ -112,9 +112,6 @@ sudo chmod -R 2770 collab/
 ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
 ln -sf /usr/local/share/moin/htdocs/ /srv/www/https/moin_static
 
-# Make links from gwiki custom styles to moin htdocs
-ln -sf /usr/local/src/graphingwiki/graphingwiki/htdocs/gwikicommon/ /usr/local/share/moin/htdocs/gwikicommon
-
 # Copy moin underlay to collabfarm
 su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
 
