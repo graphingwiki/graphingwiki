@@ -379,7 +379,7 @@ def execute(pagename, request):
 
             # Save the template if needed
             if not Page(request, pagename).exists() and template:
-                msgs.extend(save_template(request, pagename, template))
+                msgs.append(save_template(request, pagename, template))
 
             _, msgss = set_metas(request, dict(), discarded, added)
             msgs.extend(msgss)
