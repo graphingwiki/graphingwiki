@@ -27,7 +27,6 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
-from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import underlay_to_pages, url_escape, url_unescape
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
@@ -272,24 +271,6 @@ def edit_categories(request, savetext, action, catlist):
 
     return u"\n".join(lines) + u"\n"
 
-def formatting_rules(request, parser):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
-    rules = parser.formatting_rules.replace('\n', '|')
-
-    if request.cfg.bang_meta:
-        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
-            'word_rule': Parser.word_rule,
-            'rules': rules,
-            }
-
-    # For versions with the deprecated config variable allow_extended_names
-    if not '?P<wikiname_bracket>' in rules:
-        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
-
-    return re.compile(rules, re.UNICODE)
-
-
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
         target = url_escape(encode(target))
@@ -360,6 +341,8 @@ def get_links(request, name, metakeys, checkAccess=True, **kw):
     return pageLinks
 
 def is_meta_link(value):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
     vals = Parser.scan_re.search(value)
     if not vals:
         return str()
