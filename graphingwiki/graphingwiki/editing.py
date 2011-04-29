@@ -494,8 +494,8 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
     # Add gwikicategory as a special case, as it can be metaedited
     if loadedOuts.has_key('gwikicategory'):
-        pageMeta.setdefault('gwikicategory', 
-                            list()).extend(loadedOuts['gwikicategory'])
+        # Empty (possible) current gwikicategory to fix a corner case
+        pageMeta['gwikicategory'] = loadedOuts['gwikicategory']
             
     return pageMeta
 
@@ -653,13 +653,16 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               dict(test=[u"1", u"2"]))
     u'This is just filler\n test:: 1\n test:: 2\nYeah\n'
 
-    Handling the magical duality normal categories (CategoryBah)
-    and meta style categories:
+    Handling the magical duality normal categories (CategoryBah) and
+    meta style categories. If categories in metas are actually valid
+    according to category regexp, retain them as Moin-style
+    categories. Otherwise, delete them.
+
     >>> replace_metas(request,
     ...               u"",
     ...               dict(),
     ...               dict(gwikicategory=[u"test"]))
-    u'\n gwikicategory:: test\n'
+    u'\n'
     >>> replace_metas(request,
     ...               u"",
     ...               dict(),
@@ -669,7 +672,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u" gwikicategory:: test",
     ...               dict(gwikicategory=[u"test"]),
     ...               dict(gwikicategory=[u"CategoryTest"]))
-    u' gwikicategory:: CategoryTest\n'
+    u'----\nCategoryTest\n'
     >>> replace_metas(request,
     ...               u"CategoryTest",
     ...               dict(gwikicategory=[u"CategoryTest"]),
@@ -815,6 +818,14 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki weohweovd']},
     ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
     u' key:: {{{#!wiki weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    # Case 676, new behaviour
+    >>> replace_metas(request, 
+    ...               u' gwikicategory:: CategoryOne CategoryTwo',
+    ...               {u'gwikicategory': [u'CategoryOne', u'CategoryTwo']},
+    ...               {u'gwikicategory': [u'CategoryOnes', u'CategoryTwo', u'', u'']})
+    u'----\nCategoryOnes CategoryTwo\n'
+
     """
 
     text = text.rstrip()
@@ -869,6 +880,10 @@ def replace_metas(request, text, oldmeta, newmeta):
         key = key.strip()
         val = val.strip()
 
+        # Categories handled separately (see below)
+        if key == CATEGORY_KEY:
+            return ""
+
         # Don't touch unmodified keys
         if key not in oldmeta:
             return alltext
@@ -900,7 +915,11 @@ def replace_metas(request, text, oldmeta, newmeta):
     text = dl_re.sub(dl_subfun, text)
 
     # Handle the magic duality between normal categories (CategoryBah)
-    # and meta style categories
+    # and meta style categories. Categories can be written on pages as
+    # gwikicategory:: CategoryBlaa, and this should be supported as
+    # long as the category values are valid. Categories should always
+    # be written on pages as Moin-style, as a space-separated list on
+    # the last line of the page
     oldcategories = oldmeta.get(CATEGORY_KEY, list())
     newcategories = newmeta.get(CATEGORY_KEY, list())
 
@@ -956,6 +975,10 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
+        # Categories handled separately (see above)
+        if key == CATEGORY_KEY:
+            continue
+
         for value in values:
             # Empty values again supplied by metaedit and metaformedit
             if not value.strip():
