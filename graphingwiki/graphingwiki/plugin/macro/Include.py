@@ -39,6 +39,7 @@ _orig_execute = Include.execute
 def execute(macro, text):
     _ = macro.request.getText
 
+    orig_request_page = macro.request.page
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
@@ -154,5 +155,7 @@ def execute(macro, text):
         Page.exists = orig_exists
         Page.link_to = orig_link_to
         Page.__init__ = orig__init__
+
+    macro.request.page = orig_request_page
 
     return retval
