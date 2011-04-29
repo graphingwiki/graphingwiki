@@ -12,14 +12,15 @@ from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki import url_escape
-from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.editing import metatable_parseargs, get_metas, \
+    metas_to_abs_links
 from graphingwiki.util import format_wikitext
 from graphingwiki.editing import ordervalue
 
 Dependencies = ['metadata']
 
 def t_cell(macro, vals, head=0, style=dict(), rev=''):
-    out = macro.request
+    out = str()
 
     if not style.has_key('class'):
         if head:
@@ -27,11 +28,11 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
         else:
             style['class'] = 'meta_cell'
 
-    out.write(macro.formatter.table_cell(1, attrs=style))
+    out += macro.formatter.table_cell(1, attrs=style)
     cellstyle = style.get('gwikistyle', '').strip('"')
 
     if cellstyle == 'list':
-        out.write(macro.formatter.bullet_list(1))
+        out += macro.formatter.bullet_list(1)
 
     first_val = True
 
@@ -39,29 +40,30 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
 
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
-            out.write(macro.formatter.text(',') + \
-                      macro.formatter.linebreak())
+            out += macro.formatter.text(',') + macro.formatter.linebreak()
 
         if head:
             kw = dict()
             if rev:
                 kw['querystr'] = '?action=recall&rev=' + rev
-            out.write(macro.formatter.pagelink(1, data, **kw))
-            out.write(macro.formatter.text(data))
-            out.write(macro.formatter.pagelink(0))
+            out += macro.formatter.pagelink(1, data, **kw)
+            out += macro.formatter.text(data)
+            out += macro.formatter.pagelink(0)
         elif data.strip():
             if cellstyle == 'list':
-                out.write(macro.formatter.listitem(1))
+                out += macro.formatter.listitem(1)
 
-            out.write(format_wikitext(out, data))
+            out += format_wikitext(macro.request, data)
 
             if cellstyle == 'list':
-                out.write(macro.formatter.listitem(0))
+                out += macro.formatter.listitem(0)
 
         first_val = False
 
     if cellstyle == 'list':
-        out.write(macro.formatter.bullet_list(1))
+        out += macro.formatter.bullet_list(1)
+
+    return out
 
 def construct_table(macro, pagelist, metakeys, 
                     legend='', checkAccess=True, styles=dict(), 
@@ -69,21 +71,20 @@ def construct_table(macro, pagelist, metakeys,
     request = macro.request
     request.page.formatter = request.formatter
     _ = request.getText
+    out = str()
 
     row = 0
 
     entryfmt = {'class': 'metamatrix_entry'}
 
     # Start table
-    request.write(macro.formatter.linebreak() +
-                  u'<div class="metamatrix">' +
-                  macro.formatter.table(1))
+    out += macro.formatter.linebreak() + u'<div class="metamatrix">' + \
+        macro.formatter.table(1)
 
     # Give a class to headers to make it customisable
-    request.write(macro.formatter.table_row(1, {'rowclass':
-                                                'meta_head'}))
+    out += macro.formatter.table_row(1, {'rowclass': 'meta_head'})
     # Upper left cell is empty or has the desired legend
-    t_cell(macro, [legend])
+    out += t_cell(macro, [legend])
 
     x_key, y_key = metakeys[:2]
 
@@ -93,14 +94,18 @@ def construct_table(macro, pagelist, metakeys,
 
     for page in pagelist:
         page_vals[page] = get_metas(request, page, metakeys, checkAccess=False)
-
-        x_values.update(page_vals[page].get(x_key, set()))
-        y_values.update(page_vals[page].get(y_key, set()))
+        
+        x_val = page_vals[page].get(x_key, set())
+        y_val = page_vals[page].get(y_key, set())
+        x_values.update([(page, x) for x in x_val])
+        y_values.update([(page, y) for y in y_val])
 
     metakeys = metakeys[2:]
 
+    header_cells = list()
     # Make header row
-    for oval, value in sorted((ordervalue(y), y) for y in y_values):
+    for oval, value, page in sorted((ordervalue(y), y, page) \
+                                        for page, y in y_values):
 
         style = styles.get(y_key, dict())
         
@@ -114,35 +119,48 @@ def construct_table(macro, pagelist, metakeys,
                 headerstyle[st] = style[st]
 
         if name:
-            t_cell(macro, [name], style=headerstyle)
+            if not (value, name) in header_cells:
+                header_cells.append((value, name))
         else:
-            t_cell(macro, [value], style=headerstyle)
+            showvalue = metas_to_abs_links(request, page, [value])
+            if not (value, showvalue[0]) in header_cells:
+                header_cells.append((value, showvalue[0]))
 
-    request.write(macro.formatter.table_row(0))
+    for value, showvalue in header_cells:
+        out += t_cell(macro, [showvalue], style=headerstyle)
+
+    out += macro.formatter.table_row(0)
 
     tmp_page = request.page
 
     f = macro.formatter
 
     # Table
-    for oval, x_value in sorted((ordervalue(x), x) for x in x_values):
+    row_cells = list()
+    row_values = list()
+    for oval, x_value, page in sorted((ordervalue(x), x, page) \
+                                          for page, x in x_values):
+        if not (oval, x_value) in row_values:
+            row_cells.append((oval, x_value, page))
+            row_values.append((oval, x_value))
+
+    for oval, x_value, page in row_cells:
         row = row + 1
 
         if row % 2:
-            request.write(f.table_row(1, {'rowclass':
-                                              'metamatrix-odd-row'}))
+            out += f.table_row(1, {'rowclass': 'metamatrix-odd-row'})
         else:
-            request.write(f.table_row(1, {'rowclass':
-                                              'metamatrix-even-row'}))
-        t_cell(macro, [x_value])
+            out += f.table_row(1, {'rowclass': 'metamatrix-even-row'})
+        value = metas_to_abs_links(request, page, [x_value])
+        out += t_cell(macro, value)
         
-        for oval, y_value in sorted((ordervalue(y), y) for y in y_values):
+        for y_value, showvalue in header_cells:
             style = styles.get(y_value, dict())
             
             if not style.has_key('class'):
                 style['class'] = 'meta_cell'
 
-            macro.request.write(f.table_cell(1, attrs=style))
+            out += f.table_cell(1, attrs=style)
 
             for page in pagelist:
                 pageobj = Page(request, page)
@@ -159,6 +177,7 @@ def construct_table(macro, pagelist, metakeys,
 
                     for key in metakeys:
                         for val in page_vals[page].get(key, list()):
+                            
                             # Strip ugly brackets from bracketed links
                             val = val.lstrip('[').strip(']')
 
@@ -175,15 +194,17 @@ def construct_table(macro, pagelist, metakeys,
                         result += pageobj.link_to(request, **args)
                         result += f.listitem(0)
                         
-                    macro.request.write(result)
+                    out += result
                     
-        request.write(macro.formatter.table_row(0))
+        out += macro.formatter.table_row(0)
 
     request.page = tmp_page
     request.formatter.page = tmp_page
 
-    request.write(macro.formatter.table(0))
-    request.write(u'</div>')
+    out += macro.formatter.table(0)
+    out += u'</div>'
+
+    return out
 
 def execute(self, args):
     if args is None:
@@ -201,7 +222,7 @@ def execute(self, args):
 
     if len(keys) < 2:
         return _sysmsg % ('error', 
-                          self.request.getText('Need a minimum of three keys to build matrix'))
+                          self.request.getText('Need a minimum of two keys to build matrix'))
 
     legend = "%s/%s" % (keys[0], keys[1])
 

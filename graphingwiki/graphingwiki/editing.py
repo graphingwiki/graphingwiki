@@ -382,7 +382,8 @@ def metas_to_abs_links(request, page, values):
             value.startswith('/') or
             value.startswith('../')):
             value = AbsPageName(page, value)
-        
+        if value.startswith('#'):
+            value = page + value
 
         value = attachment + value
         if value.endswith(']'):
