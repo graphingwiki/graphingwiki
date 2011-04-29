@@ -209,7 +209,7 @@ class Question:
         if not questiontype:
             raise MissingMetaException(u"Question %s doesn't have answertype option." % self.pagename)
 
-        if questiontype in ['checkbox', 'radio', 'text']:
+        if questiontype in ['checkbox', 'radio', 'text', 'longtext']:
             answerpages = self.answers()
             save_dict = {"right":list(), "wrong":list()}
             overallvalue = "success"
@@ -218,7 +218,7 @@ class Question:
                 answer = Answer(self.request, answerpage)
 
                 answer_options = answer.options()
-                if questiontype == 'text' and 'regexp' in answer_options:
+                if questiontype in ['text', 'longtext'] and 'regexp' in answer_options:
                     regexp = re.compile(answer.answer(), re.DOTALL)
 
                     if answer.value() == "right":        
@@ -375,7 +375,7 @@ class Question:
                         content = answer[5][filename]
                         if content != None:
                             f, s = add_attachment(self.request, outputpage, filename, content, 1)
-                        filelinks += " file:: [[attachment:%s]]" % filename
+                        filelinks += " file:: [[attachment:%s]]\n" % filename
 
                     for filename in attachment_list(self.request, outputpage):
                         if filename not in answer[5].keys():

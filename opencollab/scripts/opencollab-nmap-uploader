@@ -7,11 +7,17 @@
 import re, os, sys, string, optparse, socket
 import xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import importMetas
+
+NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
+             "NMAP Run", "NMAP Version", "NMAP traceroute",
+             "OS Accuracy", "OS Family", "OS Generation",
+             "OS Type", "OS Vendor", "PTR", "Run Arguments",
+             "Run Ended", "Run Started", "TYPE", "Vendor",
+             "XML Output Version", "listens to", "serves"]
 
 def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
     try:
@@ -55,12 +61,22 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "nmap.xsl", stylesheet_data, True)
     return True
 
-def parse_xml(file, nmaprun_page):
+def handle_script(host_ipv4, script, metas):
+    """
+    This function is meant for implementing any sort of custom
+    postprocessing of specific Nmap script results
+    """
+    scriptid = script.getAttribute('id')
+    scriptcontent = script.getAttribute('output')
+    scriptcontent = scriptcontent.replace('&#xa;', ' ').replace('\n', ' ').strip()
+    metas[host_ipv4]['NMAP %s' % (scriptid)].add(scriptcontent)                            
+    return metas
+
+def parse_xml(metas, file, nmaprun_page):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
     """
-    metas = Metas()
     try:
         doc = xml.dom.minidom.parse(file)
     except xml.parsers.expat.ExpatError, e:
@@ -74,6 +90,7 @@ def parse_xml(file, nmaprun_page):
                 hostState = hostStatusElements[0].getAttribute('state')
                 if hostState == 'up':
                     hostAddressElements = host.getElementsByTagName('address')
+
                     for addressElement in hostAddressElements:
                         addressType = addressElement.getAttribute('addrtype')
                         address = addressElement.getAttribute('addr')
@@ -85,12 +102,14 @@ def parse_xml(file, nmaprun_page):
                             metas[address]['TYPE'].add('MAC')
                             metas[address]['Vendor'].add(addressElement.getAttribute('vendor'))
                             metas[address]['NMAP Run'].add('[[%s]]' % nmaprun_page)
+
                     hostNameElements = host.getElementsByTagName('hostname')
                     if host_ipv4 and len(hostNameElements) > 0:
                         hostname = hostNameElements[0].getAttribute('name')
                         metas[host_ipv4]['PTR'].add('[[%s]]' % hostname)
                         metas[hostname]['TYPE'].add('NAME')
                     hostPorts = host.getElementsByTagName('port')
+
                     if host_ipv4:
                         for hostPort in hostPorts:
                             portStatusElements = hostPort.getElementsByTagName('state')
@@ -108,6 +127,12 @@ def parse_xml(file, nmaprun_page):
                                         service += ' ' +  portServiceElements[0].getAttribute('extrainfo')
                                     service += ' on port ' + port
                                     metas[host_ipv4]['serves'].add(service)
+
+                            # Grab any script results
+                            portScripts = hostPort.getElementsByTagName('script')
+                            for script in portScripts:
+                                metas = handle_script(host_ipv4, script, metas)
+
                         hostOss = host.getElementsByTagName('osclass')
                         for hostOs in hostOss:
                             metas[host_ipv4]['OS Type'].add(hostOs.getAttribute('type'))
@@ -115,6 +140,28 @@ def parse_xml(file, nmaprun_page):
                             metas[host_ipv4]['OS Family'].add(hostOs.getAttribute('osfamily'))
                             metas[host_ipv4]['OS Generation'].add(hostOs.getAttribute('osgen'))
                             metas[host_ipv4]['OS Accuracy'].add(hostOs.getAttribute('accuracy'))
+
+                        # Grab any script results
+                        hostScript = host.getElementsByTagName('hostscript')
+                        for scriptportion in hostScript:
+                            scripts = scriptportion.getElementsByTagName('script')
+                            for script in scripts:
+                                metas = handle_script(host_ipv4, script, metas)
+
+                        # Grab traceroute results
+                        traces = host.getElementsByTagName('trace')
+                        for trace in traces:
+                            port = trace.getAttribute('port')
+                            hops = trace.getElementsByTagName('hop')
+                            for hop in hops:
+                                dst_ipv4 = hop.getAttribute('ipaddr')
+                                # Lack of reply should be omitted
+                                if dst_ipv4.startswith('0.'):
+                                    continue
+                                ttl = "%03d" % int(hop.getAttribute('ttl'))
+                                trace_string = "TTL %s [[%s]] (port [[TCP:%s]])" % (ttl, dst_ipv4, port)
+                                metas[host_ipv4]['NMAP traceroute'].add(trace_string)
+
     nmaprun = doc.getElementsByTagName('nmaprun') 
     metas[nmaprun_page]['Run Arguments'].add(nmaprun[0].getAttribute('args'))
     metas[nmaprun_page]['NMAP Version'].add(nmaprun[0].getAttribute('version'))
@@ -130,27 +177,35 @@ def parse_xml(file, nmaprun_page):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-A", "--audit", dest="audit", default= None,
+        metavar="AUDIT", help=("AUDIT name to tag identities with."))
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     parser.set_usage("%prog [options] NMAP-XML-FILES")
+
     failed = []
     ops = {}
     sect = "nmap-uploader"
     nmap_files=[]
     ops = parseOptions(parser, sect, template=True, category=True)
     url = ops["creds"]["url"]
+    progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
+    audit = ops[sect]["audit"]
     if template is None:
-        template = "NessusTemplate"
+        template = "IdentityTemplate"
     category = ops[sect]["category"]
     if category is None:
-        template = "CategoryNessus"
+        category = "CategoryIdentity"
     replace = ops[sect]["lasteditwins"] 
     args = ops[sect]["args"]
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
+
     while True:
         try:
             collab = CLIWiki(**ops['creds'])
@@ -162,34 +217,56 @@ def main():
             break
     if verbose:
         print "NOTE: Processing input files."
+
     for arg in args:
         nmap_files.append(arg)
+
+    metas = Metas()
     for file in nmap_files:
         xml_page = hashFile(file)
         fname = os.path.basename(file)
         if verbose:
             print "NOTE: Parsing", file
-        metas = parse_xml(file, xml_page)
+
+        metas = parse_xml(metas, file, xml_page)
+        metas[xml_page]['TYPE'].add('NMAP Run')
+        metas[xml_page]['gwikicategory'] = ['CategoryNmap', 'CategoryScan']
+        metas[xml_page]['gwikitemplate'] = ['NmapTemplate']
+
         if category is not None:
             for page in metas:
-                metas[page]["category"].add(category)
-        metas[xml_page]['TYPE'].add('NMAP Run')
-        if verbose:
-            print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, template, verbose, replace)
-        if failed:
-            for page in failed:
-                if verbose:
-                    print "ERROR uploading:",  page, repr(metas[page])
-                else:
-                    print "ERROR uploading:", page
+                if not 'gwikicategory' in metas[page]:
+                    metas[page]["gwikicategory"].add(category)
+        if template is not None:
+            for page in metas:
+                if not 'gwikitemplate' in metas[page]:
+                    metas[page]["gwikitemplate"].add(template)
+
+        if audit is not None:
+            for page in metas:
+                metas[page]["Audit"].add(audit)
+
         if verbose:
             print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            print "NOTE: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, verbose)
+            try:
+                status = uploadFile(collab, xml_page, file, fname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+
+    if verbose:
+        print "NOTE: Importing metas to", url
+    
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = NMAP_KEYS
+
+    collab.incSetMeta(cleared, Metas(), metas)
+
 
 if __name__ == "__main__":
     try:

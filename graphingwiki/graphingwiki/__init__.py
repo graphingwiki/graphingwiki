@@ -7,12 +7,15 @@ import MoinMoin.web.contexts
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
+from MoinMoin.security import ACLStringIterator
 
 import sys
 import os
 import re
 import socket
 import xmlrpclib
+
+SEPARATOR = '-gwikiseparator-'
 
 # Get action name
 def actionname(request, pagename):
@@ -22,6 +25,17 @@ def url_escape(text):
     # Escape characters that break links in html values fields, 
     # macros and urls with parameters
     return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
+def url_unescape(text):
+    return re.sub(r"%([0-9a-f]{2})", lambda mo: chr(int(mo.group(1), 16)), text)
+
+def id_escape(text):
+    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
+    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
+
+def id_unescape(text):
+    chr_re = re.compile('_([0-9a-f]{2})_')
+    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
 # Finding dependencies centrally
 
@@ -187,7 +201,6 @@ def monkey_patch(original, on_success=ignore, always=ignore):
 
 def underlay_to_pages(req, p):
     underlaydir = req.cfg.data_underlay_dir
-    pagedir = os.path.join(req.cfg.data_dir, 'pages')
 
     pagepath = p.getPagePath()
 
@@ -207,7 +220,8 @@ def underlay_to_pages(req, p):
 # patched function
 
 def graphdata_getter(self):
-    from graphingwiki.util import GraphData
+#    from graphingwiki.backend.durusclient import GraphData
+    from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
     return self.__dict__["_graphdata"]
@@ -216,7 +230,13 @@ def graphdata_close(self):
     print "graphdata_close called"
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
-        graphdata.closedb()
+        graphdata.commit()
+        graphdata.close()
+
+def graphdata_commit(self, *args):
+    graphdata = self.__dict__.pop("_graphdata", None)
+    if graphdata is not None:
+        graphdata.commit()
 
 def _get_save_plugin(self):
     # Save to graph file if plugin available.
@@ -226,6 +246,9 @@ def _get_save_plugin(self):
         return
 
     return graphsaver
+
+## TODO: Hook PageEditor.sendEditor to add data on template to the
+## text of the saved page?
 
 def graphdata_save(self, result, _):
     graphsaver = _get_save_plugin(self)
@@ -290,6 +313,18 @@ def variable_insert(self, result, _):
 
     return result
 
+def acl_user_expand(self, result, _):
+    """
+    Expand @ME@ user variable, which can result into problems when
+    viewing template pages with acl:s
+    """
+    modifier, entries, rights = result
+
+    entries = [x.replace('@ME@', 'All') for x in entries]
+
+    return (modifier, entries, rights)
+
+
 def attachfile_filelist(self, result, (args, _)):
     _ = self.getText
     attachments = re.findall('do=view&amp;target=([^"]+)', result)
@@ -337,9 +372,6 @@ def attachfile_filelist(self, result, (args, _)):
 
 _hooks_installed = False
 
-
-import MoinMoin.wsgiapp
-
 def install_hooks():
     global _hooks_installed
 
@@ -379,5 +411,9 @@ def install_hooks():
         return c
     
     MoinMoin.wsgiapp.init = patched_init
+    # Fix user variables in template acl strings
+    ACLStringIterator.next = monkey_patch(ACLStringIterator.next,
+                                          acl_user_expand)
+
     _hooks_installed = True
 

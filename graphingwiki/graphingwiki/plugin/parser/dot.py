@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-"
 """
     .dot parser plugin to MoinMoin
-     - Simple inline layouter of dot data
+     - Simple inline layouter of Graphviz data
 
     @copyright: 2005 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -39,8 +39,8 @@ from graphingwiki.graphrepr import Graphviz
 Dependencies = ['attachments']
 
 class Parser(object):
-
-    extensions = ['.dot']
+    # .gv preferred now as .dot overlaps with MS Office templates
+    extensions = ['.gv', '.dot']
 
     def __init__(self, raw, request, **kw):
         # save call arguments for later use in format()
@@ -56,7 +56,7 @@ class Parser(object):
 
     def getLayoutInFormat(self, graphviz, format):
         tmp_fileno, tmp_name = mkstemp()
-        graphviz.layout(file=tmp_name, format=format)
+        graphviz.layout(fname=tmp_name, format=format)
         f = file(tmp_name)
         data = f.read()
         os.close(tmp_fileno)

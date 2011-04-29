@@ -1,0 +1,106 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    opencollab-csv-meta
+     - Edits or lists metadata on pages
+
+    @copyright: 2011 by Juhani Eronen <exec@iki.fi> and Joachim Viide
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import sys
+import csv
+
+from optparse import OptionParser
+from opencollab.wiki import CLIWiki
+
+def encode(x):
+    return x.encode("utf-8")
+
+def decode(x):
+    return x.decode("utf-8")
+
+def escape(x):
+    return x.encode("unicode-escape")
+
+operations = list()
+def callback(option, opt, value, parser, operation):
+    operations.append((operation, value))
+
+usage = "usage: %prog [options] WIKIURL"
+parser = OptionParser(usage=usage)
+
+parser.add_option("-g", "--get", action="callback", 
+                  callback=callback, callback_args=("get",), type="string",
+                  help=("Get metadata from Wiki with a  MetaTable argument "+
+                        "string."))
+parser.add_option("-a", "--add", action="callback", 
+                  callback=callback, callback_args=("add",), type="string",
+                  help=("Add metadata based on a semicolon-delimited CSV file "+
+                        "in a batch fashion. First row states the keys, "+
+                        "first colums states the pages."))
+parser.add_option("-s", "--set", action="callback", 
+                  callback=callback, callback_args=("set",), type="string",
+                  help=("Replace metadata based on a semicolon-delimited CSV "+
+                        "file in a batch fashion. First row states the keys, "+
+                        "first colums states the pages."))
+parser.add_option("-t", "--template", dest="template", default="",
+                  help="Use page template for --add and --set operations.")
+
+parser.add_option("-u", "--username", dest="username", default=None,
+                  help="Username for logging onto the wiki")
+parser.add_option("-p", "--password", dest="password", default=None,
+                  help="Wiki password")
+
+options, args = parser.parse_args()
+if len(args) != 1:
+    parser.error("WIKIURL required")
+
+wiki = CLIWiki(args[0], options.username, options.password)
+for operation, argument in operations:
+    if operation == "get":
+        results = wiki.getMeta(argument)
+        
+        wr = csv.writer(sys.stdout)
+        
+        counts = dict()
+        for page, metas in results.items():
+            for key, values in metas.items():
+                counts[key] = max(counts.get(key, 0), len(values))
+                
+        keyrow = ["Page name"]
+        for key, count in counts.items():
+            keyrow.extend([key] * count)
+        wr.writerow(keyrow)
+
+        for page, metas in results.items():
+            row = [encode(page)]
+            for key, values in metas.items():
+                row.extend(map(encode, values))
+                row.extend([""] * (counts[key] - len(values)))
+            wr.writerow(row)
+
+        sys.stdout.flush()
+    else:
+        replace = operation == "set"
+        reader = csv.reader(open(argument, "rb"))
+
+        # Keys from first row, ignore the key for the first column
+        keys = []
+        for keys in reader:
+            keys = keys[1:]
+            break
+
+        for row in reader:
+            if not row:
+                continue
+
+            page = decode(row[0])
+
+            metas = dict()
+            for key, value in zip(keys, row[1:]):
+                metas.setdefault(key, []).append(value)
+
+            result = wiki.setMeta(page, metas, replace, options.template)
+            for line in result:
+                print >> sys.stderr, escape(page)+":", escape(line)

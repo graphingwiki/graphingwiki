@@ -3,7 +3,7 @@
     AttachTree macro plugin to MoinMoin
      - Renders a tree of attachments for urlencoded paths in attachments
 
-    @copyright: 2008 by Marko Laakso <fenris@iki.fi>
+    @copyright: 2008-2010 by Marko Laakso <fenris@iki.fi>
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
@@ -29,54 +29,60 @@
 
 """
 
-from urllib import unquote
-from os import path
+from urllib import unquote, quote
+import os
 
-from MoinMoin.action.AttachFile import _get_files, getAttachDir, getAttachUrl
+from MoinMoin.action.AttachFile import _get_files, getAttachUrl
+
+def walk(*paths):
+    result = dict()
+    for path in paths:
+        current = result
+        for bite in path.split(os.sep):
+            current = current.setdefault(bite, dict())
+    return result
+
+def render(req, f, content, parent='', depth=0):
+    listfmt = {'class': 'attachtree_list'}
+    direntryfmt = {'class': 'attachtree_direntry'}
+    fileentryfmt = {'class': 'attachtree_fileentry'}
+
+    result = f.bullet_list(1, **listfmt)
+
+    for entry, values in sorted(content.items()):
+        fullname = os.path.join(parent, unicode(entry))
+        if not values.items():
+            result += f.listitem(1, **fileentryfmt)
+            link = getAttachUrl(f.page.page_name,
+                                quote(fullname.encode("iso-8859-15"), safe=""),
+                                req)
+            result += f.url(1, link, 'attachtree_link')
+            result += f.text(entry)
+            result += f.url(0)
+            result += f.listitem(0)
+        else:
+            result += f.listitem(1, **direntryfmt)
+            result += f.text(entry)
+            result += f.listitem(0)
+            result += render(req, f, values, fullname, depth + 1)
+
+    result += f.bullet_list(0)
+    return result
 
 def formatAttachTree(request, f):
-    pagename = f.page.page_name
-    attachdir = getAttachDir(request, pagename)
-    files = _get_files(request, pagename)
-    
+    files = _get_files(request, f.page.page_name)
+    realfiles = map(unquote, files)
+
     if not files:
         return f.text('No attachments, no tree.')
 
     divfmt = {'class': 'attachtree_area'}
-    listfmt = {'class': 'attachtree_list'}
-    direntryfmt = {'class': 'attachtree_direntry'}
-    fileentryfmt = {'class': 'attachtree_fileentry'}
-       
-    olddirname = ''
-    result = ''
-    result += f.div(1, **divfmt)
-    result += f.bullet_list(1, **listfmt)
-    
-    for file in files:
-        realfile = unquote(file)
-        dirname = path.dirname(realfile)
-        basename = path.basename(realfile)
-        if dirname != olddirname:
-            if olddirname != '':
-                result += f.bullet_list(0)
-            result += f.listitem(1, **direntryfmt)
-            result += f.text(unquote(dirname))
-            result += f.listitem(0)
-            result += f.bullet_list(1, **listfmt)
-        olddirname = dirname
-        result += f.listitem(1, **fileentryfmt)
-        link = getAttachUrl(pagename, file, request, escaped=1)
-        result += f.url(1, link, 'attachtree_link')
-        result += f.text(basename)
-        result += f.url(0)
 
-        result += f.listitem(0)
-
-    result += f.bullet_list(0)
-    result += f.bullet_list(0)
+    result = f.div(1, **divfmt)
+    result += render(request, f, walk(*realfiles))
     result += f.div(0)
 
     return result
-
+        
 def execute(self, args):
     return formatAttachTree(self.request, self.formatter)

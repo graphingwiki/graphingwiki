@@ -9,15 +9,13 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import cgi
- 
-from MoinMoin import wikiutil
 from string import rsplit
 
+from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
-from graphingwiki.util import resolve_iw_url, category_regex, SEPARATOR
 
-def htmlquote(s):
-    return cgi.escape(s, 1)
+from graphingwiki.util import resolve_iw_url, category_regex, form_escape
+from graphingwiki import SEPARATOR
 
 Dependencies = []
 
@@ -106,8 +104,8 @@ class Parser(wikiParser):
 
         return apply(wikiParser._dl_repl, (self, match, groups)) + \
                '\n<input class="metavalue" type="text" name="' + \
-               htmlquote('%s%s%s' % (self.pagename, SEPARATOR, dt)) + \
-                         '" value="'
+               form_escape('%s%s%s' % (self.pagename, SEPARATOR, dt)) + \
+               '" value="'
 
     def __real_val(self, word):
         if not word.strip():
@@ -350,7 +348,7 @@ class Parser(wikiParser):
 
     # Catch the wiki parser within the parsed content, register this
     # class as its handler instead of text_moin_wiki
-    def _parser_content_repl(self, line):
+    def _parser_content(self, line):
         if self.in_pre == 'search_parser' and line.strip():
             if line.strip().startswith("#!"):
                 parser_name = line.strip()[2:].split()[0]
@@ -358,4 +356,4 @@ class Parser(wikiParser):
                     self.in_pre = 'found_parser'
                     self.parser_name = 'wiki_form'
 
-        return apply(wikiParser._parser_content_repl, (self, word, groups))
+        return apply(wikiParser._parser_content, (self, line))

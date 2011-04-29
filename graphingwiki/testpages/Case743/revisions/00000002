@@ -1,0 +1,9 @@
+Rename [[Case743/1]] to something else, eg. [[Case743/314159265]]. Observe crash.
+
+Normal include
+
+<<Include(Case743/1)>>
+
+Arguments includes also
+
+<<Include(Case743/1,,,editlink)>>

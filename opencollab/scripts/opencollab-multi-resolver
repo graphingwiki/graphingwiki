@@ -4,16 +4,26 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, socket, optparse, subprocess
+import re, socket, optparse, subprocess, IPy
 from subprocess import Popen
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
 from opencollab.util.config import parseOptions
-from opencollab.util.wiki import importMetas
 
-def shred_triplets(resolved, category): 
+MR_KEYS = [
+    'A', 'AAAA', 'ALLOCATED', 'AS', 'AS-NAME', 'ATTRIBUTION',
+    'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX10', 'MX100',
+    'MX1000', 'MX11', 'MX110', 'MX15', 'MX19', 'MX2', 'MX20',
+    'MX200', 'MX3', 'MX30', 'MX300', 'MX40', 'MX400', 'MX42',
+    'MX5', 'MX50', 'MX60', 'MX69', 'MX90', 'MX900', 'MX999',
+    'NETWORK', 'NS', 'PTR', 'REGISTRY', 'SOA', 'SOA-EMAIL',
+    'SOA-EXPIRE', 'SOA-MINIMUM', 'SOA-REFRESH', 'SOA-RETRY',
+    'SOA-SERIAL', 'SRV', 'TYPE' 
+]
+
+def shred_triplets(resolved): 
     collab_metas = Metas()
     for triplet in resolved:
         if triplet:
@@ -22,7 +32,8 @@ def shred_triplets(resolved, category):
                 collab_metas[subj][pred].add(obj)
             else:
                 collab_metas[subj][pred].add('[[%s]]' % obj)
-            collab_metas[subj]["category"].add(category)
+            collab_metas[subj]["gwikicategory"].add('CategoryIdentity')
+            collab_metas[subj]["gwikitemplate"].add('IdentityTemplate')
     return collab_metas
 
 def expand_ipv4(rr,new):
@@ -31,13 +42,39 @@ def expand_ipv4(rr,new):
     rev.reverse()
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
 
+def expand_ipv6(rr,new):
+    rev = []
+    comprr = IPy.IP(rr).strCompressed()
+    exprr = IPy.IP(rr).strFullsize()
+    new.append(comprr + ";PTR")
+    parts = re.split(':', exprr)
+    for s in parts:
+        part = re.findall('[\d\w]', s)
+        part.reverse()
+        rev.append('.'.join(part))
+    rev.reverse()
+    addr = '.'.join(rev)
+    new.append(addr + ".origin6.asn.cymru.com;TXT")
+
 def expand_as(rr,new):
     new.append(rr.upper() + ".asn.cymru.com;TXT")
 
 def expand_name(rr,new):
     new.append(rr + ";A")
+    new.append(rr + ";AAAA")
     new.append(rr + ";MX")
     new.append(rr + ";SOA")
+
+def expand_srv(rr,new):
+    new.append("_xmpp-client._tcp." + rr + ";SRV")
+    new.append("_xmpp-server._tcp." + rr + ";SRV")
+    new.append("_jabber._tcp." + rr + ";SRV")
+    new.append("_sips._tcp." + rr + ";SRV")
+    new.append("_sip._tcp." + rr + ";SRV")
+    new.append("_sip._udp." + rr + ";SRV")
+    new.append("_stuns._tcp." + rr + ";SRV")
+    new.append("_stun._tcp." + rr + ";SRV")
+    new.append("_stun._udp." + rr + ";SRV")
 
 def resolve_requests(expanded,mresolve):
     mr = Popen(mresolve, shell=True, stdin=subprocess.PIPE, 
@@ -50,6 +87,7 @@ def resolve_requests(expanded,mresolve):
 def generate_requests(resolved,new):
     expanded = []
     rr_type = re.compile(';TYPE;')
+    ipv6_re = re.compile(':')
     for triplet in new.split('\n'):
         if triplet:
             subj, pred, obj = triplet.split(';')
@@ -58,34 +96,43 @@ def generate_requests(resolved,new):
         if rr_type.search(triplet):
             if triplet not in resolved:
                 try:
-                    socket.inet_aton(subj)
+                    socket.inet_pton(socket.AF_INET, subj)
                 except socket.error:
-                    if dns_re.search(subj):
-                        expand_name(subj,expanded)
-                    elif as_re.search(subj):
-                        expand_as(subj,expanded)
+                    try:
+                        socket.inet_pton(socket.AF_INET6, subj)
+                    except socket.error:
+                        if dns_re.search(subj):
+                            expand_name(subj,expanded)
+                        elif as_re.search(subj):
+                            expand_as(subj,expanded)
                     else:
-                        pass
+                        expand_ipv6(subj,expanded)
                 else:
                     expand_ipv4(subj,expanded)
         resolved.add(triplet)
     return expanded, resolved
 
-def seed_initial(new): 
+def seed_initial(new,srv): 
     expanded = []
     resolved = set([])
     for rr in new:
         try:
-            socket.inet_aton(rr)
+            socket.inet_pton(socket.AF_INET, rr)
         except socket.error:
-            if dns_re.search(rr):
-                resolved.add(rr + ";TYPE;NAME")
-                expand_name(rr,expanded)
-            elif as_re.search(rr):
-                resolved.add(rr.upper() + ";TYPE;AS")
-                expand_as(rr,expanded)
+            try:
+                socket.inet_pton(socket.AF_INET6, rr)
+            except socket.error:
+                if dns_re.search(rr):
+                    resolved.add(rr + ";TYPE;NAME")
+                    expand_name(rr,expanded)
+                    if srv:
+                        expand_srv(rr,expanded)
+                elif as_re.search(rr):
+                    resolved.add(rr.upper() + ";TYPE;AS")
+                    expand_as(rr,expanded)
             else:
-                pass
+                resolved.add(rr + ";TYPE;IPv6")
+                expand_ipv6(rr,expanded)
         else:
             resolved.add(rr + ";TYPE;IPv4")
             expand_ipv4(rr,expanded)
@@ -102,27 +149,29 @@ def main():
     parser.add_option("-m", "--mresolve-path",
         dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
         help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
         help="Perform queries recursively." )
+    parser.add_option("-S", "--SRV",
+        action="store_true", dest="srv", default=False,
+        help="Perform SRV queries on names in the initial data set (xmpp,sip)." )
     parser.set_usage("%prog [options]")
     types = set(("NAME", "IPv4", "AS"))
     metas = Metas()
     new = []
     ops = {}
     sect = "multi-resolver"
-    ops = parseOptions(parser, sect, search=True, template=True, category=True)
+    ops = parseOptions(parser, sect, search=True)
     url=ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     mresolvepath=ops[sect]["mresolvepath"]
-    template = ops[sect]["template"]
-    if template is None:
-        template = "IdentityTemplate"
-    category = ops[sect]["category"]
-    if category is None:
-        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"]
     search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
+    srv = ops[sect]["srv"]
     while True:
         try:
             collab = CLIWiki(**ops['creds'])
@@ -156,7 +205,7 @@ def main():
         sys.exit()
     if verbose:
         print "Expanding initial requests."
-    expanded,resolved = seed_initial(new)
+    expanded,resolved = seed_initial(new,srv)
     if recurse:
         if verbose:
             print "Resolving requests recursively."
@@ -173,16 +222,14 @@ def main():
             resolved.add(triplet)
     if verbose:
         print "Shredding resolved RDF triplets."
-    metas.update(shred_triplets(resolved, category))
+    metas.update(shred_triplets(resolved))
     if verbose:
         print "Importing resolved identities to collab." 
-    failed = importMetas(collab, metas, template, verbose, True)
-    if failed:
-        for page in failed:
-            if verbose:
-                print "ERROR uploading:", page, repr(metas[page])
-            else:
-                print "ERROR uploading:", page
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = MR_KEYS
+    collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
     try:

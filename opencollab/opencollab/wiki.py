@@ -8,7 +8,6 @@ import xmlrpclib
 import urllib
 import httplib
 import base64
-import re
 from encodings import idna
 
 class WikiFailure(Exception): pass
@@ -28,8 +27,6 @@ class WikiFault(WikiFailure):
         self.fault = fault
 
 class Wiki(object):
-    WHOAMI_FORMAT = re.compile("^You are .*\. valid=(.+?)[\,\.]$", re.I)
-
     def __init__(self, url):
         scheme, host, path, _, _, _ = urlparse.urlparse(url)
         if isinstance(host, unicode):
@@ -57,24 +54,12 @@ class Wiki(object):
         self.token = token, username, password
     
     def _authenticate(self, username, password):
-        self.headers.pop("Authorization", None)
+        auth = base64.b64encode(username + ":" + password)
+        self.headers["Authorization"] = "Basic " + auth
         self.token = None
 
         try:
-            try:
-                whoami = self._request("WhoAmI")
-            except HttpAuthenticationFailed:
-                auth = base64.b64encode(username + ":" + password)
-                self.headers["Authorization"] = "Basic " + auth
-                whoami = self._request("WhoAmI")
-                
-            match = self.WHOAMI_FORMAT.match(whoami)
-            if match is None:
-                raise WikiFailure("WhoAmI action returned invalid data")
-
-            valid = match.group(1)
-            if valid == "0":
-                self._wiki_auth(username, password)
+            self._wiki_auth(username, password)
         except:
             self.headers.pop("Authorization", None)
             self.token = None
@@ -99,7 +84,7 @@ class Wiki(object):
         auth, other = result[0]
         if (not isinstance(auth, (dict, list)) or 
             not isinstance(other, (dict, list))):
-            WikiFailure("unexpected type in multicall result")            
+            raise WikiFailure("unexpected type in multicall result")
 
         if isinstance(auth, dict):
             code = auth.get("faultCode", None)
@@ -151,12 +136,12 @@ class Wiki(object):
         return True    
 
 import re
-import md5
 import sys
 import random
 import getpass
 
 from meta import Meta 
+from util.file import md5obj
 
 class GraphingWiki(Wiki):
     DEFAULT_CHUNK = 256 * 1024
@@ -203,7 +188,7 @@ class GraphingWiki(Wiki):
             if not data:
                 break
 
-            digest = md5.new(data).hexdigest()
+            digest = md5obj(data).hexdigest()
             digests.append(digest)
 
             length = len(data)
@@ -239,7 +224,7 @@ class GraphingWiki(Wiki):
     def getAttachmentChunked(self, page, filename, chunkSize=DEFAULT_CHUNK):
         digest, size = self.getAttachmentInfo(page, filename)
 
-        dataDigest = md5.new()
+        dataDigest = md5obj()
         current = 0
 
         while True:
@@ -303,6 +288,25 @@ class GraphingWiki(Wiki):
         return self.request("SetMeta", page, keys, metaMode,
                             createPageOnDemand, categoryMode, categories,
                             template)
+
+    def incSetMeta(self, cleared, discarded, added):
+        clearedDict = dict()
+        for page, keys in cleared.iteritems():
+            clearedDict[page] = list(keys)
+
+        discardedDict = dict()
+        for page, meta in discarded.iteritems():
+            discardedDict[page] = dict()
+            for key, values in meta.iteritems():
+                discardedDict[page][key] = list(values)
+
+        addedDict = dict()
+        for page, meta in added.iteritems():
+            addedDict[page] = dict()
+            for key, values in meta.iteritems():
+                addedDict[page][key] = list(values)
+
+        return self.request("IncSetMeta", clearedDict, discardedDict, addedDict)
 
 def redirected(func, *args, **keys):
     oldStdout = sys.stdout

@@ -126,15 +126,12 @@ var sortableTable = new Class({
 				};
 				//
 				el.findData = function(elem){
-				/*	
 					var child = elem.getFirst();
 					if(child){
 						return el.findData(child);
 					}else{
 						return elem.innerHTML.trim();
 					}
-					*/
-						return elem.innerHTML.trim();
 				};
 				//
 				

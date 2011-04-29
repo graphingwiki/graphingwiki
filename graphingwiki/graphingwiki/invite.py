@@ -40,7 +40,7 @@ def generate_password(length=8):
 class GroupException(Exception):
     pass
 
-def add_user_to_group(request, myuser, group, create_link=True):
+def add_user_to_group(request, myuser, group, create_link=True, comment=""):
     if not wikiutil.isGroupPage(request, group):
         raise GroupException("Page '%s' is not a group page." % group)
     if not (request.user.may.read(group) and request.user.may.write(group)):
@@ -70,7 +70,11 @@ def add_user_to_group(request, myuser, group, create_link=True):
     head.insert(insertion_point, template % myuser.name)
 
     text = "\n".join(head + tail)
-    page.saveText(text, 0)
+
+    if comment:
+        page.saveText(text, 0, comment=comment)
+    else:
+        page.saveText(text, 0)
 
 def invite_user_to_wiki(request, page, email, new_template, old_template, **custom_vars):
     check_inviting_enabled(request)
@@ -128,56 +132,59 @@ def _invite(request, page_url, email, new_template, old_template, **custom_vars)
     return new_user
 
 def replace_variables(text, variables):
-    text = text.encode("utf-8")
     for name, variable in variables.iteritems():
-        variable = unicode(variable).encode("utf-8")
-        name = unicode(name).encode("utf-8")
         text = re.sub("@%s@" % name, variable, text)
-    text = text.decode("utf-8")
     return text
 
-def encode_address_field(message, key, charset):
-    all_values = message.get_all(key, list())
-    all_values = [encodeAddress(value, charset) for value in all_values]
-
+def encode_address_field(message, key, encoding, charset):
+    values = message.get_all(key, list())
     del message[key]
 
-    for value in all_values:
-        message[key] = value
+    for value in values:
+        # encodeAddress expects unicode objects
+        if not isinstance(value, unicode):
+            value = value.decode(encoding)
+        message[key] = encodeAddress(value, charset)
 
-def sendmail(request, template, variables, recipient_filter=lambda x: True):
+def prepare_message(template, variables, encoding="utf-8"):
+    r"""Return a prepared email.Message object.
+    
+    >>> template = u"Subject: @SUBJECT@\nFrom: @FROM@\nTo: @TO@\nBCC: @FROM@\n\nHello, @GREETED@!"
+    >>> variables = dict(SUBJECT="Test", FROM="from@example.com", TO="to@example.com", GREETED="World")
+    >>> message = prepare_message(template, variables)
+    >>> message["SUBJECT"] == variables["SUBJECT"]
+    True
+    >>> message["TO"] == variables["TO"]
+    True
+    >>> message["FROM"] == message["BCC"] == variables["FROM"]
+    True
+    >>> message.get_payload()
+    'Hello, World!'
+    """
+
     # Lifted and varied from Moin 1.6 code.
 
-    import os, smtplib, socket
     from email import message_from_string
-    from email.Message import Message
     from email.Charset import Charset, QP
-    from email.Utils import formatdate, make_msgid, getaddresses
+    from email.Utils import formatdate, make_msgid
 
     DEFAULT_HEADERS = dict()
     DEFAULT_HEADERS["To"] = "@INVITEDEMAIL@"
     DEFAULT_HEADERS["From"] = "@INVITEREMAIL@"
 
-    ENCODING = "utf-8"
-
     template = u"\r\n".join(template.splitlines())
     template = replace_variables(template, variables)
-    template = template.encode(ENCODING)
+    template = template.encode(encoding)
     message = message_from_string(template)
 
     for key, value in DEFAULT_HEADERS.iteritems():
-        # Headers must be unicode for encode_address_field. Must both
-        # delete and set, see __setitem__ in 7.1.1 of the Python
-        # library docs
-        if key in message:
-            msgval = message[key]
-            del message[key]
-            message[key] = msgval.decode('utf-8')
-            continue
+        if key not in message:
+            value = replace_variables(value, variables)
+            if isinstance(value, unicode):
+                value = value.encode(encoding)
+            message[key] = value
 
-        message[key] = replace_variables(value, variables)
-
-    charset = Charset(ENCODING)
+    charset = Charset(encoding)
     charset.header_encoding = QP
     charset.body_encoding = QP
     message.set_charset(charset)
@@ -190,12 +197,22 @@ def sendmail(request, template, variables, recipient_filter=lambda x: True):
     #     payload = charset.body_encode(payload)
     # message.set_payload(payload)
 
-    encode_address_field(message, "From", charset)
-    encode_address_field(message, "To", charset)
-    encode_address_field(message, "CC", charset)
-    encode_address_field(message, "BCC", charset)
+    encode_address_field(message, "From", encoding, charset)
+    encode_address_field(message, "To", encoding, charset)
+    encode_address_field(message, "CC", encoding, charset)
+    encode_address_field(message, "BCC", encoding, charset)
     message['Date'] = formatdate()
     message['Message-ID'] = make_msgid()
+
+    return message
+
+def sendmail(request, template, variables, recipient_filter=lambda x: True):
+    # Lifted and varied from Moin 1.6 code.
+
+    import os, smtplib, socket
+    from email.Utils import getaddresses
+
+    message = prepare_message(template, variables)
 
     ## FIXME: Disabled sendmail support for now.
     # if request.cfg.mail_sendmail:
@@ -245,3 +262,7 @@ def sendmail(request, template, variables, recipient_filter=lambda x: True):
         tmp = "Connection to mailserver '%(server)s' failed: %(reason)s."
         vars = dict(server=request.cfg.mail_smarthost, reason=str(e))
         raise InviteException(tmp % vars)
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

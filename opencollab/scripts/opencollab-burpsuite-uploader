@@ -1,0 +1,230 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+import re, os, sys, string, optparse, socket
+import xml.dom.minidom
+from xml.dom.minidom import Node, ProcessingInstruction
+from opencollab.meta import Meta, Metas
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
+from opencollab.util.file import hashFile, uploadFile
+
+BURP_SEVERITIES = ['High', 'Medium', 'Low', 'Information']
+
+BURP_KEYS = ['Burp %s' % (x) for x in BURP_SEVERITIES]
+
+BURP_INPUT_KEYS = ["host", "name", "path", "location", "confidence"]
+
+BURP_REPORT_KEYS = ['issueBackground', 'issueDetail', 
+                    'remediationBackground', 'remediationDetail', 'request']
+
+def getText(nodelist, strip=True):
+    rc = ""
+    if not nodelist:
+        return rc
+    for node in nodelist[0].childNodes:
+        if node.nodeType in [node.TEXT_NODE, node.CDATA_SECTION_NODE]:
+            rc = rc + node.data
+    if strip:
+        return rc.replace('\n', ' ').strip()
+    return rc.strip()
+
+def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+
+    stylesheet_nodes = []
+
+    for node in doc.childNodes:
+        if not isinstance(node, ProcessingInstruction):
+            continue
+
+        if node.nodeName != 'xml-stylesheet':
+            continue
+
+        stylesheet_nodes.append(node)
+
+    if len(stylesheet_nodes) != 1:
+        return False
+
+    node = stylesheet_nodes[0]
+
+    data = re.findall("[\t ]*([^=]+=[\'\"][^\'\"]+[\'\"])[\t ]*", node.data)
+    attributes = dict([item.split("=") for item in data])
+
+    stylesheet = attributes["href"].strip('"')
+
+    if not os.path.exists(stylesheet):
+        return False
+
+    stylesheet_data = open(stylesheet).read()
+
+    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=burp.xsl"'
+    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
+
+    xml_data = doc.toxml()
+
+    collab.putAttachment(xml_page, fname, xml_data, True)
+    collab.putAttachment(xml_page, "burp.xsl", stylesheet_data, True)
+    return True
+
+def parse_xml(metas, attach, file, burprun_page):
+    """
+    xml.dom.minidom usage from
+    http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
+    """
+    try:
+        doc = xml.dom.minidom.parse(file)
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e) 
+        sys.exit(error)
+    issues = doc.getElementsByTagName('issue')
+    for issue in issues:
+        hosts = issue.getElementsByTagName('host')
+        hostIp = ''
+        for host in hosts:
+            hostIp = host.getAttribute('ip')
+        if not hostIp:
+            continue
+        issue_val = []
+        severity = getText(issue.getElementsByTagName('severity'))
+        serial = getText(issue.getElementsByTagName('serialNumber'))
+        if not severity or not serial:
+            continue
+        for key in BURP_INPUT_KEYS:
+            key_val = getText(issue.getElementsByTagName(key))
+            if key_val.strip():
+                issue_val.append("%s: %s" % (key.capitalize(), key_val))
+
+        attach_name = "burp-%s.txt" % (serial)
+        infoData = list()
+        for key in BURP_REPORT_KEYS:
+            key_val = getText(issue.getElementsByTagName(key))
+            if key_val.strip():
+                key_val = key_val.replace('<br>', '\n')
+                key_val = re.sub('<.+?>', '', key_val)
+                key_val = key_val.encode('utf-8')
+                infoData.append("%s:\n%s" % (key.capitalize(), key_val))
+        attach.setdefault(hostIp, dict())[attach_name] = '\n\n'.join(infoData)
+
+        issue_val.append('([[attachment:%s]])' % (attach_name))
+        metas[hostIp]['Burp %s' % 
+                      (severity.capitalize())].add(', '.join(issue_val))
+        
+    burprun = doc.getElementsByTagName('issue') 
+    metas[burprun_page]['Burp Version'].add(burprun[0].getAttribute('burpVersion'))
+    metas[burprun_page]['Run Started'].add('<<DateTime(%s)>>' % burprun[0].getAttribute('exportTime'))
+    return metas, attach
+
+def main():
+    parser = optparse.OptionParser()
+    parser.add_option("-A", "--audit", dest="audit", default= None,
+        metavar="AUDIT", help=("AUDIT name to tag identities with."))
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
+    parser.set_usage("%prog [options] BURP-XML-FILES")
+
+    failed = []
+    ops = {}
+    sect = "burp-uploader"
+    burp_files=[]
+    ops = parseOptions(parser, sect, template=True, category=True)
+    url = ops["creds"]["url"]
+    progress = ops[sect]["progress"]
+    verbose = ops[sect]["verbose"]
+    template = ops[sect]["template"]
+    audit = ops[sect]["audit"]
+    if template is None:
+        template = "IdentityTemplate"
+    category = ops[sect]["category"]
+    if category is None:
+        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"] 
+    args = ops[sect]["args"]
+    if len(args) < 1:
+        parser.error("At least one XML input file path needs to be specified.")
+
+    while True:
+        try:
+            collab = CLIWiki(**ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
+        print "NOTE: Processing input files."
+
+    for arg in args:
+        burp_files.append(arg)
+
+    attach = dict()
+    metas = Metas()
+    for file in burp_files:
+        xml_page = hashFile(file)
+        fname = os.path.basename(file)
+        if verbose:
+            print "NOTE: Parsing", file
+
+        metas, attach = parse_xml(metas, attach, file, xml_page)
+        metas[xml_page]['TYPE'].add('BURP Run')
+        metas[xml_page]['gwikicategory'] = ['CategoryBurp', 'CategoryScan']
+        metas[xml_page]['gwikitemplate'] = ['BurpTemplate']
+
+        if category is not None:
+            for page in metas:
+                if not 'gwikicategory' in metas[page]:
+                    metas[page]["gwikicategory"].add(category)
+        if template is not None:
+            for page in metas:
+                if not 'gwikitemplate' in metas[page]:
+                    metas[page]["gwikitemplate"].add(template)
+
+        if audit is not None:
+            for page in metas:
+                metas[page]["Audit"].add(audit)
+
+        if verbose:
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "NOTE: Failed to patch xml file, uploading orginal instead"
+            if verbose:
+                print "NOTE: Uploading", file, "to", xml_page
+            try:
+                status = uploadFile(collab, xml_page, file, fname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+        for page in attach:
+            for fname in attach[page]:
+                if verbose:
+                    print "NOTE: Uploading", fname, "to", page
+                uploadFile(collab, page, '', fname, progress, 
+                           attach[page][fname])
+
+    if verbose:
+        print "NOTE: Importing metas to", url
+    
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = BURP_KEYS
+
+    collab.incSetMeta(cleared, Metas(), metas)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+

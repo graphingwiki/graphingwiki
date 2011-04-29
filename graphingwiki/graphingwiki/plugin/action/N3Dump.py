@@ -142,7 +142,7 @@ def wikins_property(selfname, property, page):
     if page:
         return selfname + property
     else:
-        return selfname + 'Property' + property
+        return selfname + '%sProperty' % (property)
 
 def n3dump(request, pages):
     # Default namespace definitons, needed?

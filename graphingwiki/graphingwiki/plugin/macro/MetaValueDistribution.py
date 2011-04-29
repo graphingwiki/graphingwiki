@@ -1,31 +1,11 @@
 # -*- coding: utf-8 -*-"
 """
     MetaValueDistribution macro plugin to MoinMoin/Graphingwiki
-     - Shows distribution of meta values for desired category & key
+     - Shows distribution of meta values for desired metatable args
 
-    @copyright: 2008 by Juhani Eronen <exec@iki.fi> and
-                        Mika Seppänen
+    @copyright: 2008-2010 by Juhani Eronen <exec@iki.fi> and
+                          Mika Seppänen, Marko Laakso
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
-
-    Permission is hereby granted, free of charge, to any person
-    obtaining a copy of this software and associated documentation
-    files (the "Software"), to deal in the Software without
-    restriction, including without limitation the rights to use, copy,
-    modify, merge, publish, distribute, sublicense, and/or sell copies
-    of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be
-    included in all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-    DEALINGS IN THE SOFTWARE.
 
 """
 import StringIO
@@ -136,7 +116,7 @@ def show_error(macro, args, error):
                   u'<div class="metatable">' +
                   macro.formatter.table(1))
     request.write(macro.formatter.table_row(1))
-    t_cell(macro, "%s: MetaValueDistribution(%s)" % (error, ",".join(args)))
+    t_cell(macro, "%s: MetaValueDistribution(%s)" % (error, args))
     request.write(macro.formatter.table_row(0))
     request.write(macro.formatter.table(0) +
                   u'</div>')
@@ -147,18 +127,19 @@ def execute(macro, args):
     if not args:
         return u''
 
-    args = args.split(",")
-    args = map(lambda x: x.strip(), args)
+    args = args.strip().split(',')
 
-    if len(args) not in [2,3]:
-        show_error(macro, args, "Wrong nunber of arguments")
-        return ""
-
-    query = "%s,||%s||" % tuple(args[:2])
+    sort_order = 'value'
+    if args[-1].strip().lower() == 'value':
+         args = args[:-1]
+    elif args[-1].strip().lower() == 'count':
+        sort_order = 'count'
+        args = args[:-1]
+    args = ','.join(args)
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, _ = \
-        metatable_parseargs(request, query, get_all_keys=True)
+        metatable_parseargs(request, args, get_all_keys=True)
 
     if not pagelist:
         show_error(macro, args, "No content")
@@ -169,11 +150,6 @@ def execute(macro, args):
         return ""
 
     key = metakeys[0]
-
-    if len(args) == 3:
-        sort_order = args[2].strip().lower()
-    else:
-        sort_order = "value"
 
     if sort_order not in ["value", "count"]:
         show_error(macro, args, "Bad sort order (should be either '''value''' or '''count''')")

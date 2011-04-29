@@ -11,6 +11,8 @@ var courseEditor = new Class({
 	tasks: {},
 	flow: {},
 	errors: [],
+	oldData: "",
+	currentData: "",
 	options: {
 		firstNode: "first",
 		errors: false,
@@ -97,10 +99,10 @@ var courseEditor = new Class({
 		taskVerticalDistance : 25
 	},
 	initialize : function(el, options){
-		if (!el) return false;
+        if (!el) return false;
 		this.container = $(el);
 		this.container.setStyles(this.options.containerStyles);
-		
+
 		this.flow = new Hash();
 		this.flow.set(this.options.firstNode, []);
 		this.tasks = {
@@ -110,7 +112,7 @@ var courseEditor = new Class({
 			"free":{},
 			"endPoints" : []
 		};
-		
+
 		this.setOptions(options);
 		this.coursename = window.location.pathname;
 
@@ -121,20 +123,24 @@ var courseEditor = new Class({
 					var vis = this.container.getStyle('visibility');
 					this.container.setStyle('visibility', 'hidden');
 					this.container.setStyle('display', '');
-					
+
 					this.restoreCurrent();
-					
+
 					this.container.setStyle('visibility', vis);
 					this.container.setStyle('display', 'none');
-					
+
 				}
 				else {
 					this.restoreCurrent();
 				}
 			}).delay(100, this);
+			//Gets current task data and stores it to variable for change tracking
+            this.oldData = this.getCurrentData(this.tasks.selected);
 		};
 		this.getTasks(callback.bind(this));
 
+		//Start change tracking
+        this.trackChanges(this.container, this);
 	},
 	restoreCurrent : function(){
 		var sel = this.tasks.selected;
@@ -242,6 +248,7 @@ var courseEditor = new Class({
 		this.container.adopt(this.tasklistContainer, controllers, this.graphContainer, clear);
 		
 		this.drawInfo();
+
 	},
 	taskListAdd : function(taskname){
 		var item = new Element('li');
@@ -1045,7 +1052,7 @@ var courseEditor = new Class({
 			'type' : 'hidden',
 			'name' : 'action',
 			'value': 'editCourseFlow'
-		}));	
+		}));
 		sel = this.flow;
 		var tmp = [this.options.firstNode];
 		while (tmp.length > 0) {
@@ -1063,20 +1070,70 @@ var courseEditor = new Class({
 						'type': 'hidden',
 						'name': 'req_'+ child,
 						'value': to
-					}));		
+					}));
 				}
 			}, this);
 		}
-		this.container.grab(form);
-		form.submit();
+		   this.container.grab(form);
+		   form.submit();
+	},
+
+	/* Gets important data from this.tasks and generates 
+	 * an unique string from the current situation in editor
+	 */
+	getCurrentData: function(selected){
+	   var data = this.tasks.data;
+	   var endpoints = this.tasks.endPoints;
+	   var result = "#";
+
+	   data.each(function(task, key){
+          result = result + key;
+		  if(task.required){
+	         task.required.each(function(req){
+                result = result + req;
+		       });
+           }
+		   });
+		result = result + "#";
+
+		if(selected){
+		   var keys = selected.getKeys().sort();
+		   var values = [];
+		   keys.each(function(key){
+		      result = result + key;
+			  if(selected.get(key)){
+                 selected.get(key).each(function(connection){
+                    result = result + connection;
+                 });
+			  }
+           });
+		   }
+
+        return result;
+
 	},
 	error: function(msg){
 		if(this.options.errors){
 			msg = msg + "\n tasks.data keys: "+ this.tasks.data.getKeys() + "  values: " + this.tasks.data.getValues() 
 			+ ") \nflow keys: "+ this.flow.getKeys() +	" values: " + this.flow.getValues();
-			
+
 			this.errors.include(msg);
 			console.debug(msg);
 		}
-	}
+	},
+
+    trackChanges: function(container, editor){
+       this.container.addEvent('close', function(){
+	           editor.currentData = editor.getCurrentData(editor.flow);
+			   console.debug(editor.tasks);
+			   console.debug(editor.flow);
+			   console.debug(editor.oldData);
+			   console.debug(editor.currentData);
+               if(editor.oldData != editor.currentData){
+                   container.addClass('edited');
+               }
+            }
+       );
+
+    }
 });

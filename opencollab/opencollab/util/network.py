@@ -43,6 +43,9 @@ mr_attributes = set(["SOA-REFRESH",
 "REGISTRY",
 "CC",
 "AS-NAME",
+"PORT",
+"WEIGHT",
+"PRIORITY",
 "ISP"
 ])
 

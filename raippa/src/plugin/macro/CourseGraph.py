@@ -271,6 +271,23 @@ def draw_teacher_ui(request, course):
  <script type="text/javascript" src="%s/raippajs/stats.js"></script>
  <script type="text/javascript" src="%s/raippajs/course_edit.js"></script>
 <script type="text/javascript">
+
+var courseModalizer = new Class({
+        Extends: modalizer,
+        click : function() {
+            this.els.fireEvent('close');
+            var changed = false;
+            this.els.each(function(el){
+               if(el.hasClass('edited')) changed=true;
+            });
+            if (!changed || confirm('Discard changes and close course editor?')) {
+               this.close();
+            }
+
+        }
+
+});
+
 function editor(view){
     var edit = new Element('div');
     var overall = $('statsBox').clone().removeClass('hidden'); 
@@ -278,7 +295,7 @@ function editor(view){
     var stats = new CourseStats(statsdiv,{
             'overallStats' : overall
         });
-    var modal = new modalizer([edit, statsdiv], { 
+    var modal = new courseModalizer([edit, statsdiv], { 
         tabLabels : ["edit", "stats"],
         defTab : view
         });

@@ -61,7 +61,11 @@ def inc_get_metas(request, args, handle=None):
             values = set(metas[key])
             current[page][key] = values
 
-    path = os.path.join(request.cfg.data_dir, "getmetas.shelve")
+    cachedir = os.path.join(request.cfg.cache_dir, "getmetas")
+    if not os.path.exists(cachedir):
+        os.makedirs(cachedir)
+
+    path = os.path.join(cachedir, request.cfg.siteid + ".shelve")
     db = shelve.open(path)
 
     incremental = True

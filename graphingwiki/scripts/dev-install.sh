@@ -10,7 +10,7 @@
 
 
 moinsrc=$PWD/moin-1.8.2
-gwsrc=$PWD/gw-svn/trunk/graphingwiki
+gwsrc=$PWD/graphingwiki-trunk/graphingwiki
 #gwsrc=$PWD/gw-svn
 gwdata=$PWD/gw-data
 gwinstall=$PWD/gw-install

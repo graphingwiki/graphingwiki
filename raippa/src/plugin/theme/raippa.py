@@ -188,6 +188,92 @@ class Theme(ThemeBase):
             ]
         return u'\n'.join(html)
 
+    def pageinfo(self, page):
+        """ Return html fragment with page meta data
+
+        Since page information uses translated text, it uses the ui
+        language and direction. It looks strange sometimes, but
+        translated text using page direction looks worse.
+
+        @param page: current page
+        @rtype: unicode
+        @return: page last edit information
+        """
+        _ = self.request.getText
+        html = ''
+        if self.shouldShowPageinfo(page):
+            info = page.lastEditInfo()
+            if info:
+#                if info['editor']:
+#                    info = _("last edited %(time)s by %(editor)s") % info
+#                else:
+                info = _("last modified %(time)s") % info
+                pagename = page.page_name
+                if self.request.cfg.show_interwiki:
+                    pagename = "%s: %s" % (self.request.cfg.interwikiname, pagename)
+                info = "%s  (%s)" % (wikiutil.escape(pagename), info)
+                html = '<p id="pageinfo" class="info"%(lang)s>%(info)s</p>\n' % {
+                    'lang': self.ui_lang_attr(),
+                    'info': info
+                    }
+        return html
+
+    def recentchanges_entry(self, d):
+        """
+        Assemble a single recentchanges entry (table row)
+
+        @param d: parameter dictionary
+        @rtype: string
+        @return: recentchanges entry html
+        """
+        _ = self.request.getText
+        html = []
+        html.append('<tr>\n')
+
+        html.append('<td class="rcicon1">%(icon_html)s</td>\n' % d)
+
+        html.append('<td class="rcpagelink">%(pagelink_html)s</td>\n' % d)
+
+        html.append('<td class="rctime">')
+        if d['time_html']:
+            html.append("%(time_html)s" % d)
+        html.append('</td>\n')
+
+        html.append('<td class="rcicon2">%(info_html)s</td>\n' % d)
+
+        html.append('<td class="rceditor">')
+        if d['editors']:
+            for span in d['editors']:
+                try:
+                    start = span.index('title="')+7
+                    end = span.index('@')+2
+                    span = span[:start] + span[end:]
+
+                    start = span.index('title="', end)+7
+                    end = span.index('@', end)+2
+                    span = span[:start] + span[end:]
+                    html.append(span+'<br>')
+                except ValueError:
+                    html.append(span+'<br>')
+#            html.append('<br>'.join(d['editors']))
+        html.append('</td>\n')
+
+        html.append('<td class="rccomment">')
+        if d['comments']:
+            if d['changecount'] > 1:
+                notfirst = 0
+                for comment in d['comments']:
+                    html.append('%s<tt>#%02d</tt>&nbsp;%s' % (
+                        notfirst and '<br>' or '', comment[0], comment[1]))
+                    notfirst = 1
+            else:
+                comment = d['comments'][0]
+                html.append('%s' % comment[1])
+        html.append('</td>\n')
+
+        html.append('</tr>\n')
+
+        return ''.join(html)
         
 def execute(request):
     """

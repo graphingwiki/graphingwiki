@@ -10,6 +10,8 @@ NEW_TEMPLATE_VARIABLE = "invite_new_template"
 NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"
 OLD_TEMPLATE_VARIABLE = "invite_old_template"
 OLD_TEMPLATE_DEFAULT = "InviteOldTemplate"
+GROUP_DEFAULT_VARIABLE = "invite_group_default"
+GROUP_DEFAULT_DEFAULT = ""
 
 class Invite(ActionBase):
     def __init__(self, pagename, request):
@@ -53,18 +55,24 @@ class Invite(ActionBase):
         try:
             new_template = self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
             old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
-            
+
             if wikiutil.isGroupPage(self.request, pagename):
-                myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template) 
+                myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
+                mygrouppage = pagename
+            else:
+                myuser = invite_user_to_page(self.request, pagename, email, new_template, old_template)
+                mygrouppage = getattr(self.request.cfg, GROUP_DEFAULT_VARIABLE, GROUP_DEFAULT_DEFAULT)
+
+            if mygrouppage:
+                mycomment = "invited %s" % (email)
                 try:
-                    add_user_to_group(self.request, myuser, pagename)
+                    add_user_to_group(self.request, myuser, mygrouppage, comment=mycomment)
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
-                    return True, tmp % (email, pagename, unicode(ge))
+                    return True, tmp % (email, mygrouppage, unicode(ge))
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
-                return True, tmp % (email, pagename)           
+                return True, tmp % (email, mygrouppage)           
 
-            invite_user_to_page(self.request, pagename, email, new_template, old_template)
         except InviteException, ie:
             return False, unicode(ie)
         return True, "User invitation mail sent to address '%s'." % email

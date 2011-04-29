@@ -32,6 +32,9 @@ def execute(pagename, request):
                 answers.append((filename, answer[1].value))
     elif answertype == "text":
         answers = request.form.get('answer', list())
+    elif answertype == "longtext":
+        answers = request.form.get('answer', list())
+        answers[0] = unicode(answers[0]).replace("\r", "").replace("\n", " ").strip()
     else:
         answer_ids = request.form.get('answer', list())
         question_answers = question.answers()

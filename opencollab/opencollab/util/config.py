@@ -47,7 +47,7 @@ def parseOptions(specparser, inisection, config=True, category=False, search=Fal
         type="string", dest="username", default=None,
         metavar="USERNAME", help="USERNAME to use in collab auth.")
     genparser.add_option("-v", "--verbose", action="store_true", 
-        dest="verbose", default=False, help="Enable verbose output." )
+        dest="verbose", help="Enable verbose output." )
     clivalues, args = genparser.parse_args()
     # Parse arguments
     if args:

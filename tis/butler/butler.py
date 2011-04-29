@@ -16,13 +16,13 @@ At the moment only 1 TIS / VIC pair is supported
 import graphingwiki.editing
 import os, signal, time, md5, string, re
 import sys, xmlrpclib, urlparse, getpass
-# from sets import Set as set
+# the following requirements are from graphingwiki opensource project. See also editing.py
 from graphingwiki.editing import xmlrpc_attach
 from graphingwiki.editing import xmlrpc_conninit, xmlrpc_error, xmlrpc_connect
-
-
 # Jussin xmlrpc attachment
 import AttachFile as xmlAttacher
+
+# Functions
 
 # Give list to makeDictCountInstance. It counts instances and makes a dict of it. Returns the dict
 # ( 'foo', 'foo', 'bar', 'foo'} --> { 'foo': 3, 'bar': 1 }
@@ -37,6 +37,7 @@ def makeDictCountInstance( listWeHandle ):
 
 # Make a wikiformat table from a dict
 #
+# parsing function
 def makeWikiTableFromDict( dictWeUse, tableName, keyName, valueName ):
     localWikiPageContent = str()
     localWikiPageContent += "\n ||||<tablewidth=\"90%\" style=\"text-align: center\">'''"+ tableName +"'''||"
@@ -52,7 +53,7 @@ def makeWikiTableFromDict( dictWeUse, tableName, keyName, valueName ):
 # 
 # returns True if common hash is found
 def checkHash( mwhash ):
-    md5archive = "./md5archive/live_md5archive.txt"
+    md5archive = "./md5archive/live_md5archive.txt" ## requires checking / redirection to smarter media
     #get MD5
     md5FileHandle = open( md5archive, 'r+a' )
     hashline = md5FileHandle.readline() #first line is commentline
@@ -108,7 +109,7 @@ def checkWikiPageExcistance( wikiPageList, wikiPageName ):
         #            Depends :: ["olut"]
     return wikiPageExists
 
-#
+#   Parse the results
 #
 #
 def handle_packet( header, content ):
@@ -207,19 +208,18 @@ print os.linesep +"* ** Malpractice ** *"
 debug = True #debug printouts
 live = True #it's either a live- or a testrun
 reboot = True # let's make a mid run reboot
-#wikiName = "https://www.clarifiednetworks.com/backstage/tools/ssfim/wiki/"
-wikiName = "http://pan0228.panoulu.net/"
-#wikiName = "https://portal.huttu.net/ssfim"
-#wikiName = "https://localhost:10015/ssfim" #ssh -g -L 10015:portal.huttu.net:443 gw13
-# Graphink wikiin tunnelointiratkaisu: gw13 -> its1
-# ssh -g -L 10014:dyn57:80 its1
+#wikiName = "https://www.clarifiednetworks.com/backstage/tools/ssfim/wiki/" #example
+wikiName = "INSERT YOUR WIKINAME HERE"
+
 if( debug ):
     print " - db: -Debug information will be printed."
 if( live ):
     check_frequency = 60 #Check once in minute
     loop = 1
     removeMatch = True
-    isopath = "/research/ouspg/public/vmware-images/malpractice/malpractice_receiver/x.iso"
+    ## path for your virtual image cd-file .iso (where the malware is inserted into the virtual images)
+    # isopath = "/research/ouspg/public/vmware-images/malpractice/malpractice_receiver/x.iso"
+    isopath = "PATH TO YOUR ISO-FILE HERE"
     ourDummy = 0
     malwareFolder = "./mwfolder"
     storageFolder = "./mw_cemetary"
@@ -227,13 +227,14 @@ else:
     print "Mode: TEST MODE "
     removeMatch = False
     loop = 1
-    isopath = "x.iso"
+    isopath = "x.iso" # local
     number_of_dummies = 1
     ourDummy = 0
     malwareFolder = "./mwfolder"
     check_frequency = 3
     storageFolder = "./mw_cemetary_test"
 
+## path to the internet simulating virtual image (tis) and victim image (vic)
 tis_path = "/research/ouspg/public/vmware-images/malpractice/malpractice_receiver/Ubuntu-7.04-server-i386.vmx"
 #vic_folder = "/research/ouspg/public/vmware-images/malpractice/victimTest3/"
 vic_folder = "/import/research/ouspg/public/vmware-images/malpractice/vic2/WinXPPro/"
@@ -242,10 +243,10 @@ vic_redofile = vic_folder + "*REDO*"
 vic_redo_graveyard = vic_folder + "redo_graveyard/"
 
 analyze_time = 2 #in minutes
-reboot = True
-keepOldPages = False
+reboot = True # want a reboot in your analysis?
+keepOldPages = False # No page overwrite?
 command_list_tis = [ "vmware-cmd", tis_path, "start" ]
-command_list_vic = [ "vmware-cmd", vic_path, "start" ] #path of the vic-image
+command_list_vic = [ "vmware-cmd", vic_path, "start" ]
 
 #INITS
 #start wiki connection (by: Cooz)
@@ -254,10 +255,6 @@ print wikiName
 scheme, netloc, path, _, _, _ = urlparse.urlparse( wikiName )
 username = raw_input("Username:")
 password = getpass.getpass("Password:")
-#netloc = "%s:%s@%s" % (username, password, netloc)
-#action = "action=xmlrpc2"
-#url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
-#logWiki = xmlrpclib.ServerProxy(url) ## duplikaatti seuraavan rivin kanssa
 srcWiki, _ = xmlrpc_conninit(wikiName, username, password)
 
 if( debug ):
@@ -269,7 +266,7 @@ while( loop ):
     if( live ):
         pass
     else:
-        #When testing, going through only one loop
+        #When testing, going through only once
         loop = 0
         
     directories = os.listdir( malwareFolder )
@@ -281,11 +278,6 @@ while( loop ):
     else:
         mw_sample = directories[0]
         keyRing = dict()
-        #        wikiPageContent = "## Malpractice automated logging.\n"
-        #        wikiPageContent += "= Malpractice automated wikilog =\n"
-        #        wikiPageContent += "\n CreationTime:: " + str( time.ctime() )
-
-        # timeparse yyyy-mm-dd-hh-mm-ss
         tmp_time = time.gmtime()
         timestr = str()
         for i in range(6):
@@ -297,7 +289,6 @@ while( loop ):
         
         keyRing['CreationTime'] = [ timestr ]
 
-        #        wikiPageContent += "\n MalwareName:: " + mw_sample
         malwareSample = malwareFolder + "/" +  mw_sample
         print "MW detected: " + mw_sample
         keyRing['MalwareName'] = [ str( mw_sample ) ]
@@ -316,21 +307,20 @@ while( loop ):
             break
         mwfile = mwhandle.read()
         mwhandle.close( )
-        #Da strings
+        #Read the strings from the file under analysis
         [strings_stdin, strings_stdout] = os.popen2( 'strings '+ malwareSample )
-        # time.sleep(1) # One Kludge to rule them all.
         strings = str( strings_stdout.read() )
         strings_stdin.close()
         os.wait()
         if( debug ): print " - db: -Strings checked."
-        strings +=  str( strings_stdout.read() ) #kludge N from dimention 0
+        strings +=  str( strings_stdout.read() )
         ## if( debug ): print strings
         strings_stdout.close()
 
         ##make attributes of strings
         keyRing['StringAttributes'] = findDllsFromStrings( strings )
 
-        print str( keyRing )
+        ##print str( keyRing )
         
         ## print "MWFILE: " + str( mwfile )
         # MD5 hash
@@ -341,10 +331,6 @@ while( loop ):
         hashMatchFound = checkHash( hash )
             
         if( hashMatchFound ):
-            # os.rename( malwareFolder + "/" + mwsample, storageFolder + "/" + mwsample )##testing commen
-            # Olisi hyvä lisätä wikiin maininta, että tätä maltsua löytyy
-            # myös paikasta n (PROTO2 ominaisuus, vaatii yhteistoiminnalli-
-            # suutta slurperin kanssa)
             if( removeMatch ):
                 os.remove( malwareFolder + "/" + mw_sample )
         else:
@@ -355,38 +341,37 @@ while( loop ):
 
             ##Run Tonis Toolz
             #PATFINDER 0.3
-            #print "Running PatFinder 0.3"
-            command =  "cp " + malwareSample + " temp/"
-            if debug: print " - db: " + command
-            os.system( command )
-            command = "java -jar toolz/PatFinder.jar -f temp/" 
-            if debug: print " - db: " + command
-            [strings_stdin, strings_stdout] = os.popen2( command )
-            strings_stdin.close()
-            os.wait()
-            patFinderOutput = str( strings_stdout.read() )
-            if debug: "- db:" + patFinderOutput
-            os.system( "rm ./temp/" + mw_sample )
+            # print "Running PatFinder 0.3"
+            # command =  "cp " + malwareSample + " temp/"
+            # if debug: print " - db: " + command
+            # os.system( command )
+            # command = "java -jar toolz/PatFinder.jar -f temp/" 
+            # if debug: print " - db: " + command
+            # [strings_stdin, strings_stdout] = os.popen2( command )
+            # strings_stdin.close()
+            # os.wait()
+            # patFinderOutput = str( strings_stdout.read() )
+            # if debug: "- db:" + patFinderOutput
+            # os.system( "rm ./temp/" + mw_sample )
             # print "\n\n\n" + patFinderOutput + "\n\n\n"
             # keyRing['PatFinderResults'] = [ str( patFinderOutput ) ]
 
             #SIGBUSTER 1.1.0
             ## Does not support remote execution (cannot find database), so we travel to /toolz, and execute
-
-            os.chdir( "toolz/" )
-            print os.path.abspath( "." )
-            print "SigBuster 1.0.5"
-            command = "java -jar SigBuster.jar -ed -f "
-            command += "../mwfolder/" + mw_sample
-            if debug: print " - db:" + command
-            [strings_stdin, strings_stdout] = os.popen2( command )
-            strings_stdin.close()
-            os.wait()
-            sigBusterOutput = str( strings_stdout.read() )
-            if debug: "- db:" + sigBusterOutput
+            # os.chdir( "toolz/" )
+            # print os.path.abspath( "." )
+            # print "SigBuster 1.0.5"
+            # command = "java -jar SigBuster.jar -ed -f "
+            # command += "../mwfolder/" + mw_sample
+            # if debug: print " - db:" + command
+            # [strings_stdin, strings_stdout] = os.popen2( command )
+            # strings_stdin.close()
+            # os.wait()
+            # sigBusterOutput = str( strings_stdout.read() )
+            # if debug: "- db:" + sigBusterOutput
             # keyRing['SigBusterResults'] = [ str( sigBusterOutput ) ]
-            if debug: print "\n"
-            os.chdir( ".." )
+            # if debug: print "\n"
+            # os.chdir( ".." )
 
             # Make cdrom image containing only the malware. Remove the mw-file from thesystem
             command = "mkisofs"  # mkisofs -r -o x#.iso *log
@@ -397,8 +382,6 @@ while( loop ):
 
             #initiate TIS
             exitcode = os.spawnvp( os.P_WAIT, "vmware-cmd", command_list_tis )
-            # wait that the tis-image is done ( about N seconds )
-
             if exitcode:
                 print "TIS, vmware-cmd failed on:" + str( exitcode )
                 
@@ -406,7 +389,7 @@ while( loop ):
             # lets say, the configfiles are form n#_tis_config.vmx, where # shows
             # the number of the dummy network in use    
             # connect to dummy n, and initiate capture
-            tcp_command = "/usr/local/bin/ouspg-tcpdump"
+            tcp_command = "/usr/local/bin/ouspg-tcpdump" ## own tcpdump script, used to evade running as su
             pcap_logname = "/tmp/"+hash +".pcap"
             arg_list = ( "ouspg-tcpdump", "-a", "-idummy" + str( ourDummy ), "-s0", "-w" + pcap_logname )
             if( debug ): print " - db: -TCPDUMP command:" + str( arg_list )
@@ -418,7 +401,7 @@ while( loop ):
             if exitcode:
                 print "VIC, vmware-cmd failed on:" + str( exitcode )
 
-            # # ## let's analysis!
+            # # ## Start analysis!
             print "** Analysis started. **"
             if( live ):
                 tic_count = 0
@@ -494,10 +477,6 @@ while( loop ):
                 time.sleep( 5 ) #Try again until VIC is shutdown
                 shutdowncounter += 1
             #time.sleep( 5 )
-            #TIS SUSPEND MOVED TO END (let it cool down)
-            #exit_code = os.spawnvp( os.P_WAIT, "vmware-cmd", command_list_tis )
-            #if exit_code:
-            #    print "Suspend of TIS failed: " + str( exit_code )
             #finally shut down the tcpdump
             time.sleep( 5 ) # takes a short while to shut down, we'll wait
             os.kill( tcppid, signal.SIGTERM )
@@ -583,16 +562,10 @@ while( loop ):
 
             ## SANITY CHECK
             if( debug ):
-                # print "wikiIrcPacketList type:" , type( wikiIrcPacketList ), "contains:", str( wikiIrcPacketList )
-                # print "ircNickList type:", type( ircNickList ), "contains:", str( ircNickList )
-                # print "ircUserList type:" , type( ircUserList ), "contains:", str( ircUserList )
-                # print "domainName_set type:" , type( domainName_set ), "contains:", str( domainName_set )
-                # print "getList type:" , type( getList ), "contains:", str( getList )
-                # print "ip_regSet type:" , type( ip_regSet ), "contains:", str( ip_regSet )
                 pass
 
             # check if this hash points into a excisting wikipages
-            wikiPageList = srcWiki.getAllPages()
+            wikiPageList = srcWiki.getAllPages() # replace with something close to sane!
             # There are pages, that are un ASCII:ble. These we do not need to
             # look into, as none of our pages are non ASCII. Problem with python version?
             wikiPageExists = False
@@ -607,46 +580,32 @@ while( loop ):
                     else:
                         #if( debug ): print str( page )
                         pass
-                    #            Depends :: ["olut"]
             
             if( wikiPageExists ):
                 #error / add to excisting wikipages
                 #if( debug): print "Page" + wikiPageName + "exists. No modifications made"
                 if( debug ): print " - db: -Page " + wikiPageName + " exists."
             keyRing['IpAddress'] = list()   
-            # Make links of ip:  # TypeOfLink :: ["foo"]
-            # wikiPageContent += "\n== IP addresses found in the capture ==\n"
             if( len( ip_regSet ) > 0 ):
                 for ip_address in ip_regSet:
-                    # wikiPageContent += " IpAddress:: [\"" + str( ip_address ) + "\"]"
                     keyRing['IpAddress'].append( "[\""+ ip_address + "\"]" )
-                    # wikiPageContent += "\n"
-                    # wikiPageContent += "[[BR]]"
-            # wikiPageContent += "\n----\n"
             
-                    # IpAddress :: 192.168.123.255 IpAddress :: 192.168.123.2 IpAddress :: 239.255.255.250 IpAddress :: 192.168.123.42
             # Add DNS queryset
             # wikiPageContent += "\n== DNS queries found in the capture ==\n"
             keyRing['DNS-query'] = list()
             if( len( domainName_set ) > 0 ):
                 for domainName in domainName_set:
-                    # wikiPageContent += " DNS-query:: [\"" + str( domainName ) + "\"]"
                     keyRing['DNS-query'].append( "[\"" + str( domainName ) + "\"]" )
-                    # wikiPageContent += "\n"
-                    #wikiPageContent += "[[BR]]"
-            # wikiPageContent += "\n----\n"
 
             # Add GET commands
 
             #Add strings into the packet
             stringLengthBoundry = 7
-            # wikiPageContent += "\n== Strings found in the executable ==\n"
-            # wikiPageContent += "We only list the strings, that are at least" + str( stringLengthBoundry ) + "\n All strings are also in the attachment strings\n"
             strings2 = strings.split( "\n" )
             stringDict = makeDictCountInstance( strings2 )
 
             '''
- STRINGS AT THE MOMENT ARE JUST ADDED IN AN ATTACHMENTS, AND NOT SHOWN
+            STRINGS AT THE MOMENT ARE JUST ADDED IN PAGE ATTACHMENTS, AND NOT SHOWN
             #wikiPageContent += "|||| Strings ||\n"
             #wikiPageContent += "|| String || Instances ||\n"
             keyRing['Strings'] = list()
@@ -657,13 +616,12 @@ while( loop ):
             #wikiPageContent += makeWikiTableFromDict( makeDictCountInstance( strings ), "Strings" , "String", "Number of occations" )
             # wikiPageContent += "\n----\n"
             '''
+
             #Add irc packet log into wiki
             if( len( wikiIrcPacketList ) > 0):
                 keyRing['ircPacketList'] = list()
-                # wikiPageContent += "\n== Irc packets found ==\n {{{"
                 for ircLine in wikiIrcPacketList :
                     keyRing['ircPacketList'].append( str( ircLine ) )
-                # wikiPageContent += "}}}"    
 
             #Add PatChecker Metafication
             #patFinderOutput
@@ -671,16 +629,11 @@ while( loop ):
             #Add SigBuster Metafication
             #sigBusterOutput
 
-            ### SANITYCHECK
             if( len( ircNickList ) > 0 ):
                 nickDict = makeDictCountInstance( ircNickList )
-                # wikiPageContent += makeWikiTableFromDict( nickDict, "IRC nicks", "Irc nick detected", "Times the nick was seen in the .pcap" )
 
-            ### SANITYCHECK 
             if( len( ircUserList ) > 0 ):
                 userDict = makeDictCountInstance( ircUserList )
-                # wikiPageContent += makeWikiTableFromDict( userDict, "IRC USERNAMES", "Username detected", "Times username was detected" )
-                # wikiPageContent += "\n----\n"
 
             # ATTACHMENTS
             #Add link from page X to new wikipage
@@ -706,11 +659,6 @@ while( loop ):
             if( debug ): print " - db: -redo filename: " + str( redoline )
             redofilename = redoline[1]
             
-            # wikiPageContent += "\n[attachment:" + redofilename +"]\n"
-            # wikiPageContent += "[[MetaData(MalpracticeType, MalwareSample)]]\n"
-            # wikiPageContent += "\n"
-            #End stuff
-            # wikiPageContent += "----\n[[LinkedIn]]\n----\nCategoryMalwareSample"
             '''
 result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method, True, category_edit, catlist, template)
 
@@ -726,7 +674,7 @@ result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method, True, catego
                 print "Making gwikipage failed."
             '''
             
-            keyRing['SigBusterFeatures'] = SigBusterParsing( sigBusterOutput )
+            ## keyRing['SigBusterFeatures'] = SigBusterParsing( sigBusterOutput ) ##uses 3rd party tool. Removed
 
             
 
@@ -741,6 +689,7 @@ result = xmlrpc_connect(srcWiki.SetMeta, wiki, page, input, method, True, catego
             pcapfile = pcapFileHandle.read() #first line is commentline
             pcapFileHandle.close()
             xmlrpc_attach( wikiName, wikiPageName, pcap_logname, username, password, 'save', pcapfile, True )
+            ### redofile was too large to be included atm
             # if( debug ): " - db: -Attaching REDO file to wiki"
             # redoFileHandle = open( "/research/ouspg/development/frontier/prototyping/c10/malpractice/vms/victim/redo_image/" + redofilename, 'r' )
             # redoFile = redoFileHandle.read()

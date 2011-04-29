@@ -29,7 +29,6 @@
 """
 
 import sys
-import os
 
 from graphingwiki.util import encode_page, decode_page, get_url_ns
 from graphingwiki.editing import ordervalue
@@ -37,8 +36,6 @@ from graphingwiki.editing import ordervalue
 # Checking whether these exist and can be used should be done by
 # actions and macros using this library.
 from graphingwiki import gv, igraph
-
-import graph
 
 # Constructor for IGraph objects
 class IGraphRepr(object):
@@ -71,8 +68,8 @@ class IGraphRepr(object):
     def summary(self, **kw):
         return self.gr.summary(**kw)
 
-    def layout(self, format="", file="", height=1024, width=1024):
-        igraph.plot(self.gr, file, layout=self.points, 
+    def layout(self, format="", fname="", height=1024, width=1024):
+        igraph.plot(self.gr, fname, layout=self.points, 
                     bbox=(width, height))
 
 
@@ -267,11 +264,11 @@ class Graphviz:
     def __init__(self, name="",
                  type="digraph", strict="",
                  engine="dot",
-                 file="", string="", **attrs):
+                 fname="", string="", **attrs):
 
         # Initialise root graph. First, handle
-        if file:
-            self._read(file=file)
+        if fname:
+            self._read(fname=fname)
         elif string:
             self._read(string=string)
         elif name:
@@ -280,9 +277,9 @@ class Graphviz:
                 self.handle = getattr(gv, "%s%s" % (strict, type))(name)
                 # print "g = gv.%s%s('%s')" % (strict, type, name)
             else:
-                raise "Bad args: " + str(type) + str(value)
+                raise ValueError("Bad args: " + str(type) + str(name))
         else:
-            raise "Bad args: No name for graph"
+            raise ValueError("Bad args: No name for graph")
 
         # Next, attributes
         if attrs:
@@ -303,21 +300,21 @@ class Graphviz:
         # Temporary kludge, FIXME when gv_python improves
         return ""
 
-    def layout(self, format="", file="", **kw):
+    def layout(self, format="", fname="", **kw):
         """ Relayouts if needed, writes output to file, stdout or attrs. """
         # Only do relayout if changed
-        format, file = map(encode_page, [format, file])
+        format, fname = map(encode_page, [format, fname])
 
         if self.changed:
             # print "gv.layout(g, '%s')" % (self.engine)
             gv.layout(self.handle, self.engine)
             self.changed = 0
 
-        if file:
+        if fname:
             if not format:
                 format = 'dot'
             # print "gv.render(g, '%s', '%s')" % (format, file)
-            gv.render(self.handle, format, file)
+            gv.render(self.handle, format, fname)
         elif format:
             # Render to stdout, FIXME when gv improves
             gv.render(self.handle, format)
@@ -330,18 +327,18 @@ class Graphviz:
         self._setattrs(handle=self.handle, proto=proto, **attrs)
 
     # The rest are internal functions, fat and ugly. Use at your own risk!
-    def _read(self, string="", file=""):
+    def _read(self, string="", fname=""):
         """ Reads a graph from string, file or stdin """
         if string:
             self.handle = gv.readstring(string)
-        elif file == "stdin":
+        elif fname == "stdin":
             data = sys.stdin.read()
             self.handle = gv.readstring(data)
         else:
-            self.handle = gv.read(file)
+            self.handle = gv.read(fname)
             # gv returns None if eg. the input does not exist
             if not self.handle:
-                raise "Error with file " + file
+                raise ValueError("Error with file " + fname)
 
     def _setattrs(self, handle="",
                   edge="", node="", subg="", proto="",
@@ -380,7 +377,7 @@ class Graphviz:
         elif handle:
             item = handle
         else:
-            raise "No graph element or element type specified"
+            raise ValueError("No graph element or element type specified")
 
         for key, elem in attrs.iteritems():
             if isinstance(elem, set):
@@ -431,7 +428,7 @@ class Graphviz:
             item = gv.graph(handle, subg)
             graphvizitem = GraphvizSubgraph(self, item)
         else:
-            raise "No graph element type specified"
+            raise ValueError("No graph element type specified")
         self._setattrs(handle=item, **attrs)
         return graphvizitem
 
@@ -460,7 +457,7 @@ class Graphviz:
             if item:
                 graphvizitem = GraphvizSubgraph(self, item)
         else:
-            raise "No graph element type specified"
+            raise ValueError("No graph element type specified")
         return graphvizitem
 
     def _del(self, handle="", node="", edge="", subg=""):
@@ -486,7 +483,7 @@ class Graphviz:
         elif handle:
             item = handle
         else:
-            raise "No graph element or element type specified"
+            raise ValueError("No graph element or element type specified")
         if item:
             gv.rm(item)
 
@@ -554,7 +551,8 @@ class GraphRepr(object):
                 out[key] = value
         return out
 
-    def order_graph(self, ordernodes, unordernodes, request, pagename, orderby):
+    def order_graph(self, ordernodes, unordernodes, request, 
+                    pagename, orderby, ordershape=''):
         # Ordering the nodes into ranks. 
         orderkeys = ordernodes.keys()
         orderkeys.sort()
@@ -571,11 +569,20 @@ class GraphRepr(object):
             cur_ordernode = 'orderkey: ' + label
             sg = self.graphviz.subg.add(cur_ordernode, rank='same')
 
+            kw = dict()
+            if ordershape:
+                if ordershape == 'none':
+                    label = ''
+                    orderURL = ''
+                    kw = {'style': 'invis', 'shape': 'point'}
+                else:
+                    kw = {'shape': ordershape}
+
             if orderby != 'gwikicategory':
-                sg.nodes.add(cur_ordernode, label=label, URL=orderURL)
+                sg.nodes.add(cur_ordernode, label=label, URL=orderURL, **kw)
             else:
                 sg.nodes.add(cur_ordernode, label=label, 
-                             URL=get_url_ns(request, pagename, label))
+                             URL=get_url_ns(request, pagename, label), **kw)
 
             for node in ordernodes[key]:
                 sg.nodes.add(node)

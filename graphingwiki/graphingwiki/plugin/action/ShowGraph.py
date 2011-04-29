@@ -29,15 +29,11 @@
 """
 
 import os
-import shelve
 import re
-import socket
 
 import md5
 from tempfile import mkstemp
 from random import choice, seed
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin.action import cache
 from MoinMoin import config
@@ -92,7 +88,7 @@ form_end = u"""<div class="showgraph-buttons">\n
 
 graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "diamond", "trapezium", "parallelogram",
-                  "house", "pentagon", "hexagon", "septagon",
+                  "house", "pentagon", "septagon",
                   "octagon", "doublecircle", "doubleoctagon",
                   "tripleoctagon", "invtriangle", "invtrapezium",
                   "invhouse", "Mdiamond", "Msquare", "Mcircle",
@@ -210,6 +206,7 @@ class GraphShower(object):
 
         self.depth = 1
         self.orderby = ''
+        self.ordershape = ''
         self.colorby = ''
         self.shapeby = ''
 
@@ -392,6 +389,12 @@ class GraphShower(object):
             if legend in self.legend_positions:
                 self.legend = legend
 
+        # legend
+        if request.form.has_key('ordershape'):
+            shape = request.form['ordershape'][0]
+            if shape in graphvizshapes + ['none']:
+                self.ordershape = shape
+
         # Categories
         if request.form.has_key('categories'):
             self.categories = request.form['categories']
@@ -515,8 +518,7 @@ class GraphShower(object):
         pagename = self.pagename
 
         def get_categories(nodename):
-            pagedata = self.request.graphdata.getpage(nodename)
-            return pagedata.get('out', dict()).get('gwikicategory', list())
+            pagedata = self.request.graphdata.get_out(nodename).get('gwikicategory', list())
 
         for nodename in self.otherpages:
             self.startpages.append(nodename)
@@ -536,9 +538,9 @@ class GraphShower(object):
             # Permissions
             if not self.request.user.may.read(cat):
                 continue
-            catpage = self.request.graphdata.getpage(cat)
-            for type in catpage.get('in', dict()):
-                for newpage in catpage['in'][type]:
+            cat_in = self.request.graphdata.get_in(cat)
+            for type in cat_in.keys():
+                for newpage in cat_in[type]:
                     if not (self.cat_re.search(newpage) or
                             self.temp_re.search(newpage)):
                         load_node(self.request, self.graphdata, 
@@ -654,6 +656,11 @@ class GraphShower(object):
                     delete.add(objname)
                     continue
 
+            if self.noorignode:
+                if objname == self.request.page.page_name:
+                    delete.add(objname)
+                    continue
+
             # update nodeattrlist with non-graph/sync ones
             self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(orig_obj))
             obj = outgraph.nodes.get(objname)
@@ -664,11 +671,11 @@ class GraphShower(object):
 
             # Add page categories to selection choices in the form
             # (for local pages only, ie. existing and saved)
-            if pagedata.get('saved', False):
+            if self.request.graphdata.is_saved(objname):
                 if hasattr(orig_obj, 'gwikicategory'):
                     self.categories_add(orig_obj.gwikicategory)
 
-            tooldata = make_tooltip(self.request, pagedata, self.format)
+            tooldata = make_tooltip(self.request, objname, self.format)
             if tooldata and not hasattr(orig_obj, 'gwikitooltip'):
                 obj.gwikitooltip = '%s\n%s' % (objname, tooldata)
 
@@ -738,6 +745,8 @@ class GraphShower(object):
 
             # Add data on types of edges for which obj is child
             for parent in outgraph.edges.parents(objname):
+                if not self.request.user.may.read(parent):
+                    continue
                 edgeobj = outgraph.edges.get(parent, objname)
                 inlinks = set(getattr(obj, 'gwikiinlinks', list()))
                 inlinks.update(getattr(edgeobj, 'linktype'))
@@ -1135,18 +1144,18 @@ class GraphShower(object):
         form_checkbox(request, 'edgelabels', '1', self.edgelabels, 
                       _('Edge labels'))
 
-        request.write(u"<br><u>" + _("Nodes:") + u"</u><br>\n")
-        # filter unconnected nodes
-        form_checkbox(request, 'noloners', '1', self.noloners, 
-                      _('Filter lonely'))
+        request.write(u"<br><u>" + _("Pages:") + u"</u><br>\n")
+        # filter the start page nodes
+        form_checkbox(request, 'noorignode', '1', self.noorignode, 
+                      _('Filter this page'))
         request.write(u"<br>\n")
         # filter startnodes nodes
         form_checkbox(request, 'nostartnodes', '1', self.nostartnodes, 
-                      _('Filter startnodes'))
+                      _('Filter all startpages'))
         request.write(u"<br>\n")
-        # filter the start page nodes
-        form_checkbox(request, 'noorignode', '1', self.noorignode, 
-                      _('Anonymous graph'))
+        # filter unconnected nodes
+        form_checkbox(request, 'noloners', '1', self.noloners, 
+                      _('Filter unlinked pages'))
 
         # Include
 	request.write(u"<td valign=top>\n")
@@ -1271,6 +1280,22 @@ class GraphShower(object):
 
         form_optionlist(request, 'orderby', types, self.orderby, 
                         {'': _("no ordering"), '_hier': _("hierarchical")},True)
+
+        request.write(_("Ordernode type") + u"<br>\n")
+        request.write(u'<select name="ordershape"><br>\n')
+        for type in graphvizshapes:
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (form_escape(type),
+                           type == self.ordershape and " selected>" or ">",
+                           form_escape(type)))
+
+        addendum = {'': _("default"), 'none': _("none")}
+        for val, pr in addendum.iteritems():
+            request.write(u'<option value="%s"%s%s</option><br>\n' %
+                          (form_escape(val),
+                           val == self.ordershape and " selected>" or ">",
+                           form_escape(pr)))
+        request.write(u'</select><br>\n')
 	
         if self.orderby:
 	    request.write(u"<td valign=top>\n")
@@ -1374,13 +1399,14 @@ class GraphShower(object):
                            self.unordernodes,
                            self.request,
                            self.app_page,
-                           self.orderby)
+                           self.orderby,
+                           self.ordershape)
 
         return gr
 
     def get_layout(self, grapheng, format, addon=''):
         tmp_fileno, tmp_name = mkstemp(addon)
-        grapheng.layout(file=tmp_name, format=format, 
+        grapheng.layout(fname=tmp_name, format=format, 
                         height=self.height, width=self.width)
         f = file(tmp_name)
         data = f.read()
@@ -1724,10 +1750,6 @@ class GraphShower(object):
 
         # Add startpages, even if unconnected
         for node in nodes:
-            if self.noorignode:
-                if node == self.request.page.page_name:
-                    continue
-
             newnodes.add(node)
 
             # Make sure that startnodes get loaded
@@ -1863,25 +1885,25 @@ class GraphShower(object):
 
                 # Graph unique if the following are equal: edges
                 key_parts = [gr.edges]
-            else:
-                # Stylistic stuff: Color nodes, edges, bold startpages
-                if self.colorby:
-                    outgraph = self.color_nodes(outgraph)
-                if self.shapeby:
-                    outgraph, warn = self.shape_nodes(outgraph)
-                    if warn:
-                        warnings.append(warn)
-                outgraph = self.color_edges(outgraph)
-                outgraph = self.edge_tooltips(outgraph)
-                outgraph = self.circle_start_nodes(outgraph)
 
-                # Fix URL:s
-                outgraph = self.fix_node_urls(outgraph)
+            # Stylistic stuff: Color nodes, edges, bold startpages
+            if self.colorby:
+                outgraph = self.color_nodes(outgraph)
+            if self.shapeby:
+                outgraph, warn = self.shape_nodes(outgraph)
+                if warn:
+                    warnings.append(warn)
+            outgraph = self.color_edges(outgraph)
+            outgraph = self.edge_tooltips(outgraph)
+            outgraph = self.circle_start_nodes(outgraph)
 
-                # Graph unique if the following are equal: content, layout
-                # format, images, ordering
-                key_parts = [outgraph, self.graphengine, 
-                             self.shapefiles, self.orderby]
+            # Fix URL:s
+            outgraph = self.fix_node_urls(outgraph)
+
+            # Graph unique if the following are equal: content, layout
+            # format, images, ordering
+            key_parts = [outgraph, self.graphengine, 
+                         self.shapefiles, self.orderby]
 
             # Generate cache key
             self.cache_key = cache_key(self.request, key_parts)

@@ -10,14 +10,14 @@ import os
 import re
 import sys
 import string
-import xmlrpclib
-import urlparse
 import socket
-import urllib
-import getpass
 import copy
-import md5
 import operator
+
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
 
 from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
@@ -25,14 +25,13 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError
+from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
 
-from graphingwiki import underlay_to_pages
+from graphingwiki import underlay_to_pages, url_escape, url_unescape
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
-from graphingwiki.util import category_regex, template_regex
-
+from graphingwiki.util import category_regex, template_regex, encode
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -95,11 +94,22 @@ def get_revisions(request, page):
 
     metakeys = set()
     for page in pagelist:
-        for key in get_keys(request, page):
+        for key in request.graphdata.get_metakeys(page):
             metakeys.add(key)
     metakeys = sorted(metakeys, key=ordervalue)
 
     return pagelist, metakeys
+
+def get_properties(request, key):
+    properties = get_metas(request, '%sProperty' % (key), 
+                           ['constraint', 'description', 'hint', 'hidden'])
+    for prop in properties:
+        if not properties[prop]:
+            properties[prop] = ''
+        else:
+            properties[prop] = properties[prop][0]
+
+    return properties
 
 def getmeta_to_table(input):
     keyoccur = dict()
@@ -260,27 +270,9 @@ def edit_categories(request, savetext, action, catlist):
 
     return u"\n".join(lines) + u"\n"
 
-def formatting_rules(request, parser):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
-    rules = parser.formatting_rules.replace('\n', '|')
-
-    if request.cfg.bang_meta:
-        rules = ur'(?P<notword>!%(word_rule)s)|%(rules)s' % {
-            'word_rule': Parser.word_rule,
-            'rules': rules,
-            }
-
-    # For versions with the deprecated config variable allow_extended_names
-    if not '?P<wikiname_bracket>' in rules:
-        rules = rules + ur'|(?P<wikiname_bracket>\[".*?"\])'
-
-    return re.compile(rules, re.UNICODE)
-
-
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
-        target = url_quote(encode(target))
+        target = url_escape(encode(target))
     
     try:
         targetPage = globaldata.getpage(target)
@@ -298,7 +290,7 @@ def link_to_attachment(globaldata, target):
 
     target = target.strip('"')
     if not target.startswith('attachment:'):
-        target = unicode(url_unquote(target), config.charset)
+        target = unicode(url_unescape(target), config.charset)
     else:
         target = unicode(target, config.charset)
     target = target.replace('\\"', '"')
@@ -306,8 +298,6 @@ def link_to_attachment(globaldata, target):
     return target
 
 def absolute_attach_name(quoted, target):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
     abs_method = target.split(':')[0]
 
     # Pages from MetaRevisions may have ?action=recall, breaking attach links
@@ -322,12 +312,12 @@ def absolute_attach_name(quoted, target):
 def inlinks_key(request, loadedPage, checkAccess=True):
     inLinks = set()
     # Gather in-links regardless of type
-    for type in loadedPage.get("in", dict()):
-        for page in loadedPage['in'][type]:
+    for linktype in loadedPage.get("in", dict()):
+        for page in loadedPage['in'][linktype]:
             if checkAccess:
                 if not request.user.may.read(page):
                     continue
-            inLinks.add((type, page))
+            inLinks.add((linktype, page))
 
     inLinks = ['[[%s]]' % (y) for x, y in inLinks]
 
@@ -349,6 +339,59 @@ def get_links(request, name, metakeys, checkAccess=True, **kw):
             
     return pageLinks
 
+def is_meta_link(value):
+    from MoinMoin.parser.text_moin_wiki import Parser
+
+    vals = Parser.scan_re.search(value)
+    if not vals:
+        return str()
+
+    vals = [x for x, y in vals.groupdict().iteritems() if y]
+    for val in vals:
+        if val in ['word', 'link', 'transclude', 'url']:
+            return 'link'
+        if val in ['interwiki', 'email', 'include']:
+            return val
+    return str()
+
+def metas_to_abs_links(request, page, values):
+    new_values = list()
+    for value in values:
+        if is_meta_link(value) != 'link':
+            new_values.append(value)
+            continue
+        if ((value.startswith('[[') and value.endswith(']]')) or
+            (value.startswith('{{') and value.endswith('}}'))):
+            value = value.lstrip('[')
+            value = value.lstrip('{')
+        attachment = ''
+        for scheme in ('attachment:', 'inline:', 'drawing:'):
+            if value.startswith(scheme):
+                if len(value.split('/')) == 1:
+                    value = ':'.join(value.split(':')[1:])
+                    value = "%s%s/%s" % (scheme, page, value)
+                else:
+                    att_page = value.split(':')[1]
+                    if (att_page.startswith('./') or
+                        att_page.startswith('/') or
+                        att_page.startswith('../')):
+                        attachment = scheme
+                        value = ':'.join(value.split(':')[1:])
+        if (value.startswith('./') or
+            value.startswith('/') or
+            value.startswith('../')):
+            value = AbsPageName(page, value)
+        
+
+        value = attachment + value
+        if value.endswith(']'):
+            value = '[[' + value 
+        elif value.endswith('}'):
+            value = '{{' + value 
+        new_values.append(value)
+
+    return new_values
+
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
               includeGenerated=True, **kw):
@@ -366,11 +409,14 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
     # Make a real copy of loadedOuts and loadedMeta for tracking indirection
     loadedOuts = dict()
-    for key in loadedPage.get('out', dict()):
-        loadedOuts[key] = [x for x in loadedPage['out'][key]]
+    outs = request.graphdata.get_out(name)
+    for key in outs:
+        loadedOuts[key] = list(outs[key])
+
     loadedMeta = dict()
-    for key in loadedPage.get('meta', dict()):
-        loadedMeta[key] = [x for x in loadedPage['meta'][key]]
+    metas = request.graphdata.get_meta(name)
+    for key in metas:
+        loadedMeta[key] = list(metas[key])
 
     loadedOutsIndir = dict()
     for key in loadedOuts:
@@ -401,9 +447,7 @@ def get_metas(request, name, metakeys, checkAccess=True,
                 else:
                     linked, target_key = args[:2]
 
-                pagedata = request.graphdata.getpage(curpage)
-
-                pages = pagedata.get('out', dict()).get(linked, set())
+                pages = request.graphdata.get_out(curpage).get(linked, set())
 
                 for indir_page in set(pages):
                     # Relative pages etc
@@ -419,13 +463,12 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
                         # Add matches at first round
                         if last:
-                            if target_key in outs:
-                                loadedOuts.setdefault(key, list())
-                                loadedOuts[key].extend(outs[target_key])
-
                             if target_key in metas:
                                 loadedMeta.setdefault(key, list())
-                                loadedMeta[key].extend(metas[target_key])
+                                values = metas_to_abs_links(request,
+                                                            indir_page,
+                                                            metas[target_key])
+                                loadedMeta[key].extend(values)
                             continue
 
                         elif not target_key in outs:
@@ -455,21 +498,8 @@ def get_metas(request, name, metakeys, checkAccess=True,
             
     return pageMeta
 
-def get_keys(request, name):
-    """
-    Return the complete set of page's meta keys.
-    """
-
-    page = request.graphdata.getpage(name)
-    keys = set(page.get('meta', dict()))
-
-    if page.get('out', dict()).has_key('gwikicategory'):
-        keys.add('gwikicategory')
-
-    return keys
-
 def get_pages(request):
-    def filter(name):
+    def group_filter(name):
         # aw crap, SystemPagesGroup is not a system page
         if name == 'SystemPagesGroup':
             return False
@@ -477,11 +507,11 @@ def get_pages(request):
             return False
         return request.user.may.read(name)
 
-    return request.rootpage.getPageList(filter=filter)
+    return request.rootpage.getPageList(filter=group_filter)
 
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
-    preformatted_re = re.compile('({{{.*?}}})', re.M|re.S)
+    preformatted_re = re.compile('((^ [^:]+?:: )?({{{[^{]*?}}}))', re.M|re.S)
     wiki_preformatted_re = re.compile('{{{\s*\#\!wiki', re.M|re.S)
 
     keys_to_markers = dict()
@@ -489,20 +519,27 @@ def remove_preformatted(text):
 
     # Replace with unique format strings per preformatted area
     def replace_preformatted(mo):
-        key = mo.group(0)
+        key, preamble, rest = mo.groups()
 
-        # Do not remove wiki-formatted areas
+        # Cases 594, 596, 759: ignore preformatted section starting on
+        # the metakey line
+        if preamble:
+            return key
+
+        # Do not remove wiki-formatted areas, we need the keys in them
         if wiki_preformatted_re.search(key):
             return key
 
-        marker = "%d-%s" % (mo.start(), md5.new(repr(key)).hexdigest())
+        # All other areas should be removed
+        marker = "%d-%s" % (mo.start(), md5(repr(key)).hexdigest())
         while marker in text:
-            marker = "%d-%s" % (mo.start(), md5.new(marker).hexdigest())
+            marker = "%d-%s" % (mo.start(), md5(marker).hexdigest())
 
         keys_to_markers[key] = marker
         markers_to_keys[marker] = key
 
         return marker
+
     text = preformatted_re.sub(replace_preformatted, text)
 
     return text, keys_to_markers, markers_to_keys
@@ -716,6 +753,67 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {'a': [u'k'], 'gwikicategory': []},
     ...               {'a': [u'', 'b'], 'gwikicategory': []})
     u' a:: b\n{{{\n#!wiki comment\n}}}\n b::\n'
+
+    Metas should not have ':: ' as it could cause problems with dl markup
+    >>> replace_metas(request, 
+    ...               u' test:: 1\n test:: 2', 
+    ...               {}, 
+    ...               {u"koo:: ": [u"a"]})
+    u' test:: 1\n test:: 2\n koo:: a\n'
+
+    Tests for different kinds of line feeds. Metas should not have \r
+    or \n as it would cause problems. This is contrary to general
+    MoinMoin logic to minimise user confusion.
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\r\n\r\nmore text']})
+    u' a:: text  more text\n'
+
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\r\rmore text']})
+    u' a:: textmore text\n'
+
+    >>> replace_metas(request, 
+    ...               u' a:: text\n',
+    ...               {u'a': [u'text']},
+    ...               {u'a': [u'text\n\nmore text']})
+    u' a:: text  more text\n'
+
+    # Just in case - regression of spaces at the end of metas
+    >>> replace_metas(request, 
+    ...               u'kk\n a:: Foo \n<<MetaTable>>',
+    ...               {u'a': [u'Foo']},
+    ...               {u'a': [u'Foo ', u'']})
+    u'kk\n a:: Foo\n<<MetaTable>>\n'
+
+    # Case759 regressions
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{ weohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{ weohweovd']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{ weohwe', u'']})
+    u' key:: {{{ weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{ \nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{ weohwe', u'']})
+    u' key:: {{{ weohwe\nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{#!wiki \nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
+    u' key:: {{{#!wiki weohwe\nweohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    >>> replace_metas(request, 
+    ...               u' key:: {{{#!wiki weohweovd\nwevohwevoih}}}\n gwikilabel:: Foo Bar \n',
+    ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki weohweovd']},
+    ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
+    u' key:: {{{#!wiki weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
     """
 
     text = text.rstrip()
@@ -744,22 +842,35 @@ def replace_metas(request, text, oldmeta, newmeta):
     # value b cannot cluster as the key is there no more
     new_metas = dict()
     for key, values in newmeta.iteritems():
+        # Keys should not end in ':: ' as this markup is reserved
+        key = key.rstrip(':: ').strip()
+
         if len(newmeta.get(key, [])) > len(oldmeta.get(key, [])):
             if values[0] == '':
                 values.reverse()
-        new_metas[key] = values
+
+        newvalues = list()
+        for value in values:
+            # Convert \r and \n to safe values, 
+            # strip leading and trailing spaces
+            value = value.replace("\r\n", " ")
+            value = value.replace("\n", " ")
+            value = value.replace("\r", "").strip()
+            newvalues.append(value)
+
+        new_metas[key] = newvalues
     newmeta = new_metas
 
     # Replace the values we can
     def dl_subfun(mo):
-        all, key, val = mo.groups()
+        alltext, key, val = mo.groups()
 
         key = key.strip()
         val = val.strip()
 
         # Don't touch unmodified keys
         if key not in oldmeta:
-            return all
+            return alltext
 
         # Don't touch placeholders
         if not val:
@@ -769,17 +880,18 @@ def replace_metas(request, text, oldmeta, newmeta):
         try:
             index = oldmeta[key].index(val)
         except ValueError:
-            return all
+            return alltext
         
-        newval = newmeta[key][index].replace("\n", " ").strip()
+        newval = newmeta[key][index]
+
         del oldmeta[key][index]
         del newmeta[key][index]
-
+        
         if not newval:
             return ""
 
         retval = " %s:: %s\n" % (key, newval)
-        if all.startswith('\n'):
+        if alltext.startswith('\n'):
             retval = '\n' + retval
 
         return retval
@@ -813,11 +925,11 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Fill in the prototypes
     def dl_fillfun(mo):
-        all, key = mo.groups()
+        alltext, key = mo.groups()
         key = key.strip()
 
         if key not in newmeta or not newmeta[key]:
-            return all
+            return alltext
 
         newval = newmeta[key].pop(0).replace("\n", " ").strip()
 
@@ -826,19 +938,19 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Add clustered values
     def dl_clusterfun(mo):
-        all, key, val = mo.groups()
+        alltext, key, val = mo.groups()
 
         key = key.strip()
         if key not in newmeta:
-            return all
+            return alltext
 
         for value in newmeta[key]:
             value = value.replace("\n", " ").strip()
             if value:
-                all += " %s:: %s\n" % (key, value)
+                alltext += " %s:: %s\n" % (key, value)
 
         newmeta[key] = list()
-        return all
+        return alltext
     text = dl_re.sub(dl_clusterfun, text)
 
     # Add values we couldn't cluster
@@ -882,7 +994,7 @@ def set_metas(request, cleared, discarded, added):
         
         # Template clears might make sense at some point, not implemented
         if TEMPLATE_KEY in pageCleared:
-            del pageCleared[TEMPLATE_KEY]
+            pageCleared.remove(TEMPLATE_KEY)
         # Template changes might make sense at some point, not implemented
         if TEMPLATE_KEY in pageDiscarded:
             del pageDiscarded[TEMPLATE_KEY]
@@ -900,13 +1012,14 @@ def set_metas(request, cleared, discarded, added):
         new = dict()
         for key in old:
             values = old.pop(key)
-            key = key
             old[key] = values
             new[key] = set(values)
         for key in pageCleared:
             new[key] = set()
         for key, values in pageDiscarded.iteritems():
-            new[key].difference_update(values)
+            for v in values:
+                new[key].difference_update(values) 
+
         for key, values in pageAdded.iteritems():
             new[key].update(values)
 
@@ -931,7 +1044,8 @@ def save_template(request, page, template):
     msg = ''
     if not raw_body:
         # Start writing
-        request.graphdata.writelock()
+
+        ## TODO: Add data on template to the text of the saved page?
 
         raw_body = ' '
         p = PageEditor(request, page)
@@ -942,9 +1056,6 @@ def save_template(request, page, template):
                 raw_body = temp_body
 
         msg = p.saveText(raw_body, 0)
-
-        # Stop writing
-        request.graphdata.readlock()
 
     return msg
 
@@ -1200,14 +1311,14 @@ def metatable_parseargs(request, args,
     def is_saved(name):
         if include_unsaved:
             return True
-        return request.graphdata.getpage(name).has_key('saved')
+        return request.graphdata.is_saved(name)
 
     def can_be_read(name):
         return request.user.may.read(name)
 
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pages = filter(is_saved, request.graphdata)
+        pages = filter(is_saved, request.graphdata.pagenames())
         if checkAccess:
             # Filter out the pages the user may not read
             pages = filter(can_be_read, pages)
@@ -1219,8 +1330,7 @@ def metatable_parseargs(request, args,
         other = argset - categories
 
         for arg in categories:
-            page = request.graphdata.getpage(arg)
-            newpages = page.get("in", dict()).get(CATEGORY_KEY, list())
+            newpages = request.graphdata.get_in(arg).get(CATEGORY_KEY, list())
 
             for newpage in newpages:
                 # Check that the page is not a category or template page
@@ -1321,11 +1431,11 @@ def metatable_parseargs(request, args,
         for name in pagelist:
             # MetaEdit wants all keys by default
             if get_all_keys:
-                for key in get_keys(request, name):
+                for key in request.graphdata.get_metakeys(name):
                     metakeys.add(key)
             else:
                 # For MetaTable etc
-                for key in (x for x in get_keys(request, name)
+                for key in (x for x in request.graphdata.get_metakeys(name)
                             if not x in SPECIAL_ATTRS):
                     metakeys.add(key)
 
@@ -1340,7 +1450,7 @@ def metatable_parseargs(request, args,
     if not orderspec:
         pagelist = sorted(pagelist, key=ordervalue)
     else:
-        orderkeys = [key for (dir, key) in orderspec]
+        orderkeys = [key for (direction, key) in orderspec]
         orderpages = dict()
 
         for page in pagelist:
@@ -1352,9 +1462,9 @@ def metatable_parseargs(request, args,
             orderpages[page] = ordermetas
 
         def comparison(page1, page2):
-            for dir, key in orderspec:
+            for direction, key in orderspec:
                 reverse = False
-                if dir == ">>":
+                if direction == ">>":
                     reverse = True
 
                 values1 = sorted(orderpages[page1][key], reverse=reverse)
@@ -1444,91 +1554,6 @@ def list_attachments(request, pagename):
         return files
 
     return []
-
-class WikiRpcException:
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
-
-def xmlrpc_conninit(wiki, username, password):
-    # Action-unrelated connection code
-    scheme, netloc, path, _, _, _ = urlparse.urlparse(wiki)
-
-    netloc = "%s:%s@%s" % (username, password, netloc)
-
-    action = "action=xmlrpc2"
-    url = urlparse.urlunparse((scheme, netloc, path, "", action, ""))
-    srcWiki = xmlrpclib.ServerProxy(url)
-
-    try:
-        token = srcWiki.getAuthToken(username, password)
-    except xmlrpclib.ProtocolError, e:
-        faultString = 'Cannot connect to server at %s (%d %s)' % \
-                      (wiki, e.errcode, e.errmsg)
-        raise WikiRpcException(faultCode=4, faultString=faultString)
-        
-    mc = xmlrpclib.MultiCall(srcWiki)
-    if token:
-        mc.applyAuthToken(token)
-
-    return mc, url
-
-def xmlrpc_connect(func, wiki, *args, **kwargs):
-    try:
-        func(*args, **kwargs)
-    except xmlrpclib.ProtocolError, e:
-        raise WikiRpcException(faultCode=4,
-                               faultString=
-                               'Cannot connect to server at %s (%d %s)' %
-                               (wiki, e.errcode, e.errmsg))
-    except socket.error, e:
-        # Socket.error does not return two values consistently
-        # it might return also ('timed out',), so I'm preparing
-        # for the flying elephants here
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            raise WikiRpcException(faultCode='666',
-                                   faultString=''.join(args))
-        else:
-            raise WikiRpcException(faultCode=args[0],
-                                   faultString=args[1])
-    except socket.gaierror, e:
-        args = getattr(e, 'args', [])
-        if len(args) != 2:
-            raise WikiRpcException(faultCode='666',
-                                   faultString=''.join(args))
-        else:
-            raise WikiRpcException(faultCode=args[0],
-                                   faultString=args[1])
-
-def xmlrpc_attach(wiki, page, fname, username, password, method,
-                  content='', overwrite=False):
-    srcWiki, _ = xmlrpc_conninit(wiki, username, password)
-    if content:
-        content = xmlrpclib.Binary(content)
-
-    xmlrpc_connect(srcWiki.AttachFile, wiki, page, fname,
-                   method, content, overwrite)
-
-    ret = srcWiki()
-    if ret[0] == 'SUCCESS':
-        return ret[1:]
-
-    return ret
-
-def xmlrpc_error(error):
-    return error.faultCode, error.faultString
-
-def getuserpass(username=''):
-    # Redirecting stdout to stderr for these queries
-    old_stdout = sys.stdout
-    sys.stdout = sys.stderr
-
-    if not username:
-        username = raw_input("Username:")
-    password = getpass.getpass("Password:")
-
-    sys.stdout = old_stdout
-    return username, password
 
 def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):

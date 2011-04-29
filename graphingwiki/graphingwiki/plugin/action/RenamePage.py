@@ -14,6 +14,8 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.RenamePage import RenamePage as RenamePageBasic
 from MoinMoin.parser.text_moin_wiki import Parser
 
+include_re = re.compile('(<<Include\(([^,\n]+)(.*?)\)>>)')
+
 class RenamePage(RenamePageBasic):
 
     def _inlink_rename(self, page, newpagename, oldpagename, comment):
@@ -25,13 +27,15 @@ class RenamePage(RenamePageBasic):
         # matches, and replace them accordingly
         def word_subfun(mo):
             match = mo.groups()
+
             if wikiutil.AbsPageName(page, match[1]) == oldpagename:
                 # If the link was relative:
                 if not oldpagename in match[1]:
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if rel_newpagename.startswith('/'):
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
                         return match[1].replace(
                             wikiutil.RelPageName(page, oldpagename), 
                             rel_newpagename)
@@ -55,7 +59,33 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if rel_newpagename.startswith('/'):
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
+                        return match[0].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            rel_newpagename)
+                    else:
+                        return match[0].replace(
+                            wikiutil.RelPageName(page, oldpagename), 
+                            newpagename)
+
+                # Else, change absolute link
+                return match[0].replace(oldpagename, newpagename)
+            # No match in this link -> move on
+            else:
+                return match[0]
+
+        def include_subfun(mo):
+            match = mo.groups()
+
+            if wikiutil.AbsPageName(page, match[1]) == oldpagename:
+                # If the link was relative:
+                if not oldpagename in match[0]:
+                    # If the new page will be a subpage of the
+                    # source, retain relative link. Else, make
+                    # an absolute link.
+                    if (rel_newpagename.startswith('/') or 
+                        rel_newpagename.startswith('../')):
                         return match[0].replace(
                             wikiutil.RelPageName(page, oldpagename), 
                             rel_newpagename)
@@ -80,9 +110,34 @@ class RenamePage(RenamePageBasic):
         link_re = re.compile(Parser.link_rule, re.VERBOSE)
         savetext = link_re.sub(link_subfun, savetext)
 
-        msg = self.page.saveText(savetext, 0, comment=comment, 
-                                 notify=False)
-        return msg
+        # Also handle renaming (non-regexped) includes of the page
+        savetext = include_re.sub(include_subfun, savetext)
+
+        _ = self.request.getText
+
+        success = True
+
+        try:
+            msg = self.page.saveText(savetext, 0, comment=comment, 
+                                     notify=False)
+        except self.page.Unchanged:
+            msg = _('Error changing links on page %s!') % (self.page.page_name)
+            success = False
+
+        return success, msg
+
+    # The error message handling in request.__init__ is a bit
+    # convoluted, trying to make the displaying of errors a bit nicer.
+    def _add_msg(self, msgs, msg):
+        if not msg:
+            return msgs
+
+        if msgs is None:
+            msgs = msg
+        else:
+            msgs = "%s<br>%s" % (msgs, msg)
+
+        return msgs
 
     def do_action(self):
         _ = self.request.getText
@@ -110,8 +165,9 @@ class RenamePage(RenamePageBasic):
 
             # List pages that link to the renamed page
             pages = set()
-            for type in pdata.get('in', {}):
-                pages.update(pdata['in'][type])
+            inlinks = self.request.graphdata.get_in(self.pagename)
+            for type in inlinks:
+                pages.update(inlinks[type])
 
             # Update listed pages
             for page in pages:
@@ -119,9 +175,19 @@ class RenamePage(RenamePageBasic):
                 if not self.request.user.may.write(page):
                     continue
 
-                msg = self._inlink_rename(page, newpagename, 
-                                          oldpagename, comment)
-                msgs = "%s %s" % (msgs, msg)
+                # If inlink rename of a single page does not work,
+                # continue but make sure to emit a warning
+                success_single, msg = self._inlink_rename(page, newpagename, 
+                                                          oldpagename, comment)
+                if not success_single:
+                    success = False
+
+                if msg:
+                    msgs = self._add_msg(msgs, msg)
+
+            if not success:
+                msgs = self._add_msg(msgs,
+                         _(u'Other pages with inlinks renamed successfully.'))
 
         return success, msgs
 

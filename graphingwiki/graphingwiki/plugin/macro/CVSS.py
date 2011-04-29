@@ -203,6 +203,7 @@ def buildVector(base_metas):
     avset = set(['Local', 'Network', 'Adjacent Network'])
     acset = set(['High', 'Medium', 'Low'])
     auset = set(['Multiple', 'Single', 'None'])
+    ciaset = set(['None', 'Partial', 'Complete'])
     av = base_metas["Access Vector"][:1]
     avs = set(av)
     if len(avs) > 0 and avs <= avset:
@@ -221,9 +222,30 @@ def buildVector(base_metas):
     aus = set(au)
     if len(aus) > 0 and aus <= auset:
         auv = au.pop()
-        vector += "Au:" + auv[0] + "/C:C/I:C/A:C"
+        vector += "Au:" + auv[0] + "/"
     else:
         return None
+    c = base_metas["Confidentiality"][:1]
+    cs = set(c)
+    if len(cs) > 0 and cs <= ciaset:
+        cv = c.pop()
+        vector += "C:" + cv[0] + "/"
+    else:
+        vector += "C:C/"
+    i = base_metas["Integrity"][:1]
+    ins = set(i)
+    if len(ins) > 0 and ins <= ciaset:
+        inv = i.pop()
+        vector += "I:" + inv[0] + "/"
+    else:
+        vector += "I:C/"
+    a = base_metas["Availability"][:1]
+    avas = set(a)
+    if len(avas) > 0 and avas <= ciaset:
+        avav = a.pop()
+        vector += "A:" + avav[0]
+    else:
+        vector += "A:C"
     return vector
 
 def execute(macro, args):
@@ -255,7 +277,7 @@ def execute(macro, args):
             return _sysmsg % ('error', 
                 _("CVSS: The type needs to be either score or vector."))
 
-    base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication"])
+    base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication", "Confidentiality", "Integrity", "Availability"])
     vector = buildVector(base_metas)
     if vector is not None:
         if type == "vector":

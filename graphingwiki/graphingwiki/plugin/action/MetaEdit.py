@@ -13,19 +13,20 @@ from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
+from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 
-from graphingwiki import actionname
+from graphingwiki import actionname, SEPARATOR
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
-from graphingwiki.util import form_escape, SEPARATOR, decode_page, \
-    enter_page, exit_page
+from graphingwiki.util import form_escape, form_unescape, decode_page, enter_page, exit_page
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
     # (Moin 1.5 request.form has its values - but not keys - decoded
     # into unicode, which tends to lead to hilarious situational
     # comedy).
-    return dict([(decode_page(key), value) for (key, value) in form.items()])
+    return dict([(form_unescape(decode_page(key)), value) 
+                 for (key, value) in form.items()])
 
 def parse_editform(request, form):
     r"""
@@ -52,9 +53,24 @@ def parse_editform(request, form):
     msgs = list()
     keys = dict()
     pages = dict()
+    files = dict()
 
     # Key changes
     for oldKey, newKeys in form.iteritems():
+        if oldKey.endswith("__filename__"):
+            oldKey = oldKey[:-12]
+            values = form.get(oldKey, None)
+            if not values or len(values) < 3:
+                continue
+
+            fileobj = values[-1]
+            if type(fileobj) != file:
+                continue
+
+            page, key = oldKey.split(SEPARATOR, 1)
+            files.setdefault(page, dict())[key] = (newKeys, fileobj)
+            continue
+
         if not newKeys or not oldKey.startswith(':: '):
             continue
 
@@ -67,6 +83,9 @@ def parse_editform(request, form):
 
     # Value changes
     for pageAndKey, newValues in form.iteritems():
+        if pageAndKey.endswith("__filename__"):
+            continue
+
         # At least the key 'save' may be there and should be ignored
         if not SEPARATOR in pageAndKey:
             continue
@@ -118,7 +137,18 @@ def parse_editform(request, form):
         if not (oldMeta or newMeta):
             del pages[page]
 
-    return pages, msgs
+    for page in files:
+        metas = pages.get(page, (dict(), dict()))[1]
+        for key in files[page]:
+            filename, descriptor = files[page][key]
+            values = metas.get(key, list())
+            try:
+                index = values.index(descriptor)
+                values[index] = "[[attachment:%s]]" % filename
+            except ValueError:
+                values.append("[[attachment:%s]]" % filename)
+
+    return pages, msgs, files
 
 def show_queryform(wr, request, pagename):
     _ = request.getText
@@ -135,7 +165,7 @@ def show_editform(wr, request, pagename, args):
 
     formpage = '../' * pagename.count('/') + pagename
 
-    wr(u'<form method="POST" action="%s">\n',
+    wr(u'<form method="POST" action="%s" enctype="multipart/form-data">\n',
        actionname(request, pagename))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(formatter.table(1))
@@ -216,6 +246,25 @@ def show_editform(wr, request, pagename, args):
                 #print frompage, key, inputname, values, '<br>'
             wr(formatter.table_row(0))
 
+        wr(formatter.table_row(1))
+        wr(formatter.table_cell(1, {'class': 'meta_cell'}))
+        for key in metakeys + ['']:
+            inputname = frompage + SEPARATOR + key
+
+            if len(values[frompage][key]) >= (i + 1):
+                val = values[frompage][key][i]
+            else:
+                val = ''
+
+            # Skip default labels
+            if key == 'label' and val == frompage:
+                val = ''
+
+            wr(formatter.table_cell(1))
+            wr(u'<input class="metavalue" type="file" name="%s">\n', inputname)
+
+        wr(formatter.table_row(0))
+
 # Proto JS code to warn on leaving an empty key name
 # <script language="JavaScript" type="text/javascript">
 #    function myvalid(me) {
@@ -266,10 +315,32 @@ def execute(pagename, request):
                 added[pagename]['gwikitemplate'] = template
 
             # Ignore form clutter
-            keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
+            ignore = set()
+            files = dict()
+            for key in form:
+                if key.endswith("__filename__"):
+                    ignore.add(key)
+                    ignore.add(key[:-12])
+                    filename = form.get(key, None)
+                    fileobj = form.get(key[:-12], [None])[-1]
+                    if not filename and not fileobjj:
+                        continue
+
+#                    if type(fileobj) != file:
+#                        panic, attack, filename, fileobj = list()
+#                        continue
+
+                    keys = files.setdefault(key.split(SEPARATOR)[0], dict())
+                    values = keys.setdefault(key.split(SEPARATOR)[1], list())
+                    values.append((filename, fileobj))
+
+            keys = list()
+            for key in form:
+                if key not in ignore and SEPARATOR in key:
+                    keys.append(key.split(SEPARATOR)[1])
+#            keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
             old = get_metas(request, pagename, keys, includeGenerated=False)
-
             for key in keys:
                 oldkey = pagename + SEPARATOR + key
                 oldvals = old.get(key, list())
@@ -281,6 +352,19 @@ def execute(pagename, request):
                 else:
                     discarded.setdefault(pagename, dict()).setdefault(key, list()).extend(oldvals)
                     added.setdefault(pagename, dict()).setdefault(key, list()).extend(form[oldkey])
+
+            msgs = list()
+            # Add attachments
+            for pname in files:
+                for key in files[pname]:
+                    for value in files[pname][key]:
+                        name = value[0]
+                        try:
+                            t, s = add_attachment(request, pname, name, value[1])
+                            added.setdefault(pname, dict()).setdefault(key, list()).append("[[attachment:%s]]" % name)
+                        except AttachmentAlreadyExists:
+                            msgs = ["Attachment '%s' already exists." % name]
+                            
 
             # Delete unneeded page keys in added/discarded
             pagenames = discarded.keys()
@@ -295,13 +379,14 @@ def execute(pagename, request):
 
             # Save the template if needed
             if not Page(request, pagename).exists() and template:
-                msgs = save_template(request, pagename, template)
+                msgs.append(save_template(request, pagename, template))
 
-            _, msgs = set_metas(request, dict(), discarded, added)
+            _, msgss = set_metas(request, dict(), discarded, added)
+            msgs.extend(msgss)
 
         else:
             # MetaEdit
-            pages, msgs = parse_editform(request, form)
+            pages, msgs, files = parse_editform(request, form)
 
             if pages:
                 saved_templates = False
@@ -315,11 +400,16 @@ def execute(pagename, request):
                 # If new pages were changed we need to redo parsing
                 # the form to know what we really need to edit
                 if saved_templates:
-                    pages, newmsgs = parse_editform(request, form)
+                    pages, newmsgs, files = parse_editform(request, form)
 
                 for page, (oldMeta, newMeta) in pages.iteritems():
                     msgs.append('%s: ' % page + 
                                 edit_meta(request, page, oldMeta, newMeta))
+
+                for page in files:
+                    for key in files[page]:
+                        name, content = files[page][key]
+                        t, s = add_attachment(request, page, name, content) 
             else:
                 msgs.append(request.getText('No pages changed'))
             

@@ -105,17 +105,33 @@ def draw_teacherui(macro, user, question):
  <script type="text/javascript" src="%s/raippajs/raphael.js"></script>
     <script type="text/javascript">
 
-function editor(view){ 
+var questionModalizer = new Class({
+    Extends: modalizer,
+        click : function() {
+            this.els.fireEvent('close');
+            var changed = false;
+            this.els.each(function(el){
+               if(el.hasClass('edited')) changed=true;
+            });
+            if (!changed || confirm('Discard changes and close question editor?')) {
+               this.close();
+            }
+
+        }
+});
+
+
+function editor(view){
     var editdiv = new Element('div');
-    var statsdiv = new Element('div'); 
-    var modal = new modalizer([editdiv, statsdiv], { 
+    var statsdiv = new Element('div');
+    var modal = new questionModalizer([editdiv, statsdiv], {
         tabLabels : ["edit", "stats"],
         defTab : view,
-        destroyOnExit : false
-        });     
-    
+        destroyOnExit : true
+        });
     var edit = new QuestionEditor(editdiv, editoptions);
     var stats = new QuestionStats(statsdiv);
+
     }
 
 </script>
@@ -148,7 +164,7 @@ def draw_answer_edit_ui(macro, question):
     res = list()
 
     ans_js = []
-    if qtype in ["checkbox", "radio", "text"]:
+    if qtype in ["checkbox", "radio", "text", "longtext"]:
     #generating old answers using javascript
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage)
@@ -178,7 +194,6 @@ def draw_answer_edit_ui(macro, question):
     elif qtype == "file":
         for i, anspage in enumerate(answers):
             answer = Answer(request, anspage).answer()
-
             ans_js.append(to_json({
                     "name":  answer[0],
                     "cmd" : answer[1],
@@ -192,7 +207,7 @@ def draw_answer_edit_ui(macro, question):
     res.append(f.rawHTML('''
     <script type="text/javascript">
     var editoptions = {
-            types :  ["checkbox", "radio", "text", "file"],
+            types :  ["checkbox", "radio", "text", "longtext", "file"],
             redo : %s,
             type: '%s',
             shuffle: %s,
@@ -254,6 +269,10 @@ def draw_answers(macro, user, question):
 
     elif qtype == "text":
         res.append(f.rawHTML('<input name="answer">'))
+        res.append(f.linebreak(0))
+
+    elif qtype == "longtext":
+        res.append(f.rawHTML('<textarea name="answer" cols=80 rows=5></textarea>'))
         res.append(f.linebreak(0))
 
     elif qtype == "file":

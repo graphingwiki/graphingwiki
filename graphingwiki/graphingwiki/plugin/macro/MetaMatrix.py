@@ -170,9 +170,11 @@ def construct_table(macro, pagelist, metakeys,
 
                             vals = val
 
-                    if vals and addpagename:
+                    if addpagename:
+                        result += f.listitem(1, **entryfmt)
                         result += pageobj.link_to(request, **args)
-
+                        result += f.listitem(0)
+                        
                     macro.request.write(result)
                     
         request.write(macro.formatter.table_row(0))

@@ -1,0 +1,35 @@
+USABILITY ADDON INSTALLATION
+
+1. setup.py will automatically copy gwikicommon under MoinMoin's htdocs
+
+2. Add to html_head of your wikiconfig:
+
+    html_head = '' # omit if you already have something
+
+    for script in ['js/mootools-core-yc.js', \
+                   'js/mootools-more-yc.js', \
+                   'js/gwiki-common.js', \
+                   'js/sorttable-moo.js', \
+                   'js/mootree.js', \
+                   'simile/timeline/timeline_ajax/simile-ajax-api.js', \
+                   'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
+        html_head += '<script src="%s" type="text/javascript"></script>' \
+                     % (url_prefix_static + '/gwikicommon/' + script)
+
+    stylesheets = [
+        ('all', url_prefix_static + '/gwikicommon/css/common.css')
+    ]
+
+DESCRIPTION
+
+ zgrviewer::
+   Java applets to browser graphs produced by ZGR
+   output format of ShowGraphSimple action
+
+ simile::
+   You can use the excellent MIT SIMILE javascript widgets with
+   Graphingwiki for data visualisation with RecentChangesTimeline
+   and MetaTimeLine macros.
+
+ js::
+   Usability javascript such as sorttable.js for sortable MetaTables.

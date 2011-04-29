@@ -61,7 +61,8 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
 
     stylesheet_data = open(stylesheet).read()
 
-    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nesssus.xsl"'
+    attributes["href"] = \
+        '"?action=AttachFile&amp;do=get&amp;target=ettercap.xsl"'
     node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
 
     xml_data = doc.toxml()
@@ -166,18 +167,27 @@ def parse_xml(file, ettercaprun_page):
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options]")
+    parser.add_option( "-l", "--last-edit-wins",
+        action="store_true", dest="lasteditwins", default=False,
+        metavar = "LAST-EDIT-WINS", 
+        help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, 
+        help="Display file upload progress information." )
     ettercap_files=[]
     ops = {}
     sect = "ettercap-uploader"
     ops = parseOptions(parser, sect, template=True, category=True)
+    progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
-        template = "EttercapTemplate"
+        template = "IdentityTemplate"
     category = ops[sect]["category"]
     if category is None:
-        category = "CategoryEttercap"
+        category = "CategoryIdentity"
+    replace = ops[sect]["lasteditwins"] 
     args = ops[sect]["args"]
     if len(args) <1:
         parser.error("At least one XML input file path needs to be specified.")
@@ -202,13 +212,24 @@ def main():
         if verbose:
             print "NOTE: Parsing", file
         metas, attach = parse_xml(file, xml_page)
+
+        metas[xml_page]['TYPE'].add('Ettercap Run')
+        metas[xml_page]['gwikicategory'] = ['CategoryEttercap']
+        metas[xml_page]['gwikitemplate'] = ['EttercapTemplate']
+
         if category is not None:
             for page in metas:
-                metas[page]["category"].add(category)
-        metas[xml_page]['TYPE'].add('Ettercap Run')
+                if not 'gwikicategory' in metas[page]:
+                    metas[page]["gwikicategory"].add(category)
+        if template is not None:
+            for page in metas:
+                if not 'gwikitemplate' in metas[page]:
+                    metas[page]["gwikitemplate"].add(template)
+
         if verbose:
             print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, template, options.verbose)
+
+        failed = importMetas(collab, metas, '', verbose, replace)
         if failed:
             for page in failed:
                 if verbose:
@@ -216,15 +237,16 @@ def main():
                 else:
                     print "ERROR uploading:", page
         if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
+            print "NOTE: Fixing stylesheet and uploading", file, \
+                "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
             print "ERROR: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, verbose)
+            uploadFile(collab, xml_page, file, fname, progress)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, attach[page][fname], fname, verbose)
+                uploadFile(collab, page, attach[page][fname], fname, progress)
 
 if __name__ == "__main__":
     try:

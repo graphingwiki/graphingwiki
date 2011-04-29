@@ -1,0 +1,90 @@
+/* common.css
+   - Default styles for graphingwiki's javascriptified features
+   Copyright: 2011 by Lauri Pokka
+*/
+
+a.jslink {
+    font-size: 12px;
+    color: green;
+    cursor: pointer;
+}
+
+/* Mootools tooltips */
+
+.mootip div.tip {
+    position: absolute;
+    color: #fff;
+    width: 150px;
+    z-index: 1050;
+
+	background: rgba(0, 0, 0, 0.80);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr=#CC000000,endColorstr=#CC000000);
+	-ms-filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#CC000000,endColorstr=#CC000000);
+
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+}
+
+.mootip div.tip-title {
+    font-weight: bold;
+    font-size: 11px;
+    margin: 0;
+    color: #9FD4FF;
+    padding: 6px 6px 3px;
+}
+
+.mootip div.tip-text {
+    font-size: 11px;
+    padding: 3px 6px 6px;
+}
+
+/* MetaMonthCalendar css*/
+
+th.calendar-month {
+    background-color: #DEDEDE;
+    border: solid 1px #ADB9CC;
+}
+
+td.calendar-today {
+    border-width: 2pt;
+    border-color: #8470FF;
+    border-style: solid;
+    background-color: #CCFFCC;
+}
+
+td.calendar-topic-workday {
+    border-style: solid;
+    width: 30px;
+    height: 18px;
+    background-color: #DDDDFF;
+    text-align: center;
+}
+
+td.calendar-topic-weekend {
+    width: 30px;
+    height: 18px;
+    background-color: #FFDDDD;
+    text-align: center;
+}
+td.calendar-weekend{
+    background-color:#FEF1E9;
+}
+
+td.calendar-weeknumber {
+    background-color: #CCFFCC;
+    height: 15px;
+    width: 22px;
+}
+
+td.calendar-empty {
+    background-color: #DEDEDE;
+}
+
+table.month-container > tbody > tr >td ,
+table.month-container td table {
+    border: none;
+    padding: 0 0 0 0;
+    margin: 0 0 0 0;
+    width: 100%;
+}

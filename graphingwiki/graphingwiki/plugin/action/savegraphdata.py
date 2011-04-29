@@ -29,7 +29,6 @@
 
 import re
 import os
-import shelve
 
 from time import time
 from copy import copy
@@ -38,147 +37,13 @@ from copy import copy
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin, get_processing_instructions
 from MoinMoin.Page import Page 
+from MoinMoin.wikiutil import AbsPageName
+from MoinMoin import config
 
 # graphlib imports
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, delete_moin_caches
 from graphingwiki.editing import parse_categories
 
-# Add in-links from current node to local nodes
-def shelve_add_in(new_data, (frm, to), linktype):
-    if not linktype:
-        linktype = NO_TYPE
-
-    temp = new_data.get(to, {})
-
-    if not temp.has_key(u'in'):
-        temp[u'in'] = {linktype: [frm]}
-    elif not temp[u'in'].has_key(linktype):
-        temp[u'in'][linktype] = [frm]
-    else:
-        temp[u'in'][linktype].append(frm)
-        
-    # Notification that the destination has changed
-    temp[u'mtime'] = time()
-
-    new_data[to] = temp
-
-# Add out-links from local nodes to current node
-def shelve_add_out(new_data, (frm, to), linktype):
-    if not linktype:
-        linktype = NO_TYPE
-
-    temp = new_data.get(frm, {})
-
-    if not temp.has_key(u'out'):
-        temp[u'out'] = {linktype: [to]}
-    elif not temp[u'out'].has_key(linktype):
-        temp[u'out'][linktype] = [to]
-    else:
-        temp[u'out'][linktype].append(to)
-
-    new_data[frm] = temp
-
-# Respectively, remove in-links
-def shelve_remove_in(new_data, (frm, to), linktype):
-    # import sys
-    # sys.stderr.write('Starting to remove in\n')
-    temp = new_data.get(to, {})
-    if not temp.has_key(u'in'):
-        return
-
-    for type in linktype:
-        # sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
-        # eg. when the shelve is just started, it's empty
-        if not temp[u'in'].has_key(type):
-            # sys.stderr.write("No such type: %s\n" % type)
-            continue
-        if frm in temp[u'in'][type]:
-            temp[u'in'][type].remove(frm)
-
-            # Notification that the destination has changed
-            temp[u'mtime'] = time()
-            
-        if not temp[u'in'][type]:
-            del temp[u'in'][type]
-
-
-    # sys.stderr.write("Hey man, I think I did it!\n")
-    new_data[to] = temp
-
-# Respectively, remove out-links
-def shelve_remove_out(new_data, (frm, to), linktype):
-    # print 'Starting to remove out'
-    temp = new_data.get(frm, {})
-
-    if not temp.has_key(u'out'):
-        return 
-
-    for type in linktype:
-        # print "Removing %s %s %s" % (frm, to, linktype)
-        # eg. when the shelve is just started, it's empty
-        if not temp[u'out'].has_key(type):
-            # print "No such type: %s" % type
-            continue
-        if to in temp[u'out'][type]:
-            i = temp[u'out'][type].index(to)
-            del temp[u'out'][type][i]
-
-            # print "removed %s" % (repr(to))
-
-        if not temp[u'out'][type]:
-            del temp[u'out'][type]
-            # print "%s empty" % (type)
-            # print "Hey man, I think I did it!"
-
-    new_data[frm] = temp
-
-def strip_meta(key, val):
-    key = key.strip()
-    if key != 'gwikilabel':
-        val = val.strip()
-    return key, val
-
-def shelve_set_attribute(new_data, node, key, val):
-    key, val = strip_meta(key, val)
-
-    temp = new_data.get(node, {})
-
-    if not temp.has_key(u'meta'):
-        temp[u'meta'] = {key: [val]}
-    elif not temp[u'meta'].has_key(key):
-        temp[u'meta'][key] = [val]
-    # a page can not have more than one label, shapefile etc
-    elif key in SPECIAL_ATTRS:
-        temp[u'meta'][key] = [val]
-    else:
-        temp[u'meta'][key].append(val)
-
-    new_data[node] = temp
-
-def add_meta(new_data, pagename, (key, val)):
-
-    # Do not handle empty metadata, except empty labels
-    if key != 'gwikilabel':
-        val = val.strip()
-    if not val:
-        return
-
-    # Values to be handled in graphs
-    if key in SPECIAL_ATTRS:
-        shelve_set_attribute(new_data, pagename, key, val)
-        # If color defined, set page as filled
-        if key == 'fillcolor':
-            shelve_set_attribute(new_data, pagename, 'style', 'filled')
-        return
-
-    # Save to shelve's metadata list
-    shelve_set_attribute(new_data, pagename, key, val)
-
-def add_link(new_data, pagename, nodename, linktype):
-    edge = [pagename, nodename]
-
-    shelve_add_in(new_data, edge, linktype)
-    shelve_add_out(new_data, edge, linktype)
 
 def parse_text(request, page, text):
     pagename = page.page_name
@@ -205,7 +70,7 @@ def parse_text(request, page, text):
     linktypes = ["wikiname_bracket", "word",                  
                  "interwiki", "url", "url_bracket"]
     
-    new_data = {}
+    new_data = dict_with_getpage()
 
     # Add the page categories as links too
     categories, _, _ = parse_categories(request, text)
@@ -221,11 +86,28 @@ def parse_text(request, page, text):
 
     for metakey, value in p.definitions.iteritems():
         for type, item in value:
-            # print metakey, type, item
             dnode = None
 
             if  type in ['url', 'wikilink', 'interwiki', 'email']:
                 dnode = item[1]
+                if '#' in dnode:
+                    # Fix anchor links to point to the anchor page
+                    url = False
+                    for schema in config.url_schemas:
+                        if dnode.startswith(schema):
+                            url = True
+                    if not url:
+                        # Do not fix URLs
+                        if dnode.startswith('#'):
+                            dnode = pagename
+                        else:
+                            dnode = dnode.split('#')[0]
+                if (dnode.startswith('/') or
+                    dnode.startswith('./') or
+                    dnode.startswith('../')):
+                    # Fix relative links
+                    dnode = AbsPageName(pagename, dnode)
+
                 hit = item[0]
             elif type == 'category':
                 # print "adding cat", item, repr(categories)
@@ -247,38 +129,216 @@ def parse_text(request, page, text):
 
     return new_data
 
-def changed_meta(request, pagename, old_data, new_data):
-    add_out = dict()
-    del_out = dict()
+def strip_meta(key, val):
+    key = key.strip()
+    val = val.strip()
 
-    add_in = dict()
-    del_in = dict()
+    # retain empty labels
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
+    return key, val
+
+def add_link(new_data, pagename, nodename, linktype):
+    edge = [pagename, nodename]
+
+    add_in(new_data, edge, linktype)
+    add_out(new_data, edge, linktype)
+
+
+def add_in(new_data, (frm, to), linktype):
+    "Add in-links from current node to local nodes"
+
+    if hasattr(new_data, 'add_in'):
+        new_data.add_in((frm, to), linktype)
+        return
+
+    if not linktype:
+        linktype = NO_TYPE
+
+    temp = new_data.get(to, {})
+
+    if not temp.has_key(u'in'):
+        temp[u'in'] = {linktype: [frm]}
+    elif not temp[u'in'].has_key(linktype):
+        temp[u'in'][linktype] = [frm]
+    else:
+        temp[u'in'][linktype].append(frm)
+
+    # Notification that the destination has changed
+    temp[u'mtime'] = time()
+    
+    new_data[to] = temp
+
+
+def add_out(new_data, (frm, to), linktype):
+    "Add out-links from local nodes to current node"
+
+    if hasattr(new_data, 'add_out'):
+        new_data.add_out((frm, to), linktype)
+        return
+
+    if not linktype:
+        linktype = NO_TYPE
+
+    temp = new_data.get(frm, {})
+    
+    if not temp.has_key(u'out'):
+        temp[u'out'] = {linktype: [to]}
+    elif not temp[u'out'].has_key(linktype):
+        temp[u'out'][linktype] = [to]
+    else:
+        temp[u'out'][linktype].append(to)
+
+    new_data[frm] = temp
+
+
+def remove_in(new_data, (frm, to), linktype):
+    "Remove in-links from local nodes to current node"
+
+    if hasattr(new_data, 'remove_in'):
+        new_data.remove_in((frm, to), linktype)
+        return
+
+    temp = new_data.getpage(to)
+    if not temp.has_key(u'in'):
+        return
+
+    for type in linktype:
+        # sys.stderr.write("Removing %s %s %s\n" % (frm, to, linktype))
+        # eg. when the shelve is just started, it's empty
+        if not temp[u'in'].has_key(type):
+            # sys.stderr.write("No such type: %s\n" % type)
+            continue
+        if frm in temp[u'in'][type]:
+            temp[u'in'][type].remove(frm)
+
+            # Notification that the destination has changed
+            temp[u'mtime'] = time()
+
+        if not temp[u'in'][type]:
+            del temp[u'in'][type]
+
+
+    # sys.stderr.write("Hey man, I think I did it!\n")
+    new_data[to] = temp
+
+def remove_out(new_data, (frm, to), linktype):
+    "remove outlinks"
+
+    if hasattr(new_data, 'remove_out'):
+        new_data.remove_out((frm, to), linktype)
+        return
+
+    temp = new_data.get(frm, {})
+    
+    if not temp.has_key(u'out'):
+        return 
+
+    for type in linktype:
+        # print "Removing %s %s %s" % (frm, to, linktype)
+        # eg. when the shelve is just started, it's empty
+        if not temp[u'out'].has_key(type):
+            # print "No such type: %s" % type
+            continue
+        if to in temp[u'out'][type]:
+            i = temp[u'out'][type].index(to)
+            del temp[u'out'][type][i]
+
+            # print "removed %s" % (repr(to))
+
+        if not temp[u'out'][type]:
+            del temp[u'out'][type]
+            # print "%s empty" % (type)
+            # print "Hey man, I think I did it!"
+
+    new_data[frm] = temp
+
+
+def set_attribute(new_data, node, key, val):
+    key, val = strip_meta(key, val)
+
+    temp = new_data.get(node, {})
+
+    if not temp.has_key(u'meta'):
+        temp[u'meta'] = {key: [val]}
+    elif not temp[u'meta'].has_key(key):
+        temp[u'meta'][key] = [val]
+    # a page can not have more than one label, shapefile etc
+    elif key in SPECIAL_ATTRS:
+        temp[u'meta'][key] = [val]
+    else:
+        temp[u'meta'][key].append(val)
+
+    new_data[node] = temp
+
+def add_meta(new_data, pagename, (key, val)):
+
+    # Do not handle empty metadata, except empty labels
+    val = val.strip()
+    if key == 'gwikilabel' and not val:
+        val = ' '        
+
+    if not val:
+        return
+
+    # Values to be handled in graphs
+    if key in SPECIAL_ATTRS:
+        set_attribute(new_data, pagename, key, val)
+        # If color defined, set page as filled
+        if key == 'fillcolor':
+            set_attribute(new_data, pagename, 'style', 'filled')
+        return
+
+    # Save to shelve's metadata list
+    set_attribute(new_data, pagename, key, val)
+
+# class dict_with_getpage(dict):
+#     def getpage(self, pagename):
+#         return self.setdefault(pagename, {})
+
+#     def add_out(self, frm, to, linktype):
+#         if not self.has_key(u'out'):
+#             self[u'out'] = {linktype: [to]}
+#         elif not self[u'out'].has_key(linktype):
+#             self[u'out'][linktype] = [to]
+#         else:
+#             self[u'out'][linktype].append(to)
+
+dict_with_getpage = dict
+
+def changed_meta(request, pagename, old_outs, new_data):
+    add_out = dict_with_getpage()
+    del_out = dict_with_getpage()
+
+    add_in = dict_with_getpage()
+    del_in = dict_with_getpage()
 
     for page in new_data:
         add_in.setdefault(page, list())
         del_in.setdefault(page, list())
 
-    # Code for making our which edges have changed.
+    # Code for making out which edges have changed.
     # We only want to save changes, not all the data,
     # as edges have a larger time footprint while saving.
 
     add_out.setdefault(pagename, list())
     del_out.setdefault(pagename, list())
 
-    old_keys = set(old_data.get(u'out', {}).keys())
+    old_keys = set(old_outs.keys())
     new_keys = set(new_data.get(pagename, {}).get(u'out', {}).keys())
     changed_keys = old_keys.intersection(new_keys)
 
     # Changed edges == keys whose values have experienced changes
     for key in changed_keys:
         new_edges = len(new_data[pagename][u'out'][key])
-        old_edges = len(old_data[u'out'][key])
+        old_edges = len(old_outs[key])
 
         for i in range(max(new_edges, old_edges)):
 
             # old data had more links, delete old
             if new_edges <= i:
-                val = old_data[u'out'][key][i]
+                val = old_outs[key][i]
 
                 del_out[pagename].append((key, val))
 
@@ -298,7 +358,7 @@ def changed_meta(request, pagename, old_data, new_data):
 
             # check if the link i has changed
             else:
-                val = old_data[u'out'][key][i]
+                val = old_outs[key][i]
                 new_val = new_data[pagename][u'out'][key][i]
 
                 if val == new_val:
@@ -329,7 +389,7 @@ def changed_meta(request, pagename, old_data, new_data):
 
     # Deleted edges
     for key in old_keys.difference(new_keys):
-        for val in old_data[u'out'][key]:
+        for val in old_outs[key]:
 
             del_out[pagename].append((key, val))
 
@@ -390,6 +450,9 @@ def changed_meta(request, pagename, old_data, new_data):
     return add_out, del_out, add_in, del_in
 
 def _clear_page(request, pagename):
+    if hasattr(request.graphdata, 'clear_page'):
+        request.graphdata.clear_page(pagename)
+        return
     # Do not delete in-links! It will break graphs, categories and whatnot
     if not request.graphdata[pagename].get('in', {}):
         del request.graphdata[pagename]
@@ -400,55 +463,63 @@ def _clear_page(request, pagename):
         del request.graphdata[pagename][u'meta']
 
 def execute(pagename, request, text, pagedir, pageitem):
+    try:
+        return execute2(pagename, request, text, pagedir, pageitem)
+    except:
+        request.graphdata.abort()
+        raise
+
+def execute2(pagename, request, text, pagedir, pageitem):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
+    
+    # parse_text, add_link, add_meta return dict with keys like
+    # 'BobPerson' -> {u'out': {'friend': ['GeorgePerson']}}
+    # (ie. same as what graphdata contains)
 
     # Get new data from parsing the page
     new_data = parse_text(request, pageitem, text)
 
     # Get a copy of current data
-    old_data = request.graphdata.get(pagename, {})
+    old_outs = request.graphdata.get_out(pagename)
 
-    add_out, del_out, add_in, del_in = \
-        changed_meta(request, pagename, old_data, new_data)
+    changed_new_out, changed_del_out, changed_new_in, changed_del_in = \
+        changed_meta(request, pagename, old_outs, new_data)
 
     # Insert metas and other stuff from parsed content
     cur_time = time()
 
-    temp = request.graphdata.get(pagename, {})
-    temp[u'meta'] = new_data.get(pagename, dict()).get(u'meta', dict())
-    temp[u'acl'] = new_data.get(pagename, dict()).get(u'acl', '')
-    temp[u'mtime'] = cur_time
-    temp[u'saved'] = True
-
-    # Release ReadLock (from the previous reads), make WriteLock
-    request.graphdata.writelock()
-
-    request.graphdata[pagename] = temp
+    request.graphdata.set_page_meta_and_acl_and_mtime_and_saved(pagename,
+                                                                new_data.get(pagename, dict()).get(u'meta', dict()),
+                                                                new_data.get(pagename, dict()).get(u'acl', ''),
+                                                                cur_time, True)
 
     # Save the links that have truly changed
-    for page in del_out:
-        for edge in del_out[page]:
+    for page in changed_del_out:
+        for edge in changed_del_out[page]:
             #print 'delout', repr(page), edge
             linktype, dst = edge
-            shelve_remove_out(request.graphdata, [page, dst], [linktype])
-    for page in del_in:
-        for edge in del_in[page]:
+            remove_out(request.graphdata, [page, dst], [linktype])
+
+    for page in changed_del_in:
+        for edge in changed_del_in[page]:
             #print 'delin', repr(page), edge
             linktype, src = edge
-            shelve_remove_in(request.graphdata, [src, page], [linktype])
+            remove_in(request.graphdata, [src, page], [linktype])
 
-    for page in add_out:
-        for i, edge in enumerate(add_out[page]):
+    for page in changed_new_out:
+        for i, edge in enumerate(changed_new_out[page]):
             linktype, dst = edge
             #print 'addout', repr(page), edge
-            shelve_add_out(request.graphdata, [page, dst], linktype)
-    for page in add_in:
-        for edge in add_in[page]:
+            add_out(request.graphdata, [page, dst], linktype)
+
+    for page in changed_new_in:
+        for edge in changed_new_in[page]:
             #print 'addin', repr(page), edge
             linktype, src = edge
-            shelve_add_in(request.graphdata, [src, page], linktype)
+            add_in(request.graphdata, [src, page], linktype)
+
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion
@@ -464,10 +535,9 @@ def execute(pagename, request, text, pagedir, pageitem):
         if rev != 99999999:
             if not exists:
                 _clear_page(request, pagename)
-
+    
     delete_moin_caches(request, pageitem)
-
-    request.graphdata.readlock()
+    request.graphdata.post_save(pagename)
 
 # - code below lifted from MetaFormEdit -
 
@@ -475,7 +545,6 @@ def execute(pagename, request, text, pagedir, pageitem):
 # that it works regardless of any processing instructions written on
 # page, including the use of other parsers
 class LinkCollectingPage(Page):
-
     def __init__(self, request, page_name, content, **keywords):
         # Cannot use super as the Moin classes are old-style
         apply(Page.__init__, (self, request, page_name), keywords)

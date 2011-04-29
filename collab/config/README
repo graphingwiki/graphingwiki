@@ -1,0 +1,6 @@
+Copy collab.ini to the directory /etc/local/collab/ to configure the
+collab scripts.
+
+There are also sample config files collabfarm.py, intermap.txt and
+logging.conf, that should be edited to your needs and copied to
+/srv/wikis/collab/config/ in the installation.

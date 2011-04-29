@@ -1,0 +1,78 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    opencollab-attachfile
+     - Modify and list attachment files
+
+    @copyright: 2011 by Juhani Eronen <exec@iki.fi> and Joachim Viide
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+from optparse import OptionParser
+from opencollab.wiki import CLIWiki
+
+usage = "usage: %prog [options] wikiurl pagename filename"
+parser = OptionParser(usage=usage)
+
+parser.add_option("-n", "--name", dest="name", default=None,
+                  help="Alternate attachment name [for save and load]")
+parser.add_option("-s", "--save", action="store_true", dest="save",
+                  help="Save attachment (value: target name) [default]")
+parser.add_option("-l", "--load", action="store_true", dest="load",
+                  help="View attachment")
+parser.add_option("-q", "--list", action="store_true", dest="list",
+                  help="List attachments on page")
+parser.add_option("-d", "--del", action="store_true", dest="rm",
+                  help="Delete attachment")
+parser.add_option("-u", "--username", dest="username", default=None,
+                  help="Username for logging onto the wiki")
+parser.add_option("-p", "--password", dest="password", default=None,
+                  help="Wiki password")
+
+options, args = parser.parse_args()
+if len(args) == 3:
+    wiki, page, fname = args
+
+    if options.name is None:
+        _, alt_name = os.path.split(fname)
+    else:
+        alt_name = options.name
+elif len(args) == 2 and options.list:
+    wiki, page = args
+else:
+    parser.error("Bad Args")
+
+wiki = CLIWiki(wiki, options.username, options.password)
+if options.load:
+    if options.name is not None and options.name == "-":
+        output = sys.stdout
+    else:
+        output = open(alt_name, "wb")
+
+    for data, current, size in wiki.getAttachmentChunked(page, fname):
+        output.write(data)
+        sys.stderr.write("\r%.02f%% downloaded" % (100*float(current)/size))
+        sys.stderr.flush()
+    sys.stderr.write("\n")
+    sys.stderr.flush()
+
+    output.flush()
+    if output is not sys.stdout:
+        output.close()
+elif options.list:
+    result = wiki.listAttachments(page)
+    print "Attachments on page %r:" % page
+    for item in result:
+        print item
+elif options.rm:
+    result = wiki.deleteAttachment(page, fname)
+    if result is True:
+        print "Deleted attachment %r on page %r." % (fname, page)
+elif options.save:
+    stream = open(fname, "rb")
+    for current, size in wiki.putAttachmentChunked(page, alt_name, stream):
+        print "\r%.02f%% uploaded" % (100*float(current)/size),
+    stream.close()
+    print "\rSaved attachment %r to page %r." % (alt_name, page)

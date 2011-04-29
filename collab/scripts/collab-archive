@@ -25,6 +25,8 @@ MYCOLLAB=$1
 MYCOLLABWIKIDIR=${wikidir}/${MYCOLLAB}
 MYCOLLABHTMLDIR=${htmldir}/${MYCOLLAB}
 
+mkdir -p ${archivedir}
+
 if [ -d ${MYCOLLABWIKIDIR} ]; then
   cd ${wikidir}
   tar jcvf ${archivedir}/${MYCOLLAB}-`date '+%Y-%m-%d'`.tar.bz2  ${MYCOLLAB}

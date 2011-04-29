@@ -48,9 +48,9 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         if page_content[page] is not None:
             content += page_content[page]
         collab.setMeta(page, page_marker, replace=True)
+
     if footer is not None:
         content += footer
-
     content += html_foot
     part=MIMEText(content, "HTML", "UTF-8")
     part.add_header('Content-Disposition', 'inline')

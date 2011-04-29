@@ -6,37 +6,33 @@
 """
 import os, sys, optparse, socket
 from urllib import quote
-from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.wiki import CLIWiki, WikiFailure, WikiFault
 from opencollab.meta import Meta
 from opencollab.util.config import parseOptions
-
-def uploadFile(wiki, page, filename, path):
-    file = open(path, "rb")
-
-    for current, total in wiki.putAttachmentChunked(page, filename, file):
-        percent = 100.0 * current / float(max(total, 1))
-        status = current, total, percent
-
-        sys.stdout.write("\rsent %d/%d bytes (%.02f%%) " % status)
-        sys.stdout.flush()
-
-    sys.stdout.write("done\n")
-    sys.stdout.flush()
-
-    file.close()
+from opencollab.util.file import uploadFile
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-d", "--delete", action="store_true",
+        dest="delete", default=False, 
+        help="Delete attachments, which do not exist at the source.")
+    parser.add_option("-n", "--dry-run", action="store_true",
+        dest="dryrun", default=False, help="Simulate the upload and possible delete actions." )
     parser.add_option("-p", "--page",
         dest="page", default=None, metavar="PAGE",
         help="Upload the file(s) to PAGE.")
+    parser.add_option("-P", "--progress", action="store_true",
+        dest="progress", default=False, help="Display file upload progress information." )
     parser.set_usage("%prog [options] 1..N optional input directories")
     ops = {}
     sect = "uploader"
     ops = parseOptions(parser, sect, template=True)
     url = ops["creds"]["url"]
-    verbose = ops[sect]["verbose"]
+    delete = ops[sect]["delete"]
+    dryrun = ops[sect]["dryrun"]
     page = ops[sect]["page"]
+    progress = ops[sect]["progress"]
+    verbose = ops[sect]["verbose"]
     if page is None:
         parser.error("Collab page to upload to needs to be specified. Use -h for help.")
     args = ops[sect]["args"]
@@ -54,10 +50,13 @@ def main():
         else:
             break
     filelist = list()
+    wikiflist = list()
     for path in args:
         if os.path.isfile(path):
-            wikiname = quote(path, safe="")
+            _, filename = os.path.split(path)
+            wikiname = quote(filename, safe="")
             filelist.append((path, wikiname))
+            wikiflist.append(wikiname)
         else:
             for root, dirs, files in os.walk(path):
                 for file in files:
@@ -65,12 +64,32 @@ def main():
                     wikiname = filename[len(os.path.dirname(path)):].lstrip("/")
                     wikiname = quote(wikiname, safe="")
                     filelist.append((filename, wikiname))
-        total = len(filelist)
-        n = 1
-        for filename, wikiname in filelist:
-            sys.stdout.write("%d/%d uploading %s as %s\n" % (n, total, filename, wikiname)) 
-            uploadFile(collab, page, wikiname, filename)
-            n += 1 
+                    wikiflist.append(wikiname)
+    total = len(filelist)
+    n = 1
+    if delete:
+        destfiles = collab.listAttachments(page)
+        d = set(destfiles)
+        s = set(wikiflist)
+        dead = d - s
+        for f in dead:
+            print "NOTE: deleting", page + "/" + f
+            if not dryrun:
+                try:
+                    collab.deleteAttachment(page, f)
+                except WikiFault, msg:
+                    sys.exit(msg)
+    for filename, wikiname in filelist:
+        if dryrun:
+            uploaded = True
+        else:
+            try:
+                uploaded = uploadFile(collab, page, filename, wikiname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+        if uploaded:
+            sys.stdout.write("NOTE: %d/%d uploaded %s as %s\n" % (n, total, filename, wikiname)) 
+        n += 1 
 
 if __name__ == "__main__":
     try:

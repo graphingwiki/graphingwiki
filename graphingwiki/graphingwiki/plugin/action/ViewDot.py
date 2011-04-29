@@ -138,10 +138,10 @@ class ViewDot(object):
         for page in self.request.rootpage.getPageList():
             files = AttachFile._get_files(self.request, page)
             for file in files:
-                if file.endswith('.dot'):
-                    request.write('<option label="%s" value="%s">%s</option>\n' % \
-                                  (file, "attachment:%s/%s" % (page, file),
-                                   "%s/%s" % (page, file)))
+                if file.endswith('.dot') or file.endswith('.gv'):
+                    request.write('<option label="%s" value="%s">%s</option>\n' 
+                                  % (file, "attachment:%s/%s" % (page, file),
+                                     "%s/%s" % (page, file)))
         request.write('</select>\n</table>\n')
         request.write(u'<input type=submit name=view ' +
                       'value="%s">\n' % _('View'))
@@ -161,7 +161,7 @@ class ViewDot(object):
         if self.help or not self.attachment:
             formatter = request.formatter
 
-            enter_page(request, pagename, 'View .dot attachment')
+            enter_page(request, pagename, 'View .gv attachment')
 
             self.sendForm()
 
@@ -219,13 +219,12 @@ class ViewDot(object):
             if self.format == 'zgr':
                 request.emit_http_headers()
                 request.write('<html><body>')
-            elif isinstance(self.request, RequestModPy):
-                request.emit_http_headers(['Content-Type: image/%s' %
-                                           formatcontent])
-                del request.mpyreq.headers_out['Vary']
             elif not isinstance(self.request, RequestStandAlone):
                 # Do not send content type in StandAlone
-                request.write("Content-type: image/%s\n\n" % formatcontent)
+                request.emit_http_headers(['Content-Type: image/%s' %
+                                           formatcontent])
+            if isinstance(self.request, RequestModPy):
+                del request.mpyreq.headers_out['Vary']
 
         if self.format == 'zgr':
             img_url = request.request_uri.replace('zgr', 'svg') + '&view=View'
@@ -261,7 +260,7 @@ class ViewDot(object):
                 params += 'width="%s"' % self.width
 
             page = ('<img src="%s" %s alt="%s"><br>\n' %
-                    (img_url, _('visualisation'), params))
+                    (img_url, params, _('visualisation')))
             request.write(page)
         else:
             request.write(data)
@@ -273,7 +272,7 @@ class ViewDot(object):
             
     def getLayoutInFormat(self, graphviz, format):
         tmp_fileno, tmp_name = mkstemp()
-        graphviz.layout(file=tmp_name, format=format)
+        graphviz.layout(fname=tmp_name, format=format)
         f = file(tmp_name)
         data = f.read()
         os.close(tmp_fileno)

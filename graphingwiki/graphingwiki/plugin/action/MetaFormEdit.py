@@ -16,13 +16,15 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki import actionname
-from graphingwiki.util import encode, SEPARATOR
+from graphingwiki import actionname, SEPARATOR
+from graphingwiki.util import encode, format_wikitext, form_unescape
 from graphingwiki.util import form_writer as wr
+
+from graphingwiki.editing import get_properties
 
 from savegraphdata import parse_text
 
-value_re = re.compile('<input class="metavalue" type="text" ' +
+value_re = re.compile('(<dt>.+?</dt>\s*<dd>\s*)<input class="metavalue" type="text" ' +
                       'name="(.+?)" value="\s*(.*?)\s*">')
 
 # Override Page.py to change the parser. This method has the advantage
@@ -48,9 +50,10 @@ def execute(pagename, request):
 
     formpage = '../' * pagename.count('/') + pagename
 
-    frm = wr(u'<form method="POST" action="%s">\n',
+    frm = wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
              actionname(request, pagename))+\
-          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')
+          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')+\
+          wr(u'<input type="hidden" name="gwikiseparator" value="'+ SEPARATOR+'">\n')
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
@@ -117,48 +120,138 @@ def execute(pagename, request):
     # page is not sent as it is
     out = StringIO.StringIO()
     newreq.redirect(out)
+    request.sent_headers = True
     newreq.page.send_page()
     newreq.redirect()
 
     graphdata = request.graphdata
-    graphdata.reverse_meta()
-    vals_on_keys = graphdata.vals_on_keys
+    vals_on_keys = graphdata.get_vals_on_keys()
 
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
         data = parse_text(newreq, newreq.page, newreq.page.get_raw_body())
         for page in data:
-            for key in data[page].get('meta', dict()):
-                for val in data[page]['meta'][key]:
+            pagemeta = graphdata.get_meta(page)
+            for key in pagemeta:
+                for val in pagemeta[key]:
                     vals_on_keys.setdefault(key, set()).add(val)
 
-    def repl_subfun(mo):
-        pagekey, val = mo.groups()
+    # Form types
+    def form_selection(request, pagekey, curval, values, description=''):
+        msg = wr('<select name="%s">', pagekey)
+        msg += wr('<option value=""> </option>')
+        
+        for keyval, showval in values:
+            msg += wr('<option value="%s"%s>%s</option>',
+                      keyval, curval == keyval and ' selected' or '',
+                      showval)
 
-        msg = ""
+        msg += '</select>'
+
+        return msg
+
+    def form_checkbox(request, pagekey, curval, values, description=''):
+        msg = ''
+
+        for keyval, showval in values:
+            msg += wr(
+                '<input type="checkbox" name="%s" value="%s"%s>',
+                pagekey, keyval, curval == keyval and ' checked' or '') + \
+                format_wikitext(request, showval)
+
+        return msg
+
+    def form_radio(request, pagekey, curval, values, description=''):
+        msg = ''
+
+        for keyval, showval in values:
+            msg += wr(
+                '<input type="radio" name="%s" value="%s"%s>',
+                pagekey, keyval, curval == keyval and ' checked' or '') + \
+                format_wikitext(request, showval)
+
+        return msg
+
+    def form_textbox(request, pagekey, curval, values, description=''):
+        return wr('<input type="text" name="%s" value="%s">',
+                  pagekey, curval)
+
+    def form_textarea(request, pagekey, curval, values, description=''):
+        return wr('<textarea rows=20 cols=70 name="%s">%s</textarea>',
+                  pagekey, curval)
+
+    def form_file(request, pagekey, curval, values, description=''):
+        return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
+                  pagekey, curval)
+
+    formtypes = {'selection': form_selection,
+                 'checkbox': form_checkbox,
+                 'textbox': form_textbox,
+                 'textarea': form_textarea,
+                 'radio': form_radio,
+                 'file': form_file} 
+    #, 'textarea']
+
+    def repl_subfun(mo):
+        dt, pagekey, val = mo.groups()
+
+        msg = dt
         key = pagekey.split(SEPARATOR)[1]
+        key = form_unescape(key)
+
+        properties = get_properties(request, key)
+
+        if properties.get('hidden'):
+            return ""
+
+        values = list()
 
         # Placeholder key key
         if key in vals_on_keys:
-            msg += wr('<select name="%s">', pagekey)
-            msg += wr('<option value=" ">%s</option>', _("None"))
-
             for keyval in sorted(vals_on_keys[key]):
                 keyval = keyval.strip()
                 if len(keyval) > 30:
                     showval = keyval[:27] + '...'
                 else:
                     showval = keyval
-                msg += wr('<option value="%s"%s>%s</option>',
-                          keyval, val == keyval and ' selected' or '',
-                          showval)
 
-            msg += '</select>'
+                values.append((keyval, showval))
 
-        msg += wr('<input class="metavalue" type="text" ' + \
-                      'name="%s" value="">', pagekey)
+        formtype = properties.get('hint')
+        constraint = properties.get('constraint')
+        desc = properties.get('description')
+        hidden = False
 
+        if formtype == "hidden":
+            hidden = True
+
+        if not formtype in formtypes:
+            formtype = "selection"
+
+        if (not formtype == "radio" and
+            not (formtype == "checkbox" and constraint == "existing")):
+            cssclass = "metaformedit-cloneable"
+        else:
+            cssclass = "metaformedit-notcloneable"
+       
+        if desc:
+            desc = desc.replace('"', '&quot;"')
+            msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
+            msg = msg.replace('<dt>', '<dt class="mt-tooltip" title="%s" rel="%s">' %(key, desc))
+
+        msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
+
+        msg += formtypes[formtype](request, pagekey, val, values)
+
+
+        if (not constraint == 'existing' and 
+            not formtype in ['textbox', 'textarea', 'file']):
+            msg += wr('<input class="metavalue" type="text" ' + \
+                          'name="%s" value="">', pagekey)
+
+        if hidden:
+            msg = request.formatter.div(1, css_class='comment') + msg + request.formatter.div(0)
         return msg
 
     data = out.getvalue()
