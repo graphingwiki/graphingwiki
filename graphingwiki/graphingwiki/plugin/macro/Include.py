@@ -72,6 +72,7 @@ def execute(macro, text):
                 # the editing of nonexisting pages
                 def new_exists(self, **kw):
                     exists = orig_exists(self, **kw)
+                    self.formatter.request.page = self
 
                     if self.page_name == inc_name:
                         if rev:
