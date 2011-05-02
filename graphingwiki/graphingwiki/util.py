@@ -334,7 +334,7 @@ def node_type(request, nodename):
         iw_list = wikiutil.load_wikimap(request)
         if iw_list.has_key(start):
             return 'interwiki'
-        else:
+        elif start:
             return 'none'
 
     return 'page'
@@ -733,7 +733,7 @@ def load_graph(request, pagename, urladd, load_origin=True):
                 gwikiurl = dst
                 tooltip = dst
 
-            else:
+            elif nodetype == 'none':
                 # Was not a valid link after all, eg. an
                 # interwiki-style link, but the wiki name was not in
                 # intermap.
