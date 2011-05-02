@@ -39,6 +39,7 @@ _orig_execute = Include.execute
 def execute(macro, text):
     _ = macro.request.getText
 
+    # Retain original values
     orig_request_page = macro.request.page
     orig_exists = Page.exists
     orig_link_to = Page.link_to
@@ -73,7 +74,15 @@ def execute(macro, text):
                 # the editing of nonexisting pages
                 def new_exists(self, **kw):
                     exists = orig_exists(self, **kw)
-                    self.formatter.request.page = self
+                    if self.formatter:
+                        # Fix a Moin bug in handling attachments: If
+                        # the formatter has page defined, it will
+                        # handle attachment links relative to the
+                        # including page, not the included page. For
+                        # some reason, the formatter has not always
+                        # been initialised, leading to crashes, so
+                        # check its existence first.
+                        self.formatter.request.page = self
 
                     if self.page_name == inc_name:
                         if rev:
@@ -156,6 +165,8 @@ def execute(macro, text):
         Page.link_to = orig_link_to
         Page.__init__ = orig__init__
 
+    # request.page might have been changed in page.new_exists, so it
+    # needs to be returned to its original value
     macro.request.page = orig_request_page
 
     return retval

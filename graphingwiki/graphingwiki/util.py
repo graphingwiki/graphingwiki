@@ -295,16 +295,6 @@ editable_p = lambda node: filter(lambda y: y not in
 
 NO_TYPE = u'_notype'
 
-# FIXME: Is this needed?
-def resolve_iw_url(request, wiki, page): 
-    res = wikiutil.resolve_interwiki(request, wiki, page) 
-    if res[3]:
-        iw_url = './InterWiki' 
-    else: 
-        iw_url = res[1] + res[2] 
-        
-    return iw_url 
-
 ATTACHMENT_SCHEMAS = ["attachment", "drawing"]
 
 def encode_page(page):
@@ -338,9 +328,14 @@ def node_type(request, nodename):
         if start in ATTACHMENT_SCHEMAS:
             return 'attachment'
 
+        # Check if we know of the wiki an interwiki-style link is
+        # trying to refer to. If not, assume that this should not be a
+        # link.
         iw_list = wikiutil.load_wikimap(request)
         if iw_list.has_key(start):
             return 'interwiki'
+        else:
+            return 'none'
 
     return 'page'
 
@@ -472,8 +467,8 @@ def load_children(request, graph, parent, urladd):
     for child in adata.edges.children(parent):
         if not graph.nodes.get(child):
             newnode = graph.nodes.add(child)
-            # Parent knows about links even though they might not see
-            # anything about the page being linked to 
+            # Parent knows about links to pages even though they might
+            # not see anything about the page being linked to
             if request.user.may.read(child):
                 newnode.update(adata.nodes.get(child))
             else:
@@ -501,6 +496,7 @@ def load_parents(request, graph, child, urladd):
     # Add new nodes, edges that are the parents of the current node
     for parent in adata.edges.parents(child):
         if not graph.nodes.get(parent):
+            # Do not add link parents if they are not known
             if not request.user.may.read(parent):
                 continue
             newnode = graph.nodes.add(parent)
@@ -736,6 +732,12 @@ def load_graph(request, pagename, urladd, load_origin=True):
                 # URL:s have the url already, keep it
                 gwikiurl = dst
                 tooltip = dst
+
+            else:
+                # Was not a valid link after all, eg. an
+                # interwiki-style link, but the wiki name was not in
+                # intermap.
+                continue
 
             # Add page and its metadata
             adata = _add_node(request, dst, adata, urladd, nodetype)

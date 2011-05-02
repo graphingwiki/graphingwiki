@@ -370,6 +370,10 @@ def metas_to_abs_links(request, page, values):
             if value.startswith(scheme):
                 if len(value.split('/')) == 1:
                     value = ':'.join(value.split(':')[1:])
+                    if not '|' in value:
+                        # If page does not have descriptive text, try
+                        # to shorten the link to the attachment name.
+                        value = "%s|%s" % (value.rstrip(']').rstrip('}'), value)
                     value = "%s%s/%s" % (scheme, page, value)
                 else:
                     att_page = value.split(':')[1]
@@ -418,7 +422,9 @@ def get_metas(request, name, metakeys, checkAccess=True,
     loadedMeta = dict()
     metas = request.graphdata.get_meta(name)
     for key in metas:
-        loadedMeta[key] = list(metas[key])
+        loadedMeta.setdefault(key, list())
+        values = metas_to_abs_links(request, name, metas[key])
+        loadedMeta[key].extend(values)
 
     loadedOutsIndir = dict()
     for key in loadedOuts:
@@ -1032,7 +1038,8 @@ def set_metas(request, cleared, discarded, added):
         # Filter out uneditables, such as inlinks
         metakeys = editable_p(metakeys)
 
-        old = get_metas(request, page, metakeys, checkAccess=False)
+        old = get_metas(request, page, metakeys, 
+                        checkAccess=False, includeGenerated=False)
 
         new = dict()
         for key in old:

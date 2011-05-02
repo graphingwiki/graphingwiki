@@ -35,10 +35,6 @@ def execute(xmlrpcobj, page, input, action='add',
     if not page:
         return xmlrpclib.Fault(2, _("No page name entered"))
 
-    # Pre-create page if it does not exist, using the template specified
-    if createpage and template:
-        save_template(request, page, template)
-
     #this is from the trunk (1.5) I think...
     if action == 'repl':
         action = 'set'
