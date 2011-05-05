@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-"
 """
-    getMetaJSON action for graphingwiki
+    getMetaStructJSON action for graphingwiki
 
     @copyright: 2010 Erno Kuusela <erno@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -27,21 +27,19 @@
 
 """
 
-from graphingwiki.editing import metatable_parseargs, get_metas
-import json
+from graphingwiki.plugin.xmlrpc.GetMetaStruct import do_action
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
-    _ = request.getText
 
     args = request.form.get('args', [None])[0]
     if not args:
         request.write('No data')
         return
 
-    out = {}
-    pagelist, metakeys, styles = metatable_parseargs(request, args, get_all_keys=True)
-    for pagename in pagelist:
-        out[pagename] = get_metas(request, pagename, metakeys, checkAccess=True)
-    json.dump(out, request, indent=2)
+    json.dump(do_action(request, args), request, indent=2)
 
