@@ -400,7 +400,7 @@ def metas_to_abs_links(request, page, values):
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
-              includeGenerated=True, formatLinks=True, **kw):
+              includeGenerated=True, formatLinks=False, **kw):
     if not includeGenerated:
         metakeys = [x for x in metakeys if not '->' in x]
 

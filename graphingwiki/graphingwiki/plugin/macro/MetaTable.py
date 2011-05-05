@@ -152,11 +152,11 @@ def construct_table(macro, pagelist, metakeys,
 
         if '-gwikirevision-' in page:
             metas = get_metas(request, page, metakeys, 
-                              checkAccess=checkAccess)
+                              checkAccess=checkAccess, formatLinks=True)
             page, revision = page.split('-gwikirevision-')
         else:
             metas = get_metas(request, page, metakeys, 
-                              checkAccess=checkAccess)
+                              checkAccess=checkAccess, formatLinks=True)
             revision = ''
 
         pageobj = Page(request, page)

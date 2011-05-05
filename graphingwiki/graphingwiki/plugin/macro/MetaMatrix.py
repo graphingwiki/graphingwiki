@@ -93,7 +93,8 @@ def construct_table(macro, pagelist, metakeys,
     page_vals = dict()
 
     for page in pagelist:
-        page_vals[page] = get_metas(request, page, metakeys, checkAccess=False)
+        page_vals[page] = get_metas(request, page, metakeys, 
+                                    checkAccess=False, formatLinks=True)
         
         x_val = page_vals[page].get(x_key, set())
         y_val = page_vals[page].get(y_key, set())
