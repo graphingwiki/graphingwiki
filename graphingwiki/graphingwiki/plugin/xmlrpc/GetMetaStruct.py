@@ -24,6 +24,7 @@ def execute(xmlrpcobj, args):
     # We're pretty sure the user has the read access to the pages,
     # so don't check again
     for page in pagelist:
-        metas = get_metas(request, page, metakeys, checkAccess=False)
+        metas = get_metas(request, page, metakeys, 
+                          checkAccess=False, formatLinks=None)
         out[page] = dict(metas)
     return out

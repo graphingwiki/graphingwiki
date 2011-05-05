@@ -30,7 +30,8 @@ def execute(xmlrpcobj, args, keysonly=True):
     for page in pagelist:
         # We're pretty sure the user has the read access to the pages,
         # so don't check again
-        metas = get_metas(request, page, metakeys, checkAccess=False)
+        metas = get_metas(request, page, metakeys, 
+                          checkAccess=False, formatLinks=None)
         row = [page]
         for key in metakeys:
             row.append([value for value in metas[key]])

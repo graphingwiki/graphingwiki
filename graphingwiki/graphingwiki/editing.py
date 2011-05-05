@@ -400,7 +400,7 @@ def metas_to_abs_links(request, page, values):
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
-              includeGenerated=True, **kw):
+              includeGenerated=True, formatLinks=True, **kw):
     if not includeGenerated:
         metakeys = [x for x in metakeys if not '->' in x]
 
@@ -423,7 +423,10 @@ def get_metas(request, name, metakeys, checkAccess=True,
     metas = request.graphdata.get_meta(name)
     for key in metas:
         loadedMeta.setdefault(key, list())
-        values = metas_to_abs_links(request, name, metas[key])
+        if formatLinks:
+            values = metas_to_abs_links(request, name, metas[key])
+        else:
+            values = metas[key]
         loadedMeta[key].extend(values)
 
     loadedOutsIndir = dict()
@@ -473,9 +476,11 @@ def get_metas(request, name, metakeys, checkAccess=True,
                         if last:
                             if target_key in metas:
                                 loadedMeta.setdefault(key, list())
-                                values = metas_to_abs_links(request,
-                                                            indir_page,
-                                                            metas[target_key])
+                                if formatLinks:
+                                    values = metas_to_abs_links(
+                                        request, indir_page, metas[target_key])
+                                else:
+                                    values = metas[target_key]
                                 loadedMeta[key].extend(values)
                             continue
 
