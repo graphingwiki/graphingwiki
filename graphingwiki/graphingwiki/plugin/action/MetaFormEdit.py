@@ -57,7 +57,7 @@ def execute(pagename, request):
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
-             _('Save Changes')) + \
+             _(request.form.get('saveBtnText', ['Save Changes'])[0])) + \
              wr('<input type=submit name=cancel value="%s">',
                 _('Cancel')) +'</p></div>'
 
@@ -182,8 +182,12 @@ def execute(pagename, request):
                   pagekey, curval)
 
     def form_file(request, pagekey, curval, values, description=''):
-        return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
+        if curval:
+            return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
                   pagekey, curval)
+        else:
+            return wr('<input class="file" type="file" name="%s" value="" readonly>',
+                  pagekey)
 
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
