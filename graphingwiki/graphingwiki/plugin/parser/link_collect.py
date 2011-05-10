@@ -305,9 +305,10 @@ class Parser(WikiParser):
     # Catch the wiki parser within the parsed content
     def _parser_content(self, line):
         if self.in_pre == 'search_parser' and line.strip():
-            if line.strip().startswith("#!"):
-                parser_name = line.strip()[2:].split()[0]
-                if parser_name == 'wiki':
+            line = line.strip()
+            if line.startswith("#!"):
+                parser_name = line[2:].split()
+                if parser_name and parser_name[0] == 'wiki':
                     self.in_pre = False
                     return ''
 
