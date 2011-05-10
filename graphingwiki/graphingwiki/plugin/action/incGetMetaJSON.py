@@ -26,7 +26,7 @@
 
 """
 
-from graphingwiki.plugin.xmlrpc.IncGetMeta import inc_get_metas
+import MoinMoin.wikiutil as wikiutil
 try:
     import json
 except ImportError:
@@ -44,6 +44,8 @@ def execute(pagename, request):
     if handle:
         handle = str(handle)
 
+    inc_get_metas = wikiutil.importPlugin(request.cfg, "xmlrpc", "IncGetMeta",
+                                          "inc_get_metas")
     out = inc_get_metas(request, args, handle)
     json.dump(out, request, indent=2)
 

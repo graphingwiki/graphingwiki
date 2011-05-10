@@ -8,7 +8,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
-from graphingwiki.plugin.xmlrpc.SetMeta import do_action
+import MoinMoin.wikiutil as wikiutil
 try:
     import json
 except ImportError:
@@ -25,6 +25,8 @@ def doit(request, pagename, indata):
     category_edit = inmetas.get('category_edit', 'add')
     catlist = inmetas.get('catlist', [])
 
+    do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "SetMeta",
+                                      "do_action")
     try:
         return do_action(request, pagename, inmetas, action, createpage,
                          category_edit, catlist, template)

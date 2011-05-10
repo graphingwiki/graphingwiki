@@ -27,7 +27,7 @@
 
 """
 
-from graphingwiki.plugin.xmlrpc.GetMetaStruct import do_action
+import MoinMoin.wikiutil as wikiutil
 try:
     import json
 except ImportError:
@@ -41,5 +41,7 @@ def execute(pagename, request):
         request.write('No data')
         return
 
+    do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "GetMetaStruct",
+                                      "do_action")
     json.dump(do_action(request, args), request, indent=2)
 
