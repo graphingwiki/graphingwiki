@@ -40,7 +40,7 @@ Float = Func(float)
 class MetaKey(object):
     def __init__(self, coder=None):
         self.set = set()
-        self.coder = coder
+        self._setCoder(coder)
 
     def _setCoder(self, coder):
         if coder is None:
@@ -114,6 +114,19 @@ class Meta(UserDict.DictMixin):
         return [key for key, value in self.dict.iteritems() if value]
 
     def setSchema(self, *args, **keys):
+        """
+        >>> m = Meta()
+        >>> m["key"].add(u"1")
+        >>> m["key"].add(u"a")
+        >>> m.setSchema(key=Integer)
+        >>> sorted(m["key"])
+        [1]
+        >>> m["key"].add(10)
+        >>> m.setSchema()
+        >>> sorted(m["key"])
+        [u'1', u'10', u'a']
+        """
+
         coders = dict(args)
         coders.update(keys)
         for key, meta in self.dict.iteritems():
