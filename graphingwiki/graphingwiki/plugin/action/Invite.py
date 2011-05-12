@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from graphingwiki.invite import *
+import cgi
 
-from MoinMoin import wikiutil
+from MoinMoin import wikiutil, config
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
+
+from graphingwiki.invite import *
 
 NEW_TEMPLATE_VARIABLE = "invite_new_template"
 NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"
@@ -74,8 +76,8 @@ class Invite(ActionBase):
                 return True, tmp % (email, mygrouppage)           
 
         except InviteException, ie:
-            return False, unicode(ie)
-        return True, "User invitation mail sent to address '%s'." % email
+            return False, cgi.escape(unicode(ie).encode(config.charset))
+        return True, cgi.escape("Invitation mail sent to address '%s'." % email)
 
     def get_form_html(self, buttons_html):
         d = {
