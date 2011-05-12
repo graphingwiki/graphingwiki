@@ -205,10 +205,10 @@ def send_message(request, message, recipient_filter=lambda x: True):
     sender = message["from"]
     recipients = set()
     for field in ["to", "cc", "bcc"]:
-        for recipient in message.get_all(field, []):
-            for _, address in getaddresses(recipient):
-                if recipient_filter(address):
-                    recipients.add(address)
+        values = message.get_all(field, [])
+        for _, address in getaddresses(values):
+            if recipient_filter(address):
+                recipients.add(address)
 
     smtp = smtplib.SMTP()
     try:
