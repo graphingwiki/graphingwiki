@@ -6,9 +6,12 @@
 import urlparse
 import xmlrpclib
 import urllib
-import httplib
 import base64
 from encodings import idna
+
+import httplib
+from httplib import HTTPConnection
+from _sslwrapper import HTTPSConnection
 
 class WikiFailure(Exception): pass
 class AuthenticationFailed(WikiFailure): pass
@@ -27,7 +30,10 @@ class WikiFault(WikiFailure):
         self.fault = fault
 
 class Wiki(object):
-    def __init__(self, url):
+    def __init__(self, url, ssl_verify_cert=False, ssl_ca_certs=None):
+        self.ssl_verify_cert = ssl_verify_cert
+        self.ssl_ca_certs = ssl_ca_certs
+
         scheme, host, path, _, _, _ = urlparse.urlparse(url)
 
         if isinstance(host, unicode):
@@ -42,9 +48,11 @@ class Wiki(object):
         self.creds = None
 
         if scheme.strip().lower() == "http":
-            self.connection = httplib.HTTPConnection(self.host)
+            self.connection = HTTPConnection(self.host)
         else:
-            self.connection = httplib.HTTPSConnection(self.host)
+            self.connection = HTTPSConnection(self.host,
+                                              verify_cert=self.ssl_verify_cert,
+                                              ca_certs=self.ssl_ca_certs)
         self.connection.connect()
         
     def _wiki_auth(self, username, password):
