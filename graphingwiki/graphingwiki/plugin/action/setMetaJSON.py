@@ -37,6 +37,9 @@ def doit(request, pagename, indata):
             raise ValueError(e)
 
 def execute(pagename, request):
+    if request.request_method != 'POST':
+        return
+
     if not request.user.may.write(pagename):
         sendfault(request, 1, _("You are not allowed to edit this page"))
         return

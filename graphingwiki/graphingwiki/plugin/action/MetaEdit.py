@@ -304,6 +304,10 @@ def execute(pagename, request):
         request.theme.add_msg(_('Edit was cancelled.'), "error")
         request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
+        if request.request_method != 'POST':
+            request.page.send_page()
+            return
+
         template = form.get('template', [None])[0]
 
         # MetaFormEdit is much closer to set_meta in function
@@ -323,7 +327,7 @@ def execute(pagename, request):
                     ignore.add(key[:-12])
                     filename = form.get(key, None)
                     fileobj = form.get(key[:-12], [None])[-1]
-                    if not filename and not fileobjj:
+                    if not filename and not fileobj:
                         continue
 
 #                    if type(fileobj) != file:
@@ -331,7 +335,7 @@ def execute(pagename, request):
 #                        continue
 
                     keys = files.setdefault(key.split(SEPARATOR)[0], dict())
-                    values = keys.setdefault(key.split(SEPARATOR)[1], list())
+                    values = keys.setdefault(key.split(SEPARATOR)[1][:-12], list())
                     values.append((filename, fileobj))
 
             keys = list()
