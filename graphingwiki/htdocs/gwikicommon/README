@@ -9,7 +9,6 @@ USABILITY ADDON INSTALLATION
     for script in ['js/mootools-core-yc.js', \
                    'js/mootools-more-yc.js', \
                    'js/gwiki-common.js', \
-                   'js/sorttable-moo.js', \
                    'js/mootree.js', \
                    'simile/timeline/timeline_ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
@@ -19,6 +18,11 @@ USABILITY ADDON INSTALLATION
     stylesheets = [
         ('all', url_prefix_static + '/gwikicommon/css/common.css')
     ]
+
+NOTICE
+   If you are updating installation, please make sure sorttable-moo.js is not
+   included in corresponding section, it will conflict with the new MetaTable
+   javascript improvements.
 
 DESCRIPTION
 
@@ -32,4 +36,4 @@ DESCRIPTION
    and MetaTimeLine macros.
 
  js::
-   Usability javascript such as sorttable.js for sortable MetaTables.
+   Usability javascript such as MetaTable sorting, inline editing and dynamic MetaFormEdit.

@@ -23,7 +23,326 @@ window.addEvent('domready', function() {
     /* Apply MooTools tooltips to elements with .mt-tooltip class */
     var tooltips = new Tips('.mt-tooltip', {'className': 'mootip'});
 
+    /* Apply MetaTable improvements */
+    var tables = $$('.metatable table');
+    if (tables) {
+        tables.each(function(tab, i) {
+
+            new MetaTable(tab, {
+                sortable: true,
+                tableArguments: MetaTableArguments[i],
+                separator: '-gwikiseparator-'
+            });
+        });
+    }
 });
+
+
+/*
+ MetaTable
+ - js improvements for MetaTable
+ Depends: MooTools HtmlTable.sort
+ */
+(function() {
+    var preformatTable = function(tab) {
+        var head = tab.getElement('thead');
+        if (!head) {
+            head = new Element('thead').inject(tab, 'top');
+            if (!head.getElement('tr')) {
+                head.grab(tab.getElement('tr'));
+            }
+        }
+        head.getElements('td').addClass('head_cell').setStyle('white-space', 'nowrap');
+        return tab;
+    };
+
+    window.MetaTable = new Class({
+        Extends: HtmlTable,
+        options: {
+            thSelector: 'td.head_cell'
+        },
+
+        initialize: function(table) {
+            preformatTable(table);
+            this.parent.apply(this, arguments);
+
+            this.bound.edit = this.edit.bind(this);
+
+            this.request = new Request.JSON({
+                url: '?action=getMetaJSON',
+                data: 'args=' + encodeURIComponent(this.options.tableArguments),
+                onSuccess: function(json) {
+                    var separator = new Element('a').set('html', '&#171;').get('text');
+                    var visibleKeys = this.head.getElements('td').get('text').map(function(val) {
+                        return val.split(separator)[0].trim();
+                    });
+
+                    if (visibleKeys[0] == "") visibleKeys.shift();
+
+                    this.metas = Object.map(json, function(metas) {
+                        return Object.filter(metas, function(value, key) {
+                            return visibleKeys.some(function(k) {
+                                return key.contains(k);
+                            });
+                        });
+                    }, this);
+                }.bind(this)
+            }).get();
+
+            this.hiddenCells = [];
+
+            //add column hiding functionality
+            this.head.getElements(this.options.thSelector).each(function(th) {
+                var style = {
+                    //'float': 'right',
+                    'color': 'green',
+                    'cursor': 'pointer',
+                    'margin-left' : '4px',
+                    'margin-right': 0
+                };
+
+                th.getElement('div').grab(new Element('a', {
+                    'html': '&#171;',
+                    'class' : 'hidelink',
+                    'title': 'hide column',
+                    'styles': style
+                })).setStyle('white-space', 'nowrap');
+                th.grab(new Element('a', {
+                    'html': '&#187;',
+                    'class' : 'showlink',
+                    'title': 'show column',
+                    'styles': style
+                }).setStyle('display', 'none'));
+            }, this);
+
+            this.body.addEvent('click:relay(.meta_editicon a)', this.bound.edit);
+            this.head.addEvents({
+                'click:relay(a.hidelink)': function(event) {
+                    this.hide.apply(this, [this.head.getElements('a.hidelink').indexOf(event.target)]);
+                }.bind(this),
+                'click:relay(a.showlink)': function(event) {
+                    this.show.apply(this, [this.head.getElements('a.showlink').indexOf(event.target)]);
+                }.bind(this)
+            })
+        },
+
+        edit: function(event) {
+            event.preventDefault();
+
+            if (this.request.isRunning()) {
+                this.edit.delay(100, this, event);
+                return;
+            }
+            var row = document.id(event.target).getParent('tr');
+            var tds = row.getElements('td');
+            var pagename = tds[0].get('text');
+
+            var editor = new Editor(pagename, this.metas[pagename]);
+
+            editor.addEvent('success', function(metas) {
+                this.metas[pagename] = metas;
+                new Request.HTML({
+                    url: '?action=showMetaTable',
+                    data: 'args=' + this.options.tableArguments,
+                    evalScripts: false,
+                    onSuccess: function(nodes) {
+                        var tab = $$(nodes).getElement('table').filter(function(el) {
+                            return el != null
+                        });
+                        if (tab.length != 1) return; //todo: show error message
+                        tab = preformatTable(tab[0]);
+                        this.body.getElements('tr').destroy();
+                        this.body.adopt(tab.getElement('tbody').getElements('tr'));
+                        this.hiddenCells.each(this.hide, this);
+
+                    }.bind(this)
+
+                }).send();
+
+            }.bind(this))
+
+        },
+
+        hide: function(i) {
+            this.hiddenCells.include(i);
+            i++;
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', 'none');
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', '');
+            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
+                td.store('hiddenHtml', td.get('html'));
+                td.set('html', '');
+            });
+            return false;
+        },
+        show: function(i) {
+            this.hiddenCells.erase(i);
+            i++;
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', '');
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', 'none');
+            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
+                td.set('html', td.retrieve('hiddenHtml'));
+            });
+            return false;
+        },
+
+        headClick: function(event) {
+            //clear unintended selections
+            if (window.getSelection) {
+                var s = window.getSelection();
+                if (s) s.collapse(document.body, 0);
+            }
+
+            if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink')) this.parent.apply(this, arguments);
+
+        }
+    });
+
+    var Editor = new Class({
+        Implements: [Events, Options],
+        initialize: function(page, metas) {
+            this.page = page;
+            this.metas = metas || {};
+            this.build()
+        },
+
+        build: function() {
+            this.bg = new Element('div.alphabg').setStyles({
+                'position': 'absolute',
+                'left': '0',
+                'top': '0',
+                'width': '100%',
+                'min-height': window.getScrollSize().y,
+                'z-index': '99'
+            }).inject(document.body);
+
+            var container = new Element('div').setStyles({
+                'position': 'relative',
+                'margin': '100px auto auto',
+                'padding': '8px',
+                'width': '500px',
+                'background': 'white',
+                'border': '2px black solid',
+                'border-radius': '5px'
+            }).inject(this.bg);
+
+            var close = new Element('div.close-button[text=x]')
+                .addEvent('click', this.cancel.bind(this))
+                .inject(container);
+
+            this.editor = new Element('div').setStyles({
+                'min-height': '200px'
+            }).inject(container);
+
+            if (this.page == null) {
+                this.editor.grab(new Element('input', {
+                    'name': 'pagename',
+                    'id': 'pagename',
+                    'placeholder': 'page name'
+                }));
+            } else {
+                this.editor.grab(new Element('h3').set('text', this.page));
+            }
+
+
+            var form = new Element('form').inject(this.editor);
+            var dl = new Element('dl').inject(form);
+
+            Object.each(this.metas, function(values, key) {
+                var generateInput = function(val) {
+
+                    var input = new Element('input', {
+                        name: key,
+                        value: val
+                    }).setStyle('width', '400px');
+
+                    var dd = new Element('dd').grab(input);
+                    if (dt.getNext('dt')) {
+                        dd.inject(dt.getNext('dt'), 'before')
+                    } else {
+                        dl.grab(dd);
+                    }
+
+                    dd.grab(new Element('a', {
+                        'class': 'jslink',
+                        'title': 'Remove value',
+                        'html': 'x',
+                        'styles': {
+                            'margin-left': '8px',
+                            'color': 'red',
+                            'font-weight': 'bold'
+                        },
+                        'events': {
+                            'click': function() {
+                                dd.destroy();
+                                //if (dl.getElements('dd').length == 0) dl.destroy();
+                            }
+                        }}))
+                };
+
+                var dt = new Element('dt[text=' + key + ']');
+                dl.grab(dt.grab(
+                    new Element('a', {
+                        'class': 'jslink',
+                        'text': '+',
+                        'title': 'Add value',
+                        'styles': {
+                            'margin-left': '8px',
+                            'color': 'green',
+                            'font-weight': 'bold'
+                        },
+                        'events': {
+                            'click': generateInput.bind(this, "")
+                        }
+                    })
+                    ));
+
+
+                if (values.length == 0) values = [""];
+                values.each(generateInput);
+            });
+            var controls = new Element('div').adopt(
+                new Element('button', {
+                    text: 'Save',
+                    styles: {
+                        'float': 'left'
+                    },
+                    events: {
+                        'click': this.send.bind(this)
+                    }
+                }),
+                new Element('div').setStyle('clear', 'both')
+                ).inject(container)
+        },
+
+        send: function() {
+            var metas = {};
+            this.editor.getElements('input').each(function(el) {
+                if (!metas[el.name]) metas[el.name] = [];
+                metas[el.name].push(el.value);
+            });
+            var args = {
+                metas: metas,
+                action: 'set'
+            };
+
+            new Request.JSON({
+                url : this.page,
+                method: 'post',
+                data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                onSuccess: function(response) {
+                    if (response && response.status == "ok") {
+                        this.fireEvent('success', metas);
+                        this.bg.destroy();
+                    }
+                }.bind(this)
+            }).send()
+        },
+
+        cancel: function() {
+            this.bg.destroy();
+        }
+    });
+})();
 
 
 /*
