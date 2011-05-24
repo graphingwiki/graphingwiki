@@ -357,12 +357,14 @@ def is_meta_link(value):
 
 def metas_to_abs_links(request, page, values):
     new_values = list()
+    stripped = False
     for value in values:
         if is_meta_link(value) != 'link':
             new_values.append(value)
             continue
         if ((value.startswith('[[') and value.endswith(']]')) or
             (value.startswith('{{') and value.endswith('}}'))):
+            stripped = True
             value = value.lstrip('[')
             value = value.lstrip('{')
         attachment = ''
@@ -390,10 +392,11 @@ def metas_to_abs_links(request, page, values):
             value = page + value
 
         value = attachment + value
-        if value.endswith(']'):
-            value = '[[' + value 
-        elif value.endswith('}'):
-            value = '{{' + value 
+        if stripped:
+            if value.endswith(']'):
+                value = '[[' + value 
+            elif value.endswith('}'):
+                value = '{{' + value 
         new_values.append(value)
 
     return new_values
