@@ -217,11 +217,13 @@ def main():
             metas[pagename]["Description"] = ["%s: %s" % (ISSUES[issue["type"]], issue["extra"])]
             metas[pagename]["Recommendation"] = ["Verify if this is true issue."]
             metas[pagename]["URL"] = [issue["url"]]
-            metas[pagename]["Request"] = ["{{attachment:request.txt}}"]
-            metas[pagename]["Response"] = ["{{attachment:response.txt}}"]
             metas[pagename]["gwikicategory"] = ["CategoryNote"]
-            collab.putAttachment(pagename, "request.txt", open(issue["request"]).read(), True) 
-            collab.putAttachment(pagename, "response.txt", open(issue["response"]).read(), True) 
+            if os.path.exists(issue["request"]):
+                metas[pagename]["Request"] = ["{{attachment:request.txt}}"]
+                collab.putAttachment(pagename, "request.txt", open(issue["request"]).read(), True) 
+            if os.path.exists(issue["response"]):
+                metas[pagename]["Response"] = ["{{attachment:response.txt}}"]
+                collab.putAttachment(pagename, "response.txt", open(issue["response"]).read(), True) 
 
             if audit:
                 metas[pagename]["Audit"].add(audit)
