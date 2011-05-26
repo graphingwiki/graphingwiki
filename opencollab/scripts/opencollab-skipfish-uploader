@@ -119,13 +119,13 @@ def parseJS(file):
 
     return output
 
-def handleDir(dir, issueFilter, issues):
+def handleDir(dir, issueFilter, issues, url):
     newDirs = list()
 
     parsed = parseJS(os.path.join(dir,"child_index.js"))
     if "child" in parsed:
         for child in parsed["child"]:
-            newDirs.append(os.path.join(dir,child["dir"]))
+            newDirs.append((os.path.join(dir,child["dir"]), child.get("url", "")))
 
     parsed = parseJS(os.path.join(dir,"issue_index.js"))
     if "issue" in parsed:
@@ -133,10 +133,12 @@ def handleDir(dir, issueFilter, issues):
             if issue["severity"] >= issueFilter:
                 issue["request"] = os.path.join(os.path.join(dir, issue["dir"]),"request.dat")
                 issue["response"] = os.path.join(os.path.join(dir, issue["dir"]),"response.dat")
+                # NOTE: this is only the base of the url
+                issue["url"] = url
                 issues.append(issue)
 
-    for dir in newDirs:
-        handleDir(dir, issueFilter, issues)
+    for (dir, url) in newDirs:
+        handleDir(dir, issueFilter, issues, url)
 
 def main():
     parser = optparse.OptionParser()
@@ -186,6 +188,13 @@ def main():
         metas[pagename]["gwikicategory"] = ["CategorySkipfishScan"]
         metas[pagename]["Report"] = ["[[attachment:%s.zip]]" % pagename]
 
+        parsed = parseJS(os.path.join(dir,"child_index.js"))
+        url = ""
+        if "child" in parsed:
+            for child in parsed["child"]:
+                url = child.get("url", "")
+                metas[pagename]["URL"].add(url)
+
         zipName = "%s.zip" % pagename
         zip = ZipFile(zipName, "w")
         for root, dirs, files in os.walk(dir):
@@ -197,7 +206,7 @@ def main():
         os.remove(zipName)
 
         issues = list()
-        handleDir(dir, issueFilter, issues)
+        handleDir(dir, issueFilter, issues, url)
         print "Found %d issues matching the filter. (Severity >= %s)" % (len(issues), SEVERITY[issueFilter])
         print "Creating notes for these issues."
         for issue in issues:
@@ -207,6 +216,7 @@ def main():
             metas[pagename]["Status"] = ["Open"]
             metas[pagename]["Description"] = ["%s: %s" % (ISSUES[issue["type"]], issue["extra"])]
             metas[pagename]["Recommendation"] = ["Verify if this is true issue."]
+            metas[pagename]["URL"] = [issue["url"]]
             metas[pagename]["Request"] = ["{{attachment:request.txt}}"]
             metas[pagename]["Response"] = ["{{attachment:response.txt}}"]
             metas[pagename]["gwikicategory"] = ["CategoryNote"]
