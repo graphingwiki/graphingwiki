@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+# -*- coding: iso-8859-1 -*-
+"""
+    @copyright: 2011 Mika Seppänen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import sys
+import socket
+import optparse
+
+from zipfile import ZipFile
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.config import parseOptions
+
+def handlePackage(collab, package):
+    zip = ZipFile(package, "r")
+    files = zip.namelist()
+    if not "MOIN_PACKAGE" in files:
+        sys.exit("Not a valid MoinMoin package (MOIN_PACKAGE file missing from zip)")
+
+    for line in zip.open("MOIN_PACKAGE").readlines()[1:]:
+        line = line.strip().split("|")
+        action, args = line[0], line[1:]
+        if action == "AddRevision":
+            filename, pagename = args[0:2]
+            print "Creating page %s" % pagename
+            try:
+                collab.putPage(pagename, zip.open(filename).read())
+            except WikiFailure, e:
+                if not "You did not change the page content" in str(e):
+                    raise WikiFailure(e)
+        elif action == "AddAttachment":
+            filename, attachmentname, pagename = args[0:3] 
+            print "Adding attachment %s to page %s" % (attachmentname, pagename)
+            collab.putAttachment(pagename, attachmentname, zip.open(filename).read(), True)
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] MOINPACKAGES")
+    section = "import-package"
+    options = parseOptions(parser, section)
+
+    args = options[section]["args"]
+    if len(args) < 1:
+        parser.error("At least one moin package needs to be specified.")
+
+    while True:
+        try:
+            collab = CLIWiki(**options["creds"])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+
+    for package in args:
+        print "Importing MoinMoin package %s." % package 
+        handlePackage(collab, package) 
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL+C."
