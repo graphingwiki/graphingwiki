@@ -36,5 +36,5 @@ setup(name='opencollab', version='$Rev$',
 "scripts/opencollab-ettercap-uploader",
 "scripts/opencollab-instantiate-objects",
 "scripts/opencollab-spam-reader",
-"scripts/opencollab-import-package",
+"scripts/opencollab-package-import",
 "scripts/opencollab-mtr" ])
