@@ -23,8 +23,9 @@ from opencollab.util.file import uploadFile
 # Regex for finding javascript variable definitions
 JS_VARIABLES = "^var[ \t]+([a-zA-Z0-9_-]+)[ \t]+=[ \t]+(.+?);$"
 
-# Regex for finding hexadecimal numbers
+# Regexes for finding broken parts in input JSON
 JS_HEXADECIMAL = "([^']0x[0-9abcdefABCDEF]+[^'])"
+JS_HEXESCAPE = "\\\\x([0-9ABCDEFabcdef]{2,2})"
 
 # Severities from Skipfish
 SEVERITY = { 0 : "Note",
@@ -108,13 +109,23 @@ ISSUES = {
 def quote(input):
     return "'%s'" % input.groups()
 
+def escape(input):
+    return r"\u00%s" % input.groups()
+
 def parseJS(file):
     input = open(file).read()
     vars = re.findall(JS_VARIABLES, input, re.DOTALL|re.MULTILINE)
     output = dict()
 
     for (key, value) in vars:
+        # Hexadecimal numbers are not allowed in JSON, so trying to
+        # convert them to strings.
         value = re.sub(JS_HEXADECIMAL, quote, value)
+
+        # Hex escape is not supported in JSON, so trying to convert
+        # them to correct format.
+        value = re.sub(JS_HEXESCAPE, escape, value)
+
         output[key] = json.loads(value.replace("'", '"'))
 
     return output
