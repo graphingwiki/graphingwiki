@@ -142,3 +142,7 @@ table.month-container td table {
 .close-button:hover {
     border-color: #aaa;
 }
+
+span.edit {
+    display: block;
+}

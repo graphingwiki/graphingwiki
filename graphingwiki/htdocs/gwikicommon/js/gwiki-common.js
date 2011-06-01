@@ -35,6 +35,177 @@ window.addEvent('domready', function() {
             });
         });
     }
+
+    if ($$('dl dt') && $$('dl dd')) {
+        initInlineMetaEdit();
+    }
+});
+
+Element.Events.shiftclick = {
+    base: 'click', // the base event type
+    condition: function(event) { //a function to perform additional checks
+        if (event.shift) {
+            event.preventDefault();
+            return true;
+        }
+    }
+};
+
+Request.SetMetas = new Class({
+    Extends : Request.JSON,
+    options: {
+        method: 'post'
+    },
+    onSuccess: function (json) {
+        if (json.status == "ok") {
+            this.fireEvent('complete', arguments).fireEvent('success', arguments).callChain();
+        } else {
+            if (json.msg && json.msg[0]) alert(json.msg[0]);
+            else alert("Save failed for unknown reason.");
+        }
+    }
+});
+
+var initInlineMetaEdit = function () {
+
+    var metas, editor;
+
+    document.body.addEvent('mouseover:relay(dl):once', function() {
+        new Request.JSON({
+            url: '?action=getMetaJSON',
+            onSuccess: function(json) {
+                var page = Object.keys(json)[0];
+                metas = json[page];
+            }
+        }).get();
+    });
+
+    $$('dl').addEvent('shiftclick:relay(dd:not(.edit))', function(event) {
+        event.preventDefault();
+
+        var dd = event.target;
+        if (dd.get('tag') != "dd") dd = dd.getParent('dd');
+
+        if (metas == null) editValue.delay(100, this, dd);
+        else editValue(dd);
+    });
+
+    var editValue = function(dd) {
+        var key = dd.getPrevious('dt').get('text');
+        var index = $$('dt').filter(
+            function(dt) {
+                return dt.get('text') == key;
+            }).indexOf(dd.getPrevious('dt'));
+
+        var oldValue = metas[key][index];
+
+        if (editor) editor.cancel();
+
+        dd.addClass('edit');
+
+        editor = new InlineEditor(dd, {
+            oldValue: oldValue,
+            onSave: function (newValue) {
+                var args = {'action': 'set', 'metas': {}};
+
+                var vals = metas[key];
+                vals[index] = newValue;
+                args['metas'][key] = vals;
+
+                new Request.SetMetas({
+                    data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    onSuccess: function() {
+                        editor.exit();
+                        editor = null;
+                    }.bind(this)
+                }).send();
+            },
+            onExit: function() {
+                dd.removeClass('edit');
+            }
+        });
+    };
+};
+
+var InlineEditor = new Class({
+    Implements: [Events, Options],
+
+    options: {
+        //onSave: function(value){},
+        //onExit: function(){}
+        oldValue: "",
+        autoFormat: true
+    },
+
+    initialize: function(element, options) {
+        this.setOptions(options);
+
+        this.element = document.id(element);
+
+        this.build();
+    },
+
+    build: function() {
+        this.element.store('html', this.element.get('html'));
+        this.element.addClass('edit');
+
+        this.element.empty();
+        this.input = new Element('input', {
+            type: 'text',
+            value: this.options.oldValue
+        }).inject(this.element);
+
+        this.input.select();
+
+        this.element.adopt(
+            new Element('input', {
+                type: 'button',
+                value: 'save',
+                events: {
+                    click: this.save.bind(this)
+                }
+            }),
+            new Element('input', {
+                type: 'button',
+                value: 'cancel',
+                events: {
+                    click: this.cancel.bind(this)
+                }
+            }))
+    },
+
+    save: function() {
+        this.value = this.input.get('value');
+        if (this.value !== this.options.oldValue) {
+            this.fireEvent('save', this.value);
+        } else {
+            this.cancel();
+        }
+    },
+
+    exit: function() {
+        if (this.options.autoFormat) {
+            new Request.HTML({
+                data: 'action=formatText&args=' + encodeURIComponent(this.value),
+                update: this.element,
+                onSuccess: function() {
+                    this.element.removeClass('edit')
+                }.bind(this)
+            }).send();
+        } else {
+            this.element.removeClass('edit');
+            this.element.empty();
+            this.element.set('text', this.value);
+        }
+        this.fireEvent('exit');
+    },
+
+    cancel: function() {
+        this.element.empty();
+        this.element.set('html', this.element.retrieve('html'));
+        this.element.removeClass('edit');
+        this.fireEvent('exit');
+    }
 });
 
 
@@ -52,47 +223,61 @@ window.addEvent('domready', function() {
                 head.grab(tab.getElement('tr'));
             }
         }
-        head.getElements('td').addClass('head_cell').setStyle('white-space', 'nowrap');
+
+        head.getElements('td')
+            .addClass('head_cell')
+            .setStyle('white-space', 'nowrap');
+
         return tab;
+    };
+
+    var unescapeId = function(id) {
+        return id.split(/_([0-9a-f]{2})_/).map(
+            function(s) {
+                if (s.test(/^[0-9a-f]{2}$/)) {
+                    return String.fromCharCode(s.toInt(16));
+                } else {
+                    return s;
+                }
+            }).join("")
     };
 
     window.MetaTable = new Class({
         Extends: HtmlTable,
         options: {
-            thSelector: 'td.head_cell'
+            thSelector: 'td.head_cell:not(.edit)'
         },
 
         initialize: function(table) {
             preformatTable(table);
             this.parent.apply(this, arguments);
 
-            this.bound.edit = this.edit.bind(this);
-
-            this.request = new Request.JSON({
+            this.metaRequest = new Request.JSON({
                 url: '?action=getMetaJSON',
                 data: 'args=' + encodeURIComponent(this.options.tableArguments),
                 onSuccess: function(json) {
-                    var separator = new Element('a').set('html', '&#171;').get('text');
-                    var visibleKeys = this.head.getElements('td').get('text').map(function(val) {
-                        return val.split(separator)[0].trim();
-                    });
-
-                    if (visibleKeys[0] == "") visibleKeys.shift();
-
-                    this.metas = Object.map(json, function(metas) {
-                        return Object.filter(metas, function(value, key) {
-                            return visibleKeys.some(function(k) {
-                                return key.contains(k);
-                            });
-                        });
-                    }, this);
+                    this.metas = json;
                 }.bind(this)
-            }).get();
+            });
 
             this.hiddenCells = [];
 
-            //add column hiding functionality
-            this.head.getElements(this.options.thSelector).each(function(th) {
+            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit):empty"];
+            this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
+
+            this.head.addEvent('shiftclick:relay(span[id*=' + this.options.separator + '])', this.keyEdit.bind(this));
+
+            table.addEvent('mouseover:once', function() {
+                this.metaRequest.get()
+            }.bind(this));
+
+            this.enableHiding();
+
+        },
+
+        enableHiding: function() {
+            this.disableHiding();
+            this.head.getElements('td').each(function(td) {
                 var style = {
                     //'float': 'right',
                     'color': 'green',
@@ -101,21 +286,22 @@ window.addEvent('domready', function() {
                     'margin-right': 0
                 };
 
-                th.getElement('div').grab(new Element('a', {
+                td.getElement('div').grab(new Element('a', {
                     'html': '&#171;',
                     'class' : 'hidelink',
                     'title': 'hide column',
                     'styles': style
                 })).setStyle('white-space', 'nowrap');
-                th.grab(new Element('a', {
+                td.grab(new Element('a', {
                     'html': '&#187;',
                     'class' : 'showlink',
                     'title': 'show column',
                     'styles': style
                 }).setStyle('display', 'none'));
-            }, this);
 
-            this.body.addEvent('click:relay(.meta_editicon a)', this.bound.edit);
+                return this;
+            });
+
             this.head.addEvents({
                 'click:relay(a.hidelink)': function(event) {
                     this.hide.apply(this, [this.head.getElements('a.hidelink').indexOf(event.target)]);
@@ -123,14 +309,140 @@ window.addEvent('domready', function() {
                 'click:relay(a.showlink)': function(event) {
                     this.show.apply(this, [this.head.getElements('a.showlink').indexOf(event.target)]);
                 }.bind(this)
-            })
+            });
+
+            return this;
         },
 
-        edit: function(event) {
+        disableHiding: function() {
+            this.head.getElements('a.hidelink, a.showlink').destroy();
+            this.head.removeEvents('click:relay(a.hidelink)');
+            this.head.removeEvents('click:relay(a.showlink)');
+            return this;
+        },
+
+        setTable: function(tab) {
+            tab = preformatTable(tab);
+
+            this.head.getElements(this.options.thSelector).destroy();
+            this.head.adopt(tab.getElement('thead').getElements(this.options.thSelector));
+
+            this.body.getElements('tr').destroy();
+            this.body.adopt(tab.getElement('tbody').getElements('tr'));
+
+            this.setParsers();
+            this.enableHiding();
+
+            return this;
+        },
+
+        valueEdit: function(event) {
             event.preventDefault();
 
-            if (this.request.isRunning()) {
-                this.edit.delay(100, this, event);
+            if (this.metaRequest.isRunning()) {
+                this.valueEdit.delay(100, this, event);
+                return;
+            }
+
+            var target = document.id(event.target),
+                key, id, index, page, oldValue = "";
+
+            if (target.get('tag') == 'td') {
+                //edit empty cells without existing value
+                var i = target.getParent('tr').getElements('td.meta_cell').indexOf(target);
+                id = unescapeId(this.head.getElements('span[id*=' + this.options.separator + ']')[i].get('id'));
+                key = id.split(this.options.separator)[1];
+                index = 0;
+                page = target.getParent('tr').getFirst('td').get('text');
+            } else {
+                //edit existing value
+                if (target.get('tag') != 'span') target = target.getParent('span');
+
+                id = unescapeId(target.get('id'));
+
+                page = id.split(this.options.separator)[0];
+                key = id.split(this.options.separator)[1];
+                index = id.split(this.options.separator)[2];
+                oldValue = this.metas[page][key][index];
+            }
+
+            if (this.inlineEditor) this.inlineEditor.cancel();
+
+            var editor = this.inlineEditor = new InlineEditor(target, {
+                autoFormat: false,
+                oldValue: oldValue,
+                onSave: function(value) {
+                    if (!this.metas[page][key]) this.metas[page][key] = [""];
+                    this.metas[page][key][index] = value;
+
+                    var args = {};
+                    args[page] = {};
+                    args[page][key] = this.metas[page][key];
+
+                    new Request.SetMetas({
+                        data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        onSuccess: function() {
+                            this.inlineEditor = null;
+                            this.refresh();
+                        }.bind(this)
+                    }).send();
+
+                    editor.exit();
+                }.bind(this)
+            });
+        },
+
+        keyEdit: function(event) {
+            event.stopPropagation();
+            event.preventDefault();
+
+            if (this.metaRequest.isRunning()) {
+                this.keyEdit.delay(100, this, event);
+                return;
+            }
+
+            var target = document.id(event.target);
+            if (target.get('tag') != 'span') target = target.getParent('span');
+
+            var id = unescapeId(target.get('id'));
+            var oldKey = id.split(this.options.separator)[1];
+
+            if (this.inlineEditor) this.inlineEditor.cancel();
+
+            var parent = target.getParent('td').addClass('edit');
+
+            var editor = this.inlineEditor = new InlineEditor(target, {
+                autoFormat: false,
+                oldValue: oldKey,
+                onSave: function(newKey) {
+                    var args = Object.map(this.metas, function(metas, page) {
+                        var renamed = {};
+                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey]);
+                        renamed[oldKey] = [];
+                        return renamed;
+                    });
+
+                    new Request.SetMetas({
+                        data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        onSuccess: function() {
+                            this.inlineEditor = null;
+                            this.refresh();
+                        }.bind(this)
+                    }).send();
+
+                    editor.exit();
+                }.bind(this),
+                onExit: function() {
+                    parent.removeClass('edit');
+                }
+            });
+        },
+
+        editpopup: function(event) {
+            event.preventDefault();
+
+            if (this.metaRequest.isRunning()) {
+                this.editpopup.delay(100, this, event);
                 return;
             }
             var row = document.id(event.target).getParent('tr');
@@ -141,26 +453,31 @@ window.addEvent('domready', function() {
 
             editor.addEvent('success', function(metas) {
                 this.metas[pagename] = metas;
-                new Request.HTML({
-                    url: '?action=showMetaTable',
-                    data: 'args=' + this.options.tableArguments,
-                    evalScripts: false,
-                    onSuccess: function(nodes) {
-                        var tab = $$(nodes).getElement('table').filter(function(el) {
-                            return el != null
-                        });
-                        if (tab.length != 1) return; //todo: show error message
-                        tab = preformatTable(tab[0]);
-                        this.body.getElements('tr').destroy();
-                        this.body.adopt(tab.getElement('tbody').getElements('tr'));
-                        this.hiddenCells.each(this.hide, this);
-
-                    }.bind(this)
-
-                }).send();
-
+                this.refresh();
             }.bind(this))
 
+        },
+
+        refresh: function() {
+            if (this.inlineEditor) return;
+
+            this.metaRequest.get();
+
+            new Request.HTML({
+                url: '?action=showMetaTable',
+                data: 'args=' + this.options.tableArguments,
+                evalScripts: false,
+                onSuccess: function(nodes) {
+                    var tab = $$(nodes).getElement('table').filter(function(el) {
+                        return el != null
+                    });
+                    if (tab.length != 1) return; //todo: show error message
+                    this.setTable(tab[0]);
+                    this.reSort();
+                    this.hiddenCells.each(this.hide, this);
+                }.bind(this)
+
+            }).send();
         },
 
         hide: function(i) {
@@ -174,6 +491,7 @@ window.addEvent('domready', function() {
             });
             return false;
         },
+
         show: function(i) {
             this.hiddenCells.erase(i);
             i++;
@@ -192,7 +510,8 @@ window.addEvent('domready', function() {
                 if (s) s.collapse(document.body, 0);
             }
 
-            if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink')) this.parent.apply(this, arguments);
+            if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink'))
+                this.parent.apply(this, arguments);
 
         }
     });
@@ -294,7 +613,7 @@ window.addEvent('domready', function() {
                             'click': generateInput.bind(this, "")
                         }
                     })
-                    ));
+                ));
 
 
                 if (values.length == 0) values = [""];
@@ -311,7 +630,7 @@ window.addEvent('domready', function() {
                     }
                 }),
                 new Element('div').setStyle('clear', 'both')
-                ).inject(container)
+            ).inject(container)
         },
 
         send: function() {

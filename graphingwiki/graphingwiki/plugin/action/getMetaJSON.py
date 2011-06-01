@@ -36,7 +36,7 @@ except ImportError:
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
 
-    args = request.form.get('args', [None])[0]
+    args = request.form.get('args', [pagename])[0]
     if not args:
         request.write('No data')
         return

@@ -37,8 +37,8 @@ from graphingwiki.util import format_wikitext, wrap_span
 
 Dependencies = ['metadata']
 
-def t_cell(macro, vals, head=0, style=None, rev='', key=''):
-    out = macro.request
+def t_cell(request, vals, head=0, style=None, rev='', key=''):
+    formatter = request.formatter
 
     if style is None:
 	style = dict()
@@ -49,65 +49,63 @@ def t_cell(macro, vals, head=0, style=None, rev='', key=''):
         else:
             style['class'] = 'meta_cell'
 
-    out.write(macro.formatter.table_cell(1, attrs=style))
+    request.write(formatter.table_cell(1, attrs=style))
     cellstyle = style.get('gwikistyle', '').strip('"')
 
     if cellstyle == 'list':
-        out.write(macro.formatter.bullet_list(1))
+        request.write(formatter.bullet_list(1))
 
     first_val = True
 
     for i, data in sorted(enumerate(vals), cmp=lambda x,y: cmp(x[1], y[1])):
-
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
-            out.write(macro.formatter.text(',') + \
-                      macro.formatter.linebreak())
+            request.write(formatter.text(',') + formatter.linebreak())
 
         if head:
-            if out.user.may.write(data):
-                img = out.theme.make_icon('edit')
-                page = Page(out, data)
-                out.write(macro.formatter.span(1, css_class="meta_editicon"))
-                out.write(page.link_to_raw(out, img,
+            if request.user.may.write(data):
+                img = request.theme.make_icon('edit')
+                page = Page(request, data)
+                request.write(formatter.span(1, css_class="meta_editicon"))
+                request.write(page.link_to_raw(request, img,
                                            querystr={'action': 'edit'},
                                            rel='nofollow'))
-                out.write(macro.formatter.span(0))
+                request.write(formatter.span(0))
             kw = dict()
             if rev:
                 kw['querystr'] = '?action=recall&rev=' + rev
-            out.write(macro.formatter.pagelink(1, data, **kw))
-            out.write(macro.formatter.text(data))
-            out.write(macro.formatter.pagelink(0))
+            request.write(formatter.pagelink(1, data, **kw))
+            request.write(formatter.text(data))
+            request.write(formatter.pagelink(0))
         elif data.strip():
             if cellstyle == 'list':
-                out.write(macro.formatter.listitem(1))
+                request.write(formatter.listitem(1))
 
-            out.write(wrap_span(out, key, data, i))
+            request.write(wrap_span(request, key, data, i))
 
             if cellstyle == 'list':
-                out.write(macro.formatter.listitem(0))
+                request.write(formatter.listitem(0))
 
         first_val = False
 
     if cellstyle == 'list':
-        out.write(macro.formatter.bullet_list(1))
+        request.write(formatter.bullet_list(1))
 
-    out.write(macro.formatter.table_cell(0))        
+    request.write(formatter.table_cell(0))        
 
-def construct_table(macro, pagelist, metakeys, 
+def construct_table(request, pagelist, metakeys, 
                     legend='', checkAccess=True, styles=dict()):
-    request = macro.request
     request.page.formatter = request.formatter
+    formatter = request.formatter
     _ = request.getText
 
     row = 0
     divfmt = { 'class': "metatable" }
 
     # Start table
-    request.write(macro.formatter.linebreak() +
-		  macro.formatter.div(1, **divfmt) +
-                  macro.formatter.table(1, attrs={'tableclass': 'metatable'}))
+    request.write(formatter.linebreak() +
+		  formatter.div(1, **divfmt) +
+                  formatter.table(1, attrs={'tableclass': 'metatable'}))
 
     # If the first column is -, do not send page data
     send_pages = True
@@ -117,11 +115,10 @@ def construct_table(macro, pagelist, metakeys,
 
     if metakeys:
         # Give a class to headers to make it customisable
-        request.write(macro.formatter.table_row(1, {'rowclass':
-                                                    'meta_header'}))
+        request.write(formatter.table_row(1, {'rowclass': 'meta_header'}))
         if send_pages:
             # Upper left cell is empty or has the desired legend
-            t_cell(macro, [legend])
+            t_cell(request, [legend])
 
     for key in metakeys:
         style = styles.get(key, dict())
@@ -139,12 +136,12 @@ def construct_table(macro, pagelist, metakeys,
                 headerstyle[st] = style[st]
 
         if name:
-            t_cell(macro, [name], style=headerstyle)
+            t_cell(request, [name], style=headerstyle, key=key)
         else:
-            t_cell(macro, [key], style=headerstyle)
+            t_cell(request, [key], style=headerstyle, key=key)
 
     if metakeys:
-        request.write(macro.formatter.table_row(0))
+        request.write(formatter.table_row(0))
 
     tmp_page = request.page
 
@@ -152,11 +149,11 @@ def construct_table(macro, pagelist, metakeys,
 
         if '-gwikirevision-' in page:
             metas = get_metas(request, page, metakeys, 
-                              checkAccess=checkAccess, formatLinks=True)
+                              checkAccess=checkAccess)
             page, revision = page.split('-gwikirevision-')
         else:
             metas = get_metas(request, page, metakeys, 
-                              checkAccess=checkAccess, formatLinks=True)
+                              checkAccess=checkAccess)
             revision = ''
 
         pageobj = Page(request, page)
@@ -166,69 +163,59 @@ def construct_table(macro, pagelist, metakeys,
         row = row + 1
 
         if row % 2:
-            request.write(macro.formatter.table_row(1, {'rowclass':
-                                                        'metatable-odd-row'}))
+            request.write(formatter.table_row(1, {'rowclass':
+                                                  'metatable-odd-row'}))
         else:
-            request.write(macro.formatter.table_row(1, {'rowclass':
-                                                        'metatable-even-row'}))
+            request.write(formatter.table_row(1, {'rowclass':
+                                                  'metatable-even-row'}))
 
         if send_pages:
-            t_cell(macro, [page], head=1, rev=revision)
+            t_cell(request, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
             if key == 'gwikipagename':
-                t_cell(macro, [page], head=1, style=style)
+                t_cell(request, [page], head=1, style=style)
             else:
-                t_cell(macro, metas[key], style=style, key=key)
+                t_cell(request, metas[key], style=style, key=key)
 
-        request.write(macro.formatter.table_row(0))
+        request.write(formatter.table_row(0))
 
     request.page = tmp_page
     request.formatter.page = tmp_page
 
-    request.write(macro.formatter.table(0))
-    request.write(macro.formatter.div(0))
+    request.write(formatter.table(0))
+    request.write(formatter.div(0))
 
-def execute(macro, args):
-    if args is None:
-        args = ''
-
-    silent = False
-    editlink = True
-
-    # loathful positional stripping (requires specific order of args), sorry
-    if args.strip().endswith('gwikisilent'):
-        silent = True
-        args = ','.join(args.split(',')[:-1])
-
-    if args.strip().endswith('noeditlink'):
-        editlink = False
-        args = ','.join(args.split(',')[:-1])
-
-    # Note, metatable_parseargs deals with permissions
-    pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
-                                                     get_all_keys=True)
-
-    request = macro.request
+def do_macro(request, args, silent, editlink):
+    formatter = request.formatter
     _ = request.getText
 
-    # No data -> bail out quickly, Scotty
+    # Note, metatable_parseargs deals with permissions
+    pagelist, metakeys, styles = metatable_parseargs(request, args,
+                                                     get_all_keys=True)
+
+   # No data -> bail out quickly, Scotty
     if not pagelist:
-        request.write(macro.formatter.linebreak() +
+        request.write(formatter.linebreak() +
                       u'<div class="metatable">' +
-                      macro.formatter.table(1))
+                      formatter.table(1))
         if silent:
-            t_cell(macro, ["%s" % _("No matches")])
+            t_cell(request, ["%s" % _("No matches")])
         else:
-            t_cell(macro, ["%s '%s'" % (_("No matches for"), args)])
-        request.write(macro.formatter.table(0) + 
-                      u'</div>')
+            t_cell(request, ["%s '%s'" % (_("No matches for"), args)])
+        request.write(formatter.table(0) + u'</div>')
+        return
 
-        return ""
-
+    request.write(u'''
+    <script type="text/javascript">
+      window.MetaTableArguments = (window.MetaTableArguments || []);
+      window.MetaTableArguments.push('%s');
+    </script>
+    ''' % args.replace("\\", "\\\\").replace("'", "\\'"))
+ 
     # We're sure the user has the access to the page, so don't check
-    construct_table(macro, pagelist, metakeys,
+    construct_table(request, pagelist, metakeys,
                     checkAccess=False, styles=styles)
 
     def action_link(action, linktext, args):
@@ -244,5 +231,24 @@ def execute(macro, args):
 
     request.write(action_link('metaCSV', 'csv', args))
     request.write(action_link('metaPackage', 'zip', args))
+    return
 
-    return ""
+def execute(macro, args):
+    request = macro.request
+
+    if args is None:
+        args = ''
+
+    silent = False
+    editlink = True
+
+    # loathful positional stripping (requires specific order of args), sorry
+    if args.strip().endswith('gwikisilent'):
+        silent = True
+        args = ','.join(args.split(',')[:-1])
+
+    if args.strip().endswith('noeditlink'):
+        editlink = False
+        args = ','.join(args.split(',')[:-1])
+
+    do_macro(request, args, silent, editlink)
