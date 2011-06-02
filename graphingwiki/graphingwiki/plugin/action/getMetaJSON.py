@@ -29,9 +29,9 @@
 
 import MoinMoin.wikiutil as wikiutil
 try:
-    import json
-except ImportError:
     import simplejson as json
+except ImportError:
+    import json
 
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])

@@ -10,9 +10,9 @@
 
 import MoinMoin.wikiutil as wikiutil
 try:
-    import json
-except ImportError:
     import simplejson as json
+except ImportError:
+    import json
 
 def sendfault(request, code, msg):
     request.write(json.dumps(dict(status="error", errcode=code, errmsg=msg)))
