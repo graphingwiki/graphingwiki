@@ -125,6 +125,51 @@ var initInlineMetaEdit = function () {
             }
         });
     };
+
+    $$('dl').addEvent('shiftclick:relay(dt:not(.edit))', function(event) {
+        event.preventDefault();
+
+        var dt = event.target;
+        if (dt.get('tag') != "dt") dt = dt.getParent('dt');
+
+        if (metas == null) editKey.delay(100, this, dt);
+        else editKey(dt);
+    });
+
+    var editKey = function(dt) {
+        var key = dt.get('text');
+        var index = $$('dt').filter(
+            function(dt) {
+                return dt.get('text') == key;
+            }).indexOf(dt);
+
+        if (editor) editor.cancel();
+
+        dt.addClass('edit');
+
+        editor = new InlineEditor(dt, {
+            oldValue: key,
+            onSave: function (newKey) {
+                var args = {'action': 'set', 'metas': {}};
+
+                var val = metas[key].splice(index, 1);
+                args['metas'][key] = metas[key];
+                args['metas'][newKey] = (metas[newKey]|| []).combine(val);
+
+                new Request.SetMetas({
+                    data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    onSuccess: function() {
+                        editor.exit();
+                        editor = null;
+                    }.bind(this)
+                }).send();
+            },
+            onExit: function() {
+                dt.removeClass('edit');
+            }
+        });
+    };
+
 };
 
 var InlineEditor = new Class({
