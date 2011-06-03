@@ -29,7 +29,6 @@ window.addEvent('domready', function() {
         tables.each(function(tab, i) {
 
             new MetaTable(tab, {
-                sortable: true,
                 tableArguments: MetaTableArguments[i],
                 separator: '-gwikiseparator-'
             });
@@ -316,8 +315,8 @@ var InlineEditor = new Class({
                 this.metaRequest.get()
             }.bind(this));
 
+            this.enableSort();
             this.enableHiding();
-
         },
 
         enableHiding: function() {
