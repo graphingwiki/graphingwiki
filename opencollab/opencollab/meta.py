@@ -10,7 +10,7 @@ def iterate(func, values):
     for value in values:
         try:
             value = func(value)
-        except:
+        except Exception:
             continue
         yield value
 
@@ -39,8 +39,6 @@ Float = Func(float)
 
 class MetaKey(object):
     def __init__(self, coder=None):
-        object.__init__(self)
-
         self.set = set()
         self._setCoder(coder)
 
@@ -53,7 +51,7 @@ class MetaKey(object):
         # A trick for validating that the inserted item can both be
         # decoded and encoded back.
         item = self.coder.decode(item)        
-        item = self.coder.encode(item)
+        self.coder.encode(item)
 
         self.set.add(item)
 
@@ -103,7 +101,7 @@ class Meta(UserDict.DictMixin):
 
     def __getitem__(self, key):
         if key not in self.dict:
-            self.__dict__['dict'][key] = MetaKey(self.schema.get(key, None))
+            self.dict[key] = MetaKey(self.schema.get(key, None))
         return self.dict[key]
 
     def __setitem__(self, key, value):
@@ -116,11 +114,24 @@ class Meta(UserDict.DictMixin):
         return [key for key, value in self.dict.iteritems() if value]
 
     def setSchema(self, *args, **keys):
+        """
+        >>> m = Meta()
+        >>> m["key"].add(u"1")
+        >>> m["key"].add(u"a")
+        >>> m.setSchema(key=Integer)
+        >>> sorted(m["key"])
+        [1]
+        >>> m["key"].add(10)
+        >>> m.setSchema()
+        >>> sorted(m["key"])
+        [u'1', u'10', u'a']
+        """
+
         coders = dict(args)
+        coders.update(keys)
         for key, meta in self.dict.iteritems():
             meta._setCoder(coders.get(key, None))
-
-        self.__dict__['schema'] = coders
+        self.schema = coders
 
     def __contains__(self, key):
         value = self.dict.get(key, None)

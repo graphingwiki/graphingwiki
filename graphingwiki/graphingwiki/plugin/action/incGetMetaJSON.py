@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-"
 """
-    showMetasJson
-      - Shows meta values in a metatable kind a fasion in JSON 
+    incGetMetaJSON action for graphingwiki
 
-    @copyright: 2008  <therauli@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -28,43 +26,26 @@
 
 """
 
-from graphingwiki.editing import metatable_parseargs, get_metas
+import MoinMoin.wikiutil as wikiutil
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 def execute(pagename, request):
-    request.emit_http_headers()
-    _ = request.getText
+    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
 
     args = request.form.get('args', [None])[0]
     if not args:
         request.write('No data')
         return
 
-    pagelist, metakeys, styles = metatable_parseargs(request, args, get_all_keys=True)
-    
-    request.write('[')
+    handle = request.form.get('handle', [None])[0]
+    if handle:
+        handle = str(handle)
 
-    pagecount = 1
-    for page in pagelist:
-        request.write('{"%s"' % page)
-        request.write(' : ')
-        request.write('{')
-        metas = get_metas(request, page, metakeys, checkAccess=True)
-        metacount = 1
-        for meta in metas:
-            request.write('"%s"' % meta)
-            request.write(' : ')
-            request.write('[')
-            request.write(", ".join(['"%s"' % x for x in metas[meta]]))
-            if metacount == len(metas):
-                request.write(']')
-            else:
-                request.write('], ')
-            metacount += 1
-            
-        if pagecount == len(pagelist):
-            request.write('}}')
-        else:
-            request.write('}}, ')
-        pagecount +=1
+    inc_get_metas = wikiutil.importPlugin(request.cfg, "xmlrpc", "IncGetMeta",
+                                          "inc_get_metas")
+    out = inc_get_metas(request, args, handle)
+    json.dump(out, request, indent=2)
 
-    request.write(']')

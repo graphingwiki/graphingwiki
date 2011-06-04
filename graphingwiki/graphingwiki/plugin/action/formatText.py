@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-"
 """
-    getMetaStructJSON action for graphingwiki
+    formatText action for graphingwiki
+    - Returns wiki-formatted text
 
-    @copyright: 2010 Erno Kuusela <erno@iki.fi>
+    @copyright: 2011 Lauri Pokka <larpo@clarifiednetworks.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -26,22 +27,11 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-
-import MoinMoin.wikiutil as wikiutil
-try:
-    import simplejson as json
-except ImportError:
-    import json
+from graphingwiki.util import format_wikitext
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
+    request.emit_http_headers()
 
-    args = request.form.get('args', [pagename])[0]
-    if not args:
-        request.write('No data')
-        return
-
-    do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "GetMetaStruct",
-                                      "do_action")
-    json.dump(do_action(request, args), request, indent=2)
+    args = request.form.get('args', [""])[0]
+    request.write(format_wikitext(request, args))
 

@@ -11,13 +11,10 @@ import urllib
  
 from graphingwiki.editing import metatable_parseargs, get_metas
 
-
-def execute(xmlrpcobj, args):
-    request = xmlrpcobj.request
-    _ = request.getText
-
+#Used by action/getMetaJSON.py
+def do_action(request, args):
     # Expects MetaTable arguments
-    pagelist, metakeys, _ = metatable_parseargs(request, args, 
+    pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                 get_all_keys=True)
 
     out = {}
@@ -27,3 +24,6 @@ def execute(xmlrpcobj, args):
         metas = get_metas(request, page, metakeys, checkAccess=False)
         out[page] = dict(metas)
     return out
+
+def execute(xmlrpcobj, args):
+    return do_action(xmlrpcobj.request, args)

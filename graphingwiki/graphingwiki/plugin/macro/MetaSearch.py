@@ -53,7 +53,8 @@ def execute(macro, args):
     for page in pagelist:
         text = ''
         if namekey:
-            metas = get_metas(request, page, [namekey], checkAccess=False)
+            metas = get_metas(request, page, [namekey], 
+                              checkAccess=False, formatLinks=True)
             text = ', '.join(metas[namekey])
 
         if not text:

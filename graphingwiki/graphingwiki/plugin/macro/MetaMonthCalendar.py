@@ -55,7 +55,7 @@ def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
     entries = dict()
 
     for page in pagelist:
-        metas = get_metas(request, page, keys, display=False, checkAccess=False)
+        metas = get_metas(request, page, keys, checkAccess=False)
         if u'Date' not in metas.keys():
             continue
 

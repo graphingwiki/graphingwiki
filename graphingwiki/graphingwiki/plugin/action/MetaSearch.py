@@ -185,6 +185,7 @@ def execute(pagename, request):
         macro.formatter = formatter
         macro.request = copy(request)
         mtabHTML = metatab(macro,mtabq)
+        request.write(mtabHTML)
         del macro.request
         del macro
     

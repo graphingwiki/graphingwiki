@@ -14,7 +14,7 @@ from string import rsplit
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser as wikiParser
 
-from graphingwiki.util import resolve_iw_url, category_regex, form_escape
+from graphingwiki.util import category_regex, form_escape
 from graphingwiki import SEPARATOR
 
 Dependencies = []

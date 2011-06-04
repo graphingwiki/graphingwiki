@@ -1827,12 +1827,6 @@ class GraphShower(object):
         cl.start('execute')
         _ = self.request.getText
 
-        # Bail out flag on if underlay page etc.
-        if not self.inline:
-            if not self.request.page.isStandardPage(includeDeleted=False):
-                self.fail_page(_("No graph data available."))
-                return
-
         error = self.form_args()
         warnings = list()
 

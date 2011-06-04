@@ -356,12 +356,14 @@ def is_meta_link(value):
 
 def metas_to_abs_links(request, page, values):
     new_values = list()
+    stripped = False
     for value in values:
         if is_meta_link(value) != 'link':
             new_values.append(value)
             continue
         if ((value.startswith('[[') and value.endswith(']]')) or
             (value.startswith('{{') and value.endswith('}}'))):
+            stripped = True
             value = value.lstrip('[')
             value = value.lstrip('{')
         attachment = ''
@@ -369,6 +371,10 @@ def metas_to_abs_links(request, page, values):
             if value.startswith(scheme):
                 if len(value.split('/')) == 1:
                     value = ':'.join(value.split(':')[1:])
+                    if not '|' in value:
+                        # If page does not have descriptive text, try
+                        # to shorten the link to the attachment name.
+                        value = "%s|%s" % (value.rstrip(']').rstrip('}'), value)
                     value = "%s%s/%s" % (scheme, page, value)
                 else:
                     att_page = value.split(':')[1]
@@ -381,20 +387,22 @@ def metas_to_abs_links(request, page, values):
             value.startswith('/') or
             value.startswith('../')):
             value = AbsPageName(page, value)
-        
+        if value.startswith('#'):
+            value = page + value
 
         value = attachment + value
-        if value.endswith(']'):
-            value = '[[' + value 
-        elif value.endswith('}'):
-            value = '{{' + value 
+        if stripped:
+            if value.endswith(']'):
+                value = '[[' + value 
+            elif value.endswith('}'):
+                value = '{{' + value 
         new_values.append(value)
 
     return new_values
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
-              includeGenerated=True, **kw):
+              includeGenerated=True, formatLinks=False, **kw):
     if not includeGenerated:
         metakeys = [x for x in metakeys if not '->' in x]
 
@@ -416,7 +424,12 @@ def get_metas(request, name, metakeys, checkAccess=True,
     loadedMeta = dict()
     metas = request.graphdata.get_meta(name)
     for key in metas:
-        loadedMeta[key] = list(metas[key])
+        loadedMeta.setdefault(key, list())
+        if formatLinks:
+            values = metas_to_abs_links(request, name, metas[key])
+        else:
+            values = metas[key]
+        loadedMeta[key].extend(values)
 
     loadedOutsIndir = dict()
     for key in loadedOuts:
@@ -465,9 +478,11 @@ def get_metas(request, name, metakeys, checkAccess=True,
                         if last:
                             if target_key in metas:
                                 loadedMeta.setdefault(key, list())
-                                values = metas_to_abs_links(request,
-                                                            indir_page,
-                                                            metas[target_key])
+                                if formatLinks:
+                                    values = metas_to_abs_links(
+                                        request, indir_page, metas[target_key])
+                                else:
+                                    values = metas[target_key]
                                 loadedMeta[key].extend(values)
                             continue
 
@@ -493,8 +508,8 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
     # Add gwikicategory as a special case, as it can be metaedited
     if loadedOuts.has_key('gwikicategory'):
-        pageMeta.setdefault('gwikicategory', 
-                            list()).extend(loadedOuts['gwikicategory'])
+        # Empty (possible) current gwikicategory to fix a corner case
+        pageMeta['gwikicategory'] = loadedOuts['gwikicategory']
             
     return pageMeta
 
@@ -652,13 +667,16 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               dict(test=[u"1", u"2"]))
     u'This is just filler\n test:: 1\n test:: 2\nYeah\n'
 
-    Handling the magical duality normal categories (CategoryBah)
-    and meta style categories:
+    Handling the magical duality normal categories (CategoryBah) and
+    meta style categories. If categories in metas are actually valid
+    according to category regexp, retain them as Moin-style
+    categories. Otherwise, delete them.
+
     >>> replace_metas(request,
     ...               u"",
     ...               dict(),
     ...               dict(gwikicategory=[u"test"]))
-    u'\n gwikicategory:: test\n'
+    u'\n'
     >>> replace_metas(request,
     ...               u"",
     ...               dict(),
@@ -668,7 +686,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u" gwikicategory:: test",
     ...               dict(gwikicategory=[u"test"]),
     ...               dict(gwikicategory=[u"CategoryTest"]))
-    u' gwikicategory:: CategoryTest\n'
+    u'----\nCategoryTest\n'
     >>> replace_metas(request,
     ...               u"CategoryTest",
     ...               dict(gwikicategory=[u"CategoryTest"]),
@@ -814,6 +832,14 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {u'gwikilabel': [u'Foo Bar'], u'key': [u'{{{#!wiki weohweovd']},
     ...               {u'gwikilabel': [u'Foo Bar', u''], u'key': [u'{{{#!wiki weohwe', u'']})
     u' key:: {{{#!wiki weohwe\nwevohwevoih}}}\n gwikilabel:: Foo Bar\n'
+
+    # Case 676, new behaviour
+    >>> replace_metas(request, 
+    ...               u' gwikicategory:: CategoryOne CategoryTwo',
+    ...               {u'gwikicategory': [u'CategoryOne', u'CategoryTwo']},
+    ...               {u'gwikicategory': [u'CategoryOnes', u'CategoryTwo', u'', u'']})
+    u'----\nCategoryOnes CategoryTwo\n'
+
     """
 
     text = text.rstrip()
@@ -868,6 +894,10 @@ def replace_metas(request, text, oldmeta, newmeta):
         key = key.strip()
         val = val.strip()
 
+        # Categories handled separately (see below)
+        if key == CATEGORY_KEY:
+            return ""
+
         # Don't touch unmodified keys
         if key not in oldmeta:
             return alltext
@@ -899,7 +929,11 @@ def replace_metas(request, text, oldmeta, newmeta):
     text = dl_re.sub(dl_subfun, text)
 
     # Handle the magic duality between normal categories (CategoryBah)
-    # and meta style categories
+    # and meta style categories. Categories can be written on pages as
+    # gwikicategory:: CategoryBlaa, and this should be supported as
+    # long as the category values are valid. Categories should always
+    # be written on pages as Moin-style, as a space-separated list on
+    # the last line of the page
     oldcategories = oldmeta.get(CATEGORY_KEY, list())
     newcategories = newmeta.get(CATEGORY_KEY, list())
 
@@ -955,6 +989,10 @@ def replace_metas(request, text, oldmeta, newmeta):
 
     # Add values we couldn't cluster
     for key, values in newmeta.iteritems():
+        # Categories handled separately (see above)
+        if key == CATEGORY_KEY:
+            continue
+
         for value in values:
             # Empty values again supplied by metaedit and metaformedit
             if not value.strip():
@@ -1007,7 +1045,8 @@ def set_metas(request, cleared, discarded, added):
         # Filter out uneditables, such as inlinks
         metakeys = editable_p(metakeys)
 
-        old = get_metas(request, page, metakeys, checkAccess=False)
+        old = get_metas(request, page, metakeys, 
+                        checkAccess=False, includeGenerated=False)
 
         new = dict()
         for key in old:

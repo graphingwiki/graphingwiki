@@ -6,9 +6,12 @@
 import urlparse
 import xmlrpclib
 import urllib
-import httplib
 import base64
 from encodings import idna
+
+import httplib
+from httplib import HTTPConnection
+from _sslwrapper import HTTPSConnection
 
 class WikiFailure(Exception): pass
 class AuthenticationFailed(WikiFailure): pass
@@ -17,59 +20,67 @@ class HttpAuthenticationFailed(AuthenticationFailed): pass
 
 class WikiFault(WikiFailure):
     def __init__(self, fault):
-        message = "There was an error in the wiki side"
+        message = "error from the wiki server"
 
         lines = fault.faultString.splitlines()
         if lines:
-            message += " (%s)" % lines[0]
+            message += ": " + lines[0]
 
         WikiFailure.__init__(self, message)
         self.fault = fault
 
 class Wiki(object):
-    def __init__(self, url):
+    def __init__(self, url, ssl_verify_cert=False, ssl_ca_certs=None):
+        self.ssl_verify_cert = ssl_verify_cert
+        self.ssl_ca_certs = ssl_ca_certs
+
         scheme, host, path, _, _, _ = urlparse.urlparse(url)
+
         if isinstance(host, unicode):
             host = idna.ToASCII(host)
-        if isinstance(path, unicode):
-            path = urllib.quote(path.encode("utf-8"))
+        self.host = host
 
-        self.host = idna.ToASCII(host)
-        self.path = path + "?action=xmlrpc2"
+        if isinstance(path, unicode):
+            path = path.encode("utf-8")
+        self.path = urllib.quote(path) + "?action=xmlrpc2"
 
         self.headers = dict(Connection="Keep-Alive")
-        self.token = None
+        self.creds = None
 
         if scheme.strip().lower() == "http":
-            self.connection = httplib.HTTPConnection(self.host)
+            self.connection = HTTPConnection(self.host)
         else:
-            self.connection = httplib.HTTPSConnection(self.host)
+            self.connection = HTTPSConnection(self.host,
+                                              verify_cert=self.ssl_verify_cert,
+                                              ca_certs=self.ssl_ca_certs)
         self.connection.connect()
         
     def _wiki_auth(self, username, password):
-        self.token = None
+        self.creds = None
+
         token = self._request("getAuthToken", username, password)
         if not token:
             raise WikiAuthenticationFailed("wiki authentication failed")
-        self.token = token, username, password
+
+        self.creds = token, username, password
     
     def _authenticate(self, username, password):
         auth = base64.b64encode(username + ":" + password)
         self.headers["Authorization"] = "Basic " + auth
-        self.token = None
+        self.creds = None
 
         try:
             self._wiki_auth(username, password)
         except:
             self.headers.pop("Authorization", None)
-            self.token = None
+            self.creds = None
             raise
 
     def _dumps(self, name, args):
-        if self.token is None:
+        if self.creds is None:
             return xmlrpclib.dumps(args, name, allow_none=True)
 
-        token, _, _ = self.token
+        token, _, _ = self.creds
 
         mc_list = list()
         mc_list.append(dict(methodName="applyAuthToken", params=(token,)))
@@ -78,13 +89,10 @@ class Wiki(object):
 
     def _loads(self, data):
         result, _ = xmlrpclib.loads(data)
-        if self.token is None:
+        if self.creds is None:
             return result[0]
 
         auth, other = result[0]
-        if (not isinstance(auth, (dict, list)) or 
-            not isinstance(other, (dict, list))):
-            raise WikiFailure("unexpected type in multicall result")
 
         if isinstance(auth, dict):
             code = auth.get("faultCode", None)
@@ -92,9 +100,12 @@ class Wiki(object):
             if code == "INVALID":
                 raise WikiAuthenticationFailed(string)
             raise xmlrpclib.Fault(code, string)
-        
+
         if isinstance(other, dict):
-            raise xmlrpclib.Fault(other["faultCode"], other["faultString"])
+            code = other.get("faultCode", None)
+            string = other.get("faultString", "<unknown fault>")
+            raise xmlrpclib.Fault(code, string)
+
         return other[0]
             
     def _request(self, name, *args):
@@ -122,7 +133,7 @@ class Wiki(object):
             try:
                 return self._request(name, *args)
             except WikiAuthenticationFailed:
-                _, username, password = self.token
+                _, username, password = self.creds
                 self._wiki_auth(username, password)
                 return self._request(name, *args)
         except xmlrpclib.Fault, fault:            
@@ -323,7 +334,6 @@ class CLIWiki(GraphingWiki):
     # wiki need it.
 
     def __init__(self, url=None, username=None, password=None, **keys):
-
         if url is None: 
             url = redirected(raw_input, "Collab URL: ")
         super(CLIWiki, self).__init__(url, **keys)

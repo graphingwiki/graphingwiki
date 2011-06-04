@@ -40,7 +40,7 @@ def execute(macro, args):
         return _sysmsg % ('error', 
                           _("GetMetaData: Need to specify page, or page and key"))
 
-    vals = get_metas(request, page, [key])
+    vals = get_metas(request, page, [key], formatLinks=True)
 
     val = ', '.join(vals[key])
 

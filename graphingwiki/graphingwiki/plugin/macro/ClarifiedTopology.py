@@ -93,7 +93,7 @@ def draw_topology(request, args, key):
     for page in pagelist:
         data = get_metas(request, page, 
                          [topology, 'gwikishapefile', 'tia-name'],
-                         checkAccess=False)
+                         checkAccess=False, formatLinks=True)
 
         crds = [x.split(',') for x in data.get(topology, list)]
 
@@ -121,10 +121,14 @@ def draw_topology(request, args, key):
         aliases[page] = alias[0]
 
         if img:
-            # Get attachment name, strip link artifacts, find filesys name
-            img = img[0].split('/')[-1]
+            # Get attachment name, name of the page it's on, strip
+            # link artifacts, find filesys name
+            img = img[0].split(':')[1]
+            pname = '/'.join(img.split('/')[:-1])
+            img = img.split('/')[-1]
+            img = img.split('|')[0]
             img = img.rstrip('}').rstrip(']]')
-            imgname = AttachFile.getFilename(request, page, img)
+            imgname = AttachFile.getFilename(request, pname, img)
             try:
                 images[page] = cairo.ImageSurface.create_from_png(imgname)
                 end_x = start_x + images[page].get_width()

@@ -7,6 +7,8 @@ collab-htaccess: Filesystem dump of collab instance meta / htpasswd / htaccess
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
+verbose = False
+
 import os
 import sys
 import re
@@ -111,6 +113,8 @@ if msg:
 
 ###### htpasswd
 
+allusers = { }
+
 os.chdir(mybaseinstancedir)
 sys.path.insert(0, os.path.join(mybaseinstancedir, 'config'))
 
@@ -129,6 +133,7 @@ for id in getUserList(req):
     if myuser.valid and isValidName(req, myuser.name) and myuser.enc_password:
         content = content + myuser.name + ":" + \
                   myuser.enc_password + os.linesep
+        allusers[myuser.name] = 0
 
 msg = diffandstore(myhtpasswd, content)
 
@@ -180,6 +185,10 @@ for dent in os.listdir("."):
         if isgroup(member):
             continue
         members.append('require user ' + re.sub('[^\w@.\-\']', '', member))
+        if member in allusers:
+            allusers[member] += 1
+        elif verbose:
+            print >> sys.stderr, "PHANTOM: " + member + " in " + dent
         
     members.sort()
 
@@ -210,3 +219,8 @@ for dent in os.listdir("."):
     req.finish()
 
     sys.path.remove(os.path.join(mydata, 'config'))
+
+if verbose:
+    for user in allusers:
+        if allusers[user] == 0:
+            print >> sys.stderr, "ORPHAN: " + user

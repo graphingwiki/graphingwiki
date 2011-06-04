@@ -4,11 +4,12 @@
 """
 import cgi, re
  
+from MoinMoin.wikiutil import resolve_interwiki, join_wiki
 from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
 from string import rsplit
 
-from graphingwiki.util import resolve_iw_url, category_regex
+from graphingwiki.util import category_regex
 from wiki_form import Parser as listParser
 
 Dependencies = []
@@ -58,7 +59,13 @@ class Parser(WikiParser):
         wikipage = "%s:%s" % (wiki, page)
         self.__add_meta(wikipage, groups)
 
-        iw_url = resolve_iw_url(self.request, wiki, page)
+        _, iw_wiki, iw_page, _ = resolve_interwiki(self.request, 
+                                                        wiki, page)
+        # Accept and store all interwiki-style links at this time, so
+        # that changing the interwiki list does not require rehashing
+        # the wikis. This means you need to check the validity of iw
+        # links at runtime.
+        iw_url = join_wiki(iw_wiki, iw_page)
 
         self.currentitems.append(('interwiki', (wikipage, wikipage)))
         self.new_item = False
@@ -298,9 +305,10 @@ class Parser(WikiParser):
     # Catch the wiki parser within the parsed content
     def _parser_content(self, line):
         if self.in_pre == 'search_parser' and line.strip():
-            if line.strip().startswith("#!"):
-                parser_name = line.strip()[2:].split()[0]
-                if parser_name == 'wiki':
+            line = line.strip()
+            if line.startswith("#!"):
+                parser_name = line[2:].split()
+                if parser_name and parser_name[0] == 'wiki':
                     self.in_pre = False
                     return ''
 

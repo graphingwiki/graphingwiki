@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2010 by Marko Laakso
+    @copyright: 2010-2011 by Marko Laakso
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
@@ -8,8 +8,6 @@ import ConfigParser
 import sys
 import os
 import posixpath
-
-from MoinMoin.server.server_wsgi import WsgiConfig, moinmoinApp
 
 def scriptbasename(name):
     myname = posixpath.dirname(name)
@@ -26,11 +24,8 @@ def pathbasename(name):
 
 def wsgiapplication(environ, start_response):
     environ['SCRIPT_NAME'] = scriptbasename(environ['SCRIPT_NAME'])
+    from MoinMoin.server.server_wsgi import moinmoinApp
     return moinmoinApp(environ, start_response)
-
-
-class MyWsgiConfig(WsgiConfig):
-    pass
 
 
 class CollabBackend(object):
@@ -53,5 +48,6 @@ class Collab(object):
 	log.load_config(myinfra.logconf)
 
     def getwsgiconfig(self):
-        self.config = MyWsgiConfig()
+        from MoinMoin.server.server_wsgi import WsgiConfig
+        self.config = WsgiConfig()
         return self.config

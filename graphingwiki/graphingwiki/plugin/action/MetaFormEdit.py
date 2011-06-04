@@ -53,11 +53,11 @@ def execute(pagename, request):
     frm = wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
              actionname(request, pagename))+\
           wr(u'<input type="hidden" name="action" value="MetaEdit">\n')+\
-          wr(u'<input type="hidden" name="gwikiseparator" value="'+ SEPARATOR+'">\n')
+          wr(u'<input type="hidden" name="gwikiseparator" value="%s">\n', SEPARATOR)
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
-             _('Save Changes')) + \
+             _(request.form.get('saveBtnText', ['Save Changes'])[0])) + \
              wr('<input type=submit name=cancel value="%s">',
                 _('Cancel')) +'</p></div>'
 
@@ -182,8 +182,12 @@ def execute(pagename, request):
                   pagekey, curval)
 
     def form_file(request, pagekey, curval, values, description=''):
-        return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
+        if curval:
+            return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
                   pagekey, curval)
+        else:
+            return wr('<input class="file" type="file" name="%s" value="" readonly>',
+                  pagekey)
 
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
@@ -196,9 +200,9 @@ def execute(pagename, request):
     def repl_subfun(mo):
         dt, pagekey, val = mo.groups()
 
+        pagekey = form_unescape(pagekey)
         msg = dt
         key = pagekey.split(SEPARATOR)[1]
-        key = form_unescape(key)
 
         properties = get_properties(request, key)
 
@@ -236,9 +240,8 @@ def execute(pagename, request):
             cssclass = "metaformedit-notcloneable"
        
         if desc:
-            desc = desc.replace('"', '&quot;"')
             msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
-            msg = msg.replace('<dt>', '<dt class="mt-tooltip" title="%s" rel="%s">' %(key, desc))
+            msg = msg.replace('<dt>', wr('<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
 
         msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
 

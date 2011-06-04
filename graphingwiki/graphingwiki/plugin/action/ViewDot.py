@@ -101,8 +101,7 @@ class ViewDot(object):
         request = self.request
         _ = request.getText
 
-        # Form fix for subpages
-        pagename = '../' * self.pagename.count('/') + self.pagename
+        pagename = self.pagename
 
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %

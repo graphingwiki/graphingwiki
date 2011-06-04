@@ -21,7 +21,7 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
-from graphingwiki import actionname
+from graphingwiki import actionname, id_escape, SEPARATOR
 from graphingwiki.util import form_writer as wr
 
 Dependencies = ["time"]
@@ -39,9 +39,12 @@ _orig_execute = Include.execute
 def execute(macro, text):
     _ = macro.request.getText
 
+    # Retain original values
+    orig_request_page = macro.request.page
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
+    orig_send_page = Page.send_page
 
     # Try-finally construct over override functions so that modified
     # copies of Page are not littered with persistent req types
@@ -53,6 +56,17 @@ def execute(macro, text):
         if text and args:
             inc_name = wikiutil.AbsPageName(macro.formatter.page.page_name, 
                                             args.group('name'))
+
+            # Hook send_page into sending a div before and after each
+            # included page
+            def new_send_page(self, **keywords):
+                self.request.write(self.formatter.div(True, 
+                                                      css_class='gwikiinclude', 
+                                                      id=self.page_name + \
+                                                          SEPARATOR))
+                orig_send_page(self, **keywords)
+                self.request.write(self.formatter.div(False))
+            Page.send_page = new_send_page
 
             # Additions that only account for includes of specific pages
             if not inc_name.startswith('^'):
@@ -72,6 +86,15 @@ def execute(macro, text):
                 # the editing of nonexisting pages
                 def new_exists(self, **kw):
                     exists = orig_exists(self, **kw)
+                    if self.formatter:
+                        # Fix a Moin bug in handling attachments: If
+                        # the formatter has page defined, it will
+                        # handle attachment links relative to the
+                        # including page, not the included page. For
+                        # some reason, the formatter has not always
+                        # been initialised, leading to crashes, so
+                        # check its existence first.
+                        self.formatter.request.page = self
 
                     if self.page_name == inc_name:
                         if rev:
@@ -153,5 +176,10 @@ def execute(macro, text):
         Page.exists = orig_exists
         Page.link_to = orig_link_to
         Page.__init__ = orig__init__
+        Page.send_page = orig_send_page
+
+    # request.page might have been changed in page.new_exists, so it
+    # needs to be returned to its original value
+    macro.request.page = orig_request_page
 
     return retval
