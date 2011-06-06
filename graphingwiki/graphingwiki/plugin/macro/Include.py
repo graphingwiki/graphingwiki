@@ -62,7 +62,7 @@ def execute(macro, text):
             def new_send_page(self, **keywords):
                 self.request.write(self.formatter.div(True, 
                                                       css_class='gwikiinclude', 
-                                                      id=self.page_name + \
+                                                      id=id_escape(self.page_name) + \
                                                           SEPARATOR))
                 orig_send_page(self, **keywords)
                 self.request.write(self.formatter.div(False))

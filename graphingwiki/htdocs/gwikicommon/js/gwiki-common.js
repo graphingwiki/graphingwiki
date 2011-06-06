@@ -14,7 +14,11 @@ if (!Cookie.read('js')) {
     window.location.reload();
 }
 
+var GWIKISEPARATOR = '-gwikiseparator-';
+
 window.addEvent('domready', function() {
+
+    var src = $$('script[src$=gwiki-common.js]')[0].get('src').replace('gwiki-common.js', '');
 
     /* MetaFormEdit improvements */
     var fields = $$('.metaformedit-cloneable');
@@ -30,13 +34,13 @@ window.addEvent('domready', function() {
 
             new MetaTable(tab, {
                 tableArguments: MetaTableArguments[i],
-                separator: '-gwikiseparator-'
+                separator: GWIKISEPARATOR
             });
         });
     }
 
     if ($$('dl dt') && $$('dl dd')) {
-        initInlineMetaEdit();
+        $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
     }
 });
 
@@ -65,21 +69,45 @@ Request.SetMetas = new Class({
     }
 });
 
-var initInlineMetaEdit = function () {
+var unescapeId = function(id) {
+    return id.split(/_([0-9a-f]{2})_/).map(
+        function(s) {
+            if (s.test(/^[0-9a-f]{2}$/)) {
+                return String.fromCharCode(s.toInt(16));
+            } else {
+                return s;
+            }
+        }).join("")
+};
 
-    var metas, editor;
 
-    document.body.addEvent('mouseover:relay(dl):once', function() {
+var initInlineMetaEdit = function (base) {
+
+    var metas, editor, page = "";
+
+    if (base.hasClass('gwikiinclude')) page = unescapeId(base.id).split(GWIKISEPARATOR)[0];
+
+    base.addEvent('mouseover:relay(div:not(.gwikiinclude) dl):once', function() {
         new Request.JSON({
-            url: '?action=getMetaJSON',
+            url: '?action=getMetaJSON&args=' + page,
             onSuccess: function(json) {
-                var page = Object.keys(json)[0];
+                page = Object.keys(json)[0];
                 metas = json[page];
             }
         }).get();
     });
 
-    $$('dl').addEvent('shiftclick:relay(dd:not(.edit))', function(event) {
+    var getMetaIndex = function(dt, values) {
+        var key = dt.get('text');
+        var dts = base.getElements('div:not(.gwikiinclude) dt').filter(
+            function(dt) {
+                return dt.get('text') == key;
+            });
+
+        return dts.indexOf(dt);
+    };
+
+    base.addEvent('shiftclick:relay(div:not(.gwikiinclude) dd:not(.edit))', function(event) {
         event.preventDefault();
 
         var dd = event.target;
@@ -91,10 +119,7 @@ var initInlineMetaEdit = function () {
 
     var editValue = function(dd) {
         var key = dd.getPrevious('dt').get('text');
-        var index = $$('dt').filter(
-            function(dt) {
-                return dt.get('text') == key;
-            }).indexOf(dd.getPrevious('dt'));
+        var index = getMetaIndex(dd.getPrevious('dt'), metas[key]);
 
         var oldValue = metas[key][index];
 
@@ -105,11 +130,12 @@ var initInlineMetaEdit = function () {
         editor = new InlineEditor(dd, {
             oldValue: oldValue,
             onSave: function (newValue) {
-                var args = {'action': 'set', 'metas': {}};
+                var args = {};
+                args[page] = {};
 
                 var vals = metas[key];
                 vals[index] = newValue;
-                args['metas'][key] = vals;
+                args[page][key] = vals;
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + JSON.encode(args),
@@ -125,7 +151,7 @@ var initInlineMetaEdit = function () {
         });
     };
 
-    $$('dl').addEvent('shiftclick:relay(dt:not(.edit))', function(event) {
+    base.addEvent('shiftclick:relay(div:not(.gwikiinclude) dt:not(.edit))', function(event) {
         event.preventDefault();
 
         var dt = event.target;
@@ -137,10 +163,7 @@ var initInlineMetaEdit = function () {
 
     var editKey = function(dt) {
         var key = dt.get('text');
-        var index = $$('dt').filter(
-            function(dt) {
-                return dt.get('text') == key;
-            }).indexOf(dt);
+        var index = getMetaIndex(dt, metas[key]);
 
         if (editor) editor.cancel();
 
@@ -149,11 +172,11 @@ var initInlineMetaEdit = function () {
         editor = new InlineEditor(dt, {
             oldValue: key,
             onSave: function (newKey) {
-                var args = {'action': 'set', 'metas': {}};
-
+                var args = {};
+                args[page] = {};
                 var val = metas[key].splice(index, 1);
-                args['metas'][key] = metas[key];
-                args['metas'][newKey] = (metas[newKey]|| []).combine(val);
+                args[page][key] = metas[key];
+                args[page][newKey] = (metas[newKey] || []).combine(val);
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + JSON.encode(args),
@@ -273,17 +296,6 @@ var InlineEditor = new Class({
             .setStyle('white-space', 'nowrap');
 
         return tab;
-    };
-
-    var unescapeId = function(id) {
-        return id.split(/_([0-9a-f]{2})_/).map(
-            function(s) {
-                if (s.test(/^[0-9a-f]{2}$/)) {
-                    return String.fromCharCode(s.toInt(16));
-                } else {
-                    return s;
-                }
-            }).join("")
     };
 
     window.MetaTable = new Class({
@@ -718,7 +730,7 @@ var MetaFormEdit = new Class({
         this.form = document.id(form);
         this.fields = this.getFields();
 
-        this.SEPARATOR = this.form.getElement('input[name=gwikiseparator]').get('value');
+        this.SEPARATOR = this.form.getElement('input[name=' + GWIKISEPARATOR + ']').get('value');
         this.clean();
         this.build();
     },
