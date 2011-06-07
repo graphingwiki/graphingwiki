@@ -21,6 +21,17 @@ BURP_INPUT_KEYS = ["host", "name", "path", "location", "confidence"]
 BURP_REPORT_KEYS = ['issueBackground', 'issueDetail', 
                     'remediationBackground', 'remediationDetail', 'request']
 
+RE_XML_ILLEGAL = re.compile(
+    u'(([\u0000-\u0008\u000b-\u000c\u000e-\u001f\ufffe-\uffff])' +\
+    u'|([\u007f-\u00ff])' +\
+    u'|([%s-%s][^%s-%s])|([^%s-%s][%s-%s])|([%s-%s]$)|(^[%s-%s]))' % \
+    (unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff),
+     unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff),
+     unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff)), re.M)
+
+def fix_xml_illegal(mo):
+    return hex(ord(mo.group(0)))
+
 def getText(nodelist, strip=True):
     rc = ""
     if not nodelist:
@@ -32,11 +43,11 @@ def getText(nodelist, strip=True):
         return rc.replace('\n', ' ').strip()
     return rc.strip()
 
-def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+def fix_stylesheet_and_upload(collab, xml_page, data, fname): 
     try:
-        doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError:
-        error = file + ": " + str(e) 
+        doc = xml.dom.minidom.parseString(data)
+    except xml.parsers.expat.ExpatError, e:
+        error = fname + ": " + str(e) 
         sys.exit(error)
 
     stylesheet_nodes = []
@@ -74,15 +85,15 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "burp.xsl", stylesheet_data, True)
     return True
 
-def parse_xml(metas, attach, file, burprun_page):
+def parse_xml(metas, attach, data, fname, burprun_page):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
     """
     try:
-        doc = xml.dom.minidom.parse(file)
+        doc = xml.dom.minidom.parseString(data)
     except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e) 
+        error = fname + ": " + str(e)
         sys.exit(error)
     issues = doc.getElementsByTagName('issue')
     for issue in issues:
@@ -170,13 +181,14 @@ def main():
 
     attach = dict()
     metas = Metas()
-    for file in burp_files:
-        xml_page = hashFile(file)
-        fname = os.path.basename(file)
+    for filearg in burp_files:
+        xml_page = hashFile(filearg)
+        fname = os.path.basename(filearg)
         if verbose:
-            print "NOTE: Parsing", file
+            print "NOTE: Parsing", filearg
+        data = RE_XML_ILLEGAL.sub(fix_xml_illegal, file(fname).read())
 
-        metas, attach = parse_xml(metas, attach, file, xml_page)
+        metas, attach = parse_xml(metas, attach, data, fname, xml_page)
         metas[xml_page]['TYPE'].add('BURP Run')
         metas[xml_page]['gwikicategory'] = ['CategoryBurp', 'CategoryScan']
         metas[xml_page]['gwikitemplate'] = ['BurpTemplate']
@@ -195,13 +207,14 @@ def main():
                 metas[page]["Audit"].add(audit)
 
         if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
-        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
+            print "NOTE: Fixing stylesheet and uploading", filearg, \
+                "and stylesheet to", xml_page
+        if not fix_stylesheet_and_upload(collab, xml_page, data, fname):
             print "NOTE: Failed to patch xml file, uploading orginal instead"
             if verbose:
-                print "NOTE: Uploading", file, "to", xml_page
+                print "NOTE: Uploading", filearg, "to", xml_page
             try:
-                status = uploadFile(collab, xml_page, file, fname, progress)
+                status = uploadFile(collab, xml_page, filearg, fname, progress)
             except (IOError, TypeError, RuntimeError), msg:
                 sys.exit(msg)
         for page in attach:
