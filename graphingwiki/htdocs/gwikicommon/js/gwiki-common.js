@@ -16,6 +16,7 @@ if (!Cookie.read('js')) {
 
 var GWIKISEPARATOR = '-gwikiseparator-';
 
+
 window.addEvent('domready', function() {
 
     var src = $$('script[src$=gwiki-common.js]')[0].get('src').replace('gwiki-common.js', '');
@@ -57,8 +58,33 @@ Element.Events.shiftclick = {
 Request.SetMetas = new Class({
     Extends : Request.JSON,
     options: {
-        method: 'post'
+        //onConflict: function(){}
+        method: 'post',
+        checkUrl: "",
+        checkData: {}
     },
+    checkAndSend: function() {
+        var args = arguments;
+        new Request.JSON({
+            url: this.options.checkUrl,
+            method: 'post',
+            onSuccess: function(json) {
+                if (Object.every(this.options.checkData, function(metas, page) {
+                    return json[page] && Object.every(metas, function(values, key) {
+                        return json[page][key].length == values.length
+                            && values.every(function(value) {
+                            return json[page][key].contains(value);
+                        })
+                    });
+                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes?")) {
+                    this.send(args);
+                } else {
+                    this.fireEvent('conflict')
+                }
+            }.bind(this)
+        }).send();
+    },
+
     onSuccess: function (json) {
         if (json.status == "ok") {
             this.fireEvent('complete', arguments).fireEvent('success', arguments).callChain();
@@ -134,16 +160,19 @@ var initInlineMetaEdit = function (base) {
                 args[page] = {};
 
                 var vals = metas[key];
-                vals[index] = newValue;
                 args[page][key] = vals;
+                var oldData = Object.clone(args);
+                vals[index] = newValue;
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    checkUrl: '?action=getMetaJSON&args=' + page,
+                    checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
                         editor = null;
                     }.bind(this)
-                }).send();
+                }).checkAndSend();
             },
             onExit: function() {
                 dd.removeClass('edit');
@@ -174,17 +203,24 @@ var initInlineMetaEdit = function (base) {
             onSave: function (newKey) {
                 var args = {};
                 args[page] = {};
+
+                var oldData = Object.clone(args);
+                oldData[page][key] = Array.clone(metas[key]);
+                oldData[page][newKey] = Array.clone(metas[newKey] || []);
+
                 var val = metas[key].splice(index, 1);
                 args[page][key] = metas[key];
                 args[page][newKey] = (metas[newKey] || []).combine(val);
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    checkUrl: '?action=getMetaJSON&args=' + page,
+                    checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
                         editor = null;
                     }.bind(this)
-                }).send();
+                }).checkAndSend();
             },
             onExit: function() {
                 dt.removeClass('edit');
@@ -429,6 +465,11 @@ var InlineEditor = new Class({
                 oldValue: oldValue,
                 onSave: function(value) {
                     if (!this.metas[page][key]) this.metas[page][key] = [""];
+
+                    var oldData = {};
+                    oldData[page] = {};
+                    oldData[page][key] = Array.clone(this.metas[page][key]);
+
                     this.metas[page][key][index] = value;
 
                     var args = {};
@@ -437,11 +478,17 @@ var InlineEditor = new Class({
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        checkUrl: '?action=getMetaJSON&args=' + page,
+                        checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
                             this.refresh();
+                        }.bind(this),
+                        onConflict: function() {
+                            this.inlineEditor.cancel();
+                            this.refresh();
                         }.bind(this)
-                    }).send();
+                    }).checkAndSend();
 
                     editor.exit();
                 }.bind(this)
@@ -471,6 +518,12 @@ var InlineEditor = new Class({
                 autoFormat: false,
                 oldValue: oldKey,
                 onSave: function(newKey) {
+                    var oldData = Object.map(this.metas, function(metas, page) {
+                        var m = Object.subset(metas, [oldKey, newKey]);
+                        if (!m[newKey]) m[newKey] = [];
+                        return m;
+                    });
+
                     var args = Object.map(this.metas, function(metas, page) {
                         var renamed = {};
                         renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey]);
@@ -480,11 +533,17 @@ var InlineEditor = new Class({
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        checkUrl: '?action=getMetaJSON&args=' + page,
+                        checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
                             this.refresh();
+                        }.bind(this),
+                        onConflict: function() {
+                            this.inlineEditor.cancel();
+                            this.refresh();
                         }.bind(this)
-                    }).send();
+                    }).checkAndSend();
 
                     editor.exit();
                 }.bind(this),
