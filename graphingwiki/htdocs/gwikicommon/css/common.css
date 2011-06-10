@@ -146,3 +146,11 @@ table.month-container td table {
 span.edit {
     display: block;
 }
+
+.metaformedit-cloneable div, .metaformedit-cloneable textarea {
+    display: inline !important;
+}
+
+.inline {
+    display: inline !important;
+}
