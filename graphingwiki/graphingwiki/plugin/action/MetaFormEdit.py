@@ -174,12 +174,12 @@ def execute(pagename, request):
         return msg
 
     def form_textbox(request, pagekey, curval, values, description=''):
-        return wr('<input type="text" name="%s" value="%s">',
+        return wr('<textarea name="%s">%s</textarea>',
                   pagekey, curval)
 
-    def form_textarea(request, pagekey, curval, values, description=''):
-        return wr('<textarea rows=20 cols=70 name="%s">%s</textarea>',
-                  pagekey, curval)
+    def form_date(request, pagekey, curval, values, description=''):
+        return wr('<input type="text" class="date" name="%s" value="%s">',
+                pagekey, curval)
 
     def form_file(request, pagekey, curval, values, description=''):
         if curval:
@@ -192,8 +192,9 @@ def execute(pagename, request):
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
                  'textbox': form_textbox,
-                 'textarea': form_textarea,
+                 'textarea': form_textbox,
                  'radio': form_radio,
+                 'date': form_date,
                  'file': form_file} 
     #, 'textarea']
 
@@ -249,9 +250,8 @@ def execute(pagename, request):
 
 
         if (not constraint == 'existing' and 
-            not formtype in ['textbox', 'textarea', 'file']):
-            msg += wr('<input class="metavalue" type="text" ' + \
-                          'name="%s" value="">', pagekey)
+            not formtype in ['textbox', 'textarea', 'file', 'date']):
+            msg += wr('<textarea name="%s"></textarea>', pagekey)
 
         if hidden:
             msg = request.formatter.div(1, css_class='comment') + msg + request.formatter.div(0)
