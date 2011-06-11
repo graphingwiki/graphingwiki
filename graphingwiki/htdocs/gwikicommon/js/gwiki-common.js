@@ -373,7 +373,7 @@ Date.implement({
         }
     };
 
-    window.GwikiImport = new Class({
+    this.GwikiImport = new Class({
         initialize: function(baseUrl) {
             this.baseUrl = baseUrl;
             this.requests = [];
@@ -400,7 +400,6 @@ Date.implement({
                 this.requests.push({modules: missing, callback: callback});
                 missing.each(this.bound.load)
             }
-            console.log("load: " + modules)
         },
 
         _load: function(mod) {
@@ -414,7 +413,6 @@ Date.implement({
                     onLoad: function() {
                         this.loaded.include(mod);
                         this.queue.erase(mod);
-                        console.log("loaded " + file)
                         this.requests = this.requests.filter(function(req) {
                             req.modules.erase(mod);
                             if (req.modules.length > 0) {

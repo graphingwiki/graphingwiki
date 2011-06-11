@@ -23,7 +23,7 @@
         return tab;
     };
 
-    window.MetaTable = new Class({
+    var MetaTable = this.MetaTable = new Class({
         Extends: HtmlTable,
         options: {
             thSelector: 'td.head_cell:not(.edit)'

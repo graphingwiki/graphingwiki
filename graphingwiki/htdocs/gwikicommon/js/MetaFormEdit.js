@@ -7,7 +7,9 @@
  */
 
 (function() {
-    window.MetaFormEdit = new Class({
+    if (this.MetaFormEdit) return;
+
+    var MetaformEdit = this.MetaFormEdit = new Class({
         initialize: function (form) {
             this.form = document.id(form);
             this.fields = this.getFields();
@@ -64,11 +66,11 @@
 
             });
 
-             new Picker.Date(this.fields.getElements('input.date').flatten(), {
-                            format: '%d-%m-%Y',
-                            pickerClass: 'datepicker_dashboard'
-                        });
-            
+            new Picker.Date(this.fields.getElements('input.date').flatten(), {
+                format: '%d-%m-%Y',
+                pickerClass: 'datepicker_dashboard'
+            });
+
             this.fields = this.getFields();
         },
 
