@@ -166,7 +166,7 @@
                     args[page][key] = this.metas[page][key];
 
                     new Request.SetMetas({
-                        data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
                         checkUrl: '?action=getMetaJSON&args=' + page,
                         checkData: oldData,
                         onSuccess: function() {
@@ -221,7 +221,7 @@
                     });
 
                     new Request.SetMetas({
-                        data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                        data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
                         checkUrl: '?action=getMetaJSON&args=' + page,
                         checkData: oldData,
                         onSuccess: function() {

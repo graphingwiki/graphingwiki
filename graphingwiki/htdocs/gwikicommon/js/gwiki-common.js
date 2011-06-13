@@ -175,7 +175,7 @@ var initInlineMetaEdit = function (base) {
                 vals[index] = newValue;
 
                 new Request.SetMetas({
-                    data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
                     checkUrl: '?action=getMetaJSON&args=' + page,
                     checkData: oldData,
                     onSuccess: function() {
@@ -223,7 +223,7 @@ var initInlineMetaEdit = function (base) {
                 args[page][newKey] = (metas[newKey] || []).combine(val);
 
                 new Request.SetMetas({
-                    data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                    data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
                     checkUrl: '?action=getMetaJSON&args=' + page,
                     checkData: oldData,
                     onSuccess: function() {
