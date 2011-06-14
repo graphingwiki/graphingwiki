@@ -207,7 +207,7 @@ def do_macro(request, args, silent, editlink):
         else:
             out += t_cell(request, ["%s '%s'" % (_("No matches for"), args)])
         out += formatter.table(0) + u'</div>'
-        return
+        return out
 
     out += u'''
     <script type="text/javascript">
