@@ -1,9 +1,9 @@
 /*
- MetaTable.js
- - js improvements for MetaTable
-  License:	MIT <http://www.opensource.org/licenses/mit-license.php>
- Copyright: 2011 by Lauri Pokka
- Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick
+   MetaTable.js
+   - js improvements for MetaTable
+   License:	MIT <http://www.opensource.org/licenses/mit-license.php>
+   Copyright: 2011 by Lauri Pokka
+   Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick
  */
 
 (function() {
@@ -152,6 +152,8 @@
             var editor = this.inlineEditor = new InlineEditor(target, {
                 autoFormat: false,
                 oldValue: oldValue,
+                suggestionKey: key,
+
                 onSave: function(value) {
                     if (!this.metas[page][key]) this.metas[page][key] = [""];
 

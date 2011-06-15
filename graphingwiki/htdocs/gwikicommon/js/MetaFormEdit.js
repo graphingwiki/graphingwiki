@@ -1,9 +1,9 @@
-/**
- * MetaFormEdit
- * - js improvements for meta editor.
- * License: MIT <http://www.opensource.org/licenses/mit-license.php>
- * Copyright: 2011 by Lauri Pokka
- * Depends: MooTools DynamicTextArea
+/*
+   MetaFormEdit
+   - js improvements for meta editor.
+   License: MIT <http://www.opensource.org/licenses/mit-license.php>
+   Copyright: 2011 by Lauri Pokka
+   Depends: MooTools DynamicTextArea
  */
 
 (function() {

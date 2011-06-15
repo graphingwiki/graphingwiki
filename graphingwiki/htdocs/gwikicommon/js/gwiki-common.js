@@ -165,6 +165,7 @@ var initInlineMetaEdit = function (base) {
 
         editor = new InlineEditor(dd, {
             oldValue: oldValue,
+            suggestionKey: key,
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -247,6 +248,7 @@ var InlineEditor = new Class({
         //onSave: function(value){},
         //onExit: function(){}
         oldValue: "",
+        suggestionKey: null,
         autoFormat: true
     },
 
@@ -266,7 +268,16 @@ var InlineEditor = new Class({
             text: this.options.oldValue
         }).inject(this.element);
 
-        new DynamicTextarea(this.input);
+
+        new DynamicTextarea(this.input).addEvent('resize', function() {
+            this.input.fireEvent('resize');
+        }.bind(this));
+
+        if (this.options.suggestionKey) {
+            this.suggestions = new MetaSuggestions(this.input, {
+                url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.suggestionKey)
+            });
+        }
 
         this.input.select();
 
@@ -297,6 +308,8 @@ var InlineEditor = new Class({
     },
 
     exit: function() {
+        if (this.suggestions) this.suggestions.detach();
+
         if (this.options.autoFormat) {
             new Request.HTML({
                 data: 'action=formatText&args=' + encodeURIComponent(this.value),
@@ -314,6 +327,8 @@ var InlineEditor = new Class({
     },
 
     cancel: function() {
+        if (this.suggestions) this.suggestions.detach();
+
         this.element.empty();
         this.element.set('html', this.element.retrieve('html'));
         this.element.removeClass('edit');
@@ -348,7 +363,7 @@ Date.implement({
     var DEPS = {
         InlineEditor: {
             files: ['js/gwiki-common.js'],
-            depends: ['DynamicTextarea']
+            depends: ['DynamicTextarea', 'MetaSuggestions']
         },
         DynamicTextarea: {
             files: ['js/DynamicTextarea.js'],
@@ -361,6 +376,10 @@ Date.implement({
         MetaFormEdit: {
             files: ['js/MetaFormEdit.js'],
             depends: ['DynamicTextarea', 'DatePicker']
+        },
+        MetaSuggestions: {
+            files: ['js/MetaSuggestions.js'],
+            depends: []
         },
         DatePicker: {
             files: ['js/DatePicker.js'],

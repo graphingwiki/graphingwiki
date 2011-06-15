@@ -154,3 +154,37 @@ span.edit {
 .inline {
     display: inline !important;
 }
+
+.hidden {
+    display: none;
+}
+
+table.ac-results {
+    position: absolute;
+    border: 1px solid black;
+    background: white;
+    color: black;
+    text-align: left;
+    border-collapse:collapse;
+    cursor: pointer;
+}
+.ac-results tr {
+    overflow-x: hidden;
+}
+.ac-results td {
+    border-width: 0;
+    margin: 0;
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+.ac-results td.value {
+    padding: 0 25px 0 5px;
+}
+.ac-results td.page {
+    font-style: italic;
+    font-size: small;
+    text-align: right;
+}
+.ac-results tr.selected {
+    background: #ddffdd;
+}

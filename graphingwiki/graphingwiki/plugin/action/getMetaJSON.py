@@ -36,12 +36,25 @@ except ImportError:
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
 
-    args = request.form.get('args', [pagename])[0]
-    if not args:
-        request.write('No data')
-        return
+    args = request.form.get('args', [None])[0]
+    key = request.form.get('getvalues', [None])[0]
 
     do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "GetMetaStruct",
                                       "do_action")
-    json.dump(do_action(request, args), request, indent=2)
+
+    if not args:
+        if key:
+            results = do_action(request, "%s=/.+/" % key)
+            metas = dict()
+            for page in results:
+                values = results[page].get(key, [])
+                if values:
+                    metas.setdefault(page, list())
+                    metas[page].extend(values)
+        else:
+            metas = do_action(request, pagename)
+    else:
+        metas = do_action(request, args)
+
+    json.dump(metas, request, indent=2)
 
