@@ -19,7 +19,7 @@ COLLAB ADDON INSTALLATION
 	          ('print', 'print.css'), \
                   ('projection', 'projection.css')]:
 	stylepath = url_prefix_static + '/collabcommon/css/' + style
-	stylesheets.append((type, styleapath))
+	stylesheets.append((type, stylepath))
 
 DESCRIPTION
 
