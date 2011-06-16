@@ -1,17 +1,12 @@
-.chat div {
-    margin: 0px;
-    padding: 0px;
-    border: none;
-}
-
 .chat {
     position: relative;
+    bottom: 1px;
+
     width: 100%;
     height: 100%;
 
     margin: 0px;
     padding: 0px;
-    border: none;
 }
 
 .chat .output-container {
