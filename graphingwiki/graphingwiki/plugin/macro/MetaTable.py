@@ -35,6 +35,11 @@ from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import format_wikitext, wrap_span
 
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 Dependencies = ['metadata']
 
 def t_cell(request, vals, head=0, style=None, rev='', key=''):
@@ -189,7 +194,7 @@ def construct_table(request, pagelist, metakeys,
     out += formatter.div(0)
     return out
 
-def do_macro(request, args, silent, editlink):
+def do_macro(request, args, **kw):
     formatter = request.formatter
     _ = request.getText
     out = str()
@@ -202,7 +207,7 @@ def do_macro(request, args, silent, editlink):
     if not pagelist:
         out += formatter.linebreak() + u'<div class="metatable">' + \
             formatter.table(1)
-        if silent:
+        if kw.get('silent'):
             out += t_cell(request, ["%s" % _("No matches")])
         else:
             out += t_cell(request, ["%s '%s'" % (_("No matches for"), args)])
@@ -212,9 +217,9 @@ def do_macro(request, args, silent, editlink):
     out += u'''
     <script type="text/javascript">
       window.MetaTableArguments = (window.MetaTableArguments || []);
-      window.MetaTableArguments.push('%s');
+      window.MetaTableArguments.push(%s);
     </script>
-    ''' % args.replace("\\", "\\\\").replace("'", "\\'")
+    ''' % json.dumps(dict({'args': args}.items() + kw.items()))
  
     # We're sure the user has the access to the page, so don't check
     out += construct_table(request, pagelist, metakeys,
@@ -228,7 +233,7 @@ def do_macro(request, args, silent, editlink):
                (request.getQualifiedURL(req_url), _(linktext))
 
     # If the user has no write access to this page, omit editlink
-    if editlink:
+    if kw.get('editlink', True):
         out += action_link('MetaEdit', 'edit', args)
 
     out += action_link('metaCSV', 'csv', args)
@@ -241,16 +246,27 @@ def execute(macro, args):
     if args is None:
         args = ''
 
-    silent = False
-    editlink = True
+    optargs = {}
+
+    #parse keyworded arguments (template etc)
+    opts = re.findall(",\s*([^,]+)=([^,]+)\s*", args)
+    args = re.sub(",\s*[^,]+=[^,]+\s*", "", args)
+    for opt in opts:
+        val = opt[1]
+        if val == "True":
+            val = True
+        elif val == "False":
+            val = False
+
+        optargs[opt[0]] = val
 
     # loathful positional stripping (requires specific order of args), sorry
     if args.strip().endswith('gwikisilent'):
-        silent = True
+        optargs['silent'] = True
         args = ','.join(args.split(',')[:-1])
 
     if args.strip().endswith('noeditlink'):
-        editlink = False
+        optargs['editlink'] = False
         args = ','.join(args.split(',')[:-1])
 
-    return do_macro(request, args, silent, editlink)
+    return do_macro(request, args, **optargs)
