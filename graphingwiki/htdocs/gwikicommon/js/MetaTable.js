@@ -1,9 +1,9 @@
 /*
-   MetaTable.js
-   - js improvements for MetaTable
-   License:	MIT <http://www.opensource.org/licenses/mit-license.php>
-   Copyright: 2011 by Lauri Pokka
-   Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick
+ MetaTable.js
+ - js improvements for MetaTable
+ License:	MIT <http://www.opensource.org/licenses/mit-license.php>
+ Copyright: 2011 by Lauri Pokka
+ Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick
  */
 
 (function() {
@@ -26,16 +26,20 @@
     var MetaTable = this.MetaTable = new Class({
         Extends: HtmlTable,
         options: {
-            thSelector: 'td.head_cell:not(.edit)'
+            thSelector: 'td.head_cell:not(.edit)',
+            tableArguments: {}
         },
 
         initialize: function(table) {
+            table = document.id(table);
             preformatTable(table);
             this.parent.apply(this, arguments);
 
+            this.tableArgs = Object.merge({'args': '', 'template': null}, this.options.tableArguments);
+
             this.metaRequest = new Request.JSON({
                 url: '?action=getMetaJSON',
-                data: 'args=' + encodeURIComponent(this.options.tableArguments),
+                data: 'args=' + encodeURIComponent(this.tableArgs.args),
                 onSuccess: function(json) {
                     this.metas = json;
                 }.bind(this)
@@ -51,6 +55,14 @@
             table.addEvent('mouseover:once', function() {
                 this.metaRequest.get()
             }.bind(this));
+
+            var parent = table.getParent('div.metatable');
+            if (parent && parent.getNext('a').get('text') == "[edit]") {
+                new Element('a.jslink[text=[new page]]')
+                    .setStyles({'font-size': 'inherit'})
+                    .addEvent('click', this.newPage.bind(this))
+                    .inject(parent, 'after');
+            }
 
             this.enableSort();
             this.enableHiding();
@@ -244,21 +256,28 @@
             });
         },
 
-        editpopup: function(event) {
-            event.preventDefault();
+        newPage: function(event) {
+            if (event) event.preventDefault();
 
-            if (this.metaRequest.isRunning()) {
-                this.editpopup.delay(100, this, event);
+
+            if (this.tableArgs.template && !this.template) {
+                if (!this._templateRequest) {
+                    this._templateRequest = new Request({
+                        url: '?action=ajaxUtils&util=getTemplate&name=' + this.tableArgs.template,
+                        onSuccess: function(txt) {
+                            this.template = txt;
+                            delete this['_templateRequest']
+                        }.bind(this)
+                    }).send();
+                }
+                this.newPage.delay(100, this);
                 return;
             }
-            var row = document.id(event.target).getParent('tr');
-            var tds = row.getElements('td');
-            var pagename = tds[0].get('text');
+            var editor = new Editor({
+                content: this.template
+            });
 
-            var editor = new Editor(pagename, this.metas[pagename]);
-
-            editor.addEvent('success', function(metas) {
-                this.metas[pagename] = metas;
+            editor.addEvent('success', function() {
                 this.refresh();
             }.bind(this))
 
@@ -271,7 +290,7 @@
 
             new Request.HTML({
                 url: '?action=showMetaTable',
-                data: 'args=' + this.options.tableArguments,
+                data: 'args=' + this.tableArgs.args,
                 evalScripts: false,
                 onSuccess: function(nodes) {
                     var tab = $$(nodes).getElement('table').filter(function(el) {
@@ -324,27 +343,31 @@
 
     var Editor = new Class({
         Implements: [Events, Options],
-        initialize: function(page, metas) {
-            this.page = page;
-            this.metas = metas || {};
+        options: {
+            content: ""
+        },
+
+        initialize: function(options) {
+            this.setOptions(options);
             this.build()
         },
 
         build: function() {
             this.bg = new Element('div.alphabg').setStyles({
                 'position': 'absolute',
-                'left': '0',
-                'top': '0',
-                'width': '100%',
-                'min-height': window.getScrollSize().y,
+                'left': 0,
+                'top': 0,
+                'width': document.id(window).getScrollSize().x,
+                'min-height': document.id(window).getScrollSize().y,
                 'z-index': '99'
             }).inject(document.body);
 
             var container = new Element('div').setStyles({
                 'position': 'relative',
-                'margin': '100px auto auto',
-                'padding': '8px',
-                'width': '500px',
+                'margin': 'auto',
+                'top': document.id(window).getScroll().y + 100,
+                'padding': '15px',
+                'width': '80%',
                 'background': 'white',
                 'border': '2px black solid',
                 'border-radius': '5px'
@@ -358,73 +381,29 @@
                 'min-height': '200px'
             }).inject(container);
 
-            if (this.page == null) {
-                this.editor.grab(new Element('input', {
-                    'name': 'pagename',
-                    'id': 'pagename',
-                    'placeholder': 'page name'
-                }));
-            } else {
-                this.editor.grab(new Element('h3').set('text', this.page));
-            }
-
 
             var form = new Element('form').inject(this.editor);
-            var dl = new Element('dl').inject(form);
-
-            Object.each(this.metas, function(values, key) {
-                var generateInput = function(val) {
-
-                    var input = new Element('input', {
-                        name: key,
-                        value: val
-                    }).setStyle('width', '400px');
-
-                    var dd = new Element('dd').grab(input);
-                    if (dt.getNext('dt')) {
-                        dd.inject(dt.getNext('dt'), 'before')
-                    } else {
-                        dl.grab(dd);
-                    }
-
-                    dd.grab(new Element('a', {
-                        'class': 'jslink',
-                        'title': 'Remove value',
-                        'html': 'x',
-                        'styles': {
-                            'margin-left': '8px',
-                            'color': 'red',
-                            'font-weight': 'bold'
-                        },
-                        'events': {
-                            'click': function() {
-                                dd.destroy();
-                                //if (dl.getElements('dd').length == 0) dl.destroy();
-                            }
-                        }}))
-                };
-
-                var dt = new Element('dt[text=' + key + ']');
-                dl.grab(dt.grab(
-                    new Element('a', {
-                        'class': 'jslink',
-                        'text': '+',
-                        'title': 'Add value',
-                        'styles': {
-                            'margin-left': '8px',
-                            'color': 'green',
-                            'font-weight': 'bold'
-                        },
-                        'events': {
-                            'click': generateInput.bind(this, "")
-                        }
-                    })
-                ));
 
 
-                if (values.length == 0) values = [""];
-                values.each(generateInput);
+            form.adopt(
+                new Element('span[text=Pagename: ]'),
+                new Element('input[name=pagename][placeholder=Page Name]')
+                    .setStyles({'width': '200px', 'margin-left': '20px'}),
+                new Element('br'),
+                new Element('br')
+            );
+            this.textarea = new Element('textarea', {
+                'value': this.options.content,
+                'styles': {
+                    'width': '100%',
+                    'margin': 'auto'
+                }
+            }).inject(form);
+
+            new DynamicTextarea(this.textarea, {
+                minRows: 20
             });
+
             var controls = new Element('div').adopt(
                 new Element('button', {
                     text: 'Save',
@@ -440,24 +419,25 @@
         },
 
         send: function() {
-            var metas = {};
-            this.editor.getElements('input').each(function(el) {
-                if (!metas[el.name]) metas[el.name] = [];
-                metas[el.name].push(el.value);
-            });
-            var args = {
-                metas: metas,
-                action: 'set'
+            var page = this.editor.getElement('input[name=pagename]').value;
+
+            var data = {
+                action: 'ajaxUtils',
+                util: 'newPage',
+                page: page,
+                content: this.textarea.get('value')
             };
 
             new Request.JSON({
-                url : this.page,
+                url: page,
                 method: 'post',
-                data: 'action=setMetaJSON&args=' + JSON.encode(args),
+                data: Object.toQueryString(data),
                 onSuccess: function(response) {
                     if (response && response.status == "ok") {
-                        this.fireEvent('success', metas);
+                        this.fireEvent('success');
                         this.bg.destroy();
+                    }else{
+                        alert("Failed to create new page!\n" + '"' + response.msg+  '"');
                     }
                 }.bind(this)
             }).send()

@@ -312,7 +312,7 @@ var InlineEditor = new Class({
 
         if (this.options.autoFormat) {
             new Request.HTML({
-                data: 'action=formatText&args=' + encodeURIComponent(this.value),
+                data: 'action=ajaxUtils&util=format&text=' + encodeURIComponent(this.value),
                 update: this.element,
                 onSuccess: function() {
                     this.element.removeClass('edit')
