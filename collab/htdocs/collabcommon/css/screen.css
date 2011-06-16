@@ -84,8 +84,12 @@ dd.collab_val {
 
 div.collab_chat {
   background: white;
+
+  position: relative;
   height: 300px;
-  width: 80%;
+  width: 94%;
+  left: 3%;
+
   border: 1px solid lightgrey;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.05) inset, 0px 0px 5px rgba(0, 0, 0, 0.1);
 }
