@@ -273,6 +273,7 @@ var initChat = (function() {
             this.chat.appendChild(this.areaContainer);
             
             this.input = createElement("input", "input");
+            this.input.placeholder = "<write your message here>";
             this.inputContainer = createElement("div", "input-container");
             this.inputContainer.appendChild(this.input);
             this.chat.appendChild(this.inputContainer);
