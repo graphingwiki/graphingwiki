@@ -1,10 +1,27 @@
-(c) by Pasi Kemi (Media Agency Bears: http://www.mediakarhut.fi)
-(c) by Marko Laakso (in adm@clarifiednetworks.com role)
+COLLAB ADDON INSTALLATION
 
-Source of Traffic Light Images is unfortunately unknown, license unknown
-and thus should be replaced with known to be CC versions.
+1. setup.py will automatically copy collabcommon under MoinMoin's htdocs
 
-Rest of this material is licensed under Creatice Commons Attribution
-License.
+2. Add to html_head of your wikiconfig:
 
-http://creativecommons.org/licenses/by/3.0/
+    html_head = '' # omit if you already have something
+
+    for script in ['js/strophe.js', \
+                   'js/chat.js']:
+        html_head += '<script src="%s" type="text/javascript"></script>' \
+                     % (url_prefix_static + '/collabcommon/' + script)
+
+    stylesheets = [] # omit if you already have something
+
+    for type, style in [('all', 'chat.css'), \
+	          ('all', 'common.css'), \
+	          ('screen', 'screen.css'), \
+	          ('print', 'print.css'), \
+                  ('projection', 'projection.css')]:
+	stylepath = url_prefix_static + '/collabcommon/css/' + style
+	stylesheets.append((type, styleapath))
+
+DESCRIPTION
+
+ js::
+   Usability javascripts for CollabChat etc.
