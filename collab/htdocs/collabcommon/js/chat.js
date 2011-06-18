@@ -209,6 +209,21 @@ var initChat = (function() {
             return result;
         };
 
+        var lineRex = /\r\n|\r|\n/;
+        var lineify = function(string) {
+            var bites = string.split(lineRex);
+
+            var result = [];
+            result.push.apply(result, linkify(bites[0]));
+
+            for (var i = 1, len = bites.length; i < len; i++) {
+                result.push(document.createElement("br"));
+                result.push.apply(result, linkify(bites[i]));
+            }
+
+            return result;
+        };
+
         var hash = function(string) {
             // Return a value between 0.0 and 1.0 based on the input
             // string. This is an ad-hoc algorithm, implementing some
@@ -343,7 +358,7 @@ var initChat = (function() {
                 var bodyDiv = createElement("div", "body");
                 bodyDiv.style.color = hsv(hue, 0.1, 0.3);
 
-                var bites = linkify(body);
+                var bites = lineify(body);
                 for (var i = 0, len = bites.length; i < len; i++) {
                     bodyDiv.appendChild(bites[i]);
                 }
@@ -612,7 +627,7 @@ var initChat = (function() {
         var main = function(container) {
             var ui = new UI(container);
             var conn = new Connection(boshUri, roomJid, jid, password);
-            
+
             conn.listen("statusChanged", function(isError, status) {
                 if (isError) {
                     ui.showError(status);
