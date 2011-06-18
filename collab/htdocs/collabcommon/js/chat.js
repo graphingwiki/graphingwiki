@@ -328,18 +328,20 @@ var initChat = (function() {
                 var hue = hashed;
                 var value = 0.97 + 0.03 * ((hashed * 1000) % 1.0);
 
+                msgDiv.style.background = hsv(hue, 0.02, 0.98);
+
                 var timeDiv = createElement("div", "time");
                 appendText(timeDiv, formatted.time);
                 msgDiv.appendChild(timeDiv);
 
                 var senderDiv = createElement("div", "sender");
-                senderDiv.style.background = hsv(hue, 0.12, 0.99 * value);
+                senderDiv.style.color = hsv(hue, 0.35, 0.575);
                 // Whitespaces around the sender make copy-pastes clearer.
-                appendText(senderDiv, " " + sender + " ");
+                appendText(senderDiv, " <" + sender + "> ");
                 msgDiv.appendChild(senderDiv);
 
                 var bodyDiv = createElement("div", "body");
-                bodyDiv.style.background = hsv(hue, 0.07, value);
+                bodyDiv.style.color = hsv(hue, 0.1, 0.3);
 
                 var bites = linkify(body);
                 for (var i = 0, len = bites.length; i < len; i++) {
