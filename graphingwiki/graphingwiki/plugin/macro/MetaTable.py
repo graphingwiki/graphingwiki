@@ -258,7 +258,7 @@ def execute(macro, args):
         elif val == "False":
             val = False
 
-        optargs[opt[0]] = val
+        optargs[str(opt[0])] = val
 
     # loathful positional stripping (requires specific order of args), sorry
     if args.strip().endswith('gwikisilent'):
