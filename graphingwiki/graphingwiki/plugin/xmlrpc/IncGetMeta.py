@@ -13,6 +13,8 @@ import xmlrpclib
 
 from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
 
+from MoinMoin.util.lock import WriteLock
+
 def diff(previous, current):
     removedPages = list()
     updates = dict()
@@ -65,6 +67,9 @@ def inc_get_metas(request, args, handle=None):
     if not os.path.exists(cachedir):
         os.makedirs(cachedir)
 
+    lock = WriteLock(cachedir, timeout=60.0)
+    success = lock.acquire()
+
     path = os.path.join(cachedir, request.cfg.siteid + ".shelve")
     db = shelve.open(path)
 
@@ -77,6 +82,9 @@ def inc_get_metas(request, args, handle=None):
         db[handle] = current
     finally:
         db.close()
+
+    if lock.isLocked():
+        lock.release()
 
     return [incremental, handle, diff(previous, current)]
 
