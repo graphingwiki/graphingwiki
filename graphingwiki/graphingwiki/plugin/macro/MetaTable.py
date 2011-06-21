@@ -249,8 +249,8 @@ def execute(macro, args):
     optargs = {}
 
     #parse keyworded arguments (template etc)
-    opts = re.findall(",\s*([^,]+)=([^,]+)\s*", args)
-    args = re.sub(",\s*[^,]+=[^,]+\s*", "", args)
+    opts = re.findall(",\s*([^,|]+)=([^,]+)\s*", args)
+    args = re.sub(",\s*[^,|]+=[^,]+\s*", "", args)
     for opt in opts:
         val = opt[1]
         if val == "True":
