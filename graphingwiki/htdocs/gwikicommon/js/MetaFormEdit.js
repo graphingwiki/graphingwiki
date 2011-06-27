@@ -14,6 +14,10 @@
             this.form = document.id(form);
             this.fields = this.getFields();
 
+            this.form.addEvent('submit', function(){
+               this.getElements('.hidden').destroy();
+            });
+            
             this.SEPARATOR = window.GWIKISEPARATOR;
             this.clean();
             this.build();
@@ -21,6 +25,30 @@
 
         getFields: function() {
             return this.form.getElements('.metaformedit-cloneable, .metaformedit-notcloneable');
+        },
+
+        _setupTextArea: function(textarea){
+            var dd = textarea.getParent('dd');
+            var dynText = new DynamicTextarea(textarea);
+            var siblings = dd.getElements('select, input, label');
+            siblings.removeClass('hidden');
+            if (siblings.length > 0){
+                dynText.addEvent('keyPress', function(){
+                    if (textarea.get('value') != "") {
+                        siblings.addClass('hidden');
+                    }else{
+                        siblings.removeClass('hidden');
+                    }
+                })
+            }
+
+        },
+
+        _bindLabel: function(label){
+            var input = label.getPrevious('input');
+            var id = String.uniqueID();
+            input.set('id', id);
+            label.set('for', id);
         },
 
         build: function() {
@@ -61,10 +89,8 @@
                 }));
             });
 
-            this.fields.getElements('textarea').flatten().each(function(textarea) {
-                new DynamicTextarea(textarea);
-
-            });
+            this.fields.getElements('textarea').flatten().each(this._setupTextArea);
+            this.fields.getElements('label').flatten().each(this._bindLabel);
 
             new Picker.Date(this.fields.getElements('input.date').flatten(), {
                 format: '%d-%m-%Y',
@@ -167,8 +193,8 @@
                         var div = textarea.getParent('div');
                         textarea.dispose();
                         textarea.replaces(div);
-                        new DynamicTextarea(textarea);
-                    });
+                        this._setupTextArea(textarea);
+                    }, this);
 
                     if (input.hasClass('date')) {
                         new Picker.Date(input, {
@@ -180,6 +206,9 @@
 
 
             }, this);
+
+            cloned.getElements('label').each(this._bindLabel);
+            
             cloned.inject(source, 'before');
             this.fields.splice(this.fields.indexOf(source) + 1, 0, cloned);
         },

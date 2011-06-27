@@ -158,7 +158,7 @@ def execute(pagename, request):
             msg += wr(
                 '<input type="checkbox" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
-                format_wikitext(request, showval)
+                '<label>' + format_wikitext(request, showval) +'</label>'
 
         return msg
 
@@ -169,7 +169,7 @@ def execute(pagename, request):
             msg += wr(
                 '<input type="radio" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
-                format_wikitext(request, showval)
+                '<label>' + format_wikitext(request, showval) +'</label>'
 
         return msg
 
@@ -242,9 +242,13 @@ def execute(pagename, request):
        
         if desc:
             msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
-            msg = msg.replace('<dt>', wr('<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
+            msg = msg.replace('<dt>', wr('<dt class="clear mt-tooltip" title="%s" rel="%s">', key, desc))
 
-        msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
+        else:
+            msg = msg.replace('<dt>', '<dt class="clear">')
+
+
+        msg = msg.replace('<dd>', '<dd class="%s clear">'% cssclass)
 
         msg += formtypes[formtype](request, pagekey, val, values)
 

@@ -147,8 +147,19 @@ span.edit {
     display: block;
 }
 
-.metaformedit-cloneable div, .metaformedit-cloneable textarea {
-    display: inline !important;
+.metaformedit-cloneable >*, .metaformedit-notcloneable >*,
+.metaformedit-cloneable textarea, .metaformedit-notcloneable textarea {
+    float: left;
+    margin-left: 5px;
+}
+
+.metaformedit-cloneable div, .metaformedit-notcloneable div {
+    display: inline;
+}
+
+.metaformedit-cloneable, .metaformedit-notcloneable {
+    padding-top: 0.5em;
+    min-height: 1.5em;
 }
 
 .inline {
@@ -157,6 +168,10 @@ span.edit {
 
 .hidden {
     display: none;
+}
+
+.clear {
+    clear: both;
 }
 
 table.ac-results {
