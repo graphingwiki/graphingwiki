@@ -1,9 +1,9 @@
 /*
-   MetaFormEdit
-   - js improvements for meta editor.
-   License: MIT <http://www.opensource.org/licenses/mit-license.php>
-   Copyright: 2011 by Lauri Pokka
-   Depends: MooTools DynamicTextArea
+ MetaFormEdit
+ - js improvements for meta editor.
+ License: MIT <http://www.opensource.org/licenses/mit-license.php>
+ Copyright: 2011 by Lauri Pokka
+ Depends: MooTools DynamicTextArea
  */
 
 (function() {
@@ -14,10 +14,10 @@
             this.form = document.id(form);
             this.fields = this.getFields();
 
-            this.form.addEvent('submit', function(){
-               this.getElements('.hidden').destroy();
+            this.form.addEvent('submit', function() {
+                this.getElements('.hidden').destroy();
             });
-            
+
             this.SEPARATOR = window.GWIKISEPARATOR;
             this.clean();
             this.build();
@@ -27,16 +27,16 @@
             return this.form.getElements('.metaformedit-cloneable, .metaformedit-notcloneable');
         },
 
-        _setupTextArea: function(textarea){
+        _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
             var dynText = new DynamicTextarea(textarea);
             var siblings = dd.getElements('select, input, label');
             siblings.removeClass('hidden');
-            if (siblings.length > 0){
-                dynText.addEvent('keyPress', function(){
+            if (siblings.length > 0) {
+                dynText.addEvent('keyPress', function() {
                     if (textarea.get('value') != "") {
                         siblings.addClass('hidden');
-                    }else{
+                    } else {
                         siblings.removeClass('hidden');
                     }
                 })
@@ -44,7 +44,7 @@
 
         },
 
-        _bindLabel: function(label){
+        _bindLabel: function(label) {
             var input = label.getPrevious('input');
             var id = String.uniqueID();
             input.set('id', id);
@@ -132,6 +132,34 @@
                     keys.push(key)
                 }
             }, this);
+
+            /* Set default values */
+            this.getFields().each(function(dd) {
+                var def = dd.get('data-default');
+                if (!def) return;
+
+                var chks = dd.getElements('input[type=checkbox],input[type=radio');
+                var sel = dd.getElement('select');
+                var inputs = dd.getElements('input, textarea');
+
+                //handle checkbox/radio
+                if (dd.getElement('input[checked]')) return;
+
+                if (chks.length > 0) {
+                    chks.each(function(el){
+                        if (el.get('value') == def) el.set('checked', true);
+                    });
+
+                //handle selects
+                }else if (sel) {
+                    if (sel.get('value') == '') sel.set('value', def);
+                //handle rest text based fields
+                }else if (inputs.length > 0) {
+                    if (inputs.every(function(el){ return el.get('value') == ""; })) {
+                        inputs[0].set('value', def);
+                    }
+                }
+            });
         },
 
         clone: function(source, values, minimalNew) {
@@ -208,7 +236,7 @@
             }, this);
 
             cloned.getElements('label').each(this._bindLabel);
-            
+
             cloned.inject(source, 'before');
             this.fields.splice(this.fields.indexOf(source) + 1, 0, cloned);
         },

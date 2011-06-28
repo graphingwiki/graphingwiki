@@ -226,6 +226,7 @@ def execute(pagename, request):
         formtype = properties.get('hint')
         constraint = properties.get('constraint')
         desc = properties.get('description')
+        default = properties.get('default', '')
         hidden = False
 
         if formtype == "hidden":
@@ -248,7 +249,7 @@ def execute(pagename, request):
             msg = msg.replace('<dt>', '<dt class="clear">')
 
 
-        msg = msg.replace('<dd>', '<dd class="%s clear">'% cssclass)
+        msg = msg.replace('<dd>', wr('<dd class="%s clear" data-default="%s">',  cssclass, default))
 
         msg += formtypes[formtype](request, pagekey, val, values)
 
