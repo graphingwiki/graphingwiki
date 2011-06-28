@@ -81,6 +81,7 @@ Request.SetMetas = new Class({
             onSuccess: function(json) {
                 if (Object.every(this.options.checkData, function(metas, page) {
                     return json[page] && Object.every(metas, function(values, key) {
+                        if (!json[page][key]) json[page][key] = [];
                         return json[page][key].length == values.length
                             && values.every(function(value) {
                             return json[page][key].contains(value);
@@ -222,6 +223,7 @@ var initInlineMetaEdit = function (base) {
                 var val = metas[key].splice(index, 1);
                 args[page][key] = metas[key];
                 args[page][newKey] = (metas[newKey] || []).combine(val);
+                metas[newKey] = args[page][newKey];
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
