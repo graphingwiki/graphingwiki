@@ -31,9 +31,9 @@ import re
 
 from MoinMoin.Page import Page
 
-from graphingwiki import url_escape
+from graphingwiki import url_escape, id_escape, SEPARATOR
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import format_wikitext, wrap_span
+from graphingwiki.util import format_wikitext
 
 try:
     import simplejson as json
@@ -42,7 +42,17 @@ except ImportError:
 
 Dependencies = ['metadata']
 
-def t_cell(request, vals, head=0, style=None, rev='', key=''):
+def wrap_span(request, pagename, key, data, id):
+    if not key:
+        return format_wikitext(request, data)
+
+    return '<span id="' + \
+        id_escape('%(page)s%(sepa)s%(key)s%(sepa)s%(id)s' %
+                  {'page': pagename, 'sepa': SEPARATOR,
+                   'id': id, 'key': key}) + '">' + \
+                   format_wikitext(request, data) + '</span>'
+
+def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
     formatter = request.formatter
     out = str()
 
@@ -87,7 +97,7 @@ def t_cell(request, vals, head=0, style=None, rev='', key=''):
             if cellstyle == 'list':
                 out += formatter.listitem(1)
 
-            out += wrap_span(request, key, data, i)
+            out += wrap_span(request, pagename, key, data, i)
 
             if cellstyle == 'list':
                 out += formatter.listitem(0)
@@ -105,6 +115,7 @@ def construct_table(request, pagelist, metakeys,
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
+    pagename = request.page.page_name
 
     row = 0
     divfmt = { 'class': "metatable" }
@@ -124,7 +135,7 @@ def construct_table(request, pagelist, metakeys,
         out += formatter.table_row(1, {'rowclass': 'meta_header'})
         if send_pages:
             # Upper left cell is empty or has the desired legend
-            out += t_cell(request, [legend])
+            out += t_cell(request, pagename, [legend])
 
     for key in metakeys:
         style = styles.get(key, dict())
@@ -142,9 +153,9 @@ def construct_table(request, pagelist, metakeys,
                 headerstyle[st] = style[st]
 
         if name:
-            out += t_cell(request, [name], style=headerstyle, key=key)
+            out +=t_cell(request, pagename, [name], style=headerstyle, key=key)
         else:
-            out += t_cell(request, [key], style=headerstyle, key=key)
+            out += t_cell(request, pagename, [key], style=headerstyle, key=key)
 
     if metakeys:
         out += formatter.table_row(0)
@@ -176,14 +187,14 @@ def construct_table(request, pagelist, metakeys,
                                                   
 
         if send_pages:
-            out += t_cell(request, [page], head=1, rev=revision)
+            out += t_cell(request, page, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
             if key == 'gwikipagename':
-                out += t_cell(request, [page], head=1, style=style)
+                out += t_cell(request, page, [page], head=1, style=style)
             else:
-                out += t_cell(request, metas[key], style=style, key=key)
+                out += t_cell(request, page, metas[key], style=style, key=key)
 
         out += formatter.table_row(0)
 
@@ -198,6 +209,7 @@ def do_macro(request, args, **kw):
     formatter = request.formatter
     _ = request.getText
     out = str()
+    pagename = request.page.page_name
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
@@ -208,9 +220,9 @@ def do_macro(request, args, **kw):
         out += formatter.linebreak() + u'<div class="metatable">' + \
             formatter.table(1)
         if kw.get('silent'):
-            out += t_cell(request, ["%s" % _("No matches")])
+            out += t_cell(request, pagename, ["%s" % _("No matches")])
         else:
-            out += t_cell(request, ["%s '%s'" % (_("No matches for"), args)])
+            out += t_cell(request, pagename, ["%s '%s'" % (_("No matches for"), args)])
         out += formatter.table(0) + u'</div>'
         return out
 
