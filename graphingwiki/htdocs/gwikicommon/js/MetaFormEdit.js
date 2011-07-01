@@ -24,7 +24,7 @@
         },
 
         getFields: function() {
-            return this.form.getElements('.metaformedit-cloneable, .metaformedit-notcloneable');
+            return this.form.getElements('.metaformedit');
         },
 
         _setupTextArea: function(textarea) {
@@ -54,7 +54,8 @@
         build: function() {
             var self = this;
 
-            this.form.getElements('.metaformedit-cloneable').each(function(dd) {
+            this.form.getElements('.metaformedit').each(function(dd) {
+                if (dd.get('data-cloneable') == "false") return;
                 var dt = dd.getPrevious('dt');
                 var siblings = dd.getParent().getChildren();
                 if (siblings.indexOf(dd) - 1 != siblings.indexOf(dt)) return;
@@ -63,6 +64,10 @@
                     'class': 'jslink',
                     'text': '+',
                     'title': 'Add value',
+                    'styles': {
+                        'font-weight': 'bold',
+                        'font-size': '1.1em'
+                    },
                     'events': {
                         'click': function() {
                             self.clone(dt.getNext('dd'));
@@ -77,9 +82,10 @@
                     'title': 'Remove value',
                     'html': 'x',
                     'styles': {
-                        'margin-left': '8px',
+                        'margin-left': '5px',
                         'color': 'red',
-                        'font-weight': 'bold'
+                        'font-weight': 'bold',
+                        'font-size': '0.95em'
                     },
                     'events': {
                         'click': function() {
@@ -180,6 +186,8 @@
             }
 
             var cloned = source.clone();
+            cloned.inject(source, 'before');
+
             if (cloned.getElement('a.jslink') != null) {
                 cloned.getElement('a.jslink').cloneEvents(source.getElement('a.jslink'));
             }
@@ -219,12 +227,12 @@
                 }
 
                 if (!minimalNew) {
-                    source.getElements('textarea').each(function(textarea) {
-                        var div = textarea.getParent('div');
-                        textarea.dispose();
-                        textarea.replaces(div);
-                        this._setupTextArea(textarea);
-                    }, this);
+                    if (input.get('tag') == "textarea") {
+                        var div = input.getParent('div');
+                        var txt = new Element('textarea').set('name', input.get('name'))
+                            .replaces(div);
+                        this._setupTextArea(txt);
+                    }
 
                     if (input.hasClass('date')) {
                         new Picker.Date(input, {
@@ -239,7 +247,6 @@
 
             cloned.getElements('label').each(this._bindLabel);
 
-            cloned.inject(source, 'before');
             this.fields.splice(this.fields.indexOf(source) + 1, 0, cloned);
         },
 

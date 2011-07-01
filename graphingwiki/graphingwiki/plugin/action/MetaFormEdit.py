@@ -237,19 +237,15 @@ def execute(pagename, request):
 
         if (not formtype == "radio" and
             not (formtype == "checkbox" and constraint == "existing")):
-            cssclass = "metaformedit-cloneable"
+            cloneable = "true"
         else:
-            cssclass = "metaformedit-notcloneable"
+            cloneable = "false"
        
         if desc:
             msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
-            msg = msg.replace('<dt>', wr('<dt class="clear mt-tooltip" title="%s" rel="%s">', key, desc))
+            msg = msg.replace('<dt>', wr('<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
 
-        else:
-            msg = msg.replace('<dt>', '<dt class="clear">')
-
-
-        msg = msg.replace('<dd>', wr('<dd class="%s clear" data-default="%s">',  cssclass, default))
+        msg = msg.replace('<dd>', wr('<dd class="metaformedit" data-cloneable="%s" data-default="%s">',  cloneable, default))
 
         msg += formtypes[formtype](request, pagekey, val, values)
 

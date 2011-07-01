@@ -147,23 +147,26 @@ span.edit {
     display: block;
 }
 
-.metaformedit-cloneable >*, .metaformedit-notcloneable >*,
-.metaformedit-cloneable textarea, .metaformedit-notcloneable textarea {
-    float: left;
-    margin-left: 5px;
+dt {
+    vertical-align: top;
+}
+.inline, .inline * {
+    display: inline !important;
+    vertical-align: middle;
 }
 
-.metaformedit-cloneable div, .metaformedit-notcloneable div {
+.metaformedit * {
+    vertical-align: middle;
+}
+
+.metaformedit div {
     display: inline;
 }
 
-.metaformedit-cloneable, .metaformedit-notcloneable {
-    padding-top: 0.5em;
-    min-height: 1.5em;
-}
-
-.inline {
+.metaformedit textarea {
+    margin-left: 5px;
     display: inline !important;
+    padding: 2px;
 }
 
 .hidden {
@@ -180,26 +183,31 @@ table.ac-results {
     background: white;
     color: black;
     text-align: left;
-    border-collapse:collapse;
+    border-collapse: collapse;
     cursor: pointer;
 }
+
 .ac-results tr {
     overflow-x: hidden;
 }
+
 .ac-results td {
     border-width: 0;
     margin: 0;
     white-space: nowrap;
     overflow-x: hidden;
 }
+
 .ac-results td.value {
     padding: 0 25px 0 5px;
 }
+
 .ac-results td.page {
     font-style: italic;
     font-size: small;
     text-align: right;
 }
+
 .ac-results tr.selected {
     background: #ddffdd;
 }

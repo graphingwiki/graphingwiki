@@ -24,7 +24,7 @@ window.addEvent('domready', function() {
     var loader = new GwikiImport(src);
 
     /* MetaFormEdit improvements */
-    var fields = $$('.metaformedit-cloneable');
+    var fields = $$('.metaformedit');
     if (fields.length > 0) {
         loader.load('MetaFormEdit', function() {
             new MetaFormEdit(fields[0].getParent('form'));
@@ -167,6 +167,7 @@ var initInlineMetaEdit = function (base) {
         editor = new InlineEditor(dd, {
             oldValue: oldValue,
             suggestionKey: key,
+            inline: true,
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -212,6 +213,7 @@ var initInlineMetaEdit = function (base) {
 
         editor = new InlineEditor(dt, {
             oldValue: key,
+            inline: true,
             onSave: function (newKey) {
                 var args = {};
                 args[page] = {};
@@ -250,6 +252,7 @@ var InlineEditor = new Class({
         //onSave: function(value){},
         //onExit: function(){}
         oldValue: "",
+        inline: false,
         suggestionKey: null,
         autoFormat: true
     },
@@ -270,6 +273,8 @@ var InlineEditor = new Class({
             text: this.options.oldValue
         }).inject(this.element);
 
+
+        if (this.options.inline) this.element.addClass('inline');
 
         new DynamicTextarea(this.input).addEvent('resize', function() {
             this.input.fireEvent('resize');
@@ -309,6 +314,11 @@ var InlineEditor = new Class({
         }
     },
 
+    _clean: function() {
+        this.element.removeClass('edit');
+        this.element.removeClass('inline');
+    },
+    
     exit: function() {
         if (this.suggestions) this.suggestions.detach();
 
@@ -317,13 +327,14 @@ var InlineEditor = new Class({
                 data: 'action=ajaxUtils&util=format&text=' + encodeURIComponent(this.value),
                 update: this.element,
                 onSuccess: function() {
-                    this.element.removeClass('edit')
+                    this._clean();
                 }.bind(this)
             }).send();
         } else {
-            this.element.removeClass('edit');
+
             this.element.empty();
             this.element.set('text', this.value);
+            this._clean();
         }
         this.fireEvent('exit');
     },
@@ -333,7 +344,7 @@ var InlineEditor = new Class({
 
         this.element.empty();
         this.element.set('html', this.element.retrieve('html'));
-        this.element.removeClass('edit');
+        this._clean();
         this.fireEvent('exit');
     }
 });
