@@ -146,16 +146,18 @@
                 if (dd.getElement('input[checked]')) return;
 
                 if (chks.length > 0) {
-                    chks.each(function(el){
+                    chks.each(function(el) {
                         if (el.get('value') == def) el.set('checked', true);
                     });
 
-                //handle selects
-                }else if (sel) {
+                    //handle selects
+                } else if (sel) {
                     if (sel.get('value') == '') sel.set('value', def);
-                //handle rest text based fields
-                }else if (inputs.length > 0) {
-                    if (inputs.every(function(el){ return el.get('value') == ""; })) {
+                    //handle rest text based fields
+                } else if (inputs.length > 0) {
+                    if (inputs.every(function(el) {
+                        return el.get('value') == "";
+                    })) {
                         inputs[0].set('value', def);
                     }
                 }

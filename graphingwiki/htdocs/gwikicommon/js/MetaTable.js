@@ -362,6 +362,13 @@
                 'z-index': '99'
             }).inject(document.body);
 
+            this.positioner = new Element('div').setStyles({
+                'position': 'absolute',
+                'left': 0,
+                'top': 0,
+                'width': '100%',
+                'z-index': '99'
+            }).inject(document.body);
             var container = new Element('div').setStyles({
                 'position': 'relative',
                 'margin': 'auto',
@@ -371,7 +378,7 @@
                 'background': 'white',
                 'border': '2px black solid',
                 'border-radius': '5px'
-            }).inject(this.bg);
+            }).inject(this.positioner);
 
             var close = new Element('div.close-button[text=x]')
                 .addEvent('click', this.cancel.bind(this))
@@ -445,6 +452,7 @@
 
         cancel: function() {
             this.bg.destroy();
+            this.positioner.destroy();
         }
     });
 })();
