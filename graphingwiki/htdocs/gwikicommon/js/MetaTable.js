@@ -23,6 +23,24 @@
         return tab;
     };
 
+    var diff = function(o1, o2) {
+        var changed = [];
+        Object.each(o2, function(metas, page) {
+            if (!o1[page]) changed.include(page);
+            else {
+                Object.each(metas, function(values, key) {
+                    var values2 = o1[page][key];
+                    if (!values2 ||
+                        !values.every(values2.contains.bind(values2)) ||
+                        !values2.every(values.contains.bind(values)))
+                        changed.include(page);
+                });
+            }
+        });
+        return changed;
+
+    };
+
     var MetaTable = this.MetaTable = new Class({
         Extends: HtmlTable,
         options: {
@@ -35,7 +53,11 @@
             preformatTable(table);
             this.parent.apply(this, arguments);
 
-            this.tableArgs = Object.merge({'args': '', 'template': null}, this.options.tableArguments);
+            this.tableArgs = Object.merge({
+                'args': '',
+                'template': null,
+                'autorefresh': false
+            }, this.options.tableArguments);
 
             this.metaRequest = new Request.JSON({
                 url: '?action=getMetaJSON',
@@ -55,6 +77,10 @@
             table.addEvent('mouseover:once', function() {
                 this.metaRequest.get()
             }.bind(this));
+
+            if (this.tableArgs.autorefresh) {
+                this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
+            }
 
             var parent = table.getParent('div.metatable');
             if (parent && parent.getNext('a').get('text') == "[edit]") {
@@ -221,7 +247,7 @@
                 autoFormat: false,
                 oldValue: oldKey,
                 onSave: function(newKey) {
-                    var oldData = Object.map(this.metas, function(metas, page) {
+                    var oldData = Object.map(Object.clone(this.metas), function(metas, page) {
                         var m = Object.subset(metas, [oldKey, newKey]);
                         if (!m[newKey]) m[newKey] = [];
                         return m;
@@ -229,14 +255,14 @@
 
                     var args = Object.map(this.metas, function(metas, page) {
                         var renamed = {};
-                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey]);
+                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey]|| []);
                         renamed[oldKey] = [];
                         return renamed;
                     });
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                        checkUrl: '?action=getMetaJSON&args=' + page,
+                        checkUrl: '?action=getMetaJSON&args=' +  encodeURIComponent(this.tableArgs.args),
                         checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
@@ -286,6 +312,8 @@
         refresh: function() {
             if (this.inlineEditor) return;
 
+            var oldMetas = Object.clone(this.metas);
+
             this.metaRequest.get();
 
             new Request.HTML({
@@ -300,6 +328,22 @@
                     this.setTable(tab[0]);
                     this.reSort();
                     this.hiddenCells.each(this.hide, this);
+
+                    var highlightChanges = function(){
+                        if (this.metaRequest.isRunning()) {
+                            highlightChanges.delay(100);
+                            return
+                        }
+                        diff(oldMetas, this.metas).each(function(page){
+                            this.body.getElements('tr').each(function(row){
+                               if (row.cells[0].get('text') == page) {
+                                   row.highlight("#bfb");
+                               }
+                            });
+                        }, this);
+                    }.bind(this);
+
+                    highlightChanges.delay(500);
                 }.bind(this)
 
             }).send();
@@ -443,8 +487,8 @@
                     if (response && response.status == "ok") {
                         this.fireEvent('success');
                         this.bg.destroy();
-                    }else{
-                        alert("Failed to create new page!\n" + '"' + response.msg+  '"');
+                    } else {
+                        alert("Failed to create new page!\n" + '"' + response.msg + '"');
                     }
                 }.bind(this)
             }).send()

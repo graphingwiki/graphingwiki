@@ -214,7 +214,13 @@ def do_macro(request, args, **kw):
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
-
+    out += u'''
+    <script type="text/javascript">
+      window.MetaTableArguments = (window.MetaTableArguments || []);
+      window.MetaTableArguments.push(%s);
+    </script>
+    ''' % json.dumps(dict({'args': args}.items() + kw.items()))
+ 
    # No data -> bail out quickly, Scotty
     if not pagelist:
         out += formatter.linebreak() + u'<div class="metatable">' + \
@@ -226,13 +232,7 @@ def do_macro(request, args, **kw):
         out += formatter.table(0) + u'</div>'
         return out
 
-    out += u'''
-    <script type="text/javascript">
-      window.MetaTableArguments = (window.MetaTableArguments || []);
-      window.MetaTableArguments.push(%s);
-    </script>
-    ''' % json.dumps(dict({'args': args}.items() + kw.items()))
- 
+
     # We're sure the user has the access to the page, so don't check
     out += construct_table(request, pagelist, metakeys,
                           checkAccess=False, styles=styles)
