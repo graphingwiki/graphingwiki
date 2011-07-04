@@ -30,7 +30,7 @@
         _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
             var dynText = new DynamicTextarea(textarea);
-            var siblings = dd.getElements('select, input, label');
+            var siblings = dd.getElements('select');
             siblings.removeClass('hidden');
             if (siblings.length > 0) {
                 dynText.addEvent('keyPress', function() {
@@ -182,7 +182,7 @@
                         values.erase(input.value);
                     }
                 });
-                if (source.getElement('input[type=text]') == null || minimalNew) return;
+                if (source.getElement('textarea') == null || minimalNew) return;
             }
 
             var cloned = source.clone();
@@ -192,6 +192,8 @@
                 cloned.getElement('a.jslink').cloneEvents(source.getElement('a.jslink'));
             }
 
+            cloned.getElements('input[type=checkbox], input[type=radio], label').destroy();
+            
             cloned.getElements('select, input, textarea').each(function(input) {
                 input.value = "";
                 input.checked = false;
