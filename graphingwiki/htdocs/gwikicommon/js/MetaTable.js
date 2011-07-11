@@ -84,7 +84,7 @@
 
             var parent = table.getParent('div.metatable');
             if (parent && parent.getNext('a').get('text') == "[edit]") {
-                new Element('a.jslink[text=[new page]]')
+                new Element('a.jslink[text=[new row]]')
                     .setStyles({'font-size': 'inherit'})
                     .addEvent('click', this.newPage.bind(this))
                     .inject(parent, 'after');

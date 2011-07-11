@@ -211,3 +211,19 @@ table.ac-results {
 .ac-results tr.selected {
     background: #ddffdd;
 }
+
+.attachtree_area > ul{
+    display: inline-block;
+}
+
+.attachtree_fileentry {
+    list-style: square;
+}
+
+.attachtree_direntry {
+    list-style: url("Collapse.png");
+}
+
+.attachtree_direntry.collapsed {
+    list-style: url("Expand.png");
+}

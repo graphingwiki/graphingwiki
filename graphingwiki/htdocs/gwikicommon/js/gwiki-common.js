@@ -53,6 +53,14 @@ window.addEvent('domready', function() {
             $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
         });
     }
+
+    if ($$('.attachtree_area')) {
+        loader.load('AttachTree', function() {
+            $$('.attachtree_area').each(function(el) {
+                new AttachTree(el);
+            })
+        });
+    }
 });
 
 Element.Events.shiftclick = {
@@ -424,6 +432,11 @@ Date.implement({
 
 (function() {
     var DEPS = {
+        AttachTree: {
+            files: ['js/AttachTree.js'],
+            depends: [],
+            styles: ['css/Expand.png']
+        },
         InlineEditor: {
             files: ['js/gwiki-common.js'],
             depends: ['DynamicTextarea', 'MetaSuggestions']
@@ -447,9 +460,7 @@ Date.implement({
         DatePicker: {
             files: ['js/DatePicker.js'],
             styles: [
-                'css/DatePicker/datepicker_dashboard.css',
-                'css/DatePicker/frame.png',
-                'css/DatePicker/buttons.png'
+                'css/DatePicker/datepicker_dashboard.css'
             ],
             depends: []
         }
