@@ -48,7 +48,7 @@ window.addEvent('domready', function() {
         });
     }
 
-    if ($$('dl dt') && $$('dl dd')) {
+    if ($$('dl dt').length && $$('dl dd').length) {
         loader.load('InlineEditor', function() {
             $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
         });
@@ -122,6 +122,9 @@ var unescapeId = function(id) {
 
 
 var initInlineMetaEdit = function (base) {
+
+    //do not attach inline edit if MetaFormEdit is running
+    if (!base.getElement('dl') || base.getElement('dl').getParent('form')) return;
 
     var metas, editor, page = "";
 

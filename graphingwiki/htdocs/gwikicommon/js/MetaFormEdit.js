@@ -9,10 +9,11 @@
 (function() {
     if (this.MetaFormEdit) return;
 
+    var dateformat = '%Y-%m-%d';
+
     var MetaformEdit = this.MetaFormEdit = new Class({
         initialize: function (form) {
             this.form = document.id(form);
-            this.fields = this.getFields();
 
             this.form.addEvent('submit', function() {
                 this.getElements('.hidden').destroy();
@@ -27,6 +28,7 @@
             return this.form.getElements('.metaformedit');
         },
 
+        // Add dynamic scaling and automatic select hiding
         _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
             var dynText = new DynamicTextarea(textarea);
@@ -54,7 +56,13 @@
         build: function() {
             var self = this;
 
-            this.form.getElements('.metaformedit').each(function(dd) {
+            //remove annoying title text on help icon
+            this.form.getElements('dt img').each(function(img){
+                img.set('title', '');
+            });
+
+            //add '+'-button for each dt that has cloneable dd elements
+            this.getFields().each(function(dd) {
                 if (dd.get('data-cloneable') == "false") return;
                 var dt = dd.getPrevious('dt');
                 var siblings = dd.getParent().getChildren();
@@ -76,7 +84,8 @@
                 }));
             });
 
-            this.fields.each(function(el) {
+            //add 'x'-buttons for each row
+            this.getFields().each(function(el) {
                 el.grab(new Element('a', {
                     'class': 'jslink',
                     'title': 'Remove value',
@@ -95,15 +104,14 @@
                 }));
             });
 
-            this.fields.getElements('textarea').flatten().each(this._setupTextArea);
-            this.fields.getElements('label').flatten().each(this._bindLabel);
+            this.getFields().getElements('textarea').flatten().each(this._setupTextArea);
+            this.getFields().getElements('label').flatten().each(this._bindLabel);
 
-            new Picker.Date(this.fields.getElements('input.date').flatten(), {
-                format: '%d-%m-%Y',
+            new Picker.Date(this.getFields().getElements('input.date').flatten(), {
+                format: dateformat,
                 pickerClass: 'datepicker_dashboard'
             });
 
-            this.fields = this.getFields();
         },
 
         /*
@@ -111,10 +119,13 @@
          */
         clean: function() {
             var keys = [];
-            var fields = this.getFields();
-            fields.each(function(el) {
+
+            //value grouping
+            this.getFields().each(function(el) {
                 if (!el || el.getElement('input, select, textarea') == null) return;
                 var key = el.getElement('input, select, textarea').name;
+
+                //not the first appearance of this key -> group with previous one
                 if (keys.contains(key)) {
                     var values = [];
                     el.getElements('input, select, textarea').each(function(input) {
@@ -175,8 +186,8 @@
             var first = source.getElement('input, select, textarea');
             var type = first.get('tag') == 'select' ? "select" : first.type;
 
-            if (["checkbox"].contains(type)) {
-                source.getElements('input[type=checkbox]').each(function(input) {
+            if (["checkbox", "radio"].contains(type)) {
+                source.getElements('input[type=checkbox] ,input[type=radio]').each(function(input) {
                     if (values.contains(input.value)) {
                         input.checked = true;
                         values.erase(input.value);
@@ -185,6 +196,7 @@
                 if (source.getElement('textarea') == null || minimalNew) return;
             }
 
+            if (["radio"])
             var cloned = source.clone();
             cloned.inject(source, 'before');
 
@@ -238,7 +250,7 @@
 
                     if (input.hasClass('date')) {
                         new Picker.Date(input, {
-                            format: '%d-%m-%Y',
+                            format: dateformat,
                             pickerClass: 'datepicker_dashboard'
                         })
                     }
@@ -248,8 +260,6 @@
             }, this);
 
             cloned.getElements('label').each(this._bindLabel);
-
-            this.fields.splice(this.fields.indexOf(source) + 1, 0, cloned);
         },
 
         remove: function(el) {
@@ -259,7 +269,6 @@
                 && (!siblings[index + 1] || siblings[index + 1].get('tag') == "dt")) {
                 siblings[index - 1].destroy();
             }
-            this.fields.erase(el);
             el.destroy();
         }
     });
