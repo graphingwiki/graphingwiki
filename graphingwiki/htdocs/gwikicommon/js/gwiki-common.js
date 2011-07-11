@@ -81,6 +81,9 @@ Request.SetMetas = new Class({
             onSuccess: function(json) {
                 if (Object.every(this.options.checkData, function(metas, page) {
                     return json[page] && Object.every(metas, function(values, key) {
+                        values = values.filter(function(v) {
+                            return v != '';
+                        });
                         if (!json[page][key]) json[page][key] = [];
                         return json[page][key].length == values.length
                             && values.every(function(value) {
@@ -130,15 +133,54 @@ var initInlineMetaEdit = function (base) {
             onSuccess: function(json) {
                 page = Object.keys(json)[0];
                 metas = json[page];
+                base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
+                    if (dd.get('text').clean() == "") {
+                        var dt = dd.getPrevious('dt');
+                        metas[getKey(dt)].splice(getMetaIndex(dt), 0, "");
+                    }
+                });
+
             }
         }).get();
     });
 
+    //add a '+' button for adding values to empty metas (foo::)
+    base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
+        if (dd.get('text').clean() == "") {
+
+            var dt = dd.getPrevious('dt');
+
+            dt.grab(new Element('a', {
+                'class': 'jslink',
+                'text': '+',
+                'styles': {
+                    'font-weight': 'bold',
+                    'font-size': '1.1em',
+                    'margin-left': '10px'
+                },
+                'events': {
+                    'click': function() {
+                        this.destroy();
+                        dd.set('html', '&nbsp;');
+                        editValue(dd);
+                    }
+                }
+            }));
+
+        }
+    });
+
+    var getKey = function(dt) {
+        var tmp = dt.clone();
+        tmp.getElements('a.jslink').destroy();
+        return tmp.get('text');
+    };
+
     var getMetaIndex = function(dt, values) {
-        var key = dt.get('text');
+        var key = getKey(dt);
         var dts = base.getElements('div:not(.gwikiinclude) dt').filter(
             function(dt) {
-                return dt.get('text') == key;
+                return getKey(dt) == key;
             });
 
         return dts.indexOf(dt);
@@ -168,6 +210,7 @@ var initInlineMetaEdit = function (base) {
             oldValue: oldValue,
             suggestionKey: key,
             inline: true,
+            width: 40,
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -206,6 +249,8 @@ var initInlineMetaEdit = function (base) {
     var editKey = function(dt) {
         var key = dt.get('text');
         var index = getMetaIndex(dt, metas[key]);
+
+        if (!metas[key] || metas[key][index] == "") return;
 
         if (editor) editor.cancel();
 
@@ -254,7 +299,8 @@ var InlineEditor = new Class({
         oldValue: "",
         inline: false,
         suggestionKey: null,
-        autoFormat: true
+        autoFormat: true,
+        width: 20
     },
 
     initialize: function(element, options) {
@@ -270,7 +316,8 @@ var InlineEditor = new Class({
 
         this.element.empty();
         this.input = new Element('textarea', {
-            text: this.options.oldValue
+            text: this.options.oldValue,
+            cols: this.options.width
         }).inject(this.element);
 
 
@@ -318,7 +365,7 @@ var InlineEditor = new Class({
         this.element.removeClass('edit');
         this.element.removeClass('inline');
     },
-    
+
     exit: function() {
         if (this.suggestions) this.suggestions.detach();
 
