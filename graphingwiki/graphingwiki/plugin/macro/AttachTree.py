@@ -38,7 +38,7 @@ def walk(*paths):
     result = dict()
     for path in paths:
         current = result
-        for bite in path.split(os.sep):
+        for bite in path.split(quote(os.sep, safe="")):
             current = current.setdefault(bite, dict())
     return result
 
@@ -51,13 +51,14 @@ def render(req, f, content, parent='', depth=0):
 
     for entry, values in sorted(content.items()):
         fullname = os.path.join(parent, unicode(entry))
+        fullname = fullname.replace(os.sep, quote(os.sep, safe=""))
         if not values.items():
             result += f.listitem(1, **fileentryfmt)
             link = getAttachUrl(f.page.page_name,
-                                quote(fullname.encode("iso-8859-15"), safe=""),
+                                fullname.encode("iso-8859-15"),
                                 req)
             result += f.url(1, link, 'attachtree_link')
-            result += f.text(entry)
+            result += f.text(unquote(entry))
             result += f.url(0)
             result += f.listitem(0)
         else:
@@ -71,7 +72,6 @@ def render(req, f, content, parent='', depth=0):
 
 def formatAttachTree(request, f):
     files = _get_files(request, f.page.page_name)
-    realfiles = map(unquote, files)
 
     if not files:
         return f.text('No attachments, no tree.')
@@ -79,7 +79,7 @@ def formatAttachTree(request, f):
     divfmt = {'class': 'attachtree_area'}
 
     result = f.div(1, **divfmt)
-    result += render(request, f, walk(*realfiles))
+    result += render(request, f, walk(*files))
     result += f.div(0)
 
     return result
