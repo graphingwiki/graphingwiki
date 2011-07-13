@@ -332,11 +332,11 @@ def execute(pagename, request):
                         continue
 
 #                    if type(fileobj) != file:
-#                        panic, attack, filename, fileobj = list()
 #                        continue
 
-                    keys = files.setdefault(key.split(SEPARATOR)[0], dict())
-                    values = keys.setdefault(key.split(SEPARATOR)[1][:-12], list())
+                    banana = key.split(SEPARATOR)
+                    keys = files.setdefault(banana[0], dict())
+                    values = keys.setdefault(banana[1], list())
                     values.append((filename, fileobj))
 
             keys = list()
