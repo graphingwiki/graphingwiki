@@ -3,7 +3,7 @@
  - js improvements for MetaTable
  License:	MIT <http://www.opensource.org/licenses/mit-license.php>
  Copyright: 2011 by Lauri Pokka
- Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick
+ Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick More/Date
  */
 
 (function() {
@@ -56,7 +56,8 @@
             this.tableArgs = Object.merge({
                 'args': '',
                 'template': null,
-                'autorefresh': false
+                'autorefresh': false,
+                'nametemplate': ''
             }, this.options.tableArguments);
 
             this.metaRequest = new Request.JSON({
@@ -300,7 +301,8 @@
                 return;
             }
             var editor = new Editor({
-                content: this.template
+                content: this.template,
+                name: this.tableArgs.nametemplate
             });
 
             editor.addEvent('success', function() {
@@ -388,12 +390,13 @@
     var Editor = new Class({
         Implements: [Events, Options],
         options: {
-            content: ""
+            content: "",
+            name: ""
         },
 
         initialize: function(options) {
             this.setOptions(options);
-            this.build()
+            this.build();
         },
 
         build: function() {
@@ -435,10 +438,10 @@
 
             var form = new Element('form').inject(this.editor);
 
-
             form.adopt(
                 new Element('span[text=Pagename: ]'),
                 new Element('input[name=pagename][placeholder=Page Name]')
+                    .set('value', new Date().format(this.options.name))
                     .setStyles({'width': '200px', 'margin-left': '20px'}),
                 new Element('br'),
                 new Element('br')
