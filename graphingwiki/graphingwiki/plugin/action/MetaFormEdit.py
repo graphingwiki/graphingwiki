@@ -186,8 +186,8 @@ def execute(pagename, request):
             return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
                   pagekey, curval)
         else:
-            return wr('<input class="file" type="file" name="%s" value="" readonly>',
-                  pagekey)
+            return wr('<input class="file" type="file" name="%s%s0" value="" readonly>',
+                  pagekey, SEPARATOR)
 
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
