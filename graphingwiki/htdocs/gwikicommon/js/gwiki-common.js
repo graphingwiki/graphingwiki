@@ -65,7 +65,7 @@ window.addEvent('domready', function() {
 
 Element.Events.shiftclick = {
     base: 'click', // the base event type
-    condition: function(event) { //a function to perform additional checks
+    condition: function(event) {
         if (event.shift) {
             event.preventDefault();
             return true;
@@ -204,11 +204,19 @@ var initInlineMetaEdit = function (base) {
         var dd = event.target;
         if (dd.get('tag') != "dd") dd = dd.getParent('dd');
 
-        if (metas == null) editValue.delay(100, this, dd);
-        else editValue(dd);
+        editValue(dd);
     });
 
     var editValue = function(dd) {
+        if (metas == null) {
+            editValue.delay(100, this, dd);
+            if (dd.getElements('.waiting').length == 0)
+                dd.grab(new Element('span.waiting').set('html', '&nbsp;'), 'top');
+            return;
+        } else {
+            dd.getElements('.waiting').destroy();
+        }
+
         var key = dd.getPrevious('dt').get('text');
         var index = getMetaIndex(dd.getPrevious('dt'), metas[key]);
 
@@ -254,11 +262,18 @@ var initInlineMetaEdit = function (base) {
         var dt = event.target;
         if (dt.get('tag') != "dt") dt = dt.getParent('dt');
 
-        if (metas == null) editKey.delay(100, this, dt);
-        else editKey(dt);
+        editKey(dt);
     });
 
     var editKey = function(dt) {
+        if (metas == null) {
+            editValue.delay(100, this, dt);
+            if (dt.getElements('.waiting').length == 0)
+                dt.grab(new Element('span.waiting').set('html', '&nbsp;'), 'top');
+            return;
+        } else {
+            dt.getElements('.waiting').destroy();
+        }
         var key = dt.get('text');
         var index = getMetaIndex(dt, metas[key]);
 
@@ -436,7 +451,7 @@ Date.implement({
         AttachTree: {
             files: ['js/AttachTree.js'],
             depends: [],
-            styles: ['css/Expand.png']
+            styles: ['img/Expand.png']
         },
         InlineEditor: {
             files: ['js/gwiki-common.js'],
