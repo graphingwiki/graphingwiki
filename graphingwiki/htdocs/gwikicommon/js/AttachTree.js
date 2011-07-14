@@ -16,18 +16,7 @@
                 this[method] = this[method].bind(this);
             }, this);
 
-            //this.build();
             this.attach();
-        },
-
-        build: function() {
-            this.element.getElements('.attachtree_direntry').each(function(li){
-                var txt = li.get('text');
-                li.empty().adopt(
-                    new Element('span').set('text', txt),
-                    li.getNext('ul')
-                );
-            });
         },
 
         attach: function() {

@@ -147,6 +147,7 @@ var initInlineMetaEdit = function (base) {
                 base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
                     if (dd.get('text').clean() == "") {
                         var dt = dd.getPrevious('dt');
+                        if (!metas[getKey(dt)]) metas[getKey(dt)] = [];
                         metas[getKey(dt)].splice(getMetaIndex(dt), 0, "");
                     }
                 });

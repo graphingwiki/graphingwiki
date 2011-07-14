@@ -185,6 +185,7 @@ table.ac-results {
     text-align: left;
     border-collapse: collapse;
     cursor: pointer;
+    margin:  0;
 }
 
 .ac-results tr {
