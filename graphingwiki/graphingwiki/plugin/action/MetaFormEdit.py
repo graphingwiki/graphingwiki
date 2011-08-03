@@ -48,6 +48,17 @@ class FormPage(Page):
 def execute(pagename, request):
     _ = request.getText
 
+    if not request.user.may.write(pagename):
+        request.reset()
+        backto = request.form.get('backto', [None])[0]
+        if backto:
+            request.page = Page(request, backto)
+        
+        request.theme.add_msg(_('You are not allowed to edit this page.'), 
+                              "error")
+        request.page.send_page()
+        return
+
     formpage = '../' * pagename.count('/') + pagename
 
     frm = wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
