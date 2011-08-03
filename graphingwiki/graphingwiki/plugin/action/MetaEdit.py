@@ -176,7 +176,8 @@ def show_editform(wr, request, pagename, args):
     for page in pagelist:
         if not request.user.may.write(page):
             uneditable_pages.append(page)
-            pagelist.remove(page)
+    for page in uneditable_pages:
+        pagelist.remove(page)
 
     _ = request.getText
 
