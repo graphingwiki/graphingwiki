@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import MoinMoin.wsgiapp
 import MoinMoin.wikisync  
 import MoinMoin.wikiutil as wikiutil
 import MoinMoin.web.contexts
 
+from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
 from MoinMoin.security import ACLStringIterator
+from MoinMoin.script import MoinScript
+from MoinMoin.web.request import Request
 
 import sys
 import os
@@ -17,9 +21,20 @@ import xmlrpclib
 
 SEPARATOR = '-gwikiseparator-'
 
-# Get action name
-def actionname(request, pagename):
-    return '%s/%s' % (request.getScriptname(), url_escape(pagename))
+def RequestCLI(pagename=None):
+    script = MoinScript()
+    if pagename:
+        script.parser.set_defaults(page=pagename)
+    script.options, script.args = script.parser.parse_args()
+    script.init_request()
+    return script.request
+
+# Get action name for forms
+def actionname(request, pagename=None):
+    if not pagename:
+        return request.page.url(request)
+    else:
+        return Page(request, pagename).url(request)
 
 def url_escape(text):
     # Escape characters that break links in html values fields, 
@@ -213,7 +228,6 @@ def underlay_to_pages(req, p):
 
     return pagepath
 
-
 # Functions for properly opening, closing, saving and deleting
 # graphdata. NB: Do not return anything in functions used in
 # monkey_patch unless you want to affect the return value of the
@@ -227,7 +241,6 @@ def graphdata_getter(self):
     return self.__dict__["_graphdata"]
 
 def graphdata_close(self):
-    print "graphdata_close called"
     graphdata = self.__dict__.pop("_graphdata", None)
     if graphdata is not None:
         graphdata.commit()

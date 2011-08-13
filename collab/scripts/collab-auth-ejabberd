@@ -3,7 +3,7 @@
 """
 collab-auth-ejabberd: Provide external auth for ejabberd against collab
 
-@copyright: 2009-2010 by Mika Sepp‰nen, Marko Laakso, Joachim Viide
+@copyright: 2009-2010 by Mika Sepp√§nen, Marko Laakso, Joachim Viide
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
@@ -32,7 +32,8 @@ logging.debug("collab-auth started")
 
 from MoinMoin.user import User
 from MoinMoin.config import multiconfig
-from MoinMoin.request.request_cli import Request
+
+from graphingwiki import RequestCLI
 
 os.chdir(myhtmldir)
 
@@ -70,7 +71,7 @@ class RequestCache(object):
         except:
             pass
 
-        request = Request(pagename=pagename)
+        request = RequestCLI(pagename)
         sys.path.remove(myconfig)
         return request
 

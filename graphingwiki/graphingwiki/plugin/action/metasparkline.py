@@ -40,15 +40,14 @@ from graphingwiki import cairo, cairo_found
 from tempfile import mkstemp
 
 from MoinMoin.Page import Page
-from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
-    request.emit_http_headers(['Content-Type: image/png'])
+    request.content_type = 'image/png'
 
 def cairo_not_found():
-    request.emit_http_headers(['Content-Type: text/plain'])
+    request.content_type = 'text/plain'
     request.write(_("ERROR: Cairo Python extensions not installed. " +\
                        "Not performing layout."))
 

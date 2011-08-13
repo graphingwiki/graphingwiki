@@ -18,7 +18,8 @@ from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 from graphingwiki import actionname, SEPARATOR
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
-from graphingwiki.util import form_escape, form_unescape, decode_page, enter_page, exit_page
+from graphingwiki.util import form_escape, form_unescape, decode_page, \
+    enter_page, exit_page
 
 def fix_form(form):
     # Decode request form's keys using the config's charset
@@ -154,7 +155,7 @@ def show_queryform(wr, request, pagename):
     _ = request.getText
 
     wr(u'<form method="GET" action="%s">\n',
-       actionname(request, pagename))
+       actionname(request))
     wr(u'<input type="text" size=50 name="args">\n')
 
     wr(u'<input type="submit" name="show" value="%s">\n', _("Edit table"))
@@ -166,7 +167,7 @@ def show_editform(wr, request, pagename, args):
     formpage = '../' * pagename.count('/') + pagename
 
     wr(u'<form method="POST" action="%s" enctype="multipart/form-data">\n',
-       actionname(request, pagename))
+       actionname(request))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
     wr(formatter.table(1))
     wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
@@ -240,8 +241,8 @@ def show_editform(wr, request, pagename, args):
                     val = ''
                 
                 wr(formatter.table_cell(1, {'class': 'meta_cell'}))
-                wr(u'<input class="metavalue" type="text" name="%s" value="%s">',
-                   inputname, val)
+                wr(u'<input class="metavalue" type="text" name="%s"' % \
+                       inputname + 'value="%s">', val)
 
                 #print frompage, key, inputname, values, '<br>'
             wr(formatter.table_row(0))
@@ -277,7 +278,8 @@ def show_editform(wr, request, pagename, args):
 #      return true;
 #    }
 # </script>
-# <input type="submit" name="send" value="Send" class="button1"tabindex="7" onClick="return myvalid(this);" />
+# <input type="submit" name="send" value="Send" class="button1"tabindex="7" 
+# onClick="return myvalid(this);" />
 
     wr(formatter.table(0))
     wr(u'<input type="submit" name="save" value="%s">\n', _('Save'))
@@ -335,7 +337,8 @@ def execute(pagename, request):
 #                        continue
 
                     keys = files.setdefault(key.split(SEPARATOR)[0], dict())
-                    values = keys.setdefault(key.split(SEPARATOR)[1][:-12], list())
+                    values = keys.setdefault(key.split(SEPARATOR)[1][:-12], 
+                                             list())
                     values.append((filename, fileobj))
 
             keys = list()
@@ -352,10 +355,13 @@ def execute(pagename, request):
                     vals = [x.strip() for x in form[oldkey]
                             if x.strip()]
                     if vals:
-                        added.setdefault(pagename, dict()).setdefault(key, list()).extend(vals)
+                        added.setdefault(pagename, dict()).setdefault(
+                            key, list()).extend(vals)
                 else:
-                    discarded.setdefault(pagename, dict()).setdefault(key, list()).extend(oldvals)
-                    added.setdefault(pagename, dict()).setdefault(key, list()).extend(form[oldkey])
+                    discarded.setdefault(pagename, dict()).setdefault(
+                        key, list()).extend(oldvals)
+                    added.setdefault(pagename, dict()).setdefault(
+                        key, list()).extend(form[oldkey])
 
             msgs = list()
             # Add attachments
@@ -364,8 +370,10 @@ def execute(pagename, request):
                     for value in files[pname][key]:
                         name = value[0]
                         try:
-                            t, s = add_attachment(request, pname, name, value[1])
-                            added.setdefault(pname, dict()).setdefault(key, list()).append("[[attachment:%s]]" % name)
+                            t, s = add_attachment(request, pname, 
+                                                  name, value[1])
+                            added.setdefault(pname, dict()).setdefault(
+                                key, list()).append("[[attachment:%s]]" % name)
                         except AttachmentAlreadyExists:
                             msgs = ["Attachment '%s' already exists." % name]
                             

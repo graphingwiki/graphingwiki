@@ -161,8 +161,6 @@ def cache_key(request, parts):
 def enter_page(request, pagename, title):
     _ = request.getText
 
-    request.emit_http_headers()
-
     title = _(title)
     request.theme.send_title(title,
                              pagename=pagename)
@@ -218,16 +216,16 @@ def url_parameters(args):
 
     return req_url
 
-def url_construct(request, args, name=''):
-    if not name:
-        name = request.page.page_name 
-
-    req_url = request.getScriptname() + u'/' + name
+def url_construct(request, args, pagename=''):
+    if pagename:
+        req_url = request.url_root + pagename
+    else:
+        req_url = request.base_url
 
     if args:
         req_url += url_parameters(args)
 
-    return request.getQualifiedURL(req_url)
+    return req_url
 
 def make_tooltip(request, pagename, format=''):
     if not request.user.may.read(pagename):

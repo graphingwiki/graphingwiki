@@ -43,9 +43,6 @@ from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.macro.Include import _sysmsg
 
-from MoinMoin.request import Clock
-cl = Clock()
-
 from graphingwiki import gv_found, igraph_found, actionname, url_escape
 
 from graphingwiki.graph import Graph
@@ -161,6 +158,7 @@ class GraphShower(object):
     EDGE_WIDTH = 2.0
     EDGE_DARKNESS = 0.83
     FRINGE_DARKNESS = 0.50
+    actionname = 'ShowGraph'
   
     def __init__(self, pagename, request, graphengine = "neato", 
                  urladd='', app_page='', inline=''):
@@ -357,8 +355,8 @@ class GraphShower(object):
             self.allcategories.update(request.page.getCategories(request))
         
         # depth
-        if request.form.has_key('depth'):
-            depth = request.form['depth'][0]
+        if request.values.has_key('depth'):
+            depth = request.values['depth']
             try:
                 depth = int(depth)
                 if depth >= 1:
@@ -367,8 +365,8 @@ class GraphShower(object):
                 self.depth = 1
 
         # When to to do overview?
-        if request.form.has_key('overview_threshold'):
-            thr = request.form['overview_threshold'][0]
+        if request.values.has_key('overview_threshold'):
+            thr = request.values['overview_threshold']
             try:
                 thr = int(thr)
                 if thr >= 1:
@@ -378,53 +376,53 @@ class GraphShower(object):
                 pass
 
         # format
-        if request.form.has_key('format'):
-            format = request.form['format'][0]
+        if request.values.has_key('format'):
+            format = request.values['format']
             if format in self.available_formats:
                 self.format = format
 
         # legend
-        if request.form.has_key('legend'):
-            legend = request.form['legend'][0]
+        if request.values.has_key('legend'):
+            legend = request.values['legend']
             if legend in self.legend_positions:
                 self.legend = legend
 
         # legend
-        if request.form.has_key('ordershape'):
-            shape = request.form['ordershape'][0]
+        if request.values.has_key('ordershape'):
+            shape = request.values['ordershape']
             if shape in graphvizshapes + ['none']:
                 self.ordershape = shape
 
         # Categories
-        if request.form.has_key('categories'):
-            self.categories = request.form['categories']
+        if request.values.has_key('categories'):
+            self.categories = request.values.getlist('categories')
 
         # List arguments of pages
         for arg in ['otherpages', 'invisnodes', 'neighbours']:
-            if request.form.has_key(arg):
+            if request.values.has_key(arg):
                 setattr(self, arg, [x.strip() for x in 
-                                    ','.join(request.form[arg]).split(',')
+                                    request.values[arg].split(',') 
                                     if x.strip()])
 
         # String arguments, only include non-empty
         for arg in ['limit', 'dir', 'orderby', 'colorby', 'colorscheme',
                     'orderreg', 'ordersub', 'colorreg', 'colorsub',
                     'shapeby', 'shapereg', 'shapesub']:
-            if request.form.get(arg):
-                setattr(self, arg, ''.join(request.form[arg]))
+            if request.values.get(arg):
+                setattr(self, arg, request.values[arg])
 
         # Toggle arguments 
         for arg in ['unscale', 'hidedges', 'edgelabels', 'imagelabels',
                     'noloners', 'nostartnodes', 'noorignode', 'fillshapes', 
                     'no_overview']:
-            if request.form.has_key(arg):
+            if request.values.has_key(arg):
                 setattr(self, arg, 1)
 
         # Set attributes
-        for arg in ['filteredges', 'filtercats']:
-            if request.form.has_key(arg):
+        for arg in ['filteredges', 'filtercats', 'filterorder']:
+            if request.values.has_key(arg):
                 data = getattr(self, arg)
-                data.update(request.form[arg])
+                data.update(request.values.getlist(arg))
 
         if self.orderby:
             self.graphengine = 'dot'
@@ -455,34 +453,34 @@ class GraphShower(object):
                                                        self.shapesub)
 
         # Update filters only if needed
-        if self.orderby and request.form.has_key('filterorder'):
-            self.filterorder.update(request.form['filterorder'])
-        if self.colorby and request.form.has_key('filtercolor'):
-            self.filtercolor.update(request.form['filtercolor'])
-        if self.shapeby and request.form.has_key('filtershape'):
-            self.filtershape.update(request.form['filtershape'])
+        if self.orderby and request.values.has_key('filterorder'):
+            self.filterorder.update(request.values['filterorder'])
+        if self.colorby and request.values.has_key('filtercolor'):
+            self.filtercolor.update(request.values['filtercolor'])
+        if self.shapeby and request.values.has_key('filtershape'):
+            self.filtershape.update(request.values['filtershape'])
 
         # This is the URL addition to the nodes that have graph data
         if not self.urladd:
-            self.urladd = url_parameters(request.form)
+            self.urladd = url_parameters(request.values.to_dict(flat=False))
 
         # Disable output if testing graph
-        if request.form.has_key('test'):
+        if request.values.has_key('test'):
             self.format = ''
             self.help = 'test'
 
         # Show inline graph
-        if request.form.has_key('inline'):
+        if request.values.has_key('inline'):
             self.help = 'inline'
 
         # Show inline graph
-        if request.form.has_key('overview'):
+        if request.values.has_key('overview'):
             self.format = 'igraph'
 
         # Height and Width
         for attr in ['height', 'width']:
-            if request.form.has_key(attr):
-                val = ''.join(request.form[attr])
+            if request.values.has_key(attr):
+                val = request.values[attr]
                 try:
                     setattr(self, attr, float(val))
                 except ValueError:
@@ -518,7 +516,8 @@ class GraphShower(object):
         pagename = self.pagename
 
         def get_categories(nodename):
-            pagedata = self.request.graphdata.get_out(nodename).get('gwikicategory', list())
+            pagedata = self.request.graphdata.get_out(
+                nodename).get('gwikicategory', list())
 
         for nodename in self.otherpages:
             self.startpages.append(nodename)
@@ -662,7 +661,8 @@ class GraphShower(object):
                     continue
 
             # update nodeattrlist with non-graph/sync ones
-            self.nodeattrs.update(decode_page(x) for x in nonguaranteeds_p(orig_obj))
+            self.nodeattrs.update(decode_page(x) 
+                                  for x in nonguaranteeds_p(orig_obj))
             obj = outgraph.nodes.get(objname)
             obj.update(orig_obj)
 
@@ -791,7 +791,6 @@ class GraphShower(object):
         request = self.request
         urladd = self.urladd
 
-        cl.start('traverseparent')
         # This traverses 1 to parents
         for node in nodes:
             parents = load_parents(request, self.graphdata, node, urladd)
@@ -799,9 +798,7 @@ class GraphShower(object):
             for parent in parents:
                 parentitem = self.graphdata.nodes.get(parent)
                 self.graph_add_filtered(outgraph, parentitem, nodeitem)
-        cl.stop('traverseparent')
 
-        cl.start('traversechild')
         # This traverses 1 to children
         for node in nodes:
             children = load_children(request, self.graphdata, node, urladd)
@@ -809,7 +806,6 @@ class GraphShower(object):
             for child in children:
                 childitem = self.graphdata.nodes.get(child)
                 self.graph_add_filtered(outgraph, nodeitem, childitem)
-        cl.stop('traversechild')
 
         return outgraph
 
@@ -1081,9 +1077,9 @@ class GraphShower(object):
         ## Begin form
         request.write(u'<div class="showgraph-form">\n')
         request.write(u'<form method="GET" action="%s">\n' %
-                      actionname(request, self.pagename))
+                      actionname(request))
         request.write(u'<input type=hidden name=action value="%s">' %
-                      form_escape(''.join(request.form['action'])))
+                      self.actionname)
 
         request.write(u'<div class="showgraph-panel1">\n')
 	# PANEL 1 
@@ -1239,7 +1235,8 @@ class GraphShower(object):
                                form_escape(ord), form_escape(ord), 
                                form_escape(name)))
                           
-            request.write(u'</select><br>\n<u>' + _('Color regexp:') + '</u><br>\n')
+            request.write(u'</select><br>\n<u>' + _('Color regexp:') + \
+                              '</u><br>\n')
                           
             form_textbox(request, 'colorreg', 10, str(self.colorreg))
             request.write(u'<u>' + _('substitution:') + '</u><br>\n')
@@ -1263,7 +1260,8 @@ class GraphShower(object):
                         {'': _("no shape")}, True)
 
         if self.colorby:
-            request.write(u'</select><br>\n<u>' + _('Shape regexp:') + '</u><br>\n')
+            request.write(u'</select><br>\n<u>' + _('Shape regexp:') + \
+                              '</u><br>\n')
                           
             form_textbox(request, 'shapereg', 10, str(self.shapereg))
             request.write(u'<u>' + _('substitution:') + '</u><br>\n')
@@ -1318,7 +1316,6 @@ class GraphShower(object):
 
 	request.write(u'</table>\n')
         request.write(u'</div>\n')
-
 
         request.write(u'<div class="showgraph-panel3">\n')
         # PANEL 3 
@@ -1491,7 +1488,8 @@ class GraphShower(object):
                     # filenames, and then renaming them as URL:s here
                     for fname in self.shapefiles_svg:
                         img = img.replace(fname, 
-                                          form_escape(self.shapefiles_svg[fname]))
+                                          form_escape(
+                                self.shapefiles_svg[fname]))
 
             cache.put(self.request, key, img, content_type=mime_type)
 
@@ -1657,7 +1655,6 @@ class GraphShower(object):
             return request.formatter
 
         if self.format not in self.nonwrapped_formats or not gv_found:
-            request.emit_http_headers()
             # This action generate data using the user language
             request.setContentLanguage(request.lang)
   
@@ -1677,16 +1674,17 @@ class GraphShower(object):
             formatter.setPage(self.request.page)
         else:
             if self.format == 'dot':
-                request.emit_http_headers(["Content-type: text/vnd.graphviz;charset=%s" %
-                                           config.charset])
+                request.content_type = "text/vnd.graphviz;charset=%s" % \
+                    config.charset
             elif self.format == 'kml':
-                request.emit_http_headers(["Content-type: application/vnd.google-earth.kml+xml;charset=%s" %
-                                           config.charset])
+                request.content_type = \
+                    "application/vnd.google-earth.kml+xml;charset=%s" % \
+                    config.charset
             else:
-                request.emit_http_headers(["Content-type: text/plain;charset=%s" %
-                                           config.charset])
+                request.content_type = "text/plain;charset=%s" % \
+                    config.charset
             formatter = TextFormatter(request)
-            formatter.setPage(self.request.page)
+            formatter.setPage(request.page)
  
         return formatter
 
@@ -1813,7 +1811,7 @@ class GraphShower(object):
             filtstr = str()
             for lt in linktypes:
                 filtstr += '&filteredges=%s' % url_escape(lt)
-            e.URL = self.request.request_uri + filtstr
+            e.URL = self.request.environ["REQUEST_URI"] + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
@@ -1824,7 +1822,6 @@ class GraphShower(object):
         return outgraph
 
     def execute(self):
-        cl.start('execute')
         _ = self.request.getText
 
         error = self.form_args()
@@ -1842,18 +1839,14 @@ class GraphShower(object):
             self.fail_page(error)
             return
             
-        cl.start('build')
         self.build_graph_data()
         outgraph = self.build_outgraph()
-        cl.stop('build')
 
-        cl.start('traverse')
         nodes = set(self.startpages)
         # Traverse from startpages, filter as per args
         outgraph = self.traverse(outgraph, nodes)
         # Gather data needed in layout, filter lone pages is needed
         outgraph = self.gather_layout_data(outgraph)
-        cl.stop('traverse')
 
         # Trigger automated overview of large graphs
         if (igraph_found and 
@@ -1871,7 +1864,6 @@ class GraphShower(object):
               (igraph_found and 
                (self.format == 'igraph' or self.help == 'test'))):
 
-            cl.start('layout')
             if (self.format == 'igraph' or 
                 (igraph_found and self.help == 'test')):
 
@@ -1912,9 +1904,6 @@ class GraphShower(object):
                 # Do the layout
                 gr = self.generate_layout(outgraph)
 
-            cl.stop('layout')
-
-        cl.start('format')
         if self.format not in self.nonwrapped_formats and not self.inline:
             for reason in warnings:
                 self.request.write(_sysmsg % ('warning', reason))
@@ -1949,11 +1938,6 @@ class GraphShower(object):
                     self.send_legend()
         else:
             self.test_graph(gr, outgraph)
-
-        cl.stop('format')
-
-        cl.stop('execute')
-        # print cl.dump()
 
         if not self.inline:
             self.send_footer(formatter)

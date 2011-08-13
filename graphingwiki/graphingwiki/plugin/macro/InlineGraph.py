@@ -29,11 +29,12 @@
 """
 from urllib import unquote as url_unquote
 from urllib import quote as url_quote
-from copy import copy
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
+from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
+    MultiDict
 
 from graphingwiki.util import form_escape, url_construct
 from graphingwiki import url_unescape
@@ -85,20 +86,27 @@ def execute(macro, args):
     except:
         return _("InlineGraph: No data on") + " %s" % pagename
 
-    graph_request = copy(request)
+    old_page = request.page
+    old_values = request.values
+    old_url = getattr(request, 'url', '')
 
-    graph_request.page = Page(request, pagename)
-    graph_request.form = args
+    request.page = Page(request, pagename)
+    request.values = CombinedMultiDict([MultiDict(args)])
 
-    req_uri = url_construct(graph_request, args)
-    urladd = '?' + req_uri.split('?')[1]
+    req_url = url_construct(request, args)
+    urladd = '?' + req_url.split('?')[1]
 
-    graph_request.request_uri = request.getScriptname() + '/' +  \
-        pagename + urladd
+    request.url = url_construct(request, args, pagename)
 
     request.write(u'<div class="inlinegraph">')
-    graphshower(graph_request.page.page_name, graph_request, 
+    graphshower(request.page.page_name, request, 
                 urladd=urladd, app_page=request.page.page_name, inline=1)
 
+    request.page = old_page
+    request.values = old_values
+    del request.url
+    if old_url:
+        request.url = old_url
+
     return u'<a href="%s" id="footer" class="graph-link">[%s]</a>\n' % \
-           (req_uri, _('examine')) + u'</div>'
+           (req_url, _('examine')) + u'</div>'

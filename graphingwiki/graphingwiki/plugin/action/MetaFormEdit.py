@@ -24,8 +24,9 @@ from graphingwiki.editing import get_properties
 
 from savegraphdata import parse_text
 
-value_re = re.compile('(<dt>.+?</dt>\s*<dd>\s*)<input class="metavalue" type="text" ' +
-                      'name="(.+?)" value="\s*(.*?)\s*">')
+value_re = re.compile(
+    '(<dt>.+?</dt>\s*<dd>\s*)<input class="metavalue" type="text" ' +
+    'name="(.+?)" value="\s*(.*?)\s*">')
 
 # Override Page.py to change the parser. This method has the advantage
 # that it works regardless of any processing instructions written on
@@ -50,10 +51,12 @@ def execute(pagename, request):
 
     formpage = '../' * pagename.count('/') + pagename
 
-    frm = wr(u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
-             actionname(request, pagename))+\
+    frm = wr(
+        u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
+             actionname(request))+\
           wr(u'<input type="hidden" name="action" value="MetaEdit">\n')+\
-          wr(u'<input type="hidden" name="gwikiseparator" value="%s">\n', SEPARATOR)
+          wr(u'<input type="hidden" name="gwikiseparator" value="%s">\n', 
+             SEPARATOR)
     
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform value="%s">',
@@ -183,10 +186,12 @@ def execute(pagename, request):
 
     def form_file(request, pagekey, curval, values, description=''):
         if curval:
-            return wr('<input class="file" type="text" name="%s" value="%s" readonly>',
-                  pagekey, curval)
+            return wr(
+                '<input class="file" type="text" name="%s" value="%s" readonly>'
+                , pagekey, curval)
         else:
-            return wr('<input class="file" type="file" name="%s" value="" readonly>',
+            return wr(
+                '<input class="file" type="file" name="%s" value="" readonly>',
                   pagekey)
 
     formtypes = {'selection': form_selection,
@@ -195,7 +200,6 @@ def execute(pagename, request):
                  'textarea': form_textarea,
                  'radio': form_radio,
                  'file': form_file} 
-    #, 'textarea']
 
     def repl_subfun(mo):
         dt, pagekey, val = mo.groups()
@@ -240,8 +244,10 @@ def execute(pagename, request):
             cssclass = "metaformedit-notcloneable"
        
         if desc:
-            msg = msg.replace('</dt>', ' %s</dt>'% request.formatter.icon('info'))
-            msg = msg.replace('<dt>', wr('<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
+            msg = msg.replace('</dt>', ' %s</dt>' % \
+                                  request.formatter.icon('info'))
+            msg = msg.replace('<dt>', wr(
+                    '<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
 
         msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
 
@@ -254,7 +260,8 @@ def execute(pagename, request):
                           'name="%s" value="">', pagekey)
 
         if hidden:
-            msg = request.formatter.div(1, css_class='comment') + msg + request.formatter.div(0)
+            msg = request.formatter.div(1, css_class='comment') + msg + \
+                request.formatter.div(0)
         return msg
 
     data = out.getvalue()

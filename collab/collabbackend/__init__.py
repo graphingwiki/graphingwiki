@@ -24,8 +24,8 @@ def pathbasename(name):
 
 def wsgiapplication(environ, start_response):
     environ['SCRIPT_NAME'] = scriptbasename(environ['SCRIPT_NAME'])
-    from MoinMoin.server.server_wsgi import moinmoinApp
-    return moinmoinApp(environ, start_response)
+    from MoinMoin.wsgiapp import application
+    return application(environ, start_response)
 
 
 class CollabBackend(object):
@@ -46,8 +46,3 @@ class Collab(object):
 
 	from MoinMoin import log
 	log.load_config(myinfra.logconf)
-
-    def getwsgiconfig(self):
-        from MoinMoin.server.server_wsgi import WsgiConfig
-        self.config = WsgiConfig()
-        return self.config

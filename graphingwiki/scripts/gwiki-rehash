@@ -36,13 +36,13 @@ from codecs import getencoder
 from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname, importPlugin
-from MoinMoin.request.request_cli import Request as RequestCLI
+from MoinMoin.script import MoinScript
 from MoinMoin.Page import Page, RootPage
 from MoinMoin import config
 
 from graphingwiki.editing import underlay_to_pages
 
-from graphingwiki import install_hooks
+from graphingwiki import install_hooks, RequestCLI
 install_hooks()
 
 pages = []
@@ -70,7 +70,6 @@ try:
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
-    from MoinMoin.request.request_cli import Request as RequestCLI
     request = RequestCLI()
     datadir = request.cfg.data_dir
 
@@ -127,19 +126,19 @@ count = 1
 
 # Just init one request
 req = RequestCLI()
+graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
 
 for pageobj in pages:
     page_enc = _e(pageobj.page_name)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
     count += 1
     # Implant relevant bits for this page into our recycleable req
-
+    
     req.page = pageobj
     pagepath = underlay_to_pages(req, pageobj)
     text = pageobj.get_raw_body()
 
     # Apply the graphsaver action to the page
-    graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
     graphsaver(pageobj.page_name, req, text, pagepath, pageobj)
 
 # Must finish the request to ensure that metadata is saved

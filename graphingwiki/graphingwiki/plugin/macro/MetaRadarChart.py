@@ -73,14 +73,14 @@ def execute(macro, args):
 
     urlargs, macro_args = radarchart_args(args)
 
+    pagename = request.page.page_name
     # The first page mentioned will be the page of the chart
-    req = copy(request)
     for arg in macro_args.split(','):
         page = Page(request, arg)
         if page.exists():
-            req.page = page
+            pagename = arg
             break
 
     return u'<div class="metaradarchart">' + \
-           u'<img src="%s">' % url_construct(req, urlargs) + \
+           u'<img src="%s">' % url_construct(request, urlargs, pagename) + \
            u'</div>'

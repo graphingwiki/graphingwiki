@@ -71,11 +71,10 @@ from MoinMoin import log
 log.load_config(mylogconf) 
 
 from MoinMoin.user import User, getUserList, isValidName
-from MoinMoin import wikidicts
 from MoinMoin.config import multiconfig
-from MoinMoin.request.request_cli import Request
 
 from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki import RequestCLI
 
 def diffandstore(filename, newtext, dryrun=False):
 
@@ -119,7 +118,7 @@ os.chdir(mybaseinstancedir)
 sys.path.insert(0, os.path.join(mybaseinstancedir, 'config'))
 
 # Make a new request for the page
-req = Request(pagename='FrontPage')
+req = RequestCLI('FrontPage')
 
 # Auth
 import posix, pwd
@@ -173,7 +172,7 @@ for dent in os.listdir("."):
     import farmconfig
     reload(farmconfig)
 
-    req = Request(pagename='AccessGroup')
+    req = RequestCLI('AccessGroup')
     req.user = User(req, auth_username=username)
 
     msg = []
@@ -181,7 +180,7 @@ for dent in os.listdir("."):
 
     isgroup = req.cfg.cache.page_group_regexact.search
     
-    for member in req.dicts.members("AccessGroup"):
+    for member in req.groups.get("AccessGroup"):
         if isgroup(member):
             continue
         members.append('require user ' + re.sub('[^\w@.\-\']', '', member))

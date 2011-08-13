@@ -35,13 +35,13 @@ from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
-from MoinMoin.request.request_modpython import Request as RequestModPy
-from MoinMoin.request.request_standalone import Request as RequestStandAlone
 from MoinMoin.error import InternalError
+from MoinMoin.action import cache
 
 from graphingwiki import gv_found, actionname
 from graphingwiki.graphrepr import Graphviz
-from graphingwiki.util import enter_page, exit_page, url_parameters, encode_page
+from graphingwiki.util import enter_page, exit_page, url_parameters, \
+    encode_page, cache_exists, cache_key
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
@@ -71,31 +71,29 @@ class ViewDot(object):
     def formargs(self):
         request = self.request
 
+        self.values = request.values.to_dict(flat=False)
+
         # format
-        if request.form.has_key('format'):
-            format = [x for x in request.form['format']][0]
+        if self.values.has_key('format'):
+            format = self.values['format'][0]
             if format in self.available_formats:
                 self.format = format
 
-        # format
-        if request.form.has_key('view'):
-            if ''.join([x for x in request.form['view']]).strip():
+        if self.values.has_key('view'):
+            if self.values['view'][0].strip():
                 self.inline = False
 
-        # format
-        if request.form.has_key('help'):
-            if ''.join([x for x in request.form['help']]).strip():
+        if self.values.has_key('help'):
+            if self.values['help'][0].strip():
                 self.help = True
 
-        # graphengine
-        if request.form.has_key('graphengine'):
-            graphengine = [encode_page(x) for x in request.form['graphengine']][0]
+        if self.values.has_key('graphengine'):
+            graphengine = encode_page(self.values['graphengine'][0])
             if graphengine in self.available_graphengines:
                 self.graphengine = graphengine
 
-        # format
-        if request.form.has_key('attachment'):
-            self.attachment = ''.join([x for x in request.form['attachment']])
+        if self.values.has_key('attachment'):
+            self.attachment = self.values['attachment'][0]
 
     def sendForm(self):
         request = self.request
@@ -105,7 +103,7 @@ class ViewDot(object):
 
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
-                      actionname(request, pagename))
+                      actionname(request))
         request.write(u'<input type=hidden name=action value="ViewDot">')
 
         request.write(u"<table>\n<tr>\n")
@@ -134,8 +132,8 @@ class ViewDot(object):
                       u'<select name="attachment">\n')
 
         # Use request.rootpage, request.page has weird failure modes
-        for page in self.request.rootpage.getPageList():
-            files = AttachFile._get_files(self.request, page)
+        for page in request.rootpage.getPageList():
+            files = AttachFile._get_files(request, page)
             for file in files:
                 if file.endswith('.dot') or file.endswith('.gv'):
                     request.write('<option label="%s" value="%s">%s</option>\n' 
@@ -147,9 +145,6 @@ class ViewDot(object):
         request.write(u'<input type=submit name=help ' +
                       'value="%s"><br>\n' % _('Inline'))
         request.write(u'</form>\n')
-
-    def fail(self, fault = u""):
-        raise InternalError(fault)
 
     def execute(self):
         self.formargs()
@@ -166,9 +161,8 @@ class ViewDot(object):
 
             if self.help:
                 # This is the URL addition to the nodes that have graph data
-                if 'help' in request.form:
-                    del request.form['help']
-                self.urladd = url_parameters(request.form)
+                self.urladd = url_parameters(self.values)
+                self.urladd = self.urladd.replace('&help=Inline', '')
                 request.write('&lt;&lt;ViewDot(' + self.urladd + ')&gt;&gt;')
 
             exit_page(request, pagename)
@@ -177,9 +171,11 @@ class ViewDot(object):
         if not self.attachment[:10].lower() == 'attachment':
             fault = _(u'No attachment defined') + u'\n'
             if self.inline:
-                self.request.write(self.request.formatter.text(fault))
+                request.write(request.formatter.text(fault))
                 return
-            self.fail(fault)
+            request.content_type = 'text/plain'
+            request.write(fault)
+            return
 
         self.attachment = self.attachment[11:]
             
@@ -194,75 +190,73 @@ class ViewDot(object):
         except IOError:
             fault = _(u'Attachment not found at') + u' %s\n' % repr(fpath)
             if self.inline:
-                self.request.write(self.request.formatter.text(fault))
+                request.write(request.formatter.text(fault))
                 return
-            self.fail(fault)
+            request.content_type = 'text/plain'
+            request.write(fault)
+            return
 
         if not gv_found:
             fault = _(u"ERROR: Graphviz Python extensions not installed. " +\
                       u"Not performing layout.")
             if self.inline:
-                self.request.write(self.request.formatter.text(fault))
+                request.write(request.formatter.text(fault))
                 return
-            self.fail(fault)
+            request.content_type = 'text/plain'
+            request.write(fault)
+            return
 
-        graphviz = Graphviz(engine=self.graphengine, string=data)
-        data = self.getLayoutInFormat(graphviz, self.format)
+        self.cache_key = cache_key(self.request, 
+                                   [data, self.graphengine, self.format])
+        key = "%s-%s" % (self.cache_key, self.format)
 
         if self.format in ['zgr', 'svg']:
             formatcontent = 'svg+xml'
         else:
             formatcontent = self.format
 
+        if not cache_exists(request, key):
+            graphviz = Graphviz(engine=self.graphengine, string=data)
+            data = self.getLayoutInFormat(graphviz, self.format)
+
+            cache.put(self.request, key, data, content_type=formatcontent)
+
+        if self.format in ['zgr', 'svg']:
+            # Display zgr graphs as applets
+            if self.format == 'zgr':
+                image_p = lambda url, text: \
+                    '<applet code="net.claribole.zgrviewer.ZGRApplet.class"'+ \
+                    ' archive="%s/gwikicommon/zgrviewer/zvtm.jar,' % \
+                    (self.request.cfg.url_prefix_static) + \
+                    '%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
+                    (self.request.cfg.url_prefix_static) + \
+                    'width="%s" height="%s">' % (self.width, self.height)+\
+                    '<param name="type" ' + \
+                    'value="application/x-java-applet;version=1.4" />' + \
+                    '<param name="scriptable" value="false" />' + \
+                    '<param name="svgURL" value="%s" />' % (url) + \
+                    '<param name="title" value="ZGRViewer - Applet" />'+ \
+                    '<param name="appletBackgroundColor" value="#DDD" />' + \
+                    '<param name="graphBackgroundColor" value="#DDD" />' + \
+                    '<param name="highlightColor" value="red" />' + \
+                    ' </applet><br>\n'
+            else:
+                image_p = lambda url, text: \
+                    '<object data="%s" alt="%s" ' % (url, text) + \
+                    'type="image/svg+xml">\n' + \
+                    '<embed src="%s" alt="%s" ' % (url, text) + \
+                    'type="image/svg+xml"/>\n</object>'
+        else:
+            image_p = lambda url, text: \
+                '<img src="%s" alt="%s">\n' % (url, text)
+
+        image_uri = cache.url(self.request, key)
+
         if not self.inline:
             if self.format == 'zgr':
-                request.emit_http_headers()
                 request.write('<html><body>')
-            elif not isinstance(self.request, RequestStandAlone):
-                # Do not send content type in StandAlone
-                request.emit_http_headers(['Content-Type: image/%s' %
-                                           formatcontent])
-            if isinstance(self.request, RequestModPy):
-                del request.mpyreq.headers_out['Vary']
 
-        if self.format == 'zgr':
-            img_url = request.request_uri.replace('zgr', 'svg') + '&view=View'
-            img_url = self.request.getQualifiedURL(img_url)
-                      
-            if not self.height:
-                self.height = "600"
-            if not self.width:
-                self.width = "100%"
-
-            request.write(
-                '<applet code="net.claribole.zgrviewer.ZGRApplet.class" ' +\
-                'archive="%s/gwikicommon/zgrviewer/zvtm.jar,%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
-                (self.request.cfg.url_prefix_static, self.request.cfg.url_prefix_static)+\
-                'width="%s" height="%s">' % (self.width, self.height)+\
-                '<param name="type" ' +\
-                'value="application/x-java-applet;version=1.4" />' +\
-                '<param name="scriptable" value="false" />' +\
-                '<param name="svgURL" value="%s" />' % img_url +\
-                '<param name="title" value="ZGRViewer - Applet" />'+\
-                '<param name="appletBackgroundColor" value="#DDD" />' +\
-                '<param name="graphBackgroundColor" value="#DDD" />' +\
-                '<param name="highlightColor" value="red" />' +\
-                ' </applet><br>\n')
-        elif self.inline:
-            img_url = request.request_uri + '&view=View'
-            img_url = self.request.getQualifiedURL(img_url)
-
-            params = ""
-            if self.height:
-                params += 'height="%s" ' % self.height
-            if self.width:
-                params += 'width="%s"' % self.width
-
-            page = ('<img src="%s" %s alt="%s"><br>\n' %
-                    (img_url, params, _('visualisation')))
-            request.write(page)
-        else:
-            request.write(data)
+        request.write(image_p(image_uri, _('visualisation')))
 
         if not self.inline and self.format == 'zgr':
             request.write('</html></body>')

@@ -151,8 +151,7 @@ def execute(macro, args):
                 pages = [x[0] for x in areas[coordlist]]
                 args = {'action': ['ShowGraph'], 
                         'otherpages': pages, 'noorignode': '1'}
-                href = ' href="%s"' % url_construct(request, args, 
-                                                    request.page.page_name)
+                href = ' href="%s"' % url_construct(request, args)
 
             # When overlapping nodes occur, add to tooltips
             for coords in areas[coordlist]:
