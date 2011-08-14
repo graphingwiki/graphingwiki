@@ -28,7 +28,6 @@
 
 """
 import re
-from copy import copy
 from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin import wikiutil
@@ -61,14 +60,7 @@ def elemlist(request, formatter, elems, text):
     request.write(formatter.bullet_list(0))
 
 def execute(pagename, request):
-    request.emit_http_headers()
     _ = request.getText
-
-    # This action generate data using the user language
-    request.setContentLanguage(request.lang)
-
-    request.theme.send_title(request.getText('Search by metadata'),
-                        pagename=pagename)
 
     # Start content - IMPORTANT - without content div, there is no
     # direction support!
@@ -77,21 +69,28 @@ def execute(pagename, request):
     else:
         formatter = request.formatter
     request.page.formatter = formatter
+    formatter.setPage(request.page)
+
+    # This action generate data using the user language
+    request.setContentLanguage(request.lang)
+
+    request.theme.send_title(request.getText('Search by metadata'),
+                             pagename=pagename)
 
     request.write(formatter.startContent("content"))
 
     q = ''
     mtabq = ''
-    if request.form.has_key('q'):
-        if request.form.has_key('mtab'):
-            mtabq = ''.join(request.form['q'])
+    if request.values.has_key('q'):
+        if request.values.has_key('mtab'):
+            mtabq = ''.join(request.values.getlist('q'))
         else:
-            q = ''.join(request.form['q'])
+            q = ''.join(request.values.getlist('q'))
 
     request.write(u'<form method="GET" action="%s">\n' %
                   actionname(request, pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
-                  ''.join(request.form['action']))
+                  'MetaSearch')
 
     request.write(u'<input type="text" name="q" size=50 value="%s"> ' %
                   (form_escape(q)))
@@ -175,21 +174,13 @@ def execute(pagename, request):
                          
         request.write(formatter.bullet_list(0))
 
-    #mtabHTML = u''
-
     if mtabq:
         metatab = wikiutil.importPlugin(request.cfg, 'macro', 'MetaTable')
-        request.write("<br>") 
-        macro = copy(request)
-        formatter = HtmlFormatter(macro)
-        macro.formatter = formatter
-        macro.request = copy(request)
-        mtabHTML = metatab(macro,mtabq)
+        request.write("<br>")
+        # Poor but sufficient emulation of macro object
+        mtabHTML = metatab(request.page, mtabq)
         request.write(mtabHTML)
-        del macro.request
-        del macro
-    
- 
+
     # End content
     request.write(formatter.endContent()) # end content div
 

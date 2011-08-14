@@ -21,14 +21,6 @@ from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import form_escape, form_unescape, decode_page, \
     enter_page, exit_page
 
-def fix_form(form):
-    # Decode request form's keys using the config's charset
-    # (Moin 1.5 request.form has its values - but not keys - decoded
-    # into unicode, which tends to lead to hilarious situational
-    # comedy).
-    return dict([(form_unescape(decode_page(key)), value) 
-                 for (key, value) in form.items()])
-
 def parse_editform(request, form):
     r"""
     >>> from graphingwiki.editing import _doctest_request
@@ -295,18 +287,19 @@ def execute(pagename, request):
 
     # This action generates data using the user language
     request.setContentLanguage(request.lang)
-    form = fix_form(request.form)
+    form = request.values.to_dict(flat=False)
 
     if form.has_key('cancel'):
         request.reset()
         backto = form.get('backto', [None])[0]
+        request.theme.add_msg(_('Edit was cancelled.'), "error")
         if backto:
             request.page = Page(request, backto)
+            request.http_redirect(request.page.url(request))
         
-        request.theme.add_msg(_('Edit was cancelled.'), "error")
         request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
-        if request.request_method != 'POST':
+        if request.environ['REQUEST_METHOD'] != 'POST':
             request.page.send_page()
             return
 
@@ -432,10 +425,12 @@ def execute(pagename, request):
         request.reset()
         backto = form.get('backto', [None])[0]
         if backto:
-            request.page = Page(request, backto)
+            page = Page(request, backto)
+        else:
+            page = Page(request, pagename)
         
         request.theme.add_msg(msg)
-        request.page.send_page()
+        page.send_page()
     elif form.has_key('args'):
         enter_page(request, pagename, 'Metatable editor')
         formatter = request.page.formatter
@@ -462,6 +457,7 @@ def execute(pagename, request):
         show_queryform(wr, request, pagename)
 
         exit_page(request, pagename)
+    return
 
 def _test():
     import doctest

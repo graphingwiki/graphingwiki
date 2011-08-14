@@ -179,6 +179,7 @@ def exit_page(request, pagename):
     request.write(request.page.formatter.endContent()) # end content div
     # Footer
     request.theme.send_footer(pagename)
+    request.write(request.page.formatter.endDocument())
     request.theme.send_closing_html()
 
 # Encoder from unicode to charset selected in config
