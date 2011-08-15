@@ -37,7 +37,7 @@ def doit(request, pagename, indata):
             raise ValueError(e)
 
 def execute(pagename, request):
-    if request.request_method != 'POST':
+    if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
     if not request.user.may.write(pagename):

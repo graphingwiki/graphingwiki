@@ -71,7 +71,7 @@ apt-get install python-igraph
 ## Get moin, gwiki sources. Install.
 mkdir -p /usr/local/src/
 cd /usr/local/src/
-wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/647b92c44df5.tar.gz -O graphingwiki.tar.gz
+wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/moin-19.tar.gz -O graphingwiki.tar.gz
 wget -N -q http://static.moinmo.in/files/moin-1.9.3.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1

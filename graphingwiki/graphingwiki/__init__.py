@@ -320,7 +320,7 @@ def variable_insert(self, result, _):
     for name in cfgvar:
         result = result.replace('@%s@' % name, cfgvar[name])
 
-    form = request.values.to_dict(flat=False)
+    form = self.request.values.to_dict(flat=False)
 
     # Add the page's creator as a dynamic variable
     backto = form.get('backto', [''])[0]

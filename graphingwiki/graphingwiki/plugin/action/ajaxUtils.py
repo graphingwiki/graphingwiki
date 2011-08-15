@@ -57,7 +57,7 @@ def execute(pagename, request):
         page = form.get('page', [None])[0]
         content = form.get('content', [""])[0]
 
-        if request.request_method != 'POST':
+        if request.environ['REQUEST_METHOD'] != 'POST':
             return
 
         if not page:

@@ -10,10 +10,12 @@ def sendfault(request, msg):
 
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
-    if request.request_method != 'POST':
+    if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
-    content = request.form.get('content', [None])[0]
+    form = request.values.to_dict(flat=False)
+
+    content = form.get('content', [None])[0]
     if not content:
         sendfault(request,  "Missing page content")
         return

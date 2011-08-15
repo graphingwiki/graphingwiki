@@ -49,9 +49,11 @@ class FormPage(Page):
 def execute(pagename, request):
     _ = request.getText
 
+    form = request.values.to_dict(flat=False)
+
     if not request.user.may.write(pagename):
         request.reset()
-        backto = request.form.get('backto', [None])[0]
+        backto = form.get('backto', [None])[0]
         if backto:
             request.page = Page(request, backto)
         
@@ -61,8 +63,6 @@ def execute(pagename, request):
         return
 
     formpage = '../' * pagename.count('/') + pagename
-
-    form = request.values.to_dict(flat=False)
 
     frm = wr(
         u'<form method="POST" enctype="multipart/form-data" action="%s">\n',

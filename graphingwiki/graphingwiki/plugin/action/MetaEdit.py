@@ -323,10 +323,11 @@ def execute(pagename, request):
         backto = form.get('backto', [None])[0]
         request.theme.add_msg(_('Edit was cancelled.'), "error")
         if backto:
-            request.page = Page(request, backto)
-            request.http_redirect(request.page.url(request))
+            page = Page(request, backto)
+            request.http_redirect(page.url(request))
         
-        request.page.send_page()
+        request.page = page
+        page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
         if request.environ['REQUEST_METHOD'] != 'POST':
             request.page.send_page()
@@ -454,10 +455,12 @@ def execute(pagename, request):
         backto = form.get('backto', [None])[0]
         if backto:
             page = Page(request, backto)
+            request.http_redirect(page.url(request))
         else:
             page = Page(request, pagename)
         
         request.theme.add_msg(msg)
+        request.page = page
         page.send_page()
     elif form.has_key('args'):
         enter_page(request, pagename, 'Metatable editor')
