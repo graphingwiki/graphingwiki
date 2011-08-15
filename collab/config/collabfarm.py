@@ -121,6 +121,8 @@ class FarmConfig(DefaultConfig):
     
     collab_basedir = '/srv/wikis/collab/htdocs'
     collab_baseurl = 'https://localhost/collab/'
+    collab_chat_bosh = '/bosh/'
+    collab_chat_creds = '/collab/auth_credentials.php'
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
 
@@ -132,10 +134,7 @@ class FarmConfig(DefaultConfig):
     invite_group_default = 'AccessGroup'
 
     stylesheets = [
-        ('all', url_prefix_static + '/themecommon/css/common.css' ),
-        ('screen', url_prefix_static + '/themecommon/css/screen.css' ),
-        ('print', url_prefix_static + '/themecommon/css/print.css' ),
-        ('projection', url_prefix_static + '/themecommon/css/projection.css' )
+        ('all', url_prefix_static + '/gwikicommon/css/common.css')        
     ]
 
     html_head = '''
@@ -148,10 +147,29 @@ class FarmConfig(DefaultConfig):
     ''' % {"url_prefix_static": url_prefix_static}
 
     for script in ['js/mootools-core-yc.js', \
-                   'js/sorttable-moo.js', \
+                   'js/mootools-more-yc.js', \
+                   'js/gwiki-common.js', \
                    'js/mootree.js', \
                    'simile/timeline/timeline_ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
             
+    ## for htdocs/collabcommon
+
+    # html_head = '' # omit if you already have something
+
+    for script in ['js/strophe.js', \
+                   'js/chat.js']:
+        html_head += '<script src="%s" type="text/javascript"></script>' \
+                     % (url_prefix_static + '/collabcommon/' + script)
+
+    # stylesheets = [] # omit if you already have something
+
+    for type, style in [('all', 'chat.css'), \
+                        ('all', 'common.css'), \
+                        ('screen', 'screen.css'), \
+                        ('print', 'print.css'), \
+                        ('projection', 'projection.css')]:
+        stylepath = url_prefix_static + '/collabcommon/css/' + style
+        stylesheets.append((type, stylepath))

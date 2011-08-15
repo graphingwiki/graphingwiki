@@ -31,13 +31,28 @@ import re
 
 from MoinMoin.Page import Page
 
-from graphingwiki import url_escape
+from graphingwiki import url_escape, id_escape, SEPARATOR
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import format_wikitext, wrap_span
+from graphingwiki.util import format_wikitext
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 Dependencies = ['metadata']
 
-def t_cell(request, vals, head=0, style=None, rev='', key=''):
+def wrap_span(request, pagename, key, data, id):
+    if not key:
+        return format_wikitext(request, data)
+
+    return '<span id="' + \
+        id_escape('%(page)s%(sepa)s%(key)s%(sepa)s%(id)s' %
+                  {'page': pagename, 'sepa': SEPARATOR,
+                   'id': id, 'key': key}) + '">' + \
+                   format_wikitext(request, data) + '</span>'
+
+def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
     formatter = request.formatter
     out = str()
 
@@ -82,7 +97,7 @@ def t_cell(request, vals, head=0, style=None, rev='', key=''):
             if cellstyle == 'list':
                 out += formatter.listitem(1)
 
-            out += wrap_span(request, key, data, i)
+            out += wrap_span(request, pagename, key, data, i)
 
             if cellstyle == 'list':
                 out += formatter.listitem(0)
@@ -100,6 +115,7 @@ def construct_table(request, pagelist, metakeys,
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
+    pagename = request.page.page_name
 
     row = 0
     divfmt = { 'class': "metatable" }
@@ -119,7 +135,7 @@ def construct_table(request, pagelist, metakeys,
         out += formatter.table_row(1, {'rowclass': 'meta_header'})
         if send_pages:
             # Upper left cell is empty or has the desired legend
-            out += t_cell(request, [legend])
+            out += t_cell(request, pagename, [legend])
 
     for key in metakeys:
         style = styles.get(key, dict())
@@ -137,9 +153,9 @@ def construct_table(request, pagelist, metakeys,
                 headerstyle[st] = style[st]
 
         if name:
-            out += t_cell(request, [name], style=headerstyle, key=key)
+            out +=t_cell(request, pagename, [name], style=headerstyle, key=key)
         else:
-            out += t_cell(request, [key], style=headerstyle, key=key)
+            out += t_cell(request, pagename, [key], style=headerstyle, key=key)
 
     if metakeys:
         out += formatter.table_row(0)
@@ -171,14 +187,14 @@ def construct_table(request, pagelist, metakeys,
                                                   
 
         if send_pages:
-            out += t_cell(request, [page], head=1, rev=revision)
+            out += t_cell(request, page, [page], head=1, rev=revision)
 
         for key in metakeys:
             style = styles.get(key, dict())
             if key == 'gwikipagename':
-                out += t_cell(request, [page], head=1, style=style)
+                out += t_cell(request, page, [page], head=1, style=style)
             else:
-                out += t_cell(request, metas[key], style=style, key=key)
+                out += t_cell(request, page, metas[key], style=style, key=key)
 
         out += formatter.table_row(0)
 
@@ -189,33 +205,34 @@ def construct_table(request, pagelist, metakeys,
     out += formatter.div(0)
     return out
 
-def do_macro(request, args, silent, editlink):
+def do_macro(request, args, **kw):
     formatter = request.formatter
     _ = request.getText
     out = str()
+    pagename = request.page.page_name
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
-
+    out += u'''
+    <script type="text/javascript">
+      window.MetaTableArguments = (window.MetaTableArguments || []);
+      window.MetaTableArguments.push(%s);
+    </script>
+    ''' % json.dumps(dict({'args': args}.items() + kw.items()))
+ 
    # No data -> bail out quickly, Scotty
     if not pagelist:
         out += formatter.linebreak() + u'<div class="metatable">' + \
             formatter.table(1)
-        if silent:
-            out += t_cell(request, ["%s" % _("No matches")])
+        if kw.get('silent'):
+            out += t_cell(request, pagename, ["%s" % _("No matches")])
         else:
-            out += t_cell(request, ["%s '%s'" % (_("No matches for"), args)])
+            out += t_cell(request, pagename, ["%s '%s'" % (_("No matches for"), args)])
         out += formatter.table(0) + u'</div>'
-        return
+        return out
 
-    out += u'''
-    <script type="text/javascript">
-      window.MetaTableArguments = (window.MetaTableArguments || []);
-      window.MetaTableArguments.push('%s');
-    </script>
-    ''' % args.replace("\\", "\\\\").replace("'", "\\'")
- 
+
     # We're sure the user has the access to the page, so don't check
     out += construct_table(request, pagelist, metakeys,
                           checkAccess=False, styles=styles)
@@ -227,7 +244,7 @@ def do_macro(request, args, silent, editlink):
                (request.getQualifiedURL(req_url), _(linktext))
 
     # If the user has no write access to this page, omit editlink
-    if editlink:
+    if kw.get('editlink', True):
         out += action_link('MetaEdit', 'edit', args)
 
     out += action_link('metaCSV', 'csv', args)
@@ -240,16 +257,27 @@ def execute(macro, args):
     if args is None:
         args = ''
 
-    silent = False
-    editlink = True
+    optargs = {}
+
+    #parse keyworded arguments (template etc)
+    opts = re.findall("(?:^|,)\s*([^,|]+)\s*:=\s*([^,]+)\s*", args)
+    args = re.sub("(?:^|,)\s*[^,|]+:=[^,]+\s*", "", args)
+    for opt in opts:
+        val = opt[1]
+        if val == "True":
+            val = True
+        elif val == "False":
+            val = False
+
+        optargs[str(opt[0])] = val
 
     # loathful positional stripping (requires specific order of args), sorry
     if args.strip().endswith('gwikisilent'):
-        silent = True
+        optargs['silent'] = True
         args = ','.join(args.split(',')[:-1])
 
     if args.strip().endswith('noeditlink'):
-        editlink = False
+        optargs['editlink'] = False
         args = ','.join(args.split(',')[:-1])
 
-    return do_macro(request, args, silent, editlink)
+    return do_macro(request, args, **optargs)

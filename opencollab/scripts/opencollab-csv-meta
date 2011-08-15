@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
     opencollab-csv-meta
@@ -83,7 +83,7 @@ for operation, argument in operations:
         sys.stdout.flush()
     else:
         replace = operation == "set"
-        reader = csv.reader(open(argument, "rb"))
+        reader = csv.reader(open(argument, "rb"), delimiter=";")
 
         # Keys from first row, ignore the key for the first column
         keys = []

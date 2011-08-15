@@ -15,4 +15,4 @@ def execute(pagename, request):
     args = form.get('args', [""])[0]
 
     macro = wikiutil.importPlugin(request.cfg, "macro", "MetaTable","do_macro")
-    request.write(macro(request, args, silent, editlink))
+    request.write(macro(request, args, silent=silent, editlink=editlink))

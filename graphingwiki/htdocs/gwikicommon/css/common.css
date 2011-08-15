@@ -146,3 +146,97 @@ table.month-container td table {
 span.edit {
     display: block;
 }
+
+dt {
+    vertical-align: top;
+}
+.inline, .inline * {
+    display: inline !important;
+    vertical-align: middle;
+}
+
+.metaformedit * {
+    vertical-align: middle;
+}
+
+.metaformedit div {
+    display: inline;
+}
+
+.metaformedit textarea {
+    margin-left: 5px;
+    display: inline !important;
+    padding: 2px;
+}
+
+.hidden {
+    display: none;
+}
+
+.clear {
+    clear: both;
+}
+
+table.ac-results {
+    position: absolute;
+    border: 1px solid #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    -webkit-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    
+    background: white;
+    color: black;
+    text-align: left;
+    border-collapse: collapse;
+    cursor: pointer;
+    margin:  0;
+}
+
+.ac-results tr {
+    overflow-x: hidden;
+}
+
+.ac-results td {
+    border-width: 0;
+    margin: 0;
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+
+.ac-results td.value {
+    padding: 0 25px 0 5px;
+}
+
+.ac-results td.page {
+    font-style: italic;
+    font-size: small;
+    text-align: right;
+}
+
+.ac-results tr.selected {
+    background: #ddffdd;
+}
+
+.attachtree_area > ul{
+    display: inline-block;
+}
+
+.attachtree_fileentry {
+    list-style: square;
+}
+
+.attachtree_direntry {
+    list-style: url("../img/Collapse.png");
+}
+
+.attachtree_direntry.collapsed {
+    list-style: url("../img/Expand.png");
+}
+
+.waiting {
+    min-height: 15px;
+    min-width: 50px;
+    padding-left: 15px;
+    padding-right: 15px;
+    background: url("../img/ajax-loader.gif") center no-repeat !important;
+}

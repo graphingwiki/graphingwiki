@@ -14,6 +14,7 @@ from urllib import unquote as url_unquote
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
+from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki import actionname, SEPARATOR
 from graphingwiki.editing import get_metas, set_metas, editable_p
@@ -158,6 +159,30 @@ def show_editform(wr, request, pagename, args):
 
     formpage = '../' * pagename.count('/') + pagename
 
+    # Note that metatable_parseargs handles read permission checks
+    pagelist, metakeys, _ = metatable_parseargs(request, args,
+                                                get_all_keys=True)
+
+    uneditable_pages = list()
+    # See that the user can write each page
+    for page in pagelist:
+        if not request.user.may.write(page):
+            uneditable_pages.append(page)
+    for page in uneditable_pages:
+        pagelist.remove(page)
+
+    _ = request.getText
+
+    if uneditable_pages:
+        reason = _("No save permission to some pages (%s)" % 
+                   ','.join(uneditable_pages))
+        wr(_sysmsg % ('warning', reason))
+
+    if not pagelist:
+        reason = _("No pages to edit.")
+        wr(_sysmsg % ('error', reason))
+        return
+
     wr(u'<form method="POST" action="%s" enctype="multipart/form-data">\n',
        actionname(request))
     wr(u'<input type="hidden" name="action" value="%s">\n', action_name)
@@ -171,9 +196,6 @@ def show_editform(wr, request, pagename, args):
     if template:
         wr('<input type="hidden" name="template" value="%s">', template)
 
-    # Note that metatable_parseargs handles permission issues
-    pagelist, metakeys, _ = metatable_parseargs(request, args,
-                                                get_all_keys=True)
     # Filter out uneditables, such as inlinks
     metakeys = editable_p(metakeys)
 
@@ -280,6 +302,11 @@ def show_editform(wr, request, pagename, args):
     wr(u'<input type="submit" name="cancel" value="%s">\n', _('Cancel'))
     wr(u'</form>\n')
 
+    if uneditable_pages:
+        reason = _("No save permission to some pages (%s)" % 
+                   ','.join(uneditable_pages))
+        wr(_sysmsg % ('warning', reason))
+
 def execute(pagename, request):
     _ = request.getText
 
@@ -328,12 +355,11 @@ def execute(pagename, request):
                         continue
 
 #                    if type(fileobj) != file:
-#                        panic, attack, filename, fileobj = list()
 #                        continue
 
-                    keys = files.setdefault(key.split(SEPARATOR)[0], dict())
-                    values = keys.setdefault(key.split(SEPARATOR)[1][:-12], 
-                                             list())
+                    banana = key.split(SEPARATOR)
+                    keys = files.setdefault(banana[0], dict())
+                    values = keys.setdefault(banana[1], list())
                     values.append((filename, fileobj))
 
             keys = list()
@@ -419,7 +445,7 @@ def execute(pagename, request):
                         t, s = add_attachment(request, page, name, content) 
             else:
                 msgs.append(request.getText('No pages changed'))
-            
+
         msg = ''
         for line in msgs:
             msg += line + request.formatter.linebreak(0)

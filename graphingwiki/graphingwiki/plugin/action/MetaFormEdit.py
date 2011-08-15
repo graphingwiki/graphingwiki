@@ -49,6 +49,17 @@ class FormPage(Page):
 def execute(pagename, request):
     _ = request.getText
 
+    if not request.user.may.write(pagename):
+        request.reset()
+        backto = request.form.get('backto', [None])[0]
+        if backto:
+            request.page = Page(request, backto)
+        
+        request.theme.add_msg(_('You are not allowed to edit this page.'), 
+                              "error")
+        request.page.send_page()
+        return
+
     formpage = '../' * pagename.count('/') + pagename
 
     form = request.values.to_dict(flat=False)
@@ -155,7 +166,7 @@ def execute(pagename, request):
             msg += wr(
                 '<input type="checkbox" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
-                format_wikitext(request, showval)
+                '<label>' + format_wikitext(request, showval) +'</label>'
 
         return msg
 
@@ -166,17 +177,17 @@ def execute(pagename, request):
             msg += wr(
                 '<input type="radio" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
-                format_wikitext(request, showval)
+                '<label>' + format_wikitext(request, showval) +'</label>'
 
         return msg
 
     def form_textbox(request, pagekey, curval, values, description=''):
-        return wr('<input type="text" name="%s" value="%s">',
+        return wr('<textarea name="%s">%s</textarea>',
                   pagekey, curval)
 
-    def form_textarea(request, pagekey, curval, values, description=''):
-        return wr('<textarea rows=20 cols=70 name="%s">%s</textarea>',
-                  pagekey, curval)
+    def form_date(request, pagekey, curval, values, description=''):
+        return wr('<input type="text" class="date" name="%s" value="%s">',
+                pagekey, curval)
 
     def form_file(request, pagekey, curval, values, description=''):
         if curval:
@@ -185,14 +196,15 @@ def execute(pagename, request):
                 , pagekey, curval)
         else:
             return wr(
-                '<input class="file" type="file" name="%s" value="" readonly>',
-                  pagekey)
+                '<input class="file" type="file" name="%s%s0" value="" readonly>',
+                pagekey, SEPARATOR)
 
     formtypes = {'selection': form_selection,
                  'checkbox': form_checkbox,
                  'textbox': form_textbox,
-                 'textarea': form_textarea,
+                 'textarea': form_textbox,
                  'radio': form_radio,
+                 'date': form_date,
                  'file': form_file} 
 
     def repl_subfun(mo):
@@ -223,6 +235,7 @@ def execute(pagename, request):
         formtype = properties.get('hint')
         constraint = properties.get('constraint')
         desc = properties.get('description')
+        default = properties.get('default', '')
         hidden = False
 
         if formtype == "hidden":
@@ -233,9 +246,9 @@ def execute(pagename, request):
 
         if (not formtype == "radio" and
             not (formtype == "checkbox" and constraint == "existing")):
-            cssclass = "metaformedit-cloneable"
+            cloneable = "true"
         else:
-            cssclass = "metaformedit-notcloneable"
+            cloneable = "false"
        
         if desc:
             msg = msg.replace('</dt>', ' %s</dt>' % \
@@ -243,15 +256,14 @@ def execute(pagename, request):
             msg = msg.replace('<dt>', wr(
                     '<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
 
-        msg = msg.replace('<dd>', '<dd class="%s">'% cssclass)
+        msg = msg.replace('<dd>', wr('<dd class="metaformedit" data-cloneable="%s" data-default="%s">',  cloneable, default))
 
         msg += formtypes[formtype](request, pagekey, val, values)
 
 
         if (not constraint == 'existing' and 
-            not formtype in ['textbox', 'textarea', 'file']):
-            msg += wr('<input class="metavalue" type="text" ' + \
-                          'name="%s" value="">', pagekey)
+            not formtype in ['textbox', 'textarea', 'file', 'date']):
+            msg += wr('<textarea name="%s"></textarea>', pagekey)
 
         if hidden:
             msg = request.formatter.div(1, css_class='comment') + msg + \
