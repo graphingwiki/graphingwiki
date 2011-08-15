@@ -938,7 +938,7 @@ class GraphShower(object):
                 continue
             # local relative links
             elif node.gwikiURL[0] == '.':
-                node.gwikiURL = self.request.getScriptname() + \
+                node.gwikiURL = self.request.script_root + \
                                 node.gwikiURL.lstrip('.')
             # Shorten the labels of long URL:s
             elif len(node.gwikilabel) == 0 and len(node.gwikiURL) > 50:

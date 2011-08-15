@@ -8,14 +8,18 @@
 
 """
 from MoinMoin.action import AttachFile
+from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
+    MultiDict
 
 def _do_diff(pagename, request):
     # return attachment list
     _ = request.getText
 
-    att1 = request.form.get('att1', [''])[0]
-    att2 = request.form.get('att2', [''])[0]
-    sort = request.form.get('sort', ['normal'])[0]
+    form = request.values.to_dict(flat=False)
+
+    att1 = form.get('att1', [''])[0]
+    att2 = form.get('att2', [''])[0]
+    sort = form.get('sort', ['normal'])[0]
 
     if (not (att1 and att2) or not 
         (AttachFile.exists(request, pagename, att1) and 
@@ -24,11 +28,18 @@ def _do_diff(pagename, request):
                              _('Could not diff, attachments not selected or nonexisting'))
         return
 
-    request.form['target'] = [att1]
+    form['target'] = [att1]
+    request.values = CombinedMultiDict([MultiDict(form)])
     pagename, filename, fpath = AttachFile._access_file(pagename, request)
+
+    f = file('/tmp/a', 'a')
+    f.write("%s %s %s\n" % (pagename, filename, fpath))
+    f.close()
+
     att1data = open(fpath, 'r').read()
 
-    request.form['target'] = [att2]
+    form['target'] = [att2]
+    request.values = CombinedMultiDict([MultiDict(form)])
     pagename, filename, fpath = AttachFile._access_file(pagename, request)
     att2data = open(fpath, 'r').read()
 
@@ -52,7 +63,6 @@ def _do_diff(pagename, request):
         att1data = '\n'.join(att1tmp)
         att2data = '\n'.join(att2tmp)
 
-    request.emit_http_headers()
     # Use user interface language for this generated page
     request.setContentLanguage(request.lang)
     request.theme.send_title(_('Diff of %s and %s') % (att1, att2), 

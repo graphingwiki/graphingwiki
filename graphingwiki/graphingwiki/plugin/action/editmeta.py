@@ -22,7 +22,9 @@ import MetaEdit
 from savegraphdata import parse_text
 
 def execute(pagename, request):
-    template = request.form.get('template', [''])[0]
+    form = request.values.to_dict(flat=False)
+
+    template = form.get('template', [''])[0]
 
     if template and not request.page.exists():
         template_page = wikiutil.unquoteWikiname(template)

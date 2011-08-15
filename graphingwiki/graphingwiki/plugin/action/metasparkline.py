@@ -261,9 +261,11 @@ def execute(pagename, request):
     # Handle GET arguments
     params = {'page': '', 'key': '', 'points': 0, 'style': ''}
 
+    form = request.values.to_dict(flat=False)
+
     for attr in ['page', 'key', 'points', 'style']:
-        if request.form.has_key(attr):
-            val = ''.join([x for x in request.form[attr]])
+        if form.has_key(attr):
+            val = ''.join([x for x in form[attr]])
 
             if attr == 'points':
                 try:

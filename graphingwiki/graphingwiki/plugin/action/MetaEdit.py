@@ -165,7 +165,9 @@ def show_editform(wr, request, pagename, args):
     wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
     wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
-    template = request.form.get('template', [''])[0]
+    form = request.values.to_dict(flat=False)
+
+    template = form.get('template', [''])[0]
     if template:
         wr('<input type="hidden" name="template" value="%s">', template)
 

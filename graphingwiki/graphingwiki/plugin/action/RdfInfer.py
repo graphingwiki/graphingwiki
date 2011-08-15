@@ -52,8 +52,6 @@ query = ur'\s*{' + lfact + ur'}\s*->\s*\[\]\s*\.\s*'
 rule = ur'\s*{' + fact + "+" + lfact + ur'}\s*->\s*{' + lfact + ur'}\s*\.\s*'
 
 def execute(pagename, request):
-    request.emit_http_headers()
-
     # This action generate data using the user language
     request.setContentLanguage(request.lang)
 
@@ -66,14 +64,16 @@ def execute(pagename, request):
     # direction support!
     request.write(formatter.startContent("content"))
 
+    form = request.values.to_dict(flat=False)
+
     infer = ''
-    if request.form.has_key('infer'):
-        infer = ''.join(request.form['infer'])
+    if form.has_key('infer'):
+        infer = ''.join(form['infer'])
 
     request.write(u'<form method="GET" action="%s">\n' %
                   actionname(request, pagename))
     request.write(u'<input type=hidden name=action value="%s">' %
-                  ''.join(request.form['action']))
+                  ''.join(form['action']))
 
     request.write(u'<input type="text" name="infer" size=50 value="%s">' %
                   infer)

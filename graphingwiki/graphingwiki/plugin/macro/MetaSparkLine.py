@@ -39,7 +39,7 @@ def execute(macro, args):
     request = macro.request
     _ = request.getText
 
-    req_url = request.getScriptname() + '/' + request.page.page_name
+    req_url = request.script_root + '/' + request.page.page_name
     req_url += '?action=metasparkline'
 
     arglist = [x.strip() for x in args.split(',')]

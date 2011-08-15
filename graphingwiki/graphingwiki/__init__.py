@@ -320,8 +320,10 @@ def variable_insert(self, result, _):
     for name in cfgvar:
         result = result.replace('@%s@' % name, cfgvar[name])
 
+    form = request.values.to_dict(flat=False)
+
     # Add the page's creator as a dynamic variable
-    backto = self.request.form.get('backto', [''])[0]
+    backto = form.get('backto', [''])[0]
     result = result.replace('@CREATORPAGE@', backto)
 
     return result
@@ -350,9 +352,11 @@ def attachfile_filelist(self, result, (args, _)):
 
     result = form + result
 
-    att1 = self.form.get('att1', [''])[0]
-    att2 = self.form.get('att2', [''])[0]
-    sort = self.form.get('sort', ['normal'])[0]
+    oldform = self.values.to_dict(flat=False)
+
+    att1 = oldform.get('att1', [''])[0]
+    att2 = oldform.get('att2', [''])[0]
+    sort = oldform.get('sort', ['normal'])[0]
 
     for target in attachments:
         buttontext = '\\1 | ' + \

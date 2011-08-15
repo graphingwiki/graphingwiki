@@ -30,8 +30,8 @@
 from graphingwiki.util import format_wikitext
 
 def execute(pagename, request):
-    request.emit_http_headers()
+    form = request.values.to_dict(flat=False)
 
-    args = request.form.get('args', [""])[0]
+    args = form.get('args', [""])[0]
     request.write(format_wikitext(request, args))
 

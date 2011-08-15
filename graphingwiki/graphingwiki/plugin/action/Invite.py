@@ -48,7 +48,9 @@ class Invite(ActionBase):
         return user_may_invite(self.request.user, self.pagename)
 
     def do_action(self):
-        email = self.form.get('email', [u''])[0]
+        form = request.values.to_dict(flat=False)
+        
+        email = form.get('email', [u''])[0]
         email = wikiutil.clean_input(email).strip()
         if len(email) == 0:
             return False, "Please specify an email address."

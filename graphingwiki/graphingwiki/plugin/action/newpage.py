@@ -11,8 +11,10 @@ from MoinMoin.action.newpage import NewPage
 from MoinMoin import log
 
 def execute(pagename, request):
+    form = request.values.to_dict(flat=False)
+
     # Editaction allows for arbitrary action to be used for editing target page
-    editaction = request.form.get('editfunc', [''])[0]
+    editaction = form.get('editfunc', [''])[0]
     # Edit actions assumed to be all in lower case
     editaction = editaction.lower()
 

@@ -114,8 +114,7 @@ def execute(pagename, request):
     _ = request.getText
     log = editlog.EditLog(request)
 
-    request.emit_http_headers(["Content-type: application/xml;charset=%s" %
-                               config.charset])
+    request.content_type = "application/xml;charset=%s" % config.charset
 
     doc = Document()
     data = doc.createElement('data')
@@ -125,7 +124,8 @@ def execute(pagename, request):
     this_day = today
     day_count = 0
     try:
-        max_days = int(request.form.get('max_days', [_MAX_DAYS])[0])
+        form = request.values.to_dict(flat=False)
+        max_days = int(form.get('max_days', [_MAX_DAYS])[0])
     except ValueError:
         max_days = _MAX_DAYS
 

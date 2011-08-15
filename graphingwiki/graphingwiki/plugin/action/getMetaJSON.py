@@ -34,9 +34,11 @@ except ImportError:
     import json
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
+    request.content_type = "text/plain; charset=ascii"
 
-    args = request.form.get('args', [pagename])[0]
+    form = request.values.to_dict(flat=False)
+
+    args = form.get('args', [pagename])[0]
     if not args:
         request.write('No data')
         return

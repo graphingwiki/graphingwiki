@@ -49,7 +49,9 @@ def execute(pagename, request):
         sendfault(request, 2, _("No page name entered"))
         return
 
-    indata = request.form.get('args', [None])[0]
+    form = request.values.to_dict(flat=False)
+
+    indata = form.get('args', [None])[0]
     if not indata:
         request.write('No data')
         return

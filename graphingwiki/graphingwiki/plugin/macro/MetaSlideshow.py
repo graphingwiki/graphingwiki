@@ -69,11 +69,13 @@ def macro_MetaSlideshow(macro, slidekey=u'next'):
 
     parameters = dict()
 
-    if request.form.get('action', [None])[0]:
-        parameters['action'] = wikiutil.escape(request.form['action'][0])
+    form = request.values.to_dict(flat=False)
 
-    if request.form.get('media', [None])[0]:
-        parameters['media'] = wikiutil.escape(request.form['media'][0])
+    if form.get('action', [None])[0]:
+        parameters['action'] = wikiutil.escape(form['action'][0])
+
+    if form.get('media', [None])[0]:
+        parameters['media'] = wikiutil.escape(form['media'][0])
 
     result = list()
     result.append(formatter.table(True, {"tableclass": "navigation"}))

@@ -16,9 +16,9 @@ def execute(pagename, request):
     pagename_header = '%s-%s.zip' % (pagename, datetime.now().isoformat()[:10])
     pagename_header = pagename_header.encode('ascii', 'ignore')
     
-    request.emit_http_headers(['Content-Type: application/zip',
-                               'Content-Disposition: attachment; ' +
-                               'filename="%s"' % pagename_header])
+    request.content_type ='application/zip'
+    request.headers['Content-Disposition'] = \
+        'attachment; filename="%s"' % pagename_header
 
     try:
         args = request.args['args'][0]

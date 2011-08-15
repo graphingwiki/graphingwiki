@@ -15,8 +15,10 @@ def save_comment(request, commentpage, sender, comment):
     return set_metas(request, dict(), dict(), metas)
 
 def execute(pagename, request):
-    comment = request.form.get('comment', [str()])[0].replace("\r\n", " ")
-    commentpage = wikiutil.escape(request.form.get('commentpage', [str()])[0])
+    form = request.values.to_dict(flat=False)
+
+    comment = form.get('comment', [str()])[0].replace("\r\n", " ")
+    commentpage = wikiutil.escape(form.get('commentpage', [str()])[0])
 
     if not commentpage:
         request.theme.add_msg('Missing commentpage.', 'error')

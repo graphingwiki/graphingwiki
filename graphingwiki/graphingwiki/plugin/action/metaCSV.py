@@ -14,9 +14,9 @@ def execute(pagename, request):
     pagename_header = '%s.csv' % (pagename)
     pagename_header = pagename_header.encode('ascii', 'ignore')
     
-    request.emit_http_headers(['Content-Type: text/csv; charset=UTF-8',
-                               'Content-Disposition: attachment; ' +
-                               'filename="%s"' % pagename_header])
+    request.content_type = 'text/csv; charset=UTF-8'
+    request.headers['Content-Disposition'] = \
+        'attachment; filename="%s"' % pagename_header
     GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta')
     class x: pass
     x.request = request

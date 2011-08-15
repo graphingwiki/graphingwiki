@@ -14,6 +14,7 @@ def execute(pagename, request):
             sf_wikilink = x[1]
             pagename = x[0].strip('{').strip('[[').strip('attachment:')
         sf_wikilink = sf_wikilink.rstrip('}').rstrip(']]')
-        request.form['target'] = [sf_wikilink]
-        request.form['do'] = ['get']
+        form = request.values.to_dict(flat=False)
+        form['target'] = [sf_wikilink]
+        form['do'] = ['get']
         AttachFile(pagename, request)

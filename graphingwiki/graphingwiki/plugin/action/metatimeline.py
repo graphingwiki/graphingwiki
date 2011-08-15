@@ -63,10 +63,11 @@ def check_time(time):
 def execute(pagename, request):
     _ = request.getText
 
-    args = ', '.join(x for x in request.form.get('arg', list()))
+    form = request.values.to_dict(flat=False)
 
-    request.emit_http_headers(["Content-type: application/xml;charset=%s" %
-                               config.charset])
+    args = ', '.join(x for x in form.get('arg', list()))
+
+    request.content_type = "application/xml;charset=%s" % config.charset
 
     doc = Document()
     data = doc.createElement('data')

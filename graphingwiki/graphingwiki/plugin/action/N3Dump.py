@@ -165,8 +165,7 @@ def n3dump(request, pages):
     return outstr
     
 def execute(pagename, request):
-    request.emit_http_headers(["Content-type: text/plain;charset=%s" %
-                               config.charset])
+    request.content_type = "text/plain;charset=%s" % config.charset
 
     n3 = n3dump(request, [pagename])
 
