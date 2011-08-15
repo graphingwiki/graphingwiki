@@ -1,0 +1,90 @@
+--- user.py.old	2011-08-11 18:04:40.256712003 +0300
++++ user.py	2011-08-11 18:05:20.776712000 +0300
+@@ -154,9 +154,9 @@ def encodePassword(pwd, salt=None):
+         salt = random_string(20)
+     assert isinstance(salt, str)
+     hash = hash_new('sha1', pwd)
+-    hash.update(salt)
++    #hash.update(salt)
+ 
+-    return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
++    return '{SHA}' + base64.encodestring(hash.digest()).rstrip()
+ 
+ 
+ def normalizeName(name):
+--- /usr/local/lib/python2.6/dist-packages/MoinMoin/xmlrpc/__init__.py.orig	2011-08-15 12:33:56.717013002 +0300
++++ /usr/local/lib/python2.6/dist-packages/MoinMoin/xmlrpc/__init__.py	2011-08-15 13:02:20.680888001 +0300
+@@ -38,6 +38,32 @@ from MoinMoin.logfile import editlog
+ from MoinMoin.action import AttachFile
+ from MoinMoin import caching
+ 
++def is_login_required(request):
++    login_required = True
++    env = request.environ
++
++    from MoinMoin.auth import GivenAuth
++    from MoinMoin.auth.sslclientcert import SSLClientCertAuth
++
++    # Get all the authentication methods used in the config
++    auth = getattr(request.cfg, 'auth', [])
++
++    for method in auth:
++        # If we're using HTTP auth, and the server has authenticated
++        # the user successfully, do not require another login
++        if isinstance(method, GivenAuth):
++            if env.get('REMOTE_USER', ''):
++               login_required = False
++               break
++        # If we're using SSL client certificate auth, and the server
++        # has authenticated the user successfully, do not require
++        # another login
++        elif isinstance(method, SSLClientCertAuth):
++            if env.get('SSL_CLIENT_VERIFY', 'FAILURE') == 'SUCCESS':
++               login_required = False
++               break
++
++    return login_required
+ 
+ logging_tearline = '- XMLRPC %s ' + '-' * 40
+ 
+@@ -132,7 +158,12 @@ class XmlRpcBase:
+             else:
+                 # overwrite any user there might be, if you need a valid user for
+                 # xmlrpc, you have to use multicall and getAuthToken / applyAuthToken
+-                request.user = user.User(request, auth_method='xmlrpc:invalid')
++                login_required = is_login_required(self.request)
++                if (not self.request.user or
++                    not self.request.user.valid or
++                    login_required):
++                    self.request.user = user.User(self.request, 
++                                                  auth_method='xmlrpc:invalid')
+ 
+                 data = request.read()
+ 
+@@ -737,7 +768,14 @@ class XmlRpcBase:
+         request.session = request.cfg.session_service.get_session(request)
+ 
+         u = auth.setup_from_session(request, request.session)
+-        u = auth.handle_login(request, u, username=username, password=password)
++
++        login_required = is_login_required(request)
++
++        if login_required:
++            u = auth.handle_login(request, u, username=username, 
++                                  password=password)
++        else:
++            u = request.user
+ 
+         if u and u.valid:
+             request.user = u
+--- /usr/local/lib/python2.6/dist-packages/MoinMoin/auth/__init__.py.orig	2011-08-15 12:38:05.287013001 +0300
++++ /usr/local/lib/python2.6/dist-packages/MoinMoin/auth/__init__.py	2011-08-15 12:38:16.297013002 +0300
+@@ -362,7 +362,7 @@ class GivenAuth(BaseAuth):
+             auth_username = self.transform_username(auth_username)
+             logging.debug("auth_username (after decode/transform) = %r" % auth_username)
+             u = user.User(request, auth_username=auth_username,
+-                          auth_method=self.name, auth_attribs=('name', 'password'))
++                          auth_method=self.name, auth_attribs=('name'))
+ 
+         logging.debug("u: %r" % u)
+         if u and self.autocreate:

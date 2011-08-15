@@ -1,6 +1,7 @@
 # Full installation instructions for graphingwiki on collabbackend
 # The script is assumed to be run as root
-# Tested Ubuntu 10.04 and 10.10. YMMV.
+# Not tested after migrating from 1.8 instructions, but nothing that
+# much has changed here
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -70,15 +71,15 @@ apt-get install python-igraph
 ## Get moin, gwiki sources. Install.
 mkdir -p /usr/local/src/
 cd /usr/local/src/
-wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/tip.tar.gz -O graphingwiki.tar.gz
-wget -N -q http://static.moinmo.in/files/moin-1.8.8.tar.gz
+wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/647b92c44df5.tar.gz -O graphingwiki.tar.gz
+wget -N -q http://static.moinmo.in/files/moin-1.9.3.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
 
 # Patch and install moin
-tar -zxvf moin-1.8.8.tar.gz 
-cd moin-1.8.8/
-patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.8.8.patch 
+tar -zxvf moin-1.9.3.tar.gz 
+cd moin-1.9.3/
+patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.9.3.patch 
 python setup.py install
 
 # Install graphingwiki, collabbackend and opencollab
