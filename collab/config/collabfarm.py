@@ -36,8 +36,9 @@ class FarmConfig(DefaultConfig):
 
     chart_options = {'width': 600, 'height': 300}
 
-    from MoinMoin.auth.http import HTTPAuth
-    auth = [HTTPAuth(autocreate=False)]
+    from MoinMoin.auth import GivenAuth
+    auth = [GivenAuth(autocreate=False)]
+    auth_methods_trusted = ['given', 'xmlrpc_applytoken']
 
     cookie_path = '/collab/'
 
