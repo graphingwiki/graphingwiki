@@ -383,7 +383,6 @@
 
             if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink'))
                 this.parent.apply(this, arguments);
-
         }
     });
 
@@ -406,7 +405,7 @@
                 'top': 0,
                 'width': document.id(window).getScrollSize().x,
                 'min-height': document.id(window).getScrollSize().y,
-                'z-index': '99'
+                'z-index': '999'
             }).inject(document.body);
 
             this.positioner = new Element('div').setStyles({
@@ -414,7 +413,7 @@
                 'left': 0,
                 'top': 0,
                 'width': '100%',
-                'z-index': '99'
+                'z-index': '999'
             }).inject(document.body);
             var container = new Element('div').setStyles({
                 'position': 'relative',
@@ -489,7 +488,7 @@
                 onSuccess: function(response) {
                     if (response && response.status == "ok") {
                         this.fireEvent('success');
-                        this.bg.destroy();
+                        this.cancel();
                     } else {
                         alert("Failed to create new page!\n" + '"' + response.msg + '"');
                     }
