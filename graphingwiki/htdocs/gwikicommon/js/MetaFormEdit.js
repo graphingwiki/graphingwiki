@@ -17,6 +17,10 @@
 
             this.form.addEvent('submit', function() {
                 this.getElements('.hidden').destroy();
+                this.getElements('input[type=file][value=""]').filter(
+                    function(inp) {
+                        return inp.value == "";
+                    }).destroy();
             });
 
             this.SEPARATOR = window.GWIKISEPARATOR;
@@ -57,7 +61,7 @@
             var self = this;
 
             //remove annoying title text on help icon
-            this.form.getElements('dt img').each(function(img){
+            this.form.getElements('dt img').each(function(img) {
                 img.set('title', '');
             });
 
@@ -197,7 +201,7 @@
             }
 
             if (["radio"])
-            var cloned = source.clone();
+                var cloned = source.clone();
             cloned.inject(source, 'before');
 
             if (cloned.getElement('a.jslink') != null) {
@@ -205,7 +209,7 @@
             }
 
             cloned.getElements('input[type=checkbox], input[type=radio], label').destroy();
-            
+
             cloned.getElements('select, input, textarea').each(function(input) {
                 input.value = "";
                 input.checked = false;
@@ -265,9 +269,13 @@
         remove: function(el) {
             var siblings = el.getParent().getChildren();
             var index = siblings.indexOf(el);
+
+            // remove key title and create an empty hidden input for key if we are deleting the last value
             if (siblings[index - 1].get('tag') == "dt"
                 && (!siblings[index + 1] || siblings[index + 1].get('tag') == "dt")) {
                 siblings[index - 1].destroy();
+                var name = el.getElement('input, textarea').get('name');
+                el.grab(new Element('input[type=hidden]').set('name', name), 'after');
             }
             el.destroy();
         }
