@@ -35,7 +35,7 @@
         // Add dynamic scaling and automatic select hiding
         _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
-            var dynText = new DynamicTextarea(textarea);
+            var dynText = new GwikiDynamicTextarea(textarea);
             var siblings = dd.getElements('select');
             siblings.removeClass('hidden');
             if (siblings.length > 0) {
@@ -106,6 +106,7 @@
                         }
                     }
                 }));
+                el.grab(new Element('div.clear'), 'after');
             });
 
             this.getFields().getElements('textarea').flatten().each(this._setupTextArea);
@@ -187,7 +188,9 @@
 
         clone: function(source, values, minimalNew) {
             values = values || [];
+
             var first = source.getElement('input, select, textarea');
+
             var type = first.get('tag') == 'select' ? "select" : first.type;
 
             if (["checkbox", "radio"].contains(type)) {
@@ -200,8 +203,7 @@
                 if (source.getElement('textarea') == null || minimalNew) return;
             }
 
-            if (["radio"])
-                var cloned = source.clone();
+            var cloned  = source.clone();
             cloned.inject(source, 'before');
 
             if (cloned.getElement('a.jslink') != null) {
@@ -264,6 +266,8 @@
             }, this);
 
             cloned.getElements('label').each(this._bindLabel);
+            
+            cloned.grab(new Element('div.clear'), 'after');
         },
 
         remove: function(el) {
@@ -277,6 +281,7 @@
                 var name = el.getElement('input, textarea').get('name');
                 el.grab(new Element('input[type=hidden]').set('name', name), 'after');
             }
+            if (siblings[index+1] && siblings[index+1].get('tag') == "div") siblings[index+1].destroy();
             el.destroy();
         }
     });

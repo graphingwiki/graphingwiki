@@ -48,7 +48,7 @@ window.addEvent('domready', function() {
         });
     }
 
-    if ($$('dl:not(.collab_list) dt').length && $$('dl:not(collab_list) dd').length) {
+    if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
         loader.load('InlineEditor', function() {
             $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
         });
@@ -231,6 +231,7 @@ var initInlineMetaEdit = function (base) {
             suggestionKey: key,
             inline: true,
             width: 40,
+            field: GwikiDynamicTextarea,
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -327,11 +328,14 @@ var InlineEditor = new Class({
         inline: false,
         suggestionKey: null,
         autoFormat: true,
+        field: null,
         width: 20
     },
 
     initialize: function(element, options) {
         this.setOptions(options);
+
+        if (!this.options.field) this.options.field = DynamicTextarea;
 
         this.element = document.id(element);
         this.build();
@@ -350,7 +354,7 @@ var InlineEditor = new Class({
 
         if (this.options.inline) this.element.addClass('inline');
 
-        new DynamicTextarea(this.input).addEvent('resize', function() {
+        new this.options.field(this.input).addEvent('resize', function() {
             this.input.fireEvent('resize');
         }.bind(this));
 
@@ -423,6 +427,32 @@ var InlineEditor = new Class({
     }
 });
 
+//Adds horizontal growing to dynamic text areas
+var GwikiDynamicTextarea = function(textarea, options) {
+    if (!window.GwikiDynamicTextarea_) {
+        window.GwikiDynamicTextarea_ = new Class({
+            Extends: DynamicTextarea,
+            options: {
+                horizontalGrow: true,
+                maxWidth: 650,
+                onResize: function() {
+                    var x = this.textarea.getSize().x - 2 * this.textarea.getStyle('paddingLeft').toInt() - 2 * this.textarea.getStyle('borderWidth').toInt();
+                    if (this.textarea.getStyle('width').toInt() != this.options.maxWidth && this.options.minRows * this.options.lineHeight < this.textarea.getScrollSize().y) {
+                        if (!this.origWidth) this.origWidth = x;
+                        this.textarea.setStyle('width', this.options.maxWidth);
+                        this.checkSize(true);
+                    }
+                },
+                onBlur: function() {
+                    if (this.origWidth)  this.textarea.setStyle('width', this.origWidth);
+                    this.checkSize(true);
+                }
+            }
+        });
+    }
+
+    return new GwikiDynamicTextarea_(textarea, options);
+};
 
 //Fixing Date to output week numbers in correct (finnish) way
 Date.implement({

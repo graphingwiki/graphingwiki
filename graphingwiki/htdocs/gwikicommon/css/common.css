@@ -161,12 +161,18 @@ dt {
 
 .metaformedit div {
     display: inline;
+    float: left;
 }
 
 .metaformedit textarea {
-    margin-left: 5px;
+    margin-right: 5px;
     display: inline !important;
     padding: 2px;
+}
+
+
+textarea {
+    -webkit-transition: width .2s;
 }
 
 .hidden {
