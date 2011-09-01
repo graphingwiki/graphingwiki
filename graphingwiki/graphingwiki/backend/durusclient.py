@@ -46,6 +46,10 @@ class Metas(PersistentDict):
         return val[0]
 
 class GraphData:
+    # durus has working transactions
+    is_acid = True
+
+    # enable users to access this using dict protocol (deprecated)?
     use_dict_api = False
 
     def __init__(self, request=None, address=None):

@@ -234,6 +234,7 @@ def underlay_to_pages(req, p):
 # patched function
 
 def graphdata_getter(self):
+#    from graphingwiki.backend.couchdbclient import GraphData
 #    from graphingwiki.backend.durusclient import GraphData
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:

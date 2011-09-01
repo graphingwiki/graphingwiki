@@ -13,6 +13,8 @@ from time import time
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
 
 class GraphData(GraphDataBase):
+    is_acid = False
+
     def __init__(self, request):
         log.debug("shelve graphdb init")
         GraphDataBase.__init__(self, request)

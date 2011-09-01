@@ -12,6 +12,8 @@ from graphingwiki.graph import Graph
 from graphingwiki import actionname
 
 class GraphDataBase(UserDict.DictMixin):
+    is_acid=False
+
     def __init__(self, request):
         self.request = request
 
@@ -84,7 +86,6 @@ class GraphDataBase(UserDict.DictMixin):
         pass
 
     def reverse_meta(self):
-
         self.keys_on_pages = dict()
         self.vals_on_pages = dict()
         self.vals_on_keys = dict()
