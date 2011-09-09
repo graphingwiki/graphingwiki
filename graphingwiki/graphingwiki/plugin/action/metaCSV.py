@@ -32,7 +32,7 @@ def execute(pagename, request):
     table = getmeta_to_table(table)
     if 0:
         print '--', table, '--'
-        print 'args', request.args
+        print 'args', args
         print 'pagename', pagename
 
     writer = csv.writer(request, delimiter=';')
