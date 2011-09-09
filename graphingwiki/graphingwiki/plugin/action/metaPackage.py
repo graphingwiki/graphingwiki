@@ -20,8 +20,10 @@ def execute(pagename, request):
     request.headers['Content-Disposition'] = \
         'attachment; filename="%s"' % pagename_header
 
+    args = request.values.to_dict(flat=False)
+
     try:
-        args = request.args['args'][0]
+        args = args['args'][0]
     except (KeyError, IndexError):
         args = u''
 

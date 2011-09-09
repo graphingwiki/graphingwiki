@@ -325,9 +325,9 @@ def execute(pagename, request):
         if backto:
             page = Page(request, backto)
             request.http_redirect(page.url(request))
+            request.page = page
         
-        request.page = page
-        page.send_page()
+        request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
         if request.environ['REQUEST_METHOD'] != 'POST':
             request.page.send_page()
