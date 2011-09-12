@@ -41,63 +41,18 @@
 
     };
 
-    var MetaTable = this.MetaTable = new Class({
+    var HideableTable = new Class({
         Extends: HtmlTable,
-        options: {
-            thSelector: 'td.head_cell:not(.edit)',
-            tableArguments: {}
-        },
 
-        initialize: function(table) {
-            table = document.id(table);
-            preformatTable(table);
+        initialize: function(){
             this.parent.apply(this, arguments);
 
-            this.tableArgs = Object.merge({
-                'args': '',
-                'template': null,
-                'autorefresh': false,
-                'nametemplate': ''
-            }, this.options.tableArguments);
-
-            this.metaRequest = new Request.JSON({
-                url: '?action=getMetaJSON',
-                data: 'args=' + encodeURIComponent(this.tableArgs.args),
-                onSuccess: function(json) {
-                    this.metas = json;
-                }.bind(this)
-            });
-
             this.hiddenCells = [];
-
-            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit):empty"];
-            this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
-
-            this.head.addEvent('shiftclick:relay(span[id*=' + this.options.separator + '])', this.keyEdit.bind(this));
-
-            table.addEvent('mouseover:once', function() {
-                this.metaRequest.get()
-            }.bind(this));
-
-            if (this.tableArgs.autorefresh) {
-                this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
-            }
-
-            var parent = table.getParent('div.metatable');
-            if (parent && parent.getNext('a').get('text') == "[edit]") {
-                new Element('a.jslink[text=[new row]]')
-                    .setStyles({'font-size': 'inherit'})
-                    .addEvent('click', this.newPage.bind(this))
-                    .inject(parent, 'after');
-            }
-
-            this.enableSort();
-            this.enableHiding();
         },
 
         enableHiding: function() {
             this.disableHiding();
-            this.head.getElements('td').each(function(td) {
+            this.head.getElements('td, th').each(function(td) {
                 var style = {
                     //'float': 'right',
                     'color': 'green',
@@ -139,6 +94,95 @@
             this.head.removeEvents('click:relay(a.hidelink)');
             this.head.removeEvents('click:relay(a.showlink)');
             return this;
+        },
+
+
+        hide: function(i) {
+            this.hiddenCells.include(i);
+            i++;
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', 'none');
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', '');
+            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
+                td.store('hiddenHtml', td.get('html'));
+                td.set('html', '');
+            });
+            return false;
+        },
+
+        show: function(i) {
+            this.hiddenCells.erase(i);
+            i++;
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', '');
+            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', 'none');
+            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
+                td.set('html', td.retrieve('hiddenHtml'));
+            });
+            return false;
+        },
+
+        headClick: function(event) {
+            //clear unintended selections
+            if (window.getSelection) {
+                var s = window.getSelection();
+                if (s) s.collapse(document.body, 0);
+            }
+
+            if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink'))
+                this.parent.apply(this, arguments);
+        }
+    });
+
+
+    var MetaTable = this.MetaTable = new Class({
+        Extends: HideableTable,
+        options: {
+            thSelector: 'td.head_cell:not(.edit)',
+            tableArguments: {}
+        },
+
+        initialize: function(table) {
+            table = document.id(table);
+            preformatTable(table);
+            this.parent.apply(this, arguments);
+
+            this.tableArgs = Object.merge({
+                'args': '',
+                'template': null,
+                'autorefresh': false,
+                'nametemplate': ''
+            }, this.options.tableArguments);
+
+            this.metaRequest = new Request.JSON({
+                url: '?action=getMetaJSON',
+                data: 'args=' + encodeURIComponent(this.tableArgs.args),
+                onSuccess: function(json) {
+                    this.metas = json;
+                }.bind(this)
+            });
+
+            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit):empty"];
+            this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
+
+            this.head.addEvent('shiftclick:relay(span[id*=' + this.options.separator + '])', this.keyEdit.bind(this));
+
+            table.addEvent('mouseover:once', function() {
+                this.metaRequest.get()
+            }.bind(this));
+
+            if (this.tableArgs.autorefresh) {
+                this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
+            }
+
+            var parent = table.getParent('div.metatable');
+            if (parent && parent.getNext('a') && parent.getNext('a').get('text') == "[edit]") {
+                new Element('a.jslink[text=[new row]]')
+                    .setStyles({'font-size': 'inherit'})
+                    .addEvent('click', this.newPage.bind(this))
+                    .inject(parent, 'after');
+            }
+
+            this.enableSort();
+            this.enableHiding();
         },
 
         setTable: function(tab) {
@@ -302,7 +346,8 @@
             }
             var editor = new Editor({
                 content: this.template,
-                name: this.tableArgs.nametemplate
+                name: this.tableArgs.nametemplate,
+                template: this.tableArgs.template
             });
 
             editor.addEvent('success', function() {
@@ -349,40 +394,6 @@
                 }.bind(this)
 
             }).send();
-        },
-
-        hide: function(i) {
-            this.hiddenCells.include(i);
-            i++;
-            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', 'none');
-            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', '');
-            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
-                td.store('hiddenHtml', td.get('html'));
-                td.set('html', '');
-            });
-            return false;
-        },
-
-        show: function(i) {
-            this.hiddenCells.erase(i);
-            i++;
-            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') div').setStyle('display', '');
-            this.head.getElements(this.options.thSelector + ':nth-child(' + i + ') .showlink').setStyle('display', 'none');
-            this.body.getElements('tr td:nth-child(' + i + ')').each(function(td) {
-                td.set('html', td.retrieve('hiddenHtml'));
-            });
-            return false;
-        },
-
-        headClick: function(event) {
-            //clear unintended selections
-            if (window.getSelection) {
-                var s = window.getSelection();
-                if (s) s.collapse(document.body, 0);
-            }
-
-            if (!$(event.target).hasClass('hidelink') && !$(event.target).hasClass('showlink'))
-                this.parent.apply(this, arguments);
         }
     });
 
@@ -390,7 +401,8 @@
         Implements: [Events, Options],
         options: {
             content: "",
-            name: ""
+            name: "",
+            template: ""
         },
 
         initialize: function(options) {
@@ -437,14 +449,33 @@
 
             var form = new Element('form').inject(this.editor);
 
+            var namefield = new Element('input[name=pagename][placeholder=Page Name]')
+                    .set('value', new Date().format(this.options.name))
+                    .setStyles({'width': '200px', 'margin-left': '20px'});
+
             form.adopt(
                 new Element('span[text=Pagename: ]'),
-                new Element('input[name=pagename][placeholder=Page Name]')
-                    .set('value', new Date().format(this.options.name))
-                    .setStyles({'width': '200px', 'margin-left': '20px'}),
+                namefield,
                 new Element('br'),
                 new Element('br')
             );
+
+            if (this.options.template) {
+                new Element('a',{
+                    'text': 'create in metaformedit',
+                    'target': '_blank',
+                    'href': namefield.get('value') + '?action=editmetaform&template=' +this.options.template,
+                    'styles': {
+                        'margin-left': '10px'
+                    },
+                    'events': {
+                        'click': function(){
+                            this.cancel();
+                        }.bind(this)
+                    }
+                }).inject(namefield, 'after')
+            }
+
             this.textarea = new Element('textarea', {
                 'value': this.options.content,
                 'styles': {
