@@ -23,7 +23,7 @@ window.addEvent('domready', function() {
 
     var loader = new GwikiImport(src);
 
-    /* MetaFormEdit improvements */
+    // MetaFormEdit improvements
     var fields = $$('.metaformedit');
     if (fields.length > 0) {
         loader.load('MetaFormEdit', function() {
@@ -31,29 +31,31 @@ window.addEvent('domready', function() {
         });
     }
 
-    /* Apply MooTools tooltips to elements with .mt-tooltip class */
+    // Apply MooTools tooltips to elements with .mt-tooltip class
     var tooltips = new Tips('.mt-tooltip', {'className': 'mootip'});
 
-    /* Apply MetaTable improvements */
-    var tables = $$('.metatable table');
+    // Apply MetaTable improvements
+    var tables = $$('div.metatable[data-options]');
     if (tables.length > 0) {
         loader.load('MetaTable', function() {
-            tables.each(function(tab, i) {
+            tables.each(function(div, i) {
 
-                new MetaTable(tab, {
-                    tableArguments: MetaTableArguments[i],
+                new MetaTable(div.getElement('table'), {
+                    tableArguments: JSON.decode(decodeURIComponent(div.getAttribute('data-options'))),
                     separator: GWIKISEPARATOR
                 });
             });
         });
     }
 
+    // Inline Edit
     if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
         loader.load('InlineEditor', function() {
             $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
         });
     }
 
+    // AttachTree
     if ($$('.attachtree_area')) {
         loader.load('AttachTree', function() {
             $$('.attachtree_area').each(function(el) {
@@ -467,6 +469,22 @@ Date.implement({
         return (this.getDay() + 6) % 7
     }
 });
+
+
+Object.extend({
+    sortedKeys: function(object) {
+        return Object.keys(object).sort();
+    },
+
+    sortedValues: function(object) {
+        var keys = Object.keys(object).sort();
+        return keys.map(
+            function(key) {
+                return object[key];
+            }).flatten();
+    }
+});
+
 
 /**
  * GwikiImport

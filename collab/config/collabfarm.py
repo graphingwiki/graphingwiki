@@ -149,7 +149,6 @@ class FarmConfig(DefaultConfig):
     for script in ['js/mootools-core-yc.js', \
                    'js/mootools-more-yc.js', \
                    'js/gwiki-common.js', \
-                   'js/mootree.js', \
                    'simile/timeline/timeline_ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
