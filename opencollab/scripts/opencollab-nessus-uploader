@@ -6,7 +6,7 @@
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, os, sys, string, optparse, socket, xml.dom.minidom
+import re, time, os, sys, string, optparse, socket, xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -17,6 +17,9 @@ from opencollab.util.wiki import importMetas
 SEVERITY_MAPPING = {'1': 'Note',
                     '2': 'Warning',
                     '3': 'Hole'}
+
+def parseTime(input):
+    return time.mktime(time.strptime(input, "%a %b %d %H:%M:%S %Y"))
 
 def plugin_19506(nessusrun_page, data, metas, attach):
     """
@@ -208,8 +211,10 @@ def parse_xml_v1(doc, nessusrun_page, severities):
         startText = getText(result.getElementsByTagName('startTime'))
         endText = getText(result.getElementsByTagName('stopTime'))
 
-        metas[hostIp]['Nessus Start'].add(startText)
-        metas[hostIp]['Nessus End'].add(endText)
+        metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText)) 
+        metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
+        metas[nessusrun_page]['type'].add('Nessus Run')
+        metas[hostIp]['Nessus Run'].add(nessusrun_page)
 
         nbName = result.getElementsByTagName('netbios_name')
         if nbName:
@@ -275,6 +280,8 @@ def parse_xml_v2(doc, nessusrun_page, severities):
     results = doc.getElementsByTagName('ReportHost')
     for result in results:
         hostIp = result.getAttribute('name')
+        metas[hostIp]['Nessus Run'].add(nessusrun_page)
+        metas[nessusrun_page]['type'].add('Nessus Run')
 
         info = result.getElementsByTagName('HostProperties')[0]
         for tag in info.getElementsByTagName('tag'):
@@ -283,9 +290,9 @@ def parse_xml_v2(doc, nessusrun_page, severities):
             links = False
 
             if name == 'HOST_START':
-                key = 'Nessus Start'
+                key = 'start'
             elif name == 'HOST_END':
-                key = 'Nessus End'
+                key = 'end'
             elif name == 'operating-system':
                 key = 'Nessus OS'
             elif name == 'mac-address':
@@ -306,7 +313,11 @@ def parse_xml_v2(doc, nessusrun_page, severities):
                     if links:
                         values = ["[[%s]]" % x for x in values]
  
-                    metas[hostIp][key].update(values)
+                    if key in ['start', 'end']:
+                        for v in values:
+                            metas[nessusrun_page][key].update("<<DateTime(%f)>>" % parseTime(v))
+                    else:
+                        metas[hostIp][key].update(values)
 
         reportElements = result.getElementsByTagName('ReportItem')
         for item in reportElements:
@@ -398,8 +409,9 @@ def parse_xml_old(doc, nessusrun_page, severities):
             if not startText or not endText:
                 continue
 
-            metas[hostIp]['Nessus Start'].add(startText)
-            metas[hostIp]['Nessus End'].add(endText)
+            metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText))
+            metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
+            metas[nessusrun_page]['type'].add('Nessus Run')
 
             # Go on to ports reports
             portElements = result.getElementsByTagName('port')
@@ -449,10 +461,10 @@ def parse_xml_old(doc, nessusrun_page, severities):
     metas[nessusrun_page]['OS Version'].add(
         getText(hostinfo.getElementsByTagName('osvers')))
     dateinfo = info.getElementsByTagName('date')[0]
-    metas[nessusrun_page]['Run Started'].add(
-        getText(dateinfo.getElementsByTagName('start')))
-    metas[nessusrun_page]['Run Ended'].add(
-        getText(dateinfo.getElementsByTagName('end')))
+    startText = getText(dateinfo.getElementsByTagName('start'))
+    metas[nessusrun_page]['start'].add("<<DateTime(%f)" % parseTime(startText))
+    endText = getText(dateinfo.getElementsByTagName('end'))
+    metas[nessusrun_page]['end'].add("<<DateTime(%f)" % parseTime(endText))
     
     return metas, attach
 
@@ -521,9 +533,9 @@ def main():
 
         metas, attach = select_nessus_parser(file, xml_page, severities)
 
-        metas[xml_page]['TYPE'].add('Nessus Run')
+        metas[xml_page]['type'].add('Nessus Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNessus', 'CategoryScan']
-        metas[xml_page]['gwikitemplate'] = ['NessusTemplate']
+        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
 
         if category is not None:
             for page in metas:

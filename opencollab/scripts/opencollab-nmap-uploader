@@ -16,7 +16,7 @@ NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
              "NMAP Run", "NMAP Version", "NMAP traceroute",
              "OS Accuracy", "OS Family", "OS Generation",
              "OS Type", "OS Vendor", "PTR", "Run Arguments",
-             "Run Ended", "Run Started", "TYPE", "Vendor",
+             "end", "start", "type", "Vendor", "TYPE",
              "XML Output Version", "listens to", "serves"]
 
 def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
@@ -165,10 +165,10 @@ def parse_xml(metas, file, nmaprun_page):
     nmaprun = doc.getElementsByTagName('nmaprun') 
     metas[nmaprun_page]['Run Arguments'].add(nmaprun[0].getAttribute('args'))
     metas[nmaprun_page]['NMAP Version'].add(nmaprun[0].getAttribute('version'))
-    metas[nmaprun_page]['Run Started'].add('<<DateTime(%s)>>' % nmaprun[0].getAttribute('start'))
+    metas[nmaprun_page]['start'].add('<<DateTime(%f)>>' % float(nmaprun[0].getAttribute('start')))
     metas[nmaprun_page]['XML Output Version'].add(nmaprun[0].getAttribute('xmloutputversion'))
     run_stats = doc.getElementsByTagName('finished') 
-    metas[nmaprun_page]['Run Ended'].add('<<DateTime(%s)>>' % run_stats[0].getAttribute('time'))
+    metas[nmaprun_page]['end'].add('<<DateTime(%f)>>' % float(run_stats[0].getAttribute('time')))
     hosts = doc.getElementsByTagName('hosts') 
     metas[nmaprun_page]['Hosts Up'].add(hosts[0].getAttribute('up'))
     metas[nmaprun_page]['Hosts Down'].add(hosts[0].getAttribute('down'))
@@ -229,9 +229,9 @@ def main():
             print "NOTE: Parsing", file
 
         metas = parse_xml(metas, file, xml_page)
-        metas[xml_page]['TYPE'].add('NMAP Run')
+        metas[xml_page]['type'].add('NMAP Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNmap', 'CategoryScan']
-        metas[xml_page]['gwikitemplate'] = ['NmapTemplate']
+        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
 
         if category is not None:
             for page in metas:
