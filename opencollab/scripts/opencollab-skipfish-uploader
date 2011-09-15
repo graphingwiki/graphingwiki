@@ -8,6 +8,7 @@
 import os
 import re
 import sys
+import time
 import json
 import socket
 import optparse
@@ -192,12 +193,14 @@ def main():
         pagename = md5(repr(summary)).hexdigest()
 
         print "Creating page %s for this scan." % pagename
-        metas[pagename]["Skipfish Version"] = [summary.get("sf_version", "")]
-        metas[pagename]["Scan Date"] = [summary.get("scan_date", "")]
-        metas[pagename]["Scan Seed"] = [summary.get("scan_seed", "")]
-        metas[pagename]["Scan Duration"] = [str(summary.get("scan_ms", 0))]
-        metas[pagename]["gwikicategory"] = ["CategorySkipfishScan"]
-        metas[pagename]["Report"] = ["[[attachment:%s.zip]]" % pagename]
+        start = time.mktime(time.strptime(summary.get("scan_date", ""), "%a %b %d %H:%M:%S %Y"))
+        end = start + int(summary.get("scan_ms", 0))
+        metas[pagename]["version"] = [summary.get("sf_version", "")]
+        metas[pagename]["start"] = ["<<DateTime(%f)>>" % start]
+        metas[pagename]["end"] = ["<<DateTime(%f)>>" % end]
+        metas[pagename]["gwikicategory"] = ["CategoryScan"]
+        metas[pagename]["type"] = ["Skipfish Run"]
+        metas[pagename]["report"] = ["[[attachment:%s.zip]]" % pagename]
 
         parsed = parseJS(os.path.join(dir,"child_index.js"))
         url = ""
@@ -222,7 +225,7 @@ def main():
         print "Creating notes for these issues."
         for issue in issues:
             pagename = md5(repr(issue["request"])).hexdigest()
-            metas[pagename]["Type"] = ["Skipfish Scan"]
+            metas[pagename]["type"] = ["Skipfish Run"]
             metas[pagename]["Priority"] = [SEVERITY[issue["severity"]]]
             metas[pagename]["Status"] = ["Open"]
             metas[pagename]["Description"] = ["%s: %s" % (ISSUES[issue["type"]], issue["extra"])]
