@@ -8,15 +8,18 @@
 """
 import re, time, os, sys, string, optparse, socket, xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import importMetas
 
 SEVERITY_MAPPING = {'1': 'Note',
                     '2': 'Warning',
                     '3': 'Hole'}
+NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME', 
+    'Nessus OS', 'Nessus Run', 'Nessus Note', 'Nessus Warning',
+    'Nessus Vulnerability', 'Nessus Hole', 'OS Name', 'OS Version',
+    'Packet vertical', 'PTR', 'start', 'type', 'Version']
 
 def parseTime(input):
     return time.mktime(time.strptime(input, "%a %b %d %H:%M:%S %Y"))
@@ -45,8 +48,7 @@ def plugin_19506(nessusrun_page, data, metas, attach):
 
 def get_synopsis(data):
     """
-    The newer Nessus plugins have synopsis data in their output.
-    """
+    The newer Nessus plugins have synopsis data in their output.  """
     syn_re = re.compile('Synopsis :\n\n(.+?)\n\n', re.S)
     synopsis = syn_re.findall(data)
     if not data:
@@ -543,7 +545,6 @@ def main():
             print "NOTE: Parsing", file
 
         metas, attach = select_nessus_parser(file, xml_page, severities, audit)
-
         metas[xml_page]['type'].add('Nessus Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNessus', 'CategoryScan']
         metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
@@ -556,28 +557,29 @@ def main():
             for page in metas:
                 if not 'gwikitemplate' in metas[page]:
                     metas[page]["gwikitemplate"].add(template)
-
         if verbose:
-            print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, '', verbose, replace)
-        if failed:
-            for page in failed:
-                if verbose:
-                    print "ERROR uploading:", page, repr(metas[page])
-                else:
-                    print "ERROR uploading:", page
-        if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, \
-                "and stylesheet to", xml_page
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            print "NOTE: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, progress)
+            try:
+                status = uploadFile(collab, xml_page, file, fname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+        if verbose:
+            print "NOTE: Importing metas to", url
+        cleared = Meta()
+        if replace:
+            for page, meta in metas.iteritems():
+                cleared[page] = NESSUS_KEYS
+        collab.incSetMeta(cleared, Metas(), metas)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, '', fname, progress, 
-                           attach[page][fname])
+                try: 
+                    uploadFile(collab, page, '', fname, progress, attach[page][fname])
+                except (IOError, TypeError, RuntimeError), msg:
+                    sys.exit(msg)
 
 if __name__ == "__main__":
     try:
