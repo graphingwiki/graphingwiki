@@ -218,7 +218,7 @@ def parse_xml_v1(doc, nessusrun_page, severities, audit):
         metas[nessusrun_page]['type'].add('Nessus Run')
         if audit:
             metas[nessusrun_page]['Audit'].add(audit)
-        metas[hostIp]['Nessus Run'].add(nessusrun_page)
+        metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
 
         nbName = result.getElementsByTagName('netbios_name')
         if nbName:
@@ -287,7 +287,7 @@ def parse_xml_v2(doc, nessusrun_page, severities, audit):
         if audit:
             metas[hostIp]['Audit'].add(audit)
             metas[nessusrun_page]['Audit'].add(audit)
-        metas[hostIp]['Nessus Run'].add(nessusrun_page)
+        metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
         metas[nessusrun_page]['type'].add('Nessus Run')
 
         info = result.getElementsByTagName('HostProperties')[0]
@@ -419,6 +419,7 @@ def parse_xml_old(doc, nessusrun_page, severities, audit):
             metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText))
             metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
             metas[nessusrun_page]['type'].add('Nessus Run')
+            metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
             if audit:
                 metas[hostIp]['Audit'].add(audit)
                 metas[nessusrun_page]['Audit'].add(audit)
