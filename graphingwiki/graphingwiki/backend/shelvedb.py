@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+
+"""
+Shelve backend for gwiki
+
+This is the original gwiki backend. It's slow, it occasionally
+corrupts itself and it's pessimal at concurrency (uses a lock file).
+Needless to say, it doesn't do ACID.
+
+"""
 import itertools
 import shelve
 import os

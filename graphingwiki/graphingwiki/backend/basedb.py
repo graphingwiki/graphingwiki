@@ -12,7 +12,10 @@ from graphingwiki.graph import Graph
 from graphingwiki import actionname
 
 class GraphDataBase(UserDict.DictMixin):
-    is_acid=False
+    # Does this backend promise that operations provided by
+    # this API are ACID and commit/abort work?
+
+    is_acid = False
 
     def __init__(self, request):
         self.request = request
@@ -101,6 +104,3 @@ class GraphDataBase(UserDict.DictMixin):
                 for val in value['meta'][key]:
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
-
-
-

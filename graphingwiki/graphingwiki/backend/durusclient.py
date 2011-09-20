@@ -36,6 +36,7 @@ class Metas(PersistentDict):
     def asdict(self):
         return dict([(k, list(v)) for (k, v) in self.items()])
 
+    # xxx remove
     def set_single(self, typ, val):
         self[typ] = PersistentList([val])
         

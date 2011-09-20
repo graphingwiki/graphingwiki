@@ -6,7 +6,7 @@ import sys, os
 from optparse import OptionParser
 from graphingwiki.editing import savetext
 
-from MoinMoin.request.request_cli import Request as RequestCLI
+from graphingwiki import RequestCLI
 from MoinMoin.Page import Page
 
 if __name__ == '__main__':
