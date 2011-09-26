@@ -79,7 +79,6 @@ import collabbackend
 myinfra = collabbackend.CollabBackend()
 mycollab = collabbackend.Collab(myinfra, collabbackend.pathbasename(__file__))
 
-config = mycollab.getwsgiconfig()
 application = collabbackend.wsgiapplication
 EOF
 
