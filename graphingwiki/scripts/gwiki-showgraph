@@ -41,11 +41,13 @@ except:
 # Moin dirs
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
-from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 
 pagename = sys.argv[1]
 
+# Invoking RequestCLI tries to parse args again, so removing args
+sys.argv = [sys.argv[0]]
+from graphingwiki import RequestCLI
 # Make a new request for the page, get raw text
 req = RequestCLI(pagename=pagename)
 
