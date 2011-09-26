@@ -23,7 +23,7 @@ window.addEvent('domready', function() {
 
     var loader = new GwikiImport(src);
 
-    /* MetaFormEdit improvements */
+    // MetaFormEdit improvements
     var fields = $$('.metaformedit');
     if (fields.length > 0) {
         loader.load('MetaFormEdit', function() {
@@ -31,29 +31,31 @@ window.addEvent('domready', function() {
         });
     }
 
-    /* Apply MooTools tooltips to elements with .mt-tooltip class */
+    // Apply MooTools tooltips to elements with .mt-tooltip class
     var tooltips = new Tips('.mt-tooltip', {'className': 'mootip'});
 
-    /* Apply MetaTable improvements */
-    var tables = $$('.metatable table');
+    // Apply MetaTable improvements
+    var tables = $$('div.metatable[data-options]');
     if (tables.length > 0) {
         loader.load('MetaTable', function() {
-            tables.each(function(tab, i) {
+            tables.each(function(div, i) {
 
-                new MetaTable(tab, {
-                    tableArguments: MetaTableArguments[i],
+                new MetaTable(div.getElement('table'), {
+                    tableArguments: JSON.decode(decodeURIComponent(div.getAttribute('data-options'))),
                     separator: GWIKISEPARATOR
                 });
             });
         });
     }
 
-    if ($$('dl dt').length && $$('dl dd').length) {
+    // Inline Edit
+    if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
         loader.load('InlineEditor', function() {
             $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
         });
     }
 
+    // AttachTree
     if ($$('.attachtree_area')) {
         loader.load('AttachTree', function() {
             $$('.attachtree_area').each(function(el) {
@@ -132,7 +134,7 @@ var unescapeId = function(id) {
 var initInlineMetaEdit = function (base) {
 
     //do not attach inline edit if MetaFormEdit is running
-    if (!base.getElement('dl') || base.getElement('dl').getParent('form')) return;
+    if (!base.getElement('dl:not(.collab_list)') || base.getElement('dl').getParent('form')) return;
 
     var metas, editor, page = "";
 
@@ -231,6 +233,7 @@ var initInlineMetaEdit = function (base) {
             suggestionKey: key,
             inline: true,
             width: 40,
+            field: GwikiDynamicTextarea,
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -327,11 +330,14 @@ var InlineEditor = new Class({
         inline: false,
         suggestionKey: null,
         autoFormat: true,
+        field: null,
         width: 20
     },
 
     initialize: function(element, options) {
         this.setOptions(options);
+
+        if (!this.options.field) this.options.field = DynamicTextarea;
 
         this.element = document.id(element);
         this.build();
@@ -350,7 +356,7 @@ var InlineEditor = new Class({
 
         if (this.options.inline) this.element.addClass('inline');
 
-        new DynamicTextarea(this.input).addEvent('resize', function() {
+        new this.options.field(this.input).addEvent('resize', function() {
             this.input.fireEvent('resize');
         }.bind(this));
 
@@ -423,6 +429,32 @@ var InlineEditor = new Class({
     }
 });
 
+//Adds horizontal growing to dynamic text areas
+var GwikiDynamicTextarea = function(textarea, options) {
+    if (!window.GwikiDynamicTextarea_) {
+        window.GwikiDynamicTextarea_ = new Class({
+            Extends: DynamicTextarea,
+            options: {
+                horizontalGrow: true,
+                maxWidth: 650,
+                onResize: function() {
+                    var x = this.textarea.getSize().x - 2 * this.textarea.getStyle('paddingLeft').toInt() - 2 * this.textarea.getStyle('borderWidth').toInt();
+                    if (this.textarea.getStyle('width').toInt() != this.options.maxWidth && this.options.minRows * this.options.lineHeight < this.textarea.getScrollSize().y) {
+                        if (!this.origWidth) this.origWidth = x;
+                        this.textarea.setStyle('width', this.options.maxWidth);
+                        this.checkSize(true);
+                    }
+                },
+                onBlur: function() {
+                    if (this.origWidth)  this.textarea.setStyle('width', this.origWidth);
+                    this.checkSize(true);
+                }
+            }
+        });
+    }
+
+    return new GwikiDynamicTextarea_(textarea, options);
+};
 
 //Fixing Date to output week numbers in correct (finnish) way
 Date.implement({
@@ -437,6 +469,22 @@ Date.implement({
         return (this.getDay() + 6) % 7
     }
 });
+
+
+Object.extend({
+    sortedKeys: function(object) {
+        return Object.keys(object).sort();
+    },
+
+    sortedValues: function(object) {
+        var keys = Object.keys(object).sort();
+        return keys.map(
+            function(key) {
+                return object[key];
+            }).flatten();
+    }
+});
+
 
 /**
  * GwikiImport

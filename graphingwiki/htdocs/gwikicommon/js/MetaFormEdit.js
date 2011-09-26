@@ -17,6 +17,10 @@
 
             this.form.addEvent('submit', function() {
                 this.getElements('.hidden').destroy();
+                this.getElements('input[type=file][value=""]').filter(
+                    function(inp) {
+                        return inp.value == "";
+                    }).destroy();
             });
 
             this.SEPARATOR = window.GWIKISEPARATOR;
@@ -31,7 +35,7 @@
         // Add dynamic scaling and automatic select hiding
         _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
-            var dynText = new DynamicTextarea(textarea);
+            var dynText = new GwikiDynamicTextarea(textarea);
             var siblings = dd.getElements('select');
             siblings.removeClass('hidden');
             if (siblings.length > 0) {
@@ -57,7 +61,7 @@
             var self = this;
 
             //remove annoying title text on help icon
-            this.form.getElements('dt img').each(function(img){
+            this.form.getElements('dt img').each(function(img) {
                 img.set('title', '');
             });
 
@@ -102,6 +106,7 @@
                         }
                     }
                 }));
+                el.grab(new Element('div.clear'), 'after');
             });
 
             this.getFields().getElements('textarea').flatten().each(this._setupTextArea);
@@ -183,7 +188,9 @@
 
         clone: function(source, values, minimalNew) {
             values = values || [];
+
             var first = source.getElement('input, select, textarea');
+
             var type = first.get('tag') == 'select' ? "select" : first.type;
 
             if (["checkbox", "radio"].contains(type)) {
@@ -196,8 +203,7 @@
                 if (source.getElement('textarea') == null || minimalNew) return;
             }
 
-            if (["radio"])
-            var cloned = source.clone();
+            var cloned  = source.clone();
             cloned.inject(source, 'before');
 
             if (cloned.getElement('a.jslink') != null) {
@@ -205,7 +211,7 @@
             }
 
             cloned.getElements('input[type=checkbox], input[type=radio], label').destroy();
-            
+
             cloned.getElements('select, input, textarea').each(function(input) {
                 input.value = "";
                 input.checked = false;
@@ -260,15 +266,22 @@
             }, this);
 
             cloned.getElements('label').each(this._bindLabel);
+            
+            cloned.grab(new Element('div.clear'), 'after');
         },
 
         remove: function(el) {
             var siblings = el.getParent().getChildren();
             var index = siblings.indexOf(el);
+
+            // remove key title and create an empty hidden input for key if we are deleting the last value
             if (siblings[index - 1].get('tag') == "dt"
                 && (!siblings[index + 1] || siblings[index + 1].get('tag') == "dt")) {
                 siblings[index - 1].destroy();
+                var name = el.getElement('input, textarea').get('name');
+                el.grab(new Element('input[type=hidden]').set('name', name), 'after');
             }
+            if (siblings[index+1] && siblings[index+1].get('tag') == "div") siblings[index+1].destroy();
             el.destroy();
         }
     });
