@@ -40,7 +40,7 @@ def execute(macro, text):
     _ = macro.request.getText
 
     # Retain original values
-    orig_request_page = macro.request.page
+    macro.request.includingpage = macro.request.page
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
@@ -180,6 +180,7 @@ def execute(macro, text):
 
     # request.page might have been changed in page.new_exists, so it
     # needs to be returned to its original value
-    macro.request.page = orig_request_page
+    macro.request.page = macro.request.includingpage
+    del macro.request.includingpage
 
     return retval
