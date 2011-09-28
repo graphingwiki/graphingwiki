@@ -21,12 +21,12 @@ LEVELSROMAN = {'4': 'IV', '3': 'III', '2': 'II'}
 
 LAW = u"JulkL (621/1999) 24.1 \xa7:n %s k"
 
-def plot_tll(level='4', text='7'):
-    if not level in LEVELS:
-        level = '4'
+CAIRO_BOLD = ("sans-serif", cairo.FONT_SLANT_NORMAL,
+              cairo.FONT_WEIGHT_BOLD)
+CAIRO_NORMAL = ("sans-serif", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_NORMAL)
 
-    leveltxt = LEVELS[level]
-
+def plot_box(texts):
     # Make a context to calculate font sizes with
     # There must be a better way to do this, I just don't know it!
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
@@ -36,19 +36,21 @@ def plot_tll(level='4', text='7'):
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(15)
 
-    # Calculate surface size so that texts will fit
-    text_len = ctx.text_extents(leveltxt)[4]
+    text_len = 0
+    for leveltxt, style in texts:
+        # Calculate surface size so that texts will fit
+        cur_len = ctx.text_extents(leveltxt)[4]
+        if cur_len > text_len:
+            text_len = cur_len
+
+    box_height = 26 * len(texts)
 
     # Make the actual surface
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 268, 76)
+                                 268, box_height)
 
     ctx = cairo.Context(surface)
-    bold = ("sans-serif", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_BOLD)
-    normal = ("sans-serif", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_NORMAL)
-    ctx.select_font_face(*bold)
+    ctx.select_font_face(*CAIRO_BOLD)
     ctx.set_font_size(15)
     ctx.set_line_width(0.6)
 
@@ -65,9 +67,6 @@ def plot_tll(level='4', text='7'):
     ctx.stroke()
 
     curpos = 5
-    texts = [(LEVELS[level], bold),
-             ('Suojaustaso %s' % (LEVELSROMAN[level]), bold),
-             (LAW % (text), normal)]
 
     for text, style in texts:
         curpos = curpos + 18
@@ -79,6 +78,16 @@ def plot_tll(level='4', text='7'):
     data = write_surface(surface)
     
     return data
+
+def plot_tll(level='4', text='7'):
+    if not level in LEVELS:
+        level = '4'
+
+    texts = [(LEVELS[level], CAIRO_BOLD),
+             ('Suojaustaso %s' % (LEVELSROMAN[level]), CAIRO_BOLD),
+             (LAW % (text), CAIRO_NORMAL)]
+
+    return plot_box(texts)
 
 def execute(macro, args):
     request = macro.request
