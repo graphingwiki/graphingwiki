@@ -221,7 +221,7 @@ def do_macro(request, args, **kw):
         out += formatter.linebreak() + u'<div class="metatable">' + \
             formatter.table(1)
         if kw.get('silent'):
-            out += t_cell(request, pagename, ["%s" % _("No matches")])
+            out += t_cell(request, pagename, ["%s" % _("Ei tapauksia")])
         else:
             out += t_cell(request, pagename, ["%s '%s'" % (_("No matches for"), args)])
         out += formatter.table(0) + u'</div>'

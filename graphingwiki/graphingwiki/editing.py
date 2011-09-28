@@ -1506,8 +1506,12 @@ def metatable_parseargs(request, args,
                 if direction == ">>":
                     reverse = True
 
-                values1 = sorted(orderpages[page1][key], reverse=reverse)
-                values2 = sorted(orderpages[page2][key], reverse=reverse)
+                if key == "gwikipagename":
+                    values1 = [page1]
+                    values2 = [page2]
+                else:
+                    values1 = sorted(orderpages[page1][key], reverse=reverse)
+                    values2 = sorted(orderpages[page2][key], reverse=reverse)
             
                 result = cmp(values1, values2)
                 if result == 0:

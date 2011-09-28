@@ -260,10 +260,10 @@ def execute(pagename, request):
         msg = msg.replace('<dd>', wr('<dd class="metaformedit" data-cloneable="%s" data-default="%s">',  cloneable, default))
 
         if val == '@INC@':
-            vals = [x for x in vals_on_keys[key] if x.isdigit()]
+            vals = [int(x) for x in vals_on_keys[key] if x.isdigit()]
             if not vals:
-                vals = ['0']
-            cur = int(max(vals)) + 1
+                vals = [0]
+            cur = max(vals) + 1
             val = str(cur)
             values.append((val, val))
 
