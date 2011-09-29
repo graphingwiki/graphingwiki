@@ -49,21 +49,18 @@ def parse_editform(request, form):
     pages = dict()
     files = dict()
 
+    for key in request.files:
+        f = request.files[key]
+        if f.filename == None:
+            continue
+
+        fileobj = f.stream
+
+        page, key = key.split(SEPARATOR, 1)
+        files.setdefault(page, dict())[key] = (f.filename, fileobj)
+
     # Key changes
     for oldKey, newKeys in form.iteritems():
-        if oldKey.endswith("__filename__"):
-            oldKey = oldKey[:-12]
-            values = form.get(oldKey, None)
-            if not values or len(values) < 3:
-                continue
-
-            fileobj = values[-1]
-            if type(fileobj) != file:
-                continue
-
-            page, key = oldKey.split(SEPARATOR, 1)
-            files.setdefault(page, dict())[key] = (newKeys, fileobj)
-            continue
 
         if not newKeys or not oldKey.startswith(':: '):
             continue
