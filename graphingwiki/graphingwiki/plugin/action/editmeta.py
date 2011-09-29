@@ -15,6 +15,7 @@
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 
+from graphingwiki import values_to_form
 from graphingwiki.editing import dl_proto_re
 
 import MetaEdit
@@ -22,7 +23,7 @@ import MetaEdit
 from savegraphdata import parse_text
 
 def execute(pagename, request):
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     template = form.get('template', [''])[0]
 

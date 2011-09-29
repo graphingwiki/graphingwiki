@@ -14,6 +14,8 @@ try:
 except ImportError:
     import json
 
+from graphingwiki import values_to_form
+
 def sendfault(request, code, msg):
     request.write(json.dumps(dict(status="error", errcode=code, errmsg=msg)))
 
@@ -49,7 +51,7 @@ def execute(pagename, request):
         sendfault(request, 2, _("No page name entered"))
         return
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     indata = form.get('args', [None])[0]
     if not indata:

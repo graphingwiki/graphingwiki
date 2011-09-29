@@ -1,5 +1,7 @@
 from MoinMoin.PageEditor import PageEditor
 
+from graphingwiki import values_to_form
+
 try:
     import simplejson as json
 except ImportError:
@@ -13,7 +15,7 @@ def execute(pagename, request):
     if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     content = form.get('content', [None])[0]
     if not content:

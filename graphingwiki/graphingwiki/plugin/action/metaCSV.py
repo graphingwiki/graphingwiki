@@ -6,8 +6,10 @@ import urllib
 import csv
 
 from MoinMoin import wikiutil
+
 from graphingwiki.editing import getmeta_to_table
 from graphingwiki.util import encode_page
+from graphingwiki import values_to_form
 
 def execute(pagename, request):
     # Strip non-ascii chars in header
@@ -21,7 +23,7 @@ def execute(pagename, request):
     class x: pass
     x.request = request
 
-    args = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     try:
         args = args['args'][0]

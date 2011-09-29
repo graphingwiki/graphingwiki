@@ -7,6 +7,7 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
+from graphingwiki import values_to_form
 from MoinMoin.action import AttachFile
 from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
     MultiDict
@@ -15,7 +16,7 @@ def _do_diff(pagename, request):
     # return attachment list
     _ = request.getText
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     att1 = form.get('att1', [''])[0]
     att2 = form.get('att2', [''])[0]

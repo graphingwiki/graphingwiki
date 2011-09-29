@@ -16,7 +16,7 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki import actionname, SEPARATOR
+from graphingwiki import actionname, SEPARATOR, values_to_form
 from graphingwiki.util import encode, format_wikitext, form_unescape
 from graphingwiki.util import form_writer as wr
 
@@ -49,7 +49,7 @@ class FormPage(Page):
 def execute(pagename, request):
     _ = request.getText
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     if not request.user.may.write(pagename):
         request.reset()
@@ -258,14 +258,6 @@ def execute(pagename, request):
                     '<dt class="mt-tooltip" title="%s" rel="%s">', key, desc))
 
         msg = msg.replace('<dd>', wr('<dd class="metaformedit" data-cloneable="%s" data-default="%s">',  cloneable, default))
-
-        if val == '@INC@':
-            vals = [int(x) for x in vals_on_keys[key] if x.isdigit()]
-            if not vals:
-                vals = [0]
-            cur = max(vals) + 1
-            val = str(cur)
-            values.append((val, val))
 
         msg += formtypes[formtype](request, pagekey, val, values)
 

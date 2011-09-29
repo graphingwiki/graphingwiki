@@ -43,7 +43,8 @@ from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki import gv_found, igraph_found, actionname, url_escape
+from graphingwiki import gv_found, igraph_found, actionname, \
+    url_escape, values_to_form
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
@@ -462,7 +463,7 @@ class GraphShower(object):
 
         # This is the URL addition to the nodes that have graph data
         if not self.urladd:
-            self.urladd = url_parameters(request.values.to_dict(flat=False))
+            self.urladd = url_parameters(values_to_form(request.values))
 
         # Disable output if testing graph
         if request.values.has_key('test'):

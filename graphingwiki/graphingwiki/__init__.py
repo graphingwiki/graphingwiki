@@ -5,6 +5,7 @@ import MoinMoin.wikisync
 import MoinMoin.wikiutil as wikiutil
 import MoinMoin.web.contexts
 
+from MoinMoin import config
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
@@ -51,6 +52,14 @@ def id_escape(text):
 def id_unescape(text):
     chr_re = re.compile('_([0-9a-f]{2})_')
     return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
+
+def values_to_form(values):
+    # Form keys are not unicode for some reason
+    oldform = values.to_dict(flat=False)
+    newform = dict()
+    for key in oldform:
+        newform[unicode(key, config.charset)] = oldform[key]
+    return newform
 
 # Finding dependencies centrally
 

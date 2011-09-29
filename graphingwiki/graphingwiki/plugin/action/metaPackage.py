@@ -4,13 +4,15 @@ action_name = 'metaPackage'
 import zipfile
 from datetime import datetime
 from cStringIO import StringIO
-from graphingwiki.editing import metatable_parseargs, get_metas
 
 from MoinMoin import wikiutil, user
 from MoinMoin.Page import Page
 from MoinMoin.packages import MOIN_PACKAGE_FILE, packLine
 from MoinMoin.action.AttachFile import _get_files
 from MoinMoin.action import AttachFile
+
+from graphingwiki import values_to_form
+from graphingwiki.editing import metatable_parseargs, get_metas
 
 def execute(pagename, request):
     pagename_header = '%s-%s.zip' % (pagename, datetime.now().isoformat()[:10])
@@ -20,7 +22,7 @@ def execute(pagename, request):
     request.headers['Content-Disposition'] = \
         'attachment; filename="%s"' % pagename_header
 
-    args = request.values.to_dict(flat=False)
+    args = values_to_form(request.values)
 
     try:
         args = args['args'][0]

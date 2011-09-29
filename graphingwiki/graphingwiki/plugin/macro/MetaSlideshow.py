@@ -2,6 +2,8 @@
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 
+from graphingwiki import values_to_form
+
 Dependencies = ['metadata']
 generates_headings = False
 
@@ -69,7 +71,7 @@ def macro_MetaSlideshow(macro, slidekey=u'next'):
 
     parameters = dict()
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     if form.get('action', [None])[0]:
         parameters['action'] = wikiutil.escape(form['action'][0])

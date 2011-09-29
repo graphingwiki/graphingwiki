@@ -6,6 +6,7 @@ from MoinMoin import wikiutil, config
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
 
+from graphingwiki import values_to_form
 from graphingwiki.invite import *
 
 NEW_TEMPLATE_VARIABLE = "invite_new_template"
@@ -48,7 +49,7 @@ class Invite(ActionBase):
         return user_may_invite(self.request.user, self.pagename)
 
     def do_action(self):
-        form = request.values.to_dict(flat=False)
+        form = values_to_form(request.values)
         
         email = form.get('email', [u''])[0]
         email = wikiutil.clean_input(email).strip()

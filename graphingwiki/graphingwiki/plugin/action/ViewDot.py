@@ -38,7 +38,7 @@ from MoinMoin.action import AttachFile
 from MoinMoin.error import InternalError
 from MoinMoin.action import cache
 
-from graphingwiki import gv_found, actionname
+from graphingwiki import gv_found, actionname, values_to_form
 from graphingwiki.graphrepr import Graphviz
 from graphingwiki.util import enter_page, exit_page, url_parameters, \
     encode_page, cache_exists, cache_key
@@ -71,7 +71,7 @@ class ViewDot(object):
     def formargs(self):
         request = self.request
 
-        self.values = request.values.to_dict(flat=False)
+        form = values_to_form(request.values)
 
         # format
         if self.values.has_key('format'):

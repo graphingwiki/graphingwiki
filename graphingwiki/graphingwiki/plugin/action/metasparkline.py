@@ -35,12 +35,11 @@
 import os
 import urllib
 
-from graphingwiki import cairo, cairo_found
-
 from tempfile import mkstemp
 
 from MoinMoin.Page import Page
 
+from graphingwiki import cairo, cairo_found, values_to_form
 from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
@@ -261,7 +260,7 @@ def execute(pagename, request):
     # Handle GET arguments
     params = {'page': '', 'key': '', 'points': 0, 'style': ''}
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     for attr in ['page', 'key', 'points', 'style']:
         if form.has_key(attr):

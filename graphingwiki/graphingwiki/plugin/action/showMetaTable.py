@@ -1,9 +1,11 @@
 import MoinMoin.wikiutil as wikiutil
 
+from graphingwiki import values_to_form
+
 def execute(pagename, request):
     silent = False
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     if "gwikisilent" in form:
         silent = True

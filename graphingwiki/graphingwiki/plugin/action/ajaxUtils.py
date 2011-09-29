@@ -26,6 +26,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+from graphingwiki import values_to_form
 from graphingwiki.util import format_wikitext
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
@@ -37,7 +38,7 @@ except ImportError:
     import json
 
 def execute(pagename, request):
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     util = form.get('util', [None])[0]
 
