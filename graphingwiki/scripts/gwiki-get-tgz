@@ -20,7 +20,7 @@ if [ "blah$1" = "blah-h" -o "blah$1" = "blah--help" ]; then
 fi
 
 if [ "$#" = 0 ]; then
-   branch=tip
+   branch=default
 elif [ "$#" = 1 ]; then
    branch=${1}
 else
