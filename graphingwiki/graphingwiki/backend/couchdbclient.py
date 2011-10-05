@@ -95,8 +95,13 @@ class GraphData(GraphDataBase):
         self.couch_server = couchdb.Server()
         self.init_db()
 
+        # use write cache/bulk update workaround for rehash slowness,
+        # unsafe otherwise
+        self.doing_rehash = False
+        self.modified_pages = {}
+
         viewfields = []
-        PageMeta.by_in
+
         for xname in vars(PageMeta):
             if xname.startswith('by_'):
                 x = getattr(PageMeta, xname)
@@ -104,6 +109,15 @@ class GraphData(GraphDataBase):
                     viewfields.append(x)
 
         couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
+        
+    def savepage(self, pagedoc):
+        if self.doing_rehash:
+            pagename = pagedoc["pagename"]
+            if not isinstance(pagename, unicode):
+                pagename = unicode(pagename, 'utf-8')
+            self.modified_pages[pagename] = pagedoc
+        else:
+            pagedoc.store(self.couch_db)
 
     def init_db(self):
         try:
@@ -123,12 +137,16 @@ class GraphData(GraphDataBase):
         except KeyError:
             pagedoc = PageMeta(pagename=pagename, out={}, meta={},
                                mtime=0, saved=True, acl=u'')
-            pagedoc.store(self.couch_db)
+            self.savepage(pagedoc)
+
         return pagedoc
 
     def getpagedoc(self, pagename):
         if not isinstance(pagename, unicode):
             pagename = unicode(pagename, 'utf-8')
+
+        if self.doing_rehash and pagename in self.modified_pages:
+            return self.modified_pages[pagename]
 
         docs = list(PageMeta.by_pagename(self.couch_db, key=pagename))
         
@@ -162,7 +180,8 @@ class GraphData(GraphDataBase):
         pagedoc.acl = acl
         pagedoc.mtime = mtime
         pagedoc.saved = saved
-        pagedoc.store(self.couch_db)
+
+        self.savepage(pagedoc)
 
     def close(self):
         pass
@@ -203,7 +222,7 @@ class GraphData(GraphDataBase):
         if topage not in pagelist:
             pagelist.append(topage)
 
-        frompd.store(self.couch_db)
+        self.savepage(frompd)
 
     def remove_in(self, (frompage, topage), linktype):
         pass
@@ -221,7 +240,7 @@ class GraphData(GraphDataBase):
             if not l:
                 del outlinks[tp]
         
-        frompd.store(self.couch_db)
+        self.savepage(frompd)
 
     def clear_metas(self):
         del self.couch_server[self.dbname]
@@ -229,7 +248,14 @@ class GraphData(GraphDataBase):
 
     def commit(self):
         # Ha, puny gullible humans think I do transactions
-        pass
+        # .. instead, I abuse this metod for rehash mode & bulk update
+        if self.doing_rehash:
+            for success, docid, rev_or_exc in self.couch_db.update(self.modified_pages.values()):
+                if not success:
+                    raise DbError(
+                        "at least one update failed while writing updated docs at end of rehash. first exception docid: %s exception: %s" % (docid, rev_or_exc))
+                
+            self.modified_pages = {}
 
     abort = commit
         

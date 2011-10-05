@@ -43,7 +43,7 @@ from MoinMoin import config
 from graphingwiki.editing import underlay_to_pages
 
 from graphingwiki import install_hooks, RequestCLI
-install_hooks()
+install_hooks(rehashing=True)
 
 pages = []
 retain_shelve = False

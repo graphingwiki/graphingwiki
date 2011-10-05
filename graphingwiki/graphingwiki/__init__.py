@@ -239,6 +239,7 @@ def graphdata_getter(self):
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
         self.__dict__["_graphdata"] = GraphData(self)
+    self.__dict__["_graphdata"].doing_rehash = _is_rehashing
     return self.__dict__["_graphdata"]
 
 def graphdata_close(self):
@@ -390,11 +391,11 @@ def attachfile_filelist(self, result, (args, _)):
 
 _hooks_installed = False
 
-def install_hooks():
-    global _hooks_installed
-
+def install_hooks(rehashing=False):
+    global _hooks_installed, _is_rehashing
     if _hooks_installed:
         return
+    _is_rehashing = rehashing
 
     # Monkey patch the request class to have the property "graphdata"
     # which, if used, is then closed properly when the request
