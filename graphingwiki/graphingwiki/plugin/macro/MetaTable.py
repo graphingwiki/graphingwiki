@@ -28,6 +28,7 @@
 
 """
 import re
+from urllib import quote
 
 from MoinMoin.Page import Page
 
@@ -111,7 +112,7 @@ def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
     return out
 
 def construct_table(request, pagelist, metakeys, 
-                    legend='', checkAccess=True, styles=dict()):
+                    legend='', checkAccess=True, styles=dict(), options=dict()):
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
@@ -121,7 +122,8 @@ def construct_table(request, pagelist, metakeys,
     divfmt = { 'class': "metatable" }
 
     # Start table
-    out = formatter.linebreak() + formatter.div(1, **divfmt) + \
+    out = formatter.linebreak() + \
+        formatter.div(1, **divfmt).replace('div', 'div data-options="'+quote(json.dumps(options))+'"') + \
         formatter.table(1, attrs={'tableclass': 'metatable'})
 
     # If the first column is -, do not send page data
@@ -214,13 +216,6 @@ def do_macro(request, args, **kw):
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
-    out += u'''
-    <script type="text/javascript">
-      window.MetaTableArguments = (window.MetaTableArguments || []);
-      window.MetaTableArguments.push(%s);
-    </script>
-    ''' % json.dumps(dict({'args': args}.items() + kw.items()))
- 
    # No data -> bail out quickly, Scotty
     if not pagelist:
         out += formatter.linebreak() + u'<div class="metatable">' + \
@@ -235,7 +230,8 @@ def do_macro(request, args, **kw):
 
     # We're sure the user has the access to the page, so don't check
     out += construct_table(request, pagelist, metakeys,
-                          checkAccess=False, styles=styles)
+                          checkAccess=False, styles=styles,
+                          options=dict({'args': args}.items() + kw.items()))
 
     def action_link(action, linktext, args):
         req_url = request.script_root + "/" + \

@@ -40,7 +40,7 @@ def execute(macro, text):
     _ = macro.request.getText
 
     # Retain original values
-    orig_request_page = macro.request.page
+    macro.request.includingpage = macro.request.page
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
@@ -60,12 +60,13 @@ def execute(macro, text):
             # Hook send_page into sending a div before and after each
             # included page
             def new_send_page(self, **keywords):
-                self.request.write(self.formatter.div(True, 
-                                                      css_class='gwikiinclude', 
-                                                      id=id_escape(self.page_name) + \
-                                                          SEPARATOR))
+                self.request.write(
+                    self.request.formatter.div(True, 
+                                               css_class='gwikiinclude', 
+                                               id=id_escape(self.page_name) + \
+                                                   SEPARATOR))
                 orig_send_page(self, **keywords)
-                self.request.write(self.formatter.div(False))
+                self.request.write(self.request.formatter.div(False))
             Page.send_page = new_send_page
 
             # Additions that only account for includes of specific pages
@@ -180,6 +181,7 @@ def execute(macro, text):
 
     # request.page might have been changed in page.new_exists, so it
     # needs to be returned to its original value
-    macro.request.page = orig_request_page
+    macro.request.page = macro.request.includingpage
+    del macro.request.includingpage
 
     return retval

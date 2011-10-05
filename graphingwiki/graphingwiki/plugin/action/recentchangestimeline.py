@@ -21,6 +21,8 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.macro.RecentChanges import format_comment, _MAX_DAYS
 
+from graphingwiki import values_to_form
+
 def format_entries(request, lines, doc, data):
     line = lines[0]
     is_new = line.action == 'SAVENEW'
@@ -124,7 +126,7 @@ def execute(pagename, request):
     this_day = today
     day_count = 0
     try:
-        form = request.values.to_dict(flat=False)
+        form = values_to_form(request.values)
         max_days = int(form.get('max_days', [_MAX_DAYS])[0])
     except ValueError:
         max_days = _MAX_DAYS

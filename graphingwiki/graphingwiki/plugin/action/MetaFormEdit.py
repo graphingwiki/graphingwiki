@@ -16,7 +16,7 @@ from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
-from graphingwiki import actionname, SEPARATOR
+from graphingwiki import actionname, SEPARATOR, values_to_form
 from graphingwiki.util import encode, format_wikitext, form_unescape
 from graphingwiki.util import form_writer as wr
 
@@ -49,7 +49,7 @@ class FormPage(Page):
 def execute(pagename, request):
     _ = request.getText
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     if not request.user.may.write(pagename):
         request.reset()
@@ -138,7 +138,8 @@ def execute(pagename, request):
     # If we're making a new page based on a template, make sure that
     # the values from the evaluated template are included in the form editor
     if newpage:
-        data = parse_text(request, request.page, request.page.get_raw_body())
+        templatePage = Page(request, template)
+        data = parse_text(request, templatePage, templatePage.get_raw_body())
         for page in data:
             pagemeta = graphdata.get_meta(page)
             for key in pagemeta:

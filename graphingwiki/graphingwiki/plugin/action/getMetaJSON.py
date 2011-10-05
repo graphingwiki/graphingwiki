@@ -28,6 +28,9 @@
 """
 
 import MoinMoin.wikiutil as wikiutil
+
+from graphingwiki import values_to_form
+
 try:
     import simplejson as json
 except ImportError:
@@ -36,7 +39,7 @@ except ImportError:
 def execute(pagename, request):
     request.content_type = "text/plain; charset=ascii"
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     args = form.get('args', [None])[0]
     key = form.get('getvalues', [None])[0]

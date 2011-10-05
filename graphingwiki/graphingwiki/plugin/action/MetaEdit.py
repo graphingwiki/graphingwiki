@@ -16,7 +16,7 @@ from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki import actionname, SEPARATOR
+from graphingwiki import actionname, SEPARATOR, values_to_form
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import form_escape, form_unescape, decode_page, \
@@ -49,21 +49,18 @@ def parse_editform(request, form):
     pages = dict()
     files = dict()
 
+    for key in request.files:
+        f = request.files[key]
+        if f.filename == None:
+            continue
+
+        fileobj = f.stream
+
+        page, key = key.split(SEPARATOR, 1)
+        files.setdefault(page, dict())[key] = (f.filename, fileobj)
+
     # Key changes
     for oldKey, newKeys in form.iteritems():
-        if oldKey.endswith("__filename__"):
-            oldKey = oldKey[:-12]
-            values = form.get(oldKey, None)
-            if not values or len(values) < 3:
-                continue
-
-            fileobj = values[-1]
-            if type(fileobj) != file:
-                continue
-
-            page, key = oldKey.split(SEPARATOR, 1)
-            files.setdefault(page, dict())[key] = (newKeys, fileobj)
-            continue
 
         if not newKeys or not oldKey.startswith(':: '):
             continue
@@ -190,7 +187,7 @@ def show_editform(wr, request, pagename, args):
     wr(formatter.table_row(1, {'rowclass': 'meta_header'}))
     wr(formatter.table_cell(1, {'class': 'meta_page'}))
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     template = form.get('template', [''])[0]
     if template:
@@ -316,7 +313,7 @@ def execute(pagename, request):
 
     # This action generates data using the user language
     request.setContentLanguage(request.lang)
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     if form.has_key('cancel'):
         request.reset()

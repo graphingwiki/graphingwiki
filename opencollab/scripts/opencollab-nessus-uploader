@@ -6,17 +6,23 @@
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, os, sys, string, optparse, socket, xml.dom.minidom
+import re, time, os, sys, string, optparse, socket, xml.dom.minidom
 from xml.dom.minidom import Node, ProcessingInstruction
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import importMetas
 
 SEVERITY_MAPPING = {'1': 'Note',
                     '2': 'Warning',
                     '3': 'Hole'}
+NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME', 
+    'Nessus OS', 'Nessus Run', 'Nessus Note', 'Nessus Warning',
+    'Nessus Vulnerability', 'Nessus Hole', 'OS Name', 'OS Version',
+    'Packet vertical', 'PTR', 'start', 'type', 'Version']
+
+def parseTime(input):
+    return time.mktime(time.strptime(input, "%a %b %d %H:%M:%S %Y"))
 
 def plugin_19506(nessusrun_page, data, metas, attach):
     """
@@ -42,8 +48,7 @@ def plugin_19506(nessusrun_page, data, metas, attach):
 
 def get_synopsis(data):
     """
-    The newer Nessus plugins have synopsis data in their output.
-    """
+    The newer Nessus plugins have synopsis data in their output.  """
     syn_re = re.compile('Synopsis :\n\n(.+?)\n\n', re.S)
     synopsis = syn_re.findall(data)
     if not data:
@@ -179,7 +184,7 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "nessus.xsl", stylesheet_data, True)
     return True
 
-def select_nessus_parser(file, nessusrun_page, severities):
+def select_nessus_parser(file, nessusrun_page, severities, audit):
     try:
         doc = xml.dom.minidom.parse(file)
     except xml.parsers.expat.ExpatError, e:
@@ -188,28 +193,32 @@ def select_nessus_parser(file, nessusrun_page, severities):
 
     # Various Nessus formats encountered
     if doc.getElementsByTagName('info'):
-        return parse_xml_old(doc, nessusrun_page, severities)
+        return parse_xml_old(doc, nessusrun_page, severities, audit)
     if doc.getElementsByTagName('NessusClientData'):
-        return parse_xml_v1(doc, nessusrun_page, severities)
+        return parse_xml_v1(doc, nessusrun_page, severities, audit)
     if doc.getElementsByTagName('NessusClientData_v2'):
-        return parse_xml_v2(doc, nessusrun_page, severities)
+        return parse_xml_v2(doc, nessusrun_page, severities, audit)
 
     print >>sys.stderr, "Nessus format not supported!"
     sys.exit(1)
 
-def parse_xml_v1(doc, nessusrun_page, severities):
+def parse_xml_v1(doc, nessusrun_page, severities, audit):
     metas = Metas()
     attach = dict()
 
     results = doc.getElementsByTagName('ReportHost')
     for result in results:
         hostIp = getText(result.getElementsByTagName('HostName'))
-
+        if audit:
+            metas[hostIp]['Audit'].add(audit)
         startText = getText(result.getElementsByTagName('startTime'))
         endText = getText(result.getElementsByTagName('stopTime'))
-
-        metas[hostIp]['Nessus Start'].add(startText)
-        metas[hostIp]['Nessus End'].add(endText)
+        metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText)) 
+        metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
+        metas[nessusrun_page]['type'].add('Nessus Run')
+        if audit:
+            metas[nessusrun_page]['Audit'].add(audit)
+        metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
 
         nbName = result.getElementsByTagName('netbios_name')
         if nbName:
@@ -268,13 +277,18 @@ def parse_xml_v1(doc, nessusrun_page, severities):
     return metas, attach
 
 
-def parse_xml_v2(doc, nessusrun_page, severities):
+def parse_xml_v2(doc, nessusrun_page, severities, audit):
     metas = Metas()
     attach = dict()
     
     results = doc.getElementsByTagName('ReportHost')
     for result in results:
         hostIp = result.getAttribute('name')
+        if audit:
+            metas[hostIp]['Audit'].add(audit)
+            metas[nessusrun_page]['Audit'].add(audit)
+        metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
+        metas[nessusrun_page]['type'].add('Nessus Run')
 
         info = result.getElementsByTagName('HostProperties')[0]
         for tag in info.getElementsByTagName('tag'):
@@ -283,9 +297,9 @@ def parse_xml_v2(doc, nessusrun_page, severities):
             links = False
 
             if name == 'HOST_START':
-                key = 'Nessus Start'
+                key = 'start'
             elif name == 'HOST_END':
-                key = 'Nessus End'
+                key = 'end'
             elif name == 'operating-system':
                 key = 'Nessus OS'
             elif name == 'mac-address':
@@ -306,7 +320,11 @@ def parse_xml_v2(doc, nessusrun_page, severities):
                     if links:
                         values = ["[[%s]]" % x for x in values]
  
-                    metas[hostIp][key].update(values)
+                    if key in ['start', 'end']:
+                        for v in values:
+                            metas[nessusrun_page][key].update(["<<DateTime(%f)>>" % parseTime(v)])
+                    else:
+                        metas[hostIp][key].update(values)
 
         reportElements = result.getElementsByTagName('ReportItem')
         for item in reportElements:
@@ -364,7 +382,7 @@ def parse_xml_v2(doc, nessusrun_page, severities):
 
     return metas, attach
 
-def parse_xml_old(doc, nessusrun_page, severities):
+def parse_xml_old(doc, nessusrun_page, severities, audit):
     """
     xml.dom.minidom usage from
     http://trac.ict-ok.org/browser/trunk/org/ict_ok/admin_utils/netscan/nmap/nmap.py?rev=145
@@ -398,8 +416,13 @@ def parse_xml_old(doc, nessusrun_page, severities):
             if not startText or not endText:
                 continue
 
-            metas[hostIp]['Nessus Start'].add(startText)
-            metas[hostIp]['Nessus End'].add(endText)
+            metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText))
+            metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
+            metas[nessusrun_page]['type'].add('Nessus Run')
+            metas[hostIp]['Nessus Run'].add('[[%s]]' % nessusrun_page)
+            if audit:
+                metas[hostIp]['Audit'].add(audit)
+                metas[nessusrun_page]['Audit'].add(audit)
 
             # Go on to ports reports
             portElements = result.getElementsByTagName('port')
@@ -449,10 +472,10 @@ def parse_xml_old(doc, nessusrun_page, severities):
     metas[nessusrun_page]['OS Version'].add(
         getText(hostinfo.getElementsByTagName('osvers')))
     dateinfo = info.getElementsByTagName('date')[0]
-    metas[nessusrun_page]['Run Started'].add(
-        getText(dateinfo.getElementsByTagName('start')))
-    metas[nessusrun_page]['Run Ended'].add(
-        getText(dateinfo.getElementsByTagName('end')))
+    startText = getText(dateinfo.getElementsByTagName('start'))
+    metas[nessusrun_page]['start'].add("<<DateTime(%f)" % parseTime(startText))
+    endText = getText(dateinfo.getElementsByTagName('end'))
+    metas[nessusrun_page]['end'].add("<<DateTime(%f)" % parseTime(endText))
     
     return metas, attach
 
@@ -470,6 +493,8 @@ def main():
                       help="A comma-separated list of severities to include: "+
                       ", ".join("%s=%s" % (x, SEVERITY_MAPPING[x]) 
                                 for x in SEVERITY_MAPPING))
+    parser.add_option("-A", "--audit", dest="audit", default= None,
+        metavar="AUDIT", help=("AUDIT name to tag identities with."))
 
     ops = {}
     sect = "nessus-uploader"
@@ -488,6 +513,7 @@ def main():
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
+    audit = ops[sect]["audit"]
     if template is None:
         template = "IdentityTemplate"
     category = ops[sect]["category"]
@@ -519,11 +545,10 @@ def main():
         if verbose:
             print "NOTE: Parsing", file
 
-        metas, attach = select_nessus_parser(file, xml_page, severities)
-
-        metas[xml_page]['TYPE'].add('Nessus Run')
+        metas, attach = select_nessus_parser(file, xml_page, severities, audit)
+        metas[xml_page]['type'].add('Nessus Run')
         metas[xml_page]['gwikicategory'] = ['CategoryNessus', 'CategoryScan']
-        metas[xml_page]['gwikitemplate'] = ['NessusTemplate']
+        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
 
         if category is not None:
             for page in metas:
@@ -533,28 +558,29 @@ def main():
             for page in metas:
                 if not 'gwikitemplate' in metas[page]:
                     metas[page]["gwikitemplate"].add(template)
-
         if verbose:
-            print "NOTE: Importing metas to", url
-        failed = importMetas(collab, metas, '', verbose, replace)
-        if failed:
-            for page in failed:
-                if verbose:
-                    print "ERROR uploading:", page, repr(metas[page])
-                else:
-                    print "ERROR uploading:", page
-        if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, \
-                "and stylesheet to", xml_page
+            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
         if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            print "ERROR: Failed to patch xml file, uploading orginal instead"
+            print "NOTE: Failed to patch xml file, uploading orginal instead"
             if verbose:
                 print "NOTE: Uploading", file, "to", xml_page
-            uploadFile(collab, xml_page, file, fname, progress)
+            try:
+                status = uploadFile(collab, xml_page, file, fname, progress)
+            except (IOError, TypeError, RuntimeError), msg:
+                sys.exit(msg)
+        if verbose:
+            print "NOTE: Importing metas to", url
+        cleared = Meta()
+        if replace:
+            for page, meta in metas.iteritems():
+                cleared[page] = NESSUS_KEYS
+        collab.incSetMeta(cleared, Metas(), metas)
         for page in attach:
             for fname in attach[page]:
-                uploadFile(collab, page, '', fname, progress, 
-                           attach[page][fname])
+                try: 
+                    uploadFile(collab, page, '', fname, progress, attach[page][fname])
+                except (IOError, TypeError, RuntimeError), msg:
+                    sys.exit(msg)
 
 if __name__ == "__main__":
     try:

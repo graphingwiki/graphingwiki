@@ -37,7 +37,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
-from graphingwiki import actionname
+from graphingwiki import actionname, values_to_form
 from graphingwiki.util import encode
 
 from unifier import Unifier
@@ -64,7 +64,7 @@ def execute(pagename, request):
     # direction support!
     request.write(formatter.startContent("content"))
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     infer = ''
     if form.has_key('infer'):

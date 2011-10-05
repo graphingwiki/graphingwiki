@@ -93,7 +93,10 @@ try:
     # Next, try to include dirs and import
     os.chdir(basic_args[1])
     sys.path.insert(0, os.path.join(basic_args[1], 'config'))
-    from MoinMoin.request.request_cli import Request as RequestCLI
+
+    # Invoking RequestCLI tries to parse args again, so removing args
+    sys.argv = [sys.argv[0]]
+    from graphingwiki import RequestCLI
 except:
     usage()
     raise

@@ -14,6 +14,8 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.RenamePage import RenamePage as RenamePageBasic
 from MoinMoin.parser.text_moin_wiki import Parser
 
+from graphingwiki import values_to_form
+
 include_re = re.compile('(<<Include\(([^,\n]+)(.*?)\)>>)')
 
 class RenamePage(RenamePageBasic):
@@ -147,7 +149,7 @@ class RenamePage(RenamePageBasic):
 
         success, msgs = RenamePageBasic.do_action(self)
 
-        form = request.values.to_dict(flat=False)
+        form = values_to_form(request.values)
 
         rename_links = 0
         if 'rename_links' in form:
@@ -197,7 +199,7 @@ class RenamePage(RenamePageBasic):
     def get_form_html(self, buttons_html):
         _ = self._
 
-        form = request.values.to_dict(flat=False)
+        form = values_to_form(request.values)
 
         if self.subpages:
             subpages = ' '.join(self.subpages)

@@ -145,7 +145,10 @@ class Parser(WikiParser):
     _macro_args_repl = _macro_repl
 
     def __nonempty_groups(self, groups):
-        return [(x, y) for x, y in groups.iteritems() if y]
+        # Only handle x_off and x_off, not x (groups will have both x
+        # and x_[on|off] with identical content)
+        return [(x, y) for x, y in groups.iteritems() if y and 
+                x not in ['strike', 'small', 'big', 'remark']]
 
     def _fix_attach_uri(self, target):
         split = target.split(":", 1)

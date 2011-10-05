@@ -1245,7 +1245,10 @@ def metatable_parseargs(request, args,
 
                 # Must have real comparison
                 if not len(data) == 2:
-                    continue
+                    if op == '==':
+                        data.append('')
+                    else:
+                        continue
 
                 key, comp = map(string.strip, data)
 
@@ -1433,22 +1436,24 @@ def metatable_parseargs(request, args,
                 values = metas[key]
 
                 for (comp, op) in complist:
-                    clear = True
+                    clear = False
 
                     # The non-existance of values is good for not
                     # equal, bad for the other comparisons
                     if not values:
                         if op == '!=':
+                            clear = True
+                            continue
+                        elif op == '==' and not comp:
+                            clear = True
                             continue
 
-                        clear = False
-
-                    # Must match all
+                    # Must match any
                     for value in values:
                         value, comp = ordervalue(value), ordervalue(comp)
 
-                        if not operators[op](value, comp):
-                            clear = False
+                        if operators[op](value, comp):
+                            clear = True
                             break
 
                     # If one of the comparisons for a single key were not True
@@ -1506,8 +1511,12 @@ def metatable_parseargs(request, args,
                 if direction == ">>":
                     reverse = True
 
-                values1 = sorted(orderpages[page1][key], reverse=reverse)
-                values2 = sorted(orderpages[page2][key], reverse=reverse)
+                if key == "gwikipagename":
+                    values1 = [page1]
+                    values2 = [page2]
+                else:
+                    values1 = sorted(orderpages[page1][key], reverse=reverse)
+                    values2 = sorted(orderpages[page2][key], reverse=reverse)
             
                 result = cmp(values1, values2)
                 if result == 0:

@@ -63,7 +63,7 @@ def check_time(time):
 def execute(pagename, request):
     _ = request.getText
 
-    form = request.values.to_dict(flat=False)
+    form = values_to_form(request.values)
 
     args = ', '.join(x for x in form.get('arg', list()))
 
