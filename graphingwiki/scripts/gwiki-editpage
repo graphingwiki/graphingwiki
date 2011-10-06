@@ -4,6 +4,7 @@
 import sys, os
 
 from optparse import OptionParser
+from graphingwiki import graphdata_close
 from graphingwiki.editing import savetext
 
 from MoinMoin.Page import Page
@@ -53,4 +54,4 @@ if __name__ == '__main__':
         savetext(req, pagename, mytext)
 
     # Must finish the request to ensure that metadata is saved
-    req.finish()
+    graphdata_close(req)
