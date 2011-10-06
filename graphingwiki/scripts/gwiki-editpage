@@ -24,8 +24,6 @@ if __name__ == '__main__':
         print parser.get_usage()
         sys.exit(2)
 
-    # Invoking RequestCLI tries to parse args again, so removing args
-    sys.argv = [sys.argv[0]]
     from graphingwiki import RequestCLI
 
     # Configdir to path, so wikiconfig can be imported by Request
@@ -38,7 +36,7 @@ if __name__ == '__main__':
     pagename = unicode(args[1], sys.getfilesystemencoding())
 
     # Make a new request for the page
-    req = RequestCLI(pagename)
+    req = RequestCLI(pagename, parse=False)
     req.page = Page(req, pagename)
 
     # Auth
