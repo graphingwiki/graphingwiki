@@ -58,7 +58,11 @@ def values_to_form(values):
     oldform = values.to_dict(flat=False)
     newform = dict()
     for key in oldform:
-        newform[unicode(key, config.charset)] = oldform[key]
+        if not isinstance(key, unicode):
+            newkey = unicode(key, config.charset)
+        else:
+            newkey = key
+        newform[newkey] = oldform[key]
     return newform
 
 # Finding dependencies centrally

@@ -105,7 +105,7 @@ def execute(macro, args):
 
     if not arglist:
         return ""
-    
+
     uri, args = uri_params(arglist[0])
     
     if not args:

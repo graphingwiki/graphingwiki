@@ -68,32 +68,30 @@ class ViewDot(object):
             elif key == 'width':
                 self.width = kw['width']
 
-    def formargs(self):
+    def formargs(self, form):
         request = self.request
 
-        form = values_to_form(request.values)
-
         # format
-        if self.values.has_key('format'):
-            format = self.values['format'][0]
+        if form.has_key('format'):
+            format = form['format'][0]
             if format in self.available_formats:
                 self.format = format
 
-        if self.values.has_key('view'):
-            if self.values['view'][0].strip():
+        if form.has_key('view'):
+            if form['view'][0].strip():
                 self.inline = False
 
-        if self.values.has_key('help'):
-            if self.values['help'][0].strip():
+        if form.has_key('help'):
+            if form['help'][0].strip():
                 self.help = True
 
-        if self.values.has_key('graphengine'):
-            graphengine = encode_page(self.values['graphengine'][0])
+        if form.has_key('graphengine'):
+            graphengine = encode_page(form['graphengine'][0])
             if graphengine in self.available_graphengines:
                 self.graphengine = graphengine
 
-        if self.values.has_key('attachment'):
-            self.attachment = self.values['attachment'][0]
+        if form.has_key('attachment'):
+            self.attachment = form['attachment'][0]
 
     def sendForm(self):
         request = self.request
@@ -147,10 +145,12 @@ class ViewDot(object):
         request.write(u'</form>\n')
 
     def execute(self):
-        self.formargs()
         request = self.request
         _ = request.getText
         pagename = request.page.page_name
+
+        form = values_to_form(request.values)
+        self.formargs(form)
 
         if self.help or not self.attachment:
             formatter = request.formatter
@@ -161,7 +161,7 @@ class ViewDot(object):
 
             if self.help:
                 # This is the URL addition to the nodes that have graph data
-                self.urladd = url_parameters(self.values)
+                self.urladd = url_parameters(form)
                 self.urladd = self.urladd.replace('&help=Inline', '')
                 request.write('&lt;&lt;ViewDot(' + self.urladd + ')&gt;&gt;')
 
