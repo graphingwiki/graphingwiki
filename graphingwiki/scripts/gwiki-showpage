@@ -11,6 +11,8 @@ import sys, os
 
 import getopt
 
+from MoinMoin.script.cli.show import PluginScript as ShowScript
+
 class ArgError(Exception):
     pass
 
@@ -92,17 +94,22 @@ try:
 
     # Next, try to include dirs and import
     os.chdir(basic_args[1])
-    sys.path.insert(0, os.path.join(basic_args[1], 'config'))
+    confdir = os.path.join(basic_args[1], 'config')
+    sys.path.insert(0, confdir)
 
-    # Invoking RequestCLI tries to parse args again, so removing args
-    sys.argv = [sys.argv[0]]
-    from graphingwiki import RequestCLI
 except:
     usage()
     raise
 
 # Make a new request for the page
-req = RequestCLI(pagename=basic_args[0])
+script = ShowScript([''], {})
+script.parser.set_defaults(page=basic_args[0])
+script.parser.set_defaults(config_dir=confdir)
+# Don't care about real args
+sys.argv = [sys.argv[0]]
+script.options, script.args = script.parser.parse_args()
+script.init_request()
+req = script.request
 
 # Fix redirect for searches with single hit
 def cli_redirect(match):
@@ -111,17 +118,6 @@ def cli_redirect(match):
     print p.send_page(req)
 req.http_redirect = cli_redirect
 
-# Fix for 1.3.4
-if not hasattr(req, 'form'):
-    req.form = {}
-# Fix for < 1.5 setup_args
-def setup_args():
-    return args.copy()
-req.setup_args = setup_args
-
-# For 1.5, form arguments
-req.form = args.copy()
-
 # Auth
 if basic_args[-1]:
     import posix, pwd
@@ -129,4 +125,4 @@ if basic_args[-1]:
     req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
 
 # Go, Spot, get html
-req.run()
+script.run(req)

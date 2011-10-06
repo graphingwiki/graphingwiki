@@ -13,6 +13,7 @@ from MoinMoin.wikiutil import importPlugin, PluginMissingError
 from MoinMoin.security import ACLStringIterator
 from MoinMoin.script import MoinScript
 from MoinMoin.web.request import Request
+from MoinMoin.web.contexts import ScriptContext
 
 import sys
 import os
@@ -22,13 +23,16 @@ import xmlrpclib
 
 SEPARATOR = '-gwikiseparator-'
 
-def RequestCLI(pagename=None):
-    script = MoinScript()
-    if pagename:
-        script.parser.set_defaults(page=pagename)
-    script.options, script.args = script.parser.parse_args()
-    script.init_request()
-    return script.request
+def RequestCLI(pagename='', parse=True):
+    if parse:
+        script = MoinScript()
+        if pagename:
+            script.parser.set_defaults(page=pagename)
+        script.options, script.args = script.parser.parse_args()
+        script.init_request()
+        return script.request
+    # Default values
+    return ScriptContext(None, pagename)
 
 # Get action name for forms
 def actionname(request, pagename=None):

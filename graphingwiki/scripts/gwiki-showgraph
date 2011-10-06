@@ -42,22 +42,21 @@ except:
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
+from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
+    MultiDict
 
 pagename = sys.argv[1]
 
-# Invoking RequestCLI tries to parse args again, so removing args
-sys.argv = [sys.argv[0]]
 from graphingwiki import RequestCLI
 # Make a new request for the page, get raw text
-req = RequestCLI(pagename=pagename)
+req = RequestCLI(pagename=pagename, parse=False)
 
-# Fix for 1.3.4
-if not hasattr(req, 'form'):
-    req.form = {}
+form = dict()
+form['action'] = ['ShowGraph']
+form['colorby'] = ['Status']
+form['orderby'] = ['Year']
+request.values = CombinedMultiDict([MultiDict(form)])
 
-req.form['action'] = ['ShowGraph']
-req.form['colorby'] = ['Status']
-req.form['orderby'] = ['Year']
 p = Page(req, pagename)
 pagedir = p.getPagePath()
 text = p.get_raw_body()

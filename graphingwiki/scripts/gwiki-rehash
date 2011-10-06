@@ -56,6 +56,7 @@ parser.add_option("-u", "--update_underlay", dest="underlay_only",
                   help="Only update underlay pages")
 
 (options, args) = parser.parse_args()
+help = parser.format_help()
 
 # Encoder from unicode to charset selected in config
 encoder = getencoder(config.charset)
@@ -70,7 +71,7 @@ try:
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
-    request = RequestCLI()
+    request = RequestCLI(parse=False)
     datadir = request.cfg.data_dir
 
     # Get a list of all pages
@@ -85,9 +86,6 @@ try:
 
         filter = filterStandard
 
-    pages = root.getPageList(user="", include_underlay=True, filter=filter,
-                             return_objects=True)
-
     if len(args) > 1:
         pagelist = [unicode(x, sys.getfilesystemencoding()) for x in args[1:]]
         pageobjs = list()
@@ -100,10 +98,13 @@ try:
 
         pages = pageobjs
         retain_shelve = True
+    else:
+        pages = root.getPageList(user="", include_underlay=True, filter=filter,
+                                 return_objects=True)
 
 except UserInputException, page:
     print >> sys.stderr, "page %s does not exist" % (page)
-    parser.print_help()
+    print >> sys.stderr, help
     sys.exit(2)
 
 if not retain_shelve:
