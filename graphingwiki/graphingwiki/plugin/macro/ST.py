@@ -36,18 +36,24 @@ def plot_box(texts):
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(15)
 
-    text_len = 0
+    max_text_len = 0
     for leveltxt, style in texts:
         # Calculate surface size so that texts will fit
         cur_len = ctx.text_extents(leveltxt)[4]
-        if cur_len > text_len:
-            text_len = cur_len
+        if cur_len > max_text_len:
+            max_text_len = cur_len + 16
 
     box_height = 26 * len(texts)
+    if len(texts) == 1:
+        box_height += 8
 
+    # Longest text fits lenght of 268, nicer if markings are of
+    # regular size if possible
+    if max_text_len < 268:
+        max_text_len = 268
     # Make the actual surface
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 268, box_height)
+                                 max_text_len, box_height)
 
     ctx = cairo.Context(surface)
     ctx.select_font_face(*CAIRO_BOLD)
@@ -72,7 +78,7 @@ def plot_box(texts):
         curpos = curpos + 18
         ctx.select_font_face(*style)
         text_len = ctx.text_extents(text)[4] + 4
-        ctx.move_to(134-(text_len/2), curpos)
+        ctx.move_to(max_text_len/2-(text_len/2) + 2, curpos)
         ctx.show_text(text)
     
     data = write_surface(surface)
