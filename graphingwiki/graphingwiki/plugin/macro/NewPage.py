@@ -20,7 +20,7 @@ def macro_NewPage(macro, template=u'', button_label=u'', parent_page=u'',
     # Handle includedpage
     if parent_page == '@INCLUDINGPAGE':
         if hasattr(macro.request, 'includingpage'):
-            parent_page = macro.request.includingpage.page_name
+            parent_page = macro.request.includingpage[-1].page_name
             including = True
         else:
             parent_page = macro.request.page.page_name
@@ -36,7 +36,8 @@ def macro_NewPage(macro, template=u'', button_label=u'', parent_page=u'',
         text[0] = text[0].split('action="')[0]
         text[0] += 'action="%s/%s"><div>' % \
             (macro.request.getScriptname(), 
-             wikiutil.quoteWikinameURL(macro.request.includingpage.page_name))
+             wikiutil.quoteWikinameURL(
+                    macro.request.includingpage[-1].page_name))
         macrotext = '\n'.join(text)
 
     return macrotext

@@ -40,7 +40,9 @@ def execute(macro, text):
     _ = macro.request.getText
 
     # Retain original values
-    macro.request.includingpage = macro.request.page
+    if not hasattr(macro.request, 'includingpage'):
+        macro.request.includingpage = list()
+    macro.request.includingpage.append(macro.request.page)
     orig_exists = Page.exists
     orig_link_to = Page.link_to
     orig__init__ = Page.__init__
@@ -180,7 +182,8 @@ def execute(macro, text):
 
     # request.page might have been changed in page.new_exists, so it
     # needs to be returned to its original value
-    macro.request.page = macro.request.includingpage
-    del macro.request.includingpage
+    macro.request.page = macro.request.includingpage.pop()
+    if not macro.request.includingpage:
+        del macro.request.includingpage
 
     return retval
