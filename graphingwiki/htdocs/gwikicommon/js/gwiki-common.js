@@ -11,7 +11,10 @@ if (!Cookie.read('js')) {
         duration: 100 * 365,
         domain: window.location.hostname
     });
-    window.location.reload();
+    
+    if (!Cookie.read('js')) {
+        window.location.reload();
+    }
 }
 
 window.GWIKISEPARATOR = '-gwikiseparator-';
@@ -147,7 +150,7 @@ var initInlineMetaEdit = function (base) {
                 page = Object.keys(json)[0];
                 metas = json[page];
                 base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
-                    if (dd.get('text').clean() == "") {
+                    if (dd.get('text').clean() == "" && dd.getElements('img').length == 0) {
                         var dt = dd.getPrevious('dt');
                         if (!metas[getKey(dt)]) metas[getKey(dt)] = [];
                         metas[getKey(dt)].splice(getMetaIndex(dt), 0, "");
@@ -160,7 +163,7 @@ var initInlineMetaEdit = function (base) {
 
     //add a '+' button for adding values to empty metas (foo::)
     base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
-        if (dd.get('text').clean() == "") {
+        if (dd.get('text').clean() == "" && dd.getElements('img').length == 0) {
 
             var dt = dd.getPrevious('dt');
 
