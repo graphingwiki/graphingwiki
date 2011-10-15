@@ -17,7 +17,8 @@ NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
              "OS Accuracy", "OS Family", "OS Generation",
              "OS Type", "OS Vendor", "PTR", "Run Arguments",
              "end", "start", "type", "Vendor", "TYPE",
-             "XML Output Version", "listens to", "serves"]
+             "XML Output Version", "listens to", "serves",
+             "Audit"]
 
 def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
     try:
