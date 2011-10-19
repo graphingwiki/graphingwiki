@@ -149,7 +149,7 @@ class RenamePage(RenamePageBasic):
 
         success, msgs = RenamePageBasic.do_action(self)
 
-        form = values_to_form(request.values)
+        form = values_to_form(self.request.values)
 
         rename_links = 0
         if 'rename_links' in form:
@@ -199,7 +199,7 @@ class RenamePage(RenamePageBasic):
     def get_form_html(self, buttons_html):
         _ = self._
 
-        form = values_to_form(request.values)
+        form = values_to_form(self.request.values)
 
         if self.subpages:
             subpages = ' '.join(self.subpages)
