@@ -4,6 +4,7 @@ import MoinMoin.wsgiapp
 import MoinMoin.wikisync  
 import MoinMoin.wikiutil as wikiutil
 import MoinMoin.web.contexts
+import MoinMoin.xmlrpc
 
 from MoinMoin import config
 from MoinMoin.Page import Page
@@ -440,13 +441,38 @@ def install_hooks(rehashing=False):
     PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
                                                 variable_insert)
 
-    orig_wsgiapp_init = MoinMoin.wsgiapp.init
-    def patched_init(request):
-        c = orig_wsgiapp_init(request)
-        c.finish = lambda: graphdata_close(c)
-        return c
-    
-    MoinMoin.wsgiapp.init = patched_init
+    # Patch wsgiapp.run to close graphdb to avoid db corruption with
+    # some backends
+    orig_wsgiapp_run = MoinMoin.wsgiapp.run
+    def patched_run(context):
+        if not hasattr(context, '_patched'):
+            context.finish = lambda: graphdata_close(context)
+            context._patched = True
+        return orig_wsgiapp_run(context)
+    MoinMoin.wsgiapp.run = patched_run
+
+    # XMLRPC actions need to be patched separately, as wsgiapp.run
+    # makes a new context for them
+    orig_xmlrpc2 = MoinMoin.xmlrpc.xmlrpc2
+    def patched_xmlrpc2(context):
+        try:
+            return orig_xmlrpc2(context)
+        except:
+            raise
+        finally:
+            graphdata_close(context)
+    MoinMoin.xmlrpc.xmlrpc2 = patched_xmlrpc2
+
+    orig_xmlrpc = MoinMoin.xmlrpc.xmlrpc
+    def patched_xmlrpc(context):
+        try:
+            return orig_xmlrpc(context)
+        except:
+            raise
+        finally:
+            graphdata_close(context)
+    MoinMoin.xmlrpc.xmlrpc = patched_xmlrpc
+
     # Fix user variables in template acl strings
     ACLStringIterator.next = monkey_patch(ACLStringIterator.next,
                                           acl_user_expand)
