@@ -19,7 +19,7 @@ SEVERITY_MAPPING = {'1': 'Note',
 NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME', 
     'Nessus OS', 'Nessus Run', 'Nessus Note', 'Nessus Warning',
     'Nessus Vulnerability', 'Nessus Hole', 'OS Name', 'OS Version',
-    'Packet vertical', 'PTR', 'start', 'type', 'Version']
+    'Packet vertical', 'PTR', 'start', 'type', 'Version', 'Audit']
 
 def parseTime(input):
     return time.mktime(time.strptime(input, "%a %b %d %H:%M:%S %Y"))

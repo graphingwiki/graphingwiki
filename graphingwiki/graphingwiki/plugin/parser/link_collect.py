@@ -147,7 +147,7 @@ class Parser(WikiParser):
     def __nonempty_groups(self, groups):
         # Only handle x_off and x_off, not x (groups will have both x
         # and x_[on|off] with identical content)
-        return [(x, y) for x, y in groups.iteritems() if y and 
+        return [(x, y) for x, y in groups.iteritems() if y and
                 x not in ['strike', 'small', 'big', 'remark']]
 
     def _fix_attach_uri(self, target):
