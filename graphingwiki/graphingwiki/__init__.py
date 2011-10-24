@@ -457,8 +457,6 @@ def install_hooks(rehashing=False):
     def patched_xmlrpc2(context):
         try:
             return orig_xmlrpc2(context)
-        except:
-            raise
         finally:
             graphdata_close(context)
     MoinMoin.xmlrpc.xmlrpc2 = patched_xmlrpc2
@@ -467,8 +465,6 @@ def install_hooks(rehashing=False):
     def patched_xmlrpc(context):
         try:
             return orig_xmlrpc(context)
-        except:
-            raise
         finally:
             graphdata_close(context)
     MoinMoin.xmlrpc.xmlrpc = patched_xmlrpc
