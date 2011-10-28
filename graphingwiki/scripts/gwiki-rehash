@@ -51,6 +51,9 @@ retain_shelve = False
 usage = "usage: %prog [options] <path-to-wiki> [pagename(s)]\n"
 parser = OptionParser(usage=usage)
 
+parser.add_option("-f", "--file", dest="filename",
+                  help="write shelve to FILE")
+
 parser.add_option("-u", "--update_underlay", dest="underlay_only", 
                   action='store_true', default=False,
                   help="Only update underlay pages")
@@ -85,6 +88,8 @@ try:
             return pageobj.getPageStatus()[0]
 
         filter = filterStandard
+    if options.filename:
+        retain_shelve = True
 
     if len(args) > 1:
         pagelist = [unicode(x, sys.getfilesystemencoding()) for x in args[1:]]
@@ -112,7 +117,7 @@ if not retain_shelve:
     if os.path.exists(gddir):
         shutil.rmtree(gddir)
         sys.stderr.write('Removed graphdata directory (%s)\n' % gddir)
-else:
+elif not options.filename:
     for file in os.listdir(datadir):
         if file.startswith('read_lock') or file.startswith('write_lock'):
             sys.stderr.write("Found lockfile (%s), \n" % file + \
@@ -126,7 +131,23 @@ padding = len(str(total))
 count = 1
 
 # Just init one request
-req = RequestCLI()
+req = RequestCLI(parse=False)
+
+# If you want to rehash into separate shelve, ignore locks, create a
+# new shelve from scratch
+if options.filename:
+    from graphingwiki.backend.shelvedb import GraphData
+    req._graphdata = GraphData(req)
+    req._graphdata.close()
+    if os.path.exists(options.filename):
+        if not os.path.isfile(options.filename):
+            sys.stderr.write("Destination not a file: %s\n" % 
+                             (options.filename))
+            sys.exit(1)
+        os.unlink(options.filename)
+    req._graphdata.db = req._graphdata.shelveopen(options.filename, "c")
+    req._graphdata.readlock = lambda: None
+    req._graphdata.writelock = lambda: None
 graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
 
 for pageobj in pages:
@@ -143,4 +164,4 @@ for pageobj in pages:
     graphsaver(pageobj.page_name, req, text, pagepath, pageobj)
 
 # Must finish the request to ensure that metadata is saved
-req.finish()
+req.graphdata.close()
