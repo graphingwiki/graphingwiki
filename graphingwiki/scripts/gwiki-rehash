@@ -43,7 +43,6 @@ from MoinMoin import config
 from graphingwiki.editing import underlay_to_pages
 
 from graphingwiki import install_hooks, RequestCLI
-install_hooks(rehashing=True)
 
 pages = []
 retain_shelve = False
@@ -74,6 +73,9 @@ try:
     configdir = os.path.abspath(os.path.join(wikipath, 'config'))
 
     sys.path.insert(0, configdir)
+
+    install_hooks(rehashing=True)
+
     request = RequestCLI(parse=False)
     datadir = request.cfg.data_dir
 
@@ -131,37 +133,41 @@ padding = len(str(total))
 count = 1
 
 # Just init one request
-req = RequestCLI(parse=False)
-
+scriptcontext = RequestCLI(parse=False)
+print 'graphdata is', scriptcontext.graphdata
+scriptcontext.graphdata.clear_metas()
+print "done clearing"
 # If you want to rehash into separate shelve, ignore locks, create a
 # new shelve from scratch
 if options.filename:
     from graphingwiki.backend.shelvedb import GraphData
-    req._graphdata = GraphData(req)
-    req._graphdata.close()
+    scriptcontext._graphdata = GraphData(scriptcontext)
+    scriptcontext._graphdata.close()
     if os.path.exists(options.filename):
         if not os.path.isfile(options.filename):
             sys.stderr.write("Destination not a file: %s\n" % 
                              (options.filename))
             sys.exit(1)
         os.unlink(options.filename)
-    req._graphdata.db = req._graphdata.shelveopen(options.filename, "c")
-    req._graphdata.readlock = lambda: None
-    req._graphdata.writelock = lambda: None
-graphsaver = importPlugin(req.cfg, 'action', 'savegraphdata')
+    scriptcontext._graphdata.db = scriptcontext._graphdata.shelveopen(options.filename, "c")
+    scriptcontext._graphdata.readlock = lambda: None
+    scriptcontext._graphdata.writelock = lambda: None
+graphsaver = importPlugin(scriptcontext.cfg, 'action', 'savegraphdata')
 
 for pageobj in pages:
     page_enc = _e(pageobj.page_name)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
     count += 1
-    # Implant relevant bits for this page into our recycleable req
+    # Implant relevant bits for this page into our recycleable scriptcontext
     
-    req.page = pageobj
-    pagepath = underlay_to_pages(req, pageobj)
+    scriptcontext.page = pageobj
+    pagepath = underlay_to_pages(scriptcontext, pageobj)
     text = pageobj.get_raw_body()
 
     # Apply the graphsaver action to the page
-    graphsaver(pageobj.page_name, req, text, pagepath, pageobj)
+    graphsaver(pageobj.page_name, scriptcontext, text, pagepath, pageobj)
 
-# Must finish the request to ensure that metadata is saved
-req.graphdata.close()
+# Must finish the scriptcontext to ensure that metadata is saved & committed
+print 'done rehashing, calling finish/commit'
+scriptcontext.finish()
+scriptcontext.graphdata.commit()

@@ -70,12 +70,15 @@ def jsquote(s):
     return u''.join(['\\u%04x' % ord(c) for c in s])
 
 class GraphData(GraphDataBase):
-    def __init__(self, request, dbname="gwiki"):
+    def __init__(self, request, dbname="gwiki", couchurl=None):
         log.debug("couchdb graphdb init")
         GraphDataBase.__init__(self, request)
 
         self.dbname = dbname
-        self.couch_server = couchdb.Server()
+        if couchurl:
+            self.couch_server = couchdb.Server(url)
+        else:
+            self.couch_server = couchdb.Server()
 
         self.make_pagemeta_class()
         
@@ -86,15 +89,6 @@ class GraphData(GraphDataBase):
         self.doing_rehash = False
         self.modified_pages = {}
 
-        viewfields = []
-
-        for xname in vars(self.pagemeta_class):
-            if xname.startswith('by_'):
-                x = getattr(self.pagemeta_class, xname)
-                if isinstance(x, couchdb.design.ViewDefinition):
-                    viewfields.append(x)
-
-        couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
 
     def make_pagemeta_class(self):
         # defining class here lets us use dbname in making viewfields
@@ -111,10 +105,12 @@ class GraphData(GraphDataBase):
                              'function (doc) { emit(doc.pagename, doc); }')
             by_meta = couchdb.mapping.ViewField(dbname,
                              'function (doc) { for (var key in doc.meta) emit(key, doc); }')
+
             by_out = couchdb.mapping.ViewField(dbname,
-                             'function (doc) { for (var key in doc.out) emit(key, doc); }')
+                             'function (doc) { for (var linktype in doc.out) { for (var dst_pagename in doc.out[linktype]) { emit(doc.pagename, dst_pagename); } }')
+
             by_in = couchdb.mapping.ViewField(dbname,
-                             'function (doc) { for (var key in doc.out) emit(doc[key], null); }')
+                             'function(doc) { for (var lt in doc.out) { for (var dstpage in doc.out[lt]) { emit(dstpage, doc.pagename); }}}')
 
         self.pagemeta_class = PageMeta
         
@@ -128,12 +124,21 @@ class GraphData(GraphDataBase):
             pagedoc.store(self.couch_db)
 
     def init_db(self):
+        print 'couchdb init_db: using db name', self.dbname
         try:
             self.couch_server.create(self.dbname)
         except couchdb.PreconditionFailed:
             pass
 
         self.couch_db = self.couch_server[self.dbname]
+        viewfields = []
+        for xname in vars(self.pagemeta_class):
+            if xname.startswith('by_'):
+                x = getattr(self.pagemeta_class, xname)
+                if isinstance(x, couchdb.design.ViewDefinition):
+                    viewfields.append(x)
+
+        couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
 
 
     def get_out(self, pagename):
@@ -171,9 +176,12 @@ class GraphData(GraphDataBase):
                    list(x))
 
     def is_saved(self, pagename):
-        pagedoc = self.getpagedoc(pagename)
-        return pagedoc.saved
-
+        try:
+            pagedoc = self.getpagedoc(pagename)
+        except KeyError:
+            return True
+        else:
+            return pagedoc.saved
     def delpage(self, pagename):
         pagedoc = self.getpagedoc(pagename)
         if not pagedoc:
@@ -251,6 +259,7 @@ class GraphData(GraphDataBase):
         self.savepage(frompd)
 
     def clear_metas(self):
+        log.debug("deleting db from couchdb: ", self.dbname)
         del self.couch_server[self.dbname]
         self.init_db()
 
@@ -258,6 +267,7 @@ class GraphData(GraphDataBase):
         # Ha, puny gullible humans think I do transactions
         # .. instead, I abuse this metod for rehash mode & bulk update
         if self.doing_rehash:
+            log.debug("commit in rehash mode, doing bulk update")
             for success, docid, rev_or_exc in self.couch_db.update(self.modified_pages.values()):
                 if not success:
                     raise DbError(

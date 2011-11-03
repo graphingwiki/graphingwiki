@@ -88,6 +88,9 @@ class GraphDataBase(UserDict.DictMixin):
     def clear_metas(self):
         pass
 
+    def __repr__(self):
+        return "<%s instance %x>" % (str(self.__class__), id(self))
+
     def reverse_meta(self):
         self.keys_on_pages = dict()
         self.vals_on_pages = dict()

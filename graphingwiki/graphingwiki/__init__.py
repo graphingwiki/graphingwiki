@@ -25,6 +25,9 @@ import xmlrpclib
 SEPARATOR = '-gwikiseparator-'
 
 def RequestCLI(pagename='', parse=True):
+    # XXX something mystic happening around these parts.. why does this return different
+    # objects depending on a puzzlingly named keyword arg
+
     if parse:
         script = MoinScript()
         if pagename:
@@ -32,6 +35,7 @@ def RequestCLI(pagename='', parse=True):
         script.options, script.args = script.parser.parse_args()
         script.init_request()
         return script.request
+
     # Default values
     return ScriptContext(None, pagename)
 
@@ -252,12 +256,21 @@ def underlay_to_pages(req, p):
 # patched function
 
 def graphdata_getter(self):
-    from graphingwiki.backend.couchdbclient import GraphData
+#    from graphingwiki.backend.couchdbclient import GraphData
 #    from graphingwiki.backend.durusclient import GraphData
-#    from graphingwiki.backend.shelvedb import GraphData
+    from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
-        dbargs = getattr(config, 'dbargs', {})
-        self.__dict__["_graphdata"] = GraphData(self, **dbargs)
+        # below doesn't work: during rehashing self.request is some http context mutant without cfg,
+        # even though a ScriptContext (aka RequestCLI) is passed down by gwiki-rehash
+        if 1:
+            dbconfig = getattr(self.cfg, 'dbconfig', {})
+            if "dbname" not in dbconfig:
+                dbconfig["dbname"] = request.interwikiName
+            
+        else:
+            dbconfig = {}
+
+        self.__dict__["_graphdata"] = GraphData(self, **dbconfig)
     self.__dict__["_graphdata"].doing_rehash = _is_rehashing
     return self.__dict__["_graphdata"]
 
@@ -420,6 +433,9 @@ def install_hooks(rehashing=False):
     # which, if used, is then closed properly when the request
     # finishes.
     MoinMoin.web.contexts.Context.graphdata = property(graphdata_getter)
+
+    # Samma på ScriptContext for gwiki-rehash
+    ScriptContext.graphdata = property(graphdata_getter)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
