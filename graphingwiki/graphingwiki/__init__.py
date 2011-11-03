@@ -252,11 +252,12 @@ def underlay_to_pages(req, p):
 # patched function
 
 def graphdata_getter(self):
-#    from graphingwiki.backend.couchdbclient import GraphData
+    from graphingwiki.backend.couchdbclient import GraphData
 #    from graphingwiki.backend.durusclient import GraphData
-    from graphingwiki.backend.shelvedb import GraphData
+#    from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
-        self.__dict__["_graphdata"] = GraphData(self)
+        dbargs = getattr(config, 'dbargs', {})
+        self.__dict__["_graphdata"] = GraphData(self, **dbargs)
     self.__dict__["_graphdata"].doing_rehash = _is_rehashing
     return self.__dict__["_graphdata"]
 

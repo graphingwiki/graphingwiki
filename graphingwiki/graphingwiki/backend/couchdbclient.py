@@ -69,30 +69,16 @@ class DbError(Exception):
 def jsquote(s):
     return u''.join(['\\u%04x' % ord(c) for c in s])
 
-class PageMeta(couchdb.mapping.Document):
-    pagename = couchdb.mapping.TextField()
-    out = couchdb.mapping.DictField()
-    meta = couchdb.mapping.DictField()
-    mtime = couchdb.mapping.FloatField()
-    saved = couchdb.mapping.BooleanField()
-    acl = couchdb.mapping.TextField()
-
-    by_pagename = couchdb.mapping.ViewField('gwiki',
-                 'function (doc) { emit(doc.pagename, doc); }')
-    by_meta = couchdb.mapping.ViewField('gwiki',
-                'function (doc) { for (var key in doc.meta) emit(key, doc); }')
-    by_out = couchdb.mapping.ViewField('gwiki',
-                'function (doc) { for (var key in doc.out) emit(key, doc); }')
-    by_in = couchdb.mapping.ViewField('gwiki',
-                'function (doc) { for (var key in doc.out) emit(doc[key], null); }')
-
 class GraphData(GraphDataBase):
     def __init__(self, request, dbname="gwiki"):
         log.debug("couchdb graphdb init")
         GraphDataBase.__init__(self, request)
-        
+
         self.dbname = dbname
         self.couch_server = couchdb.Server()
+
+        self.make_pagemeta_class()
+        
         self.init_db()
 
         # use write cache/bulk update workaround for rehash slowness,
@@ -102,13 +88,35 @@ class GraphData(GraphDataBase):
 
         viewfields = []
 
-        for xname in vars(PageMeta):
+        for xname in vars(self.pagemeta_class):
             if xname.startswith('by_'):
-                x = getattr(PageMeta, xname)
+                x = getattr(self.pagemeta_class, xname)
                 if isinstance(x, couchdb.design.ViewDefinition):
                     viewfields.append(x)
 
         couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
+
+    def make_pagemeta_class(self):
+        # defining class here lets us use dbname in making viewfields
+        dbname = self.dbname
+        class PageMeta(couchdb.mapping.Document):
+            pagename = couchdb.mapping.TextField()
+            out = couchdb.mapping.DictField()
+            meta = couchdb.mapping.DictField()
+            mtime = couchdb.mapping.FloatField()
+            saved = couchdb.mapping.BooleanField()
+            acl = couchdb.mapping.TextField()
+
+            by_pagename = couchdb.mapping.ViewField(dbname,
+                             'function (doc) { emit(doc.pagename, doc); }')
+            by_meta = couchdb.mapping.ViewField(dbname,
+                             'function (doc) { for (var key in doc.meta) emit(key, doc); }')
+            by_out = couchdb.mapping.ViewField(dbname,
+                             'function (doc) { for (var key in doc.out) emit(key, doc); }')
+            by_in = couchdb.mapping.ViewField(dbname,
+                             'function (doc) { for (var key in doc.out) emit(doc[key], null); }')
+
+        self.pagemeta_class = PageMeta
         
     def savepage(self, pagedoc):
         if self.doing_rehash:
@@ -135,7 +143,7 @@ class GraphData(GraphDataBase):
         try:
             pagedoc = self.getpagedoc(pagename)
         except KeyError:
-            pagedoc = PageMeta(pagename=pagename, out={}, meta={},
+            pagedoc = self.pagemeta_class(pagename=pagename, out={}, meta={},
                                mtime=0, saved=True, acl=u'')
             self.savepage(pagedoc)
 
@@ -148,7 +156,7 @@ class GraphData(GraphDataBase):
         if self.doing_rehash and pagename in self.modified_pages:
             return self.modified_pages[pagename]
 
-        docs = list(PageMeta.by_pagename(self.couch_db, key=pagename))
+        docs = list(self.pagemeta_class.by_pagename(self.couch_db, key=pagename))
         
         if len(docs) == 1:
             return docs[0]
@@ -158,7 +166,7 @@ class GraphData(GraphDataBase):
             raise DbError("Multiple pages named " + repr(pagename))
 
     def pagenames(self):
-        x = PageMeta.by_pagename(self.couch_db)
+        x = self.pagemeta_class.by_pagename(self.couch_db)
         return map(lambda m: m.pagename,
                    list(x))
 
@@ -195,7 +203,7 @@ class GraphData(GraphDataBase):
         return dict(self.getpage(pagename).out)
 
     def get_in(self, pagename):
-        res = PageMeta.out_in(self.couch_db, key=pagename, include_docs=True)
+        res = self.pagemeta_class.by_in(self.couch_db, key=pagename, include_docs=True)
         out = {}
         for row in res:
             in_key = row.key
