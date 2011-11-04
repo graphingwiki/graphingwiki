@@ -160,7 +160,7 @@
                 }.bind(this)
             });
 
-            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit):empty"];
+            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
 
             this.head.addEvent('shiftclick:relay(span[id*=' + this.options.separator + '])', this.keyEdit.bind(this));
@@ -218,6 +218,12 @@
                 key = id.split(this.options.separator)[1];
                 index = 0;
                 page = target.getParent('tr').getFirst('td').get('text');
+
+                if (target.children.length > 0) {
+                    //append new value to existing ones if key had values
+                    index = this.metas[page][key].length;
+                    target = new Element('span').inject(target);
+                }
             } else {
                 //edit existing value
                 if (target.get('tag') != 'span') target = target.getParent('span');
@@ -244,6 +250,7 @@
                     oldData[page] = {};
                     oldData[page][key] = Array.clone(this.metas[page][key]);
 
+                    if (i >= this.metas[page][key].length) this.metas[page][key].push("");
                     this.metas[page][key][index] = value;
 
                     var args = {};
