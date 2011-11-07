@@ -28,14 +28,14 @@
         },
 
         build: function() {
-            this.element = new Element('table.hidden.ac-results');
+            this.element = new Element('div.hidden.ac-results');
+            this.table = new Element('table').inject(this.element);
             this.element.inject(document.body);
-
         },
 
         position: function(pos) {
             this.element.setPosition(pos);
-            this.element.setStyle('width', pos.w);
+            this.table.setStyle('width', pos.w);
             return this;
         },
 
@@ -89,10 +89,12 @@
             }
 
             if (this.element.hasClass('hidden')) this.attach();
-            this.element.empty().removeClass('hidden');
+
+            this.table.empty();
+            this.element.removeClass('hidden');
 
             this.rows = [];
-            var tbody = new Element('tbody').inject(this.element);
+            var tbody = new Element('tbody').inject(this.table);
 
             data.each(function(item) {
                 var tr = new Element('tr').inject(tbody);
@@ -109,11 +111,14 @@
             }, this);
 
             if (this.rows.length == 1) this.rows[0].addClass('selected');
+
+            if (this.element.getSize().y < this.table.getSize().y) this.element.setStyle('overflow-y', 'scroll');
         },
 
         waiter: function(){
-            this.element.empty().removeClass('hidden');
-            var tbody = new Element('tbody').inject(this.element);
+            this.table.empty();
+            this.element.removeClass('hidden');
+            var tbody = new Element('tbody').inject(this.table);
             tbody.grab(new Element('tr').grab(new Element('td').set('html', '&nbsp;')));
             this.element.addClass('waiting');
         },
@@ -121,7 +126,7 @@
         hide: function(delay) {
             var fn = function() {
                 this.rows = [];
-                this.element.empty();
+                this.table.empty();
                 this.detach();
                 this.element.addClass('hidden');
             }.bind(this);
@@ -180,9 +185,11 @@
         Implements: [Options, Events],
 
         options: {
-            limit: 10,
+            count: 10,
             url: '',
-            showOnEmpty: false,
+            limitToExisting: false,
+            suggestions: null, // ["value1", "value2"]
+            showOnEmpty: true,
             onSelect: function() {
             }
         },
@@ -203,25 +210,31 @@
                 hide: this._blur.bind(this)
             };
 
-            this.request = new Request.JSON({
-                url: this.options.url,
-                onSuccess: function(json) {
-                    var suggestions = this.suggestions = [];
-                    Object.each(json, function(values, page) {
-                        values.each(function(value) {
-                            if (suggestions.every(function(sug) {
-                                if (sug.value == value) {
-                                    sug.page.push(page);
-                                } else {
-                                    return true;
+            if (this.options.suggestions) {
+                this.suggestions = this.options.suggestions.map(function(val){
+                    return {"value": val, "page": []};
+                });
+            } else {
+                this.request = new Request.JSON({
+                    url: this.options.url,
+                    onSuccess: function(json) {
+                        var suggestions = this.suggestions = [];
+                        Object.each(json, function(values, page) {
+                            values.each(function(value) {
+                                if (suggestions.every(function(sug) {
+                                    if (sug.value == value) {
+                                        sug.page.push(page);
+                                    } else {
+                                        return true;
+                                    }
+                                })) {
+                                    suggestions.push({"value": value, "page": [page]})
                                 }
-                            })) {
-                                suggestions.push({"value": value, "page": [page]})
-                            }
+                            });
                         });
-                    });
-                }.bind(this)
-            }).get();
+                    }.bind(this)
+                }).get();
+            }
 
             this.attach();
         },
@@ -252,7 +265,7 @@
                 }
             } else {
                 if (this.value == null) this.value = this.field.value;
-                this._delayedChange.delay(5, this);
+                this._delayedChange.delay(1, this);
             }
         },
 
@@ -265,6 +278,16 @@
             else this.overlayText.hide();
 
             if (s == this.value) return;
+
+            if (this.options.limitToExisting &&
+                !this.request.isRunning() &&
+                this.suggestions.filter(
+                    function(value) {
+                        return value.value.test('^' + s.escapeRegExp(), "i");
+                    }).length < 1) {
+                this.field.set('value', this.value);
+                return;
+            }
 
             this.value = s;
             if (s || this.options.showOnEmpty) {
@@ -314,9 +337,9 @@
             }
 
             var suggestions = this.suggestions.filter(function(value) {
-                return value.value.test('^' + needle.escapeRegExp(), "i");
+                return value.value.test('^' + needle.escapeRegExp());
             });
-            if (suggestions.length > this.options.limit) suggestions = suggestions.slice(0, this.options.limit);
+            //if (suggestions.length > this.options.count) suggestions = suggestions.slice(0, this.options.count);
             this.list.show(suggestions)
         },
 

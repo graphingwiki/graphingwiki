@@ -6,8 +6,8 @@
  Depends: MooTools Element.Delegation
  */
 
-(function(exports) {
-    exports.AttachTree = new Class({
+(function() {
+    this.AttachTree = new Class({
         initialize: function(element) {
             this.element = document.id(element);
 
@@ -33,4 +33,4 @@
             li.getNext('.attachtree_list').toggleClass('hidden');
         }
     });
-})(this);
+})();

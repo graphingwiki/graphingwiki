@@ -183,7 +183,7 @@ textarea {
     clear: both;
 }
 
-table.ac-results {
+div.ac-results {
     position: absolute;
     border: 1px solid #999;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -193,9 +193,15 @@ table.ac-results {
     background: white;
     color: black;
     text-align: left;
-    border-collapse: collapse;
     cursor: pointer;
-    margin:  0;
+    max-height: 250px;
+    overflow-y: hidden;
+}
+
+.ac-results table {
+    border-collapse: collapse;
+    margin: 0;
+    padding: 0;
 }
 
 .ac-results tr {

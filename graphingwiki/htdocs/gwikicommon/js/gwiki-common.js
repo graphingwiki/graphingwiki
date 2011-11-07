@@ -17,6 +17,7 @@ if (!Cookie.read('js')) {
     }
 }
 
+window.dateformat = '%Y-%m-%d';
 window.GWIKISEPARATOR = '-gwikiseparator-';
 
 
@@ -65,6 +66,15 @@ window.addEvent('domready', function() {
                 new AttachTree(el);
             })
         });
+    }
+
+    // DynamicTextareas for textareas with .dynamic
+    if ($$('textarea.dynamic')) {
+        loader.load('DynamicTextarea', function(){
+            $$('textarea.dynamic').each(function(el){
+                new DynamicTextarea(el);
+            })
+        })
     }
 });
 
@@ -233,10 +243,10 @@ var initInlineMetaEdit = function (base) {
 
         editor = new InlineEditor(dd, {
             oldValue: oldValue,
-            suggestionKey: key,
+            key: key,
             inline: true,
             width: 40,
-            field: GwikiDynamicTextarea,
+            size: 'large',
             onSave: function (newValue) {
                 var args = {};
                 args[page] = {};
@@ -330,20 +340,36 @@ var InlineEditor = new Class({
         //onSave: function(value){},
         //onExit: function(){}
         oldValue: "",
-        inline: false,
-        suggestionKey: null,
+        inline: false, //puts all controls on the same row if enabled
+        key: null,
         autoFormat: true,
         field: null,
-        width: 20
+        width: 20,
+        size: 'compact'
+    },
+
+    _keyProperties: {
+        hint: 'text',
+        constraint: null
     },
 
     initialize: function(element, options) {
         this.setOptions(options);
 
-        if (!this.options.field) this.options.field = DynamicTextarea;
 
         this.element = document.id(element);
-        this.build();
+
+        if (this.options.key) {
+            new Request.JSON({
+                url: '?action=ajaxUtils&util=getProperties&key=' + this.options.key,
+                onComplete: function(json) {
+                    this._keyProperties = Object.merge(this._keyProperties, json);
+                    this.build();
+                }.bind(this)
+            }).get();
+        } else {
+            this.build();
+        }
     },
 
     build: function() {
@@ -351,25 +377,66 @@ var InlineEditor = new Class({
         this.element.addClass('edit');
 
         this.element.empty();
-        this.input = new Element('textarea', {
-            text: this.options.oldValue,
-            cols: this.options.width
-        }).inject(this.element);
 
-
-        if (this.options.inline) this.element.addClass('inline');
-
-        new this.options.field(this.input).addEvent('resize', function() {
-            this.input.fireEvent('resize');
-        }.bind(this));
-
-        if (this.options.suggestionKey) {
-            this.suggestions = new MetaSuggestions(this.input, {
-                url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.suggestionKey)
+        var oldVal = this.options.oldValue;
+        var type = this._keyProperties.hint;
+        if (type == "date") {
+            this.input = new Element('input',{
+                value: oldVal,
+                size: 11
+            }).inject(this.element);
+            new Picker.Date(this.input, {
+                format: dateformat,
+                pickerClass: 'datepicker_dashboard'
             });
-        }
 
-        this.input.select();
+            this.input.select();
+
+        } else if (this._keyProperties.constraint == "existing") {
+            var input = this.input = new Element('select.waiting').inject(this.element);
+            new Request.JSON({
+                url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.key),
+                onSuccess: function(json) {
+                    input.removeClass('waiting');
+                    var vals = [];
+                    Object.each(json, function(values, page) {
+                        vals.combine(values);
+                    });
+                    vals.each(function(value){
+                       input.grab(new Element('option',{
+                           value: value,
+                           text: value,
+                           selected: (value == oldVal)
+                       }));
+                    });
+                }
+            }).get();
+        } else {
+            this.input = new Element('textarea', {
+                text: oldVal,
+                cols: this.options.width
+            }).inject(this.element);
+
+            this.input.addEvent('keydown', function(e) {
+                if (e && e.key == "esc") this.cancel();
+            }.bind(this));
+
+            if (this.options.inline) this.element.addClass('inline');
+
+            var field = this.options.size == "compact" ? DynamicTextarea: GwikiDynamicTextarea;
+            new field(this.input).addEvent('resize', function() {
+                this.input.fireEvent('resize');
+            }.bind(this));
+
+            if (this.options.key) {
+                this.suggestions = new MetaSuggestions(this.input, {
+                    url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.key)
+                });
+            }
+
+            this.input.select();
+        }
+        
 
         this.element.adopt(
             new Element('input', {
@@ -488,6 +555,47 @@ Object.extend({
     }
 });
 
+/**
+ * ActionSelector
+ * - creates a select element with events bound to options
+ *
+ *  usage: elem.grab(new ActionSelector({"option1": func}, this))
+ */
+var ActionSelector = new Class({
+    initialize: function(opts, context) {
+        this.opts = opts;
+        this.context = context;
+        this.build();
+        this.attach();
+    },
+
+    build: function() {
+        this.element = new Element('select');
+        Object.each(this.opts, this.add, this);
+    },
+
+    add: function(func, name) {
+        this.element.grab(new Element('option', {
+            text: name,
+            value: name
+        }));
+    },
+
+    attach: function() {
+        this.element.addEvent('change', function(event) {
+            var val = event.target.get('value');
+            this.opts[val].apply(this.context);
+        }.bind(this))
+    },
+
+    detach: function(){
+        this.element.removeEvents('change');
+    },
+
+    toElement: function() {
+        return this.element;
+    }
+});
 
 /**
  * GwikiImport
@@ -506,7 +614,7 @@ Object.extend({
         },
         InlineEditor: {
             files: ['js/gwiki-common.js'],
-            depends: ['DynamicTextarea', 'MetaSuggestions']
+            depends: ['DynamicTextarea', 'MetaSuggestions', 'DatePicker']
         },
         DynamicTextarea: {
             files: ['js/DynamicTextarea.js'],

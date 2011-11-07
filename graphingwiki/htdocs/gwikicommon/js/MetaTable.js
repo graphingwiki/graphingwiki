@@ -241,7 +241,7 @@
             var editor = this.inlineEditor = new InlineEditor(target, {
                 autoFormat: false,
                 oldValue: oldValue,
-                suggestionKey: key,
+                key: key,
 
                 onSave: function(value) {
                     if (!this.metas[page][key]) this.metas[page][key] = [""];

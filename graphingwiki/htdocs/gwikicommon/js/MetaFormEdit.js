@@ -9,8 +9,6 @@
 (function() {
     if (this.MetaFormEdit) return;
 
-    var dateformat = '%Y-%m-%d';
-
     var MetaformEdit = this.MetaFormEdit = new Class({
         initialize: function (form) {
             this.form = document.id(form);
