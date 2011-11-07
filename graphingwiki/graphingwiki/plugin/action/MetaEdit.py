@@ -263,7 +263,7 @@ def show_editform(wr, request, pagename, args):
                     val = ''
                 
                 wr(formatter.table_cell(1, {'class': 'meta_cell'}))
-                wr(u'<input class="metavalue" type="text" name="%s" value="%s">',
+                wr(u'<textarea class="metavalue dynamic"  name="%s">%s</textarea>',
                    inputname, val)
 
                 #print frompage, key, inputname, values, '<br>'
