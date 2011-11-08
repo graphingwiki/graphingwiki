@@ -404,55 +404,17 @@
         }
     });
 
+
     var Editor = new Class({
-        Implements: [Events, Options],
+        Extends: Overlay,
         options: {
             content: "",
             name: "",
             template: ""
         },
 
-        initialize: function(options) {
-            this.setOptions(options);
-            this.build();
-        },
-
         build: function() {
-            this.bg = new Element('div.alphabg').setStyles({
-                'position': 'absolute',
-                'left': 0,
-                'top': 0,
-                'width': document.id(window).getScrollSize().x,
-                'min-height': document.id(window).getScrollSize().y,
-                'z-index': '999'
-            }).inject(document.body);
-
-            this.positioner = new Element('div').setStyles({
-                'position': 'absolute',
-                'left': 0,
-                'top': 0,
-                'width': '100%',
-                'z-index': '999'
-            }).inject(document.body);
-            var container = new Element('div').setStyles({
-                'position': 'relative',
-                'margin': 'auto',
-                'top': document.id(window).getScroll().y + 100,
-                'padding': '15px',
-                'width': '80%',
-                'background': 'white',
-                'border': '2px black solid',
-                'border-radius': '5px'
-            }).inject(this.positioner);
-
-            var close = new Element('div.close-button[text=x]')
-                .addEvent('click', this.cancel.bind(this))
-                .inject(container);
-
-            this.editor = new Element('div').setStyles({
-                'min-height': '200px'
-            }).inject(container);
-
+            this.parent();
 
             var form = new Element('form').inject(this.editor);
 
@@ -506,7 +468,7 @@
                     }
                 }),
                 new Element('div').setStyle('clear', 'both')
-            ).inject(container)
+            ).inject(this.container)
         },
 
         send: function() {
@@ -532,11 +494,147 @@
                     }
                 }.bind(this)
             }).send()
+        }
+    });
+
+    var InterMetaTable = this.InterMetaTable = new Class({
+        Extends: HideableTable,
+
+        options: {
+            selector: "",
+            baseurl: "",
+            sortable: true,
+            collabs: [""],
+            footer: false,
+            inaccessibleCollabs: null
         },
 
-        cancel: function() {
-            this.bg.destroy();
-            this.positioner.destroy();
+        initialize: function(el, opts) {
+            this.container = document.id(el);
+
+            ["_format", "construct"].each(function(f){
+                this[f].bind(this);
+            }, this);
+
+            this.parent.apply(this, [null, opts]);
+
+            if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
+            this.update();
+        },
+
+        build: function() {
+            this.parent();
+            this.inject(this.container);
+
+            this.container.addClass('waiting');
+
+            var denied = this.options.inaccessibleCollabs;
+            if (denied) {
+                this.container.grab(new Element('em', {
+                    text: 'You do not have premission to access following collab' +
+                        (denied.length > 1 ? "s" : "") + ': ' + denied,
+                    styles: {
+                        color: 'red'
+                    }
+                }), 'top');
+            }
+
+            //this.container.grab(new Element('a.jslink[text=[settings]]'), 'bottom')
+        },
+
+        _format: function(vals, f){
+            if (typeOf(vals) != "array") vals = [vals];
+            return vals.map(function(value){
+                return f[value] || value;
+            }, this)
+        },
+
+        construct: function(){
+            this.empty();
+
+            var keys = {};
+            Object.each(this.metas, function(pages, collab) {
+                Object.each(pages, function(metas, page) {
+                    Object.keys(metas).each(function(key){
+                        if (!keys[key]) keys[key] = this._format(key, this.formatted[collab])
+                    }, this);
+                }, this);
+            }, this);
+
+            var foots = {};
+            Object.sortedKeys(keys).each(function(key){
+                foots[key] = 0;
+            });
+
+            this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
+            this.thead.rows[0].addClass('meta_header');
+
+            Object.each(this.metas, function(pages, collab) {
+                Object.each(pages, function(metas, page) {
+                    var vals = [new Element('a', {
+                        text: (collab? collab+ ':': "") + page,
+                        href: this.options.baseurl + collab + '/' +page
+                    })];
+
+                    Object.sortedKeys(keys).each(function(key) {
+                        if (!metas[key] || metas[key].length == 0) {
+                            vals.push(" ");
+                        } else {
+                            vals.push(this._format(metas[key], this.formatted[collab]).join(", "));
+                            if (Number.from(metas[key])) {
+                                foots[key] += Number.from(metas[key]);
+                            }else{
+                                foots[key] = null;
+                            }
+
+                        }
+                    }, this);
+
+                    this.push(vals);
+                }, this);
+            }, this);
+
+            $$(this.body.rows).getFirst('td').addClass('meta_page');
+            $$($$(this.body.rows).getElements('td:not(.meta_page)')).addClass('meta_cell');
+
+            if (this.options.footer) {
+                if (Object.values(foots).clean().length)
+                    this.setFooters([new ActionSelector({
+                        "sum": function(){alert('sum')},
+                        "alert": function(){alert('foo')}
+                    }, this).toElement()].concat(Object.values(foots)));
+            }
+            this.sort(0, false);
+            this.enableHiding();
+
+
+            if (!this.isUpdating()) this.container.removeClass('waiting');
+        },
+
+        isUpdating: function(){
+            if (!this.requests || this.requests.length == 0) return false;
+            return this.requests.some(function(request){
+                return request.isRunning();
+            })
+        },
+
+        update: function() {
+            if (this.isUpdating()) return;
+
+            this.requests = [];
+            this.options.collabs.each(function(collab) {
+                this.requests.push(new Request.JSON({
+                    url: this.options.baseurl + collab+ '/?action=getMetaJSON',
+                    data: 'args=' + encodeURIComponent(this.options.selector) + '&formatted=true',
+                    onSuccess: function(json) {
+                        if (!this.metas) this.metas = {};
+                        if (!this.formatted) this.formatted = {};
+                        this.metas[collab] = json.metas;
+                        this.formatted[collab] = json.formatted;
+                        this.construct();
+                    }.bind(this)
+                }).get())
+            }, this);
         }
     });
 })();
