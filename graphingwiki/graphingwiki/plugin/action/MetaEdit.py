@@ -97,7 +97,7 @@ def parse_editform(request, form):
         oldMeta, newMeta = pages.setdefault(page, (dict(), dict()))
 
         if oldKey:
-            oldMetas = get_metas(request, page, [oldKey], 
+            oldMetas = get_metas(request, page, [oldKey],
                                  abs_attach=False, includeGenerated=False)
             oldValues = oldMetas[oldKey]
 
@@ -171,7 +171,7 @@ def show_editform(wr, request, pagename, args):
     _ = request.getText
 
     if uneditable_pages:
-        reason = _("No save permission to some pages (%s)" % 
+        reason = _("No save permission to some pages (%s)" %
                    ','.join(uneditable_pages))
         wr(_sysmsg % ('warning', reason))
 
@@ -206,7 +206,7 @@ def show_editform(wr, request, pagename, args):
 
     values = dict()
     valnos = dict()
-    
+
     for frompage in pagelist:
         values[frompage] = dict()
 
@@ -217,13 +217,13 @@ def show_editform(wr, request, pagename, args):
             if not valnos.has_key(frompage):
                 valnos[frompage] = 1
 
-            keydata = get_metas(request, frompage, [key], 
+            keydata = get_metas(request, frompage, [key],
                                 abs_attach=False, includeGenerated=False)
 
             for i, val in enumerate(keydata[key]):
                 values[frompage][key].append(val)
-                # Enumerate starts from 0: #values++ 
-                # One to add a value: #values++ 
+                # Enumerate starts from 0: #values++
+                # One to add a value: #values++
                 if valnos[frompage] < i + 2:
                     valnos[frompage] = i + 2
 
@@ -252,10 +252,10 @@ def show_editform(wr, request, pagename, args):
                 # Skip default labels
                 if key == 'label' and val == frompage:
                     val = ''
-                
+
                 wr(formatter.table_cell(1, {'class': 'meta_cell'}))
-                wr(u'<input class="metavalue" type="text" name="%s"' % \
-                       inputname + 'value="%s">', val)
+                wr(u'<textarea class="metavalue dynamic"  name="%s">%s</textarea>',
+                   inputname, val)
 
                 #print frompage, key, inputname, values, '<br>'
             wr(formatter.table_row(0))
@@ -291,7 +291,7 @@ def show_editform(wr, request, pagename, args):
 #      return true;
 #    }
 # </script>
-# <input type="submit" name="send" value="Send" class="button1"tabindex="7" 
+# <input type="submit" name="send" value="Send" class="button1"tabindex="7"
 # onClick="return myvalid(this);" />
 
     wr(formatter.table(0))
@@ -300,7 +300,7 @@ def show_editform(wr, request, pagename, args):
     wr(u'</form>\n')
 
     if uneditable_pages:
-        reason = _("No save permission to some pages (%s)" % 
+        reason = _("No save permission to some pages (%s)" %
                    ','.join(uneditable_pages))
         wr(_sysmsg % ('warning', reason))
 
@@ -323,7 +323,7 @@ def execute(pagename, request):
             page = Page(request, backto)
             request.http_redirect(page.url(request))
             request.page = page
-        
+
         request.page.send_page()
     elif form.has_key('save') or form.has_key('saveform'):
         if request.environ['REQUEST_METHOD'] != 'POST':
@@ -389,13 +389,13 @@ def execute(pagename, request):
                     for value in files[pname][key]:
                         name = value[0]
                         try:
-                            t, s = add_attachment(request, pname, 
+                            t, s = add_attachment(request, pname,
                                                   name, value[1])
                             added.setdefault(pname, dict()).setdefault(
                                 key, list()).append("[[attachment:%s]]" % name)
                         except AttachmentAlreadyExists:
                             msgs = ["Attachment '%s' already exists." % name]
-                            
+
 
             # Delete unneeded page keys in added/discarded
             pagenames = discarded.keys()
@@ -434,13 +434,13 @@ def execute(pagename, request):
                     pages, newmsgs, files = parse_editform(request, form)
 
                 for page, (oldMeta, newMeta) in pages.iteritems():
-                    msgs.append('%s: ' % page + 
+                    msgs.append('%s: ' % page +
                                 edit_meta(request, page, oldMeta, newMeta))
 
                 for page in files:
                     for key in files[page]:
                         name, content = files[page][key]
-                        t, s = add_attachment(request, page, name, content) 
+                        t, s = add_attachment(request, page, name, content)
             else:
                 msgs.append(request.getText('No pages changed'))
 
@@ -455,14 +455,14 @@ def execute(pagename, request):
             request.http_redirect(page.url(request))
         else:
             page = Page(request, pagename)
-        
+
         request.theme.add_msg(msg)
         request.page = page
         page.send_page()
     elif form.has_key('args'):
         enter_page(request, pagename, 'Metatable editor')
         formatter = request.page.formatter
-        
+
         request.write(formatter.heading(1, 2))
         request.write(formatter.text(_("Edit metatable")))
         request.write(formatter.heading(0, 2))

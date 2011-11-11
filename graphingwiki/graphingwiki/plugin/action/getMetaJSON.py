@@ -28,7 +28,7 @@
 """
 
 import MoinMoin.wikiutil as wikiutil
-
+from graphingwiki.util import format_wikitext
 from graphingwiki import values_to_form
 
 try:
@@ -43,6 +43,7 @@ def execute(pagename, request):
 
     args = form.get('args', [None])[0]
     key = form.get('getvalues', [None])[0]
+    formatted = form.get('formatted', [None])[0]
 
     do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "GetMetaStruct",
                                       "do_action")
@@ -60,6 +61,21 @@ def execute(pagename, request):
             metas = do_action(request, pagename)
     else:
         metas = do_action(request, args)
+
+    if formatted:
+        formatted = {}
+        values = []
+        for page, vals in metas.items():
+            values.extend(vals.keys())
+            for val in vals.values():
+                values.extend(val)
+
+        for value in values:
+            f = format_wikitext(request, value)
+            if f != value and value not in formatted:
+                formatted[value] = f
+
+        metas = {'metas' : metas, 'formatted': formatted}
 
     json.dump(metas, request, indent=2)
 

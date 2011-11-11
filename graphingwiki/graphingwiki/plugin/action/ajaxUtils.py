@@ -28,6 +28,8 @@
 """
 from graphingwiki import values_to_form
 from graphingwiki.util import format_wikitext
+from graphingwiki.editing import get_properties
+
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
@@ -80,3 +82,9 @@ def execute(pagename, request):
         editor = PageEditor(request, page)
         msg = editor.saveText(content,  p.get_real_rev())
         json.dump(dict(status="ok", msg=msg), request)
+
+
+    elif util == "getProperties":
+        key = request.form.get('key', [None])[0]
+        json.dump(get_properties(request, key), request)
+        return

@@ -10,17 +10,83 @@ Needless to say, it doesn't do ACID.
 """
 import itertools
 import shelve
+import random
+import errno
+import fcntl
 import os
 
 from graphingwiki.backend.basedb import GraphDataBase
 from graphingwiki.util import encode_page, decode_page, encode, log
 from graphingwiki import actionname
 
-from MoinMoin.util.lock import ReadLock, WriteLock
-
-from time import time
+from time import time, sleep
 
 from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
+
+class LockTimeout(Exception):
+    pass
+
+class _Lock(object):
+    CHECK_INTERVAL = 0.05
+
+    def __init__(self, lock_path, exclusive=False):
+        self._lock_path = lock_path
+        self._exclusive = exclusive
+        self._fd = None
+
+    def is_locked(self):
+        return self._fd is not None
+
+    def acquire(self, timeout=None):
+        if self._fd is not None:
+            return
+
+        if timeout is not None:
+            expires = time() + timeout
+        else:
+            expires = None
+
+        fd = None
+        try:
+            while True:
+                if fd is None:
+                    fd = os.open(self._lock_path, os.O_CREAT | os.O_RDWR)
+
+                if fd is not None:
+                    mode = fcntl.LOCK_SH
+                    if self._exclusive:
+                        mode = fcntl.LOCK_EX
+
+                    try:
+                        fcntl.lockf(fd, mode | fcntl.LOCK_NB)
+                    except IOError, error:
+                        if error.errno not in (errno.EAGAIN, errno.EACCES):
+                            raise
+                    else:
+                        break
+
+                timeout = self.CHECK_INTERVAL
+                if expires is not None:
+                    remaining = expires - time()
+                    remaining -= 0.5 * remaining * random.random()
+                    timeout = min(timeout, remaining)
+                if timeout <= 0:
+                    raise _LockTimeout()
+                sleep(timeout)
+        except:
+            if fd is not None:
+                fcntl.lockf(fd, fcntl.LOCK_UN)
+                os.close(fd)
+            raise
+
+        self._fd = fd
+
+    def release(self):
+        if self._fd is None:
+            return
+        fcntl.lockf(self._fd, fcntl.LOCK_UN)
+        os.close(self._fd)
+        self._fd = None
 
 class GraphData(GraphDataBase):
     is_acid = False
@@ -48,16 +114,21 @@ class GraphData(GraphDataBase):
             db.close()
 
         self.db = None
-        self.lock = None
-
         self.cache = dict()
-        self.writing = False
-        self.readlock()
+
+        lock_path = os.path.join(gddir, "graphdata-lock")
+        self._readlock = _Lock(lock_path, exclusive=False)
+        self._writelock = _Lock(lock_path, exclusive=True)
+
+    def _lock(self):
+        filename = os.path.join(gddir, 'graphdata.shelve')
+        os.open()
 
     def __getitem__(self, item):
         page = encode_page(item)
 
         if page not in self.cache:
+            self.readlock()
             self.cache[page] = self.db[page]
 
         return self.cache[page]
@@ -67,9 +138,9 @@ class GraphData(GraphDataBase):
 
     def savepage(self, pagename, pagedict):
         log.debug("savepage %s = %s" % (repr(pagename), repr(pagedict)))
-        self.writelock()
         page = encode_page(pagename)
 
+        self.writelock()
         self.db[page] = pagedict
         self.cache[page] = pagedict
 
@@ -114,17 +185,21 @@ class GraphData(GraphDataBase):
         self.writelock()
         page = encode_page(pagename)
 
+        self.writelock()
         del self.db[page]
         self.cache.pop(page, None)
 
     def keys(self):
+        self.readlock()
         return map(decode_page, self.db.keys())
 
     def __iter__(self):
+        self.readlock()
         return itertools.imap(decode_page, self.db)
 
     def __contains__(self, item):
         page = encode_page(item)
+        self.readlock()
         return page in self.cache or page in self.db
 
     def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
@@ -136,44 +211,28 @@ class GraphData(GraphDataBase):
         self.savepage(pagename, pagedata)
 
     def readlock(self):
-        if self.lock is None or not self.lock.isLocked():
-            self.lock = ReadLock(self.request.cfg.data_dir, timeout=60.0)
-            self.lock.acquire()
-
+        self._readlock.acquire()
         if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "r")
-            self.writing = False
 
     def writelock(self):
-        if self.db is not None and not self.writing:
+        if not self._writelock.is_locked() and self.db is not None:
             self.db.close()
             self.db = None
-        
-        if (self.lock is not None and self.lock.isLocked() and 
-            isinstance(self.lock, ReadLock)):
-            self.lock.release()
-            self.lock = None
 
-        if self.lock is None or not self.lock.isLocked():
-            self.lock = WriteLock(self.request.cfg.data_dir, 
-                                  readlocktimeout=60.0)
-            self.lock.acquire()
-
+        self._writelock.acquire()
         if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "c")
-            self.writing = True
 
     def close(self):
-        if self.lock is not None and self.lock.isLocked():
-            self.lock.release()
-            self.lock = None
-
         if self.db is not None:
             self.db.close()
             self.db = None
 
+        self._writelock.release()
+        self._readlock.release()
+
         self.cache.clear()
-        self.writing = False
 
     def commit(self):
         # Ha, puny gullible humans think I do transactions
