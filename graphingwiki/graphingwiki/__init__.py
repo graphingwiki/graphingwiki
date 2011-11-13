@@ -273,7 +273,7 @@ def graphdata_getter(self):
         if 1:
             dbconfig = getattr(self.cfg, 'dbconfig', {})
             if "dbname" not in dbconfig:
-                dbconfig["dbname"] = self.interwikiName
+                dbconfig["dbname"] = self.cfg.interwikiname
             
         else:
             dbconfig = {}

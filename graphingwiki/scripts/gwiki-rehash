@@ -171,3 +171,4 @@ for pageobj in pages:
 print 'done rehashing, calling finish/commit'
 scriptcontext.finish()
 scriptcontext.graphdata.commit()
+scriptcontext.graphdata.close()

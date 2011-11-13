@@ -17,7 +17,7 @@ class GraphDataBase(UserDict.DictMixin):
 
     is_acid = False
 
-    def __init__(self, request):
+    def __init__(self, request, **kw):
         self.request = request
 
     def __getitem__(self, item):

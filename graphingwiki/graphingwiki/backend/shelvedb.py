@@ -91,9 +91,9 @@ class _Lock(object):
 class GraphData(GraphDataBase):
     is_acid = False
 
-    def __init__(self, request):
+    def __init__(self, request, **kw):
         log.debug("shelve graphdb init")
-        GraphDataBase.__init__(self, request)
+        GraphDataBase.__init__(self, request, **kw)
 
         gddir = os.path.join(request.cfg.data_dir, 'graphdata')
         if not os.path.isdir(gddir):
