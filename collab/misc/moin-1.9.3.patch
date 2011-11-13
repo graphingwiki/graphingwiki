@@ -1,5 +1,31 @@
---- /usr/local/lib/python2.6/dist-packages/MoinMoin/user.py.old	2011-08-11 18:04:40.256712003 +0300
-+++ /usr/local/lib/python2.6/dist-packages/MoinMoin/user.py	2011-08-11 18:05:20.776712000 +0300
+diff -up MoinMoin/auth/__init__.py.old MoinMoin/auth/__init__.py
+--- MoinMoin/auth/__init__.py.old	2011-11-13 19:49:09.429435003 +0200
++++ MoinMoin/auth/__init__.py	2011-11-13 19:51:05.859435001 +0200
+@@ -362,7 +362,7 @@ class GivenAuth(BaseAuth):
+             auth_username = self.transform_username(auth_username)
+             logging.debug("auth_username (after decode/transform) = %r" % auth_username)
+             u = user.User(request, auth_username=auth_username,
+-                          auth_method=self.name, auth_attribs=('name', 'password'))
++                          auth_method=self.name, auth_attribs=('name'))
+ 
+         logging.debug("u: %r" % u)
+         if u and self.autocreate:
+diff -up MoinMoin/Page.py.old MoinMoin/Page.py
+--- MoinMoin/Page.py.old	2011-11-13 19:48:47.619435002 +0200
++++ MoinMoin/Page.py	2011-11-13 19:50:25.449435002 +0200
+@@ -108,8 +108,7 @@ class ItemCache:
+             (for 'meta') or the complete cache ('pagelists').
+             @param request: the request object
+         """
+-        from MoinMoin.logfile import editlog
+-        elog = editlog.EditLog(request)
++        elog = request.editlog
+         old_pos = self.log_pos
+         new_pos, items = elog.news(old_pos)
+         if items:
+diff -up MoinMoin/user.py.old MoinMoin/user.py
+--- MoinMoin/user.py.old	2011-11-13 19:48:36.409435000 +0200
++++ MoinMoin/user.py	2011-11-13 19:50:13.889435001 +0200
 @@ -154,9 +154,9 @@ def encodePassword(pwd, salt=None):
          salt = random_string(20)
      assert isinstance(salt, str)
@@ -12,8 +38,25 @@
  
  
  def normalizeName(name):
---- /usr/local/lib/python2.6/dist-packages/MoinMoin/xmlrpc/__init__.py.orig	2011-08-15 12:33:56.717013002 +0300
-+++ /usr/local/lib/python2.6/dist-packages/MoinMoin/xmlrpc/__init__.py	2011-08-15 13:02:20.680888001 +0300
+diff -up MoinMoin/web/contexts.py.old MoinMoin/web/contexts.py
+--- MoinMoin/web/contexts.py.old	2011-11-13 19:49:17.749435001 +0200
++++ MoinMoin/web/contexts.py	2011-11-13 19:51:12.359435001 +0200
+@@ -218,6 +218,12 @@ class HTTPContext(BaseContext):
+ 
+     # proxy further attribute lookups to the underlying request first
+     def __getattr__(self, name):
++        if name == 'editlog':
++            if "editlog" not in self.__dict__:
++                from MoinMoin.logfile import editlog
++                self.request.rootpage = self.rootpage
++                self.editlog = editlog.EditLog(self.request)
++            return self.editlog
+         try:
+             return getattr(self.request, name)
+         except AttributeError, e:
+diff -up MoinMoin/xmlrpc/__init__.py.old MoinMoin/xmlrpc/__init__.py
+--- MoinMoin/xmlrpc/__init__.py.old	2011-11-13 19:48:55.739435001 +0200
++++ MoinMoin/xmlrpc/__init__.py	2011-11-13 19:50:59.919435001 +0200
 @@ -38,6 +38,32 @@ from MoinMoin.logfile import editlog
  from MoinMoin.action import AttachFile
  from MoinMoin import caching
@@ -77,43 +120,3 @@
  
          if u and u.valid:
              request.user = u
---- /usr/local/lib/python2.6/dist-packages/MoinMoin/auth/__init__.py.orig	2011-08-15 12:38:05.287013001 +0300
-+++ /usr/local/lib/python2.6/dist-packages/MoinMoin/auth/__init__.py	2011-08-15 12:38:16.297013002 +0300
-@@ -362,7 +362,7 @@ class GivenAuth(BaseAuth):
-             auth_username = self.transform_username(auth_username)
-             logging.debug("auth_username (after decode/transform) = %r" % auth_username)
-             u = user.User(request, auth_username=auth_username,
--                          auth_method=self.name, auth_attribs=('name', 'password'))
-+                          auth_method=self.name, auth_attribs=('name'))
- 
-         logging.debug("u: %r" % u)
-         if u and self.autocreate:
-
---- /usr/local/lib/python2.6/dist-packages/MoinMoin/web/contexts.py.orig	2011-08-13 13:12:51.000000000 +0300          
-+++ /usr/local/lib/python2.6/dist-packages/MoinMoin/web/contexts.py	2011-10-14 17:17:38.776240000 +0300           
-@@ -218,6 +218,12 @@ class HTTPContext(BaseContext):
- 
-     # proxy further attribute lookups to the underlying request first
-     def __getattr__(self, name):
-+        if name == 'editlog':
-+            if "editlog" not in self.__dict__:
-+                from MoinMoin.logfile import editlog
-+                self.request.rootpage = self.rootpage
-+                self.editlog = editlog.EditLog(self.request)
-+            return self.editlog
-         try:
-             return getattr(self.request, name)
-         except AttributeError, e:
-
---- /usr/local/lib/python2.6/dist-packages/MoinMoin/Page.py.old	2010-06-27 00:46:40.000000000 +0300
-+++ /usr/local/lib/python2.6/dist-packages/MoinMoin/Page.py	2011-10-14 17:25:23.646240001 +0300
-@@ -108,8 +108,7 @@ class ItemCache:
-             (for 'meta') or the complete cache ('pagelists').
-             @param request: the request object
-         """
--        from MoinMoin.logfile import editlog
--        elog = editlog.EditLog(request)
-+        elog = request.editlog
-         old_pos = self.log_pos
-         new_pos, items = elog.news(old_pos)
-         if items:
