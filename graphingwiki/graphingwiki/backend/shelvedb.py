@@ -71,7 +71,7 @@ class _Lock(object):
                     remaining -= 0.5 * remaining * random.random()
                     timeout = min(timeout, remaining)
                 if timeout <= 0:
-                    raise _LockTimeout()
+                    raise LockTimeout()
                 sleep(timeout)
         except:
             if fd is not None:
@@ -117,6 +117,7 @@ class GraphData(GraphDataBase):
         self.cache = dict()
 
         lock_path = os.path.join(gddir, "graphdata-lock")
+        self._lock_timeout = getattr(request.cfg, 'graphdata_lock_timeout', None)
         self._readlock = _Lock(lock_path, exclusive=False)
         self._writelock = _Lock(lock_path, exclusive=True)
 
@@ -211,7 +212,15 @@ class GraphData(GraphDataBase):
         self.savepage(pagename, pagedata)
 
     def readlock(self):
-        self._readlock.acquire()
+        log.debug("getting a read lock for %r" % (self.graphshelve,))
+        try:
+            self._readlock.acquire(self._lock_timeout)
+        except LockTimeout:
+            items = self.graphshelve, self._lock_timeout
+            log.error("getting a read lock for %r timed out after %.02fs" % items)
+            raise
+        log.debug("got a read lock for %r" % (self.graphshelve,))
+
         if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "r")
 
@@ -220,7 +229,15 @@ class GraphData(GraphDataBase):
             self.db.close()
             self.db = None
 
-        self._writelock.acquire()
+        log.debug("getting a write lock for %r" % (self.graphshelve,))
+        try:
+            self._writelock.acquire(self._lock_timeout)
+        except LockTimeout:
+            items = self.graphshelve, self._lock_timeout
+            log.error("getting a write lock for %r timed out after %.02fs" % items)
+            raise
+        log.debug("got a write lock for %r" % (self.graphshelve,))
+
         if self.db is None:
             self.db = self.shelveopen(self.graphshelve, "c")
 
