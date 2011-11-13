@@ -54,6 +54,10 @@ EOF
 cat <<EOF > /etc/apache2/ports.conf
 EOF
 
+## Also change the line that defines ErrorLog in
+## /etc/apache2/apache2.conf to the following:
+## ErrorLog /srv/www/log/https/error_log
+
 ## Install graphingwiki. 
 apt-get install libgv-python graphviz
 
@@ -107,6 +111,10 @@ cp /usr/local/src/graphingwiki/collab/config/intermap.txt /srv/wikis/collab/conf
 cp /usr/local/src/graphingwiki/collab/config/logging.conf /srv/wikis/collab/config
 sudo chown -R collab:collab collab
 sudo chmod -R 2770 collab/
+
+# Ensure that Apache can write to the Moin log file
+touch collab/log/moinmoin.log
+chmod g+w collab/log/moinmoin.log
 
 # Make links to htdocs, collab from document root
 ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
