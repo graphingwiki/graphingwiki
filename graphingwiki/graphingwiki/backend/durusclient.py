@@ -53,7 +53,7 @@ class GraphData:
     # enable users to access this using dict protocol (deprecated)?
     use_dict_api = False
 
-    def __init__(self, request=None, address=None):
+    def __init__(self, request=None, address=None, **kw):
         if not address:
             address=os.path.join(request.cfg.data_dir, 'durus.sock')
         self.request = request
