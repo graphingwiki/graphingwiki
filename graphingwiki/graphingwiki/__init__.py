@@ -25,9 +25,16 @@ import xmlrpclib
 SEPARATOR = '-gwikiseparator-'
 
 def RequestCLI(pagename='', parse=True):
-    # XXX something mystic happening around these parts.. why does this return different
-    # objects depending on a puzzlingly named keyword arg
+    """
+    The MoinScript class does command line1 argument parsing, which
+    might not be what is desired, as it will complain about custom
+    arguments in gwiki-* scripts. MoinScript initialises the request
+    by calling up ScriptContext, which is then assigned to the
+    script.request.
 
+    If a gwiki-* script uses non-MoinScript command line arguments,
+    the ScriptContext is initialized with minimum sane default.
+    """
     if parse:
         script = MoinScript()
         if pagename:
@@ -260,12 +267,13 @@ def graphdata_getter(self):
 #    from graphingwiki.backend.durusclient import GraphData
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
-        # below doesn't work: during rehashing self.request is some http context mutant without cfg,
-        # even though a ScriptContext (aka RequestCLI) is passed down by gwiki-rehash
+        # below doesn't work: during rehashing self.request is some
+        # http context mutant without cfg, even though a ScriptContext
+        # (aka RequestCLI) is passed down by gwiki-rehash
         if 1:
             dbconfig = getattr(self.cfg, 'dbconfig', {})
             if "dbname" not in dbconfig:
-                dbconfig["dbname"] = request.interwikiName
+                dbconfig["dbname"] = self.interwikiName
             
         else:
             dbconfig = {}
@@ -433,9 +441,6 @@ def install_hooks(rehashing=False):
     # which, if used, is then closed properly when the request
     # finishes.
     MoinMoin.web.contexts.Context.graphdata = property(graphdata_getter)
-
-    # Samma på ScriptContext for gwiki-rehash
-    ScriptContext.graphdata = property(graphdata_getter)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
