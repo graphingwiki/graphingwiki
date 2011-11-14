@@ -110,12 +110,12 @@ cp /usr/local/src/graphingwiki/collab/config/collab.ini /etc/local/collab/
 cp /usr/local/src/graphingwiki/collab/config/collabfarm.py /srv/wikis/collab/config
 cp /usr/local/src/graphingwiki/collab/config/intermap.txt /srv/wikis/collab/config
 cp /usr/local/src/graphingwiki/collab/config/logging.conf /srv/wikis/collab/config
-sudo chown -R collab:collab collab
-sudo chmod -R 2770 collab/
+chown -R collab:collab collab
+chmod -R 2770 collab/
 
 # Ensure that Apache can write to the Moin log file
 touch collab/log/moinmoin.log
-chmod g+w collab/log/moinmoin.log
+chmod 660 collab/log/moinmoin.log
 
 # Make links to htdocs, collab from document root
 ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
@@ -159,6 +159,12 @@ wget -N -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
 gzip -c -d GeoLiteCity.dat.gz > /etc/local/collab/GeoLiteCity.dat
 
 apt-get install python-geoip
+
+## Install underlay to wiki
+# Navigate as wiki superuser (collab by default) to page
+# LanguageSetup. Click "install help and system page packages" under
+# "Installing page packages". Select the desired selection of
+# underlay pages. (Default to all_pages if unsure.)
 
 ## Wiki Management
 

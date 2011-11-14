@@ -82,8 +82,8 @@ class FarmConfig(DefaultConfig):
         " collab:admin,read,write All:"
 
     # Add your superusers to these lines
-    #acl_rights_before  = u"superuser:read,write,admin,delete,revert,invite"
-    superuser = [] 
+    acl_rights_before  = u"collab:read,write,admin,delete,revert,invite"
+    superuser = ['collab']
 
     # for standalone
     port = 10010
