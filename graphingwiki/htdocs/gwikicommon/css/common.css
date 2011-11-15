@@ -252,3 +252,20 @@ div.ac-results {
     padding-right: 15px;
     background: url("../img/ajax-loader.gif") center no-repeat !important;
 }
+
+.progress {
+    border: solid #546569 2px;
+    width: 90%;
+    margin: 10px auto;
+}
+.progress div {
+    background-color: #87A4AB;
+    -webkit-transition: all .2s;
+    -moz-transition: all .2s;
+    margin: 0;
+}
+
+.progress div span {
+    padding: 4px;
+    display: inline-block;
+}
