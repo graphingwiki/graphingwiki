@@ -122,7 +122,7 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:
-        delete_attachfile(request, pagename, bite)
+        delete_attachfile(request, pagename, bite, True)
 
     # On success signal that there were no missing chunks.
     if success:
