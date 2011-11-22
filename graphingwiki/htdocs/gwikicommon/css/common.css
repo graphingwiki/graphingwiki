@@ -96,6 +96,11 @@ table.month-container td table {
     width: 100%;
 }
 
+table.metatable.wrap thead td,
+table.metatable.wrap thead div {
+    white-space: normal !important;
+}
+
 /* Styles for sorted MetaTable */
 .table-th-sort-span {
     float: right;

@@ -91,7 +91,7 @@ diff -up ./MoinMoin/xmlrpc/__init__.py-orig ./MoinMoin/xmlrpc/__init__.py
  
          self.request.cfg.session_handler.after_auth(self.request, id_handler, u)
  
-diff -up auth/http.py-orig auth/http.py
+diff -up ./MoinMoin/auth/http.py-orig ./MoinMoin/auth/http.py
 --- ./MoinMoin/auth/http.py-orig   2010-12-15 12:01:30.719630611 +0200
 +++ ./MoinMoin/auth/http.py        2010-12-15 12:03:21.269298026 +0200
 @@ -84,7 +84,7 @@ class HTTPAuth(BaseAuth):
@@ -104,3 +104,15 @@ diff -up auth/http.py-orig auth/http.py
          logging.debug("u: %r" % u)
          if u and self.autocreate:
 
+diff -up ./MoinMoin/theme/modernized.py-orig ./MoinMoin/theme/modernized.py
+--- ./MoinMoin/theme/modernized.py-orig	2010-06-05 19:14:34.000000000 +0300
++++ ./MoinMoin/theme/modernized.py	2011-11-21 17:56:05.435819000 +0200
+@@ -20,6 +20,8 @@ class Theme(ThemeBase):
+         # FileAttach
+         'attach':     ("%(attach_count)s",       "moin-attach.png",   16, 16),
+         'info':       ("[INFO]",                 "moin-info.png",     16, 16),
++        'edit':       (_("Edit"),                "moin-edit.png",     12, 12),
++        'formedit':   (_("FormEdit"),            "moin-news.png",     12, 12),
+         'attachimg':  (_("[ATTACH]"),            "attach.png",        32, 32),
+         # RecentChanges
+         'rss':        (_("[RSS]"),               "moin-rss.png",      16, 16),
