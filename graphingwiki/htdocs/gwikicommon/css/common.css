@@ -96,9 +96,14 @@ table.month-container td table {
     width: 100%;
 }
 
+table.metatable thead td,
+table.metatable thead div {
+    white-space: nowrap;
+}
+
 table.metatable.wrap thead td,
 table.metatable.wrap thead div {
-    white-space: normal !important;
+    white-space: normal;
 }
 
 /* Styles for sorted MetaTable */

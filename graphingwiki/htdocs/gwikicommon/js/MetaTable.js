@@ -17,8 +17,7 @@
         }
 
         head.getElements('td')
-            .addClass('head_cell')
-            .setStyle('white-space', 'nowrap');
+            .addClass('head_cell');
 
         return tab;
     };
@@ -66,7 +65,7 @@
                     'class' : 'hidelink',
                     'title': 'hide column',
                     'styles': style
-                })).setStyle('white-space', 'nowrap');
+                }));
                 td.grab(new Element('a', {
                     'html': '&#187;',
                     'class' : 'showlink',
@@ -163,7 +162,7 @@
             var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
 
-            this.head.addEvent('shiftclick:relay(span[id*=' + this.options.separator + '])', this.keyEdit.bind(this));
+            this.head.addEvent('shiftclick:relay(span[data-key])', this.keyEdit.bind(this));
 
             table.addEvent('mouseover:once', function() {
                 this.metaRequest.get()
@@ -214,8 +213,7 @@
             if (target.get('tag') == 'td') {
                 //edit empty cells without existing value
                 var i = target.getParent('tr').getElements('td.meta_cell').indexOf(target);
-                id = unescapeId(this.head.getElements('span[id*=' + this.options.separator + ']')[i].get('id'));
-                key = id.split(this.options.separator)[1];
+                key = this.head.getElements('span[data-key]')[i].get('data-key');
                 index = 0;
                 page = target.getParent('tr').getFirst('td').get('text');
 
@@ -228,11 +226,10 @@
                 //edit existing value
                 if (target.get('tag') != 'span') target = target.getParent('span');
 
-                id = unescapeId(target.get('id'));
 
-                page = id.split(this.options.separator)[0];
-                key = id.split(this.options.separator)[1];
-                index = id.split(this.options.separator)[2];
+                page = target.get('data-page');
+                key = target.get('data-key');
+                index = target.get('data-index');
                 oldValue = this.metas[page][key][index];
             }
 
@@ -288,8 +285,7 @@
             var target = document.id(event.target);
             if (target.get('tag') != 'span') target = target.getParent('span');
 
-            var id = unescapeId(target.get('id'));
-            var oldKey = id.split(this.options.separator)[1];
+            var oldKey = target.get('data-key');
 
             if (this.inlineEditor) this.inlineEditor.cancel();
 
