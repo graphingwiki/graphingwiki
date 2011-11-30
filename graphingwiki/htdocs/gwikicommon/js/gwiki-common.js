@@ -82,10 +82,18 @@ window.addEvent('domready', function() {
     // DynamicTextareas for textareas with .dynamic
     if ($$('textarea.dynamic')) {
         loader.load('DynamicTextarea', function(){
-            $$('textarea.dynamic').each(function(el){
-                new DynamicTextarea(el);
-            })
-        })
+            $$('textarea.dynamic').setStyles({
+                'resize': 'none',
+                'overflow': 'hidden'
+            });
+            
+            document.body.addEvent('focus:relay(textarea.dynamic)', function(e){
+                if (!$(e.target).retrieve('dynamic')) {
+                    new DynamicTextarea(e.target);
+                    $(e.target).store('dynamic', true).focus();
+                }
+            });
+        });
     }
 
     //DnD file attachment upload
