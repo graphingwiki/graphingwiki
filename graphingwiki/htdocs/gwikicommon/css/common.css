@@ -96,6 +96,16 @@ table.month-container td table {
     width: 100%;
 }
 
+table.metatable thead td,
+table.metatable thead div {
+    white-space: nowrap;
+}
+
+table.metatable.wrap thead td,
+table.metatable.wrap thead div {
+    white-space: normal;
+}
+
 /* Styles for sorted MetaTable */
 .table-th-sort-span {
     float: right;
@@ -251,4 +261,21 @@ div.ac-results {
     padding-left: 15px;
     padding-right: 15px;
     background: url("../img/ajax-loader.gif") center no-repeat !important;
+}
+
+.progress {
+    border: solid #546569 2px;
+    width: 90%;
+    margin: 10px auto;
+}
+.progress div {
+    background-color: #87A4AB;
+    -webkit-transition: all .2s;
+    -moz-transition: all .2s;
+    margin: 0;
+}
+
+.progress div span {
+    padding: 4px;
+    display: inline-block;
 }

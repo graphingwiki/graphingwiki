@@ -54,7 +54,7 @@ def delete(request, pagename, filename):
         return xmlrpclib.Fault(1, _("You are not allowed to delete a file on this page"))
 
     # Delete the attachment
-    result = delete_attachfile(request, pagename, filename)
+    result = delete_attachfile(request, pagename, filename, True)
 
     if not result:
         return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
@@ -70,7 +70,7 @@ def save(request, pagename, filename, content, overwrite):
         return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # Attach the decoded file
-    success = save_attachfile(request, pagename, content, filename, overwrite)
+    success = save_attachfile(request, pagename, content, filename, overwrite, True)
     
     if success is True:
         return success

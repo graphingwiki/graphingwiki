@@ -34,7 +34,7 @@ from MoinMoin.Page import Page
 
 from graphingwiki import url_escape, id_escape, SEPARATOR
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import format_wikitext
+from graphingwiki.util import format_wikitext, form_writer
 
 try:
     import simplejson as json
@@ -47,11 +47,8 @@ def wrap_span(request, pagename, key, data, id):
     if not key:
         return format_wikitext(request, data)
 
-    return '<span id="' + \
-        id_escape('%(page)s%(sepa)s%(key)s%(sepa)s%(id)s' %
-                  {'page': pagename, 'sepa': SEPARATOR,
-                   'id': id, 'key': key}) + '">' + \
-                   format_wikitext(request, data) + '</span>'
+    return form_writer(u'<span data-page="%s" data-key="%s" data-index="%s">',
+             pagename, key, str(id)) + format_wikitext(request, data)+'</span>'
 
 def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
     formatter = request.formatter
@@ -87,6 +84,11 @@ def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
                 out += page.link_to_raw(request, img,
                                         querystr={'action': 'edit'},
                                         rel='nofollow')
+                img = request.theme.make_icon('formedit')
+                page = Page(request, data)
+                out += page.link_to_raw(request, img,
+                                        querystr={'action': 'MetaFormEdit'},
+                                        rel='nofollow')
                 out += formatter.span(0)
             kw = dict()
             if rev:
@@ -121,10 +123,16 @@ def construct_table(request, pagelist, metakeys,
     row = 0
     divfmt = { 'class': "metatable" }
 
+    formatopts = {'tableclass': 'metatable' }
+
+    if 'width' in options:
+        formatopts = {'tableclass': 'metatable wrap'}
+        formatopts['tablewidth'] = options['width']
+
     # Start table
     out = formatter.linebreak() + \
         formatter.div(1, **divfmt).replace('div', 'div data-options="'+quote(json.dumps(options))+'"') + \
-        formatter.table(1, attrs={'tableclass': 'metatable'})
+        formatter.table(1, attrs=formatopts)
 
     # If the first column is -, do not send page data
     send_pages = True

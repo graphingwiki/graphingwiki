@@ -1581,13 +1581,16 @@ def load_attachfile(request, pagename, aname):
 
     return adata
 
-def delete_attachfile(request, pagename, aname):
+def delete_attachfile(request, pagename, aname, log=False):
     try:
         fpath, exists = check_attachfile(request, pagename, aname)
         if not exists:
             return False
 
         os.unlink(fpath)
+
+        if log:
+            _addLogEntry(request, 'ATTDEL', pagename, aname)
     except:
         return False
 

@@ -82,11 +82,22 @@ window.addEvent('domready', function() {
     // DynamicTextareas for textareas with .dynamic
     if ($$('textarea.dynamic')) {
         loader.load('DynamicTextarea', function(){
-            $$('textarea.dynamic').each(function(el){
-                new DynamicTextarea(el);
-            })
-        })
+            $$('textarea.dynamic').setStyles({
+                'resize': 'none',
+                'overflow': 'hidden'
+            });
+            
+            document.body.addEvent('focus:relay(textarea.dynamic)', function(e){
+                if (!$(e.target).retrieve('dynamic')) {
+                    new DynamicTextarea(e.target);
+                    $(e.target).store('dynamic', true).focus();
+                }
+            });
+        });
     }
+
+    //DnD file attachment upload
+    initDnDUpload(document.body);
 });
 
 Element.Events.shiftclick = {
@@ -154,6 +165,129 @@ var unescapeId = function(id) {
         }).join("")
 };
 
+
+var initDnDUpload = function(el){
+    function noAction(e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+
+    var overlay = null;
+
+    el.addEventListener("dragenter", noAction, false);
+    el.addEventListener("dragexit", noAction, false);
+    el.addEventListener("dragover", noAction, false);
+    el.addEventListener("drop", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (overlay) overlay.cancel();
+
+        if (typeof(window.FileReader) == 'undefined' || typeof(window.FormData) == 'undefined') {
+            // FailBack file uploader using normal form
+            if (confirm("Ajax file uploading not supported by your browser, proceed to normal AttachFile action?")) {
+                var url = window.location.href;
+                var action = "?action=AttachFile";
+                window.location.href = window.location.search ? url.replace(window.location.search, action) : url + action;
+            }
+        } else {
+            // Upload using FileReader & xmlhttprequest + formdata
+            var files = e.dataTransfer.files;
+
+            if (files.length > 0) {
+                overlay = new Overlay({
+                    width: '650px',
+                    onBuild: function() {
+                        this.editor.grab(new Element('h3[text=Attach to page]'));
+                        var div = new Element('div').inject(this.editor);
+                        var ul = new Element('ul').inject(div);
+                        var status = [];
+                        var names = [];
+                        for (var i = 0; i < files.length; i++) {
+                            status.push(new Element('span'));
+                            names.push(new Element('span').set('text', files[i].name));
+                            ul.grab(new Element('li').adopt(names[i], status[i]));
+                        }
+
+                        var overwrite = false;
+                        var failed = null;
+
+                        var progress = new Element('div').inject(new Element('div.progress.hidden').inject(div));
+
+                        div.grab(new Element('input[type=button][value=Send]').addEvent('click', function(e) {
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('POST', '?action=ajaxUtils&util=uploadFile', true);
+
+                            var text = new Element('span[text= ]').inject(progress.empty());
+                            progress.getParent().removeClass('hidden');
+
+                            var data = new FormData();
+                            xhr.upload.addEventListener('progress', function(event) {
+                                var percent = parseInt(event.loaded / event.total * 100);
+                                progress.setStyle('width', percent + '%');
+                                text.set('text', percent + '%');
+                            }, false);
+                            
+                            xhr.onreadystatechange = function(event) {
+                                if (event.target.readyState == 4) {
+                                    if (event.target.status == 200) {
+                                        text.set('text', ' complete!');
+                                        var json = JSON.decode(xhr.responseText);
+                                        failed = json.failed;
+
+                                        for (var i = 0; i < files.length; i++) {
+                                            new Request.HTML({
+                                                data: 'action=ajaxUtils&util=format&text=' + encodeURIComponent("[[attachment:" + files[i].name + "]]"),
+                                                update: names[i]
+                                            }).send();
+
+                                            if (json.success.contains(files[i].name)) {
+                                                status[i].set('text', "success").setStyles({
+                                                    'font-style': 'italic',
+                                                    'color': 'green',
+                                                    'margin-left': '15px'
+                                                });
+                                            }else if (failed.contains(files[i].name)) {
+                                                status[i].set('text', "failed, file already in attachments!").setStyles({
+                                                    'font-style': 'italic',
+                                                    'color': 'red',
+                                                    'margin-left': '15px'
+                                                });
+
+                                                $(e.target).removeClass('hidden').set('value', 'Overwrite');
+                                                overwrite = true;
+                                            }
+                                            progress.getParent().addClass('hidden');
+                                        }
+                                    }
+                                    else {
+                                        text.set('text', ' Upload failed!');
+                                    }
+                                }
+                            };
+
+                            for (var i = 0; i < files.length; i++) {
+                                if (failed && !failed.contains(files[i].name)) continue;
+                                data.append("file" + i, files[i])
+                            }
+
+                            if (overwrite) data.append("overwrite", 1);
+                            
+                            xhr.send(data);
+
+                            $(e.target).addClass('hidden');
+
+                        }).setStyle('font-size', 'larger'));
+                    }
+                });
+            }
+        }
+    }, false);
+
+
+
+};
 
 var initInlineMetaEdit = function (base) {
 
