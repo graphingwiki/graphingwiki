@@ -73,10 +73,12 @@ class _Lock(object):
 
     def release(self):
         if self._fd is None:
-            return
+            return False
+
         fcntl.lockf(self._fd, fcntl.LOCK_UN)
         os.close(self._fd)
         self._fd = None
+        return True
 
 class GraphData(GraphDataBase):
     def __init__(self, request):
@@ -234,8 +236,15 @@ class GraphData(GraphDataBase):
             self.db.close()
             self.db = None
 
-        self._writelock.release()
-        self._readlock.release()
+        if self._writelock.release():
+            log.debug("released a write lock for %r" % (self.graphshelve,))
+        else:
+            log.debug("did not release any write locks for %r" % (self.graphshelve,))
+
+        if self._readlock.release():
+            log.debug("released a read lock for %r" % (self.graphshelve,))
+        else:
+            log.debug("did not released any read locks for %r" % (self.graphshelve,))
 
         self.cache.clear()
 
