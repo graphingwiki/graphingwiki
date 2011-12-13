@@ -93,6 +93,8 @@ class _Lock(object):
 class GraphData(GraphDataBase):
     is_acid = False
 
+    UNDEFINED = object()
+
     def __init__(self, request, **kw):
         log.debug("shelve graphdb init")
         GraphDataBase.__init__(self, request, **kw)
@@ -117,6 +119,7 @@ class GraphData(GraphDataBase):
 
         self.db = None
         self.cache = dict()
+        self.out = dict()
 
         lock_path = os.path.join(gddir, "graphdata-lock")
         self._lock_timeout = getattr(request.cfg, 'graphdata_lock_timeout', None)
@@ -130,10 +133,16 @@ class GraphData(GraphDataBase):
     def __getitem__(self, item):
         page = encode_page(item)
 
-        if page not in self.cache:
-            self.readlock()
-            self.cache[page] = self.db[page]
+        if page in self.out:
+            if self.out[page] is self.UNDEFINED:
+                raise KeyError(page)
+            return self.out[page]
 
+        if page in self.cache:
+            return self.cache[page]
+
+        self.readlock()
+        self.cache[page] = self.db[page]
         return self.cache[page]
 
     def __setitem__(self, item, value):
@@ -143,9 +152,8 @@ class GraphData(GraphDataBase):
         log.debug("savepage %s = %s" % (repr(pagename), repr(pagedict)))
         page = encode_page(pagename)
 
-        self.writelock()
-        self.db[page] = pagedict
-        self.cache[page] = pagedict
+        self.out[page] = pagedict
+        self.cache.pop(page, None)
 
     def is_saved(self, pagename):
         return self.getpage(pagename).get('saved', False)
@@ -185,25 +193,33 @@ class GraphData(GraphDataBase):
 
     def delpage(self, pagename):
         log.debug("delpage %s" % (repr(pagename),))
-        self.writelock()
         page = encode_page(pagename)
 
-        self.writelock()
-        del self.db[page]
+        self.out[page] = self.UNDEFINED
         self.cache.pop(page, None)
-
-    def keys(self):
-        self.readlock()
-        return map(decode_page, self.db.keys())
 
     def __iter__(self):
         self.readlock()
-        return itertools.imap(decode_page, self.db)
+
+        for key in self.db.keys():
+            if self.out.get(key, None) is self.UNDEFINED:
+                continue
+            yield decode_page(key)
+
+    def keys(self):
+        return list(self.__iter__())
 
     def __contains__(self, item):
         page = encode_page(item)
+
+        if page in self.out:
+            return self.out[page] is not self.UNDEFINED
+
+        if page in self.cache:
+            return True
+
         self.readlock()
-        return page in self.cache or page in self.db
+        return page in self.db
 
     def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
         pagedata = self.getpage(pagename)
@@ -214,6 +230,9 @@ class GraphData(GraphDataBase):
         self.savepage(pagename, pagedata)
 
     def readlock(self):
+        if self._writelock.is_locked():
+            return
+
         log.debug("getting a read lock for %r" % (self.graphshelve,))
         try:
             self._readlock.acquire(self._lock_timeout)
@@ -223,13 +242,18 @@ class GraphData(GraphDataBase):
             raise
         log.debug("got a read lock for %r" % (self.graphshelve,))
 
-        if self.db is None:
-            self.db = self.shelveopen(self.graphshelve, "r")
+        self.db = self.shelveopen(self.graphshelve, "r")
 
     def writelock(self):
-        if not self._writelock.is_locked() and self.db is not None:
-            self.db.close()
-            self.db = None
+        if self._writelock.is_locked():
+            return
+
+        if self._readlock.is_locked():
+            if self.db is not None:
+                self.db.close()
+                self.db = None
+            self._readlock.release()
+            log.debug("released a write lock for %r" % (self.graphshelve,))
 
         log.debug("getting a write lock for %r" % (self.graphshelve,))
         try:
@@ -240,10 +264,22 @@ class GraphData(GraphDataBase):
             raise
         log.debug("got a write lock for %r" % (self.graphshelve,))
 
-        if self.db is None:
-            self.db = self.shelveopen(self.graphshelve, "c")
+        self.db = self.shelveopen(self.graphshelve, "c")
 
     def close(self):
+        if self.out:
+            self.writelock()
+
+            for key, value in self.out.items():
+                if value is self.UNDEFINED:
+                    self.db.pop(key, None)
+                else:
+                    self.db[key] = value
+
+            self.out = dict()
+
+        self.cache.clear()
+
         if self.db is not None:
             self.db.close()
             self.db = None
@@ -257,8 +293,6 @@ class GraphData(GraphDataBase):
             log.debug("released a read lock for %r" % (self.graphshelve,))
         else:
             log.debug("did not released any read locks for %r" % (self.graphshelve,))
-
-        self.cache.clear()
 
     def commit(self):
         # Ha, puny gullible humans think I do transactions
