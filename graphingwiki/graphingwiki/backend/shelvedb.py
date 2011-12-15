@@ -232,6 +232,8 @@ class GraphData(GraphDataBase):
     def readlock(self):
         if self._writelock.is_locked():
             return
+        if self._readlock.is_locked():
+            return
 
         log.debug("getting a read lock for %r" % (self.graphshelve,))
         try:
