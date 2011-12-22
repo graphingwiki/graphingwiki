@@ -55,7 +55,7 @@ def formatReleaseNotes(page, rnotes, private):
     page += "{{{#!wiki center\n= " + suitename + " =\n}}}\n\n"
     page += "<<TableOfContents>>\n\n"
     page += "\n".join(lines[1:])
-    page += "= Metadata =\n"
+    page += "\n= Metadata =\n"
     page += "\n----\n<<LinkedIn>>\n----\n"
     return page, suitename
 
@@ -78,6 +78,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
     html = re.compile('\.html?')
     txt = re.compile('\.txt')
     d3 = re.compile('d3-')
+    d10 = re.compile('d10-installer-')
     blre = re.compile('%s' % blacklist)
     metas = Metas()
     for dir in arena_dirs:
@@ -148,8 +149,8 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                 else:
                     metas[page]["JAR File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, jar_file))
                     changes |= uploadFile(collab,dpage,fname,jar_file,progress)
-                if d3.search(jar_file):
-                    metas[page]["TYPE"].add('D3 Monitor')
+                if d10.search(jar_file):
+                    metas[page]["TYPE"].add('D10 Monitor')
                 else:
                     metas[page]["TYPE"].add('D2 Suite')
         tar_gz_files = filter(tar_gz.search, flist) 
