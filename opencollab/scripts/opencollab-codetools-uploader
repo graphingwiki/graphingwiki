@@ -51,12 +51,8 @@ def formatReleaseNotes(page, rnotes, private):
         page = "#acl SupportGroup:admin,revert,read,write,delete,invite " + page + "/LicenseGroup:read All:none"
     else:
         page = "#acl SupportGroup:admin,revert,read,write,delete,invite All:read"
-    page += "\n\n<<Navigation(children)>>\n\n"
-    page += "{{{#!wiki center\n= " + suitename + " =\n}}}\n\n"
-    page += "<<TableOfContents>>\n\n"
+    page += "\n{{{#!wiki center\n= " + suitename + " =\n}}}\n"
     page += "\n".join(lines[1:])
-    page += "\n= Metadata =\n"
-    page += "\n----\n<<LinkedIn>>\n----\n"
     return page, suitename
 
 def formatDownloadPage(page, dpage):
@@ -104,8 +100,9 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
         if 'release.txt' in flist:
             fname = dir + "/release.txt"
             pcontent, suitename = formatReleaseNotes(page, fname, private)
+            rpage = page + "/ReleaseNotes"
             try:
-                collab.putPage(page,pcontent)
+                collab.putPage(rpage,pcontent)
             except WikiFault:
                 pass
             metas[page]["suite name"].add(suitename)
