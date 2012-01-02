@@ -60,6 +60,7 @@ def formatDownloadPage(page, dpage):
     pcontent += "\n= @PAGE@ =\n"
     pcontent += "\n<<AttachTree>>\n"
     pcontent += "\n----\n<<LinkedIn>>\n----\n"
+    pcontent += "CategoryDownload"
     return pcontent
 
 def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, private, verbose):
@@ -119,11 +120,10 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                 print "NOTE: Not creating a /Download page."
         else:
             pcontent = formatDownloadPage(page, dpage)
-            metas[dpage]["gwikicategory"].add("CategoryDownload")
             try:
                 collab.putPage(dpage,pcontent)
-            except WikiFault:
-                pass
+            except WikiFault,e:
+                print "WARNING: " + e
         for install_file in install_files:
             fname = dir + "/" + install_file
             if d3.search(install_file):
