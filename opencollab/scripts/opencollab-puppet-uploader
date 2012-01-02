@@ -8,7 +8,10 @@
 import yaml
 import optparse
 import os
+import time
+import calendar
 
+from datetime import datetime
 from email.Utils import mktime_tz, parsedate_tz
 
 from opencollab.meta import Metas
@@ -89,7 +92,10 @@ def main():
             elif key == '_timestamp':
                 val = values[key]
                 key = 'timestamp'
-                val = mktime_tz(parsedate_tz(val))
+                if isinstance(val, datetime):
+                    val = calendar.timegm(val.timetuple())
+                else:
+                    val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in ['memoryfree', 'memorysize', 'swapfree', 'swapsize']:
                 nro, mgn = values[key].split()
