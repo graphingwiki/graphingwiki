@@ -123,7 +123,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
             try:
                 collab.putPage(dpage,pcontent)
             except WikiFault,e:
-                print "WARNING: " + e
+                pass
         for install_file in install_files:
             fname = dir + "/" + install_file
             if d3.search(install_file):
