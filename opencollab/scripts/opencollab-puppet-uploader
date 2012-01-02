@@ -26,6 +26,9 @@ def main():
     parser.add_option( "-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
         metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option( "-a", "--attachments",
+        action="store_true", dest="attachments", default=False,
+        help="Upload YAML attachments.")
     parser.add_option( "-s", "--short",
         action="store_true", dest="shortname", default=False,
         help="Strip domain from page names.")
@@ -48,6 +51,7 @@ def main():
         category = "CategoryIdentity"
     replace = ops[sect]["lasteditwins"] 
     shortname = ops[sect]["shortname"]
+    attachments = ops[sect]["attachments"]
     args = ops[sect]["args"]
 
     while True:
@@ -109,10 +113,11 @@ def main():
             else:
                 metas[page][key].add(values[key].strip())
 
-        metas[xml_page]['TYPE'].add('puppet configuration')
-        metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % (timestamp))
-        metas[xml_page]['gwikicategory'] = ['CategoryScan']
-        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
+        if attachments:
+            metas[xml_page]['TYPE'].add('puppet configuration')
+            metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % (timestamp))
+            metas[xml_page]['gwikicategory'] = ['CategoryScan']
+            metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
 
         if category is not None:
             for page in metas:
@@ -133,7 +138,8 @@ def main():
                 else:
                     print "ERROR uploading:", page
 
-        uploadFile(collab, xml_page, '', inputfile, progress, data=data)
+        if attachments:
+            uploadFile(collab, xml_page, '', inputfile, progress, data=data)
 
 
 if __name__ == "__main__":
