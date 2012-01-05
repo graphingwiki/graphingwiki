@@ -3,6 +3,7 @@ import shutil
 import socket
 import httplib
 import tempfile
+import re
 
 # A cert to make the ssl.wrap_socket to use the system CAs.
 WRAP_CERT = """
@@ -40,6 +41,62 @@ KYIQ/ne67Ccj1zeVV33dOStDQnsvzu/RZSZCrODWxp2YJE+b7+e0u+G1QFUbLr3r
 LcMswp3YWF7To23qo9MONP3t0CJz68KASq8P4QY3a/YMW1YrHDXWuv1/JA==
 -----END CERTIFICATE-----
 """
+
+class CertificateError(ValueError):
+    pass
+
+def _dnsname_to_pat(dn):
+    pats = []
+    for frag in dn.split(r'.'):
+        if frag == '*':
+            # When '*' is a fragment by itself, it matches a non-empty dotless
+            # fragment.
+            pats.append('[^.]+')
+        else:
+            # Otherwise, '*' matches any dotless fragment.
+            frag = re.escape(frag)
+            pats.append(frag.replace(r'\*', '[^.]*'))
+    return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
+
+def match_hostname(cert, hostname):
+    """Verify that *cert* (in decoded format as returned by
+    SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 rules
+    are mostly followed, but IP addresses are not accepted for *hostname*.
+
+    CertificateError is raised on failure. On success, the function
+    returns nothing.
+    """
+    if not cert:
+        raise ValueError("empty or no certificate")
+    dnsnames = []
+    san = cert.get('subjectAltName', ())
+    for key, value in san:
+        if key == 'DNS':
+            if _dnsname_to_pat(value).match(hostname):
+                return
+            dnsnames.append(value)
+    if not dnsnames:
+        # The subject is only checked when there is no dNSName entry
+        # in subjectAltName
+        for sub in cert.get('subject', ()):
+            for key, value in sub:
+                # XXX according to RFC 2818, the most specific Common Name
+                # must be used.
+                if key == 'commonName':
+                    if _dnsname_to_pat(value).match(hostname):
+                        return
+                    dnsnames.append(value)
+    if len(dnsnames) > 1:
+        raise CertificateError("hostname %r "
+            "doesn't match either of %s"
+            % (hostname, ', '.join(map(repr, dnsnames))))
+    elif len(dnsnames) == 1:
+        raise CertificateError("hostname %r "
+            "doesn't match %r"
+            % (hostname, dnsnames[0]))
+    else:
+        raise CertificateError("no appropriate commonName or "
+            "subjectAltName fields were found")
 
 try:
     # Try to use the new ssl module included by default from Python
@@ -97,4 +154,7 @@ else:
                 self.sock = wrap_socket(plain,
                                         verify_cert=self.verify_cert,
                                         ca_certs=self.ca_certs)
+                if self.verify_cert:
+                    match_hostname(self.sock.getpeercert(), self.host)
+
                 return

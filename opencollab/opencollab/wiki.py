@@ -30,7 +30,7 @@ class WikiFault(WikiFailure):
         self.fault = fault
 
 class Wiki(object):
-    def __init__(self, url, ssl_verify_cert=False, ssl_ca_certs=None):
+    def __init__(self, url, ssl_verify_cert=True, ssl_ca_certs=None):
         self.ssl_verify_cert = ssl_verify_cert
         self.ssl_ca_certs = ssl_ca_certs
 
