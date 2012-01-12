@@ -38,7 +38,7 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
     msg['From'] = sender
     msg['To'] = recipient
     msg.add_header('Content-Disposition', 'inline')
-    html_head = "<html>\n<head>\n<title></title>\n</head>\n<body>"
+    html_head = '<html>\n<head>\n<meta http-equiv="Content-Type" content="text/html;charset=utf-8">\n<title></title>\n</head>\n<body>'
     html_foot = "\n</body>\n</html>"
     content = html_head
 
@@ -46,7 +46,7 @@ def send_content(url,collab,page_content,sender,recipient,subject,header,footer,
         content += header
     for page in page_content:
         if page_content[page] is not None:
-            content += page_content[page]
+            content += page_content[page].encode("utf-8")
         collab.setMeta(page, page_marker, replace=True)
 
     if footer is not None:
