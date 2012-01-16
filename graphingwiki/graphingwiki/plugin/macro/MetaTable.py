@@ -125,13 +125,28 @@ def construct_table(request, pagelist, metakeys,
 
     formatopts = {'tableclass': 'metatable' }
 
+    file('/tmp/a', 'a').write("here\n")
+
+    # Limit the maximum number of pages displayed
+    maxpages = len(pagelist)
+    limit = options.get('limit', 0)
+    try:
+        limit = int(limit)
+    except ValueError:
+        pass
+    if limit > maxpages:
+        limit = 0
+    if limit:
+        pagelist = pagelist[:limit]
+
     if 'width' in options:
         formatopts = {'tableclass': 'metatable wrap'}
         formatopts['tablewidth'] = options['width']
 
     # Start table
     out = formatter.linebreak() + \
-        formatter.div(1, **divfmt).replace('div', 'div data-options="'+quote(json.dumps(options))+'"') + \
+        formatter.div(1, **divfmt).replace('div', 'div data-options="'
+                                           +quote(json.dumps(options))+'"') + \
         formatter.table(1, attrs=formatopts)
 
     # If the first column is -, do not send page data
@@ -144,8 +159,17 @@ def construct_table(request, pagelist, metakeys,
         # Give a class to headers to make it customisable
         out += formatter.table_row(1, {'rowclass': 'meta_header'})
         if send_pages:
-            # Upper left cell is empty or has the desired legend
-            out += t_cell(request, pagename, [legend])
+            # Upper left cell contains table size or has the desired legend
+            if legend:
+                out += t_cell(request, pagename, [legend])
+            elif limit:
+                out += t_cell(request, pagename, ["%s(/%s) pages, %s keys" % 
+                                                  (len(pagelist), maxpages,
+                                                   len(metakeys))])
+            else:
+                out += t_cell(request, pagename, ["%s pages, %s keys" % 
+                                                  (len(pagelist), 
+                                                   len(metakeys))])
 
     for key in metakeys:
         style = styles.get(key, dict())
@@ -221,9 +245,12 @@ def do_macro(request, args, **kw):
     out = str()
     pagename = request.page.page_name
 
+    file('/tmp/a', 'a').write("macro start %s\n" % (repr(args)))
+
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
+
    # No data -> bail out quickly, Scotty
     if not pagelist:
         out += formatter.linebreak() + u'<div class="metatable">' + \
@@ -231,7 +258,8 @@ def do_macro(request, args, **kw):
         if kw.get('silent'):
             out += t_cell(request, pagename, ["%s" % _("No matches")])
         else:
-            out += t_cell(request, pagename, ["%s '%s'" % (_("No matches for"), args)])
+            out += t_cell(request, pagename, 
+                          ["%s '%s'" % (_("No matches for"), args)])
         out += formatter.table(0) + u'</div>'
         return out
 
@@ -254,6 +282,7 @@ def do_macro(request, args, **kw):
 
     out += action_link('metaCSV', 'csv', args)
     out += action_link('metaPackage', 'zip', args)
+
     return out
 
 def execute(macro, args):
