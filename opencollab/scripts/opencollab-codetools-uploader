@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 Lari Huttunen
+    @copyright: 2008-2012 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import os, sys, re, glob, optparse, socket
@@ -11,9 +11,10 @@ from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
 
 CODETOOLS_KEYS = [
-    'Text Document', 'D3 Install File', 'JAR File', 'TAR Archive',
+    'Text Document', 'Defensics Install File', 'JAR File', 'TAR Archive',
     'ZIP Archive', 'PDF Document', 'INI File', 'Hotfix File',
-    'HTML Document'     
+    'HTML Document', 'Defensics Suite', 'D3 Suite', 'D2 Suite', 'D2 Tool',
+    'D3 Install File',
 ]
 
 def read_file(ifile):
@@ -74,7 +75,6 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
     bnf = re.compile('\.bnf')
     html = re.compile('\.html?')
     txt = re.compile('\.txt')
-    d3 = re.compile('d3-')
     d10 = re.compile('d10-installer-')
     blre = re.compile('%s' % blacklist)
     metas = Metas()
@@ -126,15 +126,13 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                 pass
         for install_file in install_files:
             fname = dir + "/" + install_file
-            if d3.search(install_file):
-                metas[page]["TYPE"].add('D3 Suite')
-            else:
-                metas[page]["TYPE"].add('D2 Suite')
+            if install.search(install_file):
+                metas[page]["TYPE"].add('Defensics Suite')
             if notools:
                 if verbose:
                     print "NOTE: Not uploading", fname
             else:
-                metas[page]["D3 Install File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, install_file))
+                metas[page]["Defensics Install File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, install_file))
                 changes |= uploadFile(collab,dpage,fname,install_file,progress)
         if not install_files:
             jar_files = filter(jar.search, flist) 
@@ -147,9 +145,9 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     metas[page]["JAR File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, jar_file))
                     changes |= uploadFile(collab,dpage,fname,jar_file,progress)
                 if d10.search(jar_file):
-                    metas[page]["TYPE"].add('D10 Monitor')
+                    metas[page]["TYPE"].add('Defensics Monitor')
                 else:
-                    metas[page]["TYPE"].add('D2 Suite')
+                    metas[page]["TYPE"].add('Defensics Tool')
         tar_gz_files = filter(tar_gz.search, flist) 
         for tar_gz_file in tar_gz_files:
             fname = dir + "/" + tar_gz_file
