@@ -44,7 +44,7 @@ elif len(args) == 2 and options.list:
 else:
     parser.error("Bad Args")
 
-wiki = CLIWiki(wiki, options.username, options.password)
+wiki = CLIWiki(wiki, options.username, options.password, ssl_verify_cert=False)
 if options.load:
     if options.name is not None and options.name == "-":
         output = sys.stdout
