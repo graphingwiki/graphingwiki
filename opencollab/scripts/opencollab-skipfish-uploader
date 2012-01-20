@@ -183,7 +183,7 @@ def main():
 
     while True:
         try:
-            collab = CLIWiki(**options["creds"])
+            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

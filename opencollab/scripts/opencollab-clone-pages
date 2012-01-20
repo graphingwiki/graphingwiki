@@ -43,7 +43,7 @@ def main():
         print "Authenticating to SRC URL:", url
     while True:
         try:
-            src_collab = CLIWiki(**ops['creds'])
+            src_collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -56,7 +56,7 @@ def main():
         print "Authenticating to DST URL:", dsturl
     while True:
         try:
-            dst_collab = CLIWiki(**ops['creds'])
+            dst_collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
