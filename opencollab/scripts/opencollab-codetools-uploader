@@ -15,6 +15,7 @@ CODETOOLS_KEYS = [
     'ZIP Archive', 'PDF Document', 'INI File', 'Hotfix File',
     'HTML Document', 'Defensics Suite', 'D3 Suite', 'D2 Tool', 'D2 Suite',
     'Defensics Tool', 'D3 Install File', 'D10 Monitor', 'Defensics Monitor',
+    'suite name', 'TYPE',
 ]
 
 def read_file(ifile):
@@ -58,7 +59,6 @@ def formatReleaseNotes(page, rnotes, private):
 
 def formatDownloadPage(page, dpage):
     pcontent = "#acl SupportGroup:admin,revert,read,write,delete,invite " + page + "/LicenseGroup:read All:none"
-    pcontent += "\n= @PAGE@ =\n"
     pcontent += "\n<<AttachTree>>\n"
     pcontent += "\n----\n<<LinkedIn>>\n----\n"
     pcontent += "CategoryDownload"
