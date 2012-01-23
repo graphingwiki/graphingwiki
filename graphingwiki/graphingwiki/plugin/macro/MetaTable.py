@@ -125,8 +125,6 @@ def construct_table(request, pagelist, metakeys,
 
     formatopts = {'tableclass': 'metatable' }
 
-    file('/tmp/a', 'a').write("here\n")
-
     # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
     limit = options.get('limit', 0)
@@ -244,8 +242,6 @@ def do_macro(request, args, **kw):
     _ = request.getText
     out = str()
     pagename = request.page.page_name
-
-    file('/tmp/a', 'a').write("macro start %s\n" % (repr(args)))
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
