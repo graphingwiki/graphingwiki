@@ -66,9 +66,6 @@ class GraphDataBase(UserDict.DictMixin):
         """
         raise NotImplementedError()
  
-    def get_out(self, pagename):
-        raise NotImplementedError()
-
     def get_meta(self, pagename):
         raise NotImplementedError()
 

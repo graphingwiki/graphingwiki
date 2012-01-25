@@ -50,15 +50,10 @@ distributed edit model."
 
 """
 
-import itertools
-import os, operator
-from time import time
-from collections import defaultdict
+import os
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, encode
-from graphingwiki import actionname
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, log
+from graphingwiki.util import log
 
 import couchdb
 import couchdb.mapping
@@ -76,7 +71,7 @@ class GraphData(GraphDataBase):
 
         self.dbname = dbname
         if couchurl:
-            self.couch_server = couchdb.Server(url)
+            self.couch_server = couchdb.Server(couchurl)
         else:
             self.couch_server = couchdb.Server()
 
@@ -107,10 +102,10 @@ class GraphData(GraphDataBase):
                              'function (doc) { for (var key in doc.meta) emit(key, doc); }')
 
             by_out = couchdb.mapping.ViewField(dbname,
-                             'function (doc) { for (var linktype in doc.out) { for (var dst_pagename in doc.out[linktype]) { emit(doc.pagename, dst_pagename); } }')
+                             'function (doc) { for (var linktype in doc.out) { for (var i in doc.out[linktype]) { emit(doc.pagename, doc.out[linktype][i]); } }')
 
             by_in = couchdb.mapping.ViewField(dbname,
-                             'function(doc) { for (var lt in doc.out) { for (var dstpage in doc.out[lt]) { emit(dstpage, doc.pagename); }}}')
+                             'function(doc) { for (var lt in doc.out) { for (var i in doc.out[lt]) { emit(doc.out[lt][i], doc.pagename); }}}')
 
         self.pagemeta_class = PageMeta
         
@@ -140,9 +135,6 @@ class GraphData(GraphDataBase):
 
         couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
 
-
-    def get_out(self, pagename):
-        return dict(self.getpage(pagename).out)
 
     def getpage(self, pagename):
         try:
@@ -211,13 +203,19 @@ class GraphData(GraphDataBase):
         return dict(self.getpage(pagename).out)
 
     def get_in(self, pagename):
-        res = self.pagemeta_class.by_in(self.couch_db, key=pagename, include_docs=True)
-        out = {}
-        for row in res:
-            in_key = row.key
-            in_pagename = row.value
-            out[in_key] = in_pagename
-        return out
+        this_page = self.getpage(pagename)
+        pages = self.pagemeta_class.by_in(self.couch_db, key=pagename, include_docs=True)
+        indict = {}
+        
+        for p in pages:
+            print 'get_in', p
+            for lt, tolist in p.out.items():
+                if pagename in tolist:
+                    l = indict.setdefault(lt, [])
+                    if p.pagename not in l:
+                        l.append(p.pagename)
+
+        return indict
 
     def get_meta(self, pagename):
         return self.getpage(pagename).get(u'meta', {})
@@ -277,3 +275,74 @@ class GraphData(GraphDataBase):
 
     abort = commit
         
+def test_category(gd):
+    categories = filter(lambda x: x.startswith("Category"), gd.pagenames())
+    for c in categories:
+        catmembers = gd.get_in(c)
+        print 'pages in', c + ':', len(catmembers)
+        for p in catmembers:
+            assert c in p.out[u"gwikicategory"], "%s member %s doesn't have cat in links: %s " % (c, p.pagename, repr(p.out["gwikicategory"]))
+
+def test_inlink(gd):
+    print 'cross checking inlinks'
+    for i, pn in enumerate(gd.pagenames()):
+        print i, pn
+        out = gd.getpage(pn).out
+        if out:
+            for olt, onames in out.items():
+                for oname in onames:
+                    print '   ', olt, oname
+                    ins = gd.get_in(oname)
+                    assert pn in ins.get(olt, []), "%s has link to %s but inlinks from there don't match, outlinkss=%s" % (pn, oname, repr(out))
+        if i == 5000:
+            print 'stopping after 500 checks'
+            break
+    
+def test():
+    dbname = os.getenv("USER") + "dev-standalone"
+    from graphingwiki import RequestCLI
+    req = RequestCLI()
+    gd = GraphData(req, dbname)
+
+    test_inlink(gd)
+
+    if 1:
+        test_category(gd)
+
+    print "get_in(FrontPage) ->", gd.get_in(u"FrontPage")
+    print "get_out(FrontPage) ->", gd.get_out(u"FrontPage")
+    print "FrontPage in pagenames() ->", u"FrontPage" in gd.pagenames()
+
+
+    if 0:
+        print 'db dump:'
+        pagelist = gd.pagenames()
+        pagelist.sort()
+
+        for pn in pagelist:
+            
+            o = gd.get_out(pn)
+            i = gd.get_in(pn)
+            m = gd.get_meta(pn)
+            if not (i or o):
+                continue
+
+            print pn
+            if o:
+                print '  outgoing links:'
+                for key, link in sorted(o.items()):
+                    print ' '*4, key, '->', link
+            if i:
+                print '  incoming links:'
+                for key, link in sorted(i.items()):
+                    print ' '*4, key, '<-[' + link + ']', pn
+
+            if m:
+                print '  metas:'
+                for key, link in sorted(m.items()):
+                    print ' '*4, key, '->', link
+                
+            print
+
+if __name__ == '__main__':
+    test()

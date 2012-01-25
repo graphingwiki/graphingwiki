@@ -26,7 +26,7 @@ SEPARATOR = '-gwikiseparator-'
 
 def RequestCLI(pagename='', parse=True):
     """
-    The MoinScript class does command line1 argument parsing, which
+    The MoinScript class does command line argument parsing, which
     might not be what is desired, as it will complain about custom
     arguments in gwiki-* scripts. MoinScript initialises the request
     by calling up ScriptContext, which is then assigned to the
