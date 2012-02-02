@@ -1116,41 +1116,56 @@ def savetext(request, pagename, newtext, **kw):
 
 def string_aton(value):
     # Regression: without this, '\d+ ' is an IP according to this func
-    if not '.' in value:
+    if not '.' in value and not ':' in value:
         raise TypeError
-
-    # Strips links syntax and stuff
-    value = value.lstrip('[').rstrip(']')
 
     # Support for CIDR notation, eg. 10.10.1.0/24
     end = ''
     if '/' in value:
         value, end = value.split('/', 1)
         end = '/' + end
-
+ 
     # 00 is stylistic to avoid this: 
     # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
     #             socket.inet_aton('1.2.3.4')]) 
     # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
-    return u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
-                           "unicode_escape") + end
+    if '.' in value:
+        return u'00' + unicode(socket.inet_pton(socket.AF_INET, 
+                                                value).replace('\\', '\\\\'), 
+                               "unicode_escape") + end
+    else:
+        return u'00' + unicode(socket.inet_pton(socket.AF_INET6, 
+                                                 value).replace('\\', '\\\\'), 
+                               "unicode_escape") + end
 
 ORDER_FUNCS = [
     # (conversion function, ignored exception type(s))
-    # integers
-    (int, ValueError),
-    # floats
-    (float, ValueError),
     # ipv4 addresses
-    (string_aton, (socket.error, UnicodeEncodeError, TypeError)),
+    (lambda x: string_aton(x), 
+     (socket.error, UnicodeEncodeError, TypeError)),
+    # integers
+    (lambda x: int(x), ValueError),
+    # floats
+    (lambda x: float(x), ValueError),
     # strings (unicode or otherwise)
     (lambda x: x.lower(), AttributeError)
     ]
 
 def ordervalue(value):
+    extras = ''
+    # treat values prepended with anything accepted by order_funcs:
+    # 2.1 blaa => 2.1, [[2.1 blaa]] => 2.1
+    if value:
+        # Strips links syntax and stuff (FIXME does this cover all the
+        # relevant cases?)
+        value = value.lstrip('[').strip(']')
+        value = value.split()
+        extras = ' '.join(value[1:])
+        value = value[0]
     for func, ignoredExceptionTypes in ORDER_FUNCS:
         try:
-            return func(value)
+            out = func(value)
+            return ' '.join((unicode(out), extras))
         except ignoredExceptionTypes:
             pass
     return value
@@ -1348,22 +1363,9 @@ def metatable_parseargs(request, args,
             if page_re.match(page):
                 argset.add(page)
 
-    def is_saved(name):
-        if include_unsaved:
-            return True
-        return request.graphdata.is_saved(name)
-
-    def can_be_read(name):
-        return request.user.may.read(name)
-
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pages = filter(is_saved, request.graphdata.pagenames())
-        if checkAccess:
-            # Filter out the pages the user may not read
-            pages = filter(can_be_read, pages)
-        pages = set(pages)
-    # Otherwise check out the wanted pages
+        pages = request.graphdata.pagenames()
     else:
         pages = set()
         categories = set(filter_categories(request, argset))
@@ -1376,18 +1378,9 @@ def metatable_parseargs(request, args,
                 # Check that the page is not a category or template page
                 if cat_re.search(newpage) or temp_re.search(newpage):
                     continue
-                if not is_saved(newpage):
-                    continue
-                if checkAccess and not can_be_read(newpage):
-                    continue
                 pages.add(newpage)
 
-        for name in other:
-            if not is_saved(name):
-                continue
-            if checkAccess and not can_be_read(name):
-                continue
-            pages.add(name)
+        pages.update(other)
 
     pagelist = set()
     for page in pages:
@@ -1465,8 +1458,22 @@ def metatable_parseargs(request, args,
         if clear:
             pagelist.add(page)
 
-    metakeys = set([])
+    # Filter to saved pages that can be read by the current user
+    def is_saved(name):
+        if include_unsaved:
+            return True
+        return request.graphdata.is_saved(name)
 
+    def can_be_read(name):
+        return request.user.may.read(name)
+
+    # Only give saved pages
+    pagelist = filter(is_saved, pagelist)
+    # Only give pages that can be read by the current user
+    if checkAccess:
+        pagelist = filter(can_be_read, pagelist)
+
+    metakeys = set([])
     if not keyspec:
         for name in pagelist:
             # MetaEdit wants all keys by default
@@ -1495,7 +1502,6 @@ def metatable_parseargs(request, args,
 
         for page in pagelist:
             ordermetas = get_metas(request, page, orderkeys, checkAccess=False)
-
             for key, values in ordermetas.iteritems():
                 values = map(ordervalue, values)
                 ordermetas[key] = values
