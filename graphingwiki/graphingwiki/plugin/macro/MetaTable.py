@@ -50,7 +50,8 @@ def wrap_span(request, pagename, key, data, id):
     return form_writer(u'<span data-page="%s" data-key="%s" data-index="%s">',
              pagename, key, str(id)) + format_wikitext(request, data)+'</span>'
 
-def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
+def t_cell(request, pagename, vals, head=0, 
+           style=None, rev='', key='', pathstrip=0, linkoverride=''):
     formatter = request.formatter
     out = str()
 
@@ -77,15 +78,14 @@ def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
             out += formatter.text(',') + formatter.linebreak()
 
         if head:
+            page = Page(request, data)
             if request.user.may.write(data):
                 img = request.theme.make_icon('edit')
-                page = Page(request, data)
                 out += formatter.span(1, css_class="meta_editicon")
                 out += page.link_to_raw(request, img,
                                         querystr={'action': 'edit'},
                                         rel='nofollow')
                 img = request.theme.make_icon('formedit')
-                page = Page(request, data)
                 out += page.link_to_raw(request, img,
                                         querystr={'action': 'MetaFormEdit'},
                                         rel='nofollow')
@@ -93,8 +93,17 @@ def t_cell(request, pagename, vals, head=0, style=None, rev='', key=''):
             kw = dict()
             if rev:
                 kw['querystr'] = '?action=recall&rev=' + rev
+            linktext = data
+            if linkoverride:
+                linktext = linkoverride
+            elif pathstrip:
+                dataparts = data.split('/')
+                if pathstrip > len(dataparts):
+                    pathstrip = len(dataparts) - 1
+                linktext = '/'.join(reversed(
+                        dataparts[:-pathstrip-1:-1]))
             out += formatter.pagelink(1, data, **kw)
-            out += formatter.text(data)
+            out += formatter.text(linktext)
             out += formatter.pagelink(0)
         elif data.strip():
             if cellstyle == 'list':
@@ -126,13 +135,26 @@ def construct_table(request, pagelist, metakeys,
     formatopts = {'tableclass': 'metatable' }
 
     # Limit the maximum number of pages displayed
+    pagepathstrip = options.get('pathstrip', 0)
+    try:
+        pagepathstrip = int(pagepathstrip)
+    except ValueError:
+        pagepathstrip = 0
+        pass
+    if pagepathstrip < 0:
+        pagepathstrip = 0
+
+    nopagelink = options.get('nopagelink', 0)
+
+    # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
     limit = options.get('limit', 0)
     try:
         limit = int(limit)
     except ValueError:
+        limit = 0
         pass
-    if limit > maxpages:
+    if limit > maxpages or limit < 0:
         limit = 0
     if limit:
         pagelist = pagelist[:limit]
@@ -219,7 +241,11 @@ def construct_table(request, pagelist, metakeys,
                                                   
 
         if send_pages:
-            out += t_cell(request, page, [page], head=1, rev=revision)
+            linktext = ''
+            if nopagelink:
+                linktext = _('[link]')
+            out += t_cell(request, page, [page], head=1, rev=revision, 
+                          pathstrip=pagepathstrip, linkoverride=linktext)
 
         for key in metakeys:
             style = styles.get(key, dict())
