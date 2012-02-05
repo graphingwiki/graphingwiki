@@ -169,6 +169,21 @@ class GraphingWiki(Wiki):
     def deletePage(self, page, comment=None):
         return self.request("DeletePage", page, comment)
 
+    def putCacheFile(self, page, filename, data, overwrite=False):
+        data = xmlrpclib.Binary(data)
+        return self.request("PageCache", page, filename, 
+                            "save", data, overwrite)
+
+    def deleteCacheFile(self, page, filename):
+        return self.request("PageCache", page, filename, "delete", "", False)
+
+    def listCacheFiles(self, page):
+        return self.request("PageCache", page, "", "list", "", False)
+
+    def getCacheFile(self, page, filename):
+        result = self.request("PageCache", page, filename, "load", "", False)
+        return str(result)
+
     def putAttachment(self, page, filename, data, overwrite=False):
         data = xmlrpclib.Binary(data)
         return self.request("AttachFile", page, filename, 
@@ -226,7 +241,7 @@ class GraphingWiki(Wiki):
                 seekableStream.seek(offset)
                 data = seekableStream.read(length)
 
-                self.putAttachment(page, digest, data, overwrite=True)
+                self.putCacheFile(page, digest, data, overwrite=True)
 
                 count += 1
                 done += length
