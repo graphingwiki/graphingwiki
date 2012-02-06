@@ -105,7 +105,9 @@ def get_revisions(request, page):
 PROPERTIES = ['constraint', 'description', 'hint', 'hidden', 'default']
 
 def get_properties(request, key):
-    pagename = '%sProperty' % (key)
+    pagename = key
+    if not pagename.endswith('Property'):
+        pagename = '%sProperty' % (pagename)
     _, metakeys, _ = metatable_parseargs(request, pagename, get_all_keys=True)
     properties = get_metas(request, pagename, metakeys)
     for prop in properties:

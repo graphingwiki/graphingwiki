@@ -186,8 +186,8 @@ def construct_table(request, pagelist, metakeys,
     transpose = options.get('transpose', 0)
 
     # Backup and override properties
-    propbackup = options.get('propbackup', '').rstrip('Property')
-    propoverride = options.get('propoverride', '').rstrip('Property')
+    propbackup = options.get('propbackup', '')
+    propoverride = options.get('propoverride', '')
     if propoverride:
         propoverride = get_properties(request, propoverride)
     if propbackup:
