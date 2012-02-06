@@ -135,8 +135,9 @@ def t_cell(request, pagename, vals, head=0,
                 dataparts = data.split('/')
                 if pathstrip > len(dataparts):
                     pathstrip = len(dataparts) - 1
-                linktext = '/'.join(reversed(
-                        dataparts[:-pathstrip-1:-1]))
+                if pathstrip:
+                    linktext = '/'.join(reversed(
+                            dataparts[:-pathstrip-1:-1]))
             out += formatter.pagelink(1, data, **kw)
             out += formatter.text(linktext)
             out += formatter.pagelink(0)
@@ -179,7 +180,10 @@ def construct_table(request, pagelist, metakeys,
     if pagepathstrip < 0:
         pagepathstrip = 0
 
-    nopagelink = options.get('nopagelink', 0)
+    # To include only a [link] to page instead of pagename
+    pagelinkonly = options.get('pagelinkonly', 0)
+    # Transpose table, i.e. make table lanscape instead of portrait
+    transpose = options.get('transpose', 0)
 
     # Backup and override properties
     propbackup = options.get('propbackup', '').rstrip('Property')
@@ -226,41 +230,99 @@ def construct_table(request, pagelist, metakeys,
             if legend:
                 out += t_cell(request, pagename, [legend])
             elif limit:
-                out += t_cell(request, pagename, ["%s(/%s) pages, %s keys" % 
-                                                  (len(pagelist), maxpages,
-                                                   len(metakeys))])
+                message = ["%s(/%s) pages, %s keys" % 
+                           (len(pagelist), maxpages, len(metakeys))]
+                if transpose:
+                    message = ["%s keys, %s(/%s) pages" % 
+                               (len(metakeys), len(pagelist), maxpages)]
+                    
+                out += t_cell(request, pagename, message)
             else:
-                out += t_cell(request, pagename, ["%s pages, %s keys" % 
-                                                  (len(pagelist), 
-                                                   len(metakeys))])
+                message = ["%s pages, %s keys" % (len(pagelist), len(metakeys))]
+                if transpose:
+                    message = ["%s keys, %s pages" % 
+                               (len(metakeys), len(pagelist))]
 
-    for key in metakeys:
-        style = styles.get(key, dict())
-        
-        # Styles can modify key naming
-        name = style.get('gwikiname', '').strip('"')
+                out += t_cell(request, pagename, message)
 
-        if not name and legend and key == 'gwikipagename':
-            name = [legend]
+    if transpose:
+        for page in pagelist:
+            out += t_cell(request, pagename, [page], head=1)
+    else:
+        for key in metakeys:
+            style = styles.get(key, dict())
 
-        # We don't want stuff like bullet lists in out header
-        headerstyle = dict()
-        for st in style:
-            if not st.startswith('gwiki'):
-                headerstyle[st] = style[st]
+            # Styles can modify key naming
+            name = style.get('gwikiname', '').strip('"')
 
-        if name:
-            out +=t_cell(request, pagename, [name], style=headerstyle, key=key)
-        else:
-            out += t_cell(request, pagename, [key], style=headerstyle, key=key)
+            if not name and legend and key == 'gwikipagename':
+                name = [legend]
+
+            # We don't want stuff like bullet lists in out header
+            headerstyle = dict()
+            for st in style:
+                if not st.startswith('gwiki'):
+                    headerstyle[st] = style[st]
+
+            if name:
+                out +=t_cell(request, pagename, [name], 
+                             style=headerstyle, key=key)
+            else:
+                out += t_cell(request, pagename, [key], 
+                              style=headerstyle, key=key)
 
     if metakeys:
         out += formatter.table_row(0)
 
     tmp_page = request.page
 
-    for page in pagelist:
+    def key_cell(out, request, metas, key, page, 
+                 styles, propoverride, propbackup):
+        style = styles.get(key, dict())
 
+        if key == 'gwikipagename':
+            out += t_cell(request, page, [page], head=1, style=style)
+        else:
+            if propoverride:
+                properties = propoverride
+            else:
+                properties = get_properties(request, key)
+            if properties == emptyprop:
+                properties = propbackup
+
+            colors = [x.strip() for x in properties 
+                      if x.startswith('color')]
+            colormatch = None
+            # Get first color match
+            for color in colors:
+                colorval = properties.get(color)
+                # See that color is valid (either in the colorlist
+                # or a valid hex color)
+                if not colorval in COLORS:
+                    if not re.match('#[0-9a-f]{6}', colorval):
+                        continue
+                color = color.split()[-1]
+
+                try:
+                    color_p = re.compile(color)
+                except:
+                    continue
+                for val in metas[key]:
+                    if color_p.match(val):
+                        colormatch = colorval
+                if colormatch:
+                    break
+            if colormatch:
+                style['bgcolor'] = colormatch
+
+            out += t_cell(request, page, metas[key], style=style, key=key)
+
+            if colormatch:
+                del style['bgcolor']
+
+            return out
+
+    def page_rev_metas(request, page, metakeys, checkAccess):
         if '-gwikirevision-' in page:
             metas = get_metas(request, page, metakeys, 
                               checkAccess=checkAccess)
@@ -270,68 +332,79 @@ def construct_table(request, pagelist, metakeys,
                               checkAccess=checkAccess)
             revision = ''
 
+        return metas, page, revision
+
+    def page_cell(out, request, page, revision, row, send_pages, 
+                  pagelinkonly, pagepathstrip):
+
         pageobj = Page(request, page)
         request.page = pageobj
         request.formatter.page = pageobj
-
-        row = row + 1
 
         if row % 2:
             out += formatter.table_row(1, {'rowclass': 'metatable-odd-row'})
                                                
         else:
             out += formatter.table_row(1, {'rowclass': 'metatable-even-row'})
-                                                  
 
         if send_pages:
             linktext = ''
-            if nopagelink:
+            if pagelinkonly:
                 linktext = _('[link]')
             out += t_cell(request, page, [page], head=1, rev=revision, 
                           pathstrip=pagepathstrip, linkoverride=linktext)
 
+        return out
+
+    if transpose:
         emptyprop = dict().fromkeys(PROPERTIES, '')
         for key in metakeys:
             style = styles.get(key, dict())
 
-            if key == 'gwikipagename':
-                out += t_cell(request, page, [page], head=1, style=style)
+            # Styles can modify key naming
+            name = style.get('gwikiname', '').strip('"')
+
+            if not name and legend and key == 'gwikipagename':
+                name = [legend]
+
+            # We don't want stuff like bullet lists in out header
+            headerstyle = dict()
+            for st in style:
+                if not st.startswith('gwiki'):
+                    headerstyle[st] = style[st]
+
+            if name:
+                out +=t_cell(request, pagename, [name], 
+                             style=headerstyle, key=key)
             else:
-                if propoverride:
-                    properties = propoverride
-                else:
-                    properties = get_properties(request, key)
-                if properties == emptyprop:
-                    properties = propbackup
+                out +=t_cell(request, pagename, [key], 
+                             style=headerstyle, key=key)
 
-                colors = [x.strip() for x in properties 
-                          if x.startswith('color')]
-                colormatch = None
-                # Get first color match
-                for color in colors:
-                    colorval = properties.get(color)
-                    # See that color is valid (either in the colorlist
-                    # or a valid hex color)
-                    if not colorval in COLORS:
-                        if not re.match('#[0-9a-f]{6}', colorval):
-                            continue
-                    color = color.split()[-1]
+            row = row + 1
 
-                    try:
-                        color_p = re.compile(color)
-                    except:
-                        continue
-                    for val in metas[key]:
-                        if color_p.match(val):
-                            colormatch = colorval
-                    if colormatch:
-                        break
-                if colormatch:
-                    style['bgcolor'] = colormatch
+            for page in pagelist:
+                metas, page, revision = page_rev_metas(request, page, 
+                                                       metakeys, checkAccess)
+                out = key_cell(out, request, metas, key, page, 
+                               styles, propoverride, propbackup)
 
-                out += t_cell(request, page, metas[key], style=style, key=key)
+            out += formatter.table_row(0)
+    else:
+        for page in pagelist:
+            metas, page, revision = page_rev_metas(request, page, 
+                                                   metakeys, checkAccess)
 
-        out += formatter.table_row(0)
+            row = row + 1
+
+            out = page_cell(out, request, page, revision, row, send_pages, 
+                            pagelinkonly, pagepathstrip)
+
+            emptyprop = dict().fromkeys(PROPERTIES, '')
+            for key in metakeys:
+                out = key_cell(out, request, metas, key, page, 
+                               styles, propoverride, propbackup)
+
+            out += formatter.table_row(0)
 
     request.page = tmp_page
     request.formatter.page = tmp_page
