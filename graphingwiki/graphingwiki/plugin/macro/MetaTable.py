@@ -245,36 +245,6 @@ def construct_table(request, pagelist, metakeys,
 
                 out += t_cell(request, pagename, message)
 
-    if transpose:
-        for page in pagelist:
-            out += t_cell(request, pagename, [page], head=1)
-    else:
-        for key in metakeys:
-            style = styles.get(key, dict())
-
-            # Styles can modify key naming
-            name = style.get('gwikiname', '').strip('"')
-
-            if not name and legend and key == 'gwikipagename':
-                name = [legend]
-
-            # We don't want stuff like bullet lists in out header
-            headerstyle = dict()
-            for st in style:
-                if not st.startswith('gwiki'):
-                    headerstyle[st] = style[st]
-
-            if name:
-                out +=t_cell(request, pagename, [name], 
-                             style=headerstyle, key=key)
-            else:
-                out += t_cell(request, pagename, [key], 
-                              style=headerstyle, key=key)
-
-    if metakeys:
-        out += formatter.table_row(0)
-
-    tmp_page = request.page
 
     def key_cell(out, request, metas, key, page, 
                  styles, propoverride, propbackup):
@@ -341,11 +311,14 @@ def construct_table(request, pagelist, metakeys,
         request.page = pageobj
         request.formatter.page = pageobj
 
-        if row % 2:
-            out += formatter.table_row(1, {'rowclass': 'metatable-odd-row'})
-                                               
-        else:
-            out += formatter.table_row(1, {'rowclass': 'metatable-even-row'})
+        if row:
+            if row % 2:
+                out += formatter.table_row(1, {'rowclass': 
+                                               'metatable-odd-row'})
+
+            else:
+                out += formatter.table_row(1, {'rowclass': 
+                                               'metatable-even-row'})
 
         if send_pages:
             linktext = ''
@@ -355,6 +328,41 @@ def construct_table(request, pagelist, metakeys,
                           pathstrip=pagepathstrip, linkoverride=linktext)
 
         return out
+
+    if transpose:
+        for page in pagelist:
+            metas, page, revision = page_rev_metas(request, page, 
+                                                   metakeys, checkAccess)
+
+            out = page_cell(out, request, page, revision, 0, send_pages, 
+                            pagelinkonly, pagepathstrip)
+    else:
+        for key in metakeys:
+            style = styles.get(key, dict())
+
+            # Styles can modify key naming
+            name = style.get('gwikiname', '').strip('"')
+
+            if not name and legend and key == 'gwikipagename':
+                name = [legend]
+
+            # We don't want stuff like bullet lists in out header
+            headerstyle = dict()
+            for st in style:
+                if not st.startswith('gwiki'):
+                    headerstyle[st] = style[st]
+
+            if name:
+                out +=t_cell(request, pagename, [name], 
+                             style=headerstyle, key=key)
+            else:
+                out += t_cell(request, pagename, [key], 
+                              style=headerstyle, key=key)
+
+    if metakeys:
+        out += formatter.table_row(0)
+
+    tmp_page = request.page
 
     if transpose:
         emptyprop = dict().fromkeys(PROPERTIES, '')
