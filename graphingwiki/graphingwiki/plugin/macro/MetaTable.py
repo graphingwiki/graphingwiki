@@ -33,7 +33,8 @@ from urllib import quote
 from MoinMoin.Page import Page
 
 from graphingwiki import url_escape, id_escape, SEPARATOR
-from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.editing import metatable_parseargs, get_metas, \
+    get_properties, PROPERTIES
 from graphingwiki.util import format_wikitext, form_writer
 
 try:
@@ -42,6 +43,40 @@ except ImportError:
     import json
 
 Dependencies = ['metadata']
+
+# SVG color scheme
+COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 
+          'azure', 'beige', 'bisque', 'black', 'blanchedalmond', 
+          'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 
+          'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 
+          'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 
+          'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 
+          'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 
+          'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 
+          'darkslateblue', 'darkslategray', 'darkslategrey', 
+          'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 
+          'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 
+          'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 
+          'goldenrod', 'gray', 'grey', 'green', 'greenyellow', 'honeydew', 
+          'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 
+          'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 
+          'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray', 
+          'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon', 
+          'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 
+          'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 
+          'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 
+          'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 
+          'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 
+          'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 
+          'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 
+          'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 
+          'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 
+          'plum', 'powderblue', 'purple', 'red', 'rosybrown', 'royalblue', 
+          'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 
+          'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 
+          'slategrey', 'snow', 'springgreen', 'steelblue', 'tan', 'teal', 
+          'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 
+          'whitesmoke', 'yellow', 'yellowgreen']
 
 def wrap_span(request, pagename, key, data, id):
     if not key:
@@ -146,6 +181,14 @@ def construct_table(request, pagelist, metakeys,
 
     nopagelink = options.get('nopagelink', 0)
 
+    # Backup and override properties
+    propbackup = options.get('propbackup', '').rstrip('Property')
+    propoverride = options.get('propoverride', '').rstrip('Property')
+    if propoverride:
+        propoverride = get_properties(request, propoverride)
+    if propbackup:
+        propbackup = get_properties(request, propbackup)
+
     # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
     limit = options.get('limit', 0)
@@ -247,11 +290,45 @@ def construct_table(request, pagelist, metakeys,
             out += t_cell(request, page, [page], head=1, rev=revision, 
                           pathstrip=pagepathstrip, linkoverride=linktext)
 
+        emptyprop = dict().fromkeys(PROPERTIES, '')
         for key in metakeys:
             style = styles.get(key, dict())
+
             if key == 'gwikipagename':
                 out += t_cell(request, page, [page], head=1, style=style)
             else:
+                if propoverride:
+                    properties = propoverride
+                else:
+                    properties = get_properties(request, key)
+                if properties == emptyprop:
+                    properties = propbackup
+
+                colors = [x.strip() for x in properties 
+                          if x.startswith('color')]
+                colormatch = None
+                # Get first color match
+                for color in colors:
+                    colorval = properties.get(color)
+                    # See that color is valid (either in the colorlist
+                    # or a valid hex color)
+                    if not colorval in COLORS:
+                        if not re.match('#[0-9a-f]{6}', colorval):
+                            continue
+                    color = color.split()[-1]
+
+                    try:
+                        color_p = re.compile(color)
+                    except:
+                        continue
+                    for val in metas[key]:
+                        if color_p.match(val):
+                            colormatch = colorval
+                    if colormatch:
+                        break
+                if colormatch:
+                    style['bgcolor'] = colormatch
+
                 out += t_cell(request, page, metas[key], style=style, key=key)
 
         out += formatter.table_row(0)
