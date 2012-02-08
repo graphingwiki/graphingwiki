@@ -86,20 +86,22 @@ def values_to_form(values):
 gv_found = True
 gv = None
 
-# 32bit and 64bit versions
+
 try:
-    sys.path.append('/usr/lib/graphviz/python')
-    sys.path.append('/usr/local/lib/graphviz/python') # OSX
-    sys.path.append('/usr/lib/pyshared/python2.6') # Ubuntu 9.10
-    sys.path.append('/usr/lib/pyshared/python2.5') # Ubuntu 9.10
     import gv
 except ImportError:
-    sys.path[-1] = '/usr/lib64/graphviz/python'
     try:
+        sys.path.append('/usr/lib/graphviz/python')
+        sys.path.append('/usr/local/lib/graphviz/python') # OSX
+        sys.path.append('/usr/lib/pyshared/python2.6') # Ubuntu 9.10
+        sys.path.append('/usr/lib/pyshared/python2.5') # Ubuntu 9.10
         import gv
     except ImportError:
-        gv_found = False
-        pass
+        sys.path[-1] = '/usr/lib64/graphviz/python'
+        try:
+            import gv
+        except ImportError:
+            gv_found = False
 
 igraph_found = True
 igraph = None
@@ -267,16 +269,9 @@ def graphdata_getter(self):
 #    from graphingwiki.backend.durusclient import GraphData
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
-        # below doesn't work: during rehashing self.request is some
-        # http context mutant without cfg, even though a ScriptContext
-        # (aka RequestCLI) is passed down by gwiki-rehash
-        if 1:
-            dbconfig = getattr(self.cfg, 'dbconfig', {})
-            if "dbname" not in dbconfig:
-                dbconfig["dbname"] = self.cfg.interwikiname
-            
-        else:
-            dbconfig = {}
+        dbconfig = getattr(self.cfg, 'dbconfig', {})
+        if "dbname" not in dbconfig:
+            dbconfig["dbname"] = self.cfg.interwikiname
 
         self.__dict__["_graphdata"] = GraphData(self, **dbconfig)
     self.__dict__["_graphdata"].doing_rehash = _is_rehashing
