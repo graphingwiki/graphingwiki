@@ -297,6 +297,14 @@ def test_inlink(gd):
         if i == 5000:
             print 'stopping after 500 checks'
             break
+
+def test_pageops():
+    def create(pagename, metas):
+        do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "SetMeta",
+                                          "do_action")
+        return do_action(request, pagename, {'key1': ['val1']})
+    
+    
     
 def test():
     dbname = os.getenv("USER") + "dev-standalone"
@@ -304,14 +312,19 @@ def test():
     req = RequestCLI()
     gd = GraphData(req, dbname)
 
-    test_inlink(gd)
+    if 0:
+        test_inlink(gd)
 
-    if 1:
+    if 0:
         test_category(gd)
 
     print "get_in(FrontPage) ->", gd.get_in(u"FrontPage")
     print "get_out(FrontPage) ->", gd.get_out(u"FrontPage")
-    print "FrontPage in pagenames() ->", u"FrontPage" in gd.pagenames()
+
+    test_rename()
+
+    if 0:
+        print "FrontPage in pagenames() ->", u"FrontPage" in gd.pagenames()
 
 
     if 0:
