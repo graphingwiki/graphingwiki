@@ -58,6 +58,7 @@ from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math
 import colorsys
+import wsgiref.util
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
@@ -1812,7 +1813,7 @@ class GraphShower(object):
             filtstr = str()
             for lt in linktypes:
                 filtstr += '&filteredges=%s' % url_escape(lt)
-            e.URL = self.request.environ["REQUEST_URI"] + filtstr
+            e.URL = wsgiref.util.request_uri(self.request.environ) + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
