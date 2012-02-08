@@ -1927,7 +1927,9 @@ class GraphShower(object):
                 self.request.write(formatter.text(_(\
                     "ERROR: Graphviz Python extensions not installed. " +\
                     "Not performing layout.")))
-                
+
+            # XXX sometimes gr is not bound here -> crash on reference
+
             if self.format == 'dot':
                 self.send_gv(gr)
             else:
