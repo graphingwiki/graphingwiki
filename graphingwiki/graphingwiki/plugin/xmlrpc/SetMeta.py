@@ -15,7 +15,8 @@ from graphingwiki.util import encode
 from graphingwiki.editing import save_template
 
 #Used in action/setMetaJSON.py
-def do_action(request, page, inmetas, action='add', createpage=True,
+
+def do_action(request, page, inmetas, action='add',
               category_edit='add', catlist=[], template=''):
 
     cleared, added, discarded = {page: set()}, {page: dict()}, {page: dict()}
@@ -51,8 +52,7 @@ def do_action(request, page, inmetas, action='add', createpage=True,
 # Gets data in the same format as process_edit
 # i.e. input is a hash that has page!key as keys
 # and a list of values. All input is plain unicode.
-def execute(xmlrpcobj, page, input, action='add',
-            createpage=True, category_edit='add', catlist=[],
+def execute(xmlrpcobj, page, input, action='add', category_edit='add', catlist=[],
             template=''):
 
     request = xmlrpcobj.request
@@ -74,7 +74,7 @@ def execute(xmlrpcobj, page, input, action='add',
         action = 'set'
 
     try:
-        return do_action(request, page, input, action, createpage,
+        return do_action(request, page, input, action,
                          category_edit, catlist, template)
     except ValueError, e:
         if len(tuple(e)) > 1 and type(e[0]) == int:
