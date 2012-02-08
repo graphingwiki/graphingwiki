@@ -77,6 +77,7 @@ class GraphData(GraphDataBase):
 
         self.make_pagemeta_class()
         
+        # we could really use db connection recycling/pooling...
         self.init_db()
 
         # use write cache/bulk update workaround for rehash slowness,
@@ -119,7 +120,6 @@ class GraphData(GraphDataBase):
             pagedoc.store(self.couch_db)
 
     def init_db(self):
-        print 'couchdb init_db: using db name', self.dbname
         try:
             self.couch_server.create(self.dbname)
         except couchdb.PreconditionFailed:
@@ -134,7 +134,6 @@ class GraphData(GraphDataBase):
                     viewfields.append(x)
 
         couchdb.design.ViewDefinition.sync_many(self.couch_db, viewfields)
-
 
     def getpage(self, pagename):
         try:
@@ -174,12 +173,23 @@ class GraphData(GraphDataBase):
             return True
         else:
             return pagedoc.saved
+
     def delpage(self, pagename):
         pagedoc = self.getpagedoc(pagename)
         if not pagedoc:
             raise KeyError(pagename)
         else:
             self.couch_db.delete(pagedoc)
+
+    def clear_page(self, pagename):
+        if self.get_in(pagename):
+            pagedoc = self.getpagedoc(pagename)
+            pagedoc.saved = False
+            pagedoc.out.clear()
+            pagedoc.meta.clear()
+            self.savepage(pagedoc)
+        else:
+            self.delpage(pagename)
 
     def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
         pagedoc = self.getpagedoc(pagename)
@@ -298,13 +308,6 @@ def test_inlink(gd):
             print 'stopping after 500 checks'
             break
 
-def test_pageops():
-    def create(pagename, metas):
-        do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "SetMeta",
-                                          "do_action")
-        return do_action(request, pagename, {'key1': ['val1']})
-    
-    
     
 def test():
     dbname = os.getenv("USER") + "dev-standalone"
@@ -320,8 +323,6 @@ def test():
 
     print "get_in(FrontPage) ->", gd.get_in(u"FrontPage")
     print "get_out(FrontPage) ->", gd.get_out(u"FrontPage")
-
-    test_rename()
 
     if 0:
         print "FrontPage in pagenames() ->", u"FrontPage" in gd.pagenames()

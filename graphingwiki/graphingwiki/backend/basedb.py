@@ -82,6 +82,9 @@ class GraphDataBase(UserDict.DictMixin):
         self.reverse_meta()
         return self.vals_on_keys
 
+    def clear_page(self, pagename):
+        raise NotImplementedError()
+
     def clear_metas(self):
         pass
 
