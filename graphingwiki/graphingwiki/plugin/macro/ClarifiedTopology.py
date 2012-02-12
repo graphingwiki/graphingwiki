@@ -47,6 +47,7 @@ def draw_topology(request, args, key):
     args = [x.strip() for x in args.split(',')]
 
     topology, flowfile = '', ''
+    rotate, width = '', ''
 
     # take flow file specification from arguments as flow=k.csv,
     # otherwise assume that the argument specifies the topology
@@ -55,6 +56,13 @@ def draw_topology(request, args, key):
             key, val = [x.strip() for x in arg.split('=', 1)]
             if key == 'flow':
                 flowfile = val
+            if key == 'rotate':
+                rotate = True
+            if key == 'width':
+                try:
+                    width = float(val)
+                except ValueError:
+                    pass
         else:
             topology = arg
 
@@ -134,6 +142,8 @@ def draw_topology(request, args, key):
                 end_x = start_x + images[page].get_width()
                 end_y = start_y + images[page].get_height()
             except cairo.Error:
+                end_x = start_x
+                end_y = start_y
                 pass
 
         text_len = ctx.text_extents(aliases[page])[4]
@@ -163,7 +173,11 @@ def draw_topology(request, args, key):
         for line in flows:
             if not line:
                 continue
-            flowcoords.append((line[0], line[6]))
+            try:
+                flowcoords.append((line[0], line[6]))
+            except IndexError:
+                # Pasted broken lines?
+                pass
 
     max_x = max([x[0] for x in allcoords])
     min_x = min([x[0] for x in allcoords])
@@ -171,12 +185,44 @@ def draw_topology(request, args, key):
     min_y = min([x[1] for x in allcoords])
 
     # Make room for text under pictures
-    surface_y = max_y - min_y + 25
-    surface_x = max_x - min_x
+    if rotate:
+        surface_y = max_y - min_y
+        surface_x = max_x - min_x + 25
+    else:
+        surface_y = max_y - min_y + 25
+        surface_x = max_x - min_x
+
+    try:
+        # Get background image, if any
+        toponame = AttachFile.getFilename(request, topology, 'shapefile.png')
+        background = cairo.ImageSurface.create_from_png(toponame)
+
+        h = background.get_height()
+        w = background.get_width()
+        diff_x = w - surface_x
+        diff_y = h - surface_y
+
+        if diff_x > 0:
+            surface_x = w
+        else:
+            diff_x = 0
+
+        if diff_y > 0:
+            surface_y = h
+        else:
+            diff_y = 0
+
+    except cairo.Error:
+        background = None
+        diff_x = 0
+        diff_y = 0
+        pass
 
     # Setup Cairo
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  surface_x, surface_y)
+
+
     # request.write(repr([surface_x, surface_y]))
     ctx = cairo.Context(surface)
     ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
@@ -186,6 +232,21 @@ def draw_topology(request, args, key):
     ctx.set_source_rgb(1.0, 1.0, 1.0)
     ctx.rectangle(0, 0, surface_x, surface_y)
     ctx.fill()
+
+    if background:
+        # Center background if not large. Again, I'm just guessing
+        # where the background image should be, and trying to mimic
+        # analyzer.
+        h = background.get_height()
+        w = background.get_width()
+        start_x, start_y = 0, 0
+        if w < surface_x:
+            start_x = start_x - min_x - w/2
+        if h < surface_y:
+            start_y = start_y - min_y - h/2
+        ctx.set_source_surface(background, start_x, start_y)
+        ctx.rectangle(start_x, start_y, w, h)
+        ctx.fill()
 
     midcoords = dict()
     for page in pagelist:
@@ -198,8 +259,10 @@ def draw_topology(request, args, key):
 #         request.write(str(x-min_x) + '<br>')
 #         request.write(str(y-min_y) + '<br>')
 
-        start_x = x-min_x
-        start_y = y-min_y
+        # FIXME need more data to align different backgrounds
+        # correctly, this is just guessing
+        start_x = x - min_x + (diff_x / 2)
+        start_y = y - min_y + (diff_y / 3)
 
         w, h = 10, 10
         if not images.has_key(page):
@@ -221,11 +284,22 @@ def draw_topology(request, args, key):
 
         if page in aliases:
             ctx.set_source_rgb(0, 0, 0)
-            ctx.move_to(start_x, start_y + h + 10)
+            if rotate:
+                ctx.move_to(start_x + w + 10, start_y + h)
+            else:
+                ctx.move_to(start_x, start_y + h + 10)
+
             ## FIXME, should parse links more nicely, now just removes
             ## square brackets
             text = aliases[page].lstrip('[').rstrip(']')
+
+            if rotate:
+                ctx.rotate(-90.0*math.pi/180.0)
+
             ctx.show_text(text)
+
+            if rotate:
+                ctx.rotate(90.0*math.pi/180.0)
 
     if flowfile:
         ctx.set_line_width(1)
@@ -243,44 +317,61 @@ def draw_topology(request, args, key):
             ctx.stroke()
 
     s2 = surface
-# Proto for scaling and rotating code
-#     scale = 1
-#     rotate = 1
 
-#     if scale:
-#         # For scaling
-#         new_surface_y = 1000.0
-#         new_surface_x = surface_x / (surface_y/new_surface_y)
-#     else:
-#         new_surface_y = surface_y
-#         new_surface_x = surface_x
+    if width:
+        # For scaling
+        new_surface_y = width
+        factor = surface_y/new_surface_y
+        new_surface_x = surface_x / factor
 
-#     if rotate:
-#         temp = new_surface_x
-#         new_surface_x = new_surface_y
-#         new_surface_y = temp
-#         temp = surface_x
-#         surface_x = surface_y
-#         surface_y = temp
-#         transl = -surface_x
+        # Recalculate image map data
+        newareas = dict()
+        for coords, data in areas.iteritems():
+            corners = [float(x) for x in coords.split(',')]
+            corners = tuple(x / factor for x in corners)
+            newareas['%s,%s,%s,%s' % corners] = data
+        areas = newareas
+    else:
+        new_surface_y = surface_y
+        new_surface_x = surface_x
 
-#     s2 = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-#                                  new_surface_x, new_surface_y)
+    if rotate:
+        temp = new_surface_x
+        new_surface_x = new_surface_y
+        new_surface_y = temp
+        temp = surface_x
+        surface_x = surface_y
+        surface_y = temp
+        transl = -surface_x
 
-#     ctx = cairo.Context(s2)
+    s2 = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+                                 new_surface_x, new_surface_y)
 
-#     if rotate:
-#         ctx.rotate(90.0*math.pi/180.0)
+    ctx = cairo.Context(s2)
 
-#     if scale:
-#         ctx.scale(new_surface_x/surface_x, new_surface_y/surface_y)
+    if rotate:
+        ctx.rotate(90.0*math.pi/180.0)
 
-#     if rotate:
-#         ctx.translate(0, -surface_x)
+        # Recalculate image map data
+        newareas = dict()
+        for coords, data in areas.iteritems():
+            corners = coords.split(',')
+            corners = [float(x) for x in coords.split(',')]
+            corners = tuple([new_surface_x - corners[1], corners[0], 
+                             new_surface_x - corners[3], corners[2]])
+            newareas['%s,%s,%s,%s' % corners] = data
+        areas = newareas
+
+    if width:
+        ctx.scale(new_surface_x/surface_x, new_surface_y/surface_y)
+
+    if rotate:
+        ctx.translate(0, -surface_x)
         
-#     ctx.set_source_surface(surface, 0, 0)
-#     ctx.paint()
-    data = write_surface(surface)
+    ctx.set_source_surface(surface, 0, 0)
+    ctx.paint()
+
+    data = write_surface(s2)
 
     map = ''
     for coords in areas:

@@ -185,13 +185,13 @@ def construct_table(request, pagelist, metakeys,
     # Transpose table, i.e. make table lanscape instead of portrait
     transpose = options.get('transpose', 0)
 
-    # Backup and override properties
-    propbackup = options.get('propbackup', '')
+    # Default and override properties
+    propdefault = options.get('propdefault', '')
     propoverride = options.get('propoverride', '')
     if propoverride:
         propoverride = get_properties(request, propoverride)
-    if propbackup:
-        propbackup = get_properties(request, propbackup)
+    if propdefault:
+        propdefault = get_properties(request, propdefault)
 
     # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
@@ -247,7 +247,7 @@ def construct_table(request, pagelist, metakeys,
 
 
     def key_cell(out, request, metas, key, page, 
-                 styles, propoverride, propbackup):
+                 styles, propoverride, propdefault):
         style = styles.get(key, dict())
 
         if key == 'gwikipagename':
@@ -258,7 +258,7 @@ def construct_table(request, pagelist, metakeys,
             else:
                 properties = get_properties(request, key)
             if properties == emptyprop:
-                properties = propbackup
+                properties = propdefault
 
             colors = [x.strip() for x in properties 
                       if x.startswith('color')]
@@ -394,7 +394,7 @@ def construct_table(request, pagelist, metakeys,
                 metas, page, revision = page_rev_metas(request, page, 
                                                        metakeys, checkAccess)
                 out = key_cell(out, request, metas, key, page, 
-                               styles, propoverride, propbackup)
+                               styles, propoverride, propdefault)
 
             out += formatter.table_row(0)
     else:
@@ -410,7 +410,7 @@ def construct_table(request, pagelist, metakeys,
             emptyprop = dict().fromkeys(PROPERTIES, '')
             for key in metakeys:
                 out = key_cell(out, request, metas, key, page, 
-                               styles, propoverride, propbackup)
+                               styles, propoverride, propdefault)
 
             out += formatter.table_row(0)
 

@@ -1147,17 +1147,28 @@ def string_aton(value):
                                                  value).replace('\\', '\\\\'), 
                                "unicode_escape") + end
 
+def float_parts(part):
+    # 2.1.5 should be treated as a float as people seem to expect
+    # this.
+    part = part.split('.')
+    fp = '.'.join(part[:2])
+    addon = '.'.join(part[2:])
+
+    fp = float(fp)
+    return fp, addon
+    
 ORDER_FUNCS = [
-    # (conversion function, ignored exception type(s))
-    # ipv4 addresses
-    (lambda x: string_aton(x), 
+    # (conversion function, ignored exception type(s)) ipv4
+    # addresses. Return values should be unicode strings. The sorting
+    # of numbers is currently a bit hacky.
+    (lambda x: (string_aton(x), ''), 
      (socket.error, UnicodeEncodeError, TypeError)),
     # integers
-    (lambda x: int(x), ValueError),
+    (lambda x: (int(x), ''), ValueError),
     # floats
-    (lambda x: float(x), ValueError),
+    (lambda x: float_parts(x), ValueError),
     # strings (unicode or otherwise)
-    (lambda x: x.lower(), AttributeError)
+    (lambda x: (x.lower(), ''), AttributeError)
     ]
 
 def ordervalue(value):
@@ -1173,8 +1184,8 @@ def ordervalue(value):
         value = value[0]
     for func, ignoredExceptionTypes in ORDER_FUNCS:
         try:
-            out = func(value)
-            return ' '.join((unicode(out), extras))
+            out, addon = func(value)
+            return (out, addon + extras)
         except ignoredExceptionTypes:
             pass
     return value
@@ -1221,17 +1232,18 @@ def metatable_parseargs(request, args,
 
     # Arg placeholders
     argset = set([])
-    keyspec = []
-    orderspec = []
-    limitregexps = {}
-    limitops = {}
+    keyspec = list()
+    excluded_keys = list()
+    orderspec = list()
+    limitregexps = dict()
+    limitops = dict()
 
     # Capacity for storing indirection keys in metadata comparisons
     # and regexps, eg. k->c=/.+/
-    indirection_keys = []
+    indirection_keys = list()
 
     # list styles
-    styles = {}
+    styles = dict()
 
     # Flag: were there page arguments?
     pageargs = False
@@ -1253,6 +1265,11 @@ def metatable_parseargs(request, args,
                     if style:
                         styles[key] = style[0]
 
+                # Grab key exclusions
+                if key.startswith('!!') and key.endswith('!!'):
+                    excluded_keys.append(key.strip('!'))
+                    continue
+                    
                 keyspec.append(key.strip())
 
             continue
@@ -1497,6 +1514,10 @@ def metatable_parseargs(request, args,
 
         # Add gathered indirection metakeys
         metakeys.update(indirection_keys)
+
+        # Exclude keys
+        for key in excluded_keys:
+            metakeys.discard(key)
 
         metakeys = sorted(metakeys, key=ordervalue)
     else:
