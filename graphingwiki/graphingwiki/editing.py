@@ -103,16 +103,18 @@ def get_revisions(request, page):
 
 PROPERTIES = ['constraint', 'description', 'hint', 'hidden', 'default']
 
-def get_properties(request, key):
-    pagename = key
-    if not pagename.endswith('Property'):
-        pagename = '%sProperty' % (pagename)
-    _, metakeys, _ = metatable_parseargs(request, pagename, get_all_keys=True)
-    properties = get_metas(request, pagename, metakeys)
-    for prop in properties:
-        if not (prop in PROPERTIES or prop.startswith('color')):
-            continue
-        properties[prop] = properties[prop][0]
+def get_properties(request, pagename):
+    properties = dict()
+    if pagename:
+        if not pagename.endswith('Property'):
+            pagename = '%sProperty' % (pagename)
+        _, metakeys, _ = metatable_parseargs(request, pagename, 
+                                             get_all_keys=True)
+        properties = get_metas(request, pagename, metakeys)
+        for prop in properties:
+            if not (prop in PROPERTIES or prop.startswith('color')):
+                continue
+            properties[prop] = properties[prop][0]
 
     for prop in PROPERTIES:
         if not properties.has_key(prop):
