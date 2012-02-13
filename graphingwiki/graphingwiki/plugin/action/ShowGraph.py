@@ -372,7 +372,7 @@ class GraphShower(object):
     def form_args(self):
         request = self.request
         error = False
-        
+
         if not self.inline:
             # Get categories for current page, for the category form
             self.allcategories.update(request.page.getCategories(request))
@@ -477,11 +477,11 @@ class GraphShower(object):
 
         # Update filters only if needed
         if self.orderby and request.values.has_key('filterorder'):
-            self.filterorder.update(request.values['filterorder'])
+            self.filterorder.update(request.values.getlist('filterorder'))
         if self.colorby and request.values.has_key('filtercolor'):
-            self.filtercolor.update(request.values['filtercolor'])
+            self.filtercolor.update(request.values.getlist('filtercolor'))
         if self.shapeby and request.values.has_key('filtershape'):
-            self.filtershape.update(request.values['filtershape'])
+            self.filtershape.update(request.values.getlist('filtershape'))
 
         # This is the URL addition to the nodes that have graph data
         if not self.urladd:
