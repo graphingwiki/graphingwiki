@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-    AttachFile xmlrpc action for Graphingwiki
-     - Attach files with xmlrpc
+    PageCache xmlrpc action for Graphingwiki
+     - Modify the page cache over xmlrpc
 
-    @copyright: 2007 by Juhani Eronen <exec@iki.fi>
+    @copyright: 2012 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
 import xmlrpclib
 
-from graphingwiki.editing import save_attachfile
-from graphingwiki.editing import load_attachfile
-from graphingwiki.editing import delete_attachfile
-from graphingwiki.editing import list_attachments
+from graphingwiki.editing import save_pagecachefile
+from graphingwiki.editing import load_pagecachefile
+from graphingwiki.editing import delete_pagecachefile
+from graphingwiki.editing import list_pagecachefiles
+from graphingwiki.util import cache_key
 
 def list(request, pagename):
     _ = request.getText
@@ -21,7 +22,7 @@ def list(request, pagename):
         return xmlrpclib.Fault(1, _("You are not allowed to access this page"))
 
     # Grab the attachment
-    result = list_attachments(request, pagename)
+    result = list_pagecachefiles(request, pagename)
 
     return result
 
@@ -32,10 +33,10 @@ def load(request, pagename, filename):
         return xmlrpclib.Fault(1, _("You are not allowed to access this page"))
 
     # Grab the attachment
-    result = load_attachfile(request, pagename, filename)
+    result = load_pagecachefile(request, pagename, filename)
 
     if not result:
-        return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
+        return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting cache file"),
                                               filename))
 
     return xmlrpclib.Binary(result)
@@ -45,10 +46,10 @@ def delete(request, pagename, filename):
 
     # check ACLs
     if not request.user.may.delete(pagename):
-        return xmlrpclib.Fault(1, _("You are not allowed to delete a file on this page"))
+        return xmlrpclib.Fault(1, _("You are not allowed to delete a file on this page cache"))
 
     # Delete the attachment
-    result = delete_attachfile(request, pagename, filename, True)
+    result = delete_pagecachefile(request, pagename, filename)
 
     if not result:
         return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
@@ -61,24 +62,29 @@ def save(request, pagename, filename, content, overwrite):
 
     # also check ACLs
     if not request.user.may.write(pagename):
-        return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
+        return xmlrpclib.Fault(1, _("You are not allowed to cache a file to this page"))
 
     # Attach the decoded file
-    success = save_attachfile(request, pagename, content, filename, overwrite, True)
+    success = save_pagecachefile(request, pagename, content, 
+                                 filename, overwrite)
     
     if success is True:
         return success
     elif overwrite == False:
-        return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
+        return xmlrpclib.Fault(2, _("Cache file not saved, file exists"))
 
-    return xmlrpclib.Fault(3, _("Unknown error while attaching file"))
+    return xmlrpclib.Fault(3, _("Unknown error while caching file"))
 
-def execute(xmlrpcobj, pagename, filename, action='save',
+def execute(xmlrpcobj, pagename, filename=None, action='save',
             content=None, overwrite=False):
     request = xmlrpcobj.request
     _ = request.getText
 
     pagename = xmlrpcobj._instr(pagename)
+
+    # It is possible just to attach data to the cache
+    if not filename:
+        filename = cache_key(request, (pagename, content))
 
     if action == 'list':
         success = list(request, pagename)
@@ -91,9 +97,9 @@ def execute(xmlrpcobj, pagename, filename, action='save',
     else:
         success = xmlrpclib.Fault(3, _("No method specified or empty data"))
 
-    # Save, delete return True on success
+    # Save, delete return the file name on success
     if success is True:
-        return xmlrpclib.Boolean(1)
+        return xmlrpclib.Binary(filename)
 
-    # Other results include the faults and the binary attachments
+    # Other results include the faults and the binary pagecachefiles
     return success

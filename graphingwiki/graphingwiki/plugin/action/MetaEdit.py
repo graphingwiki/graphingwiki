@@ -334,7 +334,7 @@ def execute(pagename, request):
 
         # MetaFormEdit is much closer to set_meta in function
         if form.has_key('saveform'):
-            added, discarded = {pagename: dict()}, {pagename: dict()}
+            added, cleared = {pagename: dict()}, {pagename: list()}
 
             # Pre-create page if it does not exist, using the template specified
             if template:
@@ -366,21 +366,12 @@ def execute(pagename, request):
                     keys.append(key.split(SEPARATOR)[1])
 #            keys = [x.split(SEPARATOR)[1] for x in form if SEPARATOR in x]
 
-            old = get_metas(request, pagename, keys, includeGenerated=False)
             for key in keys:
-                oldkey = pagename + SEPARATOR + key
-                oldvals = old.get(key, list())
-                if not oldvals:
-                    vals = [x.strip() for x in form[oldkey]
+                cleared[pagename].append(key)
+                vals = [x.strip() for x in form[pagename + SEPARATOR + key]
                             if x.strip()]
-                    if vals:
-                        added.setdefault(pagename, dict()).setdefault(
-                            key, list()).extend(vals)
-                else:
-                    discarded.setdefault(pagename, dict()).setdefault(
-                        key, list()).extend(oldvals)
-                    added.setdefault(pagename, dict()).setdefault(
-                        key, list()).extend(form[oldkey])
+                if vals:
+                    added[pagename].setdefault(key, list()).extend(vals)
 
             msgs = list()
             # Add attachments
@@ -395,24 +386,8 @@ def execute(pagename, request):
                                 key, list()).append("[[attachment:%s]]" % name)
                         except AttachmentAlreadyExists:
                             msgs = ["Attachment '%s' already exists." % name]
-
-
-            # Delete unneeded page keys in added/discarded
-            pagenames = discarded.keys()
-            for pagename in pagenames:
-                if pagename in discarded and not discarded[pagename]:
-                    del discarded[pagename]
-
-            pagenames = added.keys()
-            for pagename in pagenames:
-                if pagename in added and not added[pagename]:
-                    del added[pagename]
-
-            # Save the template if needed
-            if not Page(request, pagename).exists() and template:
-                msgs.append(save_template(request, pagename, template))
-
-            _, msgss = set_metas(request, dict(), discarded, added)
+                            
+            _, msgss = set_metas(request, cleared, dict(), added)
             msgs.extend(msgss)
 
         else:

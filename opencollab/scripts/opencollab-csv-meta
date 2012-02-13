@@ -56,7 +56,7 @@ options, args = parser.parse_args()
 if len(args) != 1:
     parser.error("WIKIURL required")
 
-wiki = CLIWiki(args[0], options.username, options.password)
+wiki = CLIWiki(args[0], options.username, options.password, ssl_verify_cert=False)
 for operation, argument in operations:
     if operation == "get":
         results = wiki.getMeta(argument)

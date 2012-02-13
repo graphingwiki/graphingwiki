@@ -25,6 +25,7 @@ from MoinMoin.Page import Page
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
+from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
 
 from graphingwiki import underlay_to_pages, url_escape, url_unescape
@@ -100,14 +101,22 @@ def get_revisions(request, page):
 
     return pagelist, metakeys
 
+PROPERTIES = ['constraint', 'description', 'hint', 'hidden', 'default']
+
 def get_properties(request, key):
-    properties = get_metas(request, '%sProperty' % (key), 
-                           ['constraint', 'description', 'hint', 'hidden', 'default'])
+    pagename = key
+    if not pagename.endswith('Property'):
+        pagename = '%sProperty' % (pagename)
+    _, metakeys, _ = metatable_parseargs(request, pagename, get_all_keys=True)
+    properties = get_metas(request, pagename, metakeys)
     for prop in properties:
-        if not properties[prop]:
+        if not (prop in PROPERTIES or prop.startswith('color')):
+            continue
+        properties[prop] = properties[prop][0]
+
+    for prop in PROPERTIES:
+        if not properties.has_key(prop):
             properties[prop] = ''
-        else:
-            properties[prop] = properties[prop][0]
 
     return properties
 
@@ -1115,41 +1124,67 @@ def savetext(request, pagename, newtext, **kw):
 
 def string_aton(value):
     # Regression: without this, '\d+ ' is an IP according to this func
-    if not '.' in value:
+    if not '.' in value and not ':' in value:
         raise TypeError
-
-    # Strips links syntax and stuff
-    value = value.lstrip('[').rstrip(']')
 
     # Support for CIDR notation, eg. 10.10.1.0/24
     end = ''
     if '/' in value:
         value, end = value.split('/', 1)
         end = '/' + end
-
+ 
     # 00 is stylistic to avoid this: 
     # >>> sorted(['a', socket.inet_aton('100.2.3.4'), 
     #             socket.inet_aton('1.2.3.4')]) 
     # ['\x01\x02\x03\x04', 'a', 'd\x02\x03\x04'] 
-    return u'00' + unicode(socket.inet_aton(value).replace('\\', '\\\\'), 
-                           "unicode_escape") + end
+    if '.' in value:
+        return u'00' + unicode(socket.inet_pton(socket.AF_INET, 
+                                                value).replace('\\', '\\\\'), 
+                               "unicode_escape") + end
+    else:
+        return u'00' + unicode(socket.inet_pton(socket.AF_INET6, 
+                                                 value).replace('\\', '\\\\'), 
+                               "unicode_escape") + end
 
+def float_parts(part):
+    # 2.1.5 should be treated as a float as people seem to expect
+    # this.
+    part = part.split('.')
+    fp = '.'.join(part[:2])
+    addon = '.'.join(part[2:])
+
+    fp = float(fp)
+    return fp, addon
+    
 ORDER_FUNCS = [
-    # (conversion function, ignored exception type(s))
+    # (conversion function, ignored exception type(s)) ipv4
+    # addresses. Return values should be unicode strings. The sorting
+    # of numbers is currently a bit hacky.
+    (lambda x: (string_aton(x), ''), 
+     (socket.error, UnicodeEncodeError, TypeError)),
     # integers
-    (int, ValueError),
+    (lambda x: (int(x), ''), ValueError),
     # floats
-    (float, ValueError),
-    # ipv4 addresses
-    (string_aton, (socket.error, UnicodeEncodeError, TypeError)),
+    (lambda x: float_parts(x), ValueError),
     # strings (unicode or otherwise)
-    (lambda x: x.lower(), AttributeError)
+    (lambda x: (x.lower(), ''), AttributeError)
     ]
 
 def ordervalue(value):
+    extras = ''
+    # treat values prepended with anything accepted by order_funcs:
+    # 2.1 blaa => 2.1, [[2.1 blaa]] => 2.1
+    if value:
+        # Strips links syntax and stuff (FIXME does this cover all the
+        # relevant cases?)
+        value = value.lstrip('[').strip(']')
+        value = value.split()
+        extras = ' '.join(value[1:])
+        value = value[0]
     for func, ignoredExceptionTypes in ORDER_FUNCS:
         try:
-            return func(value)
+            out, addon = func(value)
+            return (out, addon + extras)
         except ignoredExceptionTypes:
             pass
     return value
@@ -1196,17 +1231,18 @@ def metatable_parseargs(request, args,
 
     # Arg placeholders
     argset = set([])
-    keyspec = []
-    orderspec = []
-    limitregexps = {}
-    limitops = {}
+    keyspec = list()
+    excluded_keys = list()
+    orderspec = list()
+    limitregexps = dict()
+    limitops = dict()
 
     # Capacity for storing indirection keys in metadata comparisons
     # and regexps, eg. k->c=/.+/
-    indirection_keys = []
+    indirection_keys = list()
 
     # list styles
-    styles = {}
+    styles = dict()
 
     # Flag: were there page arguments?
     pageargs = False
@@ -1228,6 +1264,11 @@ def metatable_parseargs(request, args,
                     if style:
                         styles[key] = style[0]
 
+                # Grab key exclusions
+                if key.startswith('!!') and key.endswith('!!'):
+                    excluded_keys.append(key.strip('!'))
+                    continue
+                    
                 keyspec.append(key.strip())
 
             continue
@@ -1350,22 +1391,9 @@ def metatable_parseargs(request, args,
             if page_re.match(page):
                 argset.add(page)
 
-    def is_saved(name):
-        if include_unsaved:
-            return True
-        return request.graphdata.is_saved(name)
-
-    def can_be_read(name):
-        return request.user.may.read(name)
-
     # If there were no page args, default to all pages
     if not pageargs and not argset:
-        pages = filter(is_saved, request.graphdata.pagenames())
-        if checkAccess:
-            # Filter out the pages the user may not read
-            pages = filter(can_be_read, pages)
-        pages = set(pages)
-    # Otherwise check out the wanted pages
+        pages = request.graphdata.pagenames()
     else:
         pages = set()
         categories = set(filter_categories(request, argset))
@@ -1378,18 +1406,9 @@ def metatable_parseargs(request, args,
                 # Check that the page is not a category or template page
                 if cat_re.search(newpage) or temp_re.search(newpage):
                     continue
-                if not is_saved(newpage):
-                    continue
-                if checkAccess and not can_be_read(newpage):
-                    continue
                 pages.add(newpage)
 
-        for name in other:
-            if not is_saved(name):
-                continue
-            if checkAccess and not can_be_read(name):
-                continue
-            pages.add(name)
+        pages.update(other)
 
     pagelist = set()
     for page in pages:
@@ -1469,8 +1488,22 @@ def metatable_parseargs(request, args,
         if clear:
             pagelist.add(page)
 
-    metakeys = set([])
+    # Filter to saved pages that can be read by the current user
+    def is_saved(name):
+        if include_unsaved:
+            return True
+        return request.graphdata.is_saved(name)
 
+    def can_be_read(name):
+        return request.user.may.read(name)
+
+    # Only give saved pages
+    pagelist = filter(is_saved, pagelist)
+    # Only give pages that can be read by the current user
+    if checkAccess:
+        pagelist = filter(can_be_read, pagelist)
+
+    metakeys = set([])
     if not keyspec:
         for name in pagelist:
             # MetaEdit wants all keys by default
@@ -1486,6 +1519,10 @@ def metatable_parseargs(request, args,
         # Add gathered indirection metakeys
         metakeys.update(indirection_keys)
 
+        # Exclude keys
+        for key in excluded_keys:
+            metakeys.discard(key)
+
         metakeys = sorted(metakeys, key=ordervalue)
     else:
         metakeys = keyspec
@@ -1499,7 +1536,6 @@ def metatable_parseargs(request, args,
 
         for page in pagelist:
             ordermetas = get_metas(request, page, orderkeys, checkAccess=False)
-
             for key, values in ordermetas.iteritems():
                 values = map(ordervalue, values)
                 ordermetas[key] = values
@@ -1548,7 +1584,8 @@ def check_attachfile(request, pagename, aname):
 
     return fpath, False
 
-def save_attachfile(request, pagename, content, aname, overwrite=False, log=False):
+def save_attachfile(request, pagename, content, aname, 
+                    overwrite=False, log=False):
     try:
         fpath, exists = check_attachfile(request, pagename, aname)
         if not overwrite and exists:
@@ -1572,8 +1609,8 @@ def load_attachfile(request, pagename, aname):
         if not exists:
             return None
 
-        # Save the data to a file under the desired name
-        stream = open(fpath)
+        # Load the data from the file
+        stream = open(fpath, 'rb')
         adata = stream.read()
         stream.close()
     except:
@@ -1605,6 +1642,76 @@ def list_attachments(request, pagename):
         return files
 
     return []
+
+# FIXME this should probably include all the formatters beyond the
+# default install. The problem is that there does not seem to be a
+# good way for listing them. However, in testing, I did not find a way
+# to cache the output of the other formatters by just using the wiki,
+# so already this could work for most cases.
+CACHE_AUTOMATED = ['pagelinks', 'text_html', 'text_html_percent',
+                   'dom_xml', 'text_plain', 'text_docbook', 'text_gedit',
+                   'text_python', 'text_xml']
+
+# Caching functions for items in the page cache, should they be needed
+# in other code. Sendcache manipulation functions can be found in
+# util.
+def check_pagecachefile(request, pagename, cfname):
+    page = Page(request, pagename)
+    data_cache = caching.CacheEntry(request, page, cfname, 
+                                    scope='item', do_locking=True)
+    return data_cache, data_cache.exists()
+
+def save_pagecachefile(request, pagename, content, cfname, overwrite=False):
+    try:
+        entry, exists = check_pagecachefile(request, pagename, cfname)
+        if not overwrite and exists:
+            return False
+
+        # Do not save over MoinMoin autogenerated page cache files,
+        # having arbitrary data there will probably only result in
+        # crashes. Deleting these files is ok though.
+        if cfname in CACHE_AUTOMATED:
+            return False
+
+        # Save the data to a file under the desired name
+        entry.open(mode='wb')
+        entry.write(content)
+        entry.close()
+    except caching.CacheError:
+        return False
+
+    return True
+
+def load_pagecachefile(request, pagename, cfname):
+    try:
+        entry, exists = check_pagecachefile(request, pagename, cfname)
+        if not exists:
+            return None
+
+        # Load data from the cache file
+        entry.open(mode='rb')
+        cfdata = entry.read()
+        entry.close()
+    except caching.CacheError:
+        return None
+
+    return cfdata
+
+def delete_pagecachefile(request, pagename, cfname):
+    try:
+        entry, exists = check_pagecachefile(request, pagename, cfname)
+        if not exists:
+            return False
+
+        entry.remove()
+    except caching.CacheError:
+        return False
+
+    return True
+
+def list_pagecachefiles(request, pagename):
+    page = Page(request, pagename)
+    return caching.get_cache_list(request, page, 'item')    
 
 def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):

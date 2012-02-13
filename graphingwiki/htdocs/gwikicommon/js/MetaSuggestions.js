@@ -129,6 +129,7 @@
                 this.table.empty();
                 this.detach();
                 this.element.addClass('hidden');
+                this.element.removeClass('waiting');
             }.bind(this);
             if (delay) fn.delay(delay);
             else fn.call();
@@ -291,8 +292,8 @@
 
             this.value = s;
             if (s || this.options.showOnEmpty) {
-                this.bound.resize();
                 this.query(s);
+                this.bound.resize.delay(10);
             } else {
                 this.list.hide();
             }
@@ -344,8 +345,8 @@
         },
 
         exit: function() {
-            if (this.request.isRunning) this.request.cancel();
-
+            if (this.request.isRunning()) this.request.cancel();
+            this.detach();
         }
     });
 

@@ -33,7 +33,14 @@ def parse_summary(dir, file='summary.xml'):
     for collection in xmldoc.getElementsByTagName("collection"):
         label = collection.getAttribute("label")
         for cfact in collection.getElementsByTagName("fact"):
-            summary_metas[label].add(getText(cfact.childNodes))
+            v = ""
+            hash = cfact.getAttribute("hash")
+            index = getText(cfact.childNodes)
+            if hash:
+                v = index + " " + hash
+                summary_metas[label].add(v)
+            else:
+                summary_metas[label].add(index)
     return summary_metas
 
 def mapCVSS(k,v):
@@ -241,7 +248,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

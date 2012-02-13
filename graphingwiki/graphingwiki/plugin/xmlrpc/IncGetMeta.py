@@ -14,6 +14,7 @@ import xmlrpclib
 from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
 
 from MoinMoin.util.lock import WriteLock
+from MoinMoin.Page import Page
 
 def diff(previous, current):
     removedPages = list()
@@ -55,6 +56,7 @@ def inc_get_metas(request, args, handle=None):
 
     current = dict()
     for page in pages:
+        request.page = Page(request, page)
         # metatable_parseargs checks read permissions, no need to do it again
         metas = get_metas(request, page, keys, checkAccess=False)
 
