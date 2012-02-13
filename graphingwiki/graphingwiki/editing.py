@@ -1268,8 +1268,8 @@ def metatable_parseargs(request, args,
                         styles[key] = style[0]
 
                 # Grab key exclusions
-                if key.startswith('!!') and key.endswith('!!'):
-                    excluded_keys.append(key.strip('!'))
+                if key.startswith('!'):
+                    excluded_keys.append(key.lstrip('!'))
                     continue
                     
                 keyspec.append(key.strip())
