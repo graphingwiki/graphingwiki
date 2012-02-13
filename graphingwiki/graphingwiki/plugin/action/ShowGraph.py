@@ -58,7 +58,6 @@ from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math
 import colorsys
-import wsgiref.util
 
 # The selection form ending
 form_end = u"""<div class="showgraph-buttons">\n
@@ -92,6 +91,28 @@ graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "tripleoctagon", "invtriangle", "invtrapezium",
                   "invhouse", "Mdiamond", "Msquare", "Mcircle",
                   "rectangle", "note", "tab", "box3d", "component"]
+
+def url_reconstruct(environ):
+    # Code from PEP 333
+    url = environ['wsgi.url_scheme']+'://'
+
+    if environ.get('HTTP_HOST'):
+        url += environ['HTTP_HOST']
+    else:
+        url += environ['SERVER_NAME']
+
+        if environ['wsgi.url_scheme'] == 'https':
+            if environ['SERVER_PORT'] != '443':
+               url += ':' + environ['SERVER_PORT']
+        else:
+            if environ['SERVER_PORT'] != '80':
+               url += ':' + environ['SERVER_PORT']
+
+    url += environ.get('SCRIPT_NAME', '')
+    url += environ.get('PATH_INFO', '')
+    if environ.get('QUERY_STRING'):
+        url += '?' + environ['QUERY_STRING']
+    return url
 
 def form_optionlist(request, name, data, comparison, 
                     default_args=dict(), radio=False):
@@ -1813,7 +1834,7 @@ class GraphShower(object):
             filtstr = str()
             for lt in linktypes:
                 filtstr += '&filteredges=%s' % url_escape(lt)
-            e.URL = wsgiref.util.request_uri(self.request.environ) + filtstr
+            e.URL = url_reconstruct(self.request.environ) + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
