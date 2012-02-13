@@ -84,7 +84,7 @@ def execute(pagename, request):
 
 
     elif util == "getProperties":
-        key = request.form.get('key', [None])[0]
+        key = request.form.get('key', [''])[0]
         json.dump(get_properties(request, key), request)
         return
 
