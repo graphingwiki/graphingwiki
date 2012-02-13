@@ -1178,6 +1178,11 @@ def ordervalue(value):
     # treat values prepended with anything accepted by order_funcs:
     # 2.1 blaa => 2.1, [[2.1 blaa]] => 2.1
     if value:
+        # Value has already been processed by ordervalue (or faulty
+        # data)
+        if type(value) not in [str, unicode]:
+            return value
+
         # Strips links syntax and stuff (FIXME does this cover all the
         # relevant cases?)
         value = value.lstrip('[').strip(']')
