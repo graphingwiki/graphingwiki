@@ -230,20 +230,12 @@ def construct_table(request, pagelist, metakeys,
             if legend:
                 out += t_cell(request, pagename, [legend])
             elif limit:
-                message = ["%s(/%s) pages, %s keys" % 
-                           (len(pagelist), maxpages, len(metakeys))]
-                if transpose:
-                    message = ["%s keys, %s(/%s) pages" % 
-                               (len(metakeys), len(pagelist), maxpages)]
+                message = ["Showing (%s/%s) pages" % 
+                           (len(pagelist), maxpages)]
                     
                 out += t_cell(request, pagename, message)
             else:
-                message = ["%s pages, %s keys" % (len(pagelist), len(metakeys))]
-                if transpose:
-                    message = ["%s keys, %s pages" % 
-                               (len(metakeys), len(pagelist))]
-
-                out += t_cell(request, pagename, message)
+                out += t_cell(request, pagename, [legend])
 
 
     def key_cell(out, request, metas, key, page, 
