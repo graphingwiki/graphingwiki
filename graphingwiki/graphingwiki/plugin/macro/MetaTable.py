@@ -34,7 +34,7 @@ from MoinMoin.Page import Page
 
 from graphingwiki import url_escape, id_escape, SEPARATOR
 from graphingwiki.editing import metatable_parseargs, get_metas, \
-    get_properties, PROPERTIES
+    get_properties, PROPERTIES, add_matching_redirs
 from graphingwiki.util import format_wikitext, form_writer
 
 try:
@@ -81,6 +81,24 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
 def wrap_span(request, pagename, key, data, id):
     if not key:
         return format_wikitext(request, data)
+
+    if '->' in key:
+        # Get indirection data, the same function get_metas uses
+        linkdata = add_matching_redirs(request, request.page, {}, {}, {},
+                                       key, pagename, key, linkdata={})
+
+        # Broken link, do not give anything editable as this will not
+        # work in any case.
+        if not linkdata:
+            return format_wikitext(request, data)
+
+        if key in linkdata:
+            for pname in linkdata[key]:
+                # data == key when we're writing out the header
+                if data in linkdata[key][pname] or data == key:
+                    pagename = pname
+                    key = key.split('->')[-1]
+                    break
 
     return form_writer(u'<span data-page="%s" data-key="%s" data-index="%s">',
              pagename, key, str(id)) + format_wikitext(request, data)+'</span>'
@@ -149,6 +167,9 @@ def t_cell(request, pagename, vals, head=0,
 
             if cellstyle == 'list':
                 out += formatter.listitem(0)
+
+    if not vals:
+        out += wrap_span(request, pagename, key, '', 0)
 
         first_val = False
 

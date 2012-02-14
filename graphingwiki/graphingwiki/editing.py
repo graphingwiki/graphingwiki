@@ -412,6 +412,69 @@ def metas_to_abs_links(request, page, values):
 
     return new_values
 
+def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta, 
+                        metakeys, key, curpage, curkey, 
+                        prev='', formatLinks=False, linkdata={}):
+    args = curkey.split('->')
+    newkey = '->'.join(args[2:])
+
+    last = False
+
+    if not args:
+        return
+    if len(args) in [1, 2]:
+        last = True
+
+    if len(args) == 1:
+        linked, target_key = prev, args[0]
+    else:
+        linked, target_key = args[:2]
+
+    pages = request.graphdata.get_out(curpage).get(linked, set())
+
+    for indir_page in set(pages):
+        # Relative pages etc
+        indir_page = \
+            wikiutil.AbsPageName(request.page.page_name, 
+                                 indir_page)
+
+        if request.user.may.read(indir_page):
+            pagedata = request.graphdata.getpage(indir_page)
+
+            outs = pagedata.get('out', dict())
+            metas = pagedata.get('meta', dict())
+
+            # Add matches at first round
+            if last:
+                if target_key in metas:
+                    loadedMeta.setdefault(key, list())
+                    linkdata.setdefault(key, dict())
+                    if formatLinks:
+                        values = metas_to_abs_links(
+                            request, indir_page, metas[target_key])
+                    else:
+                        values = metas[target_key]
+                    loadedMeta[key].extend(values)
+                    linkdata[key].setdefault(indir_page, list()).extend(values)
+                continue
+
+            elif not target_key in outs:
+                continue
+
+            # Handle inlinks separately 
+            if 'gwikiinlinks' in metakeys: 
+                inLinks = inlinks_key(request, loadedPage,  
+                                      checkAccess=checkAccess) 
+
+                loadedOuts[key] = inLinks 
+                continue 
+
+            add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta, 
+                                metakeys, key, indir_page, newkey, target_key, 
+                                formatLinks, linkdata)
+
+    return linkdata
+
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
               includeGenerated=True, formatLinks=False, **kw):
@@ -456,62 +519,9 @@ def get_metas(request, name, metakeys, checkAccess=True,
 
         # Meta key indirection support
         for key in metakeys:
-            def add_matching_redirs(curpage, curkey, prev=''):
-                args = curkey.split('->')
-                newkey = '->'.join(args[2:])
-                
-                last = False
-
-                if not args:
-                    return
-                if len(args) in [1, 2]:
-                    last = True
-
-                if len(args) == 1:
-                    linked, target_key = prev, args[0]
-                else:
-                    linked, target_key = args[:2]
-
-                pages = request.graphdata.get_out(curpage).get(linked, set())
-
-                for indir_page in set(pages):
-                    # Relative pages etc
-                    indir_page = \
-                        wikiutil.AbsPageName(request.page.page_name, 
-                                             indir_page)
-
-                    if request.user.may.read(indir_page):
-                        pagedata = request.graphdata.getpage(indir_page)
-
-                        outs = pagedata.get('out', dict())
-                        metas = pagedata.get('meta', dict())
-
-                        # Add matches at first round
-                        if last:
-                            if target_key in metas:
-                                loadedMeta.setdefault(key, list())
-                                if formatLinks:
-                                    values = metas_to_abs_links(
-                                        request, indir_page, metas[target_key])
-                                else:
-                                    values = metas[target_key]
-                                loadedMeta[key].extend(values)
-                            continue
-
-                        elif not target_key in outs:
-                            continue
-
-                        # Handle inlinks separately 
-                        if 'gwikiinlinks' in metakeys: 
-                            inLinks = inlinks_key(request, loadedPage,  
-                                                  checkAccess=checkAccess) 
-
-                            loadedOuts[key] = inLinks 
-                            continue 
-
-                        add_matching_redirs(indir_page, newkey, target_key)
-
-            add_matching_redirs(name, key)
+            add_matching_redirs(request, loadedPage, loadedOuts, 
+                                loadedMeta, metakeys,
+                                key, name, key, formatLinks)
 
     # Add values
     for key in metakeys & set(loadedMeta):
