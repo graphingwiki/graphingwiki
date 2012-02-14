@@ -564,7 +564,7 @@ class GraphRepr(object):
         # New subgraphs, nodes to help ranking
         for key in orderkeys:
             # Get accurate representation of the key
-            label = unicode(ordervalue(key))
+            label = ''.join(unicode(x) for x in ordervalue(key))
 
             cur_ordernode = 'orderkey: ' + label
             sg = self.graphviz.subg.add(cur_ordernode, rank='same')
@@ -607,8 +607,8 @@ class GraphRepr(object):
         for edge in self.graph.edges:
             tail, head = edge
             edge = self.graphviz.edges.get(edge)
-            taily = getattr(self.graphviz.nodes.get(head), 'order', '')
-            heady = getattr(self.graphviz.nodes.get(tail), 'order', '')
+            taily = getattr(self.graphviz.nodes.get(head), 'order', ('', ''))
+            heady = getattr(self.graphviz.nodes.get(tail), 'order', ('', ''))
 
             # Some values get special treatment
             heady = ordervalue(heady)
@@ -616,11 +616,11 @@ class GraphRepr(object):
 
             # The order attribute is owned by neither, one or
             # both of the end nodes of the edge
-            if heady == '' and taily == '':
+            if heady == ('', '') and taily == ('', ''):
                 minlen = 0
-            elif heady == '':
+            elif heady == ('', ''):
                 minlen = orderkeys.index(taily) - len(orderkeys)
-            elif taily == '':
+            elif taily == ('', ''):
                 minlen = len(orderkeys) - orderkeys.index(heady)
             else:
                 minlen = orderkeys.index(taily) - orderkeys.index(heady)

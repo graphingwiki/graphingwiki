@@ -1155,6 +1155,8 @@ def float_parts(part):
     part = part.split('.')
     fp = '.'.join(part[:2])
     addon = '.'.join(part[2:])
+    if addon:
+        addon = '.%s' % (addon)
 
     fp = float(fp)
     return fp, addon
