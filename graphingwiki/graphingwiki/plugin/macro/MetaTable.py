@@ -102,9 +102,14 @@ def wrap_span(request, pagename, key, data, id):
                     key = key.split('->')[-1]
                     break
 
+    if data == fdata:
+        return form_writer(
+            u'<span data-page="%s" data-key="%s" data-index="%s">',
+            pagename, key, str(id)) + fdata +'</span>'
+
     return form_writer(
         u'<span data-page="%s" data-key="%s" data-value="%s" data-index="%s">',
-        pagename, key, fdata, str(id)) + fdata +'</span>'
+        pagename, key, data, str(id)) + fdata +'</span>'
 
 def t_cell(request, pagename, vals, head=0, 
            style=None, rev='', key='', pathstrip=0, linkoverride=''):
