@@ -79,8 +79,10 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 def wrap_span(request, pagename, key, data, id):
+    fdata = format_wikitext(request, data)
+
     if not key:
-        return format_wikitext(request, data)
+        return fdata
 
     if '->' in key:
         # Get indirection data, the same function get_metas uses
@@ -90,7 +92,7 @@ def wrap_span(request, pagename, key, data, id):
         # Broken link, do not give anything editable as this will not
         # work in any case.
         if not linkdata:
-            return format_wikitext(request, data)
+            return fdata
 
         if key in linkdata:
             for pname in linkdata[key]:
@@ -100,8 +102,9 @@ def wrap_span(request, pagename, key, data, id):
                     key = key.split('->')[-1]
                     break
 
-    return form_writer(u'<span data-page="%s" data-key="%s" data-index="%s">',
-             pagename, key, str(id)) + format_wikitext(request, data)+'</span>'
+    return form_writer(
+        u'<span data-page="%s" data-key="%s" data-value="%s" data-index="%s">',
+        pagename, key, fdata, str(id)) + fdata +'</span>'
 
 def t_cell(request, pagename, vals, head=0, 
            style=None, rev='', key='', pathstrip=0, linkoverride=''):
