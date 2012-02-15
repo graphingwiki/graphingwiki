@@ -9,9 +9,12 @@ from cStringIO import StringIO
 from graphingwiki.editing import save_attachfile
 from graphingwiki.editing import check_attachfile
 from graphingwiki.editing import list_pagecachefiles
+from graphingwiki.editing import list_attachments
 
 from graphingwiki.editing import load_pagecachefile
 from graphingwiki.editing import delete_pagecachefile
+from graphingwiki.editing import load_attachfile
+from graphingwiki.editing import delete_attachfile
 
 CHUNK_SIZE = 1024 * 1024
 
@@ -100,8 +103,11 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         if not overwrite:
             return xmlrpclib.Fault(2, _("Attachment not saved, file exists"))
 
-    # If there are missing chunks, just return them.
+    # If there are missing chunks, just return them. Chunks might also
+    # be in attachments for the people that use older versions of
+    # opencollab.
     result = list_pagecachefiles(request, pagename)
+    result.extend(list_attachments(request, pagename))
     missing = [digest for digest in digests if digest not in result]
     if missing:
         return missing
@@ -110,10 +116,13 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
     buffer = StringIO()
     
     for bite in digests:
+        # Try both cache files and attachments (for legacy, see above)
         data = load_pagecachefile(request, pagename, bite)
         if not data:
+            data = load_attachfile(request, pagename, bite)
+        if not data:
             return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting "+
-                                                    "attachment"),
+                                                    "attachment or cachefile"),
                                                   filename))
         buffer.write(data)
 
@@ -123,7 +132,10 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
 
     # FIXME: What should we do when the cleanup fails?
     for bite in digests:
-        delete_pagecachefile(request, pagename, bite)
+        # Try both cache files and attachments (for legacy, see above)
+        in_cache = delete_pagecachefile(request, pagename, bite)
+        if not in_cache:
+            delete_attachfile(request, pagename, bite, True)
 
     # On success signal that there were no missing chunks.
     if success:
