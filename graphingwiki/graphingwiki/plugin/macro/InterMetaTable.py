@@ -33,6 +33,7 @@ import re
 from urllib import quote
 from graphingwiki.util import form_writer as wr
 
+from MoinMoin import config
 
 try:
     import simplejson as json
@@ -89,18 +90,12 @@ def execute(macro, args):
 
     optargs = {}
 
-    #parse keyworded arguments (template etc)
-    opts = re.findall("\s*([^,]+)\s*=\s*([^,]+)\s*", args)
-    for opt in opts:
-        val = opt[1]
-        if val == "True":
-            val = True
-        elif val == "False":
-            val = False
-
-        if ';' in val:
-            optargs[str(opt[0])] = [x.strip() for x in val.split(';')]
+    for arg in args.split(','):
+        arg = arg.strip()
+        if ':=' in arg:
+            key, val = arg.split(':=')
+            optargs.setdefault(key.encode(config.charset), list()).append(val)
         else:
-            optargs[str(opt[0])] = val.strip()
-
+            optargs.setdefault('selector', list()).append(arg)
+ 
     return do_macro(request, **optargs)
