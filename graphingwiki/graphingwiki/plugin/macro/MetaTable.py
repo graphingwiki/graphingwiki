@@ -84,10 +84,15 @@ def wrap_span(request, pagename, key, data, id):
     if not key:
         return fdata
 
+    header = False
+
+    if key == data:
+        header = True
+
     if '->' in key:
         # Get indirection data, the same function get_metas uses
         linkdata = add_matching_redirs(request, request.page, {}, {}, {},
-                                       key, pagename, key, linkdata={})
+                                       key, pagename, key)
 
         # Broken link, do not give anything editable as this will not
         # work in any case.
@@ -96,13 +101,12 @@ def wrap_span(request, pagename, key, data, id):
 
         if key in linkdata:
             for pname in linkdata[key]:
-                # data == key when we're writing out the header
-                if data in linkdata[key][pname] or data == key:
+                if data in linkdata[key][pname] or header:
                     pagename = pname
                     key = key.split('->')[-1]
                     break
 
-    if data == fdata:
+    if data == fdata or header:
         return form_writer(
             u'<span data-page="%s" data-key="%s" data-index="%s">',
             pagename, key, str(id)) + fdata +'</span>'
@@ -176,10 +180,10 @@ def t_cell(request, pagename, vals, head=0,
             if cellstyle == 'list':
                 out += formatter.listitem(0)
 
+        first_val = False
+
     if not vals:
         out += wrap_span(request, pagename, key, '', 0)
-
-        first_val = False
 
     if cellstyle == 'list':
         out += formatter.bullet_list(1)

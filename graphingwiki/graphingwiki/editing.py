@@ -414,7 +414,9 @@ def metas_to_abs_links(request, page, values):
 
 def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta, 
                         metakeys, key, curpage, curkey, 
-                        prev='', formatLinks=False, linkdata={}):
+                        prev='', formatLinks=False, linkdata=None):
+    if not linkdata:
+        linkdata = dict()
     args = curkey.split('->')
     newkey = '->'.join(args[2:])
 
@@ -469,9 +471,10 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
                 loadedOuts[key] = inLinks 
                 continue 
 
-            add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta, 
-                                metakeys, key, indir_page, newkey, target_key, 
-                                formatLinks, linkdata)
+            linkdata = add_matching_redirs(request, loadedPage, loadedOuts, 
+                                           loadedMeta, metakeys, key, 
+                                           indir_page, newkey, target_key, 
+                                           formatLinks, linkdata)
 
     return linkdata
 
