@@ -1391,9 +1391,10 @@ def metatable_parseargs(request, args,
 
         # Normal pages, check perms, encode and move on
         if not regexp_re.match(arg):
-            # If it's a subpage link eg. /Koo, we must add parent page
-            if arg.startswith('/'):
-                arg = request.page.page_name + arg
+            # Fix relative links
+            if (arg.startswith('/') or arg.startswith('./') or
+                arg.startswith('../')):
+                arg = wikiutil.AbsPageName(request.page.page_name, arg)
 
             argset.add(arg)
             continue
@@ -1402,7 +1403,13 @@ def metatable_parseargs(request, args,
 
         # if there's something wrong with the regexp, ignore it and move on
         try:
-            page_re = re.compile("%s" % arg[1:-1])
+            arg = arg[1:-1]
+            # Fix relative links
+            if (arg.startswith('/') or arg.startswith('./') or
+                arg.startswith('../')):
+                arg = wikiutil.AbsPageName(request.page.page_name, arg)
+
+            page_re = re.compile("%s" % arg)
         except:
             continue
 
