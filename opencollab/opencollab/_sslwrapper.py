@@ -129,7 +129,6 @@ else:
                 if os.path.isfile(f):
                     ca_certs = f
                     continue
-
         if ca_certs is not None:
             return ssl.wrap_socket(sock,
                                    cert_reqs=ssl.CERT_REQUIRED,
