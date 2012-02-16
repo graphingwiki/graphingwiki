@@ -5,14 +5,24 @@ import socket
 import optparse
 from subprocess import PIPE
 from subprocess import Popen
-from opencollab.meta import Metas
+from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
+
+HOST_AGENT_KEYS = [
+    'Model Name', 'Model Identifier',
+    'Processor Name', 'Processor Speed',
+    'Number Of Processors', 'Total Number Of Cores',
+    'L2 Cache', 'Memory', 'Bus Speed',
+    'Boot ROM Version', 'SMC Version (system)',
+    'Serial Number (system)', 'Hardware UUID',
+    'Sudden Motion Sensor', 'State', 'platform'
+]
 
 # Lists of possible commands to try per section
 COMMANDS = {'darwin': {'info': ['system_profiler SPHardwareDataType'],
                        'df': ['/bin/df -lk'],
-                       'ifconfig': ['/bin/ifconfig -a'],
+                       'ifconfig': ['/sbin/ifconfig -a'],
                        'arp': ['arp -a'],
                        },
             'linux': {'info': ['cat /proc/cpuinfo'],
@@ -47,25 +57,18 @@ def error(str, fatal=False):
 
 
 def getinfo_darwin(info, page, plat='darwin', iface=''):
-    info = dfinfo(info, plat)
-    info = ifconfiginfo(info, plat)
+    info = dfinfo(info, page, plat)
+    info = ifconfiginfo(info, page, plat)
     r = try_commands(plat, 'info')
     if not r:
         error("ERROR: Could not get cpuinfo", fatal=True)
-    system_profiler_output = r.read()
+    for l in r:
+        l = l.strip()
+        t = []
+        t = l.split(':')
+        if len(t) > 1:
+            info[page][t[0]].add(t[1])
     r.close()
-    hardwarere = "Model Identifier:\s(\S+).*?" + \
-        "Processor Name: ([^\n].*?)\n" + \
-        ".*?Total Number Of Cores: ([^\n].*?)\n" + \
-        ".*?Memory: ([^\n].*?)\n" + \
-        ".*?Serial Number: ([^\n].*?)\n"
-    (model, processor, cpus, memory, serial) = \
-        re.findall(hardwarere, system_profiler_output, re.S)[0]
-    info[page]["cores"].add(cpus)
-    info[page]["cpu model"].add(processor)
-    info[page]["Model"].add(model)
-    info[page]["Total memory"].add(memory)
-    info[page]["Serial"].add(serial)
     return info
 
 
@@ -198,7 +201,7 @@ def ifconfiginfo(info, page, plat):
         return info
     ifconfig_output = r.read()
     r.close()
-    ipregexp = "addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+    ipregexp = "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
     macregexp = "([^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2}:[^:]{1,2})"
     macs = re.findall(macregexp, ifconfig_output, re.S)
     ips = re.findall(ipregexp, ifconfig_output, re.S)
@@ -252,14 +255,13 @@ def main():
     if not platInfoFunc:
         sys.stderr.write("Unsupported platform %s." % (plat))
     metas = platInfoFunc(metas, page, plat, iface)
-    metas[page]['platform'] = get_platform()
-    metas[page]["gwikicategory"].add("CategoryContainer")
-    for page in metas:
-        print page
-        print metas[page]
-    sys.exit(0)
-
-    collab.setMeta(page, metas, replace=replace)
+    metas[page]["platform"].add(sys.platform)
+    metas[page]["gwikicategory"].add("CategoryHost")
+    cleared = Meta()
+    if replace:
+        for page, meta in metas.iteritems():
+            cleared[page] = HOST_AGENT_KEYS
+    collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
     try:
