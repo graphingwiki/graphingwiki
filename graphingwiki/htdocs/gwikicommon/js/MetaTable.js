@@ -40,10 +40,32 @@
 
     };
 
+    var retrieveMetas = function(tbody) {
+        var metas = {};
+        tbody.getElements('tr').each(function(row){
+            var page = row.getElement('.meta_page');
+            if (page) page = page.get('text');
+            if (page && !metas[page]) metas[page] = {};
+
+            row.getElements('.meta_cell span').each(function(span){
+                var val = span.get('data-value') || span.get('text');
+                var page = span.get('data-page');
+                var key = span.get('data-key');
+                var index = span.get('data-index');
+                if (page && !metas[page]) metas[page] = {};
+                if (val) {
+                    if (!metas[page][key] || index == 0) metas[page][key] = [];
+                    metas[page][key].splice(index, 0, val);
+                }
+            });
+        });
+        return metas;
+    };
+
     var HideableTable = new Class({
         Extends: HtmlTable,
 
-        initialize: function(){
+        initialize: function() {
             this.parent.apply(this, arguments);
 
             this.hiddenCells = [];
@@ -56,19 +78,19 @@
                     //'float': 'right',
                     'color': 'green',
                     'cursor': 'pointer',
-                    'margin-left' : '4px',
+                    'margin-left': '4px',
                     'margin-right': 0
                 };
 
                 td.getElement('div').grab(new Element('a', {
                     'html': '&#171;',
-                    'class' : 'hidelink',
+                    'class': 'hidelink',
                     'title': 'hide column',
                     'styles': style
                 }));
                 td.grab(new Element('a', {
                     'html': '&#187;',
-                    'class' : 'showlink',
+                    'class': 'showlink',
                     'title': 'show column',
                     'styles': style
                 }).setStyle('display', 'none'));
@@ -151,22 +173,13 @@
                 'nametemplate': ''
             }, this.options.tableArguments);
 
-            this.metaRequest = new Request.JSON({
-                url: '?action=getMetaJSON',
-                data: 'args=' + encodeURIComponent(this.tableArgs.args),
-                onSuccess: function(json) {
-                    this.metas = json;
-                }.bind(this)
-            });
+            this.metaRequest = new Request.HTML();
+            this.metas = retrieveMetas(this.body);
 
             var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
 
             this.head.addEvent('shiftclick:relay(span[data-key])', this.keyEdit.bind(this));
-
-            table.addEvent('mouseover:once', function() {
-                this.metaRequest.get()
-            }.bind(this));
 
             if (this.tableArgs.autorefresh) {
                 this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
@@ -208,24 +221,30 @@
             }
 
             var target = document.id(event.target),
-                key, id, index, page, oldValue = "";
+                key, index, page, oldValue = "";
 
             if (target.get('tag') == 'td') {
-                //edit empty cells without existing value
-                var i = target.getParent('tr').getElements('td.meta_cell').indexOf(target);
-                key = this.head.getElements('span[data-key]')[i].get('data-key');
-                index = 0;
-                page = target.getParent('tr').getFirst('td').get('text');
-
+                //add new value, page and key can be retrieved from first span
                 if (target.children.length > 0) {
-                    //append new value to existing ones if key had values
-                    index = this.metas[page][key].length;
-                    target = new Element('span').inject(target);
+                    var first = target.getElement('span');
+                    page = first.get('data-page');
+                    key = first.get('data-key');
+                    //only one span without value => no use that span
+                    if (target.children.length == 1 && first.get('text') == "") {
+                        index = 0;
+                        target = first;
+                    }else{
+                        //append new value to existing ones if key had values
+                        index = this.metas[page][key].length;
+                        target = new Element('span').inject(target);
+                    }
+                } else {
+                    return;
                 }
+
             } else {
                 //edit existing value
                 if (target.get('tag') != 'span') target = target.getParent('span');
-
 
                 page = target.get('data-page');
                 key = target.get('data-key');
@@ -283,9 +302,14 @@
             }
 
             var target = document.id(event.target);
-            if (target.get('tag') != 'span') target = target.getParent('span');
 
+            if (target.get('tag') != 'span') target = target.getParent('span');
             var oldKey = target.get('data-key');
+
+            //check that the key is really meta-key and not indirection
+            if (!Object.some(this.metas, function(metas, page){
+                return metas[oldKey];
+            })) return;
 
             if (this.inlineEditor) this.inlineEditor.cancel();
 
@@ -303,14 +327,14 @@
 
                     var args = Object.map(this.metas, function(metas, page) {
                         var renamed = {};
-                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey]|| []);
+                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey] || []);
                         renamed[oldKey] = [];
                         return renamed;
                     });
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                        checkUrl: '?action=getMetaJSON&args=' +  encodeURIComponent(this.tableArgs.args),
+                        checkUrl: '?action=getMetaJSON&args=' + encodeURIComponent(this.tableArgs.args),
                         checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
@@ -364,31 +388,28 @@
 
             var oldMetas = Object.clone(this.metas);
 
-            this.metaRequest.get();
-
-            new Request.HTML({
+            this.metaRequest = new Request.HTML({
                 url: '?action=showMetaTable',
                 data: 'args=' + this.tableArgs.args,
                 evalScripts: false,
                 onSuccess: function(nodes) {
-                    var tab = $$(nodes).getElement('table').filter(function(el) {
-                        return el != null
-                    });
+                    var tab = $$(nodes).filter(function(n){
+                        return typeOf(n.getElement) == "function";
+                    }).getElement('table').clean();
+
                     if (tab.length != 1) return; //todo: show error message
                     this.setTable(tab[0]);
                     this.reSort();
                     this.hiddenCells.each(this.hide, this);
 
-                    var highlightChanges = function(){
-                        if (this.metaRequest.isRunning()) {
-                            highlightChanges.delay(100);
-                            return
-                        }
-                        diff(oldMetas, this.metas).each(function(page){
-                            this.body.getElements('tr').each(function(row){
-                               if (row.cells[0].get('text') == page) {
-                                   row.highlight("#bfb");
-                               }
+                    this.metas = retrieveMetas(this.body);
+
+                    var highlightChanges = function() {
+                        diff(oldMetas, this.metas).each(function(page) {
+                            this.body.getElements('tr').each(function(row) {
+                                if (row.cells[0].get('text') == page) {
+                                    row.highlight("#bfb");
+                                }
                             });
                         }, this);
                     }.bind(this);
@@ -396,7 +417,7 @@
                     highlightChanges.delay(500);
                 }.bind(this)
 
-            }).send();
+            }).get();
         }
     });
 
