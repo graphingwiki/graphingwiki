@@ -2,18 +2,22 @@
 # -*- coding: utf-8 -*-
 """
     hacked up from opencollab-import-mresolved
-    
     @copyright: 2008-2009 Lari Huttunen, Juhani Eronen, Erno Kuusela
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
-
 """
-import sys, os, csv, time, optparse, copy, socket
+import os
+import sys
+import time
+import copy
+import socket
+import optparse
 import cPickle as pickle
+from opencollab.meta import Metas
+from opencollab.util.wiki import importMetas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Metas
-from opencollab.util.wiki import importMetas
- 
+
+
 def parse_nvd_data(fname, metas, sw_keywords=''):
     new_metas = copy.deepcopy(metas)
     from lxml import objectify
@@ -27,6 +31,7 @@ def parse_nvd_data(fname, metas, sw_keywords=''):
             break
         do_nvd_entry(e, new_metas, sw_keywords)
     return new_metas
+
 
 def do_nvd_entry(e, metas, sw_keywords=''):
     cveid = e.get('id')
@@ -47,7 +52,6 @@ def do_nvd_entry(e, metas, sw_keywords=''):
     for s in vs:
         #print 'vulnerable-software', s['{http://scap.nist.gov/schema/vulnerability/0.4}product']
         m['vulnerable-software'] = [unicode(s['{http://scap.nist.gov/schema/vulnerability/0.4}product'])]
-                   
 
     try:
         refs = e['{http://scap.nist.gov/schema/vulnerability/0.4}references']
@@ -59,12 +63,12 @@ def do_nvd_entry(e, metas, sw_keywords=''):
         #print r['{http://scap.nist.gov/schema/vulnerability/0.4}source'],
         #print r['{http://scap.nist.gov/schema/vulnerability/0.4}reference'].get('href')
         m['reference'] = [unicode(r['{http://scap.nist.gov/schema/vulnerability/0.4}source']) + u' ' + unicode(r['{http://scap.nist.gov/schema/vulnerability/0.4}reference'].get('href'))]
-    
+
     metric = lambda x: e['{http://scap.nist.gov/schema/vulnerability/0.4}cvss']['{http://scap.nist.gov/schema/cvss-v2/0.2}base_metrics']['{http://scap.nist.gov/schema/cvss-v2/0.2}' + x]
-    
+
     for mn in 'score', 'access-vector', 'access-complexity', 'availability-impact', 'confidentiality-impact', 'integrity-impact':
         try:
-            z =  metric(mn)
+            z = metric(mn)
             #print 'cvss-'+mn, z
         except AttributeError:
             pass
@@ -83,15 +87,16 @@ def do_nvd_entry(e, metas, sw_keywords=''):
 
     if sw_keywords:
         # only keep vulns that have keyword matches in "vulnerable-software"
-        ok=0
+        ok = 0
         for w in sw_keywords.split():
             for s in m['vulnerable-software']:
                 if w in s:
-                    ok=1
+                    ok = 1
         if not ok:
             del metas[cveid]
         #else:
         #    print 'leave', cveid, s
+
 
 def main():
     parser = optparse.OptionParser()
@@ -110,6 +115,8 @@ def main():
     sect = "import-nvd-xml"
     ops = parseOptions(parser, sect, template=True)
     url = ops['creds']['url']
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]['verbose']
     template = ops[sect]["template"]
     if template is None:
@@ -125,7 +132,7 @@ def main():
     else:
         metas = Metas()
     if len(args) < 1:
-       parser.error("You need to specify 1..N input files. Use -h for help.") 
+        parser.error("You need to specify 1..N input files. Use -h for help.")
     else:
         for file in args:
             metas.update(parse_nvd_data(file, metas, sw_keywords))
@@ -133,7 +140,7 @@ def main():
         if verbose:
             print 'NOTE: Writing metas to', picklefn
         start = time.time()
-        f=open(picklefn, 'w')
+        f = open(picklefn, 'w')
         pickle.dump(metas, f, 2)
         f.close()
         if verbose:
@@ -141,7 +148,7 @@ def main():
     else:
         while True:
             try:
-                collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+                collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
             except WikiFailure:
                 print "ERROR: Authentication failed."
             except (UnicodeError, socket.gaierror):
@@ -163,4 +170,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

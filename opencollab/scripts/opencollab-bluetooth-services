@@ -4,17 +4,21 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import bluetooth, optparse
+import sys
+import socket
+import optparse
+import bluetooth
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
 
+
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.set_usage("%prog [options]")
     metas = Metas()
     failed = []
@@ -23,16 +27,18 @@ def main():
     ops = parseOptions(parser, sect, template=True, category=True)
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     template = ops[sect]["template"]
     if template is None:
         template = "IdentityTemplate"
     category = ops[sect]["category"]
     if category is None:
         template = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
+    replace = ops[sect]["lasteditwins"]
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

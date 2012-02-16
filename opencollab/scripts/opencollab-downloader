@@ -1,16 +1,20 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
+    @copyright: 2008-2012 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os, sys, md5, optparse, socket
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta
-from opencollab.util.config import parseOptions
+import os
+import md5
+import sys
+import socket
+import optparse
 from urllib import unquote
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
 
-def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
+
+def fileExists(wiki, page, attachment, filename, chunkSize=1024 * 1024):
     if not os.path.exists(filename):
         return False
 
@@ -28,7 +32,7 @@ def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
         hashed.update(data)
 
     opened.close()
-    
+
     if total != size:
         return False
 
@@ -36,6 +40,7 @@ def fileExists(wiki, page, attachment, filename, chunkSize=1024*1024):
         return False
 
     return True
+
 
 def downloadFile(collab, page, quotedFile, basePath, num, count):
     # Canonize the file path
@@ -82,19 +87,22 @@ def downloadFile(collab, page, quotedFile, basePath, num, count):
 
     file.close()
 
+
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-o", "--output",
         dest="output", default=None, metavar="PATH",
         help="Save the downloaded files under PATH instead of CWD.")
-    parser.add_option( "-p", "--download-from-page",
+    parser.add_option("-p", "--download-from-page",
         action="store", type="string", dest="page",
-        metavar = "PAGE", help = "PAGE to download attachments from.")
+        metavar="PAGE", help="PAGE to download attachments from.")
     parser.set_usage("%prog [options]")
     ops = {}
     sect = "downloader"
     ops = parseOptions(parser, sect)
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     basePath = ops[sect]["output"]
     if basePath is None:
@@ -104,7 +112,7 @@ def main():
         parser.error("Page to download from needs to be specified. Use -h for help.")
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -115,9 +123,9 @@ def main():
         print "Enumerating attachments from collab: " + url + page
     attachments = collab.listAttachments(page)
     if verbose:
-       print "Downloading attachments from:", page
+        print "Downloading attachments from:", page
     for num, attachment in enumerate(attachments):
-        downloadFile(collab, page, attachment, basePath, num+1, len(attachments))
+        downloadFile(collab, page, attachment, basePath, num + 1, len(attachments))
 
 if __name__ == "__main__":
     try:

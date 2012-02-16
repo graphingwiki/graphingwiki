@@ -11,20 +11,25 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
-import os, re, sys, time, optparse, socket
-from opencollab.wiki import CLIWiki, WikiFailure
+import re
+import sys
+import time
+import socket
+import optparse
 from opencollab.meta import Metas
-from opencollab.util.config import parseOptions
 from opencollab.util.wiki import importMetas
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+
 
 def shred_email_address(addr):
     metas = Metas()
     epoch = "%d" % time.time()
-    local, domain = addr.split('@') 
+    local, domain = addr.split('@')
     if re.search('\.', local):
         title = local.title()
         id = title.split('.')
-        sname = ' '.join( id )
+        sname = ' '.join(id)
     else:
         sname = local
     metas[addr]["Name"].add(sname)
@@ -33,6 +38,7 @@ def shred_email_address(addr):
     metas[addr]["smtp local part"].add(local)
     metas[addr]["type"].add("user")
     return metas
+
 
 def parse_input_file(path):
     metas = Metas()
@@ -48,12 +54,13 @@ def parse_input_file(path):
         metas.update(shred_email_address(line))
     return metas
 
+
 def get_identities_from_collab(collab, search):
-    pages = Metas() 
+    pages = Metas()
     emails = Metas()
     tmp = search.split('||')
     keys = tmp[1:-1]
-    pages = collab.getMeta(search) 
+    pages = collab.getMeta(search)
     for page in pages:
         for key in keys:
             if pages[page][key]:
@@ -61,6 +68,7 @@ def get_identities_from_collab(collab, search):
                     addr = re.sub('[\[\]]', '', value)
                     emails.update(shred_email_address(addr))
     return emails
+
 
 def main():
     parser = optparse.OptionParser()
@@ -70,6 +78,8 @@ def main():
     sect = "upload-identities"
     ops = {}
     ops = parseOptions(parser, sect, search=True, template=True)
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     url = ops["creds"]["url"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
@@ -79,7 +89,7 @@ def main():
     args = ops[sect]["args"]
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -98,11 +108,11 @@ def main():
     if metas:
         if verbose:
             print "NOTE: Uploading identities to collab:", url
-        failed = importMetas(collab, metas, template, verbose) 
+        failed = importMetas(collab, metas, template, verbose)
         if failed:
             for page in failed:
                 if verbose:
-                    print "ERROR uploading:",  page, repr(collab_metas[page])
+                    print "ERROR uploading:",  page, repr(metas[page])
                 else:
                     print "ERROR uploading:", page
     else:
@@ -114,4 +124,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

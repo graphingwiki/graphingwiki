@@ -4,7 +4,6 @@
     @copyright: 2011 Mika Seppänen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import re
 import sys
@@ -12,11 +11,9 @@ import time
 import json
 import socket
 import optparse
-
 from hashlib import md5
 from zipfile import ZipFile
-
-from opencollab.meta import Meta, Metas
+from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
@@ -30,15 +27,15 @@ JS_HEXESCAPE = "\\\\x([0-9ABCDEFabcdef]{2,2})"
 JS_EXTRACOMMA = "(\},[ \t\n]*\])"
 
 # Severities from Skipfish
-SEVERITY = { 0 : "Note",
-             1 : "Warning",
-             2 : "Low",
-             3 : "Medium",
-             4 : "High"
-            }
+SEVERITY = {0: "Note",
+            1: "Warning",
+            2: "Low",
+            3: "Medium",
+            4: "High"
+          }
 
 # Issue descriptions from Skipfish
-ISSUES = { 
+ISSUES = {
   10101: "SSL certificate issuer information",
   10201: "New HTTP cookie added",
   10202: "New 'Server' header value seen",
@@ -108,15 +105,18 @@ ISSUES = {
   50301: "PUT request accepted"
   }
 
+
 def quote(input):
     return "'%s'" % input.groups()
+
 
 def escape(input):
     return r"\u00%s" % input.groups()
 
+
 def parseJS(file):
     input = open(file).read()
-    vars = re.findall(JS_VARIABLES, input, re.DOTALL|re.MULTILINE)
+    vars = re.findall(JS_VARIABLES, input, re.DOTALL | re.MULTILINE)
     output = dict()
 
     for (key, value) in vars:
@@ -137,26 +137,27 @@ def parseJS(file):
 
     return output
 
+
 def handleDir(dir, issueFilter, issues, url):
     newDirs = list()
-
-    parsed = parseJS(os.path.join(dir,"child_index.js"))
+    parsed = parseJS(os.path.join(dir, "child_index.js"))
     if "child" in parsed:
         for child in parsed["child"]:
-            newDirs.append((os.path.join(dir,child["dir"]), child.get("url", "")))
+            newDirs.append((os.path.join(dir, child["dir"]), child.get("url", "")))
 
-    parsed = parseJS(os.path.join(dir,"issue_index.js"))
+    parsed = parseJS(os.path.join(dir, "issue_index.js"))
     if "issue" in parsed:
         for issue in parsed["issue"]:
             if issue["severity"] >= issueFilter:
-                issue["request"] = os.path.join(os.path.join(dir, issue["dir"]),"request.dat")
-                issue["response"] = os.path.join(os.path.join(dir, issue["dir"]),"response.dat")
+                issue["request"] = os.path.join(os.path.join(dir, issue["dir"]), "request.dat")
+                issue["response"] = os.path.join(os.path.join(dir, issue["dir"]), "response.dat")
                 # NOTE: this is only the base of the url
                 issue["url"] = url
                 issues.append(issue)
 
     for (dir, url) in newDirs:
         handleDir(dir, issueFilter, issues, url)
+
 
 def main():
     parser = optparse.OptionParser()
@@ -167,6 +168,8 @@ def main():
     parser.set_usage("%prog [options] SKIPFISH-DIRS")
     section = "skipfish-uploader"
     options = parseOptions(parser, section)
+    x509 = options[section]["x509"]
+    x509_ca_file = options[section]["x509_ca_file"]
 
     filter = options[section]["filter"]
     issueFilter = -1
@@ -183,7 +186,7 @@ def main():
 
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **options['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -194,8 +197,8 @@ def main():
     for dir in args:
         print "Processing directory %s." % dir
         metas = Metas()
-    
-        summary = parseJS(os.path.join(dir,"summary.js"))
+
+        summary = parseJS(os.path.join(dir, "summary.js"))
         pagename = md5(repr(summary)).hexdigest()
 
         print "Creating page %s for this scan." % pagename
@@ -208,7 +211,7 @@ def main():
         metas[pagename]["type"] = ["Skipfish Run"]
         metas[pagename]["report"] = ["[[attachment:%s.zip]]" % pagename]
 
-        parsed = parseJS(os.path.join(dir,"child_index.js"))
+        parsed = parseJS(os.path.join(dir, "child_index.js"))
         url = ""
         if "child" in parsed:
             for child in parsed["child"]:
@@ -240,10 +243,10 @@ def main():
             metas[pagename]["gwikicategory"] = ["CategoryNote"]
             if os.path.exists(issue["request"]):
                 metas[pagename]["Request"] = ["{{attachment:request.txt}}"]
-                collab.putAttachment(pagename, "request.txt", open(issue["request"]).read(), True) 
+                collab.putAttachment(pagename, "request.txt", open(issue["request"]).read(), True)
             if os.path.exists(issue["response"]):
                 metas[pagename]["Response"] = ["{{attachment:response.txt}}"]
-                collab.putAttachment(pagename, "response.txt", open(issue["response"]).read(), True) 
+                collab.putAttachment(pagename, "response.txt", open(issue["response"]).read(), True)
 
             if audit:
                 metas[pagename]["Audit"].add(audit)
