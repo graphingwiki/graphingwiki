@@ -17,7 +17,7 @@ def parseConfig(config):
         iniopts[section] = dict(configparser.items(section))
     return iniopts
 
-def parseOptions(specparser, inisection, config=True, category=False, search=False, template=False):
+def parseOptions(specparser, inisection, config=True, category=False, search=False, template=False, x509=True, x509capath=True):
     cliopts = {}
     globalopts = {}
     globalopts[inisection] = {}
@@ -40,6 +40,12 @@ def parseOptions(specparser, inisection, config=True, category=False, search=Fal
         genparser.add_option( "-t", "--template", action="store", 
             type="string", dest="template", default=None,
             metavar="TEMPLATE", help="Collab TEMPLATE.")
+    if x509:
+        genparser.add_option( "-X", "--X509", action="store_true", 
+            dest="x509", help="Enable X509 certificate check.")
+    if x509capath:
+        genparser.add_option( "-x", "--X509-ca-path", action="store", type="string", default=None, 
+            dest="x509_ca_path", help="Optional system CA certificate path, e.g. /etc/ssl/certs/ca-certificates.crt.")
     genparser.add_option( "-u", "--url", action="store", 
         type="string", dest="url", default=None,
         metavar="COLLABURL", help="COLLABURL to connect to.")
