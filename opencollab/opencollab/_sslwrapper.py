@@ -106,18 +106,29 @@ except ImportError:
     class HTTPSConnection(httplib.HTTPSConnection):
         def __init__(self, *args, **keys):
             if keys.pop("verify_cert", True):
-                raise socket.sslerror("module 'ssl' required for "+
+                raise socket.sslerror("module 'ssl' required for " +
                                       "certificate verification")
             keys.pop("ca_certs", None)
 
             httplib.HTTPSConnection.__init__(self, *args, **keys)
 else:
     def wrap_socket(sock, verify_cert, ca_certs):
+        cafiles = []
+        cafiles = [
+            '/etc/ssl/certs/ca-certificates.crt',  # ubuntu/debian
+            '/etc/pki/tls/certs/ca-bundle.crt',    # redhat/centos
+            '/etc/ssl/cert.pem',                   # openbsd
+        ]
         if not verify_cert:
             return ssl.wrap_socket(sock)
+        if not ca_certs:
+            for f in cafiles:
+                if os.path.isfile(f):
+                    ca_certs = f
+                    continue
 
         if ca_certs is not None:
-            return ssl.wrap_socket(sock, 
+            return ssl.wrap_socket(sock,
                                    cert_reqs=ssl.CERT_REQUIRED,
                                    ca_certs=ca_certs)
 
@@ -140,17 +151,17 @@ else:
         def __init__(self, *args, **keys):
             self.verify_cert = keys.pop("verify_cert", False)
             self.ca_certs = keys.pop("ca_certs", None)
-            
+
             httplib.HTTPSConnection.__init__(self, *args, **keys)
 
         def connect(self):
-            for info in socket.getaddrinfo(self.host, self.port, 
+            for info in socket.getaddrinfo(self.host, self.port,
                                            0, socket.SOCK_STREAM):
                 family, type, proto, _, addr = info
-                
+
                 plain = socket.socket(family, type, proto)
                 plain.connect(addr)
-            
+
                 self.sock = wrap_socket(plain,
                                         verify_cert=self.verify_cert,
                                         ca_certs=self.ca_certs)

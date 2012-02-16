@@ -4,13 +4,17 @@
     @copyright: 2008 by Jani Kenttälä
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os, sys, optparse, locale, md5, tempfile, socket
-from urllib import quote
-from urllib import unquote
+import os
+import sys
+import locale
+import optparse
+import tempfile
+import socket
 import opencollab.wiki
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
 from opencollab.util.file import downloadFile, uploadFile
+
 
 def main():
     parser = optparse.OptionParser()
@@ -29,13 +33,14 @@ def main():
     parser.set_usage("usage: %prog [options]")
     ops = {}
     sect = "clone"
-    ops = parseOptions(parser, sect, config=False, template=True, search=True)
+    ops = parseOptions(parser, sect, config=False, search=True)
     url = ops["creds"]["url"]
     dsturl = ops[sect]["destination"]
     verbose = ops[sect]["verbose"]
-    args = ops[sect]["args"]
     search = ops[sect]['search']
     progress = ops[sect]['progress']
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     if search is None:
         parser.error("MetaTable search string needs to be specified. Use -h for help.")
 
@@ -43,7 +48,7 @@ def main():
         print "Authenticating to SRC URL:", url
     while True:
         try:
-            src_collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            src_collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -56,7 +61,7 @@ def main():
         print "Authenticating to DST URL:", dsturl
     while True:
         try:
-            dst_collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            dst_collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -74,7 +79,7 @@ def main():
         print "NOTE: Getting pages from", url, "with", repr(search)
     metas = src_collab.getMeta(search)
 
-    basedir = tempfile.mkdtemp(prefix="temp") 
+    basedir = tempfile.mkdtemp(prefix="temp")
     for page, v in metas.iteritems():
         content = ""
         if verbose:
@@ -109,7 +114,7 @@ def main():
             if verbose:
                 print "NOTE: creating page", page, "in", dsturl
             try:
-                dst_collab.putPage(page,content)
+                dst_collab.putPage(page, content)
             except opencollab.wiki.WikiFailure, (strerror):
                 print "ERROR: Couldn't create page", repr(page), strerror
                 pass
@@ -118,7 +123,7 @@ def main():
             if verbose:
                 print "NOTE: Uploading attachments to page", page
             for num, wikiname in enumerate(attachments):
-                file = os.path.join(dpath,wikiname)
+                file = os.path.join(dpath, wikiname)
                 uploadFile(dst_collab, page, file, wikiname, progress)
                 try:
                     os.unlink(file)
@@ -149,4 +154,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-
