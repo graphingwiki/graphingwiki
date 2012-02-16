@@ -1202,6 +1202,11 @@ def ordervalue(value):
         # relevant cases?)
         value = value.lstrip('[').strip(']')
         value = value.split()
+
+        # Corner case, empty links eg. [[]]
+        if not value:
+            return ('', '')
+
         extras = ' '.join(value[1:])
         value = value[0]
     for func, ignoredExceptionTypes in ORDER_FUNCS:
