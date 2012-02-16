@@ -1,9 +1,9 @@
 import os
+import re
 import shutil
 import socket
 import httplib
 import tempfile
-import re
 
 # A cert to make the ssl.wrap_socket to use the system CAs.
 WRAP_CERT = """
@@ -42,8 +42,10 @@ LcMswp3YWF7To23qo9MONP3t0CJz68KASq8P4QY3a/YMW1YrHDXWuv1/JA==
 -----END CERTIFICATE-----
 """
 
+
 class CertificateError(ValueError):
     pass
+
 
 def _dnsname_to_pat(dn):
     pats = []
@@ -57,6 +59,7 @@ def _dnsname_to_pat(dn):
             frag = re.escape(frag)
             pats.append(frag.replace(r'\*', '[^.]*'))
     return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
+
 
 def match_hostname(cert, hostname):
     """Verify that *cert* (in decoded format as returned by
