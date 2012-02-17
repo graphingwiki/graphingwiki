@@ -255,7 +255,7 @@ def main():
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
     x509 = ops[sect]["x509"]
-    x509_ca_path = ops[sect]["x509_ca_path"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     notools = ops[sect]["notools"]
     verbose = ops[sect]["verbose"]
     blacklist = ops[sect]["blacklist"]
@@ -270,8 +270,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            if x509_ca_path:
-                collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_path=x509_ca_path, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
