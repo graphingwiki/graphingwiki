@@ -62,15 +62,18 @@ fi
 
 SHARE=${MOIN_PREFIX}/share/moin
 
-DEST=${htmldir}/${WIKINAME}
+myname=`basename $0`
+
+if [ ${WIKINAME} = collab ]; then
+    DEST=${htmldir}
+else
+    DEST=${htmldir}/${WIKINAME}
+    [ -d ${DEST} ] && error "${myname}: ${DEST} already exists, aborting.."
+    mkdir -p ${DEST}
+fi
 DATA=${wikidir}/${WIKINAME}
 FARMCONFIGDIR=`dirname ${farmconf}`
 MYTEMPLATE=${DATA}/collab-htaccess-template
-
-myname=`basename $0`
-
-[ -d ${DEST} ] && error "${myname}: ${DEST} already exists, aborting.."
-mkdir -p ${DEST}
 
 [ -d ${DATA} ] && error "${myname}: ${DATA} already exists, aborting.."
 mkdir -p ${DATA}/config
@@ -151,6 +154,18 @@ EOF
 else
   printf "Users who can access this wiki.\n\n * [[${MYUSER}]]\n" | \
     gwiki-editpage -a ${DATA} AccessGroup
+fi
+
+if [ ${WIKINAME} = collab ]; then
+  cat <<EOF | gwiki-editpage -a ${DATA} CollabList
+#refresh 30
+
+<<CollabHome(Return to Collab Home)>>
+
+<<CollabList>>
+
+<<CollabHome(Return to Collab Home)>>
+EOF
 fi
 
 gwiki-rehash ${DATA}
