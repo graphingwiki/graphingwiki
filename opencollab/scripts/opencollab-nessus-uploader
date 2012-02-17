@@ -6,23 +6,31 @@
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, time, os, sys, string, optparse, socket, xml.dom.minidom
-from xml.dom.minidom import Node, ProcessingInstruction
+import re
+import time
+import os
+import sys
+import optparse
+import socket
+import xml.dom.minidom
 from opencollab.meta import Meta, Metas
-from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.file import hashFile, uploadFile
+from xml.dom.minidom import Node, ProcessingInstruction
 
 SEVERITY_MAPPING = {'1': 'Note',
                     '2': 'Warning',
                     '3': 'Hole'}
-NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME', 
+NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME',
     'Nessus OS', 'Nessus Run', 'Nessus Note', 'Nessus Warning',
     'Nessus Vulnerability', 'Nessus Hole', 'OS Name', 'OS Version',
     'Packet vertical', 'PTR', 'start', 'type', 'Version', 'Audit']
 
+
 def parseTime(input):
     return time.mktime(time.strptime(input, "%a %b %d %H:%M:%S %Y"))
+
 
 def plugin_19506(nessusrun_page, data, metas, attach):
     """
@@ -46,6 +54,7 @@ def plugin_19506(nessusrun_page, data, metas, attach):
 
     return '', metas, attach
 
+
 def get_synopsis(data):
     """
     The newer Nessus plugins have synopsis data in their output.  """
@@ -59,8 +68,10 @@ def get_synopsis(data):
         return synopsis
     return '%s (Risk %s) ' % (synopsis, ' '.join(risk))
 
+
 def list_plugins():
     return [x.split('_')[-1] for x in globals() if x.startswith('plugin_')]
+
 
 def getText(nodelist, strip=True):
     rc = ""
@@ -73,8 +84,9 @@ def getText(nodelist, strip=True):
         return rc.replace('\n', ' ').strip()
     return rc.strip()
 
-def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp, 
-               service, portString, severities, 
+
+def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp,
+               service, portString, severities,
                severity=None, cves=None, addon=None):
     # Skip Nessus GPL nag in old version
     if id in ['9999']:
@@ -98,7 +110,7 @@ def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp,
     inforows = infoData.split('\n')
     # Strip out "PORT OPEN" reports - this seems to do the trick
     if not infoData or infoData == 'PORT' or \
-            (len(inforows) < 4 and 
+            (len(inforows) < 4 and
              (' running on this port' in inforows[0] or
               ' answered on this port' in inforows[0])):
         return metas, attach
@@ -122,7 +134,7 @@ def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp,
         vulnstring = "%s: %s on %s" % (vulnstring, service, portString)
     elif service:
         vulnstring = "%s: %s" % (vulnstring, service)
-    elif portString: 
+    elif portString:
         vulnstring = "%s: %s" % (vulnstring, portString)
 
     if not addon:
@@ -134,20 +146,21 @@ def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp,
     # Include also external links to MITRE vuln database
     if cves:
         mitre = "http://cve.mitre.org/cgi-bin/cvename.cgi?name="
-        cve_links = ["[[%s%s|%s]]" % (mitre, x, x) 
+        cve_links = ["[[%s%s|%s]]" % (mitre, x, x)
                      for x in cves]
 
         vulnstring += " (%s)" % ", ".join(cve_links)
 
     metas[hostIp]["Nessus %s" % severity].add(vulnstring)
 
-    return metas, attach    
+    return metas, attach
 
-def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+
+def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     try:
         doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError:
-        error = file + ": " + str(e) 
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e)
         sys.exit(error)
 
     stylesheet_nodes = []
@@ -184,11 +197,12 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "nessus.xsl", stylesheet_data, True)
     return True
 
+
 def select_nessus_parser(file, nessusrun_page, severities, audit):
     try:
         doc = xml.dom.minidom.parse(file)
     except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e) 
+        error = file + ": " + str(e)
         sys.exit(error)
 
     # Various Nessus formats encountered
@@ -202,6 +216,7 @@ def select_nessus_parser(file, nessusrun_page, severities, audit):
     print >>sys.stderr, "Nessus format not supported!"
     sys.exit(1)
 
+
 def parse_xml_v1(doc, nessusrun_page, severities, audit):
     metas = Metas()
     attach = dict()
@@ -213,7 +228,7 @@ def parse_xml_v1(doc, nessusrun_page, severities, audit):
             metas[hostIp]['Audit'].add(audit)
         startText = getText(result.getElementsByTagName('startTime'))
         endText = getText(result.getElementsByTagName('stopTime'))
-        metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText)) 
+        metas[nessusrun_page]['start'].add("<<DateTime(%f)>>" % parseTime(startText))
         metas[nessusrun_page]['end'].add("<<DateTime(%f)>>" % parseTime(endText))
         metas[nessusrun_page]['type'].add('Nessus Run')
         if audit:
@@ -255,7 +270,7 @@ def parse_xml_v1(doc, nessusrun_page, severities, audit):
                     service = ''
 
                 portString = portString.split('(')[-1].rstrip(')')
-                portString = ':'.join(x.upper() for x 
+                portString = ':'.join(x.upper() for x
                                       in reversed(portString.split('/')))
 
                 if portString:
@@ -268,11 +283,10 @@ def parse_xml_v1(doc, nessusrun_page, severities, audit):
             # Grab the severity
             severity = getText(item.getElementsByTagName('severity'))
             severity = severity.split()[-1]
-            
-            metas, attach = parse_info(nessusrun_page, metas, attach, data, id, 
+
+            metas, attach = parse_info(nessusrun_page, metas, attach, data, id,
                                        hostIp, service, portString, severities,
                                        severity=severity)
-
 
     return metas, attach
 
@@ -280,7 +294,6 @@ def parse_xml_v1(doc, nessusrun_page, severities, audit):
 def parse_xml_v2(doc, nessusrun_page, severities, audit):
     metas = Metas()
     attach = dict()
-    
     results = doc.getElementsByTagName('ReportHost')
     for result in results:
         hostIp = result.getAttribute('name')
@@ -314,12 +327,11 @@ def parse_xml_v2(doc, nessusrun_page, severities, audit):
 
             if key:
                 for item in tag.childNodes:
-                    values = [x.strip() 
-                              for x in item.data.split('\n') 
+                    values = [x.strip()
+                              for x in item.data.split('\n')
                               if x.strip()]
                     if links:
                         values = ["[[%s]]" % x for x in values]
- 
                     if key in ['start', 'end']:
                         for v in values:
                             metas[nessusrun_page][key].update(["<<DateTime(%f)>>" % parseTime(v)])
@@ -340,7 +352,6 @@ def parse_xml_v2(doc, nessusrun_page, severities, audit):
             if port not in ['0']:
                 portString = "[[%s:%s]]" % (proto.upper(), port)
                 metas[hostIp]['listens to'].add(portString)
-            
             id = item.getAttribute('pluginID')
 
             # Port scan information - no need for further processing
@@ -363,12 +374,10 @@ def parse_xml_v2(doc, nessusrun_page, severities, audit):
                     'plugin_modification_date'))
             if plugindate:
                 version = "%s %s" % (version, plugindate)
-            
-            data = '\n\n'.join([x for x in 
-                                [synopsis, solution, description, 
+            data = '\n\n'.join([x for x in
+                                [synopsis, solution, description,
                                  seealso, output, version]
                                 if x])
-            
             cves = getText(item.getElementsByTagName('cve')).split()
             risk = getText(item.getElementsByTagName('risk_factor'))
             if risk not in ['']:
@@ -376,11 +385,11 @@ def parse_xml_v2(doc, nessusrun_page, severities, audit):
             else:
                 risk = synopsis
 
-            metas, attach = parse_info(nessusrun_page, metas, attach, data, id, 
-                                       hostIp, service, portString, severities, 
+            metas, attach = parse_info(nessusrun_page, metas, attach, data, id,
+                                       hostIp, service, portString, severities,
                                        severity=severity, cves=cves, addon=risk)
-
     return metas, attach
+
 
 def parse_xml_old(doc, nessusrun_page, severities, audit):
     """
@@ -454,8 +463,8 @@ def parse_xml_old(doc, nessusrun_page, severities, audit):
                     severity = getText(info.getElementsByTagName('severity'))
                     severity = severity.split()[-1]
 
-                    metas, attach = parse_info(nessusrun_page, metas, attach, 
-                                               data, id, hostIp, service, 
+                    metas, attach = parse_info(nessusrun_page, metas, attach,
+                                               data, id, hostIp, service,
                                                portString, severities,
                                                severity=severity)
 
@@ -476,32 +485,33 @@ def parse_xml_old(doc, nessusrun_page, severities, audit):
     metas[nessusrun_page]['start'].add("<<DateTime(%f)" % parseTime(startText))
     endText = getText(dateinfo.getElementsByTagName('end'))
     metas[nessusrun_page]['end'].add("<<DateTime(%f)" % parseTime(endText))
-    
     return metas, attach
+
 
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] NESSUS-XML-FILES")
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", 
+        metavar="LAST-EDIT-WINS",
         help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, 
-        help="Display file upload progress information." )
-    parser.add_option("-s", "--severity", dest="severities", 
-                      help="A comma-separated list of severities to include: "+
-                      ", ".join("%s=%s" % (x, SEVERITY_MAPPING[x]) 
+        dest="progress", default=False,
+        help="Display file upload progress information.")
+    parser.add_option("-s", "--severity", dest="severities",
+                      help="A comma-separated list of severities to include: " +
+                      ", ".join("%s=%s" % (x, SEVERITY_MAPPING[x])
                                 for x in SEVERITY_MAPPING))
-    parser.add_option("-A", "--audit", dest="audit", default= None,
+    parser.add_option("-A", "--audit", dest="audit", default=None,
         metavar="AUDIT", help=("AUDIT name to tag identities with."))
 
     ops = {}
     sect = "nessus-uploader"
-    nessus_files=[]
-    failed = []
+    nessus_files = []
     severities = SEVERITY_MAPPING.values()
     ops = parseOptions(parser, sect, template=True, category=True)
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     progress = ops[sect]["progress"]
     if ops[sect]["severities"]:
         severities = set()
@@ -519,14 +529,14 @@ def main():
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
+    replace = ops[sect]["lasteditwins"]
     args = ops[sect]["args"]
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
 
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -566,6 +576,8 @@ def main():
                 print "NOTE: Uploading", file, "to", xml_page
             try:
                 status = uploadFile(collab, xml_page, file, fname, progress)
+                if verbose:
+                    print "NOTE:" + status
             except (IOError, TypeError, RuntimeError), msg:
                 sys.exit(msg)
         if verbose:
@@ -577,7 +589,7 @@ def main():
         collab.incSetMeta(cleared, Metas(), metas)
         for page in attach:
             for fname in attach[page]:
-                try: 
+                try:
                     uploadFile(collab, page, '', fname, progress, attach[page][fname])
                 except (IOError, TypeError, RuntimeError), msg:
                     sys.exit(msg)

@@ -8,10 +8,10 @@
 import sys
 import socket
 import optparse
-
 from zipfile import ZipFile
-from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+
 
 def handlePackage(collab, package):
     zip = ZipFile(package, "r")
@@ -31,23 +31,26 @@ def handlePackage(collab, package):
                 if not "You did not change the page content" in str(e):
                     raise WikiFailure(e)
         elif action == "AddAttachment":
-            filename, attachmentname, pagename = args[0:3] 
+            filename, attachmentname, pagename = args[0:3]
             print "Adding attachment %s to page %s" % (attachmentname, pagename)
             collab.putAttachment(pagename, attachmentname, zip.open(filename).read(), True)
+
 
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] MOINPACKAGES")
-    section = "import-package"
-    options = parseOptions(parser, section)
+    sect = "import-package"
+    ops = parseOptions(parser, sect)
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
 
-    args = options[section]["args"]
+    args = ops[sect]["args"]
     if len(args) < 1:
         parser.error("At least one moin package needs to be specified.")
 
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -56,8 +59,8 @@ def main():
             break
 
     for package in args:
-        print "Importing MoinMoin package %s." % package 
-        handlePackage(collab, package) 
+        print "Importing MoinMoin package %s." % package
+        handlePackage(collab, package)
 
 if __name__ == "__main__":
     try:

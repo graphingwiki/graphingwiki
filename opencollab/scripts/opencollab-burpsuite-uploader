@@ -4,9 +4,13 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, os, sys, string, optparse, socket
+import re
+import os
+import sys
+import optparse
+import socket
 import xml.dom.minidom
-from xml.dom.minidom import Node, ProcessingInstruction
+from xml.dom.minidom import ProcessingInstruction
 from opencollab.meta import Meta, Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
@@ -18,19 +22,21 @@ BURP_KEYS = ['Burp %s' % (x) for x in BURP_SEVERITIES]
 
 BURP_INPUT_KEYS = ["host", "name", "path", "location", "confidence"]
 
-BURP_REPORT_KEYS = ['issueBackground', 'issueDetail', 
+BURP_REPORT_KEYS = ['issueBackground', 'issueDetail',
                     'remediationBackground', 'remediationDetail', 'request']
 
 RE_XML_ILLEGAL = re.compile(
     u'(([\u0000-\u0008\u000b-\u000c\u000e-\u001f\ufffe-\uffff])' +\
     u'|([\u007f-\u00ff])' +\
     u'|([%s-%s][^%s-%s])|([^%s-%s][%s-%s])|([%s-%s]$)|(^[%s-%s]))' % \
-    (unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff),
-     unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff),
-     unichr(0xd800),unichr(0xdbff),unichr(0xdc00),unichr(0xdfff)), re.M)
+    (unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff),
+     unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff),
+     unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff)), re.M)
+
 
 def fix_xml_illegal(mo):
     return hex(ord(mo.group(0)))
+
 
 def getText(nodelist, strip=True):
     rc = ""
@@ -43,11 +49,12 @@ def getText(nodelist, strip=True):
         return rc.replace('\n', ' ').strip()
     return rc.strip()
 
-def fix_stylesheet_and_upload(collab, xml_page, data, fname): 
+
+def fix_stylesheet_and_upload(collab, xml_page, data, fname):
     try:
         doc = xml.dom.minidom.parseString(data)
     except xml.parsers.expat.ExpatError, e:
-        error = fname + ": " + str(e) 
+        error = fname + ": " + str(e)
         sys.exit(error)
 
     stylesheet_nodes = []
@@ -84,6 +91,7 @@ def fix_stylesheet_and_upload(collab, xml_page, data, fname):
     collab.putAttachment(xml_page, fname, xml_data, True)
     collab.putAttachment(xml_page, "burp.xsl", stylesheet_data, True)
     return True
+
 
 def parse_xml(metas, attach, data, fname, burprun_page):
     """
@@ -125,48 +133,50 @@ def parse_xml(metas, attach, data, fname, burprun_page):
         attach.setdefault(hostIp, dict())[attach_name] = '\n\n'.join(infoData)
 
         issue_val.append('([[attachment:%s]])' % (attach_name))
-        metas[hostIp]['Burp %s' % 
+        metas[hostIp]['Burp %s' %
                       (severity.capitalize())].add(', '.join(issue_val))
-        
-    burprun = doc.getElementsByTagName('issue') 
+
+    burprun = doc.getElementsByTagName('issue')
     metas[burprun_page]['Burp Version'].add(burprun[0].getAttribute('burpVersion'))
     metas[burprun_page]['Run Started'].add('<<DateTime(%s)>>' % burprun[0].getAttribute('exportTime'))
     return metas, attach
 
+
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-A", "--audit", dest="audit", default= None,
+    parser.add_option("-A", "--audit", dest="audit", default=None,
         metavar="AUDIT", help=("AUDIT name to tag identities with."))
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, help="Display file upload progress information." )
+        dest="progress", default=False, help="Display file upload progress information.")
     parser.set_usage("%prog [options] BURP-XML-FILES")
 
-    failed = []
     ops = {}
     sect = "burp-uploader"
-    burp_files=[]
+    burp_files = []
     ops = parseOptions(parser, sect, template=True, category=True)
     url = ops["creds"]["url"]
     progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     audit = ops[sect]["audit"]
     if template is None:
         template = "IdentityTemplate"
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
+    replace = ops[sect]["lasteditwins"]
     args = ops[sect]["args"]
     if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
 
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -215,18 +225,20 @@ def main():
                 print "NOTE: Uploading", filearg, "to", xml_page
             try:
                 status = uploadFile(collab, xml_page, filearg, fname, progress)
+                if verbose:
+                    print "NOTE:" + status
             except (IOError, TypeError, RuntimeError), msg:
                 sys.exit(msg)
         for page in attach:
             for fname in attach[page]:
                 if verbose:
                     print "NOTE: Uploading", fname, "to", page
-                uploadFile(collab, page, '', fname, progress, 
+                uploadFile(collab, page, '', fname, progress,
                            attach[page][fname])
 
     if verbose:
         print "NOTE: Importing metas to", url
-    
+
     cleared = Meta()
     if replace:
         for page, meta in metas.iteritems():
@@ -240,4 +252,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

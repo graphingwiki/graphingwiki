@@ -1,24 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2009 Juhani Eronen, based opencollab-nmap-uploader
-    by Lari Huttunen 
+    @copyright: 2009 Juhani Eronen, based on opencollab-nmap-uploader
+    by Lari Huttunen
 
     Usable after eg. the following toolchain
 
     ettercap -l 20090427 -q -T -r capture-20090427.pcap //
     etterlog -mx 20090427.eci | sed -e '1,/<?xml/ d' > etter-20090427.xml
- 
+
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, os, sys, string, optparse 
+import os
+import sys
+import socket
+import optparse
 import xml.dom.minidom
-from xml.dom.minidom import Node, ProcessingInstruction
 from opencollab.meta import Metas
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util.config import parseOptions
-from opencollab.util.file import hashFile, uploadFile
 from opencollab.util.wiki import importMetas
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.file import hashFile, uploadFile
+from xml.dom.minidom import Node, ProcessingInstruction
+
 
 def getText(nodelist):
     rc = ""
@@ -29,11 +33,12 @@ def getText(nodelist):
             rc = rc + node.data
     return rc
 
-def fix_stylesheet_and_upload(collab, xml_page, file, fname): 
+
+def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     try:
         doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError:
-        error = file + ": " + str(e) 
+    except xml.parsers.expat.ExpatError, e:
+        error = file + ": " + str(e)
         sys.exit(error)
 
     stylesheet_nodes = []
@@ -71,6 +76,7 @@ def fix_stylesheet_and_upload(collab, xml_page, file, fname):
     collab.putAttachment(xml_page, "ettercap.xsl", stylesheet_data, True)
     return True
 
+
 def parse_xml(file, ettercaprun_page):
     metas = Metas()
     attach = dict()
@@ -78,7 +84,7 @@ def parse_xml(file, ettercaprun_page):
     try:
         doc = xml.dom.minidom.parse(file)
     except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e) 
+        error = file + ": " + str(e)
         sys.exit(error)
     hosts = doc.getElementsByTagName('host')
     for host in hosts:
@@ -86,7 +92,7 @@ def parse_xml(file, ettercaprun_page):
             continue
 
         hostIp = host.getAttribute('ip')
-        
+
         # Handle link elements
         res = host.getElementsByTagName('mac')
         if res:
@@ -127,7 +133,7 @@ def parse_xml(file, ettercaprun_page):
             proto = port.getAttribute('proto').upper()
             port_nro = port.getAttribute('addr').upper()
 
-            metas[hostIp]['serves'].add("%s%son port %s:%s" % 
+            metas[hostIp]['serves'].add("%s%son port %s:%s" %
                                         (service, banner, proto, port_nro))
             metas[hostIp]['listens to'].add("[[%s:%s]]" % (proto, port_nro))
 
@@ -152,8 +158,8 @@ def parse_xml(file, ettercaprun_page):
                 if success:
                     success = '(%s) ' % (success)
 
-                metas[hostIp]['Plaintext credentials'].add("%s%s%s%s%s" % 
-                                                           (user, passwd, 
+                metas[hostIp]['Plaintext credentials'].add("%s%s%s%s%s" %
+                                                           (user, passwd,
                                                             client, info,
                                                             success))
 
@@ -164,22 +170,25 @@ def parse_xml(file, ettercaprun_page):
 
     return metas, attach
 
+
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options]")
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", 
+        metavar="LAST-EDIT-WINS",
         help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, 
-        help="Display file upload progress information." )
-    ettercap_files=[]
+        dest="progress", default=False,
+        help="Display file upload progress information.")
+    ettercap_files = []
     ops = {}
     sect = "ettercap-uploader"
     ops = parseOptions(parser, sect, template=True, category=True)
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -187,15 +196,15 @@ def main():
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
+    replace = ops[sect]["lasteditwins"]
     args = ops[sect]["args"]
-    if len(args) <1:
+    if len(args) < 1:
         parser.error("At least one XML input file path needs to be specified.")
     if verbose:
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):

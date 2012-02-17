@@ -31,6 +31,8 @@ def main():
     sect = "get-pages"
     ops = parseOptions(parser, sect, config=False, template=True, search=True)
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     args = ops[sect]["args"]
     if len(args) < 1:
@@ -44,7 +46,7 @@ def main():
         print "Authenticating to SRC URL:", url
     while True:
         try:
-            src_collab = CLIWiki(ssl_verify_cert=False, **ops['creds'])
+            src_collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
