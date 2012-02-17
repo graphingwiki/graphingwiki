@@ -11,6 +11,8 @@ error() {
   exit 1
 }
 
+[ ${USER} = root ] && error "Cannot run as root"
+
 CFG=/etc/local/collab/collab.ini
 
 if [ -f ${CFG} ]; then
