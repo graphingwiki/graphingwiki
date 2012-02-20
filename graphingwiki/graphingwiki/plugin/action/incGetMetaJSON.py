@@ -35,17 +35,30 @@ except ImportError:
 def execute(pagename, request):
     request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
 
+
     args = request.form.get('args', [None])[0]
     if not args:
-        request.write('No data')
-        return
+        args = pagename
 
     handle = request.form.get('handle', [None])[0]
     if handle:
         handle = str(handle)
 
+    getvalues = request.form.get('getvalues', [None])[0]
+    if getvalues:
+        args = "%s=/.+/" % getvalues
+
     inc_get_metas = wikiutil.importPlugin(request.cfg, "xmlrpc", "IncGetMeta",
                                           "inc_get_metas")
     out = inc_get_metas(request, args, handle)
+    if getvalues:
+        changed = out[2][1]
+        filtered = dict()
+        for page, metas in changed.items():
+            for key, vals in metas.items():
+                if key == getvalues:
+                    filtered[page] = {key: vals}
+
+        out[2] = (out[2][0], filtered)
     json.dump(out, request, indent=2)
 
