@@ -282,3 +282,12 @@ div.ac-results {
     padding: 4px;
     display: inline-block;
 }
+
+.invite td {
+    white-space: nowrap;
+}
+
+.invite {
+    background: #E6EAF0;
+    padding: 10px;
+}
