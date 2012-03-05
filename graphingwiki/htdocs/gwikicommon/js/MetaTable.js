@@ -536,7 +536,7 @@
             this.parent.apply(this, [null, opts]);
 
             if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
-            this.update();
+            this.updateTable();
         },
 
         build: function() {
@@ -635,7 +635,7 @@
             })
         },
 
-        update: function() {
+        updateTable: function() {
             if (this.isUpdating()) return;
 
             this.requests = [];
