@@ -4,21 +4,24 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import optparse, sys, socket
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Metas
-from opencollab.util.config import parseOptions
+import sys
+import socket
+import optparse
+from opencollab.meta import Metas
 from opencollab.util.wiki import importMetas
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.emailutils import imapAuth, getMessagesAndUpload, parseMetaData, parseHTML, lexifyTokens, parseURLs
+
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-e", "--imap-user",
-        action="store", type="string", 
+    parser.add_option("-e", "--imap-user",
+        action="store", type="string",
         dest="imapuser", default=None,
         metavar="IMAPS-USERNAME", help="IMAPS-USERNAME.")
-    parser.add_option( "-i", "--imap-server",
-        action="store", type="string", 
+    parser.add_option("-i", "--imap-server",
+        action="store", type="string",
         dest="imapserver", default=None,
         metavar="IMAPS-SERVER", help="IMAPS-SERVER name or IP address.")
     parser.set_usage("%prog [options]")
@@ -28,6 +31,8 @@ def main():
     sect = "spam"
     ops = parseOptions(parser, sect, template=True)
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -36,7 +41,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -61,7 +66,7 @@ def main():
         else:
             break
     metas.update(getMessagesAndUpload(mailbox, collab))
-    if metas: 
+    if metas:
         if verbose:
             print "Parsing meta data from downloaded email messages."
         metas.update(parseMetaData(metas))

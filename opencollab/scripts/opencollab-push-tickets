@@ -8,10 +8,11 @@
     @copyright: 2008-2010 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import sys, socket, re, optparse, cStringIO
+import sys
+import socket
+import optparse
 import roundup
 from roundup import instance
-from opencollab.util.config import parseConfig
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
@@ -23,9 +24,10 @@ ROUNDUP_KEYS = [
     'name', 'order', 'organisation', 'password', 'phone',
     'queries', 'realname', 'recipients', 'roles', 'summary',
     'timezone', 'type', 'username', 'retired', 'priority',
-    'customer', 'status', 'title', 'nosy', 'messages', 
+    'customer', 'status', 'title', 'nosy', 'messages',
     'assignedto', 'topic', 'superseder'
 ]
+
 
 def parseInputFile(inputfile):
     """
@@ -45,23 +47,25 @@ def parseInputFile(inputfile):
         customers.append(line)
     return set(customers)
 
+
 def openDB(tpath):
     """"
     Try to open a Roundup DB from tpath as user admin.
     """
     try:
-        tracker = instance.open( tpath )
+        tracker = instance.open(tpath)
     except roundup.configuration.NoConfigError, e:
         sys.exit(e)
     else:
-        db = tracker.open( "admin" )
+        db = tracker.open("admin")
         return db
+
 
 def getUser(db, user):
     """
     User properties:
-    'username', 'creation', 'alternate_addresses', 'realname', 'roles', 
-    'creator', 'organisation', 'address', 'actor', 'phone', 'activity', 
+    'username', 'creation', 'alternate_addresses', 'realname', 'roles',
+    'creator', 'organisation', 'address', 'actor', 'phone', 'activity',
     'queries', 'timezone', 'password', 'id']
     """
     udata = Meta()
@@ -82,12 +86,13 @@ def getUser(db, user):
     udata['retired'].add('%s' % retired)
     return udata
 
+
 def filterIssues(db, filter, verbose):
     """
     Filter issues based on a customer organisation or useraname.
     """
     issues = []
-    for issue_id in db.issue.list(): 
+    for issue_id in db.issue.list():
         issue = db.issue.getnode(issue_id)
         customer = issue.get('customer')
         if customer:
@@ -106,6 +111,7 @@ def filterIssues(db, filter, verbose):
             if verbose:
                 print 'NOTE: issue' + issue_id, "skipped, since there is no customer."
     return issues
+
 
 def getMessage(db, msg):
     """
@@ -135,6 +141,7 @@ def getMessage(db, msg):
     #message['content'].add('{{{\n%s\n}}}' % content)
     return message
 
+
 def getFile(db, f):
     """
     File properties:
@@ -154,12 +161,13 @@ def getFile(db, f):
         fileobj[u].add('[[user%s]]' % user)
     return fileobj
 
+
 def getMetaData(db):
     """
-    Metadata classes: 
+    Metadata classes:
     ['priority', 'status']
     """
-    metadata = Metas() 
+    metadata = Metas()
     for m in db.priority.list():
         order = unicode(db.priority.getnode(m).get('order'))
         name = db.priority.getnode(m).get('name')
@@ -178,6 +186,7 @@ def getMetaData(db):
         metadata[page]['gwikicategory'].add('CategoryRoundupStatus')
     return metadata
 
+
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-f", "--filter",
@@ -186,22 +195,24 @@ def main():
     parser.add_option("-i", "--input-file",
                       dest="inputfile", default=None,
                       metavar="INPUTFILE", help=("An INPUTFILE listing organisation names and/or usernames to FILTER by (one per line)."))
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-n", "--tracker-name",
                       dest="tracker", default=None,
                       metavar="NAME", help=("Tracker NAME."))
     parser.add_option("-p", "--tracker-path",
                       dest="configpath", default=None,
                       metavar="PATH", help=("Tracker configuration directory PATH."))
-    parser.add_option( "-D", "--data",
+    parser.add_option("-D", "--data",
         action="store_true", dest="data", default=False,
-        metavar = "DATA", help="Push issue message and file objects, not just links to them.")
+        metavar="DATA", help="Push issue message and file objects, not just links to them.")
     parser.set_usage("%prog [options]")
     issues = Metas()
     sect = "push-tickets"
-    ops = parseOptions(parser, sect) 
+    ops = parseOptions(parser, sect)
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     url = ops["creds"]["url"]
     template = "RoundupTemplate"
@@ -213,7 +224,7 @@ def main():
     origdata = ops[sect]["data"]
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -232,7 +243,7 @@ def main():
         filter = set([filter])
     if configpath is not None:
         # DB classes:
-        # "status", "timelog", "keyword", "priority", "user", 
+        # "status", "timelog", "keyword", "priority", "user",
         # "file", "msg", "query", "issue"
         db = openDB(configpath)
         if verbose:
@@ -240,8 +251,8 @@ def main():
         issueids = set(filterIssues(db, filter, verbose))
         for id in issueids:
             # Issue properties:
-            # ['customer', 'status', 'title', 'nosy', 'creation', 'messages', 
-            # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator', 
+            # ['customer', 'status', 'title', 'nosy', 'creation', 'messages',
+            # 'actor', 'times', 'priority', 'assignedto', 'topic', 'creator',
             # 'activity', 'superseder', 'id', 'files']
             issue = db.issue.getnode(id)
             ipage = "issue" + id

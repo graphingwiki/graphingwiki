@@ -1,23 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2010 Juhani Eronen
-
+    @copyright: 2010-2012 Juhani Eronen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, os, sys, time, socket, optparse
-from subprocess import Popen, PIPE, STDOUT
-
+import re
+import os
+import sys
+import time
+import socket
+import optparse
+from subprocess import Popen
+from subprocess import PIPE
+from subprocess import STDOUT
 from opencollab.meta import Metas
-from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.wiki import CLIWiki
+from opencollab.wiki import WikiFailure
+from opencollab.util.wiki import importMetas
 from opencollab.util.config import parseOptions
 from opencollab.util.file import md5obj, uploadFile
-from opencollab.util.wiki import importMetas
+
 
 def parse_iwlist(data, xml_page):
     metas = Metas()
     output_re = re.compile('^\s+Cell \d+ - ', re.M)
-    # Item key has at least two letters, may have spaces, 
+    # Item key has at least two letters, may have spaces,
     # ends in a letter
     item_re = re.compile('^\s+(\w[\w ]*\w):', re.M)
 
@@ -63,25 +70,27 @@ def parse_iwlist(data, xml_page):
 
     return metas
 
+
 def main():
     IWLIST_COMMAND = 'iwlist scan'
 
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] [iwlist-output-files]\n       - "
                      "if output files are omitted, a wlan scan is performed.")
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-P", "--progress", action="store_true",
-                      dest="progress", default=False, 
-                      help="Display file upload progress information." )
+                      dest="progress", default=False,
+                      help="Display file upload progress information.")
     ops = {}
     sect = "iwlist"
-    iwlist_files=[]
     failed = []
     ops = parseOptions(parser, sect, template=True, category=True)
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -90,12 +99,11 @@ def main():
     if category is None:
         category = "CategoryIdentity"
     command = IWLIST_COMMAND
-    replace = ops[sect]["lasteditwins"] 
     args = ops[sect]["args"]
 
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -109,7 +117,7 @@ def main():
         if verbose:
             print 'NOTE: scanning with command "%s"' % (command)
         timestamp = time.time()
-        p = Popen(command, shell=True, 
+        p = Popen(command, shell=True,
                   stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         files = [p.stdout]
     else:

@@ -7,67 +7,77 @@
     @copyright: 2011 by Juhani Eronen <exec@iki.fi> and Joachim Viide
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-import sys
 import csv
-
+import sys
+import socket
 from optparse import OptionParser
 from opencollab.wiki import CLIWiki
+from opencollab.wiki import WikiFailure
+from opencollab.util.config import parseOptions
+
 
 def encode(x):
     return x.encode("utf-8")
 
+
 def decode(x):
     return x.decode("utf-8")
+
 
 def escape(x):
     return x.encode("unicode-escape")
 
 operations = list()
+
+
 def callback(option, opt, value, parser, operation):
     operations.append((operation, value))
 
-usage = "usage: %prog [options] WIKIURL"
+usage = "usage: %prog [options]"
 parser = OptionParser(usage=usage)
 
-parser.add_option("-g", "--get", action="callback", 
+parser.add_option("-G", "--get", action="callback",
                   callback=callback, callback_args=("get",), type="string",
-                  help=("Get metadata from Wiki with a  MetaTable argument "+
+                  help=("Get metadata from Wiki with a  MetaTable argument " +
                         "string."))
-parser.add_option("-a", "--add", action="callback", 
+parser.add_option("-A", "--add", action="callback",
                   callback=callback, callback_args=("add",), type="string",
-                  help=("Add metadata based on a semicolon-delimited CSV file "+
-                        "in a batch fashion. First row states the keys, "+
+                  help=("Add metadata based on a semicolon-delimited CSV file " +
+                        "in a batch fashion. First row states the keys, " +
                         "first colums states the pages."))
-parser.add_option("-s", "--set", action="callback", 
+parser.add_option("-S", "--set", action="callback",
                   callback=callback, callback_args=("set",), type="string",
-                  help=("Replace metadata based on a semicolon-delimited CSV "+
-                        "file in a batch fashion. First row states the keys, "+
+                  help=("Replace metadata based on a semicolon-delimited CSV " +
+                        "file in a batch fashion. First row states the keys, " +
                         "first colums states the pages."))
-parser.add_option("-t", "--template", dest="template", default="",
-                  help="Use page template for --add and --set operations.")
 
-parser.add_option("-u", "--username", dest="username", default=None,
-                  help="Username for logging onto the wiki")
-parser.add_option("-p", "--password", dest="password", default=None,
-                  help="Wiki password")
+sect = "csv-meta"
+ops = parseOptions(parser, sect, config=True, template=True)
+x509 = ops[sect]["x509"]
+x509_ca_file = ops[sect]["x509_ca_file"]
+template = ops[sect]["template"]
 
-options, args = parser.parse_args()
-if len(args) != 1:
-    parser.error("WIKIURL required")
+while True:
+    try:
+        collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
+    except WikiFailure:
+        print "ERROR: Authentication failed."
+    except (UnicodeError, socket.gaierror):
+        sys.exit("ERROR: Not a valid URL.")
+    else:
+        break
 
-wiki = CLIWiki(args[0], options.username, options.password)
 for operation, argument in operations:
     if operation == "get":
-        results = wiki.getMeta(argument)
-        
+        results = collab.getMeta(argument)
+
         wr = csv.writer(sys.stdout)
-        
+
         counts = dict()
         for page, metas in results.items():
             for key, values in metas.items():
                 counts[key] = max(counts.get(key, 0), len(values))
-                
+
         keyrow = ["Page name"]
         for key, count in counts.items():
             keyrow.extend([key] * count)
@@ -101,6 +111,6 @@ for operation, argument in operations:
             for key, value in zip(keys, row[1:]):
                 metas.setdefault(key, []).append(value)
 
-            result = wiki.setMeta(page, metas, replace, options.template)
+            result = collab.setMeta(page, metas, replace, template)
             for line in result:
-                print >> sys.stderr, escape(page)+":", escape(line)
+                print >> sys.stderr, escape(page) + ":", escape(line)

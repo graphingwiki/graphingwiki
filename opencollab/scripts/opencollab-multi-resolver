@@ -4,13 +4,17 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, socket, optparse, subprocess, IPy
+import re
+import IPy
+import socket
+import optparse
+import subprocess
 from subprocess import Popen
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Metas
-from opencollab.util.network import dns_blacklist, mr_attributes
 from opencollab.util.regexp import *
+from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.network import dns_blacklist, mr_attributes
 
 MR_KEYS = [
     'A', 'AAAA', 'ALLOCATED', 'AS', 'AS-NAME', 'ATTRIBUTION',
@@ -20,10 +24,11 @@ MR_KEYS = [
     'MX5', 'MX50', 'MX60', 'MX69', 'MX90', 'MX900', 'MX999',
     'NETWORK', 'NS', 'PTR', 'REGISTRY', 'SOA', 'SOA-EMAIL',
     'SOA-EXPIRE', 'SOA-MINIMUM', 'SOA-REFRESH', 'SOA-RETRY',
-    'SOA-SERIAL', 'SRV', 'TYPE' 
+    'SOA-SERIAL', 'SRV', 'TYPE'
 ]
 
-def shred_triplets(resolved): 
+
+def shred_triplets(resolved):
     collab_metas = Metas()
     for triplet in resolved:
         if triplet:
@@ -36,13 +41,15 @@ def shred_triplets(resolved):
             collab_metas[subj]["gwikitemplate"].add('IdentityTemplate')
     return collab_metas
 
-def expand_ipv4(rr,new):
+
+def expand_ipv4(rr, new):
     new.append(rr + ";PTR")
-    rev = re.split('\.', rr) 
+    rev = re.split('\.', rr)
     rev.reverse()
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
 
-def expand_ipv6(rr,new):
+
+def expand_ipv6(rr, new):
     rev = []
     comprr = IPy.IP(rr).strCompressed()
     exprr = IPy.IP(rr).strFullsize()
@@ -56,16 +63,19 @@ def expand_ipv6(rr,new):
     addr = '.'.join(rev)
     new.append(addr + ".origin6.asn.cymru.com;TXT")
 
-def expand_as(rr,new):
+
+def expand_as(rr, new):
     new.append(rr.upper() + ".asn.cymru.com;TXT")
 
-def expand_name(rr,new):
+
+def expand_name(rr, new):
     new.append(rr + ";A")
     new.append(rr + ";AAAA")
     new.append(rr + ";MX")
     new.append(rr + ";SOA")
 
-def expand_srv(rr,new):
+
+def expand_srv(rr, new):
     new.append("_xmpp-client._tcp." + rr + ";SRV")
     new.append("_xmpp-server._tcp." + rr + ";SRV")
     new.append("_jabber._tcp." + rr + ";SRV")
@@ -76,18 +86,19 @@ def expand_srv(rr,new):
     new.append("_stun._tcp." + rr + ";SRV")
     new.append("_stun._udp." + rr + ";SRV")
 
-def resolve_requests(expanded,mresolve):
-    mr = Popen(mresolve, shell=True, stdin=subprocess.PIPE, 
+
+def resolve_requests(expanded, mresolve):
+    mr = Popen(mresolve, shell=True, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
     for rr in expanded:
         mr.stdin.write(rr + '\n')
     (sout, err) = mr.communicate()
     return sout, err
 
-def generate_requests(resolved,new):
+
+def generate_requests(resolved, new):
     expanded = []
     rr_type = re.compile(';TYPE;')
-    ipv6_re = re.compile(':')
     for triplet in new.split('\n'):
         if triplet:
             subj, pred, obj = triplet.split(';')
@@ -102,17 +113,18 @@ def generate_requests(resolved,new):
                         socket.inet_pton(socket.AF_INET6, subj)
                     except socket.error:
                         if dns_re.search(subj):
-                            expand_name(subj,expanded)
+                            expand_name(subj, expanded)
                         elif as_re.search(subj):
-                            expand_as(subj,expanded)
+                            expand_as(subj, expanded)
                     else:
-                        expand_ipv6(subj,expanded)
+                        expand_ipv6(subj, expanded)
                 else:
-                    expand_ipv4(subj,expanded)
+                    expand_ipv4(subj, expanded)
         resolved.add(triplet)
     return expanded, resolved
 
-def seed_initial(new,srv): 
+
+def seed_initial(new, srv):
     expanded = []
     resolved = set([])
     for rr in new:
@@ -124,19 +136,20 @@ def seed_initial(new,srv):
             except socket.error:
                 if dns_re.search(rr):
                     resolved.add(rr + ";TYPE;NAME")
-                    expand_name(rr,expanded)
+                    expand_name(rr, expanded)
                     if srv:
-                        expand_srv(rr,expanded)
+                        expand_srv(rr, expanded)
                 elif as_re.search(rr):
                     resolved.add(rr.upper() + ";TYPE;AS")
-                    expand_as(rr,expanded)
+                    expand_as(rr, expanded)
             else:
                 resolved.add(rr + ";TYPE;IPv6")
-                expand_ipv6(rr,expanded)
+                expand_ipv6(rr, expanded)
         else:
             resolved.add(rr + ";TYPE;IPv4")
-            expand_ipv4(rr,expanded)
+            expand_ipv4(rr, expanded)
     return expanded, resolved
+
 
 def read_input():
     new = []
@@ -144,20 +157,21 @@ def read_input():
         new.append(line.strip())
     return new
 
+
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-m", "--mresolve-path",
         dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
         help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-r", "--recurse",
         action="store_true", dest="recurse", default=False,
-        help="Perform queries recursively." )
+        help="Perform queries recursively.")
     parser.add_option("-S", "--SRV",
         action="store_true", dest="srv", default=False,
-        help="Perform SRV queries on names in the initial data set (xmpp,sip)." )
+        help="Perform SRV queries on names in the initial data set (xmpp,sip).")
     parser.set_usage("%prog [options]")
     types = set(("NAME", "IPv4", "AS"))
     metas = Metas()
@@ -165,16 +179,17 @@ def main():
     ops = {}
     sect = "multi-resolver"
     ops = parseOptions(parser, sect, search=True)
-    url=ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
-    mresolvepath=ops[sect]["mresolvepath"]
+    mresolvepath = ops[sect]["mresolvepath"]
     replace = ops[sect]["lasteditwins"]
     search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
     srv = ops[sect]["srv"]
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -191,7 +206,7 @@ def main():
         pages = collab.getMeta(search)
         for page in pages:
             try:
-                type = pages[page]["TYPE"].single() 
+                type = pages[page]["TYPE"].single()
             except ValueError:
                 print "ERROR:", page, "has no type."
             else:
@@ -205,26 +220,26 @@ def main():
         sys.exit()
     if verbose:
         print "Expanding initial requests."
-    expanded,resolved = seed_initial(new,srv)
+    expanded, resolved = seed_initial(new, srv)
     if recurse:
         if verbose:
             print "Resolving requests recursively."
         while expanded:
-            new,err = resolve_requests(expanded,mresolvepath)
+            new, err = resolve_requests(expanded, mresolvepath)
             if verbose:
                 print err
-            expanded,resolved = generate_requests(resolved,new)
+            expanded, resolved = generate_requests(resolved, new)
     else:
         if verbose:
             print "Resolving requests."
-        new,err = resolve_requests(expanded,mresolvepath)
+        new, err = resolve_requests(expanded, mresolvepath)
         for triplet in new.split('\n'):
             resolved.add(triplet)
     if verbose:
         print "Shredding resolved RDF triplets."
     metas.update(shred_triplets(resolved))
     if verbose:
-        print "Importing resolved identities to collab." 
+        print "Importing resolved identities to collab."
     cleared = Meta()
     if replace:
         for page, meta in metas.iteritems():

@@ -7,53 +7,68 @@
     @copyright: 2011 by Juhani Eronen <exec@iki.fi> and Joachim Viide
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import sys
+import socket
 from optparse import OptionParser
 from opencollab.wiki import CLIWiki
+from opencollab.wiki import WikiFailure
+from opencollab.util.config import parseOptions
 
-usage = "usage: %prog [options] wikiurl pagename filename"
+usage = "usage: %prog [options] pagename filename"
 parser = OptionParser(usage=usage)
 
-parser.add_option("-n", "--name", dest="name", default=None,
+parser.add_option("-N", "--name", dest="name", default=None,
                   help="Alternate attachment name [for save and load]")
-parser.add_option("-s", "--save", action="store_true", dest="save",
+parser.add_option("-S", "--save", action="store_true", dest="save",
                   help="Save attachment (value: target name) [default]")
-parser.add_option("-l", "--load", action="store_true", dest="load",
+parser.add_option("-L", "--load", action="store_true", dest="load",
                   help="View attachment")
-parser.add_option("-q", "--list", action="store_true", dest="list",
+parser.add_option("-Q", "--list", action="store_true", dest="list",
                   help="List attachments on page")
-parser.add_option("-d", "--del", action="store_true", dest="rm",
+parser.add_option("-D", "--del", action="store_true", dest="rm",
                   help="Delete attachment")
-parser.add_option("-u", "--username", dest="username", default=None,
-                  help="Username for logging onto the wiki")
-parser.add_option("-p", "--password", dest="password", default=None,
-                  help="Wiki password")
 
-options, args = parser.parse_args()
-if len(args) == 3:
-    wiki, page, fname = args
-
-    if options.name is None:
+sect = "attachfile"
+ops = parseOptions(parser, sect, config=True, template=True)
+args = ops[sect]["args"]
+x509 = ops[sect]["x509"]
+x509_ca_file = ops[sect]["x509_ca_file"]
+name = ops[sect]["name"]
+alist = ops[sect]["list"]
+load = ops[sect]["load"]
+rm = ops[sect]["rm"]
+save = ops[sect]["save"]
+if len(args) == 2:
+    page, fname = args
+    if name is None:
         _, alt_name = os.path.split(fname)
     else:
-        alt_name = options.name
-elif len(args) == 2 and options.list:
-    wiki, page = args
+        alt_name = name
+elif len(args) == 1 and alist:
+    page = args
 else:
     parser.error("Bad Args")
 
-wiki = CLIWiki(wiki, options.username, options.password)
-if options.load:
-    if options.name is not None and options.name == "-":
+while True:
+    try:
+        collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
+    except WikiFailure:
+        print "ERROR: Authentication failed."
+    except (UnicodeError, socket.gaierror):
+        sys.exit("ERROR: Not a valid URL.")
+    else:
+        break
+
+if load:
+    if name is not None and name == "-":
         output = sys.stdout
     else:
         output = open(alt_name, "wb")
 
-    for data, current, size in wiki.getAttachmentChunked(page, fname):
+    for data, current, size in collab.getAttachmentChunked(page, fname):
         output.write(data)
-        sys.stderr.write("\r%.02f%% downloaded" % (100*float(current)/size))
+        sys.stderr.write("\r%.02f%% downloaded" % (100 * float(current) / size))
         sys.stderr.flush()
     sys.stderr.write("\n")
     sys.stderr.flush()
@@ -61,18 +76,18 @@ if options.load:
     output.flush()
     if output is not sys.stdout:
         output.close()
-elif options.list:
-    result = wiki.listAttachments(page)
+elif alist:
+    result = collab.listAttachments(page)
     print "Attachments on page %r:" % page
     for item in result:
         print item
-elif options.rm:
-    result = wiki.deleteAttachment(page, fname)
+elif rm:
+    result = collab.deleteAttachment(page, fname)
     if result is True:
         print "Deleted attachment %r on page %r." % (fname, page)
-elif options.save:
+elif save:
     stream = open(fname, "rb")
-    for current, size in wiki.putAttachmentChunked(page, alt_name, stream):
-        print "\r%.02f%% uploaded" % (100*float(current)/size),
+    for current, size in collab.putAttachmentChunked(page, alt_name, stream):
+        print "\r%.02f%% uploaded" % (100 * float(current) / size),
     stream.close()
     print "\rSaved attachment %r to page %r." % (alt_name, page)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen  
+    @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import urlparse
@@ -18,6 +18,7 @@ class AuthenticationFailed(WikiFailure): pass
 class WikiAuthenticationFailed(AuthenticationFailed): pass
 class HttpAuthenticationFailed(AuthenticationFailed): pass
 
+
 class WikiFault(WikiFailure):
     def __init__(self, fault):
         message = "error from the wiki server"
@@ -29,8 +30,9 @@ class WikiFault(WikiFailure):
         WikiFailure.__init__(self, message)
         self.fault = fault
 
+
 class Wiki(object):
-    def __init__(self, url, ssl_verify_cert=False, ssl_ca_certs=None):
+    def __init__(self, url, ssl_verify_cert=True, ssl_ca_certs=None):
         self.ssl_verify_cert = ssl_verify_cert
         self.ssl_ca_certs = ssl_ca_certs
 
@@ -54,7 +56,7 @@ class Wiki(object):
                                               verify_cert=self.ssl_verify_cert,
                                               ca_certs=self.ssl_ca_certs)
         self.connection.connect()
-        
+
     def _wiki_auth(self, username, password):
         self.creds = None
 
@@ -63,7 +65,7 @@ class Wiki(object):
             raise WikiAuthenticationFailed("wiki authentication failed")
 
         self.creds = token, username, password
-    
+
     def _authenticate(self, username, password):
         auth = base64.b64encode(username + ":" + password)
         self.headers["Authorization"] = "Basic " + auth
@@ -107,7 +109,7 @@ class Wiki(object):
             raise xmlrpclib.Fault(code, string)
 
         return other[0]
-            
+
     def _request(self, name, *args):
         body = self._dumps(name, args)
         self.connection.request("POST", self.path, body, self.headers)
@@ -136,7 +138,7 @@ class Wiki(object):
                 _, username, password = self.creds
                 self._wiki_auth(username, password)
                 return self._request(name, *args)
-        except xmlrpclib.Fault, fault:            
+        except xmlrpclib.Fault, fault:
             raise WikiFault(fault)
 
     def authenticate(self, username, password):
@@ -144,15 +146,15 @@ class Wiki(object):
             self._authenticate(username, password)
         except AuthenticationFailed:
             return False
-        return True    
+        return True
 
-import re
 import sys
 import random
 import getpass
 
-from meta import Meta 
+from meta import Meta
 from util.file import md5obj
+
 
 class GraphingWiki(Wiki):
     DEFAULT_CHUNK = 256 * 1024
@@ -169,9 +171,24 @@ class GraphingWiki(Wiki):
     def deletePage(self, page, comment=None):
         return self.request("DeletePage", page, comment)
 
+    def putCacheFile(self, page, filename, data, overwrite=False):
+        data = xmlrpclib.Binary(data)
+        return self.request("PageCache", page, filename,
+                            "save", data, overwrite)
+
+    def deleteCacheFile(self, page, filename):
+        return self.request("PageCache", page, filename, "delete", "", False)
+
+    def listCacheFiles(self, page):
+        return self.request("PageCache", page, "", "list", "", False)
+
+    def getCacheFile(self, page, filename):
+        result = self.request("PageCache", page, filename, "load", "", False)
+        return str(result)
+
     def putAttachment(self, page, filename, data, overwrite=False):
         data = xmlrpclib.Binary(data)
-        return self.request("AttachFile", page, filename, 
+        return self.request("AttachFile", page, filename,
                             "save", data, overwrite)
 
     def deleteAttachment(self, page, filename):
@@ -187,13 +204,13 @@ class GraphingWiki(Wiki):
     def getAttachmentInfo(self, page, filename):
         return self.request("ChunkedAttachFile", page, filename, "info")
 
-    def putAttachmentChunked(self, page, filename, seekableStream, 
+    def putAttachmentChunked(self, page, filename, seekableStream,
                              chunksPerCheck=10, chunkSize=DEFAULT_CHUNK):
         count = 0
         total = 0
         digests = list()
         offsets = dict()
-        
+
         while True:
             data = seekableStream.read(chunkSize)
             if not data:
@@ -207,7 +224,7 @@ class GraphingWiki(Wiki):
             total += length
 
         while True:
-            missing = self.request("ChunkedAttachFile", page, filename, 
+            missing = self.request("ChunkedAttachFile", page, filename,
                                    "reassembly", chunkSize, digests)
             if not missing:
                 return
@@ -222,16 +239,16 @@ class GraphingWiki(Wiki):
             missing = random.sample(missing, min(len(missing), chunksPerCheck))
             for digest in missing:
                 offset, length = offsets[digest]
-                
+
                 seekableStream.seek(offset)
                 data = seekableStream.read(length)
 
-                self.putAttachment(page, digest, data, overwrite=True)
+                self.putCacheFile(page, digest, data, overwrite=True)
 
                 count += 1
                 done += length
                 yield done, total
-                    
+
     def getAttachmentChunked(self, page, filename, chunkSize=DEFAULT_CHUNK):
         digest, size = self.getAttachmentInfo(page, filename)
 
@@ -239,8 +256,8 @@ class GraphingWiki(Wiki):
         current = 0
 
         while True:
-            data = self.request("ChunkedAttachFile", page, filename, "load", 
-                                current, current+chunkSize)
+            data = self.request("ChunkedAttachFile", page, filename, "load",
+                                current, current + chunkSize)
             data = str(data)
             if not data:
                 break
@@ -319,6 +336,7 @@ class GraphingWiki(Wiki):
 
         return self.request("IncSetMeta", clearedDict, discardedDict, addedDict)
 
+
 def redirected(func, *args, **keys):
     oldStdout = sys.stdout
     sys.stdout = sys.stderr
@@ -328,13 +346,14 @@ def redirected(func, *args, **keys):
     finally:
         sys.stdout = oldStdout
 
+
 class CLIWiki(GraphingWiki):
     # A version of the GraphingWiki class intended for command line
     # usage. Automatically asks url, username and password should the
     # wiki need it.
 
     def __init__(self, url=None, username=None, password=None, **keys):
-        if url is None: 
+        if url is None:
             url = redirected(raw_input, "Collab URL: ")
         super(CLIWiki, self).__init__(url, **keys)
         creds = username, password
@@ -353,6 +372,6 @@ class CLIWiki(GraphingWiki):
                 return super(CLIWiki, self).request(name, *args)
             except AuthenticationFailed, f:
                 while True:
-                    print >> sys.stderr, "Authorization required."
+                    print >> sys.stderr, "Authorization required." + f
                     if self.authenticate():
                         break

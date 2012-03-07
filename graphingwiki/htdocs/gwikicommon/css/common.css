@@ -165,6 +165,9 @@ dt {
     vertical-align: middle;
 }
 
+.nowrap {
+    white-space: nowrap;
+}
 .metaformedit * {
     vertical-align: middle;
 }

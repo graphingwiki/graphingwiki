@@ -4,19 +4,24 @@
     @copyright: 2008 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re, socket, optparse, subprocess
+import sys
+import socket
+import optparse
+import subprocess
 from subprocess import Popen
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Metas, Meta, Func
-from opencollab.util.config import parseOptions
+from opencollab.meta import Metas
 from opencollab.util.wiki import importMetas
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+
 
 def mod_hop(hop):
-    s = hop.replace('.', '') 
+    s = hop.replace('.', '')
     pad = 3 - len(hop)
-    for i in range(pad): 
+    for i in range(pad):
         s = "0" + s
     return s
+
 
 def shred_trace(host, trace):
     collab_metas = Metas()
@@ -30,7 +35,7 @@ def shred_trace(host, trace):
             hop = mod_hop(s[0])
             cur = s[1]
             if source is not None:
-                cur = src
+                cur = source
             collab_metas[cur]["MTR SRC"].add("[[%s]]" % source)
             collab_metas[cur]["MTR HOP"].add(hop)
             collab_metas[cur]["MTR DST"].add('[[%s]]' % host)
@@ -46,19 +51,21 @@ def shred_trace(host, trace):
             collab_metas[cur]["TYPE"].add("IPv4")
     return collab_metas
 
+
 def run_trace(host, mtr, count):
     mtr = mtr + " -rnc " + str(count) + " " + host
-    mtrp = Popen(mtr, shell=True, stdin=subprocess.PIPE, 
+    mtrp = Popen(mtr, shell=True, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
     mtrp.stdin.write(host + '\n')
     (sout, err) = mtrp.communicate()
     return sout, err
 
+
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-m", "--mtr-path",
         dest="mtrpath", default=None, metavar="MTR-PATH",
         help=("MTR-PATH. defaults to /usr/bin/mtr."))
@@ -73,6 +80,8 @@ def main():
     sect = "mtr"
     ops = parseOptions(parser, sect, template=True)
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -80,8 +89,8 @@ def main():
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
-    mtrpath= ops[sect]["mtrpath"]
+    replace = ops[sect]["lasteditwins"]
+    mtrpath = ops[sect]["mtrpath"]
     if mtrpath is None:
         mtrpath = "/usr/bin/mtr"
     count = ops[sect]["count"]
@@ -95,7 +104,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -104,12 +113,12 @@ def main():
             break
     for host in hosts:
         if verbose:
-           print "Running trace to:", host 
-        trace,error = run_trace(host, mtrpath, count)
+            print "Running trace to:", host
+        trace, error = run_trace(host, mtrpath, count)
         if error:
-           print error
+            print error
         else:
-	   metas.update(shred_trace(host, trace)) 
+            metas.update(shred_trace(host, trace))
     if verbose:
         print "Importing identities to collab."
     failed = importMetas(collab, metas, template, verbose, replace)

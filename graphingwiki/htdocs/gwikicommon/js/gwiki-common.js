@@ -485,7 +485,7 @@ var InlineEditor = new Class({
         //onSave: function(value){},
         //onExit: function(){}
         oldValue: "",
-        inline: false, //puts all controls on the same row if enabled
+        inline: true, //puts all controls on the same row if enabled
         key: null,
         autoFormat: true,
         field: null,
@@ -522,6 +522,8 @@ var InlineEditor = new Class({
         this.element.addClass('edit');
 
         this.element.empty();
+
+        if (this.options.inline) this.element.addClass('inline nowrap');
 
         var oldVal = this.options.oldValue;
         var type = this._keyProperties.hint;
@@ -565,8 +567,6 @@ var InlineEditor = new Class({
             this.input.addEvent('keydown', function(e) {
                 if (e && e.key == "esc") this.cancel();
             }.bind(this));
-
-            if (this.options.inline) this.element.addClass('inline');
 
             var field = this.options.size == "compact" ? DynamicTextarea: GwikiDynamicTextarea;
             new field(this.input).addEvent('resize', function() {
@@ -612,10 +612,11 @@ var InlineEditor = new Class({
     _clean: function() {
         this.element.removeClass('edit');
         this.element.removeClass('inline');
+        this.element.removeClass('nowrap');
     },
 
     exit: function() {
-        if (this.suggestions) this.suggestions.detach();
+        if (this.suggestions) this.suggestions.exit();
 
         if (this.options.autoFormat) {
             new Request.HTML({
@@ -635,7 +636,7 @@ var InlineEditor = new Class({
     },
 
     cancel: function() {
-        if (this.suggestions) this.suggestions.detach();
+        if (this.suggestions) this.suggestions.exit();
 
         this.element.empty();
         this.element.set('html', this.element.retrieve('html'));

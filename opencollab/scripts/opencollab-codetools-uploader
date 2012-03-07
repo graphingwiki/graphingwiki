@@ -1,23 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    @copyright: 2008 Lari Huttunen
+    @copyright: 2008-2012 Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os, sys, re, glob, optparse, socket
+import os
+import re
+import sys
+import glob
+import socket
+import optparse
 from opencollab.wiki import CLIWiki, WikiFailure, WikiFault
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.util.file import uploadFile
 
 CODETOOLS_KEYS = [
-    'Text Document', 'D3 Install File', 'JAR File', 'TAR Archive',
+    'Text Document', 'Defensics Install File', 'JAR File', 'TAR Archive',
     'ZIP Archive', 'PDF Document', 'INI File', 'Hotfix File',
-    'HTML Document'     
+    'HTML Document', 'Defensics Suite', 'D3 Suite', 'D2 Tool', 'D2 Suite',
+    'Defensics Tool', 'D3 Install File', 'D10 Monitor', 'Defensics Monitor',
+    'suite name', 'TYPE',
 ]
 
+
 def read_file(ifile):
-    content=""
+    content = ""
     try:
         f = open(ifile, 'r')
         content = f.read()
@@ -26,22 +34,25 @@ def read_file(ifile):
         print "Couldn't read input file: ", sys.exc_info()[0]
     return content
 
-def htaccess(htaccess,arena_user):
+
+def htaccess(htaccess, arena_user):
     content = read_file(htaccess)
     if re.search(arena_user, content):
         return True
     else:
         return False
 
-def enum_dirs(arena_dir_glob,arena_user):
-    flist=[]
-    arena_dirs=[]
+
+def enum_dirs(arena_dir_glob, arena_user):
+    flist = []
+    arena_dirs = []
     flist = glob.glob(arena_dir_glob)
     for f in flist:
-        dir,file = (os.path.split(f))
+        dir, file = (os.path.split(f))
         if htaccess(f, arena_user) == True:
             arena_dirs.append(dir)
     return arena_dirs
+
 
 def formatReleaseNotes(page, rnotes, private):
     content = read_file(rnotes)
@@ -51,23 +62,21 @@ def formatReleaseNotes(page, rnotes, private):
         page = "#acl SupportGroup:admin,revert,read,write,delete,invite " + page + "/LicenseGroup:read All:none"
     else:
         page = "#acl SupportGroup:admin,revert,read,write,delete,invite All:read"
-    page += "\n\n<<Navigation(children)>>\n\n"
-    page += "{{{#!wiki center\n= " + suitename + " =\n}}}\n\n"
-    page += "<<TableOfContents>>\n\n"
+    page += "\n{{{#!wiki center\n= " + suitename + " =\n}}}\n"
     page += "\n".join(lines[1:])
-    page += "= Metadata =\n"
-    page += "\n----\n<<LinkedIn>>\n----\n"
     return page, suitename
+
 
 def formatDownloadPage(page, dpage):
     pcontent = "#acl SupportGroup:admin,revert,read,write,delete,invite " + page + "/LicenseGroup:read All:none"
-    pcontent += "\n= @PAGE@ =\n"
     pcontent += "\n<<AttachTree>>\n"
     pcontent += "\n----\n<<LinkedIn>>\n----\n"
+    pcontent += "CategoryDownload"
     return pcontent
 
+
 def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, private, verbose):
-    flist =[]
+    flist = []
     jar = re.compile('\.jar')
     tar_gz = re.compile('tar\.gz')
     zip = re.compile('\.zip')
@@ -77,7 +86,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
     bnf = re.compile('\.bnf')
     html = re.compile('\.html?')
     txt = re.compile('\.txt')
-    d3 = re.compile('d3-')
+    installer = re.compile('-installer-')
     blre = re.compile('%s' % blacklist)
     metas = Metas()
     for dir in arena_dirs:
@@ -89,7 +98,7 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
             print "NOTE: Handling", dir
         flist = os.listdir(dir)
         changes = False
-        tmp = dir.rsplit('/', 1) 
+        tmp = dir.rsplit('/', 1)
         page = tmp.pop()
         pagemetas = collab.getMeta(page)
         try:
@@ -103,8 +112,9 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
         if 'release.txt' in flist:
             fname = dir + "/release.txt"
             pcontent, suitename = formatReleaseNotes(page, fname, private)
+            rpage = page + "/ReleaseNotes"
             try:
-                collab.putPage(page,pcontent)
+                collab.putPage(rpage, pcontent)
             except WikiFault:
                 pass
             metas[page]["suite name"].add(suitename)
@@ -113,33 +123,30 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
             for txt_file in txt_files:
                 fname = dir + "/" + txt_file
                 metas[page]["Text Document"].add('[[attachment:%s]]' % txt_file)
-                changes |= uploadFile(collab,page,fname,txt_file,progress)
-        install_files = filter(install.search, flist) 
+                changes |= uploadFile(collab, page, fname, txt_file, progress)
+        install_files = filter(install.search, flist)
         dpage = page + "/Download"
         if notools:
             if verbose:
                 print "NOTE: Not creating a /Download page."
         else:
             pcontent = formatDownloadPage(page, dpage)
-            metas[dpage]["gwikicategory"].add("CategoryDownload")
             try:
-                collab.putPage(dpage,pcontent)
+                collab.putPage(dpage, pcontent)
             except WikiFault:
                 pass
         for install_file in install_files:
             fname = dir + "/" + install_file
-            if d3.search(install_file):
-                metas[page]["TYPE"].add('D3 Suite')
-            else:
-                metas[page]["TYPE"].add('D2 Suite')
+            if install.search(install_file):
+                metas[page]["TYPE"].add('Defensics Suite')
             if notools:
                 if verbose:
                     print "NOTE: Not uploading", fname
             else:
-                metas[page]["D3 Install File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, install_file))
-                changes |= uploadFile(collab,dpage,fname,install_file,progress)
+                metas[page]["Defensics Install File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, install_file))
+                changes |= uploadFile(collab, dpage, fname, install_file, progress)
         if not install_files:
-            jar_files = filter(jar.search, flist) 
+            jar_files = filter(jar.search, flist)
             for jar_file in jar_files:
                 fname = dir + "/" + jar_file
                 if notools:
@@ -147,12 +154,12 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                         print "NOTE: Not uploading", fname
                 else:
                     metas[page]["JAR File"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, jar_file))
-                    changes |= uploadFile(collab,dpage,fname,jar_file,progress)
-                if d3.search(jar_file):
-                    metas[page]["TYPE"].add('D3 Monitor')
+                    changes |= uploadFile(collab, dpage, fname, jar_file, progress)
+                if installer.search(jar_file):
+                    metas[page]["TYPE"].add('Defensics Monitor')
                 else:
-                    metas[page]["TYPE"].add('D2 Suite')
-        tar_gz_files = filter(tar_gz.search, flist) 
+                    metas[page]["TYPE"].add('Defensics Tool')
+        tar_gz_files = filter(tar_gz.search, flist)
         for tar_gz_file in tar_gz_files:
             fname = dir + "/" + tar_gz_file
             if notools:
@@ -160,8 +167,8 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["TAR Archive"].add('[[attachment:%s/%s|Download|&do=get]]' % (dpage, tar_gz_file))
-                changes |= uploadFile(collab,dpage,fname,tar_gz_file,progress)
-        zip_files = filter(zip.search, flist) 
+                changes |= uploadFile(collab, dpage, fname, tar_gz_file, progress)
+        zip_files = filter(zip.search, flist)
         for zip_file in zip_files:
             fname = dir + "/" + zip_file
             if notools:
@@ -169,8 +176,8 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["ZIP Archive"].add('[[attachment:%s/%s]]' % (dpage, zip_file))
-                changes |= uploadFile(collab,dpage,fname,zip_file,progress)
-        pdf_files = filter(pdf.search, flist) 
+                changes |= uploadFile(collab, dpage, fname, zip_file, progress)
+        pdf_files = filter(pdf.search, flist)
         for pdf_file in pdf_files:
             fname = dir + "/" + pdf_file
             if notools:
@@ -178,8 +185,8 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["PDF Document"].add('[[attachment:%s/%s]]' % (dpage, pdf_file))
-                changes |= uploadFile(collab,dpage,fname,pdf_file,progress)
-        ini_files = filter(ini.search, flist) 
+                changes |= uploadFile(collab, dpage, fname, pdf_file, progress)
+        ini_files = filter(ini.search, flist)
         for ini_file in ini_files:
             fname = dir + "/" + ini_file
             if notools:
@@ -187,17 +194,17 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["INI File"].add('[[attachment:%s/%s]]' % (dpage, ini_file))
-                changes |= uploadFile(collab,dpage,fname,ini_file,progress)
-        bnf_files = filter(bnf.search, flist) 
+                changes |= uploadFile(collab, dpage, fname, ini_file, progress)
+        bnf_files = filter(bnf.search, flist)
         for bnf_file in bnf_files:
-            fname = dir + "/" + bnf_fileDownload
+            fname = dir + "/" + bnf_file
             if notools:
                 if verbose:
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["Hotfix File"].add('[[attachment:%s/%s]]' % (dpage, bnf_file))
-                changes |= uploadFile(collab,dpage,fname,bnf_file,progress)
-        html_files = filter(html.search, flist) 
+                changes |= uploadFile(collab, dpage, fname, bnf_file, progress)
+        html_files = filter(html.search, flist)
         for html_file in html_files:
             fname = dir + "/" + html_file
             if notools:
@@ -205,13 +212,14 @@ def upload_files(collab, arena_dirs, marker, progress, notools, blacklist, priva
                     print "NOTE: Not uploading", fname
             else:
                 metas[page]["HTML Document"].add('[[attachment:%s/%s]]' % (dpage, html_file))
-                changes |= uploadFile(collab,dpage,fname,html_file,progress)
+                changes |= uploadFile(collab, dpage, fname, html_file, progress)
 
         if changes == True:
             print "NOTE: " + page + " attachments were updated"
             if marker:
                 metas[page]["changed"].add("True")
     return metas
+
 
 def main():
     parser = optparse.OptionParser()
@@ -225,27 +233,29 @@ def main():
                       default=None,
                       metavar="ARENA-USER",
                       help=("ARENA-USER username."))
-    parser.add_option( "-m", "--marker",
+    parser.add_option("-m", "--marker",
                        action="store",
                        default=None,
                        type="string", dest="marker",
                        help="Marker meta key to remove if tool has changed.")
-    parser.add_option( "-b", "--blacklist", action="store", 
+    parser.add_option("-b", "--blacklist", action="store",
             type="string", dest="blacklist", default=None,
             help="Blacklist string to suppress uploading certain tools, which match the expression.")
-    parser.add_option( "-p", "--private", action="store_true", 
+    parser.add_option("-p", "--private", action="store_true",
             dest="private", default=False, help="Set a private group acl, instead of the default.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, help="Display file upload progress information." )
+        dest="progress", default=False, help="Display file upload progress information.")
     parser.add_option("-N", "--no-tools", action="store_true",
-        dest="notools", help="Do not upload tool files, only release notes." )
+        dest="notools", help="Do not upload tool files, only release notes.")
     parser.set_usage("%prog [options]")
-    arena_dirs=[]
+    arena_dirs = []
     metas = Metas()
     sect = "arena"
     ops = parseOptions(parser, sect)
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     notools = ops[sect]["notools"]
     verbose = ops[sect]["verbose"]
     blacklist = ops[sect]["blacklist"]
@@ -260,7 +270,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -297,4 +307,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

@@ -2,19 +2,24 @@
 # -*- coding: utf-8 -*-
 
 """
-    @copyright: 2008 Marko Laakso, Mika Seppänen, Lari Huttunen
+    @copyright: 2008-2012 Marko Laakso, Mika Seppänen, Lari Huttunen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import os, sys, re, string, optparse
-from xml.dom import minidom
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.meta import Meta, Metas
-from opencollab.util.config import parseOptions
-from opencollab.util.file import hashFile, uploadFile
-from opencollab.util.wiki import getPages
+import os
+import re
+import sys
+import socket
+import optparse
 from gzip import GzipFile
+from xml.dom import minidom
+from opencollab.meta import Meta, Metas
+from opencollab.util.wiki import getPages
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.file import hashFile, uploadFile
 
 DEFENSICS_KEYS = []
+
 
 def getText(nodelist):
     rc = ""
@@ -22,6 +27,7 @@ def getText(nodelist):
         if node.nodeType == node.TEXT_NODE:
             rc = rc + node.data
     return rc
+
 
 def parse_summary(dir, file='summary.xml'):
     summary_metas = Meta()
@@ -33,10 +39,18 @@ def parse_summary(dir, file='summary.xml'):
     for collection in xmldoc.getElementsByTagName("collection"):
         label = collection.getAttribute("label")
         for cfact in collection.getElementsByTagName("fact"):
-            summary_metas[label].add(getText(cfact.childNodes))
+            v = ""
+            hash = cfact.getAttribute("hash")
+            index = getText(cfact.childNodes)
+            if hash:
+                v = index + " " + hash
+                summary_metas[label].add(v)
+            else:
+                summary_metas[label].add(index)
     return summary_metas
 
-def mapCVSS(k,v):
+
+def mapCVSS(k, v):
     if k.startswith("cvss-"):
         k = k[5:]
 
@@ -48,7 +62,7 @@ def mapCVSS(k,v):
         'I': 'Integrity',
         'A': 'Availability',
         'E': 'Exploitability',
-        'RL': 'Remediation Level', 
+        'RL': 'Remediation Level',
         'RC': 'Report Confidence',
         'CDP': 'Collateral Damage Potential',
         'TD': 'Target Distribution',
@@ -56,7 +70,7 @@ def mapCVSS(k,v):
         'IR': 'Integrity Requirement',
         'AR': 'Availability Requirement'
     }
-    
+
     values = {'AV': {'L': "Local",
                      'A': "Adjacent Network",
                      'N': "Network"},
@@ -113,13 +127,13 @@ def mapCVSS(k,v):
 
     key = keys.get(k, k)
     value = commonValues.get(v, values.get(k, dict()).get(v, v))
-     
     return key, value
+
 
 def parse_tool_options(page_metas):
     cvssre = re.compile('cvss')
-    options=[]
-    tmp=[]
+    options = []
+    tmp = []
     option_metas = Meta()
     for opt in page_metas["Options"]:
         tmp.append(opt)
@@ -130,14 +144,15 @@ def parse_tool_options(page_metas):
         tmp = opt.split(" ", 1)
         if len(tmp) == 2:
             k, v = tmp
-            if cvssre.search(k): 
-                (opt_key, opt_value) = mapCVSS(k,v)
+            if cvssre.search(k):
+                (opt_key, opt_value) = mapCVSS(k, v)
             else:
                 opt_key = "Option "
                 opt_key = opt_key + k
                 opt_value = v
             option_metas[opt_key].add(opt_value)
     return option_metas
+
 
 def parse_notes(dir, file='notes.xml'):
     note_metas = Meta()
@@ -151,10 +166,10 @@ def parse_notes(dir, file='notes.xml'):
         note_metas[kd].add(description)
     return note_metas
 
+
 def handle_paths(collab, testplan, dirs, progress):
-    at = re.compile('@')
-    flist=[]
-    metas=Metas()
+    flist = []
+    metas = Metas()
     for dir in dirs:
         flist = os.listdir(dir)
         if 'summary.xml' in flist:
@@ -175,7 +190,7 @@ def handle_paths(collab, testplan, dirs, progress):
                     gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
                     gzipped.write(open(os.path.join(dir, "main.log")).read())
                     gzipped.close()
-                uploadFile(collab,testrun, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
+                uploadFile(collab, testrun, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
             if('run.set' in flist):
                 metas[testrun]["Settings"].add('[[attachment:run.set]]')
                 uploadFile(collab, testrun, os.path.join(dir, 'run.set'), 'run.set', progress)
@@ -184,14 +199,14 @@ def handle_paths(collab, testplan, dirs, progress):
                 uploadFile(collab, testrun, os.path.join(dir, 'runinfo'), 'runinfo', progress)
             if('statistics.csv' in flist):
                 metas[testrun]["Statistics"].add('[[attachment:statistics.csv]]')
-                uploadFile(collab,testrun, os.path.join(dir, 'statistics.csv'), 'statistics.csv',progress)
+                uploadFile(collab, testrun, os.path.join(dir, 'statistics.csv'), 'statistics.csv', progress)
             if('summary.txt' in flist):
                 metas[testrun]["Summary"].add('{{attachment:summary.txt}}')
-                uploadFile(collab, testrun, os.path.join(dir, 'summary.txt'), 'summary.txt',progress)
+                uploadFile(collab, testrun, os.path.join(dir, 'summary.txt'), 'summary.txt', progress)
             if 'notes.xml' in flist:
                 metas[testrun]["Notes"].add('[[attachment:notes.xml]]')
                 metas[testrun].update(parse_notes(dir))
-                uploadFile(collab, testrun, os.path.join(dir, 'notes.xml'), 'notes.xml',progress)
+                uploadFile(collab, testrun, os.path.join(dir, 'notes.xml'), 'notes.xml', progress)
             if testplan is not None:
                 metas[testrun]["Test Plan"].add('[[%s]]' % testplan)
             else:
@@ -200,35 +215,39 @@ def handle_paths(collab, testplan, dirs, progress):
             metas[testrun]["gwikitemplate"].add("TestRunTemplate")
     return metas
 
+
 def walk_dirs(path):
-    dlist=[]
+    dlist = []
     for root, dirs, files in os.walk(path):
         for dir in dirs:
-           dlist.append(os.path.join(root,dir)) 
+            dlist.append(os.path.join(root, dir))
     return dlist
+
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-n", "--testplan-page-name", action="store",
         type="string", dest="testplan", default=None,
-        metavar="TESTPLAN-PAGE", help="Specify a TESTPLAN-PAGE name to link the test runs to." )
-    parser.add_option("-p", "--prompt", action="store_true", 
+        metavar="TESTPLAN-PAGE", help="Specify a TESTPLAN-PAGE name to link the test runs to.")
+    parser.add_option("-p", "--prompt", action="store_true",
         dest="prompt", default=False,
         help="Prompt for selecting the test plan from search results obtained via -s.")
     parser.add_option("-P", "--progress", action="store_true",
-        dest="progress", default=False, help="Display file upload progress information." )
+        dest="progress", default=False, help="Display file upload progress information.")
     parser.add_option("-r", action="store_true", dest="recursive", default=False,
         help="Enable recursion on input directories.")
     parser.set_usage("%prog [options] <1..N input directories>")
-    dlist=[]
+    dlist = []
     sect = "defensics"
     ops = {}
     metas = Metas()
     ops = parseOptions(parser, sect, search=True)
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
     replace = ops[sect]["lasteditwins"]
@@ -241,7 +260,7 @@ def main():
         print "Authenticating to: " + repr(url)
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -249,15 +268,15 @@ def main():
         else:
             break
     if search_string is not None:
-        if not re.search(search_string,'\|\|.*\|\|'):
+        if not re.search(search_string, '\|\|.*\|\|'):
             search_string += ',|| ||'
         tpages = getPages(collab, search_string)
         nro = 0
         for page in tpages:
             msg = ""
             msg += "%3d %s" % (nro, page)
-            for metakey,metavalue in tpages[page].iteritems():
-                msg += " %s:%s" % (metakey,"/".join(metavalue))
+            for metakey, metavalue in tpages[page].iteritems():
+                msg += " %s:%s" % (metakey, "/".join(metavalue))
             print "%s" % msg
             nro += 1
         if ops[sect]["prompt"]:
@@ -265,7 +284,7 @@ def main():
             cont = True
             pnames = tpages.items()
             while cont:
-                print "Enter your selection or q to quit: " 
+                print "Enter your selection or q to quit: "
                 tmp = sys.stdin.readline().strip()
                 if(tmp == "q"):
                     sys.exit()
@@ -282,13 +301,13 @@ def main():
     if ops[sect]["recursive"]:
         if(verbose):
             print "Walking ", dlist
-        new_dl=[]
+        new_dl = []
         for dir in dlist:
             new_dl.append(dir)
             new_dl = (walk_dirs(dir))
         a = set(new_dl)
         b = set(dlist)
-        dirs = a | b 
+        dirs = a | b
     else:
         dirs = set(dlist)
     if(verbose):
@@ -307,4 +326,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-

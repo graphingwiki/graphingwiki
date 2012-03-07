@@ -5,37 +5,44 @@
 
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import yaml
-import optparse
 import os
-
-from email.Utils import mktime_tz, parsedate_tz
-
+import sys
+import yaml
+import socket
+import optparse
+import calendar
+from datetime import datetime
 from opencollab.meta import Metas
-from opencollab.wiki import CLIWiki, WikiFailure
-from opencollab.util.config import parseOptions
-from opencollab.util.file import md5obj, uploadFile
 from opencollab.util.wiki import importMetas
+from opencollab.util.config import parseOptions
+from email.Utils import mktime_tz, parsedate_tz
+from opencollab.wiki import CLIWiki, WikiFailure
+from opencollab.util.file import md5obj, uploadFile
+
 
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] <puppet-yaml-files]")
-    parser.add_option( "-l", "--last-edit-wins",
+    parser.add_option("-l", "--last-edit-wins",
         action="store_true", dest="lasteditwins", default=False,
-        metavar = "LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
-    parser.add_option( "-s", "--short",
+        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
+    parser.add_option("-a", "--attachments",
+        action="store_true", dest="attachments", default=False,
+        help="Upload YAML attachments.")
+    parser.add_option("-s", "--short",
         action="store_true", dest="shortname", default=False,
         help="Strip domain from page names.")
     parser.add_option("-P", "--progress", action="store_true",
-                      dest="progress", default=False, 
-                      help="Display file upload progress information." )
+                      dest="progress", default=False,
+                      help="Display file upload progress information.")
     ops = {}
     sect = "puppet"
-    iwlist_files=[]
     failed = []
     ops = parseOptions(parser, sect, template=True, category=True)
     progress = ops[sect]["progress"]
     url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     template = ops[sect]["template"]
     if template is None:
@@ -43,13 +50,13 @@ def main():
     category = ops[sect]["category"]
     if category is None:
         category = "CategoryIdentity"
-    replace = ops[sect]["lasteditwins"] 
     shortname = ops[sect]["shortname"]
+    attachments = ops[sect]["attachments"]
     args = ops[sect]["args"]
 
     while True:
         try:
-            collab = CLIWiki(**ops['creds'])
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
         except WikiFailure:
             print "ERROR: Authentication failed."
         except (UnicodeError, socket.gaierror):
@@ -63,7 +70,8 @@ def main():
 
         # Not valid yaml for some reason, need to strip some ruby stuff
         for line in open(inputfile):
-            if line.startswith("-"): continue
+            if line.startswith("-"):
+                continue
             data += line.replace("!ruby/sym ", "")
 
         xml_page = md5obj(data).hexdigest()
@@ -89,7 +97,10 @@ def main():
             elif key == '_timestamp':
                 val = values[key]
                 key = 'timestamp'
-                val = mktime_tz(parsedate_tz(val))
+                if isinstance(val, datetime):
+                    val = calendar.timegm(val.timetuple())
+                else:
+                    val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in ['memoryfree', 'memorysize', 'swapfree', 'swapsize']:
                 nro, mgn = values[key].split()
@@ -103,10 +114,11 @@ def main():
             else:
                 metas[page][key].add(values[key].strip())
 
-        metas[xml_page]['TYPE'].add('puppet configuration')
-        metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % (timestamp))
-        metas[xml_page]['gwikicategory'] = ['CategoryScan']
-        metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
+        if attachments:
+            metas[xml_page]['TYPE'].add('puppet configuration')
+            metas[xml_page]['Scan time'].add('<<DateTime(%s)>>' % (timestamp))
+            metas[xml_page]['gwikicategory'] = ['CategoryScan']
+            metas[xml_page]['gwikitemplate'] = ['ScanTemplate']
 
         if category is not None:
             for page in metas:
@@ -127,7 +139,8 @@ def main():
                 else:
                     print "ERROR uploading:", page
 
-        uploadFile(collab, xml_page, '', inputfile, progress, data=data)
+        if attachments:
+            uploadFile(collab, xml_page, '', inputfile, progress, data=data)
 
 
 if __name__ == "__main__":

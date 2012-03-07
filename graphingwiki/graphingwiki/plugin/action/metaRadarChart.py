@@ -169,7 +169,7 @@ def execute(pagename, request):
             values.update(x)
 
     if scale:
-        values.update(map(ordervalue, scale))
+        values.update(scale)
 
     values = sorted(values)
 

@@ -134,23 +134,23 @@ def execute(macro, text):
                                     text = '[%s]' % _('create') 
                                 else:
                                     orig_page = macro.request.page.page_name
-                                    msg = wr('<form method="GET" action="%s">', 
-                                             actionname(request, orig_page))
-                                    msg += wr('<select name="template">')
-                                    msg += wr('<option value="">%s</option>', 
+                                    msg = wr('<form method="GET" action="%s">\n', 
+                                             actionname(request, querystr['backto']))
+                                    msg += wr('<select name="template">\n')
+                                    msg += wr('<option value="">%s</option>\n', 
                                               _("No template"))
 
                                     # Get list of template pages readable by current user
                                     filterfn = request.cfg.cache.page_template_regexact.search
                                     templates = request.rootpage.getPageList(filter=filterfn)
                                     for i in templates:
-                                        msg += wr('<option value="%s">%s</option>', i, i)
+                                        msg += wr('<option value="%s">%s</option>\n', i, i)
 
-                                    msg += '<input type="hidden" name="action" value="newpage"'
-                                    msg += wr('<input type="hidden" name="pagename" value="%s"', inc_name)
-                                    msg += wr('<input type="hidden" name="backto" value="%s"', querystr['backto'])
-                                    msg += wr('<input type="submit" value="%s">', _('create'))
-                                    msg += wr('</select></form>')
+                                    msg += '</select>\n'
+                                    msg += '<input type="hidden" name="action" value="newpage">\n'
+                                    msg += wr('<input type="hidden" name="pagename" value="%s">\n', inc_name)
+                                    msg += wr('<input type="submit" value="%s">\n', _('create'))
+                                    msg += wr('</form>\n')
 
                                     return msg
 
