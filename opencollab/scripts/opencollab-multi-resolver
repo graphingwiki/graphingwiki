@@ -70,6 +70,7 @@ def expand_as(rr, new):
 
 def expand_name(rr, new):
     new.append(rr + ";A")
+    new.append(rr + ";NS")
     new.append(rr + ";AAAA")
     new.append(rr + ";MX")
     new.append(rr + ";SOA")

@@ -221,13 +221,24 @@ class GraphData(GraphDataBase):
         self.readlock()
         return page in self.db
 
-    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
+    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, 
+                                                  acl, mtime, saved):
         pagedata = self.getpage(pagename)
         pagedata[u'meta'] = newmeta
         pagedata[u'acl'] = acl
         pagedata[u'mtime'] = mtime
         pagedata[u'saved'] = saved
         self.savepage(pagename, pagedata)
+
+    def clear_page(self, pagename):
+        if self.get_in(pagename):
+            pagedata = self.getpage(pagename)
+            pagedata[u'saved'] = False
+            pagedata[u'meta'] = dict()
+            pagedata[u'out'] = dict()
+            self.savepage(pagename, pagedata)
+        else:
+            self.delpage(pagename)
 
     def readlock(self):
         if self._writelock.is_locked():

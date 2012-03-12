@@ -97,7 +97,7 @@ window.addEvent('domready', function() {
     }
 
     //DnD file attachment upload
-    initDnDUpload(document.body);
+    initDnDUpload(document.window);
 });
 
 Element.Events.shiftclick = {
@@ -115,33 +115,34 @@ Request.SetMetas = new Class({
     options: {
         //onConflict: function(){}
         method: 'post',
+        args: '',
         checkUrl: "",
         checkData: {}
     },
     checkAndSend: function() {
         var args = arguments;
-        new Request.JSON({
-            url: this.options.checkUrl,
-            method: 'post',
+        new Request.GetMetas({
             onSuccess: function(json) {
+                var failreason = "";
                 if (Object.every(this.options.checkData, function(metas, page) {
                     return json[page] && Object.every(metas, function(values, key) {
                         values = values.filter(function(v) {
                             return v != '';
                         });
                         if (!json[page][key]) json[page][key] = [];
-                        return json[page][key].length == values.length
-                            && values.every(function(value) {
+                        if (json[page][key].length != values.length || !values.every(function(value) {
                             return json[page][key].contains(value);
-                        })
+                        }))
+                            failreason = JSON.encode(json[page][key]) + " != " +JSON.encode(values);
+                        return failreason === "";
                     });
-                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes?")) {
+                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes? Old values: "+failreason)) {
                     this.send(args);
                 } else {
                     this.fireEvent('conflict')
                 }
             }.bind(this)
-        }).send();
+        }).get(this.options.args);
     },
 
     onSuccess: function (json) {
@@ -151,6 +152,129 @@ Request.SetMetas = new Class({
             if (json.msg && json.msg[0]) alert(json.msg[0]);
             else alert("Save failed for unknown reason.");
         }
+    }
+});
+
+/*
+    Retrieves metas using incGetMetaJSON and local storage as cache.
+    Usage example:
+        new Request.GetMetas({
+            args: 'CategoryTest',
+            onSuccess: function(metas){
+                //do something...
+            }
+        }).get();
+*/
+Request.GetMetas = new Class({
+    Extends: Request.JSON,
+
+    options: {
+        args: "",
+        cacheNamespace: "metaCache",
+        link: "chain"
+    },
+
+    get: function(args, onlyvalues){
+        if (!this.check(args, onlyvalues)) return this;
+        args = args || this.options.args;
+        this._metaArg = args || window.location.pathname;
+        this._onlyvalues = onlyvalues;
+
+        var opts = {
+            method: 'get',
+            url: '?action=incGetMetaJSON&args=' + encodeURIComponent(args)
+        };
+
+        if (onlyvalues) {
+            opts.url = "?action=incGetMetaJSON&getvalues=" + encodeURIComponent(args)
+        }
+
+        if ("localStorage" in window) {
+            var ls = window.localStorage;
+            var namespace = this.options.cacheNamespace;
+            if (this._onlyvalues) namespace += ".values";
+            var cached = JSON.decode(ls[namespace +"_" + this._metaArg]);
+            if (cached && cached.handle) opts.url += "&handle=" + encodeURIComponent(cached.handle);
+            //try to maintain incGetMeta-cache integrity in case user quits page before we get to save results
+            this.unloadEvent = function(){
+                delete ls[namespace +"_" + this._metaArg];
+            }.bind(this);
+            document.window.addEvent('unload',this.unloadEvent);
+        }
+
+        return this.send(opts);
+    },
+
+    onSuccess: function(json, text) {
+        var handle = json[1];
+        var data = json[2];
+        var results = {};
+        var args = this._metaArg;
+        if ("localStorage" in window) {
+            var ls = window.localStorage;
+            var namespace = this.options.cacheNamespace;
+            if (this._onlyvalues) namespace += ".values";
+            //get stuff from cache only if the incGetMeta session is alive
+            if (json[0])
+                results = (JSON.decode(ls[namespace +"_"+args]) || {metas:{}})['metas'];
+        }
+
+        var page, i, j;
+
+        //deleted pages
+        for (i=0; i < data[0].length; i++){
+            page = data[0][i];
+            if (results[page]) delete results[page];
+        }
+
+        //new pages/changes
+        Object.each(data[1], function(metas, page){
+            if (!results[page]) results[page] = {};
+            Object.each(metas, function(vals, key){
+                if (!results[page][key])results[page][key] = [];
+
+                var deleted = vals[0];
+                for (i=0; i < deleted.length; i++) {
+                    j = results[page][key].indexOf(deleted[i]);
+                    if (j >= 0) results[page][key].shift(j, 1);
+                }
+
+                var added = vals[1];
+                for (i=0; i < added.length; i++) {
+                    results[page][key].push(added[i]);
+                }
+            })
+        });
+
+        //save metas to cache, purge old data if localStorage gets full
+        if ("localStorage" in window) {
+            var indexName = this.options.cacheNamespace + ".items";
+
+            var items = JSON.decode(ls[indexName]);
+            if (!items) items = ls[indexName] = [];
+
+            while (true) {
+                try {
+                    ls[namespace +"_"+args] = JSON.encode({handle: handle, metas: results});
+                    items.erase(args).push(args);
+                    ls[indexName] = JSON.encode(items);
+                    break;
+
+                } catch(e) {
+                    if (items.length > 0) {
+                        delete ls[items.shift()];
+                    } else {
+                        break;
+                    }
+
+                }
+            }
+            ls[indexName] = JSON.encode(items);
+            document.window.removeEvent('unload',this.unloadEvent);
+
+        }
+
+        this.fireEvent('complete', [results, json, text]).fireEvent('success', [results, json, text]).callChain();
     }
 });
 
@@ -299,8 +423,8 @@ var initInlineMetaEdit = function (base) {
     if (base.hasClass('gwikiinclude')) page = unescapeId(base.id).split(GWIKISEPARATOR)[0];
 
     base.addEvent('mouseover:relay(div:not(.gwikiinclude) dl):once', function() {
-        new Request.JSON({
-            url: '?action=getMetaJSON&args=' + page,
+        new Request.GetMetas({
+            args: page,
             onSuccess: function(json) {
                 page = Object.keys(json)[0];
                 metas = json[page];
@@ -403,7 +527,7 @@ var initInlineMetaEdit = function (base) {
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                    checkUrl: '?action=getMetaJSON&args=' + page,
+                    args: page,
                     checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
@@ -462,7 +586,7 @@ var initInlineMetaEdit = function (base) {
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                    checkUrl: '?action=getMetaJSON&args=' + page,
+                    args: page,
                     checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
@@ -541,14 +665,16 @@ var InlineEditor = new Class({
 
         } else if (this._keyProperties.constraint == "existing") {
             var input = this.input = new Element('select.waiting').inject(this.element);
-            new Request.JSON({
-                url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.key),
+            new Request.GetMetas({
                 onSuccess: function(json) {
                     input.removeClass('waiting');
                     var vals = [];
-                    Object.each(json, function(values, page) {
-                        vals.combine(values);
+                    Object.each(json, function(metas, page) {
+                        Object.each(metas, function(values, key){
+                            vals.combine(values);
+                        });
                     });
+
                     vals.each(function(value){
                        input.grab(new Element('option',{
                            value: value,
@@ -557,7 +683,7 @@ var InlineEditor = new Class({
                        }));
                     });
                 }
-            }).get();
+            }).get(this.options.key, true);
         } else {
             this.input = new Element('textarea', {
                 text: oldVal,
@@ -575,7 +701,7 @@ var InlineEditor = new Class({
 
             if (this.options.key) {
                 this.suggestions = new MetaSuggestions(this.input, {
-                    url: '?action=getMetaJSON&getvalues=' + encodeURIComponent(this.options.key)
+                    key: this.options.key
                 });
             }
 

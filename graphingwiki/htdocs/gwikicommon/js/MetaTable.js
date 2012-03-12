@@ -47,6 +47,8 @@
             if (page) page = page.get('text');
             if (page && !metas[page]) metas[page] = {};
 
+            var vals = {};
+
             row.getElements('.meta_cell span').each(function(span){
                 var val = span.get('data-value') || span.get('text');
                 var page = span.get('data-page');
@@ -54,8 +56,9 @@
                 var index = span.get('data-index');
                 if (page && !metas[page]) metas[page] = {};
                 if (val) {
-                    if (!metas[page][key] || index == 0) metas[page][key] = [];
-                    metas[page][key].splice(index, 0, val);
+                    if (!vals[key]) vals[key] = {};
+                    vals[key][index] = val;
+                    metas[page][key] = Object.values(vals[key]);
                 }
             });
         });
@@ -536,7 +539,7 @@
             this.parent.apply(this, [null, opts]);
 
             if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
-            this.update();
+            this.updateTable();
         },
 
         build: function() {
@@ -635,7 +638,7 @@
             })
         },
 
-        update: function() {
+        updateTable: function() {
             if (this.isUpdating()) return;
 
             this.requests = [];

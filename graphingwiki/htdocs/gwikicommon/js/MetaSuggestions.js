@@ -191,6 +191,7 @@
             limitToExisting: false,
             suggestions: null, // ["value1", "value2"]
             showOnEmpty: true,
+            key: '',
             onSelect: function() {
             }
         },
@@ -216,25 +217,26 @@
                     return {"value": val, "page": []};
                 });
             } else {
-                this.request = new Request.JSON({
-                    url: this.options.url,
+                this.request = new Request.GetMetas({
                     onSuccess: function(json) {
                         var suggestions = this.suggestions = [];
-                        Object.each(json, function(values, page) {
-                            values.each(function(value) {
-                                if (suggestions.every(function(sug) {
-                                    if (sug.value == value) {
-                                        sug.page.push(page);
-                                    } else {
-                                        return true;
+                        Object.each(json, function(metas, page) {
+                            Object.each(metas, function(values, key){
+                                values.each(function(value) {
+                                    if (suggestions.every(function(sug) {
+                                        if (sug.value == value) {
+                                            sug.page.push(page);
+                                        } else {
+                                            return true;
+                                        }
+                                    })) {
+                                        suggestions.push({"value": value, "page": [page]})
                                     }
-                                })) {
-                                    suggestions.push({"value": value, "page": [page]})
-                                }
+                                });
                             });
                         });
                     }.bind(this)
-                }).get();
+                }).get(this.options.key, true);
             }
 
             this.attach();
