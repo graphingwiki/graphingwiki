@@ -26,7 +26,7 @@ def execute(pagename, request):
     form = values_to_form(request.values)
 
     try:
-        args = args['args'][0]
+        args = form['args'][0]
     except (KeyError, IndexError):
         args = u''
 

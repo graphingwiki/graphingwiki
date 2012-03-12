@@ -311,10 +311,9 @@ class GraphingWiki(Wiki):
             categoryMode = 'add'
 
         categories = keys.pop("category", list())
-        createPageOnDemand = True
 
         return self.request("SetMeta", page, keys, metaMode,
-                            createPageOnDemand, categoryMode, categories,
+                            categoryMode, categories,
                             template)
 
     def incSetMeta(self, cleared, discarded, added):
