@@ -49,7 +49,7 @@ class Invite(ActionBase):
         return user_may_invite(self.request.user, self.pagename)
 
     def do_action(self):
-        form = values_to_form(request.values)
+        form = values_to_form(self.request.values)
         
         email = form.get('email', [u''])[0]
         email = wikiutil.clean_input(email).strip()
