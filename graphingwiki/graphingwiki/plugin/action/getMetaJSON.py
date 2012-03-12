@@ -37,7 +37,7 @@ except ImportError:
     import json
 
 def execute(pagename, request):
-    request.content_type = "text/plain; charset=ascii"
+    request.content_type = "application/json"
 
     form = values_to_form(request.values)
 
