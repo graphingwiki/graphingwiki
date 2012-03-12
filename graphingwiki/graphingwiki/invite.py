@@ -46,7 +46,7 @@ class GroupException(Exception):
     pass
 
 def add_user_to_group(request, userobj, group, create_link=True, comment=""):
-    if not wikiutil.isGroupPage(request, group):
+    if not wikiutil.isGroupPage(group, request.cfg):
         raise GroupException("Page '%s' is not a group page." % group)
     if not (request.user.may.read(group) and request.user.may.write(group)):
         raise GroupException("No permissions to write to page '%s'." % group)

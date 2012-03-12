@@ -61,7 +61,7 @@ class Invite(ActionBase):
             new_template = self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
             old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
 
-            if wikiutil.isGroupPage(self.request, pagename):
+            if wikiutil.isGroupPage(pagename, self.request.cfg):
                 myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
                 mygrouppage = pagename
             else:
