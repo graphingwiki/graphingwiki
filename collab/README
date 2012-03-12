@@ -59,15 +59,23 @@ EOF
 ## /etc/apache2/apache2.conf to the following:
 ## ErrorLog /srv/www/log/https/error_log
 
-## Install graphingwiki. 
+## Install graphviz. 
 apt-get install libgv-python graphviz
 
-# If the current packages in Ubuntu repos are broken or outdated, the
-# best is to use the precompiled packages from ATT
-# (http://www.graphviz.org/Download_linux_ubuntu.php)
+# You can tell if the packages have been broken by trying out the
+# command python -c "import gv" if that gives errors, the package has
+# is broken.
+#
+# If the current packages in Ubuntu repos are broken or outdated, you
+# can do either of two things. 
+# 1.) Fix per instructions in:
+# https://bugs.launchpad.net/ubuntu/+source/graphviz/+bug/556874
+# 2.) Use the precompiled packages from ATT
+# (http://www.graphviz.org/Download_linux_ubuntu.php) 
 
 ## OPTIONAL: Install igraph, if you want to layout large graphs
 # https://launchpad.net/~igraph/+archive/ppa
+apt-get install python-software-properties
 add-apt-repository ppa:igraph/ppa
 apt-get update
 apt-get install python-igraph
@@ -80,10 +88,13 @@ wget -N -q http://static.moinmo.in/files/moin-1.9.3.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
 
+# FIXME
+# change import md5crypt to from support import md5crypt from user.py
+
 # Patch and install moin
-tar -zxvf moin-1.9.3.tar.gz 
-cd moin-1.9.3/
-patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.9.3.patch 
+tar -zxvf moin-1.9.4.tar.gz 
+cd moin-1.9.4/
+patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.9.4.patch 
 python setup.py install
 
 # Install graphingwiki, collabbackend and opencollab
@@ -126,8 +137,6 @@ su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /sr
 
 # Make the base collab
 su - collab -s /bin/bash -c "collab-create collab collab"
-su - collab -s /bin/bash -c "cp /srv/wikis/collab/htdocs/collab/wsgi /srv/wikis/collab/htdocs/"
-su - collab -s /bin/bash -c "rm -rf /srv/wikis/collab/htdocs/collab"
 
 # Making collab users. 
 su - collab -s /bin/bash -c "collab-account-create collab"
@@ -155,6 +164,7 @@ EOF
 # Other OS versions might need to use the versions from MaxMind:
 # http://www.maxmind.com/app/installation
 
+cd /etc/local/collab
 wget -N -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
 gzip -c -d GeoLiteCity.dat.gz > /etc/local/collab/GeoLiteCity.dat
 
@@ -165,6 +175,10 @@ apt-get install python-geoip
 # LanguageSetup. Click "install help and system page packages" under
 # "Installing page packages". Select the desired selection of
 # underlay pages. (Default to all_pages if unsure.)
+# You might need to restart Apache after this.
+
+su - collab -s /bin/bash -c "gwiki-rehash /srv/wikis/collab/wikis/collab"
+/etc/init.d/apache2 restart
 
 ## Wiki Management
 
