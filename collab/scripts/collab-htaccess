@@ -70,6 +70,9 @@ f.close()
 from MoinMoin import log
 log.load_config(mylogconf) 
 
+# We need to import contexts before importing users, because otherwise
+# the relative imports in MoinMoin will fail.
+import MoinMoin.web.contexts
 from MoinMoin.user import User, getUserList, isValidName
 from MoinMoin.config import multiconfig
 
