@@ -232,8 +232,8 @@
                     var first = target.getElement('span');
                     page = first.get('data-page');
                     key = first.get('data-key');
-                    //only one span without value => no use that span
-                    if (target.children.length == 1 && first.get('text') == "") {
+                    //only one span without value => use that span
+                    if (target.children.length == 1 && first.get('text') === "") {
                         index = 0;
                         target = first;
                     }else{
@@ -278,7 +278,7 @@
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                        checkUrl: '?action=getMetaJSON&args=' + page,
+                        checkArgs: page,
                         checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
@@ -337,7 +337,7 @@
 
                     new Request.SetMetas({
                         data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                        checkUrl: '?action=getMetaJSON&args=' + encodeURIComponent(this.tableArgs.args),
+                        checkArgs: this.tableArgs.args,
                         checkData: oldData,
                         onSuccess: function() {
                             this.inlineEditor = null;
@@ -367,7 +367,7 @@
                         url: '?action=ajaxUtils&util=getTemplate&name=' + this.tableArgs.template,
                         onSuccess: function(txt) {
                             this.template = txt;
-                            delete this['_templateRequest']
+                            delete this['_templateRequest'];
                         }.bind(this)
                     }).send();
                 }
@@ -382,7 +382,7 @@
 
             editor.addEvent('success', function() {
                 this.refresh();
-            }.bind(this))
+            }.bind(this));
 
         },
 
@@ -439,8 +439,8 @@
             var form = new Element('form').inject(this.editor);
 
             var namefield = new Element('input[name=pagename][placeholder=Page Name]')
-                    .set('value', new Date().format(this.options.name))
-                    .setStyles({'width': '200px', 'margin-left': '20px'});
+                .set('value', new Date().format(this.options.name))
+                .setStyles({'width': '200px', 'margin-left': '20px'});
 
             form.adopt(
                 new Element('span[text=Pagename: ]'),
@@ -450,19 +450,19 @@
             );
 
             if (this.options.template) {
-                new Element('a',{
+                new Element('a', {
                     'text': 'create in metaformedit',
                     'target': '_blank',
-                    'href': namefield.get('value') + '?action=editmetaform&template=' +this.options.template,
+                    'href': namefield.get('value') + '?action=editmetaform&template=' + this.options.template,
                     'styles': {
                         'margin-left': '10px'
                     },
                     'events': {
-                        'click': function(){
+                        'click': function() {
                             this.cancel();
                         }.bind(this)
                     }
-                }).inject(namefield, 'after')
+                }).inject(namefield, 'after');
             }
 
             this.textarea = new Element('textarea', {
@@ -488,7 +488,7 @@
                     }
                 }),
                 new Element('div').setStyle('clear', 'both')
-            ).inject(this.container)
+            ).inject(this.container);
         },
 
         send: function() {
@@ -513,7 +513,7 @@
                         alert("Failed to create new page!\n" + '"' + response.msg + '"');
                     }
                 }.bind(this)
-            }).send()
+            }).send();
         }
     });
 
@@ -532,7 +532,7 @@
         initialize: function(el, opts) {
             this.container = document.id(el);
 
-            ["_format", "construct"].each(function(f){
+            ["_format", "construct"].each(function(f) {
                 this[f].bind(this);
             }, this);
 
@@ -562,48 +562,49 @@
             //this.container.grab(new Element('a.jslink[text=[settings]]'), 'bottom')
         },
 
-        _format: function(vals, f){
+        _format: function(vals, f) {
             if (typeOf(vals) != "array") vals = [vals];
-            return vals.map(function(value){
+            return vals.map(function(value) {
                 return f[value] || value;
-            }, this)
+            }, this);
         },
 
-        construct: function(){
+        construct: function() {
             this.empty();
 
             var keys = {};
             Object.each(this.metas, function(pages, collab) {
                 Object.each(pages, function(metas, page) {
-                    Object.keys(metas).each(function(key){
-                        if (!keys[key]) keys[key] = this._format(key, this.formatted[collab])
+                    Object.keys(metas).each(function(key) {
+                        if (!keys[key]) keys[key] = this._format(key, this.formatted[collab]);
                     }, this);
                 }, this);
             }, this);
 
             var foots = {};
-            Object.sortedKeys(keys).each(function(key){
+            Object.sortedKeys(keys).each(function(key) {
                 foots[key] = 0;
             });
 
-            this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
+            //this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
+            this.setHeaders(([""].concat(Object.sortedValues(keys))));
             this.thead.rows[0].addClass('meta_header');
 
             Object.each(this.metas, function(pages, collab) {
                 Object.each(pages, function(metas, page) {
                     var vals = [new Element('a', {
-                        text: (collab? collab+ ':': "") + page,
-                        href: this.options.baseurl + collab + '/' +page
+                        text: (collab ? collab + ':' : "") + page,
+                        href: this.options.baseurl + collab + '/' + page
                     })];
 
                     Object.sortedKeys(keys).each(function(key) {
-                        if (!metas[key] || metas[key].length == 0) {
+                        if (!metas[key] || metas[key].length === 0) {
                             vals.push(" ");
                         } else {
                             vals.push(this._format(metas[key], this.formatted[collab]).join(", "));
                             if (Number.from(metas[key])) {
                                 foots[key] += Number.from(metas[key]);
-                            }else{
+                            } else {
                                 foots[key] = null;
                             }
 
@@ -617,25 +618,17 @@
             $$(this.body.rows).getFirst('td').addClass('meta_page');
             $$($$(this.body.rows).getElements('td:not(.meta_page)')).addClass('meta_cell');
 
-            if (this.options.footer) {
-                if (Object.values(foots).clean().length)
-                    this.setFooters([new ActionSelector({
-                        "sum": function(){alert('sum')},
-                        "alert": function(){alert('foo')}
-                    }, this).toElement()].concat(Object.values(foots)));
-            }
             this.sort(0, false);
             this.enableHiding();
-
 
             if (!this.isUpdating()) this.container.removeClass('waiting');
         },
 
-        isUpdating: function(){
-            if (!this.requests || this.requests.length == 0) return false;
-            return this.requests.some(function(request){
+        isUpdating: function() {
+            if (!this.requests || this.requests.length === 0) return false;
+            return this.requests.some(function(request) {
                 return request.isRunning();
-            })
+            });
         },
 
         updateTable: function() {
@@ -644,7 +637,7 @@
             this.requests = [];
             this.options.collabs.each(function(collab) {
                 this.requests.push(new Request.JSON({
-                    url: this.options.baseurl + collab+ '/?action=getMetaJSON',
+                    url: this.options.baseurl + collab + '/?action=getMetaJSON',
                     data: 'args=' + encodeURIComponent(this.options.selector) + '&formatted=true',
                     onSuccess: function(json) {
                         if (!this.metas) this.metas = {};
@@ -653,7 +646,7 @@
                         this.formatted[collab] = json.formatted;
                         this.construct();
                     }.bind(this)
-                }).get())
+                }).get());
             }, this);
         }
     });
