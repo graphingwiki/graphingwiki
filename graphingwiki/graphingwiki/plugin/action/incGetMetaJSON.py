@@ -48,7 +48,7 @@ def execute(pagename, request):
     if handle:
         handle = str(handle)
 
-    getvalues = request.form.get('getvalues', [None])[0]
+    getvalues = form.get('getvalues', [None])[0]
     if getvalues:
         args = "%s=/.+/" % getvalues
 
