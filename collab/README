@@ -1,7 +1,7 @@
-# Full installation instructions for graphingwiki on collabbackend
-# The script is assumed to be run as root
-# Not tested after migrating from 1.8 instructions, but nothing that
-# much has changed here
+# Full installation instructions for graphingwiki on collabbackend.
+# The script is assumed to be run as root.  These instructions have
+# undergone some testing on Ubuntu versions 10.0.4 and 10.10, and may
+# actually miss some of the major errors.
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -55,6 +55,9 @@ EOF
 cat <<EOF > /etc/apache2/ports.conf
 EOF
 
+# You may want to change the SSL certificates to ones signed by a CA
+# you use.
+
 ## Also change the line that defines ErrorLog in
 ## /etc/apache2/apache2.conf to the following:
 ## ErrorLog /srv/www/log/https/error_log
@@ -68,7 +71,7 @@ apt-get install libgv-python graphviz
 #
 # If the current packages in Ubuntu repos are broken or outdated, you
 # can do either of two things. 
-# 1.) Fix per instructions in:
+# 1.) Fix per instructions in
 # https://bugs.launchpad.net/ubuntu/+source/graphviz/+bug/556874
 # 2.) Use the precompiled packages from ATT
 # (http://www.graphviz.org/Download_linux_ubuntu.php) 
@@ -84,12 +87,9 @@ apt-get install python-igraph
 mkdir -p /usr/local/src/
 cd /usr/local/src/
 wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/moin-1.9.tar.gz -O graphingwiki.tar.gz
-wget -N -q http://static.moinmo.in/files/moin-1.9.3.tar.gz
+wget -N -q http://static.moinmo.in/files/moin-1.9.4.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
-
-# FIXME
-# change import md5crypt to from support import md5crypt from user.py
 
 # Patch and install moin
 tar -zxvf moin-1.9.4.tar.gz 
@@ -123,6 +123,9 @@ cp /usr/local/src/graphingwiki/collab/config/intermap.txt /srv/wikis/collab/conf
 cp /usr/local/src/graphingwiki/collab/config/logging.conf /srv/wikis/collab/config
 chown -R collab:collab collab
 chmod -R 2770 collab/
+
+# You should look into the collabfarm.py to add any configs you might
+# need, especially the config for sending email.
 
 # Ensure that Apache can write to the Moin log file
 touch collab/log/moinmoin.log
@@ -175,7 +178,13 @@ apt-get install python-geoip
 # LanguageSetup. Click "install help and system page packages" under
 # "Installing page packages". Select the desired selection of
 # underlay pages. (Default to all_pages if unsure.)
-# You might need to restart Apache after this.
+
+# Note that if you want to use the Invite action, you will need pages
+# for InviteNewTemplate and InviteOldTemplate in your underlay
+# (/srv/wikis/collab/underlay).
+
+# Rehash the base collab to complete installation of underlay. It
+# might also be needed to restart Apache.
 
 su - collab -s /bin/bash -c "gwiki-rehash /srv/wikis/collab/wikis/collab"
 /etc/init.d/apache2 restart
@@ -183,22 +192,34 @@ su - collab -s /bin/bash -c "gwiki-rehash /srv/wikis/collab/wikis/collab"
 ## Wiki Management
 
 # Most commands require running collab-htaccess after them - you might
-# want to running it in your cron.
+# want to running it in your cron. In that case, your crontab for
+# collab should look something like this: 
+# # crontab -l -u collab 
+# * * * * * /usr/local/bin/collab-htaccess
 
-## After the initial install, collabs are created like this
-# https://localhost/collab/mointests/
+# After the initial install, collabs are created like this
 su - collab -s /bin/bash -c "collab-create collab mointests"
 su - collab -s /bin/bash -c "collab-htaccess"
+# This will create a collab under the URL:
+# https://localhost/collab/mointests/
 
-## After the initial install, users are added like this
+# Please note that you generally should not make collabs with the same
+# name as existing Python libraries, as this will in many cases cause
+# problems with collab management. MoinMoin tries to import
+# configurations in most actions, and having libraries with the same
+# names earlier on in PYTHONPATH will cause nasty crashes.
+
+# You can manage users from the command line, or from the wiki. In
+# either case, running collab-htaccess is needed. Users are added like
+# this with command line scripts:
 su - collab -s /bin/bash -c "collab-account-create collab"
 su - collab -s /bin/bash -c "collab-htaccess"
 
-## Give users access to wikis by first adding them to the AccessGroup
-#  page of the wiki, and then issuing collab-htaccess
+# Give users access to wikis by first adding them to the AccessGroup
+# page of the wiki, and then issuing collab-htaccess.
 su - collab -s /bin/bash -c "collab-htaccess"
 
-## User passwords are changed with collab-account-passwd, after which
-#  you need to run collab-htaccess
+# User passwords are changed with collab-account-passwd, after which
+# you need to run collab-htaccess.
 su - collab -s /bin/bash -c "collab-account-passwd collab"
 su - collab -s /bin/bash -c "collab-htaccess"

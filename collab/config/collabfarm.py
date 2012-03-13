@@ -8,8 +8,11 @@ class FarmConfig(DefaultConfig):
 
     shared_intermap = '/srv/wikis/collab/config/intermap.txt'
 
+    # Mail setup, configure if you need mail support
     #mail_smarthost = ''
     #mail_from = ''
+    # Invite default domain, configure if you need invite
+    #invite_sender_default_domain = ''
 
     navi_bar = [
         u'CollabList',
