@@ -120,6 +120,10 @@ chmod g+w collab/log/moinmoin.log
 ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
 ln -sf /usr/local/share/moin/htdocs/ /srv/www/https/moin_static
 
+# Ensure that Moin 1.9.4 htdocs are copied to the expected place
+# instead of libs. This was a 1.9 change.
+cp -r /usr/local/lib/python2.6/dist-packages/MoinMoin/web/static/htdocs/* /usr/local/share/moin/htdocs/
+
 # Copy moin underlay to collabfarm
 su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
 
