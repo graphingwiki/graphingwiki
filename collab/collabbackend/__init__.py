@@ -46,3 +46,9 @@ class Collab(object):
 
 	from MoinMoin import log
 	log.load_config(myinfra.logconf)
+
+    def getwsgiconfig(self):
+        """
+        Dummy config function to help with 1.8 -> 1.9 migration
+        """
+        return None
