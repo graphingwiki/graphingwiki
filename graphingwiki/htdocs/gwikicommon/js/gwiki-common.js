@@ -59,14 +59,14 @@ window.addEvent('domready', function() {
             $$('div.InterMetaTable').each(function(table){
                 var opts = JSON.decode(decodeURIComponent(table.getAttribute('data-options')));
                 new InterMetaTable(table, opts);
-            })
-        })
+            });
+        });
     }
 
     // Inline Edit
     if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
         loader.load('InlineEditor', function() {
-            $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit)
+            $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit);
         });
     }
 
@@ -75,7 +75,7 @@ window.addEvent('domready', function() {
         loader.load('AttachTree', function() {
             $$('.attachtree_area').each(function(el) {
                 new AttachTree(el);
-            })
+            });
         });
     }
 
@@ -115,8 +115,7 @@ Request.SetMetas = new Class({
     options: {
         //onConflict: function(){}
         method: 'post',
-        args: '',
-        checkUrl: "",
+        checkArgs: '',
         checkData: {}
     },
     checkAndSend: function() {
@@ -133,16 +132,16 @@ Request.SetMetas = new Class({
                         if (json[page][key].length != values.length || !values.every(function(value) {
                             return json[page][key].contains(value);
                         }))
-                            failreason = JSON.encode(json[page][key]) + " != " +JSON.encode(values);
+                            failreason = JSON.encode(values) + " has been changed to " +JSON.encode(json[page][key]);
                         return failreason === "";
                     });
-                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes? Old values: "+failreason)) {
+                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes? \n "+failreason)) {
                     this.send(args);
                 } else {
-                    this.fireEvent('conflict')
+                    this.fireEvent('conflict');
                 }
             }.bind(this)
-        }).get(this.options.args);
+        }).get(this.options.checkArgs);
     },
 
     onSuccess: function (json) {
@@ -186,7 +185,7 @@ Request.GetMetas = new Class({
         };
 
         if (onlyvalues) {
-            opts.url = "?action=incGetMetaJSON&getvalues=" + encodeURIComponent(args)
+            opts.url = "?action=incGetMetaJSON&getvalues=" + encodeURIComponent(args);
         }
 
         if ("localStorage" in window) {
@@ -209,10 +208,10 @@ Request.GetMetas = new Class({
         var handle = json[1];
         var data = json[2];
         var results = {};
-        var args = this._metaArg;
+        var args = this._metaArg, ls, namespace;
         if ("localStorage" in window) {
-            var ls = window.localStorage;
-            var namespace = this.options.cacheNamespace;
+            ls = window.localStorage;
+            namespace = this.options.cacheNamespace;
             if (this._onlyvalues) namespace += ".values";
             //get stuff from cache only if the incGetMeta session is alive
             if (json[0])
@@ -243,7 +242,7 @@ Request.GetMetas = new Class({
                 for (i=0; i < added.length; i++) {
                     results[page][key].push(added[i]);
                 }
-            })
+            });
         });
 
         //save metas to cache, purge old data if localStorage gets full
@@ -286,7 +285,7 @@ var unescapeId = function(id) {
             } else {
                 return s;
             }
-        }).join("")
+        }).join("");
 };
 
 
@@ -348,7 +347,7 @@ var initDnDUpload = function(el){
 
                             var data = new FormData();
                             xhr.upload.addEventListener('progress', function(event) {
-                                var percent = parseInt(event.loaded / event.total * 100);
+                                var percent = parseInt(event.loaded / event.total * 100, 10);
                                 progress.setStyle('width', percent + '%');
                                 text.set('text', percent + '%');
                             }, false);
@@ -393,7 +392,7 @@ var initDnDUpload = function(el){
 
                             for (var i = 0; i < files.length; i++) {
                                 if (failed && !failed.contains(files[i].name)) continue;
-                                data.append("file" + i, files[i])
+                                data.append("file" + i, files[i]);
                             }
 
                             if (overwrite) data.append("overwrite", 1);
@@ -414,7 +413,6 @@ var initDnDUpload = function(el){
 };
 
 var initInlineMetaEdit = function (base) {
-
     //do not attach inline edit if MetaFormEdit is running
     if (!base.getElement('dl:not(.collab_list)') || base.getElement('dl').getParent('form')) return;
 
@@ -429,7 +427,7 @@ var initInlineMetaEdit = function (base) {
                 page = Object.keys(json)[0];
                 metas = json[page];
                 base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
-                    if (dd.get('text').clean() == "" && dd.getElements('img').length == 0) {
+                    if (dd.get('text').clean() === "" && dd.getElements('img').length === 0) {
                         var dt = dd.getPrevious('dt');
                         if (!metas[getKey(dt)]) metas[getKey(dt)] = [];
                         metas[getKey(dt)].splice(getMetaIndex(dt), 0, "");
@@ -442,7 +440,7 @@ var initInlineMetaEdit = function (base) {
 
     //add a '+' button for adding values to empty metas (foo::)
     base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
-        if (dd.get('text').clean() == "" && dd.getElements('img').length == 0) {
+        if (dd.get('text').clean() === "" && dd.getElements('img').length === 0) {
 
             var dt = dd.getPrevious('dt');
 
@@ -527,7 +525,7 @@ var initInlineMetaEdit = function (base) {
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                    args: page,
+                    checkArgs: page,
                     checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
@@ -586,7 +584,7 @@ var initInlineMetaEdit = function (base) {
 
                 new Request.SetMetas({
                     data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
-                    args: page,
+                    checkArgs: page,
                     checkData: oldData,
                     onSuccess: function() {
                         editor.exit();
@@ -723,7 +721,7 @@ var InlineEditor = new Class({
                 events: {
                     click: this.cancel.bind(this)
                 }
-            }))
+            }));
     },
 
     save: function() {
@@ -808,7 +806,7 @@ Date.implement({
         return weeknum;
     },
     getFinDay : function() {
-        return (this.getDay() + 6) % 7
+        return (this.getDay() + 6) % 7;
     }
 });
 
@@ -918,7 +916,7 @@ var ActionSelector = new Class({
         this.element.addEvent('change', function(event) {
             var val = event.target.get('value');
             this.opts[val].apply(this.context);
-        }.bind(this))
+        }.bind(this));
     },
 
     detach: function(){
@@ -990,7 +988,7 @@ var ActionSelector = new Class({
 
             this.bound = {
                 load: this._load.bind(this)
-            }
+            };
         },
 
         load: function(modules, callback) {
@@ -999,7 +997,7 @@ var ActionSelector = new Class({
                 callback.apply();
             } else {
                 this.requests.push({modules: missing, callback: callback});
-                missing.each(this.bound.load)
+                missing.each(this.bound.load);
             }
         },
 
@@ -1017,7 +1015,7 @@ var ActionSelector = new Class({
                         this.requests = this.requests.filter(function(req) {
                             req.modules.erase(mod);
                             if (req.modules.length > 0) {
-                                return true
+                                return true;
                             } else {
                                 req.callback.apply();
                                 return false;
@@ -1030,7 +1028,7 @@ var ActionSelector = new Class({
             if (module.styles) module.styles.each(function(file) {
                 if (file.test("css$")) new Asset.css(this.baseUrl + file);
                 else new Asset.image(this.baseUrl + file);
-            }, this)
+            }, this);
         },
         missingDeps: function() {
             var deps = Array.prototype.slice.call(arguments).flatten(), missing = [];
