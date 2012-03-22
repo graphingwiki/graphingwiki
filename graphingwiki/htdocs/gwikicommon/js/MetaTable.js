@@ -525,6 +525,7 @@
             baseurl: "",
             sortable: true,
             collabs: [""],
+            keys: [],
             footer: false,
             inaccessibleCollabs: null
         },
@@ -539,6 +540,7 @@
             this.parent.apply(this, [null, opts]);
 
             if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
+            if (typeOf(this.options.keys) == "string") this.options.keys = [this.options.keys];
             this.updateTable();
         },
 
@@ -582,12 +584,16 @@
             }, this);
 
             var foots = {};
-            Object.sortedKeys(keys).each(function(key) {
+            var sortedKeys;
+            if (this.options.keys.length === 0) sortedKeys = Object.sortedKeys(keys);
+            else sortedKeys = this.options.keys;
+
+            sortedKeys.each(function(key) {
                 foots[key] = 0;
             });
 
             //this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
-            this.setHeaders(([""].concat(Object.sortedValues(keys))));
+            this.setHeaders([""].concat(sortedKeys.map(function(key){return keys[key];}).flatten()));
             this.thead.rows[0].addClass('meta_header');
 
             Object.each(this.metas, function(pages, collab) {
@@ -597,7 +603,7 @@
                         href: this.options.baseurl + collab + '/' + page
                     })];
 
-                    Object.sortedKeys(keys).each(function(key) {
+                    sortedKeys.each(function(key) {
                         if (!metas[key] || metas[key].length === 0) {
                             vals.push(" ");
                         } else {
