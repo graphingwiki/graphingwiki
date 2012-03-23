@@ -29,8 +29,13 @@ if [ "blah$1" = "blah-f" ]; then
   shift
 fi
 
+if [ "blah$1" = "blah-r" ]; then
+  RANDOMIZE_PASSWD=yes
+  shift
+fi
+
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [-f(orce username without @)] <username>" 1>&2
+  echo "Usage: $0 [-f(orce username without @)] [-r(andomize password)] <username>" 1>&2
   exit 1
 fi
 
@@ -40,7 +45,12 @@ if [ "blah${FORCE_EMAIL}" = "blahyes" ]; then
     echo ${NAME} | grep -q '@' || myerr "please use email address with '@'"
 fi
 
-read -s -p "Password: " PASSWORD
+if [ "blah${RANDOMIZE_PASSWORD}" = "blahyes" ]; then
+  PASSWORD=`dd bs=1 count=32 if=/dev/urandom 2> /dev/null | openssl base64 -e`
+  echo "Password: ${PASSWORD}"
+else
+  read -s -p "Password: " PASSWORD
+fi
 
 echo
 echo "Creating ${NAME}"
