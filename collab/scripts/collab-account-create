@@ -41,7 +41,7 @@ fi
 
 NAME=$1
 
-if [ "blah${FORCE_EMAIL}" = "blahyes" ]; then
+if [ "blah${FORCE_EMAIL}" != "blahyes" ]; then
     echo ${NAME} | grep -q '@' || myerr "please use email address with '@'"
 fi
 
