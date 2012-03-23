@@ -30,7 +30,7 @@ if [ "blah$1" = "blah-f" ]; then
 fi
 
 if [ "blah$1" = "blah-r" ]; then
-  RANDOMIZE_PASSWD=yes
+  RANDOMIZE_PASSWORD=yes
   shift
 fi
 
