@@ -65,6 +65,17 @@
         return metas;
     };
 
+    HtmlTable.Parsers['numberSpan'] = {
+        match: /^<[^>]+>\d+[^\d.,]*<.+/,
+        convert: function() {
+            return this.getElement('span').get('text').toInt();
+        },
+        number: true
+    };
+    if (!HtmlTable.ParserPriority.contains("numberSpan")) {
+        HtmlTable.ParserPriority.splice(0,0, "numberSpan")
+    }
+
     var HideableTable = new Class({
         Extends: HtmlTable,
 
