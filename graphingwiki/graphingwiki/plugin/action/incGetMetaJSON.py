@@ -27,14 +27,16 @@
 """
 
 import MoinMoin.wikiutil as wikiutil
+from MoinMoin.Page import Page
+from graphingwiki.util import format_wikitext
+
 try:
     import simplejson as json
 except ImportError:
     import json
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
-
+    request.content_type = "application/json"
 
     args = request.form.get('args', [None])[0]
     if not args:
@@ -51,6 +53,7 @@ def execute(pagename, request):
     inc_get_metas = wikiutil.importPlugin(request.cfg, "xmlrpc", "IncGetMeta",
                                           "inc_get_metas")
     out = inc_get_metas(request, args, handle)
+
     if getvalues:
         changed = out[2][1]
         filtered = dict()
@@ -60,5 +63,25 @@ def execute(pagename, request):
                     filtered[page] = {key: vals}
 
         out[2] = (out[2][0], filtered)
+    
+    if request.form.get('formatted', [None])[0]:
+        formatted = dict()
+
+        for page, metas in out[2][1].items():
+            vals = list()
+            for key, values in metas.items():
+                vals.append(key)
+                vals.extend(values[1])
+           
+            request.page = Page(request, page)
+
+            for val in vals:
+                f = format_wikitext(request, val)
+                if val != f:
+                    formatted[val] = f
+
+        out.append(formatted)
+
+
     json.dump(out, request, indent=2)
 
