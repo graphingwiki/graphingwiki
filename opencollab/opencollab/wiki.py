@@ -372,6 +372,7 @@ class CLIWiki(GraphingWiki):
                 return super(CLIWiki, self).request(name, *args)
             except AuthenticationFailed, f:
                 while True:
-                    print >> sys.stderr, "Authorization required." + f
+                    print >> sys.stderr, "Connection Error: " +\
+                        ', '.join(f.args)
                     if self.authenticate():
                         break
