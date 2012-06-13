@@ -59,7 +59,8 @@ template = ops[sect]["template"]
 
 while True:
     try:
-        collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
+        collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, 
+                         **ops['creds'])
     except WikiFailure:
         print "ERROR: Authentication failed."
     except (UnicodeError, socket.gaierror):
@@ -71,7 +72,7 @@ for operation, argument in operations:
     if operation == "get":
         results = collab.getMeta(argument)
 
-        wr = csv.writer(sys.stdout)
+        wr = csv.writer(sys.stdout, delimiter=";")
 
         counts = dict()
         for page, metas in results.items():
