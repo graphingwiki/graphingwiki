@@ -21,6 +21,7 @@ def sendfault(request, code, msg):
 
 def doit(request, pagename, indata):
     template = indata.get('template')
+    createpage = indata.get('createpage')
     action = indata.get('action', 'add')
     inmetas = indata.get('metas')
     category_edit = inmetas.get('category_edit', 'add')
@@ -29,7 +30,7 @@ def doit(request, pagename, indata):
     do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "SetMeta",
                                       "do_action")
     try:
-        return do_action(request, pagename, inmetas, action,
+        return do_action(request, pagename, inmetas, action, createpage,
                          category_edit, catlist, template)
     except ValueError, e:
         if len(tuple(e)) > 1 and type(e[0]) == int:
