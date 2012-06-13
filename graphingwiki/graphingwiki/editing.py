@@ -418,6 +418,12 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
     if not linkdata:
         linkdata = dict()
     args = curkey.split('->')
+
+    inlink = False
+    if args[0] == 'gwikiinlinks':
+        inlink = True
+        args = args[1:]
+
     newkey = '->'.join(args[2:])
 
     last = False
@@ -432,7 +438,10 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
     else:
         linked, target_key = args[:2]
 
-    pages = request.graphdata.get_out(curpage).get(linked, set())
+    if inlink:
+        pages = request.graphdata.get_in(curpage).get(linked, set())
+    else:
+        pages = request.graphdata.get_out(curpage).get(linked, set())
 
     for indir_page in set(pages):
         # Relative pages etc
@@ -458,6 +467,9 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
                         values = metas[target_key]
                     loadedMeta[key].extend(values)
                     linkdata[key].setdefault(indir_page, list()).extend(values)
+                else:
+                    linkdata.setdefault(key, dict())
+                    linkdata[key].setdefault(indir_page, list())
                 continue
 
             elif not target_key in outs:
