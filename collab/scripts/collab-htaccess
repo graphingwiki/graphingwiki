@@ -7,8 +7,6 @@ collab-htaccess: Filesystem dump of collab instance meta / htpasswd / htaccess
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
-verbose = False
-
 import os
 import sys
 import re
@@ -28,6 +26,23 @@ def delpid():
         pass
 
 import posix, pwd
+
+import getopt
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "vn")
+except getopt.GetoptError:
+    print __file__ + " [-v(erbose)] [-n(oop)]"
+    sys.exit(2)
+
+verbose = False
+noop = False
+
+for opt, arg in opts:
+    if opt == '-v':
+        verbose = True
+    elif opt == '-n':
+        noop = True
 
 import ConfigParser
 
@@ -79,7 +94,7 @@ from MoinMoin.config import multiconfig
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki import RequestCLI
 
-def diffandstore(filename, newtext, dryrun=False):
+def diffandstore(filename, newtext, dryrun=noop):
 
     msg = []
 
@@ -225,4 +240,6 @@ for dent in os.listdir("."):
 if verbose:
     for user in allusers:
         if allusers[user] == 0:
-            print >> sys.stderr, "ORPHAN: " + user
+            u = User(req, None, user)
+            userfile = u.getFilename()
+            print >> sys.stderr, "rm " + userfile + " # ORPHAN: " + user

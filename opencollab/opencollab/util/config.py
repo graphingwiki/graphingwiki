@@ -44,7 +44,7 @@ def parseOptions(specparser, inisection, x509capath=True, x509=True, config=True
             type="string", dest="template", default=None,
             metavar="TEMPLATE", help="Collab TEMPLATE.")
     if x509:
-        genparser.add_option("-X", "--X509", action="store_true", default=True,
+        genparser.add_option("-X", "--X509", action="store_false", default=True,
             dest="x509", help="Disable X509 certificate check.")
     if x509capath:
         genparser.add_option("-x", "--X509-ca-file", action="store", type="string", default=None,

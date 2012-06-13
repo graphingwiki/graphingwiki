@@ -217,19 +217,18 @@ def execute(pagename, request):
 
         properties = get_properties(request, key)
 
-        if properties.get('hidden'):
-            return ""
-
         values = list()
 
         # Placeholder key key
         if key in vals_on_keys:
             for keyval in sorted(vals_on_keys[key]):
                 keyval = keyval.strip()
-                if len(keyval) > 30:
-                    showval = keyval[:27] + '...'
-                else:
-                    showval = keyval
+# Is this really needed? If so, probably should make the length configurable..
+#                if len(keyval) > 30:
+#                    showval = keyval[:27] + '...'
+#                else:
+#                    showval = keyval
+                showval = keyval
 
                 values.append((keyval, showval))
 

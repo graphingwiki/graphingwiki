@@ -101,6 +101,10 @@ def wrap_span(request, pagename, key, data, id):
 
         if key in linkdata:
             for pname in linkdata[key]:
+                if not data:
+                    pagename = pname
+                    key = key.split('->')[-1]
+                    break
                 if data in linkdata[key][pname] or header:
                     pagename = pname
                     key = key.split('->')[-1]

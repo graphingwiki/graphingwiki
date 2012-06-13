@@ -33,7 +33,7 @@ def main():
     parser.set_usage("usage: %prog [options]")
     ops = {}
     sect = "clone"
-    ops = parseOptions(parser, sect, config=False, search=True)
+    ops = parseOptions(parser, sect, config=True, search=True)
     url = ops["creds"]["url"]
     dsturl = ops[sect]["destination"]
     verbose = ops[sect]["verbose"]

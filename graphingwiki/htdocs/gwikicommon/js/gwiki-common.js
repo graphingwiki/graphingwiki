@@ -181,19 +181,20 @@ Request.GetMetas = new Class({
 
         var opts = {
             method: 'get',
-            url: '?action=incGetMetaJSON&args=' + encodeURIComponent(args)
+            url: '?action=incGetMetaJSON&formatted=true&args=' + encodeURIComponent(args)
         };
 
         if (onlyvalues) {
-            opts.url = "?action=incGetMetaJSON&getvalues=" + encodeURIComponent(args);
+            opts.url = "?action=incGetMetaJSON&formatted=true&getvalues=" + encodeURIComponent(args);
         }
 
         if ("localStorage" in window) {
             var ls = window.localStorage;
             var namespace = this.options.cacheNamespace;
+
             if (this._onlyvalues) namespace += ".values";
             var cached = JSON.decode(ls[namespace +"_" + this._metaArg]);
-            if (cached && cached.handle) opts.url += "&handle=" + encodeURIComponent(cached.handle);
+            if (cached && cached.handle && cached.formatted) opts.url += "&handle=" + encodeURIComponent(cached.handle);
             //try to maintain incGetMeta-cache integrity in case user quits page before we get to save results
             this.unloadEvent = function(){
                 delete ls[namespace +"_" + this._metaArg];
@@ -207,6 +208,8 @@ Request.GetMetas = new Class({
     onSuccess: function(json, text) {
         var handle = json[1];
         var data = json[2];
+        var formatted = json.length > 3? json[3]: {};
+
         var results = {};
         var args = this._metaArg, ls, namespace;
         if ("localStorage" in window) {
@@ -214,8 +217,10 @@ Request.GetMetas = new Class({
             namespace = this.options.cacheNamespace;
             if (this._onlyvalues) namespace += ".values";
             //get stuff from cache only if the incGetMeta session is alive
-            if (json[0])
+            if (json[0]) {
                 results = (JSON.decode(ls[namespace +"_"+args]) || {metas:{}})['metas'];
+                formatted = Object.merge((JSON.decode(ls[namespace +"_"+args]) || {formatted:{}})['formatted'], formatted);
+            }
         }
 
         var page, i, j;
@@ -254,7 +259,7 @@ Request.GetMetas = new Class({
 
             while (true) {
                 try {
-                    ls[namespace +"_"+args] = JSON.encode({handle: handle, metas: results});
+                    ls[namespace +"_"+args] = JSON.encode({handle: handle, metas: results, formatted: formatted});
                     items.erase(args).push(args);
                     ls[indexName] = JSON.encode(items);
                     break;
@@ -273,7 +278,9 @@ Request.GetMetas = new Class({
 
         }
 
-        this.fireEvent('complete', [results, json, text]).fireEvent('success', [results, json, text]).callChain();
+        this.fireEvent('complete', [results, formatted, json, text])
+            .fireEvent('success', [results, formatted, json, text])
+            .callChain();
     }
 });
 
@@ -412,26 +419,56 @@ var initDnDUpload = function(el){
 
 };
 
+Slick.definePseudo('nth-include', function(n){
+    var node = this, count = 0;
+    while ((node = node.parentNode)) {
+        if (node.className && node.className.test("gwikiinclude")) count++;
+    }
+    return count === +n
+});
+
 var initInlineMetaEdit = function (base) {
     //do not attach inline edit if MetaFormEdit is running
     if (!base.getElement('dl:not(.collab_list)') || base.getElement('dl').getParent('form')) return;
 
-    var metas, editor, page = "";
+    var include_level = base.getParents('div.gwikiinclude').length + +base.hasClass('gwikiinclude');
+    var metas, formatted, editor, page = "";
 
     if (base.hasClass('gwikiinclude')) page = unescapeId(base.id).split(GWIKISEPARATOR)[0];
 
-    base.addEvent('mouseover:relay(div:not(.gwikiinclude) dl):once', function() {
+    base.addEvent('mouseover:relay(dl:nth-include('+include_level+')):once', function() {
         new Request.GetMetas({
             args: page,
-            onSuccess: function(json) {
-                page = Object.keys(json)[0];
-                metas = json[page];
-                base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
-                    if (dd.get('text').clean() === "" && dd.getElements('img').length === 0) {
-                        var dt = dd.getPrevious('dt');
-                        if (!metas[getKey(dt)]) metas[getKey(dt)] = [];
-                        metas[getKey(dt)].splice(getMetaIndex(dt), 0, "");
+            onSuccess: function(results, f) {
+                page = Object.keys(results)[0];
+                metas = results[page];
+                formatted = f;
+                base.getElements('dd:nth-include('+include_level+')').each(function(dd) {
+                    var dt = dd.getPrevious('dt'),
+                        index = getMetaIndex(dt),
+                        key = getKey(dt),
+                        el = dd.clone(),
+                        value;
+                    el.getElements('span.anchor').destroy();
+                    if (el.getElement('p')) el = el.getElement('p');
+                    value = el.get('html').clean();
+                    if (value !== "" && metas[key].indexOf(value) === -1) value = Object.keyOf(formatted, value);
+
+                    //add empty string to meta-object to point empty meta values
+                    if (value === "" && dd.getElements('img').length === 0) {
+                        if (!metas[key]) metas[key] = [];
+                        metas[key].splice(index, 0, "");
+                    }else if (index != metas[key].indexOf(value)){
+                        //fix order of metas since incMetaGet does not preserve it
+                        metas[key].splice(index, 0, value);
+                        for (var i = index+1; i < metas[key].length; i++) {
+                            if (metas[key][i] === value) {
+                                metas[key].splice(i, 1);
+                                break;
+                            }
+                        }
                     }
+                    if (value === false) alert("fail!")
                 });
 
             }
@@ -439,7 +476,7 @@ var initInlineMetaEdit = function (base) {
     });
 
     //add a '+' button for adding values to empty metas (foo::)
-    base.getElements('div:not(.gwikiinclude) dd').each(function(dd) {
+    base.getElements('dd:nth-include('+include_level+')').each(function(dd) {
         if (dd.get('text').clean() === "" && dd.getElements('img').length === 0) {
 
             var dt = dd.getPrevious('dt');
@@ -472,7 +509,7 @@ var initInlineMetaEdit = function (base) {
 
     var getMetaIndex = function(dt, values) {
         var key = getKey(dt);
-        var dts = base.getElements('div:not(.gwikiinclude) dt').filter(
+        var dts = base.getElements('dt:nth-include('+include_level+')').filter(
             function(dt) {
                 return getKey(dt) == key;
             });
@@ -480,12 +517,11 @@ var initInlineMetaEdit = function (base) {
         return dts.indexOf(dt);
     };
 
-    base.addEvent('shiftclick:relay(div:not(.gwikiinclude) dd:not(.edit))', function(event) {
+    base.addEvent('shiftclick:relay(dd:not(.edit):nth-include('+include_level+'))', function(event) {
         event.preventDefault();
 
         var dd = event.target;
         if (dd.get('tag') != "dd") dd = dd.getParent('dd');
-
         editValue(dd);
     });
 
@@ -535,11 +571,12 @@ var initInlineMetaEdit = function (base) {
             },
             onExit: function() {
                 dd.removeClass('edit');
+                editor = null;
             }
         });
     };
 
-    base.addEvent('shiftclick:relay(div:not(.gwikiinclude) dt:not(.edit))', function(event) {
+    base.addEvent('shiftclick:relay(dt:not(.edit):nth-include('+include_level+'))', function(event) {
         event.preventDefault();
 
         var dt = event.target;
@@ -594,6 +631,7 @@ var initInlineMetaEdit = function (base) {
             },
             onExit: function() {
                 dt.removeClass('edit');
+                editor = null;
             }
         });
     };
