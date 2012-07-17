@@ -1,0 +1,20 @@
+Building patched ejabberd in RHEL/CentOS 6
+
+* Install build dependencies:
+
+  yum install expat-devel pam-devel fedora-usermgmt-devel
+
+* Download and install the source RPM for ejabberd:
+
+  yumdownloader --source --enablerepo=epel-source ejabberd
+  rpm -iv ejabberd-*.src.rpm
+
+* Patch and build the packages:
+
+  cp graphingwiki/collab/misc/ejabberd-2.1.11-collab.patch ~/rpmbuild/SOURCES
+  cp graphingwiki/collab/misc/ejabberd.spec.patch ~/rpmbuild/SPECS
+  cd ~/rpmbuild/SPECS
+  patch -b < ejabberd.spec.patch
+  rpmbuild -bb ejabberd.spec
+
+The binary packages are created under ~/rpmbuild/RPMS.
