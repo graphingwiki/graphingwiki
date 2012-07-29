@@ -1,0 +1,107 @@
+--- ./MoinMoin/macro/RecentChanges.py.orig	2010-06-05 19:14:34.000000000 +0300
++++ ./MoinMoin/macro/RecentChanges.py	2011-10-26 17:28:51.422640708 +0300
+@@ -110,8 +110,12 @@ def format_page_edits(macro, lines, book
+     if request.cfg.show_names:
+         if len(lines) > 1:
+             counters = {}
++            editorcache = {}
+             for idx in range(len(lines)):
+-                name = lines[idx].getEditor(request)
++                editorkey = lines[idx].addr, lines[idx].hostname, lines[idx].userid
++                if editorkey not in editorcache:
++                    editorcache[editorkey] = line.getEditor(request)
++                name = editorcache[editorkey]
+                 if not name in counters:
+                     counters[name] = []
+                 counters[name].append(idx+1)
+@@ -228,6 +232,9 @@ def print_abandoned(macro):
+     output.append(request.theme.recentchanges_footer(d))
+     return ''.join(output)
+ 
++def filter_pages(request, pages):
++    readable = request.user.may.read
++    return filter(lambda lines: readable(lines[0].pagename), pages)
+ 
+ def macro_RecentChanges(macro, abandoned=False):
+     # handle abandoned keyword
+@@ -291,37 +298,36 @@ def macro_RecentChanges(macro, abandoned
+     day_count = 0
+ 
+     for line in log.reverse():
+-
+-        if not request.user.may.read(line.pagename):
+-            continue
+-
+         line.time_tuple = request.user.getTime(wikiutil.version2timestamp(line.ed_time_usecs))
+         day = line.time_tuple[0:3]
+         hilite = line.ed_time_usecs > (bookmark_usecs or line.ed_time_usecs)
+ 
+-        if ((this_day != day or (not hilite and not max_days))) and len(pages) > 0:
++        if this_day != day or (not hilite and not max_days):
+             # new day or bookmark reached: print out stuff
+             this_day = day
+             for p in pages:
+                 ignore_pages[p] = None
+-            pages = pages.values()
++            pages = filter_pages(request, pages.values())
+             pages.sort(cmp_lines)
+             pages.reverse()
+ 
+-            if request.user.valid:
+-                bmtime = pages[0][0].ed_time_usecs
+-                d['bookmark_link_html'] = page.link_to(request, _("Set bookmark"), querystr={'action': 'bookmark', 'time': '%d' % bmtime}, rel='nofollow')
+-            else:
+-                d['bookmark_link_html'] = None
+-            d['date'] = request.user.getFormattedDate(wikiutil.version2timestamp(pages[0][0].ed_time_usecs))
+-            output.append(request.theme.recentchanges_daybreak(d))
++            if len(pages) > 0:
++                if request.user.valid:
++                    bmtime = pages[0][0].ed_time_usecs
++                    d['bookmark_link_html'] = page.link_to(request, _("Set bookmark"), querystr={'action': 'bookmark', 'time': '%d' % bmtime}, rel='nofollow')
++                else:
++                    d['bookmark_link_html'] = None
++                d['date'] = request.user.getFormattedDate(wikiutil.version2timestamp(pages[0][0].ed_time_usecs))
++                output.append(request.theme.recentchanges_daybreak(d))
++
++                for p in pages:
++                    output.append(format_page_edits(macro, p, bookmark_usecs))
++
++                day_count += 1
++                if max_days and (day_count >= max_days):
++                    break
+ 
+-            for p in pages:
+-                output.append(format_page_edits(macro, p, bookmark_usecs))
+             pages = {}
+-            day_count += 1
+-            if max_days and (day_count >= max_days):
+-                break
+ 
+         elif this_day != day:
+             # new day but no changes
+@@ -340,16 +346,16 @@ def macro_RecentChanges(macro, abandoned
+         else:
+             pages[line.pagename] = [line]
+     else:
+-        if len(pages) > 0:
+-            # end of loop reached: print out stuff
+-            # XXX duplicated code from above
+-            # but above does not trigger if we have the first day in wiki history
+-            for p in pages:
+-                ignore_pages[p] = None
+-            pages = pages.values()
+-            pages.sort(cmp_lines)
+-            pages.reverse()
++        # end of loop reached: print out stuff
++        # XXX duplicated code from above
++        # but above does not trigger if we have the first day in wiki history
++        for p in pages:
++            ignore_pages[p] = None
++        pages = filter_pages(request, pages.values())
++        pages.sort(cmp_lines)
++        pages.reverse()
+ 
++        if len(pages) > 0:
+             if request.user.valid:
+                 bmtime = pages[0][0].ed_time_usecs
+                 d['bookmark_link_html'] = page.link_to(request, _("Set bookmark"), querystr={'action': 'bookmark', 'time': '%d' % bmtime}, rel='nofollow')
