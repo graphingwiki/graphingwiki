@@ -1,4 +1,4 @@
---- ./wiki/htdocs/applets/moinFCKplugins/selection/fckplugin.js	Mon Jan 09 21:26:50 2012 +0100
+--- ./wiki/htdocs/applets/moinFCKplugins/selection/fckplugin.js.orig	Mon Jan 09 21:26:50 2012 +0100
 +++ ./wiki/htdocs/applets/moinFCKplugins/selection/fckplugin.js	Sat Jan 14 19:14:28 2012 +0100
 @@ -321,6 +321,8 @@
    FCKSelection.GetStartNode = function()

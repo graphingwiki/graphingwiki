@@ -1,0 +1,63 @@
+--- ./MoinMoin/action/newaccount.py.orig	2010-06-05 19:14:34.000000000 +0300
++++ ./MoinMoin/action/newaccount.py	2011-10-26 17:27:02.169908708 +0300
+@@ -33,7 +33,8 @@ def _create_user(request):
+ 
+     # Require non-empty name
+     try:
+-        theuser.name = form['name'][0]
++        name = wikiutil.clean_input(form.get('email', [''])[0])
++        theuser.name = name.strip()
+     except KeyError:
+         return _("Empty user name. Please enter a user name.")
+ 
+@@ -107,15 +108,21 @@ def _create_form(request):
+     ret.append(tbl)
+     ret.append(html.Raw('</div>'))
+ 
++#     row = html.TR()
++#     tbl.append(row)
++#     row.append(html.TD().append(html.STRONG().append(
++#                                   html.Text(_("Name")))))
++#     cell = html.TD()
++#     row.append(cell)
++#     cell.append(html.INPUT(type="text", size="36", name="name"))
++#     cell.append(html.Text(' ' + _("(Use FirstnameLastname)")))
++
+     row = html.TR()
+     tbl.append(row)
+-    row.append(html.TD().append(html.STRONG().append(
+-                                  html.Text(_("Name")))))
+-    cell = html.TD()
+-    row.append(cell)
+-    cell.append(html.INPUT(type="text", size="36", name="name"))
+-    cell.append(html.Text(' ' + _("(Use FirstnameLastname)")))
+-
++    row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
++    row.append(html.TD().append(html.INPUT(type="text", size="36",
++                                           name="email")))
++    
+     row = html.TR()
+     tbl.append(row)
+     row.append(html.TD().append(html.STRONG().append(
+@@ -130,12 +137,6 @@ def _create_form(request):
+     row.append(html.TD().append(html.INPUT(type="password", size="36",
+                                            name="password2")))
+ 
+-    row = html.TR()
+-    tbl.append(row)
+-    row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
+-    row.append(html.TD().append(html.INPUT(type="text", size="36",
+-                                           name="email")))
+-
+     textcha = TextCha(request)
+     if textcha.is_enabled():
+         row = html.TR()
+@@ -164,7 +165,7 @@ def execute(pagename, request):
+             found = True
+             break
+ 
+-    if not found:
++    if not found and False:
+         # we will not have linked, so forbid access
+         request.makeForbidden403()
+         return

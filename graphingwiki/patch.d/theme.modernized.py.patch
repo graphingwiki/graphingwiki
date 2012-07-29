@@ -1,4 +1,4 @@
---- ./MoinMoin/theme/modernized.py-orig	2010-06-05 19:14:34.000000000 +0300
+--- ./MoinMoin/theme/modernized.py.orig	2010-06-05 19:14:34.000000000 +0300
 +++ ./MoinMoin/theme/modernized.py	2011-11-21 17:56:05.435819000 +0200
 @@ -20,6 +20,8 @@ class Theme(ThemeBase):
          # FileAttach

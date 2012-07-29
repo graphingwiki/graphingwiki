@@ -1,4 +1,4 @@
---- ./MoinMoin/wikiutil.py-orig	2012-07-29 13:36:30.299510336 +0300
+--- ./MoinMoin/wikiutil.py.orig	2012-07-29 13:36:30.299510336 +0300
 +++ ./MoinMoin/wikiutil.py	2012-07-29 13:57:00.041229490 +0300
 @@ -544,15 +544,15 @@ def load_wikimap(request):
          generate_file_list(request)

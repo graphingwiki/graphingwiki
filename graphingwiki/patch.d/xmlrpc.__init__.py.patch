@@ -1,4 +1,4 @@
---- ./MoinMoin/xmlrpc/__init__.py-orig	2010-10-26 10:58:35.000000000 +0300
+--- ./MoinMoin/xmlrpc/__init__.py.orig	2010-10-26 10:58:35.000000000 +0300
 +++ ./MoinMoin/xmlrpc/__init__.py	2010-10-26 10:59:59.000000000 +0300
 @@ -39,6 +39,32 @@ from MoinMoin.action import AttachFile
  from MoinMoin import caching
