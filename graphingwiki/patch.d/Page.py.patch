@@ -1,5 +1,5 @@
---- ./MoinMoin/Page.py.orig	2012-03-13 01:12:35.665826503 +0200
-+++ ./MoinMoin/Page.py	2012-03-13 01:13:35.365909957 +0200
+--- ./MoinMoin/Page.py.orig	2012-02-07 23:36:47.000000000 +0200
++++ ./MoinMoin/Page.py	2012-07-29 22:40:20.432539732 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -10,3 +10,13 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
+@@ -823,6 +822,9 @@ class Page(object):
+         include_self = kw.get('include_self', self.include_self)
+         return_users = kw.get('return_users', 0)
+ 
++        ## TO STOP BLEEDING SENSELESS IO-WASTE FOR NOW
++        return {}
++    
+         # extract categories of this page
+         pageList = self.getCategories(request)
+ 
