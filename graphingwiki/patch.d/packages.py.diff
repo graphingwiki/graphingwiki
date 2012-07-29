@@ -1,0 +1,29 @@
+--- packages.py.orig	2011-11-28 20:40:57.000000000 +0000
++++ packages.py	2012-07-29 18:03:00.815764829 +0000
+@@ -535,10 +535,16 @@
+ 
+ def main():
+     args = sys.argv
++
++    myusername=''
++    if (len(args) > 1) and (args[1] == '-u'):
++	args.pop(1)
++	myusername = args.pop(1)
++
+     if len(args)-1 not in (2, 3) or args[1] not in ('l', 'i'):
+         print >> sys.stderr, """MoinMoin Package Installer v%(version)i
+ 
+-%(myname)s action packagefile [request URL]
++%(myname)s [-u <username>] action packagefile [request URL]
+ 
+ action      - Either "l" for listing the script or "i" for installing.
+ packagefile - The path to the file containing the MoinMoin installer package
+@@ -562,6 +568,8 @@
+     from MoinMoin.request import request_cli
+     request = request_cli.Request(url=request_url)
+     request.form = request.args = request.setup_args()
++    if myusername:
++        request.user = user.User(request, auth_username=myusername)
+ 
+     package = ZipPackage(request, packagefile)
+     if not package.isPackage():
