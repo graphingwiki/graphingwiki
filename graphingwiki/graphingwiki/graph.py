@@ -57,22 +57,14 @@ class AttrBag(object):
         for key in variables:
             if key in self._ignored:
                 continue
-            keyname = self._remove_namespace(key)
-            yield keyname, self.__dict__[key]
+            yield key[1], self.__dict__[key]
 
-    def _add_namespace(self, key):
-        return self.__dict__['_namespace'] + key
-
-    def _remove_namespace(self, key):
-        return key.replace(self.__dict__['_namespace'], '', 1)
-
-    def _in_namespace(self, key):
-        return key.startswith(self.__dict__['_namespace'])
+    def _get_namespace(self):
+        return self.__dict__['_namespace']
     
     def __getattr__(self, key):
-        nskey = self._add_namespace(key)
         try:
-            return self.__dict__[nskey]
+            return self.__dict__[(self._get_namespace(), key)]
         except KeyError:
             raise AttributeError("%r object has no attribute %r" %
                                  (self.__class__.__name__, key))
@@ -82,9 +74,9 @@ class AttrBag(object):
         if isinstance(key, unicode):
             key = encode_page(key)
         # HACK HACK
-        if not self._in_namespace(key):
-            key = self._add_namespace(key)
-        self.__dict__[key] = value
+        if type(key) == tuple:
+            _, key = key
+        self.__dict__[(self._get_namespace(), key)] = value
 
     def update(self, other):
         for name, value in other:
