@@ -78,6 +78,12 @@ class AttrBag(object):
             _, key = key
         self.__dict__[(self._get_namespace(), key)] = value
 
+    def __delattr__(self, key):
+        # HACK
+        if isinstance(key, unicode):
+            key = encode_page(key)
+        del self.__dict__[(self._get_namespace(), key)]
+
     def update(self, other):
         for name, value in other:
             self.__setattr__(name, value)
