@@ -1,0 +1,10 @@
+--- ./MoinMoin/util/filesys.py.orig	2010-06-05 19:14:34.000000000 +0300
++++ ./MoinMoin/util/filesys.py	2011-10-26 17:27:29.790583707 +0300
+@@ -263,7 +263,6 @@ def copytree(src, dst, symlinks=False):
+     """
+     names = os.listdir(src)
+     os.mkdir(dst)
+-    copystat(src, dst)
+     errors = []
+     for name in names:
+         srcname = os.path.join(src, name)
