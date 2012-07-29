@@ -1,0 +1,22 @@
+--- ./MoinMoin/user.py-orig	2010-09-10 19:50:18.000000000 +0300
++++ ./MoinMoin/user.py	2010-09-10 19:52:38.000000000 +0300
+@@ -157,9 +157,9 @@ def encodePassword(pwd, salt=None):
+         salt = random_string(20)
+     assert isinstance(salt, str)
+     hash = hash_new('sha1', pwd)
+-    hash.update(salt)
++    #hash.update(salt)
+ 
+-    return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
++    return '{SHA}' + base64.encodestring(hash.digest()).rstrip()
+ 
+ 
+ def normalizeName(name):
+@@ -516,6 +516,6 @@ class User:
+         if epwd[:5] == '{SHA}':
+             enc = '{SHA}' + base64.encodestring(hash_new('sha1', password.encode('utf-8')).digest()).rstrip()
+             if epwd == enc:
+-                data['enc_password'] = encodePassword(password) # upgrade to SSHA
++                #data['enc_password'] = encodePassword(password) # upgrade to SSHA
+                 return True, True
+             return False, False
