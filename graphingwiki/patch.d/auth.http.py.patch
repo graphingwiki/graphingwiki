@@ -1,11 +1,11 @@
---- ./MoinMoin/auth/http.py.orig   2010-12-15 12:01:30.719630611 +0200
-+++ ./MoinMoin/auth/http.py        2010-12-15 12:03:21.269298026 +0200
-@@ -84,7 +84,7 @@ class HTTPAuth(BaseAuth):
-                 # when using http auth, we have external user name and password,
-                 # we don't use the moin user profile for those attributes.
-                 u = user.User(request, auth_username=username,
--                              auth_method=self.name, auth_attribs=('name', 'password'))
-+                              auth_method=self.name, auth_attribs=('name'))
+--- ./MoinMoin/auth/__init__.py.orig	2012-03-13 01:12:27.725815399 +0200
++++ ./MoinMoin/auth/__init__.py	2012-03-13 01:13:35.365909957 +0200
+@@ -362,7 +362,7 @@ class GivenAuth(BaseAuth):
+             auth_username = self.transform_username(auth_username)
+             logging.debug("auth_username (after decode/transform) = %r" % auth_username)
+             u = user.User(request, auth_username=auth_username,
+-                          auth_method=self.name, auth_attribs=('name', 'password'))
++                          auth_method=self.name, auth_attribs=('name'))
  
          logging.debug("u: %r" % u)
          if u and self.autocreate:

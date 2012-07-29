@@ -1,8 +1,8 @@
---- ./MoinMoin/wikiutil.py.orig	2012-07-29 14:35:35.214466073 +0300
-+++ ./MoinMoin/wikiutil.py	2012-07-29 14:36:15.954523034 +0300
-@@ -582,6 +582,18 @@ def load_wikimap(request):
+--- ./MoinMoin/wikiutil.py.orig	2012-07-29 21:56:19.898848291 +0300
++++ ./MoinMoin/wikiutil.py	2012-07-29 21:56:31.988865198 +0300
+@@ -508,6 +508,18 @@ def load_wikimap(request):
          if request.cfg.interwikiname:
-             _interwiki_list[request.cfg.interwikiname] = request.getScriptname() + '/'
+             _interwiki_list[request.cfg.interwikiname] = request.script_root + '/'
  
 +        # collab list
 +        if hasattr(request.cfg, 'collab_basedir'):

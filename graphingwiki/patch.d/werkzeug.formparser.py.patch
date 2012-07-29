@@ -1,5 +1,5 @@
---- MoinMoin/support/werkzeug/formparser.py.old	2012-02-07 23:36:48.000000000 +0200
-+++ MoinMoin/support/werkzeug/formparser.py	2012-07-29 12:57:14.853630266 +0300
+--- ./MoinMoin/support/werkzeug/formparser.py.old	2012-02-07 23:36:48.000000000 +0200
++++ ./MoinMoin/support/werkzeug/formparser.py	2012-07-29 12:57:14.853630266 +0300
 @@ -33,13 +33,50 @@ _multipart_boundary_re = re.compile('^[
  #: for multipart messages.
  _supported_multipart_encodings = frozenset(['base64', 'quoted-printable'])

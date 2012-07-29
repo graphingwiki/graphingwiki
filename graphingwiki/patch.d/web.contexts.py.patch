@@ -1,0 +1,15 @@
+--- ./MoinMoin/web/contexts.py.orig	2012-03-13 01:12:56.445855552 +0200
++++ ./MoinMoin/web/contexts.py	2012-03-13 01:13:35.365909957 +0200
+@@ -218,6 +218,12 @@ class HTTPContext(BaseContext):
+ 
+     # proxy further attribute lookups to the underlying request first
+     def __getattr__(self, name):
++        if name == 'editlog':
++            if "editlog" not in self.__dict__:
++                from MoinMoin.logfile import editlog
++                self.request.rootpage = self.rootpage
++                self.editlog = editlog.EditLog(self.request)
++            return self.editlog
+         try:
+             return getattr(self.request, name)
+         except AttributeError, e:
