@@ -142,8 +142,16 @@ def execute(pagename, request):
     # the values from the evaluated template are included in the form editor
     if newpage:
         data = parse_text(newreq, newreq.page, newreq.page.get_raw_body())
+
         for page in data:
+                for val in data[page]['meta'][key]:
+                    vals_on_keys.setdefault(key, set()).add(val)
+            for key in data[page].get('out', list()):
+                for val in data[page]['out'][key]:
+                    vals_on_keys.setdefault(key, set()).add(val)
+
             pagemeta = graphdata.get_meta(page)
+
             for key in pagemeta:
                 for val in pagemeta[key]:
                     vals_on_keys.setdefault(key, set()).add(val)
