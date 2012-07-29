@@ -45,7 +45,8 @@ class AttrBag(object):
     def __init__(self, **keys):
         object.__init__(self)
 
-        self._ignored = set()
+        self.__dict__['_ignored'] = set()
+        self.__dict__['_namespace'] = self.__class__.__name__ + '.'
         self._ignored.update(self.__dict__)
 
         self.__dict__.update(keys)
@@ -56,13 +57,26 @@ class AttrBag(object):
         for key in variables:
             if key in self._ignored:
                 continue
-            yield key, self.__dict__[key]
+            yield key[1], self.__dict__[key]
+
+    def _get_namespace(self):
+        return self.__dict__['_namespace']
+    
+    def __getattr__(self, key):
+        try:
+            return self.__dict__[(self._get_namespace(), key)]
+        except KeyError:
+            raise AttributeError("%r object has no attribute %r" %
+                                 (self.__class__.__name__, key))
 
     def __setattr__(self, key, value):
         # HACK
         if isinstance(key, unicode):
             key = encode_page(key)
-        self.__dict__[key] = value
+        # HACK HACK
+        if type(key) == tuple:
+            _, key = key
+        self.__dict__[(self._get_namespace(), key)] = value
 
     def update(self, other):
         for name, value in other:
@@ -73,7 +87,7 @@ class Node(AttrBag):
         # Set the _identity attribute before calling the __init__ of
         # the super class, because we don't want it returned when
         # e.g. iterating.
-        self._identity = identity
+        self.__dict__['_identity'] = identity
         AttrBag.__init__(self, **keys)
 
     def __unicode__(self):
@@ -256,8 +270,8 @@ class Graph(Node):
     []
     """
     def __init__(self):
-        self.nodes = Nodes(self)
-        self.edges = Edges()
+        self.__dict__['nodes'] = Nodes(self)
+        self.__dict__['edges'] = Edges()
         Node.__init__(self, '')
 
     def __nonzero__(self):

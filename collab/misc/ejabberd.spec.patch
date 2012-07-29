@@ -1,0 +1,28 @@
+--- ejabberd.spec.orig  2012-07-17 10:56:24.574799415 +0000
++++ ejabberd.spec       2012-07-17 11:31:54.433032492 +0000
+@@ -11,7 +11,7 @@
+ 
+ Name:           ejabberd
+ Version:        2.1.11
+-Release:        1%{?dist}
++Release:        1%{?dist}.collab
+ Summary:        A distributed, fault-tolerant Jabber/XMPP server
+ 
+ Group:          Applications/Internet
+@@ -51,6 +51,8 @@
+ Patch9: ejabberd-0009-Added-old-modules-for-Active-Directory.patch
+ # Disable IP restriction for ejabberdctl (seems that it doesn't work well)
+ Patch10: ejabberd-0010-Disable-INET_DIST_INTERFACE-by-default.patch
++# Collab
++Patch99: ejabberd-2.1.11.collab.patch
+ 
+ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+ 
+@@ -125,6 +127,7 @@
+ %patch8 -p1 -b .gssapi
+ %patch9 -p1 -b .ad_stuff
+ %patch10 -p1 -b .disable_ip_restriction_for_ejabberdctl
++%patch99 -p1 -b .collab
+ 
+ # FIXME last-minute fix for 2.1.11 only
+ sed -i -e "s,2.1.x,2.1.11,g" src/configure

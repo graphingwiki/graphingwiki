@@ -1,0 +1,19 @@
+--- ./wiki/htdocs/applets/moinFCKplugins/selection/fckplugin.js.orig	Mon Jan 09 21:26:50 2012 +0100
++++ ./wiki/htdocs/applets/moinFCKplugins/selection/fckplugin.js	Sat Jan 14 19:14:28 2012 +0100
+@@ -321,6 +321,8 @@
+   FCKSelection.GetStartNode = function()
+     {
+       var oSelection = FCKSelection.GetSelection();
++      if (oSelection.rangeCount == 0) // this fixes Chrome Browser exception on FCKeditor init
++        return null;
+       // startContainer returns the parent of the first node in the selection
+       var oContainer = oSelection.getRangeAt(0).startContainer;
+       // The offset within the startContainer where the range starts
+@@ -343,5 +345,7 @@
+   FCKSelection.GetEndNode = function()
+   {
+     var oSelection = FCKSelection.GetSelection();
++    if (oSelection.rangeCount == 0) // this fixes Chrome Browser exception on FCKeditor init
++      return null;
+     var oContainer = oSelection.getRangeAt(0).endContainer;
+     var iOffset = oSelection.getRangeAt(0).startEndset;

@@ -1,0 +1,42 @@
+--- ./MoinMoin/user.py.orig	2011-11-28 22:40:57.000000000 +0200
++++ ./MoinMoin/user.py	2012-07-29 14:27:15.093766915 +0300
+@@ -157,9 +157,9 @@ def encodePassword(pwd, salt=None):
+         salt = random_string(20)
+     assert isinstance(salt, str)
+     hash = hash_new('sha1', pwd)
+-    hash.update(salt)
++    #hash.update(salt)
+ 
+-    return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
++    return '{SHA}' + base64.encodestring(hash.digest()).rstrip()
+ 
+ 
+ def normalizeName(name):
+@@ -325,7 +325,7 @@ class User:
+         self.subscribed_pages = self._cfg.subscribed_pages_default
+         self.email_subscribed_events = self._cfg.email_subscribed_events_default
+         self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
+-        self.theme_name = self._cfg.theme_default
++        self.theme_name = '<default>'
+         self.editor_default = self._cfg.editor_default
+         self.editor_ui = self._cfg.editor_ui
+         self.last_saved = str(time.time())
+@@ -392,6 +392,10 @@ class User:
+         """
+         return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
+ 
++    # Support for administrative scripts and tasks
++    def getFilename(self):
++        return self.__filename()
++
+     def exists(self):
+         """ Do we have a user account for this user?
+ 
+@@ -516,7 +520,7 @@ class User:
+         if epwd[:5] == '{SHA}':
+             enc = '{SHA}' + base64.encodestring(hash_new('sha1', password.encode('utf-8')).digest()).rstrip()
+             if epwd == enc:
+-                data['enc_password'] = encodePassword(password) # upgrade to SSHA
++                #data['enc_password'] = encodePassword(password) # upgrade to SSHA
+                 return True, True
+             return False, False

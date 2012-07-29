@@ -13,3 +13,7 @@ div#content div.center p {
 div#content div.right p {
         text-align: right;
 }
+
+span.meta_editicon {
+        display: none;
+}
