@@ -1,5 +1,5 @@
---- ./MoinMoin/xmlrpc/__init__.py.orig	2010-10-26 10:58:35.000000000 +0300
-+++ ./MoinMoin/xmlrpc/__init__.py	2010-10-26 10:59:59.000000000 +0300
+--- ./MoinMoin/xmlrpc/__init__.py.orig	2011-11-28 22:40:57.000000000 +0200
++++ ./MoinMoin/xmlrpc/__init__.py	2012-07-29 22:11:17.642690513 +0300
 @@ -39,6 +39,32 @@ from MoinMoin.action import AttachFile
  from MoinMoin import caching
  from MoinMoin import session
@@ -49,7 +49,7 @@
  
                  data = self.request.read(self.request.content_length)
  
-@@ -691,7 +724,13 @@ class XmlRpcBase:
+@@ -691,8 +724,14 @@ class XmlRpcBase:
          id_handler = XmlRpcAuthTokenIDHandler()
  
          u = self.request.cfg.session_handler.start(self.request, id_handler)
@@ -65,3 +65,4 @@
 +                                         password=password)
  
          self.request.cfg.session_handler.after_auth(self.request, id_handler, u)
+ 

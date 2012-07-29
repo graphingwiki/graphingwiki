@@ -1,5 +1,5 @@
---- ./MoinMoin/wikiutil.py.orig	2012-07-29 13:36:30.299510336 +0300
-+++ ./MoinMoin/wikiutil.py	2012-07-29 13:57:00.041229490 +0300
+--- ./MoinMoin/wikiutil.py.orig	2011-11-28 22:40:57.000000000 +0200
++++ ./MoinMoin/wikiutil.py	2012-07-29 22:11:17.642690513 +0300
 @@ -544,15 +544,15 @@ def load_wikimap(request):
          generate_file_list(request)
  
@@ -21,7 +21,7 @@
          _interwiki_list = {}
          lines = []
  
-@@ -583,8 +583,14 @@ def load_wikimap(request):
+@@ -583,9 +583,15 @@ def load_wikimap(request):
              _interwiki_list[request.cfg.interwikiname] = request.getScriptname() + '/'
  
          # save for later
@@ -39,3 +39,4 @@
 +        request.cfg.cache.interwiki_mtime[request.user.id] = get_max_mtime(request.cfg.shared_intermap_files, Page(request, INTERWIKI_PAGE))
  
      return _interwiki_list
+ 
