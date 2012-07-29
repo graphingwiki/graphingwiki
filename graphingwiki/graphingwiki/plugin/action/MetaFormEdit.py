@@ -144,6 +144,7 @@ def execute(pagename, request):
         data = parse_text(newreq, newreq.page, newreq.page.get_raw_body())
 
         for page in data:
+            for key in data[page].get('meta', list()):
                 for val in data[page]['meta'][key]:
                     vals_on_keys.setdefault(key, set()).add(val)
             for key in data[page].get('out', list()):
