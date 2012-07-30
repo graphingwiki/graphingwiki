@@ -375,7 +375,7 @@
             if (this.tableArgs.template && !this.template) {
                 if (!this._templateRequest) {
                     this._templateRequest = new Request({
-                        url: '?action=ajaxUtils&util=getTemplate&name=' + this.tableArgs.template,
+                        url: '?action=ajaxUtils&util=getTemplate&name=' + encodeURIComponent(this.tableArgs.template),
                         onSuccess: function(txt) {
                             this.template = txt;
                             delete this['_templateRequest'];
@@ -404,7 +404,7 @@
 
             this.metaRequest = new Request.HTML({
                 url: '?action=showMetaTable',
-                data: 'args=' + this.tableArgs.args,
+                data: 'args=' + encodeURIComponent(this.tableArgs.args),
                 evalScripts: false,
                 onSuccess: function(nodes) {
                     var tab = $$(nodes).filter(function(n){
@@ -461,10 +461,11 @@
             );
 
             if (this.options.template) {
+                var template = encodeURIComponent(this.options.template);
                 new Element('a', {
                     'text': 'create in metaformedit',
                     'target': '_blank',
-                    'href': namefield.get('value') + '?action=editmetaform&template=' + this.options.template,
+                    'href': namefield.get('value') + '?action=editmetaform&template=' + template,
                     'styles': {
                         'margin-left': '10px'
                     },
