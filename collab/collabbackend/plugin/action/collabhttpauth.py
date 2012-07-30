@@ -10,8 +10,11 @@ def execute(pagename, request):
     _ = request.getText
 
     request.page = Page(request, 'ForgottenPassword')
-    request.setHttpHeader('WWW-Authenticate: Basic realm="Password Required (cancel for help)"')
-    request.setHttpHeader('Status: 401 Authorization required"')
-    request.setHttpHeader("Content-Type: %s; charset=%s" % (request.page.output_mimetype, request.page.output_charset))
-    request.emit_http_headers()
+    request.headers['WWW-Authenticate'] = \
+        'Basic realm="Password Required (cancel for help)"'
+    request.headers['Status'] = \
+        '401 Authorization required"'
+    request.headers['Content-Type'] = \
+        '%s; charset=%s' % (request.page.output_mimetype, 
+                            request.page.output_charset)
     request.page.send_page(emit_headers=0)
