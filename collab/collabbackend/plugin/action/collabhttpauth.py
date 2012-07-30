@@ -11,8 +11,8 @@ def execute(pagename, request):
 
     request.page = Page(request, 'ForgottenPassword')
     request.status_code = 401
-    request.headers['WWW-Authenticate'] = \
-        'Basic realm="Password Required (cancel for help)"'
+    # request.headers['WWW-Authenticate'] = \
+    #     'Basic realm="Password Required (cancel for help)"'
     request.headers['Content-Type'] = \
         '%s; charset=%s' % (request.page.output_mimetype, 
                             request.page.output_charset)
