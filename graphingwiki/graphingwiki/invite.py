@@ -18,6 +18,9 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.mail.sendmail import encodeAddress
 
+from MoinMoin import log
+logging = log.getLogger(__name__)
+
 from graphingwiki.editing import parse_categories
 
 class InviteException(Exception):
@@ -77,6 +80,10 @@ def add_user_to_group(request, userobj, group, create_link=True, comment=""):
     text = "\n".join(head + tail)
     page.saveText(text, 0, comment=comment)
 
+    logging.info("%s added to group %s in wiki %s (invited by %s)" % 
+                 (userobj.name, group, request.cfg.interwikiname, 
+                  request.user.name))
+
 def invite_user_to_wiki(request, page, email, new_template, old_template,
                         **custom_vars):
     check_inviting_enabled(request)
@@ -108,7 +115,8 @@ def _invite(request, page_url, email, new_template, old_template,
     variables.update(PAGEURL=page_url,
                      ADMINEMAIL=request.cfg.mail_from,
                      INVITERUSER=request.user.name,
-                     INVITEREMAIL=mail_from)
+                     INVITEREMAIL=mail_from,
+                     SERVERURL=request.host_url)
     
     old_user = user.get_by_email_address(request, email)
     if old_user:
@@ -137,6 +145,11 @@ def _invite(request, page_url, email, new_template, old_template,
                  lambda x: x.lower() != email.lower())
     
     new_user.save()
+
+    logging.info("New user %s added to wiki %s (invited by %s)" % 
+                 (new_user.name, request.cfg.interwikiname, 
+                  request.user.name))
+
     return new_user
 
 def replace_variables(text, variables):
@@ -225,6 +238,10 @@ def send_message(request, message, recipient_filter=lambda x: True):
 
             try:
                 smtp.sendmail(sender, recipients, message.as_string())
+                for recipient in recipients:
+                    logging.info("%s invited %s to wiki %s" % 
+                                 (sender, recipients, 
+                                  request.cfg.interwikiname))
             except smtplib.SMTPSenderRefused, error:
                 if not getattr(request.cfg, "mail_login", None):
                     raise error
