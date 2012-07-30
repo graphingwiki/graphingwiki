@@ -1,6 +1,27 @@
---- ./MoinMoin/wikiutil.py.orig	2012-07-29 14:35:35.214466073 +0300
-+++ ./MoinMoin/wikiutil.py	2012-07-29 14:36:15.954523034 +0300
-@@ -582,6 +582,18 @@ def load_wikimap(request):
+--- ./MoinMoin/wikiutil.py.orig	2012-07-30 14:42:17.484497655 +0300
++++ ./MoinMoin/wikiutil.py	2012-07-30 14:42:44.204535005 +0300
+@@ -544,15 +544,15 @@ def load_wikimap(request):
+         generate_file_list(request)
+ 
+     try:
+-        _interwiki_list = request.cfg.cache.interwiki_list
+-        old_mtime = request.cfg.cache.interwiki_mtime
+-        if request.cfg.cache.interwiki_ts + (1*60) < now: # 1 minutes caching time
++        _interwiki_list = request.cfg.cache.interwiki_list[request.user.id]
++        old_mtime = request.cfg.cache.interwiki_mtime[request.user.id]
++        if request.cfg.cache.interwiki_ts[request.user.id] + (1*60) < now: # 1 minutes caching time
+             max_mtime = get_max_mtime(request.cfg.shared_intermap_files, Page(request, INTERWIKI_PAGE))
+             if max_mtime > old_mtime:
+                 raise AttributeError # refresh cache
+             else:
+-                request.cfg.cache.interwiki_ts = now
+-    except AttributeError:
++                request.cfg.cache.interwiki_ts[request.user.id] = now
++    except (AttributeError, KeyError):
+         _interwiki_list = {}
+         lines = []
+ 
+@@ -582,10 +582,28 @@ def load_wikimap(request):
          if request.cfg.interwikiname:
              _interwiki_list[request.cfg.interwikiname] = request.getScriptname() + '/'
  
@@ -17,5 +38,18 @@
 +                _interwiki_list[collab[0]] = collab[3]
 +
          # save for later
-         if not getattr(request.cfg.cache, 'interwiki_list', None):
-             request.cfg.cache.interwiki_list = dict()
+-        request.cfg.cache.interwiki_list = _interwiki_list
+-        request.cfg.cache.interwiki_ts = now
+-        request.cfg.cache.interwiki_mtime = get_max_mtime(request.cfg.shared_intermap_files, Page(request, INTERWIKI_PAGE))
++        if not getattr(request.cfg.cache, 'interwiki_list', None):
++            request.cfg.cache.interwiki_list = dict()
++        if not getattr(request.cfg.cache, 'interwiki_ts', None):
++            request.cfg.cache.interwiki_ts = dict()
++        if not getattr(request.cfg.cache, 'interwiki_mtime', None):
++            request.cfg.cache.interwiki_mtime = dict()
++        request.cfg.cache.interwiki_list[request.user.id] = _interwiki_list
++        request.cfg.cache.interwiki_ts[request.user.id] = now
++        request.cfg.cache.interwiki_mtime[request.user.id] = get_max_mtime(request.cfg.shared_intermap_files, Page(request, INTERWIKI_PAGE))
+ 
+     return _interwiki_list
+ 
