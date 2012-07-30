@@ -136,7 +136,7 @@ os.chdir(mybaseinstancedir)
 sys.path.insert(0, os.path.join(mybaseinstancedir, 'config'))
 
 # Make a new request for the page
-req = RequestCLI('FrontPage')
+req = RequestCLI('FrontPage', parse=False)
 
 # Auth
 import posix, pwd
@@ -190,7 +190,7 @@ for dent in os.listdir("."):
     import farmconfig
     reload(farmconfig)
 
-    req = RequestCLI('AccessGroup')
+    req = RequestCLI('AccessGroup', parse=False)
     req.user = User(req, auth_username=username)
 
     msg = []
