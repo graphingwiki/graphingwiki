@@ -10,7 +10,7 @@ from MoinMoin.PageEditor import PageEditor
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.editing import set_metas
 
-from MoinMoin.macro.spanner import Spanner
+from collabbackend.plugin.macro.spanner import Spanner
 
 from M2Crypto import BIO, Rand, SMIME
 

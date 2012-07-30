@@ -5,7 +5,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
 
-from MoinMoin.xmlrpc.ClarifiedCookie import execute as generateCookie
+from collabbackend.plugin.xmlrpc.ClarifiedCookie import execute as generateCookie
 
 from graphingwiki.editing import get_metas
 
