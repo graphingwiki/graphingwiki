@@ -30,6 +30,9 @@ log.load_config(mylogconf)
 logging = log.getLogger("collab-auth")
 logging.debug("collab-auth started")
 
+# We need to import contexts before importing users, because otherwise
+# the relative imports in MoinMoin will fail.
+import MoinMoin.web.contexts
 from MoinMoin.user import User
 from MoinMoin.config import multiconfig
 
