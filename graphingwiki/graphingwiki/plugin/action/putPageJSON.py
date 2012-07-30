@@ -11,7 +11,7 @@ def sendfault(request, msg):
     request.write(json.dumps(dict(status="error", errmsg=msg)))
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
+    request.headers["Content-Type"] = "text/plain; charset=ascii"
     if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
