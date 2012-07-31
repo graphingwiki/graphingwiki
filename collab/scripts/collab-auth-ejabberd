@@ -115,7 +115,7 @@ def checkAccess(user, wiki):
         return False
 
     isgroup = r.cfg.cache.page_group_regexact.search
-    members = [m for m in r.dicts.members("AccessGroup") if not isgroup(m)]
+    members = [m for m in r.groups.get("AccessGroup") if not isgroup(m)]
     return user in members
 
 def from_ejabberd():
