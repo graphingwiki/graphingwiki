@@ -1,0 +1,12 @@
+--- ./MoinMoin/formatter/groups.py.orig	2012-02-07 23:36:48.000000000 +0200
++++ ./MoinMoin/formatter/groups.py	2012-07-31 19:08:49.220375050 +0300
+@@ -68,3 +68,9 @@ class Formatter(FormatterBase):
+     table_row = table_cell = attachment_link = attachment_image = attachment_drawing = null
+     transclusion = transclusion_param = null
+ 
++    # Adding all other functions used by parser from
++    # MoinMoin/formatter/text_html*. Macro in particular caused havoc
++    # as macros are fairly common in group pages.
++    macro = lang = anchordef = span = line_anchordef = sysmsg = null
++    startContent = escapedText = line_anchorlink = null
++    div = endContent = anchorlink = interwikilink = null
