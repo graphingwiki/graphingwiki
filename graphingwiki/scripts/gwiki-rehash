@@ -134,9 +134,7 @@ count = 1
 
 # Just init one request
 scriptcontext = RequestCLI(parse=False)
-print 'graphdata is', scriptcontext.graphdata
 scriptcontext.graphdata.clear_metas()
-print "done clearing"
 # If you want to rehash into separate shelve, ignore locks, create a
 # new shelve from scratch
 if options.filename:
@@ -168,7 +166,6 @@ for pageobj in pages:
     graphsaver(pageobj.page_name, scriptcontext, text, pagepath, pageobj)
 
 # Must finish the scriptcontext to ensure that metadata is saved & committed
-print 'done rehashing, calling finish/commit'
 scriptcontext.finish()
 scriptcontext.graphdata.commit()
 scriptcontext.graphdata.close()
