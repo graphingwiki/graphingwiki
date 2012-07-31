@@ -31,7 +31,11 @@
 import os
 import re
 
-import md5
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
+
 from tempfile import mkstemp
 from random import choice, seed
 
@@ -722,7 +726,7 @@ class GraphShower(object):
                     if self.format == 'dot':
                         obj.gwikiimage = fname
                     else:
-                        filedata = md5.new(file(shapefile).read()).hexdigest()
+                        filedata = md5(file(shapefile).read()).hexdigest()
                         self.shapefiles[objname] = filedata
 
                         if self.format in ['svg', 'zgr']:
