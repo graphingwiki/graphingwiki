@@ -1,0 +1,106 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+admin-mergeusers - a script for merging user data from multiple wikis.
+
+The script goes through the users in the source wikis, selects the
+oldest user with the same name, and retains the other id:s for this
+name. Then it copies the user files with the oldest ids to a target
+wiki, and renames all the other user id:s in all the edit logs to
+match the oldest one for each user.
+
+The script was made for a very specific use case, but it is retained
+for posterity as it may become handy eg. in as importing data from
+standalone wikis.
+
+@copyright: 2012 by Jussi Eronen <exec@iki.fi>, modified from collab-htaccess
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import re
+import shutil
+
+# Maybe we should get logging config from collab.ini 
+# sometime in the future
+#from MoinMoin import log
+#log.load_config(mylogconf) 
+
+# We need to import contexts before importing users, because otherwise
+# the relative imports in MoinMoin will fail.
+import MoinMoin.web.contexts
+
+from MoinMoin.user import User, getUserList, isValidName
+from MoinMoin.config import multiconfig
+
+from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki import RequestCLI
+
+if len(sys.argv) < 3:
+    print __file__ + " <user> <tgtcollab> [srccollab] [srccollabs...]"
+    sys.exit(2)
+
+allusers = dict()
+
+for dent in sys.argv[3:]:
+    os.chdir(dent)
+    confdir = os.path.join(dent, 'config')
+    sys.path.insert(0, confdir)
+
+    multiconfig._url_re_cache = None
+    multiconfig._farmconfig_mtime = None
+    multiconfig._config_cache = {}
+
+    import wikiconfig
+    reload(wikiconfig)
+
+    # Make a new request for the page
+    req = RequestCLI('FrontPage', parse=False)
+    req.user = User(req, auth_username=sys.argv[1])
+
+    for id in getUserList(req):
+        myuser = User(req, id=id)
+        myuser.load_from_id()
+        if myuser.valid and isValidName(req, myuser.name):
+            allusers.setdefault(myuser.name.lower(), list()).append((id, myuser.getFilename()))
+
+    req.finish()
+
+    sys.path.remove(confdir)
+
+regexps = list()
+first_users = list()
+
+for key in allusers:
+    userdata = allusers[key]
+    userdata.sort(cmp=lambda x,y: cmp(x[0], y[0]))
+    first_users.append((key, userdata[0][0], userdata[0][1]))
+    if len(userdata) > 1:
+        uids = [x[0] for x in userdata[1:]]
+        #print r"(%s)\t\t\n$" % ('|'.join(uids)), userdata[0][0]
+        regexps.append((re.compile(r"\t(?:%s)(.+)$" % ('|'.join(uids))), userdata[0][0]))
+
+#print first_users
+#sys.exit(0)
+
+userdir = os.path.join(sys.argv[2], 'user')
+print "Saving users to", userdir
+for _, id, fname in first_users:
+    shutil.copy(fname, os.path.join(userdir, id))
+
+wikisdir = os.path.join(sys.argv[2], 'wikis')
+for dirname, dirs, files in os.walk(wikisdir):
+    for fname in files:
+        if fname in ['edit-log', 'edit-lock']:
+            fname = os.path.join(dirname, fname)
+            #print fname
+            data = file(fname).readlines()
+            newdata = list()
+            for line in data:
+                for regexp, id in regexps:
+                    line = regexp.sub('\t' + id + '\\1', line)
+                newdata.append(line)
+            if newdata != data:
+                print "Changing filename %s" % (fname)
+                file(fname, 'w').writelines(newdata)

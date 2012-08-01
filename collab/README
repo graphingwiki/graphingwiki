@@ -94,7 +94,8 @@ tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
 # Patch and install moin
 tar -zxvf moin-1.9.4.tar.gz 
 cd moin-1.9.4/
-patch -N -t -p0 < ../graphingwiki/collab/misc/moin-1.9.4.patch 
+ls /usr/local/src/graphingwiki/graphingwiki/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
+ls /usr/local/src/graphingwiki/collab/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
 python setup.py install
 
 # Install graphingwiki, collabbackend and opencollab
@@ -146,7 +147,7 @@ su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /sr
 su - collab -s /bin/bash -c "collab-create collab collab"
 
 # Making collab users. 
-su - collab -s /bin/bash -c "collab-account-create collab"
+su - collab -s /bin/bash -c "collab-account-create -f -r collab"
 su - collab -s /bin/bash -c "collab-htaccess"
 
 # Making htaccess to the base collab
