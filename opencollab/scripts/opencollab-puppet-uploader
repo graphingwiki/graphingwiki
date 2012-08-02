@@ -102,7 +102,7 @@ def main():
                     val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in ['memoryfree', 'memorysize', 'memorytotal',
-                         'swapfree', 'swapsize']:
+                         'swapfree', 'swapsize', 'libvirt_memorysize']:
                 nro, mgn = values[key].split()
                 nro = float(nro)
                 if mgn == 'GB':
