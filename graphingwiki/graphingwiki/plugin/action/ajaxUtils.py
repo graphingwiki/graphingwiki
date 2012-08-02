@@ -26,6 +26,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+from graphingwiki import values_to_form
 from graphingwiki.util import format_wikitext
 from graphingwiki.editing import get_properties
 
@@ -39,16 +40,16 @@ except ImportError:
     import json
 
 def execute(pagename, request):
-    request.emit_http_headers()
+    form = values_to_form(request.values)
 
-    util = request.form.get('util', [None])[0]
+    util = form.get('util', [None])[0]
 
     if util == "format":
-        txt = request.form.get('text', [None])[0]
+        txt = form.get('text', [None])[0]
         request.write(format_wikitext(request, txt))
 
     elif util == "getTemplate":
-        template = request.form.get('name', [None])[0]
+        template = form.get('name', [None])[0]
         template_page = wikiutil.unquoteWikiname(template)
         if request.user.may.read(template_page):
             editor = PageEditor(request, template_page)
@@ -56,10 +57,10 @@ def execute(pagename, request):
             request.write(text)
 
     elif util == "newPage":
-        page = request.form.get('page', [None])[0]
-        content = request.form.get('content', [""])[0]
+        page = form.get('page', [None])[0]
+        content = form.get('content', [""])[0]
 
-        if request.request_method != 'POST':
+        if request.environ['REQUEST_METHOD'] != 'POST':
             return
 
         if not page:

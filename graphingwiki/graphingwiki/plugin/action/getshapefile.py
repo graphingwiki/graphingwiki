@@ -1,5 +1,7 @@
 from MoinMoin import wikiutil
 
+from graphingwiki import values_to_form
+
 def execute(pagename, request):
     sfname = "gwikishapefile"
     outlinks = request.graphdata.get_out(pagename)
@@ -14,6 +16,7 @@ def execute(pagename, request):
             sf_wikilink = x[1]
             pagename = x[0].strip('{').strip('[[').strip('attachment:')
         sf_wikilink = sf_wikilink.rstrip('}').rstrip(']]')
-        request.form['target'] = [sf_wikilink]
-        request.form['do'] = ['get']
+        form = values_to_form(request.values)
+        form['target'] = [sf_wikilink]
+        form['do'] = ['get']
         AttachFile(pagename, request)

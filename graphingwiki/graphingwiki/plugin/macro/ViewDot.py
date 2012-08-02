@@ -29,13 +29,14 @@
 """
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
-from copy import copy
 
+from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
+    MultiDict
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from MoinMoin import config
 
-from graphingwiki.util import encode
+from graphingwiki.util import encode, url_construct
 
 Dependencies = ['attachments']
 
@@ -88,8 +89,8 @@ def execute(macro, args):
     
     # Import the plugin action to print out the graph html form
     dotviewer = wikiutil.importPlugin(request.cfg,
-                                        'action', 'ViewDot',
-                                        'execute')
+                                      'action', 'ViewDot',
+                                      'execute')
 
     arglist = [x.strip() for x in args.split(',') if x]
     kw = {}
@@ -104,26 +105,31 @@ def execute(macro, args):
 
     if not arglist:
         return ""
-    
+
     uri, args = uri_params(arglist[0])
     
     if not args:
         return ""
 
     pagename = url_unquote(uri)
-    graph_request = copy(request)
 
-    graph_request.page = Page(request, pagename)
-    graph_request.form = args
+    old_page = request.page
+    old_values = request.values
+    old_url = getattr(request, 'url', '')
 
-    req_url = request.getScriptname() + '/' + url_quote(encode(pagename))
-    graph_request.request_uri = join_params(req_url, args)
+    request.page = Page(request, pagename)
+    req_url = url_construct(request, args, pagename)
+    request.values = CombinedMultiDict([MultiDict(args)])
+    request.url = req_url
 
-    dotviewer(graph_request.page.page_name, graph_request, **kw)
+    request.write(u'<div class="viewdot">')
+    dotviewer(pagename, request, **kw)
 
-    if not uri:
-        uri = request.page.page_name
-    req_url = request.getScriptname() + '/' + uri
-    req_url = join_params(req_url, args)
-    return '<a href="%s&view=View" id="footer">[%s]</a>\n' % \
-           (graph_request.getQualifiedURL(req_url), _('View'))
+    request.page = old_page
+    request.values = old_values
+    del request.url
+    if old_url:
+        request.url = old_url
+
+    return '<a href="%s&view=View" id="footer">[%s]</a>\n</div>' % \
+        (req_url, _('View'))

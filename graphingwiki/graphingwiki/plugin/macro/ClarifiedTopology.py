@@ -376,7 +376,7 @@ def draw_topology(request, args, key):
     map = ''
     for coords in areas:
         name, text, shape = areas[coords]
-        pagelink = request.getScriptname() + u'/' + name
+        pagelink = request.script_root + u'/' + name
 
         tooltip = "%s\n%s" % (name, text)
 

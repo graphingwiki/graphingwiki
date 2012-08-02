@@ -29,6 +29,7 @@
 
 import MoinMoin.wikiutil as wikiutil
 from graphingwiki.util import format_wikitext
+from graphingwiki import values_to_form
 
 try:
     import simplejson as json
@@ -36,11 +37,13 @@ except ImportError:
     import json
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
+    request.content_type = "application/json"
 
-    args = request.form.get('args', [None])[0]
-    key = request.form.get('getvalues', [None])[0]
-    formatted = request.form.get('formatted', [None])[0]
+    form = values_to_form(request.values)
+
+    args = form.get('args', [None])[0]
+    key = form.get('getvalues', [None])[0]
+    formatted = form.get('formatted', [None])[0]
 
     do_action = wikiutil.importPlugin(request.cfg, "xmlrpc", "GetMetaStruct",
                                       "do_action")

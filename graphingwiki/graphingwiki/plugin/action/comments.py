@@ -5,6 +5,7 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.user import getUserIdentification
 
+from graphingwiki import values_to_form
 from graphingwiki.editing import set_metas
 
 def save_comment(request, commentpage, sender, comment):
@@ -15,8 +16,10 @@ def save_comment(request, commentpage, sender, comment):
     return set_metas(request, dict(), dict(), metas)
 
 def execute(pagename, request):
-    comment = request.form.get('comment', [str()])[0].replace("\r\n", " ")
-    commentpage = wikiutil.escape(request.form.get('commentpage', [str()])[0])
+    form = values_to_form(request.values)
+
+    comment = form.get('comment', [str()])[0].replace("\r\n", " ")
+    commentpage = wikiutil.escape(form.get('commentpage', [str()])[0])
 
     if not commentpage:
         request.theme.add_msg('Missing commentpage.', 'error')

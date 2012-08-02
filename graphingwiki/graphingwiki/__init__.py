@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 
+import MoinMoin.wsgiapp
 import MoinMoin.wikisync  
 import MoinMoin.wikiutil as wikiutil
-  
-from MoinMoin.request import RequestBase
+import MoinMoin.web.contexts
+import MoinMoin.xmlrpc
+
+from MoinMoin import config
+from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action import AttachFile
 from MoinMoin.wikiutil import importPlugin, PluginMissingError
 from MoinMoin.security import ACLStringIterator
+from MoinMoin.script import MoinScript
+from MoinMoin.web.request import Request
+from MoinMoin.web.contexts import ScriptContext
 
 import sys
 import os
@@ -17,9 +24,34 @@ import xmlrpclib
 
 SEPARATOR = '-gwikiseparator-'
 
-# Get action name
-def actionname(request, pagename):
-    return '%s/%s' % (request.getScriptname(), url_escape(pagename))
+def RequestCLI(pagename='', parse=True):
+    """
+    The MoinScript class does command line argument parsing, which
+    might not be what is desired, as it will complain about custom
+    arguments in gwiki-* scripts. MoinScript initialises the request
+    by calling up ScriptContext, which is then assigned to the
+    script.request.
+
+    If a gwiki-* script uses non-MoinScript command line arguments,
+    the ScriptContext is initialized with minimum sane default.
+    """
+    if parse:
+        script = MoinScript()
+        if pagename:
+            script.parser.set_defaults(page=pagename)
+        script.options, script.args = script.parser.parse_args()
+        script.init_request()
+        return script.request
+
+    # Default values
+    return ScriptContext(None, pagename)
+
+# Get action name for forms
+def actionname(request, pagename=None):
+    if not pagename:
+        return request.page.url(request)
+    else:
+        return Page(request, pagename).url(request)
 
 def url_escape(text):
     # Escape characters that break links in html values fields, 
@@ -37,25 +69,39 @@ def id_unescape(text):
     chr_re = re.compile('_([0-9a-f]{2})_')
     return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
+def values_to_form(values):
+    # Form keys are not unicode for some reason
+    oldform = values.to_dict(flat=False)
+    newform = dict()
+    for key in oldform:
+        if not isinstance(key, unicode):
+            newkey = unicode(key, config.charset)
+        else:
+            newkey = key
+        newform[newkey] = oldform[key]
+    return newform
+
 # Finding dependencies centrally
 
 gv_found = True
 gv = None
 
-# 32bit and 64bit versions
+
 try:
-    sys.path.append('/usr/lib/graphviz/python')
-    sys.path.append('/usr/local/lib/graphviz/python') # OSX
-    sys.path.append('/usr/lib/pyshared/python2.6') # Ubuntu 9.10
-    sys.path.append('/usr/lib/pyshared/python2.5') # Ubuntu 9.10
     import gv
 except ImportError:
-    sys.path[-1] = '/usr/lib64/graphviz/python'
     try:
+        sys.path.append('/usr/lib/graphviz/python')
+        sys.path.append('/usr/local/lib/graphviz/python') # OSX
+        sys.path.append('/usr/lib/pyshared/python2.6') # Ubuntu 9.10
+        sys.path.append('/usr/lib/pyshared/python2.5') # Ubuntu 9.10
         import gv
     except ImportError:
-        gv_found = False
-        pass
+        sys.path[-1] = '/usr/lib64/graphviz/python'
+        try:
+            import gv
+        except ImportError:
+            gv_found = False
 
 igraph_found = True
 igraph = None
@@ -213,36 +259,22 @@ def underlay_to_pages(req, p):
 
     return pagepath
 
-# FIXME: A ugly, ugly hack to fix ugly hacks suck as copy(request).
-# Should be removed by removing request copying and such.
-
-def request_copy(self):
-    from copy import copy
-
-    graphdata = self.graphdata
-    self._graphdata = None
-
-    del RequestBase.__copy__
-
-    new_request = copy(self)
-    new_request._graphdata = graphdata
-
-    RequestBase.__copy__ = request_copy
-
-    self._graphdata = graphdata
-    return new_request
-RequestBase.__copy__ = request_copy
-
 # Functions for properly opening, closing, saving and deleting
 # graphdata. NB: Do not return anything in functions used in
 # monkey_patch unless you want to affect the return value of the
 # patched function
 
 def graphdata_getter(self):
+#    from graphingwiki.backend.couchdbclient import GraphData
 #    from graphingwiki.backend.durusclient import GraphData
     from graphingwiki.backend.shelvedb import GraphData
     if "_graphdata" not in self.__dict__:
-        self.__dict__["_graphdata"] = GraphData(self)
+        dbconfig = getattr(self.cfg, 'dbconfig', {})
+        if "dbname" not in dbconfig:
+            dbconfig["dbname"] = self.cfg.interwikiname
+
+        self.__dict__["_graphdata"] = GraphData(self, **dbconfig)
+    self.__dict__["_graphdata"].doing_rehash = _is_rehashing
     return self.__dict__["_graphdata"]
 
 def graphdata_close(self):
@@ -325,8 +357,10 @@ def variable_insert(self, result, _):
     for name in cfgvar:
         result = result.replace('@%s@' % name, cfgvar[name])
 
+    form = self.request.values.to_dict(flat=False)
+
     # Add the page's creator as a dynamic variable
-    backto = self.request.form.get('backto', [''])[0]
+    backto = form.get('backto', [''])[0]
     result = result.replace('@CREATORPAGE@', backto)
 
     return result
@@ -355,9 +389,11 @@ def attachfile_filelist(self, result, (args, _)):
 
     result = form + result
 
-    att1 = self.form.get('att1', [''])[0]
-    att2 = self.form.get('att2', [''])[0]
-    sort = self.form.get('sort', ['normal'])[0]
+    oldform = self.values.to_dict(flat=False)
+
+    att1 = oldform.get('att1', [''])[0]
+    att2 = oldform.get('att2', [''])[0]
+    sort = oldform.get('sort', ['normal'])[0]
 
     for target in attachments:
         buttontext = '\\1 | ' + \
@@ -390,26 +426,16 @@ def attachfile_filelist(self, result, (args, _)):
 
 _hooks_installed = False
 
-def install_hooks():
-    global _hooks_installed
-
+def install_hooks(rehashing=False):
+    global _hooks_installed, _is_rehashing
     if _hooks_installed:
         return
+    _is_rehashing = rehashing
 
     # Monkey patch the request class to have the property "graphdata"
     # which, if used, is then closed properly when the request
     # finishes.
-    RequestBase.graphdata = property(graphdata_getter)
-
-    # XXX "always" callback is called before the "on_success" one,
-    # which pops _graphdata attr out in addition to closing the db
-    # connection
-    RequestBase.finish = monkey_patch(RequestBase.finish, 
-                                      always=graphdata_close)#, on_success=graphdata_commit)
-    # Patch RequestBase.run too, just in case finally might not get
-    # called in case of a crash.
-    RequestBase.run = monkey_patch(RequestBase.run, 
-                                   always=graphdata_close)
+    MoinMoin.web.contexts.Context.graphdata = property(graphdata_getter)
 
     # Monkey patch the different saving methods to update the metas in
     # the meta database.
@@ -432,8 +458,37 @@ def install_hooks():
     PageEditor._expand_variables = monkey_patch(PageEditor._expand_variables,
                                                 variable_insert)
 
+    # Patch wsgiapp.run to close graphdb to avoid db corruption with
+    # some backends
+    orig_wsgiapp_run = MoinMoin.wsgiapp.run
+    def patched_run(context):
+        if not hasattr(context, '_patched'):
+            context.finish = lambda: graphdata_close(context)
+            context._patched = True
+        return orig_wsgiapp_run(context)
+    MoinMoin.wsgiapp.run = patched_run
+
+    # XMLRPC actions need to be patched separately, as wsgiapp.run
+    # makes a new context for them
+    orig_xmlrpc2 = MoinMoin.xmlrpc.xmlrpc2
+    def patched_xmlrpc2(context):
+        try:
+            return orig_xmlrpc2(context)
+        finally:
+            graphdata_close(context)
+    MoinMoin.xmlrpc.xmlrpc2 = patched_xmlrpc2
+
+    orig_xmlrpc = MoinMoin.xmlrpc.xmlrpc
+    def patched_xmlrpc(context):
+        try:
+            return orig_xmlrpc(context)
+        finally:
+            graphdata_close(context)
+    MoinMoin.xmlrpc.xmlrpc = patched_xmlrpc
+
     # Fix user variables in template acl strings
     ACLStringIterator.next = monkey_patch(ACLStringIterator.next,
                                           acl_user_expand)
 
     _hooks_installed = True
+

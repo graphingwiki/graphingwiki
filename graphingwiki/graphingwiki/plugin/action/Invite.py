@@ -6,6 +6,7 @@ from MoinMoin import wikiutil, config
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
 
+from graphingwiki import values_to_form
 from graphingwiki.invite import *
 
 NEW_TEMPLATE_VARIABLE = "invite_new_template"
@@ -54,7 +55,9 @@ class Invite(ActionBase):
         return user_may_invite(self.request.user, self.pagename)
 
     def do_action(self):
-        template = self.form.get('template', [''])[0]
+        form = values_to_form(self.request.values)
+        
+        template = form.get('template', [''])[0]
         template = wikiutil.clean_input(template).strip().split(',')
         new_template = old_template = None
         if len(template) > 0:
@@ -62,7 +65,7 @@ class Invite(ActionBase):
             if len(template) > 1:
                 old_template = template[1]
 
-        email = self.form.get('email', [u''])[0]
+        email = form.get('email', [u''])[0]
         email = wikiutil.clean_input(email).strip()
         if len(email) == 0:
             return False, "Please specify an email address."
@@ -79,7 +82,7 @@ class Invite(ActionBase):
             else:
                 old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
 
-            if wikiutil.isGroupPage(self.request, pagename):
+            if wikiutil.isGroupPage(pagename, self.request.cfg):
                 myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
                 mygrouppage = pagename
             else:

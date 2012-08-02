@@ -1,5 +1,7 @@
 from MoinMoin.PageEditor import PageEditor
 
+from graphingwiki import values_to_form
+
 try:
     import simplejson as json
 except ImportError:
@@ -9,11 +11,13 @@ def sendfault(request, msg):
     request.write(json.dumps(dict(status="error", errmsg=msg)))
 
 def execute(pagename, request):
-    request.emit_http_headers(["Content-Type: text/plain; charset=ascii"])
-    if request.request_method != 'POST':
+    request.headers["Content-Type"] = "text/plain; charset=ascii"
+    if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
-    content = request.form.get('content', [None])[0]
+    form = values_to_form(request.values)
+
+    content = form.get('content', [None])[0]
     if not content:
         sendfault(request,  "Missing page content")
         return

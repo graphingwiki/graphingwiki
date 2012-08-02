@@ -484,11 +484,11 @@ def do_macro(request, args, **kw):
                                             + kw.items())))
 
     def action_link(action, linktext, args):
-        req_url = request.getScriptname() + \
-                  '/' + url_escape(request.page.page_name) + \
-                  '?action=' + action + '&args=' + url_escape(args)
+        req_url = request.script_root + "/" + \
+            url_escape(request.page.page_name) + \
+            '?action=' + action + '&args=' + url_escape(args)
         return '<a href="%s" id="footer">[%s]</a>\n' % \
-               (request.getQualifiedURL(req_url), _(linktext))
+            (request.getQualifiedURL(req_url), _(linktext))
 
     # If the user has no write access to this page, omit editlink
     if kw.get('editlink', True):

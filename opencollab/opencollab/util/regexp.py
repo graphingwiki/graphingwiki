@@ -5,7 +5,8 @@ import sys
 import csv
 import re
 from time import gmtime, strftime, time
-import md5
+
+from opencollab.util.file import md5obj
 
 tld = [ "aero", "biz", "cat", "com", "coop", "info", "jobs",
 "mobi", "museum", "name", "net", "org", "pro", "travel",
@@ -96,7 +97,7 @@ def get_filetype(file):
         return os.popen('file -b %s' % file).readlines()[0].rstrip()
 
 def md5_digest(data):
-    return md5.new(data).hexdigest()
+    return md5obj(data).hexdigest()
 
 ## Charset conversions
 

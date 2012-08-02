@@ -10,9 +10,13 @@ from copy import copy
 from MoinMoin.action.newpage import NewPage
 from MoinMoin import log
 
+from graphingwiki import values_to_form
+
 def execute(pagename, request):
+    form = values_to_form(request.values)
+
     # Editaction allows for arbitrary action to be used for editing target page
-    editaction = request.form.get('editfunc', [''])[0]
+    editaction = form.get('editfunc', [''])[0]
     # Edit actions assumed to be all in lower case
     editaction = editaction.lower()
 

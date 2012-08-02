@@ -14,6 +14,8 @@ from MoinMoin.PageEditor import PageEditor
 from MoinMoin.action.RenamePage import RenamePage as RenamePageBasic
 from MoinMoin.parser.text_moin_wiki import Parser
 
+from graphingwiki import values_to_form
+
 include_re = re.compile('(<<Include\(([^,\n]+)(.*?)\)>>)')
 
 class RenamePage(RenamePageBasic):
@@ -147,18 +149,20 @@ class RenamePage(RenamePageBasic):
 
         success, msgs = RenamePageBasic.do_action(self)
 
+        form = values_to_form(self.request.values)
+
         rename_links = 0
-        if 'rename_links' in self.form:
+        if 'rename_links' in form:
             try:
-                rename_links = int(self.form['rename_links'][0])
+                rename_links = int(form['rename_links'][0])
             except:
                 pass
 
         if rename_links and success:
-            newpagename = self.form.get('newpagename', [u''])[0]
-            newpagename = self.request.normalizePagename(newpagename)
+            newpagename = form.get('newpagename', [u''])[0]
+            newpagename = wikiutil.normalize_pagename(newpagename, self.cfg)
 
-            comment = self.form.get('comment', [u''])[0]
+            comment = form.get('comment', [u''])[0]
             comment = wikiutil.clean_input(comment)
             comment = "%s (%s)" % (comment, _("changed links:") + 
                                    " %s -> %s" % (self.pagename, newpagename))
@@ -194,15 +198,18 @@ class RenamePage(RenamePageBasic):
     # Modified from original Moin code to include inlink renaming
     def get_form_html(self, buttons_html):
         _ = self._
+
+        form = values_to_form(self.request.values)
+
         if self.subpages:
             subpages = ' '.join(self.subpages)
 
             d = {
                 'subpage': subpages,
-                'subpages_checked': ('', 'checked')[self.request.form.get('subpages_checked', ['0'])[0] == '1'],
+                'subpages_checked': ('', 'checked')[form.get('subpages_checked', ['0'])[0] == '1'],
                 'subpage_label': _('Rename all /subpages too?'),
                 'links_label': _('Rename links to page too?'),
-                'links_checked': ('checked', '')[self.request.form.get('subpages_checked', ['0'])[0] == '1'],
+                'links_checked': ('checked', '')[form.get('subpages_checked', ['0'])[0] == '1'],
                 'pagename': wikiutil.escape(self.pagename, True),
                 'newname_label': _("New name"),
                 'comment_label': _("Optional reason for the renaming"),
@@ -259,7 +266,7 @@ class RenamePage(RenamePageBasic):
                 'newname_label': _("New name"),
                 'comment_label': _("Optional reason for the renaming"),
                 'links_label': _('Rename links to page too?'),
-                'links_checked': ('checked', '')[self.request.form.get('subpages_checked', ['0'])[0] == '1'],
+                'links_checked': ('checked', '')[form.get('subpages_checked', ['0'])[0] == '1'],
                 'buttons_html': buttons_html,
                 }
             return '''

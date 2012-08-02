@@ -11,12 +11,12 @@ import time
 import json
 import socket
 import optparse
-from hashlib import md5
+
 from zipfile import ZipFile
 from opencollab.meta import Metas
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.config import parseOptions
-from opencollab.util.file import uploadFile
+from opencollab.util.file import uploadFile, md5obj
 
 # Regex for finding javascript variable definitions
 JS_VARIABLES = "^var[ \t]+([a-zA-Z0-9_-]+)[ \t]+=[ \t]+(.+?);$"
@@ -199,7 +199,7 @@ def main():
         metas = Metas()
 
         summary = parseJS(os.path.join(dir, "summary.js"))
-        pagename = md5(repr(summary)).hexdigest()
+        pagename = md5obj(repr(summary)).hexdigest()
 
         print "Creating page %s for this scan." % pagename
         start = time.mktime(time.strptime(summary.get("scan_date", ""), "%a %b %d %H:%M:%S %Y"))

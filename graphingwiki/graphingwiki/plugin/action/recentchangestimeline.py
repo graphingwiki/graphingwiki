@@ -21,6 +21,8 @@ from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.macro.RecentChanges import format_comment, _MAX_DAYS
 
+from graphingwiki import values_to_form
+
 def format_entries(request, lines, doc, data):
     line = lines[0]
     is_new = line.action == 'SAVENEW'
@@ -114,8 +116,7 @@ def execute(pagename, request):
     _ = request.getText
     log = editlog.EditLog(request)
 
-    request.emit_http_headers(["Content-type: application/xml;charset=%s" %
-                               config.charset])
+    request.content_type = "application/xml;charset=%s" % config.charset
 
     doc = Document()
     data = doc.createElement('data')
@@ -125,7 +126,8 @@ def execute(pagename, request):
     this_day = today
     day_count = 0
     try:
-        max_days = int(request.form.get('max_days', [_MAX_DAYS])[0])
+        form = values_to_form(request.values)
+        max_days = int(form.get('max_days', [_MAX_DAYS])[0])
     except ValueError:
         max_days = _MAX_DAYS
 

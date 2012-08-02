@@ -36,6 +36,7 @@ class Metas(PersistentDict):
     def asdict(self):
         return dict([(k, list(v)) for (k, v) in self.items()])
 
+    # xxx remove
     def set_single(self, typ, val):
         self[typ] = PersistentList([val])
         
@@ -46,9 +47,13 @@ class Metas(PersistentDict):
         return val[0]
 
 class GraphData:
+    # durus has working transactions
+    is_acid = True
+
+    # enable users to access this using dict protocol (deprecated)?
     use_dict_api = False
 
-    def __init__(self, request=None, address=None):
+    def __init__(self, request=None, address=None, **kw):
         if not address:
             address=os.path.join(request.cfg.data_dir, 'durus.sock')
         self.request = request

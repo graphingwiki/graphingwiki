@@ -15,6 +15,7 @@
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 
+from graphingwiki import values_to_form
 from graphingwiki.editing import dl_proto_re
 
 import MetaEdit
@@ -22,7 +23,9 @@ import MetaEdit
 from savegraphdata import parse_text
 
 def execute(pagename, request):
-    template = request.form.get('template', [''])[0]
+    form = values_to_form(request.values)
+
+    template = form.get('template', [''])[0]
 
     if template and not request.page.exists():
         template_page = wikiutil.unquoteWikiname(template)

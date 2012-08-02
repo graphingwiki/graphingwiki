@@ -145,14 +145,13 @@ def execute(macro, args):
 
             # Only make pagelink if there are no overlapping nodes
             if len(areas[coordlist]) == 1:
-                pagelink = request.getScriptname() + u'/' + name
+                pagelink = request.script_root + u'/' + name
                 href = ' href="%s"' % (form_escape(pagelink))
             else:
                 pages = [x[0] for x in areas[coordlist]]
                 args = {'action': ['ShowGraph'], 
                         'otherpages': pages, 'noorignode': '1'}
-                href = ' href="%s"' % url_construct(request, args, 
-                                                    request.page.page_name)
+                href = ' href="%s"' % url_construct(request, args)
 
             # When overlapping nodes occur, add to tooltips
             for coords in areas[coordlist]:

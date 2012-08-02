@@ -1,6 +1,9 @@
 import os
 import xmlrpclib
-import md5
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
 
 from tempfile import mkdtemp
 from shutil import rmtree
@@ -40,7 +43,7 @@ def info(request, pagename, filename):
             return None
 
         stream = open(fpath, "rb")
-        digest = md5.new()
+        digest = md5()
 
         data = stream.read(CHUNK_SIZE)
         while data:
@@ -88,7 +91,7 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
         else:
             for digest in digests:
                 data = stream.read(chunkSize)
-                other = md5.new(data).hexdigest()
+                other = md5(data).hexdigest()
                 if other != digest:
                     break
             else:

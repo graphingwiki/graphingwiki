@@ -38,7 +38,6 @@ except ImportError:
 
 from MoinMoin import wikiutil
 from MoinMoin.parser.text_moin_wiki import Parser
-from MoinMoin.request.request_modpython import Request as RequestModPy
 
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.util import SPECIAL_ATTRS
@@ -85,14 +84,14 @@ def execute(pagename, request):
         cairo_not_found()
 
     # Grab arguments
-    args = ', '.join(x for x in request.form.get('arg', list()))
+    args = ', '.join(x for x in request.values.getlist('arg'))
 
     params = {'height': 0, 'width': 0}
     
     # Height and Width
     for attr in ['height', 'width']:
-        if request.form.has_key(attr):
-            val = ''.join(request.form[attr])
+        if request.values.has_key(attr):
+            val = ''.join(request.values.getlist(attr))
             try:
                 params[attr] = int(val)
             except ValueError:
@@ -100,13 +99,13 @@ def execute(pagename, request):
 
     # Aggregate set of included values of a page
     values = set()
-    if request.form.has_key('value'):
-        values.update(map(ordervalue, request.form['value']))
+    if request.values.has_key('value'):
+        values.update(map(ordervalue, request.values.getlist('value')))
 
     # Values that need to be included to form a complete scale, say 1-10
     scale = list()
-    if request.form.has_key('scale'):
-        scale = request.form['scale']
+    if request.values.has_key('scale'):
+        scale = request.values['scale']
 
     if not params['height'] and params['width']:
         params['height'] = params['width']

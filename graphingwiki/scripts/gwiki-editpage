@@ -4,9 +4,9 @@
 import sys, os
 
 from optparse import OptionParser
+from graphingwiki import graphdata_close
 from graphingwiki.editing import savetext
 
-from MoinMoin.request.request_cli import Request as RequestCLI
 from MoinMoin.Page import Page
 
 if __name__ == '__main__':
@@ -25,6 +25,8 @@ if __name__ == '__main__':
         print parser.get_usage()
         sys.exit(2)
 
+    from graphingwiki import RequestCLI
+
     # Configdir to path, so wikiconfig can be imported by Request
     cp = args[0]
     cp2 = os.path.join(cp, 'config')
@@ -35,12 +37,15 @@ if __name__ == '__main__':
     pagename = unicode(args[1], sys.getfilesystemencoding())
 
     # Make a new request for the page
-    req = RequestCLI(pagename)
+    req = RequestCLI(pagename, parse=False)
     req.page = Page(req, pagename)
 
     # Auth
     if options.auth:
         import posix, pwd
+        # We need to import contexts before importing users, because otherwise
+        # the relative imports in MoinMoin will fail.
+        import MoinMoin.web.contexts
         from MoinMoin.user import User
         req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
 
@@ -52,4 +57,4 @@ if __name__ == '__main__':
         savetext(req, pagename, mytext)
 
     # Must finish the request to ensure that metadata is saved
-    req.finish()
+    graphdata_close(req)

@@ -1,6 +1,6 @@
---- ./MoinMoin/theme/__init__.py.orig	2012-01-24 17:50:58.277635002 +0200
-+++ ./MoinMoin/theme/__init__.py	2012-01-24 17:51:43.367635002 +0200
-@@ -42,6 +42,7 @@ class ThemeBase:
+--- ./MoinMoin/theme/__init__.py.orig	2012-02-07 23:36:48.000000000 +0200
++++ ./MoinMoin/theme/__init__.py	2012-03-13 01:13:35.375909978 +0200
+@@ -48,6 +48,7 @@ class ThemeBase:
          'diff':        (_("Diffs"),               "moin-diff.png",   15, 11),
          'info':        (_("Info"),                "moin-info.png",   12, 11),
          'edit':        (_("Edit"),                "moin-edit.png",   12, 12),

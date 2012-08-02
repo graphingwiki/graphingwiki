@@ -1,17 +1,20 @@
 import MoinMoin.wikiutil as wikiutil
 
-def execute(pagename, request):
-    request.emit_http_headers()
+from graphingwiki import values_to_form
 
+def execute(pagename, request):
     silent = False
-    if "gwikisilent" in request.form:
+
+    form = values_to_form(request.values)
+
+    if "gwikisilent" in form:
         silent = True
 
     editlink = True
-    if "noeditlink" in request.form:
+    if "noeditlink" in form:
         editlink = False
 
-    args = request.form.get('args', [""])[0]
+    args = form.get('args', [""])[0]
 
     macro = wikiutil.importPlugin(request.cfg, "macro", "MetaTable","do_macro")
     request.write(macro(request, args, silent=silent, editlink=editlink))

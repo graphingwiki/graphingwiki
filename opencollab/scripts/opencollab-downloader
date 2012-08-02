@@ -5,14 +5,14 @@
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 import os
-import md5
 import sys
 import socket
 import optparse
 from urllib import unquote
+
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
-
+from opencollab.util.file import md5obj
 
 def fileExists(wiki, page, attachment, filename, chunkSize=1024 * 1024):
     if not os.path.exists(filename):
@@ -20,7 +20,7 @@ def fileExists(wiki, page, attachment, filename, chunkSize=1024 * 1024):
 
     digest, size = wiki.getAttachmentInfo(page, attachment)
     opened = open(filename, "rb")
-    hashed = md5.new()
+    hashed = md5obj()
     total = 0
 
     while True:

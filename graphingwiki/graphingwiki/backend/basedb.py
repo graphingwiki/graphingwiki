@@ -12,7 +12,12 @@ from graphingwiki.graph import Graph
 from graphingwiki import actionname
 
 class GraphDataBase(UserDict.DictMixin):
-    def __init__(self, request):
+    # Does this backend promise that operations provided by
+    # this API are ACID and commit/abort work?
+
+    is_acid = False
+
+    def __init__(self, request, **kw):
         self.request = request
 
     def __getitem__(self, item):
@@ -61,9 +66,6 @@ class GraphDataBase(UserDict.DictMixin):
         """
         raise NotImplementedError()
  
-    def get_out(self, pagename):
-        raise NotImplementedError()
-
     def get_meta(self, pagename):
         raise NotImplementedError()
 
@@ -80,11 +82,16 @@ class GraphDataBase(UserDict.DictMixin):
         self.reverse_meta()
         return self.vals_on_keys
 
+    def clear_page(self, pagename):
+        raise NotImplementedError()
+
     def clear_metas(self):
         pass
 
-    def reverse_meta(self):
+    def __repr__(self):
+        return "<%s instance %x>" % (str(self.__class__), id(self))
 
+    def reverse_meta(self):
         self.keys_on_pages = dict()
         self.vals_on_pages = dict()
         self.vals_on_keys = dict()
@@ -100,6 +107,3 @@ class GraphDataBase(UserDict.DictMixin):
                 for val in value['meta'][key]:
                     self.vals_on_pages.setdefault(val, set()).add(page)
                     self.vals_on_keys.setdefault(key, set()).add(val)
-
-
-

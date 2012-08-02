@@ -53,9 +53,9 @@ class GetCookie(ActionBase):
 
     def do_action_finish(self, success):
         if success:
-            self.request.emit_http_headers(['Content-Type: application/octet-stream',
-                                            'Content-Disposition: attachment; ' +
-                                            'filename="%s"' % self.filename])
+            self.request.headers['Content-Type'] = 'application/octet-stream'
+            self.request.headers['Content-Disposition'] = 'attachment; ' + \
+                                     'filename="%s"' % self.filename
             self.request.write(self.cookie)
         else:
             self.render_msg(self.make_form(), "dialog")
@@ -103,9 +103,9 @@ def execute(pagename, request):
             return
 
         filename = "license.key"
-        request.emit_http_headers(['Content-Type: application/octet-stream',
-                                   'Content-Disposition: attachment; ' +
-                                   'filename="%s"' % filename])
+        request.headers['Content-Type'] = 'application/octet-stream',
+        request.headers['Content-Disposition'] = 'attachment; ' + \
+            'filename="%s"' % filename
         request.write(cookie.data)
     else:
         GetCookie(pagename, request).render()

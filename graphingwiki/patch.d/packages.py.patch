@@ -1,6 +1,6 @@
---- ./MoinMoin/packages.py.orig	2011-11-28 20:40:57.000000000 +0000
-+++ ./MoinMoin/packages.py	2012-07-29 18:03:00.815764829 +0000
-@@ -535,10 +535,16 @@
+--- ./MoinMoin/packages.py.orig	2012-02-07 23:36:48.000000000 +0200
++++ ./MoinMoin/packages.py	2012-07-29 21:55:05.228743904 +0300
+@@ -529,6 +529,12 @@ class ZipPackage(Package, ScriptEngine):
  
  def main():
      args = sys.argv
@@ -13,15 +13,10 @@
      if len(args)-1 not in (2, 3) or args[1] not in ('l', 'i'):
          print >> sys.stderr, """MoinMoin Package Installer v%(version)i
  
--%(myname)s action packagefile [request URL]
-+%(myname)s [-u <username>] action packagefile [request URL]
- 
- action      - Either "l" for listing the script or "i" for installing.
- packagefile - The path to the file containing the MoinMoin installer package
-@@ -562,6 +568,8 @@
-     from MoinMoin.request import request_cli
-     request = request_cli.Request(url=request_url)
-     request.form = request.args = request.setup_args()
+@@ -555,6 +561,8 @@ Example:
+     # Setup MoinMoin environment
+     from MoinMoin.web.contexts import ScriptContext
+     request = ScriptContext(url=request_url)
 +    if myusername:
 +        request.user = user.User(request, auth_username=myusername)
  

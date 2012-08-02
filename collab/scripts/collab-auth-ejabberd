@@ -3,7 +3,7 @@
 """
 collab-auth-ejabberd: Provide external auth for ejabberd against collab
 
-@copyright: 2009-2010 by Mika Sepp‰nen, Marko Laakso, Joachim Viide
+@copyright: 2009-2010 by Mika Sepp√§nen, Marko Laakso, Joachim Viide
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
@@ -30,9 +30,13 @@ log.load_config(mylogconf)
 logging = log.getLogger("collab-auth")
 logging.debug("collab-auth started")
 
+# We need to import contexts before importing users, because otherwise
+# the relative imports in MoinMoin will fail.
+import MoinMoin.web.contexts
 from MoinMoin.user import User
 from MoinMoin.config import multiconfig
-from MoinMoin.request.request_cli import Request
+
+from graphingwiki import RequestCLI
 
 os.chdir(myhtmldir)
 
@@ -70,7 +74,7 @@ class RequestCache(object):
         except:
             pass
 
-        request = Request(pagename=pagename)
+        request = RequestCLI(pagename)
         sys.path.remove(myconfig)
         return request
 
@@ -111,7 +115,7 @@ def checkAccess(user, wiki):
         return False
 
     isgroup = r.cfg.cache.page_group_regexact.search
-    members = [m for m in r.dicts.members("AccessGroup") if not isgroup(m)]
+    members = [m for m in r.groups.get("AccessGroup") if not isgroup(m)]
     return user in members
 
 def from_ejabberd():

@@ -27,8 +27,8 @@
 """
 
 import MoinMoin.wikiutil as wikiutil
-from MoinMoin.Page import Page
-from graphingwiki.util import format_wikitext
+
+from graphingwiki import values_to_form
 
 try:
     import simplejson as json
@@ -38,15 +38,17 @@ except ImportError:
 def execute(pagename, request):
     request.content_type = "application/json"
 
-    args = request.form.get('args', [None])[0]
+    form = values_to_form(request.values)
+
+    args = form.get('args', [None])[0]
     if not args:
         args = pagename
 
-    handle = request.form.get('handle', [None])[0]
+    handle = form.get('handle', [None])[0]
     if handle:
         handle = str(handle)
 
-    getvalues = request.form.get('getvalues', [None])[0]
+    getvalues = form.get('getvalues', [None])[0]
     if getvalues:
         args = "%s=/.+/" % getvalues
 

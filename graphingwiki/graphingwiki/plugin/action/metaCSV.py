@@ -6,22 +6,27 @@ import urllib
 import csv
 
 from MoinMoin import wikiutil
+
 from graphingwiki.editing import getmeta_to_table
 from graphingwiki.util import encode_page
+from graphingwiki import values_to_form
 
 def execute(pagename, request):
     # Strip non-ascii chars in header
     pagename_header = '%s.csv' % (pagename)
     pagename_header = pagename_header.encode('ascii', 'ignore')
     
-    request.emit_http_headers(['Content-Type: text/csv; charset=UTF-8',
-                               'Content-Disposition: attachment; ' +
-                               'filename="%s"' % pagename_header])
+    request.content_type = 'text/csv; charset=UTF-8'
+    request.headers['Content-Disposition'] = \
+        'attachment; filename="%s"' % pagename_header
     GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta')
     class x: pass
     x.request = request
+
+    form = values_to_form(request.values)
+
     try:
-        args = request.args['args'][0]
+        args = form['args'][0]
     except (KeyError, IndexError):
         args = u''
 
@@ -29,7 +34,7 @@ def execute(pagename, request):
     table = getmeta_to_table(table)
     if 0:
         print '--', table, '--'
-        print 'args', request.args
+        print 'args', args
         print 'pagename', pagename
 
     writer = csv.writer(request, delimiter=';')

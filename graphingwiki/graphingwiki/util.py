@@ -161,8 +161,6 @@ def cache_key(request, parts):
 def enter_page(request, pagename, title):
     _ = request.getText
 
-    request.emit_http_headers()
-
     title = _(title)
     request.theme.send_title(title,
                              pagename=pagename)
@@ -181,6 +179,7 @@ def exit_page(request, pagename):
     request.write(request.page.formatter.endContent()) # end content div
     # Footer
     request.theme.send_footer(pagename)
+    request.write(request.page.formatter.endDocument())
     request.theme.send_closing_html()
 
 # Encoder from unicode to charset selected in config
@@ -218,16 +217,16 @@ def url_parameters(args):
 
     return req_url
 
-def url_construct(request, args, name=''):
-    if not name:
-        name = request.page.page_name 
-
-    req_url = request.getScriptname() + u'/' + name
+def url_construct(request, args, pagename=''):
+    if pagename:
+        req_url = request.url_root + pagename
+    else:
+        req_url = request.base_url
 
     if args:
         req_url += url_parameters(args)
 
-    return request.getQualifiedURL(req_url)
+    return req_url
 
 def make_tooltip(request, pagename, format=''):
     if not request.user.may.read(pagename):
@@ -523,7 +522,8 @@ def delete_moin_caches(request, pageitem):
     pageitem.set_raw_body(None)
 
     # clean the in memory acl cache
-    pageitem.clean_acl_cache()
+    # XXX gone in moin 1.9
+    # pageitem.clean_acl_cache()
 
     request.graphdata.cache = dict()
 

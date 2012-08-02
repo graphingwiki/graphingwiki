@@ -35,20 +35,18 @@
 import os
 import urllib
 
-from graphingwiki import cairo, cairo_found
-
 from tempfile import mkstemp
 
 from MoinMoin.Page import Page
-from MoinMoin.request.request_modpython import Request as RequestModPy
 
+from graphingwiki import cairo, cairo_found, values_to_form
 from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
-    request.emit_http_headers(['Content-Type: image/png'])
+    request.content_type = 'image/png'
 
 def cairo_not_found():
-    request.emit_http_headers(['Content-Type: text/plain'])
+    request.content_type = 'text/plain'
     request.write(_("ERROR: Cairo Python extensions not installed. " +\
                        "Not performing layout."))
 
@@ -262,9 +260,11 @@ def execute(pagename, request):
     # Handle GET arguments
     params = {'page': '', 'key': '', 'points': 0, 'style': ''}
 
+    form = values_to_form(request.values)
+
     for attr in ['page', 'key', 'points', 'style']:
-        if request.form.has_key(attr):
-            val = ''.join([x for x in request.form[attr]])
+        if form.has_key(attr):
+            val = ''.join([x for x in form[attr]])
 
             if attr == 'points':
                 try:

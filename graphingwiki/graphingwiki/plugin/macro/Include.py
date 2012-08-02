@@ -62,12 +62,13 @@ def execute(macro, text):
             # Hook send_page into sending a div before and after each
             # included page
             def new_send_page(self, **keywords):
-                self.request.write(self.formatter.div(True, 
-                                                      css_class='gwikiinclude', 
-                                                      id=id_escape(self.page_name) + \
-                                                          SEPARATOR))
+                self.request.write(
+                    self.request.formatter.div(True, 
+                                               css_class='gwikiinclude', 
+                                               id=id_escape(self.page_name) + \
+                                                   SEPARATOR))
                 orig_send_page(self, **keywords)
-                self.request.write(self.formatter.div(False))
+                self.request.write(self.request.formatter.div(False))
             Page.send_page = new_send_page
 
             # Additions that only account for includes of specific pages

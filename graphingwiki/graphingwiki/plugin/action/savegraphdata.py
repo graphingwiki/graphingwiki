@@ -48,18 +48,12 @@ from graphingwiki.editing import parse_categories
 def parse_text(request, page, text):
     pagename = page.page_name
     
-    from copy import copy
-    newreq = copy(request)
-    newreq.cfg = copy(request.cfg)
+    newreq = request
     newreq.page = lcpage = LinkCollectingPage(newreq, pagename, text)
-    newreq.theme = copy(request.theme)
-    newreq.theme.request = newreq
-    newreq.theme.cfg = newreq.cfg
     parserclass = importPlugin(request.cfg, "parser",
                                    'link_collect', "Parser")
-    import MoinMoin.wikiutil as wikiutil
-    myformatter = wikiutil.importPlugin(request.cfg, "formatter",
-                                      'nullformatter', "Formatter")
+    myformatter = importPlugin(request.cfg, "formatter",
+                               'nullformatter', "Formatter")
     lcpage.formatter = myformatter(newreq)
     lcpage.formatter.page = lcpage
     p = parserclass(lcpage.get_raw_body(), newreq, formatter=lcpage.formatter)
@@ -85,10 +79,10 @@ def parse_text(request, page, text):
             new_data.setdefault(pagename, dict())['acl'] = acls
 
     for metakey, value in p.definitions.iteritems():
-        for type, item in value:
+        for ltype, item in value:
             dnode = None
 
-            if  type in ['url', 'wikilink', 'interwiki', 'email']:
+            if  ltype in ['url', 'wikilink', 'interwiki', 'email']:
                 dnode = item[1]
                 if '#' in dnode:
                     # Fix anchor links to point to the anchor page
@@ -109,19 +103,19 @@ def parse_text(request, page, text):
                     dnode = AbsPageName(pagename, dnode)
 
                 hit = item[0]
-            elif type == 'category':
+            elif ltype == 'category':
                 # print "adding cat", item, repr(categories)
                 dnode = item
                 hit = item
                 if item in categories:
                     add_link(new_data, pagename, dnode, 
                              u"gwikicategory")
-            elif type == 'meta':
+            elif ltype == 'meta':
                 add_meta(new_data, pagename, (metakey, item))
-            elif type == 'include':
+            elif ltype == 'include':
                 # No support for regexp includes, for now!
                 if not item[0].startswith("^"):
-                    included = wikiutil.AbsPageName(pagename, item[0])
+                    included = AbsPageName(pagename, item[0])
                     add_link(new_data, pagename, included, u"gwikiinclude")
 
             if dnode:
@@ -554,8 +548,8 @@ class LinkCollectingPage(Page):
     # using the default parser
     def send_page_content(self, request, notparser, body, format_args='',
                           do_cache=0, **kw):
-        self.parser = wikiutil.importPlugin(request.cfg, "parser",
-                                       'link_collect', "Parser")
+        self.parser = importPlugin(request.cfg, "parser",
+                                   'link_collect', "Parser")
 
         kw['format_args'] = format_args
         kw['do_cache'] = 0

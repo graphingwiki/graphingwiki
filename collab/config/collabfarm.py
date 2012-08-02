@@ -8,8 +8,11 @@ class FarmConfig(DefaultConfig):
 
     shared_intermap = '/srv/wikis/collab/config/intermap.txt'
 
+    # Mail setup, configure if you need mail support
     #mail_smarthost = ''
     #mail_from = ''
+    # Invite default domain, configure if you need invite
+    #invite_sender_default_domain = ''
 
     navi_bar = [
         u'CollabList',
@@ -36,8 +39,9 @@ class FarmConfig(DefaultConfig):
 
     chart_options = {'width': 600, 'height': 300}
 
-    from MoinMoin.auth.http import HTTPAuth
-    auth = [HTTPAuth(autocreate=False)]
+    from MoinMoin.auth import GivenAuth
+    auth = [GivenAuth(autocreate=False)]
+    auth_methods_trusted = ['given', 'xmlrpc_applytoken']
 
     cookie_path = '/collab/'
 
@@ -81,8 +85,8 @@ class FarmConfig(DefaultConfig):
         " collab:admin,read,write All:"
 
     # Add your superusers to these lines
-    #acl_rights_before  = u"superuser:read,write,admin,delete,revert,invite"
-    superuser = [] 
+    acl_rights_before  = u"collab:read,write,admin,delete,revert,invite"
+    superuser = ['collab']
 
     # for standalone
     port = 10010

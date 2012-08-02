@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+
+"""
+Shelve backend for gwiki
+
+This is the original gwiki backend. It's slow, it occasionally
+corrupts itself and it's pessimal at concurrency (uses a lock file).
+Needless to say, it doesn't do ACID.
+
+"""
 import itertools
 import shelve
 import random
@@ -81,11 +91,13 @@ class _Lock(object):
         return True
 
 class GraphData(GraphDataBase):
+    is_acid = False
+
     UNDEFINED = object()
 
-    def __init__(self, request):
+    def __init__(self, request, **kw):
         log.debug("shelve graphdb init")
-        GraphDataBase.__init__(self, request)
+        GraphDataBase.__init__(self, request, **kw)
 
         gddir = os.path.join(request.cfg.data_dir, 'graphdata')
         if not os.path.isdir(gddir):
@@ -209,13 +221,24 @@ class GraphData(GraphDataBase):
         self.readlock()
         return page in self.db
 
-    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, acl, mtime, saved):
+    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, 
+                                                  acl, mtime, saved):
         pagedata = self.getpage(pagename)
         pagedata[u'meta'] = newmeta
         pagedata[u'acl'] = acl
         pagedata[u'mtime'] = mtime
         pagedata[u'saved'] = saved
         self.savepage(pagename, pagedata)
+
+    def clear_page(self, pagename):
+        if self.get_in(pagename):
+            pagedata = self.getpage(pagename)
+            pagedata[u'saved'] = False
+            pagedata[u'meta'] = dict()
+            pagedata[u'out'] = dict()
+            self.savepage(pagename, pagedata)
+        else:
+            self.delpage(pagename)
 
     def readlock(self):
         if self._writelock.is_locked():
