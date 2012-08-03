@@ -29,6 +29,8 @@
 import MoinMoin.wikiutil as wikiutil
 
 from graphingwiki import values_to_form
+from MoinMoin.Page import Page
+from graphingwiki.util import format_wikitext
 
 try:
     import simplejson as json
@@ -66,7 +68,7 @@ def execute(pagename, request):
 
         out[2] = (out[2][0], filtered)
     
-    if request.form.get('formatted', [None])[0]:
+    if form.get('formatted', [None])[0]:
         formatted = dict()
 
         for page, metas in out[2][1].items():
