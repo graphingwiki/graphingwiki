@@ -51,7 +51,7 @@ def parse_editform(request, form):
 
     for key in request.files:
         f = request.files[key]
-        if f.filename == None:
+        if not f.filename:
             continue
 
         fileobj = f.stream
