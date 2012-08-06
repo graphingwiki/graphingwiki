@@ -85,26 +85,27 @@ def execute(pagename, request):
 
 
     elif util == "getProperties":
-        key = request.form.get('key', [''])[0]
+        key = form.get('key', [''])[0]
         json.dump(get_properties(request, key), request)
         return
 
     elif util == "uploadFile":
         from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 
-        form = request.form
-        overwrite = form.get('overwrite', 0)
-
+        try:
+            overwrite = int(form.get('overwrite', ['0'])[0])
+        except:
+            overwrite = 0
+        
         response = dict(success=list(), failed=list())
-        for key in form:
-            if key.endswith("__filename__"):
-                filename = form.get(key, None)
-                fileobj = form.get(key[:-12], [None])[-1]
-                try:
-                    t,s = add_attachment(request, pagename, filename, fileobj, overwrite=overwrite)
-                    response['success'].append(filename)
-                except AttachmentAlreadyExists:
-                    response['failed'].append(filename)
+        for name in request.files:
+            _file = request.files.get(name)
+            filename = _file.filename
+            try:
+                t,s = add_attachment(request, pagename, filename, _file.stream, overwrite=overwrite)
+                response['success'].append(filename)
+            except AttachmentAlreadyExists:
+                response['failed'].append(filename)
 
 
         json.dump(response ,request)
