@@ -343,22 +343,19 @@ def execute(pagename, request):
             # Ignore form clutter
             ignore = set()
             files = dict()
-            for key in form:
-                if key.endswith("__filename__"):
-                    ignore.add(key)
-                    ignore.add(key[:-12])
-                    filename = form.get(key, None)
-                    fileobj = form.get(key[:-12], [None])[-1]
-                    if not filename and not fileobj:
-                        continue
+            for key in request.files:
+                ignore.add(key)
+                _file = request.files.get(key)
+                filename = _file.filename
+                fileobj = _file.stream
 
 #                    if type(fileobj) != file:
 #                        continue
 
-                    banana = key.split(SEPARATOR)
-                    keys = files.setdefault(banana[0], dict())
-                    values = keys.setdefault(banana[1], list())
-                    values.append((filename, fileobj))
+                banana = key.split(SEPARATOR)
+                keys = files.setdefault(banana[0], dict())
+                values = keys.setdefault(banana[1], list())
+                values.append((filename, fileobj))
 
             keys = list()
             for key in form:
