@@ -313,7 +313,7 @@ class GraphingWiki(Wiki):
         categories = keys.pop("category", list())
 
         return self.request("SetMeta", page, keys, metaMode,
-                            categoryMode, categories,
+                            True, categoryMode, categories,
                             template)
 
     def incSetMeta(self, cleared, discarded, added):
