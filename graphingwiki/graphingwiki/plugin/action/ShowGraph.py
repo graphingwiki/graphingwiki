@@ -113,7 +113,7 @@ def url_reconstruct(environ):
                url += ':' + environ['SERVER_PORT']
 
     url += environ.get('SCRIPT_NAME', '')
-    url += environ.get('PATH_INFO', '')
+    url += decode_page(environ.get('PATH_INFO', ''))
     if environ.get('QUERY_STRING'):
         url += '?' + environ['QUERY_STRING']
     return url
