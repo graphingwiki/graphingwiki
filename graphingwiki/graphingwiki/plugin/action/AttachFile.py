@@ -93,4 +93,5 @@ def _do_diff(pagename, request):
 
 AttachFile._do_diff = _do_diff
 
+info = AttachFile.info
 execute = AttachFile.execute
