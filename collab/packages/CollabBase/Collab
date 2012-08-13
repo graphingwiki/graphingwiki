@@ -1,0 +1,31 @@
+Welcome to collaborate in the "<<GetMetaData(CollabFacts, name)>>" instance. 
+
+ * You can find the main content of this collaboration instance from the [[FrontPage | front page]]
+ * You can grant access to other users by <<Action(Invite, inviting them)>>
+ * You can see who have access here from the [[AccessGroup | access group page]]
+ * You can change your password from the <<Action(userprefs, user preferences)>>
+ * You can chat with others collaborating on this same instance from the [[#chat | Collab Chat]] on this page
+ * You can navigate to the other instances you have access to from the [[#list | Collab List]] on this page
+ * You can always return to this page by clicking the leftmost [[Collab]]-tab on each page
+
+<<Anchor(chat)>>
+= Collab Chat =
+
+{{{
+#!wiki tip
+You can chat with the others collaborating on this same instance by typing at the bottom of the chat window below.
+}}}
+
+<<CollabChat>>
+
+<<Anchor(list)>>
+= Collab List =
+
+{{{
+#!wiki tip
+Please find the instances you have access to from the list below. For maximal security and strict access control each collaboration instance is an isolated environment. For example, RecentChanges page of each instance is separate.
+}}}
+
+<<CollabList>>
+
+You can always return to this page by clicking the [[Collab]]-tab.

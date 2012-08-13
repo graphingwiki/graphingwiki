@@ -1,0 +1,10 @@
+{{{
+#!wiki tip
+
+If you are an existing user you can use the <<Action(Invite, invite action)>> to invite someone else to collaborate. An invitation email ([[InviteNewTemplate | template for new users]] or [[InviteOldTemplate | template for old users]]) will be sent and the account and password created automagically if needed. Inviting from AccessGroup page will authorize the invited user to access this collab.
+}}}
+
+{{{
+#!wiki important
+Alternatively you can create the user with the <<Action(newaccount, new account action)>>. This allows you to choose the password. Please always supply a valid email address!
+}}}

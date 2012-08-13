@@ -1,0 +1,20 @@
+Subject: Welcome to collaborate!
+From: @INVITEREMAIL@
+To: @INVITEDEMAIL@
+Bcc: @INVITEREMAIL@
+
+Hello @INVITEDUSER@, 
+
+You have been invited to collaborate by @INVITERUSER@.
+
+You can access the collaboration environment by using the link
+@PAGEURL@
+
+You have an existing collab account @INVITEDUSER@.
+
+If you have forgotten your password, please check out the link
+@SERVERURL@/ForgottenPassword
+
+Best Regards,
+
+-Collab administration

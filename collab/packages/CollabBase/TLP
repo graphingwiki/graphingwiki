@@ -1,0 +1,24 @@
+''The Traffic Light Protocol (TLP) was created in order to encourage
+greater sharing of information. In order to encourage the sharing of
+sensitive information, however, the originator needs to signal how
+widely they want their information to be circulated beyond the
+immediate recipient, if at all.
+
+The TLP provides a simple method to achieve this. It is designed to
+improve the flow of information between individuals, organisations or
+communities in a controlled and trusted way. It is important that
+everyone understands and obeys the rules of the protocol. Only then
+can trust be established and the benefits of information sharing
+realised. The TLP is based on the concept of the originator labeling
+information with one of four colours to indicate what further
+dissemination, if any, can be undertaken by the recipient. The
+recipient must consult the originator if wider dissemination is
+required.'' -- [[http://en.wikipedia.org/wiki/Traffic_Light_Protocol | From Wikipedia, the free encyclopedia]]
+
+<<Include(/Red)>>
+
+<<Include(/Amber)>>
+
+<<Include(/Green)>>
+
+<<Include(/White)>>

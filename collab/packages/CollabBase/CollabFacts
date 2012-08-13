@@ -1,0 +1,14 @@
+Some facts about this collaboration instance. These are used to build the CollabList.
+
+----
+## if name is empty then wiki's short name is used
+  name:: 
+
+## if description is empty then no description is shown
+  description:: 
+
+## if URL is left empty then default URL is used
+  URL:: 
+----
+
+{i} Allow up to one minute for the CollabList to update after changing these facts.

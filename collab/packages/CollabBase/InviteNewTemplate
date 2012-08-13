@@ -1,0 +1,22 @@
+Subject: Welcome to collaborate!
+From: @INVITEREMAIL@
+To: @INVITEDEMAIL@
+Bcc: @INVITEREMAIL@
+
+Hello @INVITEDUSER@, 
+
+You have been invited to collaborate by @INVITERUSER@.
+
+You can access the collaboration environment by using the link
+@PAGEURL@
+
+Please log in using the username and password given below.
+
+User Name: @INVITEDUSER@ 
+Password:  @INVITEDPASSWORD@
+
+You should change your password from user 'Settings' after login.
+
+Best Regards,
+
+-Collab administration

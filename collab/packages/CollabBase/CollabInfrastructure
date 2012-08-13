@@ -1,0 +1,58 @@
+= Infrastructure =
+
+At the center of the stage with you we have a managed service for collaboration.
+We provide a browser based user interface, integration of 3rd party tools for information exchange, workflows and document templates. Depending on your needs the portal is available both as a ''secure hosting'' edition or as a ''golden cage'' edition.
+
+== Features ==
+
+ * Centralized but low overhead information sharing
+ * Collaboration between the stakeholders
+ * Integration of 3rd party tools for information exchange
+ * Workflows and document templates
+ * Configuration management
+ * Centralized reporting
+ * Improved situation awareness
+ * Control through limiting access only to the relevant people
+
+== Technology ==
+
+ * Open Collaboration concept giving compatibility over wide variety of use cases
+ * Browser based user interface based on Wiki technology, partially localized 
+ in the following languages:
+    * Bulgarian, Croatian, Czech, Danish, Dutch, Finnish, French, German, Hebrew, Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Norwegian Bokmal, Polish, Portuguese, Romanian, Russian, Serbian, Simplified Chinese, Spanish, Swedish, Traditional Chinese and Turkish
+ * An XML based API for tool integration based on object database technology
+ * User and access management
+ * Backups
+ * Audit trails, change tracking and version history
+ * Fine grained and role based access control lists
+ * RSS feed of recent changes
+ * Tailorable themes for client specific appearance
+
+== Secure Hosting Edition ==
+
+ * Digital security
+   * Encrypted connections
+   * Continuous security patching 
+   * Proactive security-conscious service configurations
+   * Maintenance by world famous security experts
+
+ * High availability  
+   * Robust battery-assured power feeds
+   * Fault resistant air conditioning with concurrent chillers
+   * High-performance business platform 
+   * Automatic service monitoring
+   
+ * Well connected
+  * Globally and always<<FootNote(Requires Internet connection)>> accessible based on fine grained access control
+
+ * Safety 
+   * Class E160 fire alarm system
+   * 24/7 Video surveillance 
+   * Physical Access Control with audit trail of all the visitors
+   * Burglary safe data centres, located in Helsinki, London, New York, San Fransico, Singapore
+
+== Golden Cage Edition ==
+
+For isolated networks and other demanding scenarios we provide planning and deployment for standalone installations.
+
+----

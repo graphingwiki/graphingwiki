@@ -1,0 +1,14 @@
+MoinMoinPackage|1
+ReplaceUnderlay|CategoryTemplate|CategoryTemplate
+ReplaceUnderlay|InviteNewTemplate|InviteNewTemplate
+ReplaceUnderlay|InviteOldTemplate|InviteOldTemplate
+ReplaceUnderlay|Collab|Collab
+ReplaceUnderlay|CollabList|CollabList
+ReplaceUnderlay|CollabFacts|CollabFacts
+ReplaceUnderlay|CollabInfrastructure|CollabInfrastructure
+ReplaceUnderlay|NewUser|NewUser
+ReplaceUnderlay|TLP-Red|TrafficLightProtocol/Red
+ReplaceUnderlay|TLP-Amber|TrafficLightProtocol/Amber
+ReplaceUnderlay|TLP-Green|TrafficLightProtocol/Green
+ReplaceUnderlay|TLP-White|TrafficLightProtocol/White
+ReplaceUnderlay|TLP|TrafficLightProtocol
