@@ -79,7 +79,6 @@ def main():
         print "NOTE: Getting pages from", url, "with", repr(search)
     metas = src_collab.getMeta(search)
 
-    basedir = tempfile.mkdtemp(prefix="temp")
     for page, v in metas.iteritems():
         content = ""
         if verbose:
@@ -96,19 +95,14 @@ def main():
             if verbose:
                 print "NOTE: downloading attachments for page", page
             attachments = src_collab.listAttachments(page)
-            dpath = os.path.abspath(basedir + "/" + page)
-            if not dpath.startswith(basedir):
-                sys.exit("%s not under temporary base directory." % dpath)
-            try:
-                os.makedirs(dpath)
-            except OSError, error:
-                sys.exit("ERROR: Couldn't create directory %s" % dpath)
-            else:
-                if verbose:
-                    print "NOTE: Created temporary directory", dpath
+
+            tempdir = tempfile.mkdtemp(prefix="opencollab")
+            if verbose:
+                print "NOTE: Created temporary directory", tempdir
+
             for num, attachment in enumerate(attachments):
                 try:
-                    downloadFile(src_collab, page, attachment, dpath, verbose)
+                    downloadFile(src_collab, page, attachment, tempdir, verbose)
                 except IOError, error:
                     sys.exit(error)
             if verbose:
@@ -123,7 +117,7 @@ def main():
             if verbose:
                 print "NOTE: Uploading attachments to page", page
             for num, wikiname in enumerate(attachments):
-                file = os.path.join(dpath, wikiname)
+                file = os.path.join(tempdir, wikiname)
                 uploadFile(dst_collab, page, file, wikiname, progress)
                 try:
                     os.unlink(file)
@@ -133,12 +127,12 @@ def main():
                     if verbose:
                         print "NOTE: Removed", file, "successfully."
             try:
-                os.removedirs(dpath)
+                os.rmdir(tempdir)
             except OSError:
-                print "ERROR: Couldn't remove directory", dpath
+                print "ERROR: Couldn't remove directory", tempdir
             else:
                 if verbose:
-                    print "NOTE: Removed", dpath, "successfully."
+                    print "NOTE: Removed", tempdir, "successfully."
             if ops[sect]["move"]:
                 try:
                     src_collab.deletePage(page)
