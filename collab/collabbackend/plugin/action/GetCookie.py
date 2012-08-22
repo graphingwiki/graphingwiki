@@ -8,6 +8,7 @@ from MoinMoin.action import ActionBase
 from collabbackend.plugin.xmlrpc.ClarifiedCookie import execute as generateCookie
 
 from graphingwiki.editing import get_metas
+from graphingwiki import values_to_form
 
 SECONDS_IN_DAY = 24 * 60 * 60
 
@@ -28,7 +29,7 @@ class GetCookie(ActionBase):
         return may.read(self.pagename)
     
     def do_action(self):
-        form = self.form
+        form = values_to_form(self.request.values)
         days = form.get('days', [u''])[0]
         days = wikiutil.clean_input(days)
 
