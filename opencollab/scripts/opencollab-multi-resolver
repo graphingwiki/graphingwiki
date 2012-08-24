@@ -17,14 +17,14 @@ from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.network import dns_blacklist, mr_attributes
 
 MR_KEYS = [
-    'A', 'AAAA', 'ALLOCATED', 'AS', 'AS-NAME', 'ATTRIBUTION',
-    'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX10', 'MX100',
-    'MX1000', 'MX11', 'MX110', 'MX15', 'MX19', 'MX2', 'MX20',
-    'MX200', 'MX3', 'MX30', 'MX300', 'MX40', 'MX400', 'MX42',
-    'MX5', 'MX50', 'MX60', 'MX69', 'MX90', 'MX900', 'MX999',
-    'NETWORK', 'NS', 'PTR', 'REGISTRY', 'SOA', 'SOA-EMAIL',
-    'SOA-EXPIRE', 'SOA-MINIMUM', 'SOA-REFRESH', 'SOA-RETRY',
-    'SOA-SERIAL', 'SRV', 'TYPE'
+    'A', 'AAAA', 'ALLOCATED', 'AS', 'ABUSE-CONTACT', 'AS-NAME',
+    'ATTRIBUTION', 'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX1',
+    'MX10', 'MX100', 'MX1000', 'MX11', 'MX110', 'MX15', 'MX19',
+    'MX2', 'MX20', 'MX200', 'MX3', 'MX30', 'MX300', 'MX40',
+    'MX400', 'MX42', 'MX5', 'MX50', 'MX60', 'MX69', 'MX90',
+    'MX900', 'MX999', 'NETWORK', 'NS', 'PTR', 'REGISTRY', 'SOA',
+    'SOA-EMAIL', 'SOA-EXPIRE', 'SOA-MINIMUM', 'SOA-REFRESH',
+    'SOA-RETRY', 'SOA-SERIAL', 'SRV', 'TYPE'
 ]
 
 
@@ -47,6 +47,7 @@ def expand_ipv4(rr, new):
     rev = re.split('\.', rr)
     rev.reverse()
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
+    new.append('.'.join(rev) + ".abuse-contacts.abusix.org;TXT")
 
 
 def expand_ipv6(rr, new):
