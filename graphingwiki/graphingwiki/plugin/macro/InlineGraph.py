@@ -91,18 +91,19 @@ def execute(macro, args):
     old_url = getattr(request, 'url', '')
 
     request.page = Page(request, pagename)
+    request.formatter.page = request.page
     request.values = CombinedMultiDict([MultiDict(args)])
 
-    req_url = url_construct(request, args)
+    req_url = url_construct(request, args, pagename)
     urladd = '?' + req_url.split('?')[1]
-
-    request.url = url_construct(request, args, pagename)
+    request.url = req_url
 
     request.write(u'<div class="inlinegraph">')
     graphshower(request.page.page_name, request, 
                 urladd=urladd, app_page=request.page.page_name, inline=1)
 
     request.page = old_page
+    request.formatter.page = old_page
     request.values = old_values
     del request.url
     if old_url:
