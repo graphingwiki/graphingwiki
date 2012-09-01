@@ -243,7 +243,13 @@ class GraphingWiki(Wiki):
                 seekableStream.seek(offset)
                 data = seekableStream.read(length)
 
-                self.putCacheFile(page, digest, data, overwrite=True)
+                try:
+                    self.putCacheFile(page, digest, data, overwrite=True)
+                except WikiFailure, e:
+                    if e.fault.faultString == 'No such method: PageCache.':
+                        self.putAttachment(page, digest, data, overwrite=True)
+                    else:
+                        raise
 
                 count += 1
                 done += length
