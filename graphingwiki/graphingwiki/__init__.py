@@ -83,9 +83,17 @@ def values_to_form(values):
 
 # Finding dependencies centrally
 
+pil_found = False
+pil_image = None
+
+try:
+    from PIL import Image as pil_image
+    pil_found = True
+except ImportError:
+    pass
+
 gv_found = True
 gv = None
-
 
 try:
     import gv

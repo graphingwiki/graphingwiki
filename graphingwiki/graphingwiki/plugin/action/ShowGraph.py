@@ -48,7 +48,7 @@ from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki import gv_found, igraph_found, actionname, \
-    url_escape, values_to_form
+    url_escape, values_to_form, pil_found, pil_image
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
@@ -717,11 +717,63 @@ class GraphShower(object):
                 else:
                     page = '/'.join(components[:-1])
                 fname = components[-1]
-
+                fname = fname.split('|')[0]
+                imgwidth = None
+                imgheight = None
+                if '|' in components[-1]:
+                    try:
+                        if 'height=' in components[-1]:
+                            imgheight = components[-1].split('height=')[-1]
+                            if imgheight:
+                                imgheight = float(imgheight)
+                        if 'width=' in components[-1]:
+                            imgwidth = components[-1].split('width=')[-1]
+                            if imgwidth:
+                                imgwidth = float(imgwidth)
+                    except ValueError:
+                        pass
+                
                 shapefile, exists = attachment_file(self.request, page, fname)
 
                 # get attach file path, empty label
+
                 if exists:
+                    if pil_found:
+                        ckey = cache_key(self.request, (page, value))
+                        if cache_exists(self.request, ckey):
+                            shapefile = cache._get_datafile(self.request, ckey)
+                        else:
+                            self.request.write("here")
+                            img = pil_image.open(shapefile)
+                            save_needed = False
+                            if imgwidth or imgheight:
+                                save_needed = True
+                                w, h = img.size
+                                if imgwidth:
+                                    ratio = imgwidth / w
+                                    w = imgwidth
+                                    h = ratio * h
+                                if imgheight:
+                                    ratio = imgheight / h
+                                    h = imgheight
+                                    w = ratio * w
+                                size = (int(w), int(h))
+                                img.thumbnail(size, pil_image.ANTIALIAS)
+                            if img.format != "PNG":
+                                save_needed = True
+                            if save_needed:
+                                tmp_fileno, tmp_name = mkstemp('.png')
+                                img.save(tmp_name, 'PNG')
+                                f = file(tmp_name)
+                                data = f.read()
+                                os.close(tmp_fileno)
+                                os.remove(tmp_name)
+                                cache.put(self.request, ckey, data, 
+                                          content_type="image/png")
+                                shapefile = cache._get_datafile(self.request, 
+                                                                ckey)._filename()
+                                self.request.write(shapefile)
+
                     # No sense to present shapefile path with dot output
                     if self.format == 'dot':
                         obj.gwikiimage = fname
