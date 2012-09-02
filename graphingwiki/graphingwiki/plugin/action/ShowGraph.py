@@ -736,14 +736,16 @@ class GraphShower(object):
                 shapefile, exists = attachment_file(self.request, page, fname)
 
                 # get attach file path, empty label
-
                 if exists:
                     if pil_found:
                         ckey = cache_key(self.request, (page, value))
                         if cache_exists(self.request, ckey):
-                            shapefile = cache._get_datafile(self.request, ckey)
+                            shapefile = cache._get_datafile(self.request, 
+                                                            ckey)._filename()
                         else:
-                            self.request.write("here")
+                            # If the image is not in in png format, or
+                            # we need to resize the image, make a
+                            # cached version of the modified image
                             img = pil_image.open(shapefile)
                             save_needed = False
                             if imgwidth or imgheight:
@@ -770,9 +772,9 @@ class GraphShower(object):
                                 os.remove(tmp_name)
                                 cache.put(self.request, ckey, data, 
                                           content_type="image/png")
-                                shapefile = cache._get_datafile(self.request, 
-                                                                ckey)._filename()
-                                self.request.write(shapefile)
+                                shapefile = \
+                                    cache._get_datafile(self.request, 
+                                                        ckey)._filename()
 
                     # No sense to present shapefile path with dot output
                     if self.format == 'dot':
