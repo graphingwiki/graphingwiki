@@ -365,8 +365,12 @@ def get_url_ns(request, pagename, link):
     else:
         return '../' * subrank + './%sProperty' % (link)
 
-def format_wikitext(request, data):
+def format_wikitext(request, data, pagename=None):
     from MoinMoin.parser.text_moin_wiki import Parser
+
+    if pagename:
+        oldpage = request.page
+        request.page = Page(request, pagename)
 
     request.page.formatter = request.formatter
     request.formatter.page = request.page
@@ -389,6 +393,9 @@ def format_wikitext(request, data):
     # Produces output on a single table cell
     request.page.format(parser)
     request.redirect()
+
+    if pagename:
+        request.page = oldpage
 
     return data.getvalue().strip()
 

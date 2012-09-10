@@ -79,7 +79,7 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 def wrap_span(request, pagename, key, data, id):
-    fdata = format_wikitext(request, data)
+    fdata = format_wikitext(request, data, pagename)
 
     if not key:
         return fdata
