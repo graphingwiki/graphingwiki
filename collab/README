@@ -1,7 +1,8 @@
 # Full installation instructions for graphingwiki on collabbackend.
 # The script is assumed to be run as root.  These instructions have
 # undergone some testing on Ubuntu versions 10.0.4 and 10.10, and may
-# actually miss some of the major errors.
+# actually miss some of the major errors. It also seems to work on
+# 12.0.4, though you need to use replace python2.6 with python2.7.
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -86,7 +87,7 @@ apt-get install python-igraph
 ## Get moin, gwiki sources. Install.
 mkdir -p /usr/local/src/
 cd /usr/local/src/
-wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/moin-1.9.tar.gz -O graphingwiki.tar.gz
+wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/default.tar.gz -O graphingwiki.tar.gz
 wget -N -q http://static.moinmo.in/files/moin-1.9.4.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
@@ -188,6 +189,17 @@ apt-get install python-geoip
 # for InviteNewTemplate and InviteOldTemplate in your underlay
 # (/srv/wikis/collab/underlay).
 
+# You can also install underlays by package install script, like
+# this. Do not care about error messages that might follow these
+
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python \
+/usr/local/lib/python2.6/dist-packages/MoinMoin/packages.py i \
+/usr/local/src/moin-1.9.4/wiki/underlay/pages/LanguageSetup/attachments/English--all_pages.zip 
+
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python \
+/usr/local/lib/python2.6/dist-packages/MoinMoin/packages.py i \
+/usr/local/src/graphingwiki/collab/packages/CollabBase.zip 
+
 # Rehash the base collab to complete installation of underlay. It
 # might also be needed to restart Apache.
 
@@ -201,6 +213,9 @@ su - collab -s /bin/bash -c "gwiki-rehash /srv/wikis/collab/wikis/collab"
 # collab should look something like this: 
 # # crontab -l -u collab 
 # * * * * * /usr/local/bin/collab-htaccess
+
+# One way to do this is the following:
+echo "* * * * * /usr/local/bin/collab-htaccess" | crontab -u collab -
 
 # After the initial install, collabs are created like this
 su - collab -s /bin/bash -c "collab-create collab mointests"
