@@ -190,14 +190,15 @@ apt-get install python-geoip
 # (/srv/wikis/collab/underlay).
 
 # You can also install underlays by package install script, like
-# this. Do not care about error messages that might follow these
+# this. Do not care about any error messages that might follow these
+# commands.
 
-PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python \
-/usr/local/lib/python2.6/dist-packages/MoinMoin/packages.py i \
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -c \
+'from MoinMoin.packages import main; main()' i \
 /usr/local/src/moin-1.9.4/wiki/underlay/pages/LanguageSetup/attachments/English--all_pages.zip 
 
-PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python \
-/usr/local/lib/python2.6/dist-packages/MoinMoin/packages.py i \
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -c \
+'from MoinMoin.packages import main; main()' i \
 /usr/local/src/graphingwiki/collab/packages/CollabBase.zip 
 
 # Rehash the base collab to complete installation of underlay. It
