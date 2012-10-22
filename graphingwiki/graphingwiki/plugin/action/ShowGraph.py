@@ -254,6 +254,8 @@ class GraphShower(object):
         self.nostartnodes = 0
         self.noorignode = 0
 
+        self.revedges = set()
+
         # Lists for the filter values for the form
         self.orderfiltervalues = set()
         self.colorfiltervalues = set()
@@ -446,7 +448,7 @@ class GraphShower(object):
                 setattr(self, arg, 1)
 
         # Set attributes
-        for arg in ['filteredges', 'filtercats', 'filterorder']:
+        for arg in ['revedges', 'filteredges', 'filtercats', 'filterorder']:
             if request.values.has_key(arg):
                 data = getattr(self, arg)
                 data.update(request.values.getlist(arg))
@@ -650,8 +652,15 @@ class GraphShower(object):
         if hasattr(obj1, 'gwikiremove') or hasattr(obj2, 'gwikiremove'):
             return
 
-        e = outgraph.edges.add(obj1name, obj2name)
-        e.update(olde)        
+        reversed = False
+        for type in olde.linktype:
+            if type in self.revedges:
+                reversed = True
+        if reversed:
+            e = outgraph.edges.add(obj2name, obj1name)
+        else:
+            e = outgraph.edges.add(obj1name, obj2name)
+        e.update(olde)
 
         # Count connected so that unconnected ones can be filtered
         if self.noloners:
@@ -1013,6 +1022,11 @@ class GraphShower(object):
 
             if not hasattr(node, 'gwikilabel'):
                 node.gwikilabel = name
+
+            # Node label rewriting with indirection-like syntax
+            if node.gwikilabel.startswith("->"):
+                node.gwikilabel = getattr(node, node.gwikilabel.split('->')[1], 
+                                          [node.gwikilabel])[0]
 
             # local full-path relative links
             if node.gwikiURL[0] == '/':
@@ -1387,6 +1401,7 @@ class GraphShower(object):
                               (self.dir == ord and 'selected' or '',
                                form_escape(ord), form_escape(ord), 
                                form_escape(name)))
+            request.write(u'</select>\n<br>\n')
             if self.orderby != '_hier':
                 request.write(u'</select><br>\n<u>' + _('Order regexp:') +
                               u'</u><br>\n')
@@ -1394,6 +1409,15 @@ class GraphShower(object):
                 form_textbox(request, 'orderreg', 10, str(self.orderreg))
                 request.write(u'<u>' + _('substitution:') + '</u><br>\n')
                 form_textbox(request, 'ordersub', 10, str(self.ordersub))
+
+        alledges = list(self.coloredges) + filter(self.oftype_p,
+                                                  self.filteredges)
+        alledges.sort()
+
+        # reverse edges
+        request.write(u"<u>" + _("Reverse edges:") + u"</u><br>\n")
+        form_optionlist(request, 'revedges', alledges, 
+                        self.revedges)
 
 	request.write(u'</table>\n')
         request.write(u'</div>\n')
@@ -1406,9 +1430,6 @@ class GraphShower(object):
 
         # filter edges
         request.write(u'<td valign=top>\n<u>' + _("Edges:") + u'</u><br>\n')
-        alledges = list(self.coloredges) + filter(self.oftype_p,
-                                                  self.filteredges)
-        alledges.sort()
 
         form_optionlist(request, 'filteredges', alledges, 
                         self.filteredges, {NO_TYPE: _("No type")})
