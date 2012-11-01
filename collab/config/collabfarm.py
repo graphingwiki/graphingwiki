@@ -44,6 +44,7 @@ class FarmConfig(DefaultConfig):
     auth_methods_trusted = ['given', 'xmlrpc_applytoken']
 
     cookie_path = '/collab/'
+    cookie_httponly = True
 
     # allow refresh
     refresh = ( 1, 'external' )
