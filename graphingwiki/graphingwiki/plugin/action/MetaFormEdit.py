@@ -98,6 +98,7 @@ def execute(pagename, request):
 
     error = ''
     newpage = False
+    template_text = ''
     # If the page does not exist but we'd know how to construct it, 
     # replace the Page content with template and pretend it exists
     if template and not request.page.exists():
@@ -107,7 +108,8 @@ def execute(pagename, request):
             editor.user = request.user
             text = editor.get_raw_body()
             editor.page_name = pagename
-            request.page.set_raw_body(editor._expand_variables(text))
+            template_text = editor._expand_variables(text)
+            request.page.set_raw_body(template_text)
             request.page.exists = lambda **kw: True
             request.page.lastEditInfo = lambda: {}
             newpage = True
@@ -139,7 +141,7 @@ def execute(pagename, request):
     # the values from the evaluated template are included in the form editor
     if newpage:
         templatePage = Page(request, template)
-        data = parse_text(request, templatePage, templatePage.get_raw_body())
+        data = parse_text(request, templatePage, template_text)
         for page in data:
             for key in data[page].get('meta', list()):
                 for val in data[page]['meta'][key]:
