@@ -60,8 +60,9 @@ class FarmConfig(DefaultConfig):
     log_reverse_dns_lookups = False
 
     # some user pref defaults
-    user_checkbox_defaults = { 'show_nonexist_qm': 1, 
-                               'show_page_trail': 1, 
+    user_checkbox_defaults = { 'edit_on_doubleclick': 0,
+                               'show_nonexist_qm': 1,
+                               'show_page_trail': 1,
                                'want_trivial': 0 }
 
     # remove from user prefs
