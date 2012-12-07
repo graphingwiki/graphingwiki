@@ -23,7 +23,7 @@ fi
 
 MYUSER=$1
 
-grep ${MYUSER} ${htmldir}/*/.htaccess | sed -e 's/:/ /' | \
+grep -H ${MYUSER} ${htmldir}/*/.htaccess | sed -e 's/:/ /' | \
   while read p r u a; do
     d=`dirname $p` 
     printf "%s %s\n" `basename $d` $a
