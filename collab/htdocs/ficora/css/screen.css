@@ -5,7 +5,7 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
-/* debug 
+/* debug
 * {border: 1px dotted blue;}
 */
 
@@ -22,7 +22,7 @@ a.nonexistent:link { color: #666 }
 a.nonexistent:hover { color: black; text-decoration: underline }
 
 a.download {
-    font-size: 120%; 
+    font-size: 120%;
     letter-spacing: 0.05em;
     font-weight: bold;
     background: #E7E7E7;
@@ -59,7 +59,7 @@ textarea {
 
 #logo {
     float: left;
-    margin: 5px 10px;
+    margin: 0 10px;
     padding: 0;
     /* For text only logo */
     font-size: 1.4em;
@@ -126,11 +126,11 @@ textarea {
     vertical-align: middle;
 }
 #pagetrail {
-    clear: right;
-    display: inline;
-    margin: 0 0.88em 0.25em 0.88em;
+    clear: left;
+    display: block;
+    margin: 0 1em 0.7em 1.9em;
     padding: 0;
-    font-size: 0.88em;
+    font-size: 0.8em;
 }
 
 *[dir="rtl"] #pagetrail {
@@ -199,7 +199,7 @@ textarea {
 
 #navibar a, #navibar a:visited {
     color: black;
-    text-decoration: none;    
+    text-decoration: none;
 }
 
 #navibar li.current a {
@@ -320,7 +320,7 @@ textarea {
 /* We use here dumb css1 ids because of IE suckiness */
 #editor-textarea, #editor-help {
     font-family: monospace;
-    border: 1px solid #8cacbb;  
+    border: 1px solid #8cacbb;
     color: black;
     background-color: white;
     padding: 3px;
@@ -367,7 +367,7 @@ textarea {
 
 input.button {
     /*
-    border: 1px solid #8cacbb;  
+    border: 1px solid #8cacbb;
     color: black;
     background-color: #CCCCCC;
     vertical-align: middle;

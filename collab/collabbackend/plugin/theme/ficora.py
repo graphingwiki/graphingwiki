@@ -39,7 +39,7 @@ class Theme(basetheme.Theme):
             #self.interwiki(d),
             #self.title_with_separators(d),
             #u'</h1>',
-            #self.trail(d),
+            self.trail(d),
             self.navibar(d),
             #u'<hr id="pageline">',
             u'<div id="pageline"><hr style="display:none;"></div>',
