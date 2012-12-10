@@ -19,13 +19,15 @@ from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.file import hashFile, uploadFile
 from xml.dom.minidom import Node, ProcessingInstruction
 
-SEVERITY_MAPPING = {'1': 'Note',
+SEVERITY_MAPPING = {'0': 'Info',
+                    '1': 'Note',
                     '2': 'Warning',
-                    '3': 'Hole'}
+                    '3': 'Hole',
+                    '4': 'Critical'}
 NESSUS_KEYS = ['Audit', 'end', 'Host', 'listens to', 'NBNAME',
-    'Nessus OS', 'Nessus Run', 'Nessus Note', 'Nessus Warning',
-    'Nessus Vulnerability', 'Nessus Hole', 'OS Name', 'OS Version',
-    'Packet vertical', 'PTR', 'start', 'type', 'Version', 'Audit']
+    'Nessus OS', 'Nessus Run', 'Nessus Info', 'Nessus Note', 'Nessus Warning',
+    'Nessus Vulnerability', 'Nessus Hole', 'Nessus Critical', 'OS Name',
+    'OS Version', 'Packet vertical', 'PTR', 'start', 'type', 'Version', 'Audit']
 
 
 def parseTime(input):
