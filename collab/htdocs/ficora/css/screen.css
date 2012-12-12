@@ -87,6 +87,7 @@ textarea {
     padding: 0;
     font-size: 0.82em;
 	float: right;
+    clear: right;
 }
 
 #username form {
@@ -113,7 +114,6 @@ textarea {
     padding: 0;
     font-size: 0.82em;
     float: right;
-    clear: right;
     text-align: right;
 }
 *[dir="rtl"] #searchform {
