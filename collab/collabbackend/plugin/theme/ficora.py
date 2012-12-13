@@ -10,7 +10,6 @@
 """
 
 from MoinMoin.theme import modernized as basetheme
-from MoinMoin.config import url_prefix_static
 
 
 class Theme(basetheme.Theme):
@@ -31,7 +30,7 @@ class Theme(basetheme.Theme):
             u'<div id="header">',
             u'<div id="blueline1">&nbsp;</div>',
             u'<div id="blueline2">&nbsp;</div>',
-            u'<div id="logo"><img src="' + url_prefix_static + '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>',
+            u'<div id="logo"><img src="' + self.cfg.url_prefix_static + '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>',
             self.searchform(d),
             self.username(d),
             #self.logo(),
