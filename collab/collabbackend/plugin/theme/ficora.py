@@ -16,7 +16,7 @@ class Theme(basetheme.Theme):
     name = "ficora"
 
     def logo(self):
-        mylogo = ThemeParent.logo(self)
+        mylogo = basetheme.logo(self)
         if not mylogo:
             mylogo = u'<div id="logo"><img src="' + \
                 self.cfg.url_prefix_static + \
