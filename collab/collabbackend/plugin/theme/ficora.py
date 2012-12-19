@@ -15,6 +15,15 @@ from MoinMoin.theme import modernized as basetheme
 class Theme(basetheme.Theme):
     name = "ficora"
 
+    def logo(self):
+        mylogo = ThemeParent.logo(self)
+        if not mylogo:
+            mylogo = u'<div id="logo"><img src="' + \
+                self.cfg.url_prefix_static + \
+                '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>'
+
+        return mylogo
+
     def header(self, d, **kw):
         """ Assemble wiki header
 
@@ -30,7 +39,7 @@ class Theme(basetheme.Theme):
             u'<div id="header">',
             u'<div id="blueline1">&nbsp;</div>',
             u'<div id="blueline2">&nbsp;</div>',
-            u'<div id="logo"><img src="' + self.cfg.url_prefix_static + '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>',
+            self.logo(),
             self.searchform(d),
             self.username(d),
             #self.logo(),
@@ -63,6 +72,12 @@ class Theme(basetheme.Theme):
         @return: page footer html
         """
         # page = d['page']
+        if self.cfg.footer_string:
+            footer_string = self.cfg.footer_string
+        else:
+            footer_string = u'<p>CERT-FI<br>PL 313<br>00181 Helsinki<br>Puh. 09 6966 510, Fax. 09 6966 515</p>'
+
+
         html = [
             # End of page
             #self.pageinfo(page),
@@ -76,7 +91,7 @@ class Theme(basetheme.Theme):
             #self.editbar(d),
             #self.credits(d),
             #self.showversion(d, **keywords),
-            u'<p>CERT-FI<br>PL 313<br>00181 Helsinki<br>Puh. 09 6966 510, Fax. 09 6966 515</p>',
+            footer_string,
             u'</div>',
             u'<div id="blueline1">&nbsp;</div>',
 
