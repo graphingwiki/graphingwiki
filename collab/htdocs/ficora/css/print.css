@@ -45,16 +45,8 @@ a.interwiki img, a.badinterwiki img {
 
 /* user interface styles */
 
-#username, #sidebar, #timings, #credits, #interwiki, #pagelocation {
-/*    display: none; */
-}
-
-#username, #navibar, #pageline, .editbar {
+#username, #sidebar, #timings, #credits, #interwiki, #pagelocation, #pagetrail, #navibar, #pageline, .editbar, #searchform {
     display: none;
-}
-
-#logo {
-	margin-left: -20px;
 }
 
 #accessnote {
