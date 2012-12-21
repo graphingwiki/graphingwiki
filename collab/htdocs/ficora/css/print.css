@@ -45,7 +45,7 @@ a.interwiki img, a.badinterwiki img {
 
 /* user interface styles */
 
-#username, #sidebar, #timings, #credits, #interwiki, #pagelocation, #pagetrail, #navibar, #pageline, .editbar, #searchform {
+#username, #sidebar, #timings, #credits, #interwiki, #pagelocation, #pagetrail, #navibar, #pageline, .editbar, #searchform, #pageinfo {
     display: none;
 }
 

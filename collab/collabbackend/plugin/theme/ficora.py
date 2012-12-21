@@ -21,7 +21,6 @@ class Theme(basetheme.Theme):
             mylogo = u'<div id="logo"><img src="' + \
                 self.cfg.url_prefix_static + \
                 '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>'
-
         return mylogo
 
     def header(self, d, **kw):
@@ -71,16 +70,15 @@ class Theme(basetheme.Theme):
         @rtype: unicode
         @return: page footer html
         """
-        # page = d['page']
+
         if hasattr(self.cfg, 'footer_string'):
             footer_string = self.cfg.footer_string
         else:
             footer_string = u'<p>CERT-FI<br>PL 313<br>00181 Helsinki<br>Puh. 09 6966 510, Fax. 09 6966 515</p>'
 
-
+        page = d['page']
         html = [
             # End of page
-            #self.pageinfo(page),
             self.endPage(),
 
             # Pre footer custom html (not recommended!)
@@ -88,6 +86,7 @@ class Theme(basetheme.Theme):
 
             # Footer
             u'<div id="footer">',
+            self.pageinfo(page),
             #self.editbar(d),
             #self.credits(d),
             #self.showversion(d, **keywords),
