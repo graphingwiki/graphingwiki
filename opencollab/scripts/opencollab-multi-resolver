@@ -18,7 +18,7 @@ from opencollab.util.network import dns_blacklist, mr_attributes
 
 MR_KEYS = [
     'A', 'AAAA', 'ALLOCATED', 'AS', 'ABUSE-CONTACT', 'AS-NAME',
-    'ATTRIBUTION', 'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX1',
+    'ATTRIBUTION TIME', 'BGP-PREFIX', 'CC', 'CNAME', 'ISP', 'MX0', 'MX1',
     'MX10', 'MX100', 'MX1000', 'MX11', 'MX110', 'MX15', 'MX19',
     'MX2', 'MX20', 'MX200', 'MX3', 'MX30', 'MX300', 'MX40',
     'MX400', 'MX42', 'MX5', 'MX50', 'MX60', 'MX69', 'MX90',
