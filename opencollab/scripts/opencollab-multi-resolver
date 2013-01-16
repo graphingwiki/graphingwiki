@@ -162,6 +162,8 @@ def read_input():
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("-D", "--debug",
+        action="store_true", dest="debug", default=False)
     parser.add_option("-m", "--mresolve-path",
         dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
         help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
@@ -189,6 +191,7 @@ def main():
     search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
     srv = ops[sect]["srv"]
+    debug = ops[sect]["debug"]
     while True:
         try:
             collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
@@ -246,6 +249,14 @@ def main():
     if replace:
         for page, meta in metas.iteritems():
             cleared[page] = MR_KEYS
+    if debug:
+        import pickle
+        import tempfile
+        f = tempfile.NamedTemporaryFile(mode="w",
+            prefix="opencollab-multi-resolver", delete=False)
+        pickle.dump(metas, f)
+        print "Wrote a pickle to: %s" % f.name
+        f.close()
     collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
