@@ -177,48 +177,22 @@ def main():
         action="store_true", dest="srv", default=False,
         help="Perform SRV queries on names in the initial data set (xmpp,sip).")
     parser.set_usage("%prog [options]")
-    types = set(("NAME", "IPv4", "AS"))
     metas = Metas()
     new = []
     ops = {}
     sect = "multi-resolver"
-    ops = parseOptions(parser, sect, search=True)
+    ops = parseOptions(parser, sect, search=False)
     x509 = ops[sect]["x509"]
     x509_ca_file = ops[sect]["x509_ca_file"]
     verbose = ops[sect]["verbose"]
     mresolvepath = ops[sect]["mresolvepath"]
     replace = ops[sect]["lasteditwins"]
-    search = ops[sect]["search"]
     recurse = ops[sect]["recurse"]
     srv = ops[sect]["srv"]
     debug = ops[sect]["debug"]
-    while True:
-        try:
-            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
-        except WikiFailure:
-            print "ERROR: Authentication failed."
-        except (UnicodeError, socket.gaierror):
-            sys.exit("ERROR: Not a valid URL.")
-        else:
-            break
-    if search is None:
-        if verbose:
-            print "Reading input identities from STDIN."
-        new = read_input()
-    else:
-        if verbose:
-            print "Fetching identities from collab."
-        pages = collab.getMeta(search)
-        for page in pages:
-            try:
-                type = pages[page]["TYPE"].single()
-            except ValueError:
-                print "ERROR:", page, "has no type."
-            else:
-                if type in types:
-                    new.append(page)
-                else:
-                    print "ERROR:", page, "'s type is not supported."
+    if verbose:
+        print "Reading input identities from STDIN."
+    new = read_input()
     if not new:
         if verbose:
             print "No input identities, no work. Exiting."
@@ -244,11 +218,22 @@ def main():
         print "Shredding resolved RDF triplets."
     metas.update(shred_triplets(resolved))
     if verbose:
+        print "Authenticating to collab."
+    while True:
+        try:
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break
+    if verbose:
         print "Importing resolved identities to collab."
     cleared = Meta()
     if replace:
         for page, meta in metas.iteritems():
-            cleared[page] = MR_KEYS
+            cleared[page].update(MR_KEYS)
     if debug:
         import pickle
         import tempfile
