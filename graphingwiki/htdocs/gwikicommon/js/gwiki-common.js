@@ -87,7 +87,7 @@ window.addEvent('domready', function() {
                 'overflow': 'hidden'
             });
             
-            document.body.addEvent('focus:relay(textarea.dynamic)', function(e){
+            $(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
                 if (!$(e.target).retrieve('dynamic')) {
                     new DynamicTextarea(e.target);
                     $(e.target).store('dynamic', true).focus();
@@ -297,6 +297,8 @@ var unescapeId = function(id) {
 
 
 var initDnDUpload = function(el){
+    if (!window.addEventListener) return;
+
     function noAction(e) {
         e.stopPropagation();
         e.preventDefault();
