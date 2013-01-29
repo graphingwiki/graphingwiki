@@ -398,7 +398,7 @@ var MD5 = (function () {
  *  Returns:
  *    The bound function.
  */
-if (true || !Function.prototype.bind) {
+if (!Function.prototype.bind) {
     Function.prototype.bind = function (obj /*, arg1, arg2, ... */)
     {
         var func = this;
