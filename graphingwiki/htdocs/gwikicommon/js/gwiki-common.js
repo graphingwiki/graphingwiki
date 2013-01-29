@@ -131,11 +131,13 @@ Request.SetMetas = new Class({
                         if (!json[page][key]) json[page][key] = [];
                         if (json[page][key].length != values.length || !values.every(function(value) {
                             return json[page][key].contains(value);
-                        }))
+                        })){
                             failreason = JSON.encode(values) + " has been changed to " +JSON.encode(json[page][key]);
+                        }
                         return failreason === "";
                     });
-                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes? \n "+failreason)) {
+                }) || confirm("Data has changed after you loaded this page, do you want to overwrite changes? \n " +
+                    failreason.slice(0,500))) {
                     this.send(args);
                 } else {
                     this.fireEvent('conflict');
