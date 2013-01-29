@@ -506,17 +506,26 @@ var initInlineMetaEdit = function (base) {
     });
 
     var getKey = function(dt) {
-        var tmp = dt.clone();
-        tmp.getElements('a.jslink').destroy();
-        return tmp.get('text');
+        var txt = dt.get('text');
+        var plus = dt.getElement('a.jslink');
+        if (plus) txt = txt.slice(0,txt.length - plus.get('text').length);
+        return txt;
     };
 
-    var getMetaIndex = function(dt, values) {
+    var DtKeyCache = null;
+    var DtElCache = null;
+
+    var getMetaIndex = function(dt) {
         var key = getKey(dt);
-        var dts = base.getElements('dt:nth-include('+include_level+')').filter(
-            function(dt) {
-                return getKey(dt) == key;
-            });
+
+        if (!DtKeyCache) {
+            DtElCache = base.getElements('dt:nth-include(' + include_level + ')');
+            DtKeyCache = DtElCache.map(getKey);
+        }
+        var dts = [];
+        DtKeyCache.each(function(dtKey, i) {
+            if (dtKey === key) dts.push(DtElCache[i])
+        });
 
         return dts.indexOf(dt);
     };
@@ -540,7 +549,7 @@ var initInlineMetaEdit = function (base) {
         }
 
         var key = dd.getPrevious('dt').get('text');
-        var index = getMetaIndex(dd.getPrevious('dt'), metas[key]);
+        var index = getMetaIndex(dd.getPrevious('dt'));
 
         var oldValue = metas[key][index];
 
@@ -599,7 +608,7 @@ var initInlineMetaEdit = function (base) {
             dt.getElements('.waiting').destroy();
         }
         var key = dt.get('text');
-        var index = getMetaIndex(dt, metas[key]);
+        var index = getMetaIndex(dt);
 
         if (!metas[key] || metas[key][index] == "") return;
 
