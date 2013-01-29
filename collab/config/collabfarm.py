@@ -150,6 +150,8 @@ class FarmConfig(DefaultConfig):
     <!--[if IE]>
     <link rel="stylesheet" type="text/css" charset="utf-8" media="all" href="%(url_prefix_static)s/arnica/css/msie_arnica_slides.css">
     <![endif]-->
+    <!-- Fix for wikis in intranet zone for IE -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     ''' % {"url_prefix_static": url_prefix_static}
 
     for script in ['js/mootools-core-yc.js', \
