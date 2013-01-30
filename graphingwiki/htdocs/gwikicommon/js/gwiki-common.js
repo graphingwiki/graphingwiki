@@ -455,7 +455,7 @@ var initInlineMetaEdit = function (base) {
                         value;
                     el.getElements('span.anchor').destroy();
                     if (el.getElement('p')) el = el.getElement('p');
-                    value = el.get('html').clean();
+                    value = el.get('html').trim();
                     if (value !== "" && metas[key].indexOf(value) === -1) value = Object.keyOf(formatted, value);
 
                     //add empty string to meta-object to point empty meta values
@@ -486,16 +486,10 @@ var initInlineMetaEdit = function (base) {
             var dt = dd.getPrevious('dt');
 
             dt.grab(new Element('a', {
-                'class': 'jslink',
-                'text': '+',
-                'styles': {
-                    'font-weight': 'bold',
-                    'font-size': '1.1em',
-                    'margin-left': '10px'
-                },
+                'class': 'jslink plus',
                 'events': {
                     'click': function() {
-                        this.destroy();
+                        this.addClass('hidden');
                         dd.set('html', '&nbsp;');
                         editValue(dd);
                     }
@@ -506,10 +500,7 @@ var initInlineMetaEdit = function (base) {
     });
 
     var getKey = function(dt) {
-        var txt = dt.get('text');
-        var plus = dt.getElement('a.jslink');
-        if (plus) txt = txt.slice(0,txt.length - plus.get('text').length);
-        return txt;
+        return dt.get('text');
     };
 
     var DtKeyCache = null;
@@ -548,8 +539,9 @@ var initInlineMetaEdit = function (base) {
             dd.getElements('.waiting').destroy();
         }
 
-        var key = dd.getPrevious('dt').get('text');
-        var index = getMetaIndex(dd.getPrevious('dt'));
+        var keyEl = dd.getPrevious('dt');
+        var key = getKey(keyEl);
+        var index = getMetaIndex(keyEl);
 
         var oldValue = metas[key][index];
 
@@ -582,6 +574,12 @@ var initInlineMetaEdit = function (base) {
                     }.bind(this)
                 }).checkAndSend();
             },
+            onCancel: function(){
+                if (oldValue == "") {
+                    dd.set('html', '');
+                    keyEl.getElement('.plus.hidden').removeClass('hidden');
+                }
+            },
             onExit: function() {
                 dd.removeClass('edit');
                 editor = null;
@@ -607,7 +605,7 @@ var initInlineMetaEdit = function (base) {
         } else {
             dt.getElements('.waiting').destroy();
         }
-        var key = dt.get('text');
+        var key = getKey(dt);
         var index = getMetaIndex(dt);
 
         if (!metas[key] || metas[key][index] == "") return;
@@ -657,6 +655,7 @@ var InlineEditor = new Class({
     options: {
         //onSave: function(value){},
         //onExit: function(){}
+        //onCancel: function(){}
         oldValue: "",
         inline: true, //puts all controls on the same row if enabled
         key: null,
@@ -679,7 +678,7 @@ var InlineEditor = new Class({
 
         if (this.options.key) {
             new Request.JSON({
-                url: '?action=ajaxUtils&util=getProperties&key=' + this.options.key,
+                url: '?action=ajaxUtils&util=getProperties&key=' + encodeURIComponent(this.options.key),
                 onComplete: function(json) {
                     this._keyProperties = Object.merge(this._keyProperties, json);
                     this.build();
@@ -816,6 +815,7 @@ var InlineEditor = new Class({
         this.element.empty();
         this.element.set('html', this.element.retrieve('html'));
         this._clean();
+        this.fireEvent('cancel');
         this.fireEvent('exit');
     }
 });

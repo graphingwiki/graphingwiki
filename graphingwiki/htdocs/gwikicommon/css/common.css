@@ -3,10 +3,17 @@
    Copyright: 2011 by Lauri Pokka
 */
 
-a.jslink {
+.jslink {
     font-size: 12px;
     color: green;
     cursor: pointer;
+}
+
+a.plus:after {
+    content: "+";
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-left: 10px;
 }
 
 .alphabg {
