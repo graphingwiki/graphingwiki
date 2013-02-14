@@ -489,7 +489,7 @@
                 minRows: 20
             });
 
-            var controls = new Element('div').adopt(
+            var controls = new Element('div.clearfix').adopt(
                 new Element('button', {
                     text: 'Save',
                     styles: {
@@ -498,8 +498,7 @@
                     events: {
                         'click': this.send.bind(this)
                     }
-                }),
-                new Element('div').setStyle('clear', 'both')
+                })
             ).inject(this.container);
         },
 
