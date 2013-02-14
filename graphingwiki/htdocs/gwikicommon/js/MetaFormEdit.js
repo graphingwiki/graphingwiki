@@ -9,6 +9,9 @@
 (function() {
     if (this.MetaFormEdit) return;
 
+    var FIELD_SELECTOR = '.metaformedit';
+    var SEPARATOR = window.GWIKISEPARATOR;
+
     var MetaformEdit = this.MetaFormEdit = new Class({
         initialize: function (form) {
             this.form = document.id(form);
@@ -21,13 +24,15 @@
                     }).destroy();
             });
 
-            this.SEPARATOR = window.GWIKISEPARATOR;
+            this.SEPARATOR = SEPARATOR;
+            this.FIELD_SELECTOR = FIELD_SELECTOR;
+
             this.clean();
             this.build();
         },
 
         getFields: function() {
-            return this.form.getElements('.metaformedit');
+            return this.form.getElements(this.FIELD_SELECTOR);
         },
 
         // Add dynamic scaling and automatic select hiding
@@ -63,48 +68,28 @@
                 img.set('title', '');
             });
 
-            //add '+'-button for each dt that has cloneable dd elements
-            this.getFields().each(function(dd) {
-                if (dd.get('data-cloneable') == "false") return;
-                var dt = dd.getPrevious('dt');
-                var siblings = dd.getParent().getChildren();
-                if (siblings.indexOf(dd) - 1 != siblings.indexOf(dt)) return;
-                dt.appendText(' ');
-                dt.grab(new Element('a', {
-                    'class': 'jslink',
-                    'text': '+',
-                    'title': 'Add value',
-                    'styles': {
-                        'font-weight': 'bold',
-                        'font-size': '1.1em'
-                    },
-                    'events': {
-                        'click': function() {
-                            self.clone(dt.getNext('dd'));
-                        }
-                    }
-                }));
+            this.form.addEvent('click:relay(dt .plus)', function(e){
+                if (this.get('tag') != "a") console.log("wtf");
+                var dd = this.retrieve('dd');
+                if (!dd.getParent()) {
+                    dd.inject(this.getParent('dt'), 'after');
+                    var el = self.clone(dd);
+                    dd.destroy();
+                    this.store('dd', el);
+                }else{
+                    self.clone(dd);
+                }
+            });
+
+            this.form.addEvent('click:relay('+this.FIELD_SELECTOR+' .cross)', function(e){
+                if (this.get('tag') != "a") console.log("wtf");
+                self.removeValue(this.getParent('dd'));
             });
 
             //add 'x'-buttons for each row
             this.getFields().each(function(el) {
-                el.grab(new Element('a', {
-                    'class': 'jslink',
-                    'title': 'Remove value',
-                    'html': 'x',
-                    'styles': {
-                        'margin-left': '5px',
-                        'color': 'red',
-                        'font-weight': 'bold',
-                        'font-size': '0.95em'
-                    },
-                    'events': {
-                        'click': function() {
-                            self.remove(this.getParent('dd'))
-                        }
-                    }
-                }));
-                el.grab(new Element('div.clear'), 'after');
+                el.grab(new Element('a.jslink.cross[title=Remove value]'));
+                el.addClass('clearfix');
             });
 
             this.getFields().getElements('textarea').flatten().each(this._setupTextArea);
@@ -115,6 +100,17 @@
                 pickerClass: 'datepicker_dashboard'
             });
 
+            //add '+'-button for each dt that has cloneable dd elements
+            this.getFields().each(function(dd) {
+                if (dd.get('data-cloneable') == "false") return;
+                var dt = dd.getPrevious('dt');
+                var siblings = dd.getParent().getChildren();
+                if (siblings.indexOf(dd) - 1 != siblings.indexOf(dt)) return;
+                dt.grab(
+                    new Element('a.jslink.plus[title=Add value]')
+                        .store('dd', dd)
+                );
+            });
         },
 
         /*
@@ -141,7 +137,9 @@
                         }
                     });
 
-                    this.remove(el);
+                    el.getPrevious('dt').destroy();
+                    el.destroy();
+
                     this.clone(this.getFields().filter(function(field) {
                         var els = field.getElements('[name^=' + key.split(" ")[0] + ']');
                         return els.length > 0 && els.some(function(el) {
@@ -198,15 +196,11 @@
                         values.erase(input.value);
                     }
                 });
-                if (source.getElement('textarea') == null || minimalNew) return;
+                if (source.getElement('textarea') == null || minimalNew) return null;
             }
 
             var cloned  = source.clone();
             cloned.inject(source, 'before');
-
-            if (cloned.getElement('a.jslink') != null) {
-                cloned.getElement('a.jslink').cloneEvents(source.getElement('a.jslink'));
-            }
 
             cloned.getElements('input[type=checkbox], input[type=radio], label').destroy();
 
@@ -265,22 +259,21 @@
 
             cloned.getElements('label').each(this._bindLabel);
             
-            cloned.grab(new Element('div.clear'), 'after');
+            return cloned;
         },
 
-        remove: function(el) {
+        removeValue: function(el) {
             var siblings = el.getParent().getChildren();
             var index = siblings.indexOf(el);
 
-            // remove key title and create an empty hidden input for key if we are deleting the last value
+            // create an empty hidden input for key if we are deleting the last value
             if (siblings[index - 1].get('tag') == "dt"
-                && (!siblings[index + 1] || siblings[index + 1].get('tag') == "dt")) {
-                siblings[index - 1].destroy();
+                    && (!siblings[index+1] || siblings[index + 1].get('tag') != "dd")) {
                 var name = el.getElement('input, textarea').get('name');
-                el.grab(new Element('input[type=hidden]').set('name', name), 'after');
+                siblings[0].grab(new Element('input[type=hidden]').set('name', name), 'before');
             }
-            if (siblings[index+1] && siblings[index+1].get('tag') == "div") siblings[index+1].destroy();
-            el.destroy();
+
+            el.dispose();
         }
     });
 
