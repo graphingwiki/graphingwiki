@@ -11,7 +11,7 @@ import yaml
 import socket
 import optparse
 import calendar
-from datetime import datetime
+from datetime import datetime, date
 from email.Utils import mktime_tz, parsedate_tz
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
@@ -93,12 +93,18 @@ def main():
             elif key in ['interfaces', 'libvirt_activedomains',
                          'libvirt_inactivedomains']:
                 metas[page][key].update(values[key].split(','))
-            elif key == '_timestamp':
+            elif key in ['_timestamp', 'lastupdated']:
                 val = values[key]
                 key = 'timestamp'
-                if isinstance(val, datetime):
+                if isinstance(val, datetime, date):
                     val = calendar.timegm(val.timetuple())
                 else:
+                    try:
+                        val = mktime_tz(parsedate_tz(val))
+                    except:
+                        print >>sys.stderr, "Failed to parse timestamp" + \
+                            "(%s in file %s)" % (repr(val), inputfile)
+                        continue
                     val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in ['memoryfree', 'memorysize', 'memorytotal',
