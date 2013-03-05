@@ -96,7 +96,7 @@ def main():
             elif key in ['_timestamp', 'lastupdated']:
                 val = values[key]
                 key = 'timestamp'
-                if isinstance(val, datetime, date):
+                if isinstance(val, (datetime, date)):
                     val = calendar.timegm(val.timetuple())
                 else:
                     try:
