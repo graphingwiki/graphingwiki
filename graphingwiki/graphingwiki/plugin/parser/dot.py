@@ -75,9 +75,9 @@ class Parser(object):
 
         try:
             graphviz = Graphviz(engine=self.graphengine, string=self.raw)
-        except ValueError:
+        except ValueError, e:
             self.request.write(formatter.text(_(\
-                        "ERROR: Malformed graph.")))
+                        "ERROR: Malformed graph (%s).") % (e)))
             return
             
         img = self.getLayoutInFormat(graphviz, self.layoutformat)
