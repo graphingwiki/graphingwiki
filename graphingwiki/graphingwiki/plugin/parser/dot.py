@@ -73,7 +73,13 @@ class Parser(object):
                         "Not performing layout.")))
             return
 
-        graphviz = Graphviz(engine=self.graphengine, string=self.raw)
+        try:
+            graphviz = Graphviz(engine=self.graphengine, string=self.raw)
+        except ValueError:
+            self.request.write(formatter.text(_(\
+                        "ERROR: Malformed graph.")))
+            return
+            
         img = self.getLayoutInFormat(graphviz, self.layoutformat)
 
         imgbase = "data:image/" + self.layoutformat + ";base64," + \
