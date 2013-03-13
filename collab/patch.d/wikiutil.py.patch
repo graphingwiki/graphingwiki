@@ -1,6 +1,6 @@
---- ./MoinMoin/wikiutil.py.orig	2013-01-10 17:19:35.666717218 +0200
-+++ ./MoinMoin/wikiutil.py	2013-01-10 17:19:40.186723542 +0200
-@@ -471,15 +471,15 @@ def load_wikimap(request):
+--- ./MoinMoin/wikiutil.py.orig	2012-12-29 21:06:55.000000000 +0200
++++ ./MoinMoin/wikiutil.py	2013-03-13 16:36:09.447024511 +0200
+@@ -471,15 +471,15 @@
          generate_file_list(request)
  
      try:
@@ -21,7 +21,7 @@
          _interwiki_list = {}
          lines = []
  
-@@ -509,10 +509,28 @@ def load_wikimap(request):
+@@ -509,10 +509,28 @@
          if request.cfg.interwikiname:
              _interwiki_list[request.cfg.interwikiname] = request.script_root + '/'
  
@@ -52,4 +52,13 @@
 +        request.cfg.cache.interwiki_mtime[request.user.id] = get_max_mtime(request.cfg.shared_intermap_files, Page(request, INTERWIKI_PAGE))
  
      return _interwiki_list
+ 
+@@ -2269,7 +2287,7 @@
+     """
+     # note: filenames containing ../ (or ..\) are made safe by replacing
+     # the / (or the \). the .. will be kept, but is harmless then.
+-    basename = re.sub('[\x00-\x1f:/\\\\<>"*?%|]', '_', basename)
++    basename = re.sub('[\x00-\x1f:/\\\\<>"*?|]', '_', basename)
+     return basename
+ 
  
