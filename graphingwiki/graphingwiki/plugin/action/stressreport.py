@@ -21,7 +21,7 @@ def save_report(request, control, activity):
     if not success:
         return False, u"Reporting failed. Try again or contact administrator."
 
-    return True, u"Thank you for reporting. %s %s %s" % (pagename, control, activity)
+    return True, u"Thank you for reporting."
 
 def return_page(request, pagename, msg=None, msg_type="info"):
     request.reset()
