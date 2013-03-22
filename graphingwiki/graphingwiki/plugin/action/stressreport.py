@@ -6,16 +6,19 @@ from graphingwiki.editing import set_metas
 
 def save_report(request, control, activity):
     second = time.time()
-    isotime = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(int(second)))
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(int(second)))
+    ts = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(int(second)))
+
     second *= 10**6
-    timestamp = isotime + ".%06d" % (second % (10**6),)
+    timestamp += ".%06d" % (second % (10**6),)
     pagename = "Stress-%s" % timestamp
 
     cleared = {pagename: set(["in control", "activity", "time"])}
     metas = {"gwikicategory": ["CategoryStress"],
              "in control": [control],
              "activity": [activity],
-             "time": [isotime]}
+             "time": [ts],
+             "activity level": [{"low":"1","medium":"2","high":"3"}[activity]]}
 
     success, msg = set_metas(request, cleared, {}, {pagename: metas})
     if not success:
