@@ -49,10 +49,6 @@ class FarmConfig(DefaultConfig):
     # allow refresh
     refresh = ( 1, 'external' )
 
-    # allow xslt (4Suite required)
-    #allow_xslt = 1
-    #docbook_html_dir = "/srv/wikis/collab/docbook/html"
-
     # allow xmlrpc
     actions_excluded = []
 
