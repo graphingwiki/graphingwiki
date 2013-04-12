@@ -1,8 +1,8 @@
 # Full installation instructions for graphingwiki on collabbackend.
 # The script is assumed to be run as root.  These instructions have
-# undergone some testing on Ubuntu versions 10.0.4 and 10.10, and may
-# actually miss some of the major errors. It also seems to work on
-# 12.0.4, though you need to use replace python2.6 with python2.7.
+# been tested on Ubuntu 12.0.4, and may actually miss some of the
+# major errors. The instructions work on 10.0.4 if you replace
+# python2.6 with python2.7.
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -88,13 +88,13 @@ apt-get install python-igraph
 mkdir -p /usr/local/src/
 cd /usr/local/src/
 wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/default.tar.gz -O graphingwiki.tar.gz
-wget -N -q http://static.moinmo.in/files/moin-1.9.4.tar.gz
+wget -N -q http://static.moinmo.in/files/moin-1.9.7.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
 
 # Patch and install moin
-tar -zxvf moin-1.9.4.tar.gz 
-cd moin-1.9.4/
+tar -zxvf moin-1.9.7.tar.gz 
+cd moin-1.9.7/
 ls /usr/local/src/graphingwiki/graphingwiki/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
 ls /usr/local/src/graphingwiki/collab/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
 python setup.py install
@@ -137,9 +137,9 @@ chmod 660 collab/log/moinmoin.log
 ln -sf /srv/wikis/collab/htdocs/ /srv/www/https/collab
 ln -sf /usr/local/share/moin/htdocs/ /srv/www/https/moin_static
 
-# Ensure that Moin 1.9.4 htdocs are copied to the expected place
+# Ensure that Moin 1.9.7 htdocs are copied to the expected place
 # instead of libs. This was a 1.9 change.
-cp -r /usr/local/lib/python2.6/dist-packages/MoinMoin/web/static/htdocs/* /usr/local/share/moin/htdocs/
+cp -r /usr/local/lib/python2.7/dist-packages/MoinMoin/web/static/htdocs/* /usr/local/share/moin/htdocs/
 
 # Copy moin underlay to collabfarm
 su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
@@ -194,7 +194,7 @@ apt-get install python-geoip
 # commands.
 
 PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages i \
-/usr/local/src/moin-1.9.4/wiki/underlay/pages/LanguageSetup/attachments/English--all_pages.zip 
+/usr/local/src/moin-1.9.7/wiki/underlay/pages/LanguageSetup/attachments/English--all_pages.zip 
 
 PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages i \
 /usr/local/src/graphingwiki/collab/packages/CollabBase.zip 

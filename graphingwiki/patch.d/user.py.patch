@@ -1,18 +1,18 @@
---- ./MoinMoin/user.py.orig	2012-12-29 21:06:54.000000000 +0200
-+++ ./MoinMoin/user.py	2013-01-10 17:13:39.756219661 +0200
-@@ -162,9 +162,9 @@ def encodePassword(pwd, salt=None):
-         salt = random_string(20)
-     assert isinstance(salt, str)
-     hash = hash_new('sha1', pwd)
--    hash.update(salt)
-+    #hash.update(salt)
- 
--    return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
-+    return '{SHA}' + base64.encodestring(hash.digest()).rstrip()
- 
- 
- def normalizeName(name):
-@@ -330,7 +330,7 @@ class User:
+--- ./MoinMoin/user.py.orig	2013-03-17 19:27:10.000000000 +0200
++++ ./MoinMoin/user.py	2013-04-13 00:06:12.811544064 +0300
+@@ -176,6 +176,10 @@ def encodePassword(cfg, pwd, salt=None,
+         hash = hash_new('sha1', pwd)
+         hash.update(salt)
+         return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
++    elif scheme == '{SHA}':
++        pwd = pwd.encode('utf-8')
++        hash = hash_new('sha1', pwd)
++        return '{SHA}' + base64.encodestring(hash.digest()).rstrip()
+     else:
+         # should never happen as we check the value of cfg.password_scheme
+         raise NotImplementedError
+
+@@ -384,7 +384,7 @@ class User:
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -21,7 +21,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -396,6 +396,10 @@ class User:
+@@ -450,6 +450,10 @@ class User:
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -31,13 +31,4 @@
 +
      def exists(self):
          """ Do we have a user account for this user?
- 
-@@ -540,7 +544,7 @@ class User:
-                     enc = crypt.crypt(password.encode('utf-8'), salt.encode('ascii'))
- 
-                 if safe_str_equal(epwd, method + enc):
--                    data['enc_password'] = encodePassword(password) # upgrade to SSHA
-+                    #data['enc_password'] = encodePassword(password) # upgrade to SSHA
-                     return True, True
-                 return False, False
  
