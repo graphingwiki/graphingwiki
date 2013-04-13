@@ -1,8 +1,8 @@
 # Full installation instructions for graphingwiki on collabbackend.
 # The script is assumed to be run as root.  These instructions have
-# been tested on Ubuntu 12.0.4, and may actually miss some of the
-# major errors. The instructions work on 10.0.4 if you replace
-# python2.6 with python2.7.
+# been tested on Ubuntu 12.0.4 and 10.0.4, and may actually miss some
+# of the major errors. The instructions assume you are using the bash
+# shell.
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -87,7 +87,8 @@ apt-get install python-igraph
 ## Get moin, gwiki sources. Install.
 mkdir -p /usr/local/src/
 cd /usr/local/src/
-wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/default.tar.gz -O graphingwiki.tar.gz
+wget -N -q https://bitbucket.org/clarifiednetworks/graphingwiki/get/\
+default.tar.gz -O graphingwiki.tar.gz
 wget -N -q http://static.moinmo.in/files/moin-1.9.7.tar.gz
 mkdir graphingwiki
 tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
@@ -95,8 +96,10 @@ tar -zxvf graphingwiki.tar.gz -C graphingwiki/ --strip-components 1
 # Patch and install moin
 tar -zxvf moin-1.9.7.tar.gz 
 cd moin-1.9.7/
-ls /usr/local/src/graphingwiki/graphingwiki/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
-ls /usr/local/src/graphingwiki/collab/patch.d/* | xargs -I {} sh -c 'patch -p0 -N -t < {}'
+ls /usr/local/src/graphingwiki/graphingwiki/patch.d/* | \
+xargs -I {} sh -c 'patch -p0 -N -t < {}'
+ls /usr/local/src/graphingwiki/collab/patch.d/* | \
+xargs -I {} sh -c 'patch -p0 -N -t < {}'
 python setup.py install
 
 # Install graphingwiki, collabbackend and opencollab
@@ -117,12 +120,16 @@ chgrp -R collab /usr/local/share/moin/
 # Make the necessary directories
 mkdir -p /etc/local/collab
 mkdir -p /srv/wikis/collab; cd /srv/wikis
-mkdir -p collab/archive collab/cache collab/config collab/docbook collab/htdocs collab/log collab/underlay collab/user collab/wikis collab/run
+mkdir -p collab/archive collab/cache collab/config collab/docbook \
+collab/htdocs collab/log collab/underlay collab/user collab/wikis collab/run
 # Copy files into their places
 cp /usr/local/src/graphingwiki/collab/config/collab.ini /etc/local/collab/
-cp /usr/local/src/graphingwiki/collab/config/collabfarm.py /srv/wikis/collab/config
-cp /usr/local/src/graphingwiki/collab/config/intermap.txt /srv/wikis/collab/config
-cp /usr/local/src/graphingwiki/collab/config/logging.conf /srv/wikis/collab/config
+cp /usr/local/src/graphingwiki/collab/config/collabfarm.py \
+/srv/wikis/collab/config
+cp /usr/local/src/graphingwiki/collab/config/intermap.txt \
+/srv/wikis/collab/config
+cp /usr/local/src/graphingwiki/collab/config/logging.conf \
+/srv/wikis/collab/config
 chown -R collab:collab collab
 chmod -R 2770 collab/
 
@@ -139,10 +146,13 @@ ln -sf /usr/local/share/moin/htdocs/ /srv/www/https/moin_static
 
 # Ensure that Moin 1.9.7 htdocs are copied to the expected place
 # instead of libs. This was a 1.9 change.
-cp -r /usr/local/lib/python2.7/dist-packages/MoinMoin/web/static/htdocs/* /usr/local/share/moin/htdocs/
+PYVERSION=`python -c 'import sys; print sys.version_info[1]'` cp -r \
+/usr/local/lib/python2.${PYVERSION}/dist-packages/MoinMoin/web/static/htdocs/* \
+/usr/local/share/moin/htdocs/
 
 # Copy moin underlay to collabfarm
-su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay /srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
+su - collab -s /bin/bash -c "umask 007; cp -r /usr/local/share/moin/underlay \
+/srv/wikis/collab/; chmod -R g+w /srv/wikis/collab/underlay"
 
 # Make the base collab
 su - collab -s /bin/bash -c "collab-create collab collab"
@@ -193,11 +203,12 @@ apt-get install python-geoip
 # this. Do not care about any error messages that might follow these
 # commands.
 
-PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages i \
-/usr/local/src/moin-1.9.7/wiki/underlay/pages/LanguageSetup/attachments/English--all_pages.zip 
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages \
+i /usr/local/src/moin-1.9.7/wiki/underlay/pages/LanguageSetup/\
+attachments/English--all_pages.zip 
 
-PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages i \
-/usr/local/src/graphingwiki/collab/packages/CollabBase.zip 
+PYTHONPATH=/srv/wikis/collab/wikis/collab/config/ python -m MoinMoin.packages \
+i /usr/local/src/graphingwiki/collab/packages/CollabBase.zip 
 
 # Rehash the base collab to complete installation of underlay. It
 # might also be needed to restart Apache.
