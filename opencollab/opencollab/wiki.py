@@ -13,10 +13,21 @@ import httplib
 from httplib import HTTPConnection
 from _sslwrapper import HTTPSConnection
 
-class WikiFailure(Exception): pass
-class AuthenticationFailed(WikiFailure): pass
-class WikiAuthenticationFailed(AuthenticationFailed): pass
-class HttpAuthenticationFailed(AuthenticationFailed): pass
+
+class WikiFailure(Exception):
+    pass
+
+
+class AuthenticationFailed(WikiFailure):
+    pass
+
+
+class WikiAuthenticationFailed(AuthenticationFailed):
+    pass
+
+
+class HttpAuthenticationFailed(AuthenticationFailed):
+    pass
 
 
 class WikiFault(WikiFailure):
@@ -361,8 +372,7 @@ class CLIWiki(GraphingWiki):
         if url is None:
             url = redirected(raw_input, "Collab URL: ")
         super(CLIWiki, self).__init__(url, **keys)
-        creds = username, password
-        self.authenticate(*creds)
+        self.authenticate(username, password)
 
     def authenticate(self, username=None, password=None):
         if username is None:
