@@ -51,7 +51,7 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     if not collabs:
         return []
 
-    collabs.sort()
+    collabs.sort(   )
 
     for shortName in collabs:
         try:
@@ -79,7 +79,7 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
         else:
             output.append((shortName, title, motd, link, False))
 
-    output.sort(key = lambda x: x[1])
+    output.sort(key=lambda x: x[1].lower())
 
     return output
 
