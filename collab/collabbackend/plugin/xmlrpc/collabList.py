@@ -51,7 +51,7 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     if not collabs:
         return []
 
-    collabs.sort(   )
+    collabs.sort()
 
     for shortName in collabs:
         try:
