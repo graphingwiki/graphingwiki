@@ -46,7 +46,7 @@ if len(args) == 2:
     else:
         alt_name = name
 elif len(args) == 1 and alist:
-    page = args
+    page = args[0]
 else:
     parser.error("Bad Args")
 

@@ -65,26 +65,26 @@ def execute(pagename, request):
     formpage = '../' * pagename.count('/') + pagename
 
     frm = wr(
-        u'<form method="POST" enctype="multipart/form-data" action="%s">\n',
+        u'<form id="metaformedit" method="POST" enctype="multipart/form-data" action="%s">\n',
              actionname(request))+\
-          wr(u'<input type="hidden" name="action" value="MetaEdit">\n')+\
-          wr(u'<input type="hidden" name="gwikiseparator" value="%s">\n', 
+          wr(u'<input form="metaformedit" type="hidden" name="action" value="MetaEdit">\n')+\
+          wr(u'<input form="metaformedit" type="hidden" name="gwikiseparator" value="%s">\n', 
              SEPARATOR)
     
     btn = '<div class="saveform"><p class="savemessage">' + \
-          wr('<input type=submit name=saveform value="%s">',
+          wr('<input type=submit name=saveform form="metaformedit" value="%s">',
              _(form.get('saveBtnText', ['Save Changes'])[0])) + \
-             wr('<input type=submit name=cancel value="%s">',
+             wr('<input form="metaformedit" type=submit name=cancel value="%s">',
                 _('Cancel')) +'</p></div>'
 
     # Template to use for any new pages
     template = form.get('template', [''])[0]
     if template:
-        frm += '<input type="hidden" name="template" value="%s">' % template
+        frm += '<input form="metaformedit" type="hidden" name="template" value="%s">' % template
     # Where to after saving page
     backto = form.get('backto', [''])[0]
     if backto:
-        frm += '<input type="hidden" name="backto" value="%s">' % backto
+        frm += '<input form="metaformedit" type="hidden" name="backto" value="%s">' % backto
 
     old_header = request.cfg.page_header2
     old_footer = request.cfg.page_footer1
@@ -158,7 +158,7 @@ def execute(pagename, request):
 
     # Form types
     def form_selection(request, pagekey, curval, values, description=''):
-        msg = wr('<select name="%s">', pagekey)
+        msg = wr('<select form="metaformedit" name="%s">', pagekey)
         msg += wr('<option value=""> </option>')
         
         for keyval, showval in values:
@@ -175,7 +175,7 @@ def execute(pagename, request):
 
         for keyval, showval in values:
             msg += wr(
-                '<input type="checkbox" name="%s" value="%s"%s>',
+                '<input form="metaformedit" type="checkbox" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
                 '<label>' + format_wikitext(request, showval) +'</label>'
 
@@ -186,28 +186,28 @@ def execute(pagename, request):
 
         for keyval, showval in values:
             msg += wr(
-                '<input type="radio" name="%s" value="%s"%s>',
+                '<input form="metaformedit" type="radio" name="%s" value="%s"%s>',
                 pagekey, keyval, curval == keyval and ' checked' or '') + \
                 '<label>' + format_wikitext(request, showval) +'</label>'
 
         return msg
 
     def form_textbox(request, pagekey, curval, values, description=''):
-        return wr('<textarea name="%s">%s</textarea>',
+        return wr('<textarea form="metaformedit" name="%s">%s</textarea>',
                   pagekey, curval)
 
     def form_date(request, pagekey, curval, values, description=''):
-        return wr('<input type="text" class="date" name="%s" value="%s">',
+        return wr('<input form="metaformedit" type="text" class="date" name="%s" value="%s">',
                 pagekey, curval)
 
     def form_file(request, pagekey, curval, values, description=''):
         if curval:
             return wr(
-                '<input class="file" type="text" name="%s" value="%s" readonly>'
+                '<input form="metaformedit" class="file" type="text" name="%s" value="%s" readonly>'
                 , pagekey, curval)
         else:
             return wr(
-                '<input class="file" type="file" name="%s%s0" value="" readonly>',
+                '<input form="metaformedit" class="file" type="file" name="%s%s0" value="" readonly>',
                 pagekey, SEPARATOR)
 
     formtypes = {'selection': form_selection,
@@ -273,7 +273,7 @@ def execute(pagename, request):
 
         if (not constraint == 'existing' and 
             not formtype in ['textbox', 'textarea', 'file', 'date']):
-            msg += wr('<textarea name="%s"></textarea>', pagekey)
+            msg += wr('<textarea form="metaformedit" name="%s"></textarea>', pagekey)
 
         if hidden:
             msg = request.formatter.div(1, css_class='comment') + msg + \
