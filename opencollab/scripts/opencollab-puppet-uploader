@@ -95,7 +95,7 @@ def main():
                 metas[page][key].update(values[key].split(','))
             elif key in ['_timestamp', 'lastupdated']:
                 val = values[key]
-                key = 'timestamp'
+                key = key.lstrip('_')
                 if isinstance(val, (datetime, date)):
                     val = calendar.timegm(val.timetuple())
                 else:
