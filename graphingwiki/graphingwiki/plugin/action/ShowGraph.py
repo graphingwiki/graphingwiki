@@ -732,13 +732,15 @@ class GraphShower(object):
                 if '|' in components[-1]:
                     try:
                         if 'height=' in components[-1]:
-                            imgheight = components[-1].split('height=')[-1]
-                            if imgheight:
-                                imgheight = float(imgheight)
+                            _height = components[-1].split('height=')[-1]
+                            _height = _height.split()[0]
+                            if _height:
+                                imgheight = float(_height)
                         if 'width=' in components[-1]:
-                            imgwidth = components[-1].split('width=')[-1]
-                            if imgwidth:
-                                imgwidth = float(imgwidth)
+                            _width = components[-1].split('width=')[-1]
+                            _width = _width.split()[0]
+                            if _width:
+                                imgwidth = float(_width)
                     except ValueError:
                         pass
                 
