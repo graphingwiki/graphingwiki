@@ -1,6 +1,6 @@
 --- ./MoinMoin/user.py.orig	2013-03-17 19:27:10.000000000 +0200
-+++ ./MoinMoin/user.py	2013-04-13 00:06:12.811544064 +0300
-@@ -176,6 +176,10 @@ def encodePassword(cfg, pwd, salt=None,
++++ ./MoinMoin/user.py	2013-06-04 23:51:55.474941588 +0300
+@@ -176,6 +176,10 @@
          hash = hash_new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
@@ -11,8 +11,7 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-
-@@ -384,7 +384,7 @@ class User:
+@@ -384,7 +388,7 @@
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -21,7 +20,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -450,6 +450,10 @@ class User:
+@@ -450,6 +454,10 @@
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
