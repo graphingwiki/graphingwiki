@@ -74,7 +74,7 @@ class Theme(basetheme.Theme):
         if hasattr(self.cfg, 'footer_string'):
             footer_string = self.cfg.footer_string
         else:
-            footer_string = u'<p>CERT-FI<br>PL 313<br>00181 Helsinki<br>Puh. 09 6966 510, Fax. 09 6966 515</p>'
+            footer_string = u'<p>CERT-FI<br>PL 313<br>00181 Helsinki<br>Puh. 0295 390 230</p>'
 
         page = d['page']
         html = [
