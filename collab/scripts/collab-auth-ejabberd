@@ -151,6 +151,12 @@ def auth(args):
 
     r = request_cache.get("collab", "FrontPage", False)
     result = User(r, name=convertUsername(username), password=password).valid
+    if not result:
+        session = r.cfg.session_service.get_session(r, sid=password)
+        userid = session.get("user.id", None)
+        if userid is not None:
+            user = User(r, id=userid)
+            result = user.valid and (user.name == convertUsername(username))
     elapsedTime = 1000 * (time.time() - start)
     logging.info("auth from user %s@%s returned %s in %d ms" % (username, server, result, elapsedTime))
     return result
