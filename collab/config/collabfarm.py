@@ -114,7 +114,7 @@ class FarmConfig(DefaultConfig):
             plugin_dirs.append(os.path.join(cdir, 'plugin'))
     except ImportError:
         pass
-   
+
     import mimetypes
     mimetypes.add_type('application/x-x509-ca-cert', '.crt', True)
     mimetypes.add_type("application/x-pcap", ".pcap", True)
@@ -124,11 +124,13 @@ class FarmConfig(DefaultConfig):
 
     #mimetypes_xss_protect.remove('application/x-shockwave-flash')
     #mimetypes_embed.add('application/x-shockwave-flash')
-    
+
     collab_basedir = '/srv/wikis/collab/htdocs'
     collab_baseurl = 'https://localhost/collab/'
     collab_chat_bosh = '/bosh/'
-    collab_chat_creds = '/collab/auth_credentials.php'
+    collab_chat_creds = '/collab/?action=authcredentials'
+    # Set your xmpp domain here if autodetection fails
+    #collab_chat_domain = ''
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
 
@@ -140,7 +142,7 @@ class FarmConfig(DefaultConfig):
     invite_group_default = 'AccessGroup'
 
     stylesheets = [
-        ('all', url_prefix_static + '/gwikicommon/css/common.css')        
+        ('all', url_prefix_static + '/gwikicommon/css/common.css')
     ]
 
     html_head = '''
@@ -161,7 +163,7 @@ class FarmConfig(DefaultConfig):
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
-            
+
     ## for htdocs/collabcommon
 
     # html_head = '' # omit if you already have something
