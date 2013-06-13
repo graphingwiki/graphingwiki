@@ -17,7 +17,7 @@ def execute(pagename, request):
     else:
         domain = re.sub(r"^www\.", "", request.host)
 
-    if None not in (sid, user, domain):
+    if sid and user and domain:
         data = {
             "jid": "%s@%s" % (user, domain),
             "password": sid,
