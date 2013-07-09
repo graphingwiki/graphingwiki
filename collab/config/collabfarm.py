@@ -46,6 +46,8 @@ class FarmConfig(DefaultConfig):
 
     cookie_path = '/collab/'
     cookie_httponly = True
+    # enforce lifetime of 24h, negative value ignores 'remember_me' setting
+    cookie_lifetime = (0, -24)
 
     # allow refresh
     refresh = ( 1, 'external' )
