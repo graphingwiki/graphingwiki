@@ -63,12 +63,13 @@ class FarmConfig(DefaultConfig):
 
     # some user pref defaults
     user_checkbox_defaults = { 'edit_on_doubleclick': 0,
+                               'remember_me': 0,
                                'show_nonexist_qm': 1,
                                'show_page_trail': 1,
                                'want_trivial': 0 }
 
     # remove from user prefs
-    user_checkbox_remove = [ 'disabled' ]
+    user_checkbox_remove = [ 'disabled', 'remember_me' ]
     #user_form_remove = [ 'password', 'password2' ]
     user_form_disable = [ 'name', 'aliasname', 'email' ]
 
