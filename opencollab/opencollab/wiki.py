@@ -197,13 +197,13 @@ class GraphingWiki(Wiki):
         result = self.request("PageCache", page, filename, "load", "", False)
         return str(result)
 
-    def putAttachment(self, page, filename, data, overwrite=False):
+    def putAttachment(self, page, filename, data, overwrite=False, log=True):
         data = xmlrpclib.Binary(data)
         return self.request("AttachFile", page, filename,
-                            "save", data, overwrite)
+                            "save", data, overwrite, log)
 
-    def deleteAttachment(self, page, filename):
-        return self.request("AttachFile", page, filename, "delete", "", False)
+    def deleteAttachment(self, page, filename, log=True):
+        return self.request("AttachFile", page, filename, "delete", "", False, log)
 
     def listAttachments(self, page):
         return self.request("AttachFile", page, "", "list", "", False)
@@ -216,7 +216,7 @@ class GraphingWiki(Wiki):
         return self.request("ChunkedAttachFile", page, filename, "info")
 
     def putAttachmentChunked(self, page, filename, seekableStream,
-                             chunksPerCheck=10, chunkSize=DEFAULT_CHUNK):
+                             chunksPerCheck=10, chunkSize=DEFAULT_CHUNK, log=True):
         count = 0
         total = 0
         digests = list()
@@ -258,7 +258,7 @@ class GraphingWiki(Wiki):
                     self.putCacheFile(page, digest, data, overwrite=True)
                 except WikiFailure, e:
                     if e.fault.faultString == 'No such method: PageCache.':
-                        self.putAttachment(page, digest, data, overwrite=True)
+                        self.putAttachment(page, digest, data, overwrite=True, log=False)
                     else:
                         raise
 

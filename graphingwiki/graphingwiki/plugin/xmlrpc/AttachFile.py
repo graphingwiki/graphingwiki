@@ -40,7 +40,7 @@ def load(request, pagename, filename):
 
     return xmlrpclib.Binary(result)
 
-def delete(request, pagename, filename):
+def delete(request, pagename, filename, log=True):
     _ = request.getText
 
     # check ACLs
@@ -48,7 +48,7 @@ def delete(request, pagename, filename):
         return xmlrpclib.Fault(1, _("You are not allowed to delete a file on this page"))
 
     # Delete the attachment
-    result = delete_attachfile(request, pagename, filename, True)
+    result = delete_attachfile(request, pagename, filename, log)
 
     if not result:
         return xmlrpclib.Fault(2, "%s: %s" % (_("Nonexisting attachment"),
@@ -56,7 +56,7 @@ def delete(request, pagename, filename):
 
     return True
 
-def save(request, pagename, filename, content, overwrite):
+def save(request, pagename, filename, content, overwrite, log=True):
     _ = request.getText
 
     # also check ACLs
@@ -64,8 +64,8 @@ def save(request, pagename, filename, content, overwrite):
         return xmlrpclib.Fault(1, _("You are not allowed to attach a file to this page"))
 
     # Attach the decoded file
-    success = save_attachfile(request, pagename, content, filename, overwrite, True)
-    
+    success = save_attachfile(request, pagename, content, filename, overwrite, log)
+
     if success is True:
         return success
     elif overwrite == False:
@@ -74,7 +74,7 @@ def save(request, pagename, filename, content, overwrite):
     return xmlrpclib.Fault(3, _("Unknown error while attaching file"))
 
 def execute(xmlrpcobj, pagename, filename, action='save',
-            content=None, overwrite=False):
+            content=None, overwrite=False, log=True):
     request = xmlrpcobj.request
     _ = request.getText
 
@@ -85,9 +85,9 @@ def execute(xmlrpcobj, pagename, filename, action='save',
     elif action == 'load':
         success = load(request, pagename, filename)
     elif action == 'delete':
-        success = delete(request, pagename, filename)
+        success = delete(request, pagename, filename, log)
     elif action == 'save' and content:
-        success = save(request, pagename, filename, content.data, overwrite)
+        success = save(request, pagename, filename, content.data, overwrite, log)
     else:
         success = xmlrpclib.Fault(3, _("No method specified or empty data"))
 
