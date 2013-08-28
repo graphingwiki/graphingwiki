@@ -1,4 +1,4 @@
-Building patched ejabberd in RHEL/CentOS 6
+Building patched ejabberd 2.1.13 in RHEL/CentOS 6
 
 * Install build dependencies:
 
@@ -11,10 +11,10 @@ Building patched ejabberd in RHEL/CentOS 6
 
 * Patch and build the packages:
 
-  cp graphingwiki/collab/misc/ejabberd-2.1.11-collab.patch ~/rpmbuild/SOURCES
-  cp graphingwiki/collab/misc/ejabberd.spec.patch ~/rpmbuild/SPECS
+  cp graphingwiki/collab/misc/ejabberd-2.1.13.collab.patch ~/rpmbuild/SOURCES
+  cp graphingwiki/collab/misc/ejabberd-2.1.13.spec.patch ~/rpmbuild/SPECS
   cd ~/rpmbuild/SPECS
-  patch -b < ejabberd.spec.patch
+  patch -b < ejabberd-2.1.13.spec.patch
   rpmbuild -bb ejabberd.spec
 
 The binary packages are created under ~/rpmbuild/RPMS.
