@@ -31,15 +31,8 @@ from graphingwiki.util import NO_TYPE
 
 Dependencies = ['pagelinks']
 
-def execute(macro, args):
-    pagename = macro.formatter.page.page_name
-    request = macro.request
-    _ = request.getText
-
-    meta = False
-    if args and 'meta' in args:
-        meta = True
-
+def nodes(request, pagename, meta):
+    formatter = request.formatter
     out = []
     nodes = set()
     # User rights are not checked here as the page will not be
@@ -58,10 +51,22 @@ def execute(macro, args):
             if meta and type != NO_TYPE:
                 typeinfo = " (%s)" % (type)
             if not page in nodes:
-                out.append(macro.formatter.pagelink(1, page) +
-                           macro.formatter.text(page + typeinfo) +
-                           macro.formatter.pagelink(0, page))
+                out.append(formatter.pagelink(1, page) +
+                           formatter.text(page + typeinfo) +
+                           formatter.pagelink(0, page))
                 nodes.add(page)
+    return out
+
+def execute(macro, args):
+    pagename = macro.formatter.page.page_name
+    request = macro.request
+    _ = request.getText
+
+    meta = False
+    if args and 'meta' in args:
+        meta = True
+
+    out = nodes(request, pagename, meta)
 
     # linebreak's knowledge of being in a preformatted area sucks
     return "%s: " % _("Linked in pages") + ', '.join(out) + \

@@ -87,7 +87,16 @@ window.addEvent('domready', function() {
                 'overflow': 'hidden'
             });
             
-            $(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
+	    // jquery vs mootools, occurs in bootstrap theme
+	    var body;
+	    if(Object.prototype.toString.call($(document.body)) == 
+	       "[object Object]") {
+		body = $(document.body)[0];
+	    } else {
+		body = $(document.body);
+	    }
+
+	    body.addEvent('focus:relay(textarea.dynamic)', function(e){
                 if (!$(e.target).retrieve('dynamic')) {
                     new DynamicTextarea(e.target);
                     $(e.target).store('dynamic', true).focus();
