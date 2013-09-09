@@ -373,39 +373,6 @@ class Theme(basetheme.Theme):
         ]
         return u'\n'.join(html)
 
-    def quicklinks(self):
-        _ = self.request.getText
-        userlinks = self.request.user.getQuickLinks()
-        items = list()
-        found = dict()
-        item = u'              <li class="%s">%s</li>'
-
-        for text in userlinks:
-            pagename, link = self.splitNavilink(text, localize=0)
-            if not pagename in found:
-                if pagename == self.request.page.page_name:
-                    cls = 'userlink current'
-                else:
-                    cls = 'userlink'
-                items.append(item % (cls, link))
-                found[pagename] = 1
-
-        if not items:
-            return ""
-
-        val = """          <li class="active dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-               <i class="icon-star-empty" title="%s"></i></a>
-            <ul class="dropdown-menu">\n""" % _("Quicklinks")
-
-        for item in items:
-            val += item
-        val += """            </ul>
-          </li>
-"""
-
-        return val
-
     def breadcrumbs(self):
         request = self.request
         _ = request.getText
