@@ -13,6 +13,7 @@ import re
 
 from MoinMoin import config
 from MoinMoin import wikiutil
+from MoinMoin.widget import html
 from MoinMoin.Page import Page
 from MoinMoin.theme import modernized as basetheme
 from MoinMoin.theme import get_available_actions
@@ -249,18 +250,21 @@ class Theme(basetheme.Theme):
         quicklinks = QUICKLINKS_RE.findall(content)
         content = QUICKLINKS_RE.sub('', content)
 
-        val = """<li class="active dropdown">
+        if quicklinks:
+            val = """<li class="active dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                <i class="icon-star-empty" title="%s"></i></a>
             <ul class="dropdown-menu">\n""" % _("Quicklinks")
 
-        for item in quicklinks:
-            val += "               " + item.replace(' icon-white', '') + "\n"
-        val += """            </ul>
+            for item in quicklinks:
+                val += "               %s\n" % (item.replace(' icon-white', ''))
+
+                val += """            </ul>
           </li>
 """
+            content += val
 
-        return content + val
+        return content
 
     def username(self, d):
         request = self.request
@@ -279,25 +283,37 @@ class Theme(basetheme.Theme):
                                          wikitail)
 
             name = request.user.name
+            urls = []
+            
+            plugins = wikiutil.getPlugins('userprefs', request.cfg)
+            for sub in plugins:
+                if sub in request.cfg.userprefs_disabled:
+                    continue
+                cls = wikiutil.importPlugin(request.cfg, 'userprefs', 
+                                            sub, 'Settings')
+                obj = cls(request)
+                if not obj.allowed():
+                    continue
+                url = request.page.url(request, {'action': 'userprefs', 
+                                                 'sub': sub})
+                urls.append('<a href="%s">%s</a>' % (url, obj.title))
 
-            out = """            <div class="input-append">
+ 
+            out = ""
+
+            if urls:
+                out = """            <div class="input-append">
               <div class="btn-group">
                 <a class="btn" href="%s"><i class="icon-user"></i> </a>
                 <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
                   <span class="caret"></span></a>
                 <ul class="dropdown-menu">
                   <li class="nav-header">%s</li>
-                  <li><a href="?action=userprefs&sub=changepass">%s</a></li>
-                  <li><a href="?action=userprefs&sub=notifications">%s</a></li>
-"""  % (linkpage, name, _("Change password"), _("Notifications"))
+"""  % (linkpage, name)
+                for url in urls:
+                    out += "                  <li>%s</li>\n" % (url)
 
-            if 'userprefs' not in self.request.cfg.actions_excluded:
-
-                out += '                  <li>'
-                out += """<a href="?action=userprefs&sub=prefs">%s</a></li>
-""" % (_("Preferences"))
-
-            out += """                </ul>
+                out += """                </ul>
               </div>
             </div>"""
 
