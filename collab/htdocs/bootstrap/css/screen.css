@@ -71,6 +71,39 @@ body {
         padding-left: 20px;
         padding-right: 20px;
     }
+
+    .container,
+    .navbar-static-top .container,
+    .navbar-fixed-top .container,
+    .navbar-fixed-bottom .container {
+	width: 100%;
+    }
+
+}
+
+@media (min-width: 768px) and (max-width: 979px) {
+    .container,
+    .navbar-static-top .container,
+    .navbar-fixed-top .container,
+    .navbar-fixed-bottom .container {
+	width: 100%;
+    }
+}
+
+@media (min-width: 1200px) {
+    .container,
+    .navbar-static-top .container,
+    .navbar-fixed-top .container,
+    .navbar-fixed-bottom .container {
+	width: 100%;
+    }
+}
+
+.container,
+.navbar-static-top .container,
+.navbar-fixed-top .container,
+.navbar-fixed-bottom .container {
+    width: 100%;
 }
 
 a:link { color: #47f; text-decoration: none; }
