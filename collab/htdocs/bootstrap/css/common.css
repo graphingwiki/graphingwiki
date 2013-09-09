@@ -791,7 +791,7 @@ div#footer {
 	background-color: #054884;
 #	border-top: 4px solid #054884;
 #	border-bottom: 25px solid #054884;
-	padding: 0px;
+	padding: 5px 0 0 0;
 	text-align: left;
 	clear: both;
 	width: 100%;
