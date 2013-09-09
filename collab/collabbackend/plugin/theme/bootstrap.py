@@ -9,6 +9,8 @@
 
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>
 """
+import re
+
 from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
@@ -24,6 +26,8 @@ BREADCRUMB_ACTIONS = {'print': 'Print View',
                       'info': 'Info',
                       'AttachFile': 'Attachments',
                       'Invite': 'Invite'}
+
+QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
 
 class Theme(basetheme.Theme):
     name = "bootstrap"
@@ -241,7 +245,22 @@ class Theme(basetheme.Theme):
                                   '" title="%s">' % page_help_contents +
                                   '<i class="icon-question-sign' +
                                   ' icon-white"></i>')
-        return content
+
+        quicklinks = QUICKLINKS_RE.findall(content)
+        content = QUICKLINKS_RE.sub('', content)
+
+        val = """<li class="active dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+               <i class="icon-star-empty" title="%s"></i></a>
+            <ul class="dropdown-menu">\n""" % _("Quicklinks")
+
+        for item in quicklinks:
+            val += "               " + item.replace(' icon-white', '') + "\n"
+        val += """            </ul>
+          </li>
+"""
+
+        return content + val
 
     def username(self, d):
         request = self.request
@@ -337,7 +356,6 @@ class Theme(basetheme.Theme):
             self._wraplink(self.logo()),
             self.navibar(d),
             self.actionsMenu(),
-            self.quicklinks(),
             self._endnav1(),
             '        <div class="nav-collapse collapse">',
             self.search_user_form(d),
