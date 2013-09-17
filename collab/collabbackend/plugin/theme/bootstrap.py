@@ -41,7 +41,7 @@ class Theme(basetheme.Theme):
             mylogo = u'<div id="logo"><a href="' + \
                 self.request.cfg.page_front_page + '"><img src="' + \
                 self.cfg.url_prefix_static + \
-                '/bootstrap/img2/cert-fi_fi.png" alt="CERT-FI"></a></div>'
+                '/bootstrap/img2/cert-fi.png" alt="CERT-FI"></a></div>'
         return mylogo
 
     def _startnav(self):
