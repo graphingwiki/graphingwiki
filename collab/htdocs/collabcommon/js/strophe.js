@@ -16,6 +16,8 @@ var Base64 = (function () {
             var enc1, enc2, enc3, enc4;
             var i = 0;
 
+            input = unescape(encodeURIComponent(input));
+
             do {
                 chr1 = input.charCodeAt(i++);
                 chr2 = input.charCodeAt(i++);
@@ -72,7 +74,7 @@ var Base64 = (function () {
                 }
             } while (i < input.length);
 
-            return output;
+            return decodeURIComponent(escape(output));
         }
     };
 
