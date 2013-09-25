@@ -20,7 +20,7 @@ def checkAccess(user, path):
     except IOError:
         return False
     for l in f:
-        l = l.strip().split()
+        l = l.strip().decode("utf-8").split()
         if len(l) > 1:
             l[0] = l[0].lower()
             l[1] = l[1].lower()
