@@ -219,26 +219,26 @@ class Theme(basetheme.Theme):
 
         content = content.replace('current">', 'current active">')
         content = content.replace('>%s<' % self.request.cfg.page_front_page,
-                                  'title="%s">' % 
+                                  ' title="%s">' % 
                                   self.request.cfg.page_front_page + 
                                   '<i class="icon-home icon-white"></i><')
 
         content = content.replace('>%s<' % _("CollabList"),
-                                  'title="%s">' % _("CollabList") +
+                                  ' title="%s">' % _("CollabList") +
                                   '<i class="icon-globe icon-white"></i><')
         content = content.replace('>%s<' % _("Collab"),
-                                  'title="%s">' % _("Collab") +
+                                  ' title="%s">' % _("Collab") +
                                   '<i class="icon-comment icon-white"></i><')
 
         page_recentchanges = \
             wikiutil.getLocalizedPage(self.request, 'RecentChanges').page_name
         content = content.replace('>%s<' % (page_recentchanges),
-                                  'title="%s">' % (page_recentchanges) +
+                                  ' title="%s">' % (page_recentchanges) +
                                   '<i class="icon-list-alt icon-white"></i><')
         page_findpage = \
             wikiutil.getLocalizedPage(self.request, 'FindPage').page_name
         content = content.replace('>%s<' % (page_findpage),
-                                  'title="%s">' % (page_findpage) +
+                                  ' title="%s">' % (page_findpage) +
                                   '<i class="icon-search icon-white"></i><')
         page_help_contents = \
             wikiutil.getLocalizedPage(self.request, 'HelpContents').page_name
@@ -278,9 +278,7 @@ class Theme(basetheme.Theme):
             linkpage = '#'
             if interwiki[0] == 'Self':
                 wikitail = wikiutil.url_unquote(interwiki[1])
-                linkpage = \
-                    wikiutil.AbsPageName(request.page.page_name, 
-                                         wikitail)
+                linkpage = request.script_root + '/' + wikitail
 
             name = request.user.name
             urls = []
