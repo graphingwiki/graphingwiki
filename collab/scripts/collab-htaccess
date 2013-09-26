@@ -83,7 +83,7 @@ f.write(pid + '\n')
 f.close()
 
 from MoinMoin import log
-log.load_config(mylogconf) 
+log.load_config(mylogconf)
 
 # We need to import contexts before importing users, because otherwise
 # the relative imports in MoinMoin will fail.
@@ -105,8 +105,8 @@ def diffandstore(filename, newtext, dryrun=noop):
     except IOError:
         oldtext = ''
 
-    newtext = newtext.encode('iso8859-15')
-    
+    newtext = newtext.encode('utf-8')
+
     if oldtext != newtext:
         diff = difflib.ndiff(oldtext.splitlines(1), newtext.splitlines(1))
         for line in diff:
@@ -174,7 +174,7 @@ for dent in os.listdir("."):
     mytitle = os.path.join(dent, '.title')
     mymotd = os.path.join(dent, '.motd')
     myurl = os.path.join(dent, '.url')
-    
+
     if not os.path.isdir(dent) or not os.path.isdir(mydata):
         continue
 
@@ -197,16 +197,20 @@ for dent in os.listdir("."):
     members = []
 
     isgroup = req.cfg.cache.page_group_regexact.search
-    
+
     for member in req.groups.get("AccessGroup"):
         if isgroup(member):
             continue
-        members.append('require user ' + re.sub('[^\w@.\-\']', '', member))
+        if re.search('[^\w@.\-\']', member, re.U) is not None:
+            if verbose:
+                print >> sys.stderr, "INVALID: " + member + " in " + dent
+            continue
+        members.append('require user ' + member)
         if member in allusers:
             allusers[member] += 1
         elif verbose:
             print >> sys.stderr, "PHANTOM: " + member + " in " + dent
-        
+
     members.sort()
 
     f = open(mytemplate, 'r')
@@ -217,7 +221,7 @@ for dent in os.listdir("."):
         newtext = newtext + member + '\n'
 
     msg.extend(diffandstore(myhtaccess, newtext))
-                
+
     metas = get_metas(req, 'CollabFacts', ['name', 'description', 'URL'])
     if metas['name']:
         val = metas['name'][0]

@@ -20,7 +20,7 @@ def checkAccess(user, path):
     except IOError:
         return False
     for l in f:
-        l = l.strip().split()
+        l = l.strip().decode("utf-8").split()
         if len(l) > 1:
             l[0] = l[0].lower()
             l[1] = l[1].lower()
@@ -56,7 +56,7 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     for shortName in collabs:
         try:
             text = open(os.path.join(path, shortName, ".url")).read()
-            link = text.strip().decode('iso8859-15')
+            link = text.strip().decode('utf-8')
         except IOError:
             link = baseurl
             link += shortName
@@ -64,13 +64,13 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
 
         try:
             text = open(os.path.join(path, shortName, ".title")).read()
-            title = text.strip().decode('iso8859-15')
+            title = text.strip().decode('utf-8')
         except IOError:
             title = shortName.replace("_", " ")
 
         try:
             text = open(os.path.join(path, shortName, ".motd")).read()
-            motd = text.strip().decode('iso8859-15')
+            motd = text.strip().decode('utf-8')
         except IOError:
             motd = ""
 
