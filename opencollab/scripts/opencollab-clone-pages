@@ -48,8 +48,8 @@ def main():
     if search is None:
         parser.error("MetaTable search string needs to be specified. Use -h for help.")
 
-    if verbose:
-        print "Authenticating to SRC URL:", url
+    print "Authenticating to SRC URL:", url
+
     while True:
         try:
             src_collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
@@ -61,8 +61,9 @@ def main():
             break
 
     ops['creds']['url'] = dsturl
-    if verbose:
-        print "Authenticating to DST URL:", dsturl
+
+    print "Authenticating to DST URL:", dsturl
+
     while True:
         try:
             dst_collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
