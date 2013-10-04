@@ -37,10 +37,14 @@ def main():
     url = ops["creds"]["url"]
     dsturl = ops[sect]["destination"]
     verbose = ops[sect]["verbose"]
-    search = ops[sect]['search']
-    progress = ops[sect]['progress']
+    search = ops[sect]["search"]
+    progress = ops[sect]["progress"]
     x509 = ops[sect]["x509"]
     x509_ca_file = ops[sect]["x509_ca_file"]
+    dryrun = ops[sect]["dryrun"]
+    if dryrun:
+        verbose = True
+
     if search is None:
         parser.error("MetaTable search string needs to be specified. Use -h for help.")
 
@@ -83,7 +87,7 @@ def main():
         content = ""
         if verbose:
             print "NOTE: Handling page", page
-        if not ops[sect]["dryrun"]:
+        if not dryrun:
             try:
                 content = src_collab.getPage(page)
             except opencollab.wiki.WikiFailure, (strerror):
