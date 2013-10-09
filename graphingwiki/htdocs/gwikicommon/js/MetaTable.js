@@ -289,7 +289,7 @@
                     args[page][key] = this.metas[page][key];
 
                     new Request.SetMetas({
-                        data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
+                        metas: args,
                         checkArgs: page,
                         checkData: oldData,
                         onSuccess: function() {
@@ -348,7 +348,7 @@
                     });
 
                     new Request.SetMetas({
-                        data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
+                        metas: args,
                         checkArgs: this.tableArgs.args,
                         checkData: oldData,
                         onSuccess: function() {

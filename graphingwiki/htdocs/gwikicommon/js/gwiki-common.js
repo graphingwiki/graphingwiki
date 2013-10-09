@@ -110,15 +110,26 @@ Element.Events.shiftclick = {
     }
 };
 
+/*
+   SetMetas using setMetaJSON
+   Usage example:
+   var metas = {"testisivu":{"foo":["bar"]}}
+   new Request.SetMetas({
+        metas: metas
+   }).checkAndSend();
+
+*/
 Request.SetMetas = new Class({
     Extends : Request.JSON,
     options: {
         //onConflict: function(){}
         method: 'post',
+        metas: {},
         checkArgs: '',
         checkData: {}
     },
     checkAndSend: function() {
+        this.options.data = 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(this.options.metas));
         var args = arguments;
         new Request.GetMetas({
             onSuccess: function(json) {
@@ -565,7 +576,7 @@ var initInlineMetaEdit = function (base) {
                 vals[index] = newValue;
 
                 new Request.SetMetas({
-                    data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
+                    metas: args,
                     checkArgs: page,
                     checkData: oldData,
                     onSuccess: function() {
@@ -632,7 +643,7 @@ var initInlineMetaEdit = function (base) {
                 metas[newKey] = args[page][newKey];
 
                 new Request.SetMetas({
-                    data: 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(args)),
+                    metas: args,
                     checkArgs: page,
                     checkData: oldData,
                     onSuccess: function() {
