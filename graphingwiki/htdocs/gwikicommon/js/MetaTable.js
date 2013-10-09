@@ -6,7 +6,9 @@
  Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick More/Date
  */
 
-(function() {
+(function($, exports) {
+    "use strict";
+
     var preformatTable = function(tab) {
         var head = tab.getElement('thead');
         if (!head) {
@@ -168,7 +170,7 @@
     });
 
 
-    var MetaTable = this.MetaTable = new Class({
+    var MetaTable = exports.MetaTable = new Class({
         Extends: HideableTable,
         options: {
             thSelector: 'td.head_cell:not(.edit)',
@@ -176,7 +178,7 @@
         },
 
         initialize: function(table) {
-            table = document.id(table);
+            table = $(table);
             preformatTable(table);
             this.parent.apply(this, arguments);
 
@@ -234,7 +236,7 @@
                 return;
             }
 
-            var target = document.id(event.target),
+            var target = $(event.target),
                 key, index, page, oldValue = "";
 
             if (target.get('tag') == 'td') {
@@ -314,7 +316,7 @@
                 return;
             }
 
-            var target = document.id(event.target);
+            var target = $(event.target);
 
             if (target.get('tag') != 'span') target = target.getParent('span');
             var oldKey = target.get('data-key');
@@ -527,7 +529,7 @@
         }
     });
 
-    var InterMetaTable = this.InterMetaTable = new Class({
+    var InterMetaTable =  exports.InterMetaTable = new Class({
         Extends: HideableTable,
 
         options: {
@@ -541,7 +543,7 @@
         },
 
         initialize: function(el, opts) {
-            this.container = document.id(el);
+            this.container = $(el);
 
             ["_format", "construct"].each(function(f) {
                 this[f].bind(this);
@@ -666,4 +668,6 @@
             }, this);
         }
     });
-})();
+
+//Use mootools document.id for $
+})(document.id, window);

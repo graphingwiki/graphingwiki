@@ -87,19 +87,10 @@ window.addEvent('domready', function() {
                 'overflow': 'hidden'
             });
             
-	    // jquery vs mootools, occurs in bootstrap theme
-	    var body;
-	    if(Object.prototype.toString.call($(document.body)) == 
-	       "[object Object]") {
-		body = $(document.body)[0];
-	    } else {
-		body = $(document.body);
-	    }
-
-	    body.addEvent('focus:relay(textarea.dynamic)', function(e){
-                if (!$(e.target).retrieve('dynamic')) {
+	    document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
+                if (!document.id(e.target).retrieve('dynamic')) {
                     new DynamicTextarea(e.target);
-                    $(e.target).store('dynamic', true).focus();
+                    document.id(e.target).store('dynamic', true).focus();
                 }
             });
         });
@@ -398,7 +389,7 @@ var initDnDUpload = function(el){
                                                     'margin-left': '15px'
                                                 });
 
-                                                $(e.target).removeClass('hidden').set('value', 'Overwrite');
+                                                document.id(e.target).removeClass('hidden').set('value', 'Overwrite');
                                                 overwrite = true;
                                             }
                                             progress.getParent().addClass('hidden');
@@ -419,7 +410,7 @@ var initDnDUpload = function(el){
                             
                             xhr.send(data);
 
-                            $(e.target).addClass('hidden');
+                            document.id(e.target).addClass('hidden');
 
                         }).setStyle('font-size', 'larger'));
                     }
@@ -568,7 +559,7 @@ var initInlineMetaEdit = function (base) {
                 var args = {};
                 args[page] = {};
 
-                var vals = metas[key];
+                var vals = Array.clone(metas[key]);
                 args[page][key] = vals;
                 var oldData = Object.clone(args);
                 vals[index] = newValue;
@@ -578,6 +569,7 @@ var initInlineMetaEdit = function (base) {
                     checkArgs: page,
                     checkData: oldData,
                     onSuccess: function() {
+                        metas[key] = vals;
                         editor.exit();
                         editor = null;
                     }.bind(this)
