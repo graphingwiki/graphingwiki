@@ -280,7 +280,6 @@
                     oldData[page] = {};
                     oldData[page][key] = Array.clone(this.metas[page][key]);
 
-                    if (i >= this.metas[page][key].length) this.metas[page][key].push("");
                     this.metas[page][key][index] = value;
 
                     var args = {};
