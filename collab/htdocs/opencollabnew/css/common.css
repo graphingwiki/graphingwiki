@@ -3,6 +3,8 @@
 Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 */
 
+/* content styles */
+
 @import url('bootstrap.min.css');
 
 /* Remove roundings */
@@ -88,6 +90,7 @@ div#footer {
 	padding: 0px 30px 0px 15px;
 }
 
+
 html,
 body {
     height: 100%;
@@ -108,7 +111,7 @@ body {
 }
 
 .navbar-inverse .navbar-inner {
-        background-color: #054884 !important;
+        background-color: rgb(129, 187, 242) !important;
         background-image: none;
         filter: none;
 }
@@ -123,7 +126,7 @@ body {
 .navbar .nav > .active > a:focus {
   color: #ffffff;
   text-decoration: none;
-  background-color: #054884 !important;
+  background-color: rgb(129, 187, 242) !important;
   -webkit-box-shadow: none;
      -moz-box-shadow: none;
           box-shadow: none;
@@ -166,53 +169,71 @@ body {
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0);
 }
 
-
-/* content styles */
+/* original common.css */
 
 html {
-    background-color: white;
-    color: black;
-    font-family: Verdana, Arial, Helvetica;
-    font-size: 9pt;
+        background-color: white;
+        color: #666;
+        font-family: Arial,Verdana,Geneva,"Bitstream Vera Sans",Helvetica,sans-serif;
+        font-size: 95%;
 }
 
 body {
-    margin: 0;
-    font-size: 9pt;
+	margin: 0;
 }
 
-/* Headings */
-
 h1 {
-	font-size: 24pt;
-	color: #054884;
-	font-weight: bold;
-	margin: 0 0 0.5em 0;
+        color: #2caff0;
+        padding: 2px 4px 1px 0px;
+        margin: 20px 10px 20px 0px;
+        font-size: 1.8em;
+    font-family Verdana;
+        font-weight: normal;
 }
 
 h2 {
-	font-size: 12pt;
-	color: #00acde;
-	font-weight: normal;
-	margin: 0 0 0.5em 0;
+        color: #666;
+        font-size: 1.2em;
+        margin-top: 1.5em;
+        border-bottom: 1px dotted #aaa;
 }
 
-h3, h4, h5, h6 {
-	font-size: 9pt;
-	color: #054884;
-	font-weight: normal;
-	margin: 0 0 1em 0;
+h3 {
+        color: #666;
+        font-size: 1.1em;
+        margin-top: 1.5em;
 }
 
+
+h4, h5, h6 {
+        color: #666;
+        font-size: 1em;
+}
+
+ul {
+	margin-left: 30px;
+	padding-left: 0;
+}
+
+ul li {
+	margin-left: 10px;
+}
 
 
 /* Links */
 
-a {color: #0044B3;}
-/* a:visited {color: #597BB3;} */
-a:visited {color: #FF7BB3;}
+a:link, a:visited, a:active {
+        text-decoration: none;
+        color: #56a;
+}
 
-a.nonexistent:visited, a.nonexistent,
+a:hover,
+a:visited:hover {
+        text-decoration: underline;
+}
+
+
+a.nonexistent:visited, a.nonexistent, 
 a.badinterwiki:visited, a.badinterwiki {color: gray;}
 
 a.www:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
@@ -228,10 +249,9 @@ a.mailto:before {content: url(../img/moin-email.png); margin: 0 0.2em;}
 a.attachment:before {content: url(../img/moin-attach.png); margin: 0 0.2em;}
 a.badinterwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
 a.interwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
-a.action:before {content: url(../img/moin-action.png); margin: 0 0.2em;}
 
 li p {
-    margin: .25em 0;
+	margin: .25em 0;
 }
 
 li.gap {
@@ -251,19 +271,19 @@ dd {
 dd p {
     margin: 0.25em 0;
 }
-
+   
 a, img, img.drawing {
-    border: 0;
+	border: 0;
 }
 
 pre {
-    border: 1pt solid #AEBDCC;
-    background-color: #F3F5F7;
-    padding: 5pt;
-    font-family: courier, monospace;
-    white-space: pre;
-    /* begin css 3 or browser specific rules - do not remove!
-    see: http://forums.techguy.org/archive/index.php/t-249849.html */
+	border: 1pt solid #AEBDCC;
+	background-color: #F3F5F7;
+	padding: 5pt;
+	font-family: courier, monospace;
+	white-space: pre;
+	/* begin css 3 or browser specific rules - do not remove!
+	see: http://forums.techguy.org/archive/index.php/t-249849.html */
     white-space: pre-wrap;
     word-wrap: break-word;
     white-space: -moz-pre-wrap;
@@ -303,61 +323,34 @@ pre.comment:before {
 .right { text-align: right; }
 .justify { text-align: justify; }
 
-table {
-    margin: 1em 0 1em 0;
-    border-collapse: collapse;
+table
+{
+	margin: 0.5em 0 0 0.5em;
+	border-collapse: collapse;
 }
 
-td {
-    padding: 0.25em 1em 0.25em 1em;
-    border: 2px solid #fff;
-    background-color: #e7f1f9;
-    color: #000;
-    min-height: 1em;
-    -webkit-print-color-adjust: exact;
-}
-
-tbody tr:nth-child(even) td {
-    background-color: #cbe3f3;
-}
-
-table td:first-child,
-table th:first-child {
-    border-left: none;
-}
-
-table td:last-child,
-table th:last-child {
-    border-right: none;
-}
-
-th,
-thead td {
-    padding: 0.25em 1em 0.25em 1em;
-	border: 2px solid #fff;
-	border-bottom: 4px solid #fff;
-	background-color: #00acde;
-	color: #fff;
-	min-height: 1em;
-	font-weight: bold;
-	-webkit-print-color-adjust: exact;
+th, td
+{
+	padding: 0.25em 0.5em 0.25em 0.5em;
+	border: 1pt solid #ADB9CC;
 }
 
 td p {
-    margin: 0;
-    padding: 0;
+	margin: 0;
+	padding: 0;
 }
 /* TableOfContents macro */
 div.table-of-contents {
     border: 1px solid #bbbbbb;
     color: black;
     background-color: #eeeeee;
-    font-size: 80%;
+/*    font-size: 80%; */
     text-align: left;
     margin: 0.5em 0 0.5em 1em;
     padding: 0.5em 0.75em 0.5em 0.5em;
     max-width: 50%;
     display: inline-table;
+	font-size: 110%;
 }
 div.table-of-contents ol {
     margin: 0;
@@ -385,13 +378,13 @@ table.navigation {
 }
 
 .footnotes div {
-    width: 5em;
-    border-top: 1pt solid gray;
+	width: 5em;
+	border-top: 1pt solid gray;
 }
 
 .footnotes ol {
-    padding: 0 2em;
-    margin: 0 0 1em;
+	padding: 0 2em;
+	margin: 0 0 1em;
 }
 
 .footnotes li {
@@ -433,49 +426,49 @@ hr {
 .strike {text-decoration: line-through;}
 
 /* eye catchers */
-.warning
+.warning 
 {
-    color: red;
+	color: red;
 }
 
-.error
+.error 
 {
-    color: red;
+	color: red;
 }
 
-strong.highlight
+strong.highlight 
 {
-    background-color: #CCE0FF;
-    padding: 1pt;
+	background-color: #CCE0FF;
+	padding: 1pt;
 }
 
 
 /* Recent changes */
 
 .rcrss {
-    float: right;
-    margin: 0 7px 0 14px;
-    height: 0;
-    position: relative;
-    top: 9px;
+	float: right;
+	margin: 0 7px 0 14px;
+        height: 0;
+        position: relative;
+        top: 9px;
 }
 *[div="rtl"] .rcrss {
     float: left;
 }
 .recentchanges[dir="rtl"] .rcrss {
-    float: left;
+	float: left;
 }
 
 .recentchanges table {
-    clear: both;
-    border-collapse: collapse;
-
+	clear: both;
+        border-collapse: collapse;
+        
     border: 1px solid #4d7da9;
 }
 
 .recentchanges td {
-    vertical-align: top;
-    border: none;
+	vertical-align: top;
+	border: none;
     background: #e6eaf0;
 }
 
@@ -487,73 +480,60 @@ strong.highlight
 }
 
 .rcdaybreak td a {
-    font-size: 0.88em;
+	font-size: 0.88em;
 }
 
 .rcicon1, .rcicon2 {
-    text-align: center;
+	text-align: center;
 }
 
 .rcpagelink {
-    width: 33%;
+	width: 33%;
 }
 
 .rctime {
-    font-size: 0.88em;
-    white-space: nowrap;
+	font-size: 0.88em;
+	white-space: nowrap;
 }
 
 .rceditor {
-    white-space: nowrap;
-    font-size: 0.88em;
+	white-space: nowrap;
+	font-size: 0.88em;
 }
 
 .rccomment {
-    width: 50%;
-    color: gray;
-    font-size: 0.88em;
+	width: 50%;
+	color: gray;
+	font-size: 0.88em;
 }
 
 
 /* User Preferences */
 
 .userpref table, .userpref td {
-    border: none;
+	border: none;
 }
 
 /* CSS for new code_area markup used by Colorizer and ParserBase */
 
-div.codemsg {
-    margin: 0.5em 0;
-    padding: 0.5em;
-    padding-left:2.5em;
-    background:none;
-    border: 1pt solid #CCBDAE;
-    background-color: #F7F0E0;
-    background-image:url('../img/alert.png');
-    background-repeat:no-repeat;
-    background-position: 0.5em 0.5em;
-    color: black;
-}
-
 div.codearea { /* the div makes the border */
-    margin: 0.5em 0;
-    padding: 0;
-    border: 1pt solid #AEBDCC;
-    background-color: #F3F5F7;
-    color: black;
+	margin: 0.5em 0;
+	padding: 0;
+	border: 1pt solid #AEBDCC;
+	background-color: #F3F5F7;
+	color: black;
 }
 
 div.codearea pre { /* the pre has no border and is inside the div */
-    margin: 0;
-    padding: 10pt;
-    border: none;
+	margin: 0;
+	padding: 10pt;
+	border: none;
 }
 
 a.codenumbers { /* format of the line numbering link */
-    margin: 0 10pt;
-    font-size: 0.85em;
-    color: gray;
+	margin: 0 10pt;
+	font-size: 0.85em;
+	color: gray;
 }
 
 /* format of certain syntax spans */
@@ -585,7 +565,7 @@ div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
 
 .advancedsearch td {
     vertical-align: top;
-    background-color: #E7E7E7;
+    background-color: #E7E7E7;    
     border: 0px;
 }
 
@@ -608,7 +588,7 @@ div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
     text-align: right;
 }
 
-.advancedsearch optioni,
+.advancedsearch optioni, 
 .advancedsearch select {
     border: 1px solid #ADB9CC;
     background-color: #fff;
@@ -741,28 +721,28 @@ TD.tip {
 #message .warning:before {content: url('../img/alert.png'); margin: 0 0.2em;}
 #message .error:before {content: url('../img/icon-error.png'); margin: 0 0.2em;}
 
-
 /* admonition start */
-#content div.caution,
-#content div.important,
-#content div.note,
-#content div.tip,
+#content div.caution, 
+#content div.important, 
+#content div.note, 
+#content div.tip, 
 #content div.warning {
     border: 1pt solid #E5E5E5;
     background-color: #F9F9FF;
     color: black;
-
+    
     margin: 10pt 30pt 10pt 30pt;
     background-repeat: no-repeat;
     background-position: 8px 8px;
     min-height: 64px; /*64=48+8+8 but doesn't work with IE*/
     padding-left: 64px;
+    overflow: auto;
 }
-
-#content div.caution p,
-#content div.important p,
-#content div.note p,
-#content div.tip p,
+ 
+#content div.caution p, 
+#content div.important p, 
+#content div.note p, 
+#content div.tip p, 
 #content div.warning p {
     margin-top: 8px; /*to align text with bg graphic*/
 }
@@ -774,35 +754,3 @@ TD.tip {
 #content div.warning { background-image: url("../img/admon-warning.png"); }
 
 /* admonition end */
-
-#blueline1 {
-	background-color: #054884 !important;
-	width: 100%;
-	height: 25px;
-	margin: 0;
-	padding: 0;
-	clear: both;
-	-webkit-print-color-adjust: exact;
-}
-
-#blueline2 {
-	background-color: #3aacde !important;
-	width: 100%;
-	height: 8px;
-	margin: 2px 0;
-	padding: 0;
-	clear: both;
-	-webkit-print-color-adjust: exact;
-}
-
-.accessnote {
-	font-family: Calibri, Verdana, Arial;
-	margin: -20px 20px 20px 20px;
-	padding: 0px 10px 0 10px;
-	width: 200px;
-	text-align: center;
-	color: #c00000;
-	border: 2px solid #c00000;
-	float: right;
-	font-size: 12pt;
-}
