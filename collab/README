@@ -249,7 +249,7 @@ su - collab -s /bin/bash -c "collab-htaccess"
 # page of the wiki, and then issuing collab-htaccess.
 su - collab -s /bin/bash -c "collab-htaccess"
 
-# User passwords are changed with collab-account-passwd, after which
+# User passwords are changed with collab-account-password, after which
 # you need to run collab-htaccess.
-su - collab -s /bin/bash -c "collab-account-passwd collab"
+su - collab -s /bin/bash -c "collab-account-password collab"
 su - collab -s /bin/bash -c "collab-htaccess"

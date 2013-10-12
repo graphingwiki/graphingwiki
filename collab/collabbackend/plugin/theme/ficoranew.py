@@ -39,8 +39,8 @@ class Theme(basetheme.Theme):
         mylogo = basetheme.Theme.logo(self)
         if not mylogo:
             mylogo = u'<div id="logo"><a href="' + \
-                self.request.cfg.page_front_page + '"><img src="' + \
-                self.cfg.url_prefix_static + \
+                self.request.script_root + '/' + self.request.cfg.page_front_page + \
+                '"><img src="' + self.cfg.url_prefix_static + \
                 '/bootstrap/img2/cert-fi.png" alt="CERT-FI"></a></div>'
         return mylogo
 
