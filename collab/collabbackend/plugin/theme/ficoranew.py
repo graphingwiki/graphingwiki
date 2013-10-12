@@ -20,5 +20,5 @@ class Theme(ThemeParent):
             mylogo = u'<div id="logo"><a href="' + \
                 self.request.script_root + '/' + self.request.cfg.page_front_page + \
                 '"><img src="' + self.cfg.url_prefix_static + \
-                '/bootstrap/img2/cert-fi.png" alt="CERT-FI"></a></div>'
+                '/ficoranew/img2/cert-fi.png" alt="CERT-FI"></a></div>'
         return mylogo
