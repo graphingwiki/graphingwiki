@@ -197,7 +197,6 @@ def getaff(args):
 
     logging.info("getaff from user %s@%s and room %s@%s called" % (username, server, room, roomServer))
 
-    username = convertUsername(username)
     result = "none"
     if server != myjabberdomain:
         result = "none"
