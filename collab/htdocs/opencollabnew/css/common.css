@@ -5,142 +5,24 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
-@import url('bootstrap.min.css');
-
-/* Remove roundings */
-.navbar-inverse .navbar-inner {
-    border-radius: 0;
-    -moz-border-radius: 0;
-    -webkit-border-radius: 0;
+.navbar .input-group {
+    width: 350px;
 }
 
-.navbar-inner {
-    padding-left: 0;
+.navbar-inverse {
+    background: #054884 !important
 }
 
-.navbar-form input {
-    border-radius: 0;
-    -moz-border-radius: 0;
-    -webkit-border-radius: 0;
-}
-
-.btn-group > .btn:first-child {
-    -webkit-border-bottom-left-radius: 0;
-    -webkit-border-top-left-radius: 0;
-}
-
-.input-append .btn-group:last-child > .dropdown-toggle {
-  -webkit-border-radius: 0;
-     -moz-border-radius: 0;
-          border-radius: 0;
-}
-
-select,textarea,input[type="text"],input[type="password"],
-input[type="datetime"],input[type="datetime-local"],
-input[type="date"],input[type="month"],
-input[type="time"],input[type="week"],
-input[type="number"],input[type="email"],
-input[type="url"],input[type="search"],
-input[type="tel"],input[type="color"],.uneditable-input {
-    -webkit-border-radius: 0;
-       -moz-border-radius: 0;
-            border-radius: 0;
-}
-
-/* The default padding of 10px is a bit wide for the navbar items */
-.navbar .nav > li a {
+.nav.navbar-nav > li > a, .navbar-brand {
     padding-left: 5px;
     padding-right: 5px;
+    color: white !important;
+    background: transparent !important;
+
 }
 
-/* Dropdown fixes */
-
-.dropdown-menu {
-  -webkit-border-radius: 0;
-     -moz-border-radius: 0;
-          border-radius: 0;
-}
-
-.dropdown-menu.pull-left {
-  left: -120%;
-  margin-left: 10px;
-}
-
-/* Footer styles
-   -------------------------------------------------- */
-
-div#footer {
-	margin: 0 0 0 0;
-	background-color: #054884;
-#	border-top: 4px solid #054884;
-#	border-bottom: 25px solid #054884;
-	padding: 5px 0 0 0;
-	text-align: left;
-	clear: both;
-	width: 100%;
-}
-
-.footertext {
-        float: left;
-}
-
-#footer p {
-        color: white;
-	margin: 8px 0 8px 0;
-	padding: 0px 30px 0px 15px;
-}
-
-
-html,
-body {
-    height: 100%;
-/* The html and body elements cannot have any padding or margin. */
-}
-
-/* Set the fixed height of the footer here */
-#footer {
-    height: 100px;
-}
-
-#header {
-    font-size: 14px;
-}
-
-.breadcrumb {
-    font-size: 14px;
-}
-
-.navbar-inverse .navbar-inner {
-        background-color: rgb(129, 187, 242) !important;
-        background-image: none;
-        filter: none;
-}
-
-#logo img {
-    float: left;
-    height: 40px;
-}
-
-.navbar .nav > .active > a,
-.navbar .nav > .active > a:hover,
-.navbar .nav > .active > a:focus {
-  color: #ffffff;
-  text-decoration: none;
-  background-color: rgb(129, 187, 242) !important;
-  -webkit-box-shadow: none;
-     -moz-box-shadow: none;
-          box-shadow: none;
-}
-
-
-.breadcrumb {
-  padding: 8px 15px;
-  margin: 0;
-  list-style: none;
-  background-color: #f5f5f5;
-  -webkit-border-radius: 0;
-     -moz-border-radius: 0;
-          border-radius: 0;
+.navbar-nav > li:hover > a, .navbar-header span:hover {
+    color: #999999 !important;
 }
 
 .dropdown-menu > li > input {
@@ -169,25 +51,54 @@ body {
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0);
 }
 
-/* original common.css */
-
-html {
-        background-color: white;
-        color: #666;
-        font-family: Arial,Verdana,Geneva,"Bitstream Vera Sans",Helvetica,sans-serif;
-        font-size: 95%;
+.navbar .btn {
+    border-radius: 0;
 }
 
 body {
-	margin: 0;
+    padding-top: 50px;
 }
+
+.navbar.breadcrumb, .navbar-collapse.breadcrumb {
+    height: 25px;
+    margin-bottom:0;
+    padding:0;
+}
+
+.breadcrumb .breadcrumb {
+    margin:0;
+    padding: 8px 15px;
+}
+.breadcrumb {
+    font-size: 14px;
+}
+
+/* Set the fixed height of the footer here */
+div#footer {
+	padding: 5px 0 0 0;
+	text-align: left;
+	width: 100%;
+    height: 100px;
+}
+
+#footer p {
+        color: white;
+	margin: 8px 0 8px 0;
+	padding: 0px 30px 0px 15px;
+}
+
+#header {
+    font-size: 14px;
+}
+
+
+
 
 h1 {
         color: #2caff0;
         padding: 2px 4px 1px 0px;
         margin: 20px 10px 20px 0px;
         font-size: 1.8em;
-    font-family Verdana;
         font-weight: normal;
 }
 
@@ -588,7 +499,7 @@ div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
     text-align: right;
 }
 
-.advancedsearch optioni, 
+.advancedsearch option,
 .advancedsearch select {
     border: 1px solid #ADB9CC;
     background-color: #fff;

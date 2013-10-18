@@ -28,6 +28,9 @@ BREADCRUMB_ACTIONS = {'print': 'Print View',
                       'AttachFile': 'Attachments',
                       'Invite': 'Invite'}
 
+BOOTSTRAP_THEME_CSS = [
+    "/bootstrap/css/bootstrap.min.css"
+]
 QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
 
 class Theme(basetheme.Theme):
@@ -35,33 +38,39 @@ class Theme(basetheme.Theme):
     rev = ''
     available = ''
 
+    def __init__(self, request):
+        for file in BOOTSTRAP_THEME_CSS:
+            request.cfg.stylesheets.append(('all', request.cfg.url_prefix_static + file))
+        basetheme.Theme.__init__(self, request)
+
     def logo(self):
         mylogo = basetheme.Theme.logo(self)
         if not mylogo:
-            mylogo = u'''<div id="logo">%s</div>''' % \
+            mylogo = u'''<div id="logo"><span class="navbar-brand">%s</span></div>''' % \
                      wikiutil.escape(self.cfg.sitename, True)
 
         return mylogo
 
     def _startnav(self):
-        return u"""  <div class="navbar navbar-inverse">
-    <div class="navbar-fixed-top navbar-inner">
-      <div class="container">
-        <button type="button" class="btn btn-navbar" data-toggle="collapse" 
-                data-target=".nav-collapse">
+        return u"""  <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse"
+                data-target="#main-nav">
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <ul class="nav">"""
+        %s
+        </div>
+      <div class="collapse navbar-collapse" id="main-nav">
+        <ul class="nav navbar-nav">""" % (self.logo())
 
     def _endnav1(self):
         return u"""        </ul> <!-- /nav -->"""
 
     def _endnav2(self):
         return """        </div> <!-- /collapse -->
-      </div> <!-- /container -->
-    </div> <!-- /navbar-inner -->
+        </div>
   </div> <!-- /navbar -->"""
 
     def actionsMenu(self):
@@ -77,23 +86,23 @@ class Theme(basetheme.Theme):
                     request.user.may.write(page.page_name)):
                 editdisabled = True
                 val = """    <li>
-          <a title="%s"><i class="icon-edit"></i> </a>""" % \
+          <a title="%s"><i class="glyphicon glyphicon-edit"></i> </a>""" % \
                     _('Immutable Page')
             elif guiworks and editor == 'gui':
                 val = """          <li class="active">
           <a title="%s" href="?action=edit&editor=gui">""" % _('Edit (GUI)')
-                val += '<i class="icon-edit"></i></a>'
+                val += '<i class="glyphicon glyphicon-edit"></i></a>'
             else:
                 val = """          <li class="active">
           <a title="%s" href="?action=edit">""" % _('Edit')
-                val += '<i class="icon-edit"></i> </a>'
+                val += '<i class="glyphicon glyphicon-edit"></i> </a>'
         else:
             editdisabled = True
 
         val += '\n          <li class="active dropdown"><a href="#" '
         val += 'title="%s" class="dropdown-toggle" data-toggle="dropdown">' % \
             _("More Actions:")
-        val += '<i class="icon-folder-open"></i></a>'
+        val += '<i class="glyphicon glyphicon-folder-open"></i></a>'
         val += '\n            <ul class="dropdown-menu">\n'
 
         menu = [
@@ -149,7 +158,6 @@ class Theme(basetheme.Theme):
 
         for action in menu:
             if not action:
-                val += _s + '<li class="divider"></li>\n'
                 continue
             disabled = False
 
@@ -194,7 +202,7 @@ class Theme(basetheme.Theme):
 
         val += """          <li class="active dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-               <i class="icon-wrench" title="%s"></i></a>
+               <i class="glyphicon glyphicon-wrench" title="%s"></i></a>
             <ul class="dropdown-menu">\n""" % _("More Actions:")
         _s = '              '
         for action in more:
@@ -220,31 +228,31 @@ class Theme(basetheme.Theme):
         content = content.replace('>%s<' % self.request.cfg.page_front_page,
                                   ' title="%s">' % 
                                   self.request.cfg.page_front_page + 
-                                  '<i class="icon-home icon-white"></i><')
+                                  '<i class="glyphicon glyphicon-home"></i><')
 
         content = content.replace('>%s<' % _("CollabList"),
                                   ' title="%s">' % _("CollabList") +
-                                  '<i class="icon-globe icon-white"></i><')
+                                  '<i class="glyphicon glyphicon-globe"></i><')
         content = content.replace('>%s<' % _("Collab"),
                                   ' title="%s">' % _("Collab") +
-                                  '<i class="icon-comment icon-white"></i><')
+                                  '<i class="glyphicon glyphicon-comment"></i><')
 
         page_recentchanges = \
             wikiutil.getLocalizedPage(self.request, 'RecentChanges').page_name
         content = content.replace('>%s<' % (page_recentchanges),
                                   ' title="%s">' % (page_recentchanges) +
-                                  '<i class="icon-list-alt icon-white"></i><')
+                                  '<i class="glyphicon glyphicon-list-alt"></i><')
         page_findpage = \
             wikiutil.getLocalizedPage(self.request, 'FindPage').page_name
         content = content.replace('>%s<' % (page_findpage),
                                   ' title="%s">' % (page_findpage) +
-                                  '<i class="icon-search icon-white"></i><')
+                                  '<i class="glyphicon glyphicon-search"></i><')
         page_help_contents = \
             wikiutil.getLocalizedPage(self.request, 'HelpContents').page_name
         content = content.replace('">' + page_help_contents,
                                   '" title="%s">' % page_help_contents +
-                                  '<i class="icon-question-sign' +
-                                  ' icon-white"></i>')
+                                  '<i class="glyphicon glyphicon-question-sign' +
+                                  '"></i>')
 
         quicklinks = QUICKLINKS_RE.findall(content)
         content = QUICKLINKS_RE.sub('', content)
@@ -256,7 +264,7 @@ class Theme(basetheme.Theme):
             <ul class="dropdown-menu">\n""" % _("Quicklinks")
 
             for item in quicklinks:
-                val += "               %s\n" % (item.replace(' icon-white', ''))
+                val += "               %s\n" % (item.replace('', ''))
 
                 val += """            </ul>
           </li>
@@ -299,19 +307,20 @@ class Theme(basetheme.Theme):
             out = ""
 
             if urls:
-                out = """            <div class="input-append">
-              <div class="btn-group">
-                <a class="btn" href="%s"><i class="icon-user"></i> </a>
-                <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-                  <span class="caret"></span></a>
-                <ul class="dropdown-menu">
-                  <li class="nav-header">%s</li>
-"""  % (linkpage, name)
+                out = """
+                  <div class="input-group-btn">
+        <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" tabindex="-1">
+          <i class="glyphicon glyphicon-user"></i> <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu pull-left">
+            <li class="nav-header"><a href="%s">%s</a></li>
+                """ % (linkpage, name)
+
                 for url in urls:
                     out += "                  <li>%s</li>\n" % (url)
 
-                out += """                </ul>
-              </div>
+                out += """
+                </ul>
             </div>"""
 
             return out
@@ -319,28 +328,30 @@ class Theme(basetheme.Theme):
     def search_user_form(self, d):
         _ = self.request.getText
         url = self.request.href(d['page'].page_name)
-        return """          <form id="searchform" method="get" action="%s" 
-                class="navbar-form pull-right">\n%s
+
+        return """
+  <form method="get" action="%s">
+
+    <div class="input-group navbar-form form-group pull-right">\n%s
             <input type="hidden" name="action" value="fullsearch">
             <input type="hidden" name="context" value="180">
-            <div class="input-append">
-              <input id="searchinput" type="text" name="value">
-              <div class="btn-group">
-                <button alt="title" id="titlesearch" class="btn btn-primary" 
-                        value="Titles">%s</button>
-                <button class="btn btn-primary dropdown-toggle" 
-                        data-toggle="dropdown"><span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu pull-left">
-                  <li><input class="btn btn-link" id="fullsearch" 
-                             name="fullsearch" type="submit" value="Text" 
-                             alt="%s"></li>
-                  <li><input class="btn btn-link" name="metasearch" 
-                             type="submit" value="Meta" alt="%s"></li>
-                </ul>
-              </div>
-            </div>""" % (url, self.username(d), _("Title"), 
-                         _("Search Full Text"), _("Meta Search"))
+
+
+      <input class="form-control search" placeholder="Search" name="value">
+      <div class="input-group-btn">
+        <input class="btn btn-primary" name="titlesearch" type="submit" value="%s">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" tabindex="-1">
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu pull-right" role="menu">
+          <li></li>
+          <li><input class="btn btn-link" name="metasearch" type="submit" value="%s"></li>
+          <li><input class="btn btn-link" name="fullsearch" type="submit" value="%s"></li>
+        </ul>
+      </div>
+    </div>
+  </form>
+        """% (url, self.username(d), _("Title"), _("Search Full Text"), _("Meta Search"))
 
     def header(self, d, **kw):
         """ Assemble wiki header
@@ -362,17 +373,15 @@ class Theme(basetheme.Theme):
         html = [
             # Pre header custom html
             self.emit_custom_html(self.cfg.page_header1),
+            self.emit_custom_html(u'<div id="testi"></div>'),
 
             # Header
             u'<div id="header">',
             self._startnav(),
-            self._wraplink(self.logo()),
             self.navibar(d),
             self.actionsMenu(),
             self._endnav1(),
-            '        <div class="nav-collapse collapse">',
             self.search_user_form(d),
-            '          </form>',
             self._endnav2(),
             self.breadcrumbs(),
             self.msg(d),
@@ -424,27 +433,27 @@ class Theme(basetheme.Theme):
                     link = page.link_to(request, title)
                     items.append(link)
 
-        val = """  <div class="nav-collapse collapse">
+        val = """  <div class="navbar-collapse collapse breadcrumb">
     <ul class="breadcrumb">
 """
         if items:
-            val += '<span class="divider">/</span></li>\n'.join(
+            val += '</li>\n'.join(
                 '      <li>%s' % (item) for item in items)
             val += '</li>'
 
-        actions = getattr(request.cfg, 'breadcrumb_actions', 
+        actions = getattr(request.cfg, 'bootstrap_actions',
                           BREADCRUMB_ACTIONS)
         for i, (act, text) in enumerate(actions.iteritems()):
             if act[0].isupper() and not act in self.available:
                 continue
-            span = (i != 0) and '<span class="divider">/</span>' or ''
+            span = (i != 0) and '' or ''
             val += '\n      <li style="float: right;">' + \
                 '<a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev,
                                                           text, span)
         val += '\n      <li class="toggleCommentsButton"' +\
             ' style="display:none; float: right;">' + \
             '<a href="#" class="nbcomment" onClick="toggleComments();' + \
-            'return false;">%s</a><span class="divider">/</span></li>' % \
+            'return false;">%s</a></li>' % \
             _('Comments')
         val +="""
     </ul>
@@ -493,9 +502,7 @@ class Theme(basetheme.Theme):
             self.endPage(),
 
             '<script src="' + self.cfg.url_prefix_static + \
-                '/opencollabnew/js/jquery.js"></script>',
-            '<script src="' + self.cfg.url_prefix_static + \
-                '/opencollabnew/js/bootstrap.min.js"></script>',
+                '/bootstrap/js/bootstrap.js"></script>',
 
             # Pre footer custom html (not recommended!)
             self.emit_custom_html(self.cfg.page_footer1),
@@ -513,256 +520,6 @@ class Theme(basetheme.Theme):
             self.emit_custom_html(self.cfg.page_footer2),
             ]
         return u'\n'.join(html)
-
-    # I needed to copy this monstrosity of a function from theme, just
-    # to change the doctype. Maybe do a Moin patch later? Some Moin
-    # tests seem to rely on the doctype, though..
-    def send_title(self, text, **keywords):
-        """
-        Output the page header (and title).
-
-        @param text: the title text
-        @keyword page: the page instance that called us - using this is more efficient than using pagename..
-        @keyword pagename: 'PageName'
-        @keyword print_mode: 1 (or 0)
-        @keyword editor_mode: 1 (or 0)
-        @keyword media: css media type, defaults to 'screen'
-        @keyword allow_doubleclick: 1 (or 0)
-        @keyword html_head: additional <head> code
-        @keyword body_attr: additional <body> attributes
-        @keyword body_onload: additional "onload" JavaScript code
-        """
-        request = self.request
-        _ = request.getText
-        rev = request.rev
-
-        if keywords.has_key('page'):
-            page = keywords['page']
-            pagename = page.page_name
-        else:
-            pagename = keywords.get('pagename', '')
-            page = Page(request, pagename)
-        if keywords.get('msg', ''):
-            raise DeprecationWarning("Using send_page(msg=) is deprecated! Use theme.add_msg() instead!")
-        scriptname = request.script_root
-
-        # get name of system pages
-        page_front_page = wikiutil.getFrontPage(request).page_name
-        page_help_contents = wikiutil.getLocalizedPage(request, 'HelpContents').page_name
-        page_title_index = wikiutil.getLocalizedPage(request, 'TitleIndex').page_name
-        page_site_navigation = wikiutil.getLocalizedPage(request, 'SiteNavigation').page_name
-        page_word_index = wikiutil.getLocalizedPage(request, 'WordIndex').page_name
-        page_help_formatting = wikiutil.getLocalizedPage(request, 'HelpOnFormatting').page_name
-        page_find_page = wikiutil.getLocalizedPage(request, 'FindPage').page_name
-        home_page = wikiutil.getInterwikiHomePage(request) # sorry theme API change!!! Either None or tuple (wikiname,pagename) now.
-        page_parent_page = getattr(page.getParentPage(), 'page_name', None)
-
-        # set content_type, including charset, so web server doesn't touch it:
-        request.content_type = "text/html; charset=%s" % (config.charset, )
-
-        # Prepare the HTML <head> element
-        user_head = [request.cfg.html_head]
-
-        # include charset information - needed for moin_dump or any other case
-        # when reading the html without a web server
-        user_head.append('''<meta http-equiv="Content-Type" content="%s;charset=%s">\n''' % (page.output_mimetype, page.output_charset))
-
-        meta_keywords = request.getPragma('keywords')
-        meta_desc = request.getPragma('description')
-        if meta_keywords:
-            user_head.append('<meta name="keywords" content="%s">\n' % wikiutil.escape(meta_keywords, 1))
-        if meta_desc:
-            user_head.append('<meta name="description" content="%s">\n' % wikiutil.escape(meta_desc, 1))
-
-        #  add meta statement if user has doubleclick on edit turned on or it is default
-        if (pagename and keywords.get('allow_doubleclick', 0) and
-            not keywords.get('print_mode', 0) and
-            request.user.edit_on_doubleclick):
-            if request.user.may.write(pagename): # separating this gains speed
-                user_head.append('<meta name="edit_on_doubleclick" content="%s">\n' % (request.script_root or '/'))
-
-        # search engine precautions / optimization:
-        # if it is an action or edit/search, send query headers (noindex,nofollow):
-        if request.query_string:
-            user_head.append(request.cfg.html_head_queries)
-        elif request.method == 'POST':
-            user_head.append(request.cfg.html_head_posts)
-        # we don't want to have BadContent stuff indexed:
-        elif pagename in ['BadContent', 'LocalBadContent', ]:
-            user_head.append(request.cfg.html_head_posts)
-        # if it is a special page, index it and follow the links - we do it
-        # for the original, English pages as well as for (the possibly
-        # modified) frontpage:
-        elif pagename in [page_front_page, request.cfg.page_front_page,
-                          page_title_index, 'TitleIndex',
-                          page_find_page, 'FindPage',
-                          page_site_navigation, 'SiteNavigation',
-                          'RecentChanges', ]:
-            user_head.append(request.cfg.html_head_index)
-        # if it is a normal page, index it, but do not follow the links, because
-        # there are a lot of illegal links (like actions) or duplicates:
-        else:
-            user_head.append(request.cfg.html_head_normal)
-
-        if 'pi_refresh' in keywords and keywords['pi_refresh']:
-            user_head.append('<meta http-equiv="refresh" content="%d;URL=%s">' % keywords['pi_refresh'])
-
-        # output buffering increases latency but increases throughput as well
-        output = []
-        # later: <html xmlns=\"http://www.w3.org/1999/xhtml\">
-        output.append("""\
-<!DOCTYPE html>
-<html>
-<head>
-%s
-%s
-%s
-""" % (
-            ''.join(user_head),
-            self.html_head({
-                'page': page,
-                'title': text,
-                'sitename': request.cfg.html_pagetitle or request.cfg.sitename,
-                'print_mode': keywords.get('print_mode', False),
-                'media': keywords.get('media', 'screen'),
-            }),
-            keywords.get('html_head', ''),
-        ))
-
-        # Links
-        output.append('<link rel="Start" href="%s">\n' % request.href(page_front_page))
-        if pagename:
-            output.append('<link rel="Alternate" title="%s" href="%s">\n' % (
-                    _('Wiki Markup'), request.href(pagename, action='raw')))
-            output.append('<link rel="Alternate" media="print" title="%s" href="%s">\n' % (
-                    _('Print View'), request.href(pagename, action='print')))
-
-            # !!! currently disabled due to Mozilla link prefetching, see
-            # http://www.mozilla.org/projects/netlib/Link_Prefetching_FAQ.html
-            #~ all_pages = request.getPageList()
-            #~ if all_pages:
-            #~     try:
-            #~         pos = all_pages.index(pagename)
-            #~     except ValueError:
-            #~         # this shopuld never happend in theory, but let's be sure
-            #~         pass
-            #~     else:
-            #~         request.write('<link rel="First" href="%s/%s">\n' % (request.script_root, quoteWikinameURL(all_pages[0]))
-            #~         if pos > 0:
-            #~             request.write('<link rel="Previous" href="%s/%s">\n' % (request.script_root, quoteWikinameURL(all_pages[pos-1])))
-            #~         if pos+1 < len(all_pages):
-            #~             request.write('<link rel="Next" href="%s/%s">\n' % (request.script_root, quoteWikinameURL(all_pages[pos+1])))
-            #~         request.write('<link rel="Last" href="%s/%s">\n' % (request.script_root, quoteWikinameURL(all_pages[-1])))
-
-            if page_parent_page:
-                output.append('<link rel="Up" href="%s">\n' % request.href(page_parent_page))
-
-        # write buffer because we call AttachFile
-        request.write(''.join(output))
-        output = []
-
-        # XXX maybe this should be removed completely. moin emits all attachments as <link rel="Appendix" ...>
-        # and it is at least questionable if this fits into the original intent of rel="Appendix".
-        if pagename and request.user.may.read(pagename):
-            from MoinMoin.action import AttachFile
-            AttachFile.send_link_rel(request, pagename)
-
-        output.extend([
-            '<link rel="Search" href="%s">\n' % request.href(page_find_page),
-            '<link rel="Index" href="%s">\n' % request.href(page_title_index),
-            '<link rel="Glossary" href="%s">\n' % request.href(page_word_index),
-            '<link rel="Help" href="%s">\n' % request.href(page_help_formatting),
-                      ])
-
-        output.append("</head>\n")
-        request.write(''.join(output))
-        output = []
-
-        # start the <body>
-        bodyattr = []
-        if keywords.has_key('body_attr'):
-            bodyattr.append(' ')
-            bodyattr.append(keywords['body_attr'])
-
-        # Set body to the user interface language and direction
-        bodyattr.append(' %s' % self.ui_lang_attr())
-
-        body_onload = keywords.get('body_onload', '')
-        if body_onload:
-            bodyattr.append(''' onload="%s"''' % body_onload)
-        output.append('\n<body%s>\n' % ''.join(bodyattr))
-
-        # Output -----------------------------------------------------------
-
-        # If in print mode, start page div and emit the title
-        if keywords.get('print_mode', 0):
-            d = {
-                'title_text': text,
-                'page': page,
-                'page_name': pagename or '',
-                'rev': rev,
-            }
-            request.themedict = d
-            output.append(self.startPage())
-            output.append(self.interwiki(d))
-            output.append(self.title(d))
-
-        # In standard mode, emit theme.header
-        else:
-            exists = pagename and page.exists(includeDeleted=True)
-            # prepare dict for theme code:
-            d = {
-                'theme': self.name,
-                'script_name': scriptname,
-                'title_text': text,
-                'logo_string': request.cfg.logo_string,
-                'site_name': request.cfg.sitename,
-                'page': page,
-                'rev': rev,
-                'pagesize': pagename and page.size() or 0,
-                # exists checked to avoid creation of empty edit-log for non-existing pages
-                'last_edit_info': exists and page.lastEditInfo() or '',
-                'page_name': pagename or '',
-                'page_find_page': page_find_page,
-                'page_front_page': page_front_page,
-                'home_page': home_page,
-                'page_help_contents': page_help_contents,
-                'page_help_formatting': page_help_formatting,
-                'page_parent_page': page_parent_page,
-                'page_title_index': page_title_index,
-                'page_word_index': page_word_index,
-                'user_name': request.user.name,
-                'user_valid': request.user.valid,
-                'msg': self._status,
-                'trail': keywords.get('trail', None),
-                # Discontinued keys, keep for a while for 3rd party theme developers
-                'titlesearch': 'use self.searchform(d)',
-                'textsearch': 'use self.searchform(d)',
-                'navibar': ['use self.navibar(d)'],
-                'available_actions': ['use self.request.availableActions(page)'],
-            }
-
-            # add quoted versions of pagenames
-            newdict = {}
-            for key in d:
-                if key.startswith('page_'):
-                    if not d[key] is None:
-                        newdict['q_'+key] = wikiutil.quoteWikinameURL(d[key])
-                    else:
-                        newdict['q_'+key] = None
-            d.update(newdict)
-            request.themedict = d
-
-            # now call the theming code to do the rendering
-            if keywords.get('editor_mode', 0):
-                output.append(self.editorheader(d))
-            else:
-                output.append(self.header(d))
-
-        # emit it
-        request.write(''.join(output))
-        output = []
-        self._send_title_called = True
 
 def execute(request):
     """

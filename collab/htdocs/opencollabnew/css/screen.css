@@ -10,121 +10,6 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 */
 
 
-@import url('bootstrap-responsive.min.css');
-
-body {
-    padding-top: 27px;
-    padding-bottom: 20px;
-    border: 0;
-    font-family: Verdana, Arial, Helvetica;
-}
-
-body,
-li,
-dt,
-dd,
-pre {
-    line-height: normal;
-}
-
-/* Lastly, apply responsive CSS fixes as necessary */
-@media (max-width: 979px) {
-    .navbar-fixed-top,
-    .navbar {
-	margin-bottom: 0px;
-    }
-
-    .nav.collapse.in .btn-group {
-	margin-top: 0px;
-    }
-
-    .nav-collapse .btn {
-	border-radius: 0px;
-	-webkit-border-radius: 0px;
-	-moz-border-radius: 0px;
-	padding-top: 0px;	
-    }
-
-    .nav-collapse .navbar-form .input-append input#searchinput {
-	height: 15px;
-	margin-top: 6px;
-    }
-
-    .nav-collapse .dropdown-menu {
-      float: none;
-      position: static;
-      z-index: 1000;
-      padding: 5px 0;
-      margin: 2px 0 0;
-      list-style: none;
-      background-color: #ffffff;
-      border: 1px solid #ccc;
-      border: 1px solid rgba(0, 0, 0, 0.2);
-      *border-right-width: 2px;
-      *border-bottom-width: 2px;
-      -webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-         -moz-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-              box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-      -webkit-background-clip: padding-box;
-         -moz-background-clip: padding;
-              background-clip: padding-box;
-    }
-
-    body {
-        padding: 0 0 0 0;
-    }
-        
-    #footer {
-        margin-left: -20px;
-        margin-right: -20px;
-        padding-left: 20px;
-        padding-right: 20px;
-    }
-
-    .container,
-    .navbar-static-top .container,
-    .navbar-fixed-top .container,
-    .navbar-fixed-bottom .container {
-	width: 100%;
-    }
-
-}
-
-@media (min-width: 768px) and (max-width: 979px) {
-    .container,
-    .navbar-static-top .container,
-    .navbar-fixed-top .container,
-    .navbar-fixed-bottom .container {
-	width: 100%;
-    }
-}
-
-@media (min-width: 1200px) {
-    .container,
-    .navbar-static-top .container,
-    .navbar-fixed-top .container,
-    .navbar-fixed-bottom .container {
-	width: 100%;
-    }
-}
-
-.container,
-.navbar-static-top .container,
-.navbar-fixed-top .container,
-.navbar-fixed-bottom .container {
-    width: 100%;
-}
-
-#logo {
-    float: left;
-    margin: 10px 0 0 10px;
-    padding: 0;
-    /* For text only logo */
-    font-size: 1.4em;
-    line-height: 1em;
-    font-weight: bold;
-}
-
 #message {
     clear: both;
     margin: 0;
@@ -134,22 +19,14 @@ pre {
     font-size: 8pt;
 }
 
+#message .inline {
+    margin-left: 0;
+}
 /* original screen.css, some bits commented out */
 
 html {
         background-color: #fff;
 }
-
-/* body {
-    padding: 0;
-    border: 0;
-    margin: 0;
-	color: #444;
-    background-color: #fff;
-    background-image: url("../img2/bg.jpg");
-    background-repeat: repeat-x;
-	font-size: 90%;
-}*/
 
 
 a:link { color: #47f; text-decoration: none; }
@@ -169,13 +46,6 @@ a.download {
     text-align: center;
 }
 
-input {
-    /* does strange effect to button (text size becomes bigger when clicking)
-    font-size: 1em;
-    font-family: Arial, Lucida Grande, sans-serif;
-    */
-}
-
 textarea {
     font-size: 1em;
     font-family: monospace;
@@ -185,45 +55,6 @@ textarea {
     /* IE ignore disabled attribute, but at least show items in gray */
     color: gray;
 }
-
-/* user interface styles */
-
-/*#header {
-    margin: 1px;
-    padding: 1px;
-    margin: 0px 45px 0px 45px; 
-	z-index: 100;
-}*/
-
-/*#logo {
-	position: absolute;
-	top: 50px;
-	left: 42px;
-    margin: 60px 20px 20px 0;
-    padding: 0;
-    /* For text only logo */
-    font-size: 2.2em;
-    line-height: 36px;
-    font-weight: normal;
-	z-index: 101;
-	height: 36px;
-	min-width: 279px;
-	color: #11a6de;
-}*/
-
-*[dir="rtl"] #logo {
-    float: right;
-}
-
-#logo img {
-    vertical-align: middle;
-}
-
-#logo a {
-    color: black;
-    text-decoration: none;
-}
-
 
 #username {
 /*
@@ -255,24 +86,6 @@ textarea {
 
 #username input:hover {
     color: red;
-}
-
-#searchform {
-/*    margin: 4px 0.5em 8px 0.5em;*/
-    padding: 0;
-    font-size: 0.82em;
-    float: right;
-    clear: right;
-    text-align: right;
-}
-*[dir="rtl"] #searchform {
-    float: left;
-    clear: left;
-    text-align: left;
-}
-#searchform input {
-    font-size: 100%;
-    vertical-align: middle;
 }
 
 #pagetrail {
@@ -562,27 +375,10 @@ img .attachment {
     padding: 3px 2px;
 }
 
-input.button {
-    /*
-    border: 1px solid #8cacbb;  
-    color: black;
-    background-color: #CCCCCC;
-    vertical-align: middle;
-    text-decoration: none;
-    font-size: 100%;
-    cursor: pointer;
-    margin: 2px;
-    padding: 1px;
-    display: inline;
-    */
-}
-
 div#footer {
-    background-color: #11a6de;
+    background-color: #054884;
     clear: both;
     margin: 0;
-/*    padding: 5px; */
-    height: 85px;
 	color: #efe;
 }
 
@@ -596,13 +392,6 @@ div#footer {
 	color: #efe;
 }
 
-/*#footer p {
-        text-align: left;
-        font-size: 0.8em;
-        margin-top: -5px;
-		margin-left: 160px;
-		float: left;
-}*/
 
 #credits, #version, #timings{
     margin: 5px 10px;
