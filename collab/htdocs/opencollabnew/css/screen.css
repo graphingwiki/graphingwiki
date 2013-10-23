@@ -5,10 +5,10 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
-/* debug 
-* {border: 1px dotted blue;}
-*/
 
+#top-padding {
+    padding-top: 50px;
+}
 
 #message {
     clear: both;
@@ -294,11 +294,7 @@ textarea {
     margin: 0 0 0 0;
     padding: 2px 45px 20px 45px;
 
-   /* theses are some Firefox 1.5b1 specific extensions, see also the CSS3 draft.
-   -moz-column-width: 25em;
-   -moz-column-gap: 2em;
-   -moz-column-rule: solid black 0.3em;     --   doesn't work yet with 1.5b1!
-
+   /*
    TODO: make text/gui editor NOT use #page css, we don't want columns there!
     */
 	min-height: 100%;
@@ -467,8 +463,6 @@ table tr.header th {
 }
 
 a#footer {
-/*	visibility: hidden;  */
-	background-color: none;
 	background: none;
 	color: #56a;
 }

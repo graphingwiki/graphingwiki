@@ -5,6 +5,10 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
+#header .navbar {
+    border-radius: 0;
+}
+
 .navbar .input-group {
     width: 350px;
 }
@@ -16,153 +20,202 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 .nav.navbar-nav > li > a, .navbar-brand {
     padding-left: 5px;
     padding-right: 5px;
-    color: white !important;
+    color: rgba(255, 255, 255, 0.85)  !important;
     background: transparent !important;
-
 }
 
 .navbar-nav > li:hover > a, .navbar-header span:hover {
-    color: #999999 !important;
+    color: white !important;
+}
+
+ul.dropdown-menu li {
+    margin: 0;
 }
 
 .dropdown-menu > li > input {
-  display: block;
-  padding: 3px 20px;
-  clear: both;
-  font-weight: normal;
-  line-height: 20px;
-  color: #333333;
-  white-space: nowrap;
+    display: block;
+    padding: 3px 20px;
+    clear: both;
+    font-weight: normal;
+    line-height: 20px;
+    color: #333333;
+    white-space: nowrap;
 }
 
 .dropdown-menu > li:hover,
 .dropdown-menu > li:focus,
-.dropdown-submenu:hover > input,
-.dropdown-submenu:focus > input {
-  color: #ffffff;
-  text-decoration: none;
-  background-color: #0081c2;
-  background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
-  background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
-  background-image: -o-linear-gradient(top, #0088cc, #0077b3);
-  background-image: linear-gradient(to bottom, #0088cc, #0077b3);
-  background-repeat: repeat-x;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0);
+.dropdown-menu li:hover input,
+.dropdown-menu li:focus input {
+    color: #ffffff;
+    text-decoration: none;
+    background-color: #0081c2;
+    background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
+    background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -o-linear-gradient(top, #0088cc, #0077b3);
+    background-image: linear-gradient(to bottom, #0088cc, #0077b3);
+    background-repeat: repeat-x;
+    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0)";
 }
 
 .navbar .btn {
     border-radius: 0;
 }
 
-body {
-    padding-top: 50px;
-}
+
 
 .navbar.breadcrumb, .navbar-collapse.breadcrumb {
     height: 25px;
-    margin-bottom:0;
-    padding:0;
+    margin-bottom: 0;
+    padding: 0;
 }
 
 .breadcrumb .breadcrumb {
-    margin:0;
+    margin: 0;
     padding: 8px 15px;
 }
+
 .breadcrumb {
     font-size: 14px;
 }
 
 /* Set the fixed height of the footer here */
 div#footer {
-	padding: 5px 0 0 0;
-	text-align: left;
-	width: 100%;
+    padding: 5px 0 0 0;
+    text-align: left;
+    width: 100%;
     height: 100px;
 }
 
 #footer p {
-        color: white;
-	margin: 8px 0 8px 0;
-	padding: 0px 30px 0px 15px;
+    color: white;
+    margin: 8px 0 8px 0;
+    padding: 0px 30px 0px 15px;
 }
 
 #header {
     font-size: 14px;
 }
 
-
-
-
 h1 {
-        color: #2caff0;
-        padding: 2px 4px 1px 0px;
-        margin: 20px 10px 20px 0px;
-        font-size: 1.8em;
-        font-weight: normal;
+    color: #2caff0;
+    padding: 2px 4px 1px 0px;
+    margin: 20px 10px 20px 0px;
+    font-size: 1.8em;
+    font-weight: normal;
 }
 
 h2 {
-        color: #666;
-        font-size: 1.2em;
-        margin-top: 1.5em;
-        border-bottom: 1px dotted #aaa;
+    color: #666;
+    font-size: 1.2em;
+    margin-top: 1.5em;
+    border-bottom: 1px dotted #aaa;
 }
 
 h3 {
-        color: #666;
-        font-size: 1.1em;
-        margin-top: 1.5em;
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 1.5em;
 }
 
-
 h4, h5, h6 {
-        color: #666;
-        font-size: 1em;
+    color: #666;
+    font-size: 1em;
 }
 
 ul {
-	margin-left: 30px;
-	padding-left: 0;
+    margin-left: 30px;
+    padding-left: 0;
 }
 
 ul li {
-	margin-left: 10px;
+    margin-left: 10px;
 }
-
 
 /* Links */
 
 a:link, a:visited, a:active {
-        text-decoration: none;
-        color: #56a;
+    text-decoration: none;
+    color: #56a;
 }
 
 a:hover,
 a:visited:hover {
-        text-decoration: underline;
+    text-decoration: underline;
 }
 
+a.nonexistent:visited, a.nonexistent,
+a.badinterwiki:visited, a.badinterwiki {
+    color: gray;
+}
 
-a.nonexistent:visited, a.nonexistent, 
-a.badinterwiki:visited, a.badinterwiki {color: gray;}
+a.www:before {
+    content: url(../img/moin-www.png);
+    margin: 0 0.2em;
+}
 
-a.www:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
-a.http:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
-a.https:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
-a.file:before {content: url(../img/moin-ftp.png); margin: 0 0.2em;}
-a.ftp:before {content: url(../img/moin-ftp.png); margin: 0 0.2em;}
-a.nntp:before {content: url(../img/moin-news.png); margin: 0 0.2em;}
-a.news:before {content: url(../img/moin-news.png); margin: 0 0.2em;}
-a.telnet:before, a.ssh:before {content: url(../img/moin-telnet.png); margin: 0 0.2em;}
-a.irc:before, a.ircs:before  {content: url(../img/moin-telnet.png); margin: 0 0.2em;}
-a.mailto:before {content: url(../img/moin-email.png); margin: 0 0.2em;}
-a.attachment:before {content: url(../img/moin-attach.png); margin: 0 0.2em;}
-a.badinterwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
-a.interwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
+a.http:before {
+    content: url(../img/moin-www.png);
+    margin: 0 0.2em;
+}
+
+a.https:before {
+    content: url(../img/moin-www.png);
+    margin: 0 0.2em;
+}
+
+a.file:before {
+    content: url(../img/moin-ftp.png);
+    margin: 0 0.2em;
+}
+
+a.ftp:before {
+    content: url(../img/moin-ftp.png);
+    margin: 0 0.2em;
+}
+
+a.nntp:before {
+    content: url(../img/moin-news.png);
+    margin: 0 0.2em;
+}
+
+a.news:before {
+    content: url(../img/moin-news.png);
+    margin: 0 0.2em;
+}
+
+a.telnet:before, a.ssh:before {
+    content: url(../img/moin-telnet.png);
+    margin: 0 0.2em;
+}
+
+a.irc:before, a.ircs:before {
+    content: url(../img/moin-telnet.png);
+    margin: 0 0.2em;
+}
+
+a.mailto:before {
+    content: url(../img/moin-email.png);
+    margin: 0 0.2em;
+}
+
+a.attachment:before {
+    content: url(../img/moin-attach.png);
+    margin: 0 0.2em;
+}
+
+a.badinterwiki:before {
+    content: url(../img/moin-inter.png);
+    margin: 0 0.2em;
+}
+
+a.interwiki:before {
+    content: url(../img/moin-inter.png);
+    margin: 0 0.2em;
+}
 
 li p {
-	margin: .25em 0;
+    margin: .25em 0;
 }
 
 li.gap {
@@ -182,19 +235,19 @@ dd {
 dd p {
     margin: 0.25em 0;
 }
-   
+
 a, img, img.drawing {
-	border: 0;
+    border: 0;
 }
 
 pre {
-	border: 1pt solid #AEBDCC;
-	background-color: #F3F5F7;
-	padding: 5pt;
-	font-family: courier, monospace;
-	white-space: pre;
-	/* begin css 3 or browser specific rules - do not remove!
-	see: http://forums.techguy.org/archive/index.php/t-249849.html */
+    border: 1pt solid #AEBDCC;
+    background-color: #F3F5F7;
+    padding: 5pt;
+    font-family: courier, monospace;
+    white-space: pre;
+    /* begin css 3 or browser specific rules - do not remove!
+    see: http://forums.techguy.org/archive/index.php/t-249849.html */
     white-space: pre-wrap;
     word-wrap: break-word;
     white-space: -moz-pre-wrap;
@@ -215,69 +268,110 @@ pre.comment:before {
     content: url(../img/attention.png);
 }
 
-
 /* .comment css definition must be top of .red/.green/.blue or it won't work */
-.comment { color: #555555; background-color: #DDDDFF; }
-
-.red { background-color: #FFCCCC; }
-.green { background-color: #CCFFCC; }
-.blue { background-color: #CCCCFF; }
-.yellow { background-color: #FFF29F; }
-.orange { background-color: #FFD59B; }
-
-.solid { border: 2px solid #000000; padding: 2px; }
-.dashed { border: 2px dashed #000000; padding: 2px; }
-.dotted { border: 2px dotted #000000; padding: 2px; }
-
-.left { text-align: left; }
-.center { text-align: center; }
-.right { text-align: right; }
-.justify { text-align: justify; }
-
-table
-{
-	margin: 0.5em 0 0 0.5em;
-	border-collapse: collapse;
+.comment {
+    color: #555555;
+    background-color: #DDDDFF;
 }
 
-th, td
-{
-	padding: 0.25em 0.5em 0.25em 0.5em;
-	border: 1pt solid #ADB9CC;
+.red {
+    background-color: #FFCCCC;
+}
+
+.green {
+    background-color: #CCFFCC;
+}
+
+.blue {
+    background-color: #CCCCFF;
+}
+
+.yellow {
+    background-color: #FFF29F;
+}
+
+.orange {
+    background-color: #FFD59B;
+}
+
+.solid {
+    border: 2px solid #000000;
+    padding: 2px;
+}
+
+.dashed {
+    border: 2px dashed #000000;
+    padding: 2px;
+}
+
+.dotted {
+    border: 2px dotted #000000;
+    padding: 2px;
+}
+
+.left {
+    text-align: left;
+}
+
+.center {
+    text-align: center;
+}
+
+.right {
+    text-align: right;
+}
+
+.justify {
+    text-align: justify;
+}
+
+table {
+    margin: 0.5em 0 0 0.5em;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 0.25em 0.5em 0.25em 0.5em;
+    border: 1pt solid #ADB9CC;
 }
 
 td p {
-	margin: 0;
-	padding: 0;
+    margin: 0;
+    padding: 0;
 }
+
 /* TableOfContents macro */
 div.table-of-contents {
     border: 1px solid #bbbbbb;
     color: black;
     background-color: #eeeeee;
-/*    font-size: 80%; */
+    /*    font-size: 80%; */
     text-align: left;
     margin: 0.5em 0 0.5em 1em;
     padding: 0.5em 0.75em 0.5em 0.5em;
     max-width: 50%;
     display: inline-table;
-	font-size: 110%;
+    font-size: 110%;
 }
+
 div.table-of-contents ol {
     margin: 0;
     padding: 0 0 0 2em;
 }
+
 div.table-of-contents ul {
     margin: 0;
-    list-style:none;
+    list-style: none;
 }
+
 div.table-of-contents li {
-    margin:0;
+    margin: 0;
     padding: 0;
 }
+
 p.table-of-contents-heading {
-    font-weight:bold;
-    padding:0;
+    font-weight: bold;
+    padding: 0;
     margin: 0 0 0.5em 0;
     letter-spacing: 0.075em;
 }
@@ -289,13 +383,13 @@ table.navigation {
 }
 
 .footnotes div {
-	width: 5em;
-	border-top: 1pt solid gray;
+    width: 5em;
+    border-top: 1pt solid gray;
 }
 
 .footnotes ol {
-	padding: 0 2em;
-	margin: 0 0 1em;
+    padding: 0 2em;
+    margin: 0 0 1em;
 }
 
 .footnotes li {
@@ -315,7 +409,9 @@ table.navigation {
     color: gray;
 }
 
-#pagebottom {clear: both;}
+#pagebottom {
+    clear: both;
+}
 
 /* standard rule ---- */
 hr {
@@ -325,64 +421,83 @@ hr {
 }
 
 /* custom rules ----- to ---------- */
-.hr1 {height: 2pt;}
-.hr2 {height: 3pt;}
-.hr3 {height: 4pt;}
-.hr4 {height: 5pt;}
-.hr5 {height: 6pt;}
-.hr6 {height: 7pt;}
+.hr1 {
+    height: 2pt;
+}
+
+.hr2 {
+    height: 3pt;
+}
+
+.hr3 {
+    height: 4pt;
+}
+
+.hr4 {
+    height: 5pt;
+}
+
+.hr5 {
+    height: 6pt;
+}
+
+.hr6 {
+    height: 7pt;
+}
 
 /* Replacement for deprecated html 3 <u> element and html 4 <strike> */
-.u {text-decoration: underline;}
-.strike {text-decoration: line-through;}
+.u {
+    text-decoration: underline;
+}
+
+.strike {
+    text-decoration: line-through;
+}
 
 /* eye catchers */
-.warning 
-{
-	color: red;
+.warning {
+    color: red;
 }
 
-.error 
-{
-	color: red;
+.error {
+    color: red;
 }
 
-strong.highlight 
-{
-	background-color: #CCE0FF;
-	padding: 1pt;
+strong.highlight {
+    background-color: #CCE0FF;
+    padding: 1pt;
 }
-
 
 /* Recent changes */
 
 .rcrss {
-	float: right;
-	margin: 0 7px 0 14px;
-        height: 0;
-        position: relative;
-        top: 9px;
+    float: right;
+    margin: 0 7px 0 14px;
+    height: 0;
+    position: relative;
+    top: 9px;
 }
+
 *[div="rtl"] .rcrss {
     float: left;
 }
+
 .recentchanges[dir="rtl"] .rcrss {
-	float: left;
+    float: left;
 }
 
 .recentchanges table {
-	clear: both;
-        border-collapse: collapse;
-        
+    clear: both;
+    border-collapse: collapse;
+
     border: 1px solid #4d7da9;
 }
 
 .recentchanges td {
-	vertical-align: top;
-	border: none;
+    vertical-align: top;
+    border: none;
     background: #e6eaf0;
 }
-
 
 .recentchanges .rcdaybreak td {
     background: #81BBF2;
@@ -391,83 +506,141 @@ strong.highlight
 }
 
 .rcdaybreak td a {
-	font-size: 0.88em;
+    font-size: 0.88em;
 }
 
 .rcicon1, .rcicon2 {
-	text-align: center;
+    text-align: center;
 }
 
 .rcpagelink {
-	width: 33%;
+    width: 33%;
 }
 
 .rctime {
-	font-size: 0.88em;
-	white-space: nowrap;
+    font-size: 0.88em;
+    white-space: nowrap;
 }
 
 .rceditor {
-	white-space: nowrap;
-	font-size: 0.88em;
+    white-space: nowrap;
+    font-size: 0.88em;
 }
 
 .rccomment {
-	width: 50%;
-	color: gray;
-	font-size: 0.88em;
+    width: 50%;
+    color: gray;
+    font-size: 0.88em;
 }
-
 
 /* User Preferences */
 
 .userpref table, .userpref td {
-	border: none;
+    border: none;
 }
 
 /* CSS for new code_area markup used by Colorizer and ParserBase */
 
-div.codearea { /* the div makes the border */
-	margin: 0.5em 0;
-	padding: 0;
-	border: 1pt solid #AEBDCC;
-	background-color: #F3F5F7;
-	color: black;
+div.codearea {
+    /* the div makes the border */
+    margin: 0.5em 0;
+    padding: 0;
+    border: 1pt solid #AEBDCC;
+    background-color: #F3F5F7;
+    color: black;
 }
 
-div.codearea pre { /* the pre has no border and is inside the div */
-	margin: 0;
-	padding: 10pt;
-	border: none;
+div.codearea pre {
+    /* the pre has no border and is inside the div */
+    margin: 0;
+    padding: 10pt;
+    border: none;
 }
 
-a.codenumbers { /* format of the line numbering link */
-	margin: 0 10pt;
-	font-size: 0.85em;
-	color: gray;
+a.codenumbers {
+    /* format of the line numbering link */
+    margin: 0 10pt;
+    font-size: 0.85em;
+    color: gray;
 }
 
 /* format of certain syntax spans */
-div.codearea pre span.LineNumber {color: gray;}
-div.codearea pre span.ID         {color: #000000;}
-div.codearea pre span.Operator   {color: #0000C0;}
-div.codearea pre span.Char       {color: #004080;}
-div.codearea pre span.Comment    {color: #008000;}
-div.codearea pre span.Number     {color: #0080C0;}
-div.codearea pre span.String     {color: #004080;}
-div.codearea pre span.SPChar     {color: #0000C0;}
-div.codearea pre span.ResWord    {color: #A00000;}
-div.codearea pre span.ConsWord   {color: #008080; font-weight: bold;}
-div.codearea pre span.Error      {color: #FF8080; border: solid 1.5pt #FF0000;}
-div.codearea pre span.ResWord2   {color: #0080ff; font-weight: bold;}
-div.codearea pre span.Special    {color: #0000ff;}
-div.codearea pre span.Preprc     {color: #803999;}
+div.codearea pre span.LineNumber {
+    color: gray;
+}
+
+div.codearea pre span.ID {
+    color: #000000;
+}
+
+div.codearea pre span.Operator {
+    color: #0000C0;
+}
+
+div.codearea pre span.Char {
+    color: #004080;
+}
+
+div.codearea pre span.Comment {
+    color: #008000;
+}
+
+div.codearea pre span.Number {
+    color: #0080C0;
+}
+
+div.codearea pre span.String {
+    color: #004080;
+}
+
+div.codearea pre span.SPChar {
+    color: #0000C0;
+}
+
+div.codearea pre span.ResWord {
+    color: #A00000;
+}
+
+div.codearea pre span.ConsWord {
+    color: #008080;
+    font-weight: bold;
+}
+
+div.codearea pre span.Error {
+    color: #FF8080;
+    border: solid 1.5pt #FF0000;
+}
+
+div.codearea pre span.ResWord2 {
+    color: #0080ff;
+    font-weight: bold;
+}
+
+div.codearea pre span.Special {
+    color: #0000ff;
+}
+
+div.codearea pre span.Preprc {
+    color: #803999;
+}
 
 /* for diff parser */
-div.codearea pre span.DiffAdded   {color: #4876FF;}
-div.codearea pre span.DiffRemoved {color: #FF0000;}
-div.codearea pre span.DiffChanged {color: #FF7F50;}
-div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
+div.codearea pre span.DiffAdded {
+    color: #4876FF;
+}
+
+div.codearea pre span.DiffRemoved {
+    color: #FF0000;
+}
+
+div.codearea pre span.DiffChanged {
+    color: #FF7F50;
+}
+
+div.codearea pre span.DiffSeparator {
+    color: #228B22;
+    font-weight: bold
+}
 
 /* Search results */
 .advancedsearch {
@@ -476,7 +649,7 @@ div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
 
 .advancedsearch td {
     vertical-align: top;
-    background-color: #E7E7E7;    
+    background-color: #E7E7E7;
     border: 0px;
 }
 
@@ -504,7 +677,6 @@ div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
     border: 1px solid #ADB9CC;
     background-color: #fff;
 }
-
 
 .searchresults dt {
     margin-top: 1em;
@@ -563,35 +735,42 @@ a.cal-emptyday {
     color: #777777;
     text-align: center;
 }
+
 a.cal-usedday {
     color: #000000;
     font-weight: bold;
     text-align: center;
 }
+
 /* general stuff: workdays, weekend, today */
 td.cal-workday {
     background-color: #DDDDFF;
     text-align: center;
 }
+
 td.cal-weekend {
     background-color: #FFDDDD;
     text-align: center;
 }
+
 td.cal-today {
     background-color: #CCFFCC;
     border-style: solid;
     border-width: 2pt;
     text-align: center;
 }
+
 /* invalid places on the monthly calendar sheet */
 td.cal-invalidday {
     background-color: #CCCCCC;
 }
+
 /* links to prev/next month/year */
 a.cal-link {
     color: #000000;
     text-decoration: none;
 }
+
 th.cal-header {
     background-color: #DDBBFF;
     text-align: center;
@@ -616,32 +795,48 @@ TH.tip {
 TD.tip {
     text-align: left;
 }
+
 *[dir="rtl"] TD.tip {
     text-align: right;
 }
 
 /* end MonthCalendar stuff */
 
-#message .hint {font-style: italic;}
+#message .hint {
+    font-style: italic;
+}
+
 #message .info {
     float: none;
     font-size: 1em;
     color: black;
 }
-#message .info:before {content: url('../img/icon-info.png'); margin: 0 0.2em;}
-#message .warning:before {content: url('../img/alert.png'); margin: 0 0.2em;}
-#message .error:before {content: url('../img/icon-error.png'); margin: 0 0.2em;}
+
+#message .info:before {
+    content: url('../img/icon-info.png');
+    margin: 0 0.2em;
+}
+
+#message .warning:before {
+    content: url('../img/alert.png');
+    margin: 0 0.2em;
+}
+
+#message .error:before {
+    content: url('../img/icon-error.png');
+    margin: 0 0.2em;
+}
 
 /* admonition start */
-#content div.caution, 
-#content div.important, 
-#content div.note, 
-#content div.tip, 
+#content div.caution,
+#content div.important,
+#content div.note,
+#content div.tip,
 #content div.warning {
     border: 1pt solid #E5E5E5;
     background-color: #F9F9FF;
     color: black;
-    
+
     margin: 10pt 30pt 10pt 30pt;
     background-repeat: no-repeat;
     background-position: 8px 8px;
@@ -649,19 +844,33 @@ TD.tip {
     padding-left: 64px;
     overflow: auto;
 }
- 
-#content div.caution p, 
-#content div.important p, 
-#content div.note p, 
-#content div.tip p, 
+
+#content div.caution p,
+#content div.important p,
+#content div.note p,
+#content div.tip p,
 #content div.warning p {
     margin-top: 8px; /*to align text with bg graphic*/
 }
 
-#content div.tip { background-image: url("../img/admon-tip.png"); }
-#content div.note { background-image: url("../img/admon-note.png"); }
-#content div.important { background-image: url("../img/admon-important.png"); }
-#content div.caution { background-image: url("../img/admon-caution.png"); }
-#content div.warning { background-image: url("../img/admon-warning.png"); }
+#content div.tip {
+    background-image: url("../img/admon-tip.png");
+}
+
+#content div.note {
+    background-image: url("../img/admon-note.png");
+}
+
+#content div.important {
+    background-image: url("../img/admon-important.png");
+}
+
+#content div.caution {
+    background-image: url("../img/admon-caution.png");
+}
+
+#content div.warning {
+    background-image: url("../img/admon-warning.png");
+}
 
 /* admonition end */

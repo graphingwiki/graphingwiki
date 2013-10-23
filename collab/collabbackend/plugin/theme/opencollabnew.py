@@ -11,9 +11,7 @@
 """
 import re
 
-from MoinMoin import config
 from MoinMoin import wikiutil
-from MoinMoin.widget import html
 from MoinMoin.Page import Page
 from MoinMoin.theme import modernized as basetheme
 from MoinMoin.theme import get_available_actions
@@ -31,7 +29,9 @@ BREADCRUMB_ACTIONS = {'print': 'Print View',
 BOOTSTRAP_THEME_CSS = [
     "/bootstrap/css/bootstrap.min.css"
 ]
+
 QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
+
 
 class Theme(basetheme.Theme):
     name = "opencollabnew"
@@ -39,9 +39,14 @@ class Theme(basetheme.Theme):
     available = ''
 
     def __init__(self, request):
-        for file in BOOTSTRAP_THEME_CSS:
-            request.cfg.stylesheets.append(('all', request.cfg.url_prefix_static + file))
         basetheme.Theme.__init__(self, request)
+
+        for f in BOOTSTRAP_THEME_CSS:
+            self.cfg.stylesheets.append(('all', self.cfg.url_prefix_static + f))
+
+        self.available = get_available_actions(request.cfg,
+                                               request.page,
+                                               request.user)
 
     def logo(self):
         mylogo = basetheme.Theme.logo(self)
@@ -81,13 +86,14 @@ class Theme(basetheme.Theme):
         editor = request.user.editor_default
         editdisabled = False
 
+        val = ""
         if not 'edit' in request.cfg.actions_excluded:
             if not (page.isWritable() and
-                    request.user.may.write(page.page_name)):
+                        request.user.may.write(page.page_name)):
                 editdisabled = True
-                val = """    <li>
+                val = """          <li class="disabled">
           <a title="%s"><i class="glyphicon glyphicon-edit"></i> </a>""" % \
-                    _('Immutable Page')
+                      _('Immutable Page')
             elif guiworks and editor == 'gui':
                 val = """          <li class="active">
           <a title="%s" href="?action=edit&editor=gui">""" % _('Edit (GUI)')
@@ -101,7 +107,7 @@ class Theme(basetheme.Theme):
 
         val += '\n          <li class="active dropdown"><a href="#" '
         val += 'title="%s" class="dropdown-toggle" data-toggle="dropdown">' % \
-            _("More Actions:")
+               _("More Actions:")
         val += '<i class="glyphicon glyphicon-folder-open"></i></a>'
         val += '\n            <ul class="dropdown-menu">\n'
 
@@ -128,7 +134,7 @@ class Theme(basetheme.Theme):
             'RenderAsDocbook',
             'MyPages',
             'SubscribeUser',
-            ]
+        ]
 
         titles = {
             'info': _('Info'),
@@ -150,7 +156,7 @@ class Theme(basetheme.Theme):
             'PackagePages': _('Package Pages'),
             'RenderAsDocbook': _('Render as Docbook'),
             'SyncPages': _('Sync Pages'),
-            }
+        }
 
         _s = '              '
         val += _s + '<li>%s</li>\n' % (self.quicklinkLink(page))
@@ -158,6 +164,7 @@ class Theme(basetheme.Theme):
 
         for action in menu:
             if not action:
+                val += _s + '<li class="divider"></li>\n'
                 continue
             disabled = False
 
@@ -165,10 +172,10 @@ class Theme(basetheme.Theme):
                 if not page.canUseCache():
                     disabled = True
             elif action == 'revert' and not \
-                    request.user.may.revert(page.page_name):
+                request.user.may.revert(page.page_name):
                 disabled = True
             elif action == 'SubscribeUser' and not \
-                    request.user.may.admin(page.page_name):
+                request.user.may.admin(page.page_name):
                 disabled = True
             elif action == 'Despam' and not request.user.isSuperUser():
                 disabled = True
@@ -177,25 +184,25 @@ class Theme(basetheme.Theme):
 
             if disabled:
                 val += _s + '<li class="disabled"><a>%s</a></li>\n' % \
-                    (titles[action])
+                       (titles[action])
             elif action == 'edit':
                 if editdisabled:
                     continue
                 if editor == "gui":
                     val += _s + '<li><a href="?action=edit%s">%s</a></li>\n' % \
-                        (self.rev, titles[action])
+                           (self.rev, titles[action])
                 elif guiworks:
                     val += _s + '<li><a href="?action=edit&editor=gui' + \
-                        '%s">%s</a></li>\n' % (self.rev, _('Edit (GUI)'))
+                           '%s">%s</a></li>\n' % (self.rev, _('Edit (GUI)'))
             else:
                 val += _s + '<li><a href="?action=%s%s">%s</a></li>\n' % \
-                    (action, self.rev, titles[action])
+                       (action, self.rev, titles[action])
         val += """            </ul>
           </li>
 """
 
-        more = [item for item in self.available if not item in titles 
-                and not item in ('AttachFile', )]
+        more = [item for item in self.available if not item in titles
+        and not item in ('AttachFile', )]
         more.sort()
         if not more:
             return val
@@ -207,7 +214,7 @@ class Theme(basetheme.Theme):
         _s = '              '
         for action in more:
             val += _s + '<li><a href="?action=%s%s">%s</a></li>\n' % \
-                (action, self.rev, _(action))
+                   (action, self.rev, _(action))
         val += """            </ul>
           </li>"""
 
@@ -226,8 +233,8 @@ class Theme(basetheme.Theme):
 
         content = content.replace('current">', 'current active">')
         content = content.replace('>%s<' % self.request.cfg.page_front_page,
-                                  ' title="%s">' % 
-                                  self.request.cfg.page_front_page + 
+                                  ' title="%s">' %
+                                  self.request.cfg.page_front_page +
                                   '<i class="glyphicon glyphicon-home"></i><')
 
         content = content.replace('>%s<' % _("CollabList"),
@@ -289,21 +296,20 @@ class Theme(basetheme.Theme):
 
             name = request.user.name
             urls = []
-            
+
             plugins = wikiutil.getPlugins('userprefs', request.cfg)
             for sub in plugins:
                 if sub in request.cfg.userprefs_disabled:
                     continue
-                cls = wikiutil.importPlugin(request.cfg, 'userprefs', 
+                cls = wikiutil.importPlugin(request.cfg, 'userprefs',
                                             sub, 'Settings')
                 obj = cls(request)
                 if not obj.allowed():
                     continue
-                url = request.page.url(request, {'action': 'userprefs', 
+                url = request.page.url(request, {'action': 'userprefs',
                                                  'sub': sub})
                 urls.append('<a href="%s">%s</a>' % (url, obj.title))
 
- 
             out = ""
 
             if urls:
@@ -351,7 +357,7 @@ class Theme(basetheme.Theme):
       </div>
     </div>
   </form>
-        """% (url, self.username(d), _("Title"), _("Search Full Text"), _("Meta Search"))
+        """ % (url, self.username(d), _("Title"), _("Search Full Text"), _("Meta Search"))
 
     def header(self, d, **kw):
         """ Assemble wiki header
@@ -366,17 +372,20 @@ class Theme(basetheme.Theme):
         else:
             self.rev = ''
 
-        self.available = get_available_actions(self.request.cfg, 
-                                               self.request.page, 
-                                               self.request.user)
-
         html = [
             # Pre header custom html
             self.emit_custom_html(self.cfg.page_header1),
-            self.emit_custom_html(u'<div id="testi"></div>'),
 
             # Header
             u'<div id="header">',
+
+            # Top-padding element that has height that matches
+            # the height of the fixed position top navbar. Adding
+            # padding to body would be normal approach, but some
+            # pages that don't have the navbar, such as editors
+            # would then show the extra padding on top.
+            u'<div id="top-padding"></div>',
+
             self._startnav(),
             self.navibar(d),
             self.actionsMenu(),
@@ -401,12 +410,6 @@ class Theme(basetheme.Theme):
         user = request.user
         items = []
 
-        # Not present when there's no header
-        if not self.available:
-            self.available = get_available_actions(request.cfg, 
-                                                   request.page, 
-                                                   request.user)
-
         if not user.valid or user.show_page_trail:
             trail = user.getTrail()
             if trail:
@@ -414,7 +417,7 @@ class Theme(basetheme.Theme):
                     try:
                         interwiki, page = wikiutil.split_interwiki(pagename)
                         if interwiki != request.cfg.interwikiname \
-                                and interwiki != 'Self':
+                            and interwiki != 'Self':
                             link = (
                                 self.request.formatter.interwikilink(
                                     True, interwiki, page) +
@@ -448,14 +451,14 @@ class Theme(basetheme.Theme):
                 continue
             span = (i != 0) and '' or ''
             val += '\n      <li style="float: right;">' + \
-                '<a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev,
-                                                          text, span)
-        val += '\n      <li class="toggleCommentsButton"' +\
-            ' style="display:none; float: right;">' + \
-            '<a href="#" class="nbcomment" onClick="toggleComments();' + \
-            'return false;">%s</a></li>' % \
-            _('Comments')
-        val +="""
+                   '<a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev,
+                                                             text, span)
+        val += '\n      <li class="toggleCommentsButton"' + \
+               ' style="display:none; float: right;">' + \
+               '<a href="#" class="nbcomment" onClick="toggleComments();' + \
+               'return false;">%s</a></li>' % \
+               _('Comments')
+        val += """
     </ul>
   </div>"""
 
@@ -472,7 +475,7 @@ class Theme(basetheme.Theme):
             return val
 
         val = '<div id="message">\n<ul class="inline">\n<li>%s</li>\n' % \
-            _("Linked in pages")
+              _("Linked in pages")
         for l in li:
             val += '<li>%s</li>' % (l)
         val += '</div>\n'
@@ -495,14 +498,13 @@ class Theme(basetheme.Theme):
         @return: page footer html
         """
 
-
         page = d['page']
         html = [
             # End of page
             self.endPage(),
 
             '<script src="' + self.cfg.url_prefix_static + \
-                '/bootstrap/js/bootstrap.js"></script>',
+            '/bootstrap/js/bootstrap.js"></script>',
 
             # Pre footer custom html (not recommended!)
             self.emit_custom_html(self.cfg.page_footer1),
@@ -518,7 +520,7 @@ class Theme(basetheme.Theme):
 
             # Post footer custom html
             self.emit_custom_html(self.cfg.page_footer2),
-            ]
+        ]
         return u'\n'.join(html)
 
 def execute(request):
