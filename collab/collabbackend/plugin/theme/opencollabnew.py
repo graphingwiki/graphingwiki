@@ -41,8 +41,10 @@ class Theme(basetheme.Theme):
     def __init__(self, request):
         basetheme.Theme.__init__(self, request)
 
-        for f in BOOTSTRAP_THEME_CSS:
-            self.cfg.stylesheets.append(('all', self.cfg.url_prefix_static + f))
+        # bootstrap css file should be before themes
+        for sheet in BOOTSTRAP_THEME_CSS:
+            link = self._stylesheet_link(False, "all", self.cfg.url_prefix_static + sheet)
+            self.cfg.html_head = link + "\n" + self.cfg.html_head
 
         self.available = get_available_actions(request.cfg,
                                                request.page,
