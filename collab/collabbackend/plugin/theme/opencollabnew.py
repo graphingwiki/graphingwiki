@@ -27,7 +27,7 @@ BREADCRUMB_ACTIONS = {'print': 'Print View',
                       'Invite': 'Invite'}
 
 BOOTSTRAP_THEME_CSS = [
-    "/bootstrap/css/bootstrap.min.css"
+    "bootstrap.min"
 ]
 
 QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
@@ -43,8 +43,8 @@ class Theme(ThemeParent):
 
         # bootstrap css file should be before themes
         for sheet in BOOTSTRAP_THEME_CSS:
-            link = self._stylesheet_link(False, "all", self.cfg.url_prefix_static + sheet)
-            self.cfg.html_head = link + "\n" + self.cfg.html_head
+            link = ("all", "../../bootstrap/css/" +sheet)
+            self.stylesheets = (link,) + self.stylesheets
 
         self.available = get_available_actions(request.cfg,
                                                request.page,
