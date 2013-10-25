@@ -13,7 +13,7 @@ import re
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.theme import modernized as basetheme
+from MoinMoin.theme.modernized import Theme as ThemeParent
 from MoinMoin.theme import get_available_actions
 
 from graphingwiki.plugin.macro.LinkedIn import nodes
@@ -33,13 +33,13 @@ BOOTSTRAP_THEME_CSS = [
 QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
 
 
-class Theme(basetheme.Theme):
+class Theme(ThemeParent):
     name = "opencollabnew"
     rev = ''
     available = ''
 
     def __init__(self, request):
-        basetheme.Theme.__init__(self, request)
+        ThemeParent.__init__(self, request)
 
         # bootstrap css file should be before themes
         for sheet in BOOTSTRAP_THEME_CSS:
@@ -51,7 +51,7 @@ class Theme(basetheme.Theme):
                                                request.user)
 
     def logo(self):
-        mylogo = basetheme.Theme.logo(self)
+        mylogo = ThemeParent.logo(self)
         if not mylogo:
             mylogo = u'''<div id="logo"><span class="navbar-brand">%s</span></div>''' % \
                      wikiutil.escape(self.cfg.sitename, True)
@@ -60,7 +60,7 @@ class Theme(basetheme.Theme):
 
     def _startnav(self):
         return u"""  <div class="navbar navbar-inverse navbar-fixed-top">
-        <div class="navbar-header">
+    <div class="navbar-header">
         <button type="button" class="navbar-toggle" data-toggle="collapse"
                 data-target="#main-nav">
           <span class="icon-bar"></span>
@@ -68,16 +68,16 @@ class Theme(basetheme.Theme):
           <span class="icon-bar"></span>
         </button>
         %s
-        </div>
+      </div>
       <div class="collapse navbar-collapse" id="main-nav">
-        <ul class="nav navbar-nav">""" % (self.logo())
+        <ul class="nav navbar-nav"> <!-- nav -->""" % (self.logo())
 
     def _endnav1(self):
         return u"""        </ul> <!-- /nav -->"""
 
     def _endnav2(self):
-        return """        </div> <!-- /collapse -->
-        </div>
+        return """    </div> <!-- /collapse -->
+    </div>
   </div> <!-- /navbar -->"""
 
     def actionsMenu(self):
@@ -228,7 +228,7 @@ class Theme(basetheme.Theme):
     def navibar(self, d):
         _ = self.request.getText
 
-        content = basetheme.Theme.navibar(self, d)
+        content = ThemeParent.navibar(self, d)
         content = '\n'.join(content.split('\n')[2:-2])
         content = content.replace('</li>', '</li>\n          ')
         content = '          ' + content.rstrip()
@@ -439,30 +439,26 @@ class Theme(basetheme.Theme):
                     items.append(link)
 
         val = """  <div class="navbar-collapse collapse breadcrumb">
-    <ul class="breadcrumb">
-"""
-        if items:
-            val += '</li>\n'.join(
-                '      <li>%s' % (item) for item in items)
-            val += '</li>'
+    <ul class="breadcrumb pull-left">"""
 
+        for item in items:
+            val += '\n      <li>%s</li>' % item
+
+        val += '\n    </ul>\n    <ul class="breadcrumb pull-right">'
         actions = getattr(request.cfg, 'bootstrap_actions',
                           BREADCRUMB_ACTIONS)
         for i, (act, text) in enumerate(actions.iteritems()):
             if act[0].isupper() and not act in self.available:
                 continue
             span = (i != 0) and '' or ''
-            val += '\n      <li style="float: right;">' + \
-                   '<a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev,
-                                                             text, span)
-        val += '\n      <li class="toggleCommentsButton"' + \
-               ' style="display:none; float: right;">' + \
-               '<a href="#" class="nbcomment" onClick="toggleComments();' + \
-               'return false;">%s</a></li>' % \
-               _('Comments')
+            val += '\n      <li><a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev, text, span)
+
         val += """
+      <li class="toggleCommentsButton" style="display:none;">
+          <a href="#" class="nbcomment" onClick="toggleComments(); return false;">%s</a>
+      </li>
     </ul>
-  </div>"""
+  </div>""" % _('Comments')
 
         return val
 
