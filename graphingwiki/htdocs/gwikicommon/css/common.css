@@ -26,8 +26,7 @@ a.cross:after {
 
 .alphabg {
     background: rgba(0, 0, 0, 0.80);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000);
-    -ms-filter: progid: DXImageTransform . Microsoft . gradient(startColorstr = #CC000000, endColorstr = #CC000000);
+    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
 }
 
 /* Mootools tooltips */
@@ -39,11 +38,7 @@ a.cross:after {
     z-index: 1050;
 
     background: rgba(0, 0, 0, 0.80);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000);
-    -ms-filter: progid: DXImageTransform . Microsoft . gradient(startColorstr = #CC000000, endColorstr = #CC000000);
-
-    -webkit-border-radius: 5px;
-    -moz-border-radius: 5px;
+    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
     border-radius: 5px;
 }
 
@@ -240,7 +235,7 @@ div.ac-results {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     -moz-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     -webkit-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    
+
     background: white;
     color: black;
     text-align: left;
