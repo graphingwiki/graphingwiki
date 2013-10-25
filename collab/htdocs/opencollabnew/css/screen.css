@@ -5,7 +5,10 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
-
+/*
+    Push body 50px down using #top-padding element that is present only
+    when the static navbar is (not in editors).
+ */
 #top-padding {
     padding-top: 50px;
 }
@@ -22,7 +25,8 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 #message .inline {
     margin-left: 0;
 }
-/* original screen.css, some bits commented out */
+
+/* original screen.css, redundant bits deleted */
 
 html {
         background-color: #fff;
@@ -46,160 +50,9 @@ a.download {
     text-align: center;
 }
 
-textarea {
-    font-size: 1em;
-    font-family: monospace;
-}
-
 .disabled {
-    /* IE ignore disabled attribute, but at least show items in gray */
+    /* IE < 9 ignore disabled attribute, but at least show items in gray */
     color: gray;
-}
-
-#username {
-/*
-    display: block;
-    margin: 5px 12px 1px 40px;
-    padding: 0;
-    font-size: 0.82em;
-*/
-	position: absolute;
-	top: 50px;
-	right: 55px;
-	font-size: 0.82em;
-}
-
-#username form {
-    display: inline;
-}
-
-#username input {
-    display: inline;
-    padding: 0;
-    margin: 0;
-    border: none;
-    background: transparent;
-    color: blue;
-    font-size: 0.82em;
-    cursor: pointer;
-}
-
-#username input:hover {
-    color: red;
-}
-
-#pagetrail {
-	position: absolute;
-	top: 26px;
-	left: 45px;
-	margin: 0;
-	padding: 0;
-    font-size: 0.8em;
-	color: #fff;
-	z-index: 101;
-}
-
-#pagetrail a:link, #pagetrail a:visited {
-	color: #325;
-}
-
-*[dir="rtl"] #pagetrail {
-    clear: left;
-}
-
-#interwiki {
-    font-size: 1em;
-}
-
-#locationline {
-    padding: 0;
-    font-size: 100%;
-    font-weight: normal;
-    margin: 0.25em 12px 5px 12px;
-    clear: right;
-}
-*[dir="rtl"] #locationline {
-    clear: left;
-}
-
-#header h1#locationline {
-	display: none;
-}
-
-#pagelocation {
-    font-size: 1.5em;
-    letter-spacing: 0.05em;
-}
-
-*[dir="rtl"] #pagetrail span.sep {
-    visibility: hidden;
-}
-*[dir="rtl"] #pagetrail span.sep:after {
-    content: " « ";
-}
-
-#navibar {
-	position: absolute;
-	top: 114px;
-	left: 40px;
-	margin: 0 0 0 0;
-	padding: 0;
-    font-size: 0.92em;
-	z-index: 102;
-}
-
-#navibar li {
-    float: left;
-    display: inline;
-    margin: 0 2px;
-    padding: 2px 6px;
-	border: 0;
-    white-space: nowrap;
-	background-color: #2f5ad7;
-
-}
-
-*[dir="rtl"] #navibar li {
-    float: right;
-}
-
-#navibar li.wikilink,
-#navibar li.userlink {
-	color: #fff;
-	padding: 4px 10px 3px 10px;
-	margin-right: 4px;
-	font-weight: bold;
-}
-
-#navibar a, #navibar a:visited {
-    color: #fff;
-    text-decoration: none;    
-}
-
-#navibar li.current a {
-    font-weight: bold;
-}
-
-#navibar li:hover {
-    background: #3ba4cf;
-}
-
-#navibar li.current, #navibar li.current:hover {
-    background: #3ba4cf;
-}
-
-#pageline {
-    clear: both;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    /* sync these values, line-height is needed for IE */
-        height: 0px;
-        line-height: 0px;
-    border-bottom: 1px solid #4d7da9;
-    border-top: 1px solid #4d7da9;
-    background: #81BBF2;
-	border: 0;
 }
 
 .editbar {
@@ -238,23 +91,6 @@ textarea {
 
 .editbar a, .editbar a:visited { color: #0044B3; }
 
-/*#message {
-    clear: both;
-    margin: 0;
-	margin: 60px 0px -40px 0px;
-    padding: 5px 10px;
-    border-bottom: 1px solid #c9c9c9;
-    background: #E6EAF0;
-
-	position: absolute;
-	top: 98px;
-	left: 188px;
-	width: 600px;
-	margin: 0;
-    padding: 5px 10px;
-    border: 1px solid #c9c9c9;
-    background: #E6EAF0;
-}*/
 
 #message p {
     margin: 5px 0;
