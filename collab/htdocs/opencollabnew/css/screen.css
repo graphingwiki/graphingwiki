@@ -26,12 +26,114 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
     margin-left: 0;
 }
 
+/* fixes actionlist table row offset */
+
+.actionlist .row:before,
+.actionlist .row:after {
+  content: normal;
+}
+
+
+#header .navbar {
+    border-radius: 0;
+}
+
+.navbar .input-group {
+    width: 350px;
+}
+
+.navbar-inverse {
+    background: #054884 !important
+}
+
+.nav.navbar-nav > li > a, .navbar-brand {
+    padding-left: 5px;
+    padding-right: 5px;
+    color: rgba(255, 255, 255, 0.85)  !important;
+    background: transparent !important;
+}
+
+.navbar-nav > li:hover > a, .navbar-header span:hover {
+    color: white !important;
+}
+
+ul.dropdown-menu li {
+    margin: 0;
+}
+
+.dropdown-menu > li > input {
+    display: block;
+    padding: 3px 20px;
+    clear: both;
+    font-weight: normal;
+    line-height: 20px;
+    color: #333333;
+    white-space: nowrap;
+}
+
+.dropdown-menu > li:hover,
+.dropdown-menu > li:focus,
+.dropdown-menu li:hover input,
+.dropdown-menu li:focus input {
+    color: #ffffff;
+    text-decoration: none;
+    background-color: #0081c2;
+    background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
+    background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -o-linear-gradient(top, #0088cc, #0077b3);
+    background-image: linear-gradient(to bottom, #0088cc, #0077b3);
+    background-repeat: repeat-x;
+    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0)";
+}
+
+.navbar .btn {
+    border-radius: 0;
+}
+
+.navbar.breadcrumb, .navbar-collapse.breadcrumb {
+    height: 25px;
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.breadcrumb .breadcrumb {
+    margin: 0;
+    padding: 8px 15px;
+}
+
+.breadcrumb {
+    font-size: 14px;
+}
+
+/* Hide locationline on editor*/
+#locationline {
+    display: none;
+}
+
+/* Set the fixed height of the footer here */
+div#footer {
+    padding: 5px 0 0 0;
+    text-align: left;
+    width: 100%;
+    height: 100px;
+}
+
+#footer p {
+    color: white;
+    margin: 8px 0 8px 0;
+    padding: 0px 30px 0px 15px;
+}
+
+#header {
+    font-size: 14px;
+}
+
 /* original screen.css, redundant bits deleted */
 
 html {
-        background-color: #fff;
+    background-color: #fff;
 }
-
 
 a:link { color: #47f; text-decoration: none; }
 a:link:hover, a:link:active { text-decoration: underline; color: green; }

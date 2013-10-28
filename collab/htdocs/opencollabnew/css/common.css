@@ -5,98 +5,6 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 /* content styles */
 
-#header .navbar {
-    border-radius: 0;
-}
-
-.navbar .input-group {
-    width: 350px;
-}
-
-.navbar-inverse {
-    background: #054884 !important
-}
-
-.nav.navbar-nav > li > a, .navbar-brand {
-    padding-left: 5px;
-    padding-right: 5px;
-    color: rgba(255, 255, 255, 0.85)  !important;
-    background: transparent !important;
-}
-
-.navbar-nav > li:hover > a, .navbar-header span:hover {
-    color: white !important;
-}
-
-ul.dropdown-menu li {
-    margin: 0;
-}
-
-.dropdown-menu > li > input {
-    display: block;
-    padding: 3px 20px;
-    clear: both;
-    font-weight: normal;
-    line-height: 20px;
-    color: #333333;
-    white-space: nowrap;
-}
-
-.dropdown-menu > li:hover,
-.dropdown-menu > li:focus,
-.dropdown-menu li:hover input,
-.dropdown-menu li:focus input {
-    color: #ffffff;
-    text-decoration: none;
-    background-color: #0081c2;
-    background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
-    background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
-    background-image: -o-linear-gradient(top, #0088cc, #0077b3);
-    background-image: linear-gradient(to bottom, #0088cc, #0077b3);
-    background-repeat: repeat-x;
-    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0)";
-}
-
-.navbar .btn {
-    border-radius: 0;
-}
-
-
-
-.navbar.breadcrumb, .navbar-collapse.breadcrumb {
-    height: 25px;
-    margin-bottom: 0;
-    padding: 0;
-}
-
-.breadcrumb .breadcrumb {
-    margin: 0;
-    padding: 8px 15px;
-}
-
-.breadcrumb {
-    font-size: 14px;
-}
-
-/* Set the fixed height of the footer here */
-div#footer {
-    padding: 5px 0 0 0;
-    text-align: left;
-    width: 100%;
-    height: 100px;
-}
-
-#footer p {
-    color: white;
-    margin: 8px 0 8px 0;
-    padding: 0px 30px 0px 15px;
-}
-
-#header {
-    font-size: 14px;
-}
-
 h1 {
     color: #2caff0;
     padding: 2px 4px 1px 0px;
@@ -144,75 +52,23 @@ a:visited:hover {
     text-decoration: underline;
 }
 
+
 a.nonexistent:visited, a.nonexistent,
-a.badinterwiki:visited, a.badinterwiki {
-    color: gray;
-}
+a.badinterwiki:visited, a.badinterwiki {color: gray;}
 
-a.www:before {
-    content: url(../img/moin-www.png);
-    margin: 0 0.2em;
-}
-
-a.http:before {
-    content: url(../img/moin-www.png);
-    margin: 0 0.2em;
-}
-
-a.https:before {
-    content: url(../img/moin-www.png);
-    margin: 0 0.2em;
-}
-
-a.file:before {
-    content: url(../img/moin-ftp.png);
-    margin: 0 0.2em;
-}
-
-a.ftp:before {
-    content: url(../img/moin-ftp.png);
-    margin: 0 0.2em;
-}
-
-a.nntp:before {
-    content: url(../img/moin-news.png);
-    margin: 0 0.2em;
-}
-
-a.news:before {
-    content: url(../img/moin-news.png);
-    margin: 0 0.2em;
-}
-
-a.telnet:before, a.ssh:before {
-    content: url(../img/moin-telnet.png);
-    margin: 0 0.2em;
-}
-
-a.irc:before, a.ircs:before {
-    content: url(../img/moin-telnet.png);
-    margin: 0 0.2em;
-}
-
-a.mailto:before {
-    content: url(../img/moin-email.png);
-    margin: 0 0.2em;
-}
-
-a.attachment:before {
-    content: url(../img/moin-attach.png);
-    margin: 0 0.2em;
-}
-
-a.badinterwiki:before {
-    content: url(../img/moin-inter.png);
-    margin: 0 0.2em;
-}
-
-a.interwiki:before {
-    content: url(../img/moin-inter.png);
-    margin: 0 0.2em;
-}
+a.www:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
+a.http:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
+a.https:before {content: url(../img/moin-www.png); margin: 0 0.2em;}
+a.file:before {content: url(../img/moin-ftp.png); margin: 0 0.2em;}
+a.ftp:before {content: url(../img/moin-ftp.png); margin: 0 0.2em;}
+a.nntp:before {content: url(../img/moin-news.png); margin: 0 0.2em;}
+a.news:before {content: url(../img/moin-news.png); margin: 0 0.2em;}
+a.telnet:before, a.ssh:before {content: url(../img/moin-telnet.png); margin: 0 0.2em;}
+a.irc:before, a.ircs:before  {content: url(../img/moin-telnet.png); margin: 0 0.2em;}
+a.mailto:before {content: url(../img/moin-email.png); margin: 0 0.2em;}
+a.attachment:before {content: url(../img/moin-attach.png); margin: 0 0.2em;}
+a.badinterwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
+a.interwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
 
 li p {
     margin: .25em 0;
@@ -268,62 +124,24 @@ pre.comment:before {
     content: url(../img/attention.png);
 }
 
+
 /* .comment css definition must be top of .red/.green/.blue or it won't work */
-.comment {
-    color: #555555;
-    background-color: #DDDDFF;
-}
+.comment { color: #555555; background-color: #DDDDFF; }
 
-.red {
-    background-color: #FFCCCC;
-}
+.red { background-color: #FFCCCC; }
+.green { background-color: #CCFFCC; }
+.blue { background-color: #CCCCFF; }
+.yellow { background-color: #FFF29F; }
+.orange { background-color: #FFD59B; }
 
-.green {
-    background-color: #CCFFCC;
-}
+.solid { border: 2px solid #000000; padding: 2px; }
+.dashed { border: 2px dashed #000000; padding: 2px; }
+.dotted { border: 2px dotted #000000; padding: 2px; }
 
-.blue {
-    background-color: #CCCCFF;
-}
-
-.yellow {
-    background-color: #FFF29F;
-}
-
-.orange {
-    background-color: #FFD59B;
-}
-
-.solid {
-    border: 2px solid #000000;
-    padding: 2px;
-}
-
-.dashed {
-    border: 2px dashed #000000;
-    padding: 2px;
-}
-
-.dotted {
-    border: 2px dotted #000000;
-    padding: 2px;
-}
-
-.left {
-    text-align: left;
-}
-
-.center {
-    text-align: center;
-}
-
-.right {
-    text-align: right;
-}
-
-.justify {
-    text-align: justify;
-}
+.left { text-align: left; }
+.center { text-align: center; }
+.right { text-align: right; }
+.justify { text-align: justify; }
 
 table {
     margin: 0.5em 0 0 0.5em;
@@ -409,9 +227,7 @@ table.navigation {
     color: gray;
 }
 
-#pagebottom {
-    clear: both;
-}
+#pagebottom {clear: both;}
 
 /* standard rule ---- */
 hr {
@@ -421,38 +237,16 @@ hr {
 }
 
 /* custom rules ----- to ---------- */
-.hr1 {
-    height: 2pt;
-}
-
-.hr2 {
-    height: 3pt;
-}
-
-.hr3 {
-    height: 4pt;
-}
-
-.hr4 {
-    height: 5pt;
-}
-
-.hr5 {
-    height: 6pt;
-}
-
-.hr6 {
-    height: 7pt;
-}
+.hr1 {height: 2pt;}
+.hr2 {height: 3pt;}
+.hr3 {height: 4pt;}
+.hr4 {height: 5pt;}
+.hr5 {height: 6pt;}
+.hr6 {height: 7pt;}
 
 /* Replacement for deprecated html 3 <u> element and html 4 <strike> */
-.u {
-    text-decoration: underline;
-}
-
-.strike {
-    text-decoration: line-through;
-}
+.u {text-decoration: underline;}
+.strike {text-decoration: line-through;}
 
 /* eye catchers */
 .warning {
@@ -565,82 +359,26 @@ a.codenumbers {
 }
 
 /* format of certain syntax spans */
-div.codearea pre span.LineNumber {
-    color: gray;
-}
-
-div.codearea pre span.ID {
-    color: #000000;
-}
-
-div.codearea pre span.Operator {
-    color: #0000C0;
-}
-
-div.codearea pre span.Char {
-    color: #004080;
-}
-
-div.codearea pre span.Comment {
-    color: #008000;
-}
-
-div.codearea pre span.Number {
-    color: #0080C0;
-}
-
-div.codearea pre span.String {
-    color: #004080;
-}
-
-div.codearea pre span.SPChar {
-    color: #0000C0;
-}
-
-div.codearea pre span.ResWord {
-    color: #A00000;
-}
-
-div.codearea pre span.ConsWord {
-    color: #008080;
-    font-weight: bold;
-}
-
-div.codearea pre span.Error {
-    color: #FF8080;
-    border: solid 1.5pt #FF0000;
-}
-
-div.codearea pre span.ResWord2 {
-    color: #0080ff;
-    font-weight: bold;
-}
-
-div.codearea pre span.Special {
-    color: #0000ff;
-}
-
-div.codearea pre span.Preprc {
-    color: #803999;
-}
+div.codearea pre span.LineNumber {color: gray;}
+div.codearea pre span.ID         {color: #000000;}
+div.codearea pre span.Operator   {color: #0000C0;}
+div.codearea pre span.Char       {color: #004080;}
+div.codearea pre span.Comment    {color: #008000;}
+div.codearea pre span.Number     {color: #0080C0;}
+div.codearea pre span.String     {color: #004080;}
+div.codearea pre span.SPChar     {color: #0000C0;}
+div.codearea pre span.ResWord    {color: #A00000;}
+div.codearea pre span.ConsWord   {color: #008080; font-weight: bold;}
+div.codearea pre span.Error      {color: #FF8080; border: solid 1.5pt #FF0000;}
+div.codearea pre span.ResWord2   {color: #0080ff; font-weight: bold;}
+div.codearea pre span.Special    {color: #0000ff;}
+div.codearea pre span.Preprc     {color: #803999;}
 
 /* for diff parser */
-div.codearea pre span.DiffAdded {
-    color: #4876FF;
-}
-
-div.codearea pre span.DiffRemoved {
-    color: #FF0000;
-}
-
-div.codearea pre span.DiffChanged {
-    color: #FF7F50;
-}
-
-div.codearea pre span.DiffSeparator {
-    color: #228B22;
-    font-weight: bold
-}
+div.codearea pre span.DiffAdded   {color: #4876FF;}
+div.codearea pre span.DiffRemoved {color: #FF0000;}
+div.codearea pre span.DiffChanged {color: #FF7F50;}
+div.codearea pre span.DiffSeparator {color: #228B22; font-weight: bold}
 
 /* Search results */
 .advancedsearch {
@@ -802,30 +540,16 @@ TD.tip {
 
 /* end MonthCalendar stuff */
 
-#message .hint {
-    font-style: italic;
-}
-
+#message .hint {font-style: italic;}
 #message .info {
     float: none;
     font-size: 1em;
     color: black;
 }
 
-#message .info:before {
-    content: url('../img/icon-info.png');
-    margin: 0 0.2em;
-}
-
-#message .warning:before {
-    content: url('../img/alert.png');
-    margin: 0 0.2em;
-}
-
-#message .error:before {
-    content: url('../img/icon-error.png');
-    margin: 0 0.2em;
-}
+#message .info:before {content: url('../img/icon-info.png'); margin: 0 0.2em;}
+#message .warning:before {content: url('../img/alert.png'); margin: 0 0.2em;}
+#message .error:before {content: url('../img/icon-error.png'); margin: 0 0.2em;}
 
 /* admonition start */
 #content div.caution,
@@ -853,24 +577,10 @@ TD.tip {
     margin-top: 8px; /*to align text with bg graphic*/
 }
 
-#content div.tip {
-    background-image: url("../img/admon-tip.png");
-}
-
-#content div.note {
-    background-image: url("../img/admon-note.png");
-}
-
-#content div.important {
-    background-image: url("../img/admon-important.png");
-}
-
-#content div.caution {
-    background-image: url("../img/admon-caution.png");
-}
-
-#content div.warning {
-    background-image: url("../img/admon-warning.png");
-}
+#content div.tip { background-image: url("../img/admon-tip.png"); }
+#content div.note { background-image: url("../img/admon-note.png"); }
+#content div.important { background-image: url("../img/admon-important.png"); }
+#content div.caution { background-image: url("../img/admon-caution.png"); }
+#content div.warning { background-image: url("../img/admon-warning.png"); }
 
 /* admonition end */
