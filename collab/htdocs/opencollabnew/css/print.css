@@ -58,3 +58,7 @@ img.attachment {
 img {
 	max-width: 18cm;
 }
+
+.jslink {
+    display: none;
+}
