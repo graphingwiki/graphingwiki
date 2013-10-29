@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    @copyright: 2008 Lari Huttunen
+    @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import json
+import socket
+import optparse
+from opencollab.meta import Meta, Metas
+from opencollab.util.config import parseOptions
+from opencollab.wiki import CLIWiki, WikiFailure
+
+linkattr = set(["asn", "ptr", "uuid", "ip"])
+ipattr = set(["asn", "cc", "geoip cc", "cymru cc", "ptr", "latitude",
+                "longitude", "abuse contact", "registry", "region",
+                "state", "city", "country", "uuid"])
+asnattr = set(["as name", "bgp prefix", "registry", "allocated"])
+hostattr = set(["ip", "url", "uuid"])
+ioc_keys = list(ipattr | asnattr | hostattr)
+
+
+def handleAttr(ioc, attr):
+    meta = Meta()
+    for a in set(ioc) & attr:
+        values = []
+        if type(ioc[a]) == list:
+            for v in ioc[a]:
+                values.append(v)
+        else:
+            values.append(ioc[a])
+        for val in values:
+            if a in linkattr:
+                val = '[[%s]]' % val
+            meta[a].add(val)
+    return meta
+
+
+def loadJSON(line):
+    try:
+        event = json.loads(line)
+    except ValueError as e:
+        print "Couldn't parse: %s" % (e)
+        return None
+    else:
+        return event
+
+
+def handleIoc(fobj):
+    metas = Metas()
+    for line in fobj:
+        event = loadJSON(line)
+        uuidattr = set(event) - ipattr - asnattr - hostattr
+        if "uuid" in event:
+            uuid = event["uuid"]
+            metas[uuid].update(handleAttr(event, uuidattr))
+            metas[uuid]["gwikicategory"].add("CategoryAbuse")
+            metas[uuid]["gwikitemplate"].add("AbuseTemplate")
+        if "ip" in event:
+            ip = event["ip"]
+            links = set(["asn", "ptr", "uuid"])
+            for a in links:
+                if a in event:
+                    metas[ip][a].add('[[%s]]' % event[a])
+            rest = (set(event) & ipattr) - links
+            for a in rest:
+                metas[ip][a].add(event[a])
+            metas[ip]["gwikicategory"].add("CategoryIdentity")
+            metas[ip]["gwikitemplate"].add("IdentityTemplate")
+        if "host" in event:
+            host = event["host"]
+            metas[host].update(handleAttr(event, hostattr))
+            metas[host]["gwikicategory"].add("CategoryIdentity")
+            metas[host]["gwikitemplate"].add("IdentityTemplate")
+        if "asn" in event:
+            asn = event["asn"]
+            metas[asn].update(handleAttr(event, asnattr))
+            metas[asn]["gwikicategory"].add("CategoryIdentity")
+            metas[asn]["gwikitemplate"].add("IdentityTemplate")
+    return metas
+
+
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] JSON-IOC-FILES")
+    metas = Metas()
+    sect = "ioc-uploader"
+    ops = parseOptions(parser, sect)
+    args = ops[sect]["args"]
+    url = ops["creds"]["url"]
+    x509 = ops[sect]["x509"]
+    x509_ca_file = ops[sect]["x509_ca_file"]
+    verbose = ops[sect]["verbose"]
+    if len(args) < 1:
+        parser.error("At least one JSON input file path needs to be specified.")
+    metas = Metas()
+    for fname in args:
+            try:
+                fobj = open(fname).readlines()
+            except IOError as e:
+                "Couldn't read file %s: %s" % (fname, e)
+            else:
+                metas.update(handleIoc(fobj))
+    if verbose:
+        print "Authenticating to collab."
+    while True:
+        try:
+            collab = CLIWiki(ssl_verify_cert=x509, ssl_ca_certs=x509_ca_file, **ops['creds'])
+        except WikiFailure:
+            print "ERROR: Authentication failed."
+        except (UnicodeError, socket.gaierror):
+            sys.exit("ERROR: Not a valid URL.")
+        else:
+            break    
+    cleared = Meta()
+    for page, meta in metas.iteritems():
+            cleared[page] = ioc_keys
+    collab.incSetMeta(cleared, Metas(), metas)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
+
+    
