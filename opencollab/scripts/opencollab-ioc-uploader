@@ -18,7 +18,7 @@ ipattr = set(["asn", "cc", "geoip cc", "cymru cc", "ptr", "latitude",
                 "state", "city", "country", "uuid"])
 asnattr = set(["as name", "bgp prefix", "registry", "allocated"])
 hostattr = set(["ip", "url", "uuid"])
-ioc_keys = list(ipattr | asnattr | hostattr)
+ioc_keys = list(ipattr | asnattr | hostattr - set(["uuid"]))
 
 
 def handleAttr(ioc, attr):
@@ -81,7 +81,6 @@ def handleIoc(fobj):
     return metas
 
 
-
 def main():
     parser = optparse.OptionParser()
     parser.set_usage("%prog [options] JSON-IOC-FILES")
@@ -95,14 +94,6 @@ def main():
     verbose = ops[sect]["verbose"]
     if len(args) < 1:
         parser.error("At least one JSON input file path needs to be specified.")
-    metas = Metas()
-    for fname in args:
-            try:
-                fobj = open(fname).readlines()
-            except IOError as e:
-                "Couldn't read file %s: %s" % (fname, e)
-            else:
-                metas.update(handleIoc(fobj))
     if verbose:
         print "Authenticating to collab."
     while True:
@@ -114,15 +105,21 @@ def main():
             sys.exit("ERROR: Not a valid URL.")
         else:
             break    
-    cleared = Meta()
-    for page, meta in metas.iteritems():
-            cleared[page] = ioc_keys
-    collab.incSetMeta(cleared, Metas(), metas)
+    for fname in args:
+        metas = Metas()
+        try:
+            fobj = open(fname).readlines()
+        except IOError as e:
+            "Couldn't read file %s: %s" % (fname, e)
+        else:
+            metas.update(handleIoc(fobj))
+        cleared = Meta()
+        for page, meta in metas.iteritems():
+                cleared[page] = ioc_keys
+        collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print "Script interrupted via CTRL-C."
-
-    
