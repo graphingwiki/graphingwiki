@@ -17,7 +17,7 @@ ipattr = set(["asn", "cc", "geoip cc", "cymru cc", "ptr", "latitude",
                 "longitude", "abuse contact", "registry", "region",
                 "state", "city", "country", "uuid"])
 asnattr = set(["as name", "bgp prefix", "registry", "allocated"])
-hostattr = set(["ip", "url", "uuid"])
+hostattr = set(["ip", "uuid"])
 ioc_keys = list(ipattr | asnattr | hostattr - set(["uuid"]))
 
 
