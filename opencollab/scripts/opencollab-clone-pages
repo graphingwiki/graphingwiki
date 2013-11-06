@@ -61,6 +61,10 @@ def main():
             break
 
     ops['creds']['url'] = dsturl
+    if 'username' in ops[sect]:
+        ops['creds']['username'] = ops[sect]['username']
+    if 'password' in ops[sect]:
+        ops['creds']['password'] = ops[sect]['password']
 
     print "Authenticating to DST URL:", dsturl
 
