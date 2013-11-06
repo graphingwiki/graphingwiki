@@ -41,6 +41,7 @@ LIST_FACTS = [
 
 # facts which should be added as links
 LINK_FACTS = [
+    'domain',
     'fqdn',
     'homename',
     'hostname',
