@@ -11,18 +11,54 @@ import yaml
 import socket
 import optparse
 import calendar
+
 from datetime import datetime, date
 from email.Utils import mktime_tz, parsedate_tz
+
 from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.file import md5obj, uploadFile
 
+
 # known facts which should be cleared when not present
-FACTER_KEYS = [
+CLEAR_FACTS = [
     'libvirt_activedomains',
     'libvirt_inactivedomains',
 ]
+
+# multivalued facts
+LIST_FACTS = [
+    'blockdevices',
+    'botnets',
+    'filesystems',
+    'interfaces',
+    'libvirt_activedomains',
+    'libvirt_inactivedomains',
+    'raid',
+    'vlans',
+]
+
+# facts which should be added as links
+LINK_FACTS = [
+    'fqdn',
+    'homename',
+    'hostname',
+    'libvirt_host',
+    'libvirt_activedomains',
+    'libvirt_inactivedomains',
+]
+
+# facts which sould be parsed as memory values
+MEMORY_FACTS = [
+    'libvirt_memorysize',
+    'memoryfree',
+    'memorysize',
+    'memorytotal',
+    'swapfree',
+    'swapsize',
+]
+
 
 def main():
     parser = optparse.OptionParser()
@@ -86,14 +122,7 @@ def main():
             page = page.split('.')[0]
 
         for key in values:
-            if ('address' in key or key.startswith('network') or
-                key.startswith('netmask') or
-                key == 'homename' or key == 'hostname' or key == 'fqdn'):
-                metas[page][key].add('[[%s]]' % (values[key].strip()))
-            elif key in ['interfaces', 'libvirt_activedomains',
-                         'libvirt_inactivedomains']:
-                metas[page][key].update(values[key].split(','))
-            elif key in ['_timestamp', 'lastupdated']:
+            if key in ['_timestamp', 'lastupdated']:
                 val = values[key]
                 key = key.lstrip('_')
                 if isinstance(val, (datetime, date)):
@@ -107,8 +136,7 @@ def main():
                         continue
                     val = mktime_tz(parsedate_tz(val))
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
-            elif key in ['memoryfree', 'memorysize', 'memorytotal',
-                         'swapfree', 'swapsize', 'libvirt_memorysize']:
+            elif key in MEMORY_FACTS:
                 nro, mgn = values[key].split()
                 nro = float(nro)
                 if mgn == 'GB':
@@ -116,14 +144,25 @@ def main():
                 if mgn == 'TB':
                     nro = 1024 * 1024 * nro
                 nro = str(int(round(nro)))
+                # see http://projects.puppetlabs.com/issues/11466
                 if key == 'memorytotal':
                     key = 'memorysize'
                 metas[page][key].add(nro)
             else:
-                metas[page][key].add(values[key].strip())
+                if key in LIST_FACTS:
+                    val = values[key].split(',')
+                else:
+                    val = [values[key]]
+                if (key in LINK_FACTS or
+                        key.startswith('ipaddress') or
+                        key.startswith('macaddress') or
+                        key.startswith('netmask') or
+                        key.startswith('network')):
+                    val = [ "[[%s]]" % v for v in val ]
+                metas[page][key].update(val)
 
         clear[page].update(metas[page])
-        clear[page].update(FACTER_KEYS)
+        clear[page].update(CLEAR_FACTS)
 
         if category is not None:
             for page in metas:
