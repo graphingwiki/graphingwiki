@@ -1,0 +1,27 @@
+/*
+    screen.css - Codenomicon branded bootstrap theme.
+    Overrides for opencollabnew theme
+*/
+
+
+#header {
+    font-size: 16px;
+}
+
+#logo {
+    padding: 5px 10px;
+    margin: 3px 10px;
+}
+
+.navbar-inverse {
+    background: #00365b;
+    border-color: #002041;
+}
+
+.btn-primary {
+    background-color: #00a0de;
+    border-color: #0094d3;
+}
+#footer {
+    background: #00365b;
+}
