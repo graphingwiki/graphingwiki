@@ -8,13 +8,14 @@ from collabbackend.plugin.theme.opencollabnew import Theme as ThemeParent
 
 class Theme(ThemeParent):
     name = "codenomicon"
-
+    css_files = ['screen']
 
     def logo(self):
         url = self.cfg.url_prefix_static + "/codenomicon/img/logo.png"
         return u'''<div id="logo">
         <img width="75%%" height="75%%" src="%s"></img>
-        </div>'''%url
+        </div>''' % url
+
 
 def execute(request):
     """

@@ -41,6 +41,8 @@ class Theme(ThemeParent):
     rev = ''
     available = ''
 
+    css_files = []
+
     def __init__(self, request):
         ThemeParent.__init__(self, request)
 
@@ -49,10 +51,15 @@ class Theme(ThemeParent):
         # include css and icon files from this theme when in inherited theme
         if self.name is not NAME:
             for sheetsname in sheetsnames:
-                sheets = getattr(self, sheetsname)
-                for sheet in reversed(sheets):
+                theme_sheets = getattr(self, sheetsname)
+                parent_sheets = []
+                for sheet in theme_sheets:
                     link = (sheet[0], THEME_PATH + "/css/" + sheet[1])
-                    setattr(self, sheetsname, (link,) + getattr(self, sheetsname))
+                    parent_sheets.append(link)
+
+                # remove css files that are not defined in css_files of the inherited theme
+                theme_sheets = [sheet for sheet in theme_sheets if sheet[1] in self.css_files]
+                setattr(self, sheetsname, tuple(parent_sheets + theme_sheets))
 
             for key, val in self.icons.items():
                 val = list(val)
