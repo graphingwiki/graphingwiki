@@ -62,3 +62,6 @@ img {
 .jslink {
     display: none;
 }
+span.meta_editicon {
+        display: none;
+}
