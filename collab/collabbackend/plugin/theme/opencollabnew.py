@@ -5,7 +5,7 @@
     Based on the Ficora theme (c) by Pasi Kemi 
     (Media Agency Bears: http://www.mediakarhut.fi)
 
-    Modifications by Juhani Eronen <exec@iki.fi>
+    Modifications by Juhani Eronen <exec@iki.fi> and Lauri Pokka
 
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>
 """
@@ -27,23 +27,41 @@ BREADCRUMB_ACTIONS = {'print': 'Print View',
                       'Invite': 'Invite'}
 
 BOOTSTRAP_THEME_CSS = [
-    "bootstrap.min"
+    ("all", "bootstrap.min")
 ]
 
 QUICKLINKS_RE = re.compile('<li class="userlink">.+?</li>', re.M)
 
+NAME = "opencollabnew"
+THEME_PATH = "../../" + NAME
+
 
 class Theme(ThemeParent):
-    name = "opencollabnew"
+    name = NAME
     rev = ''
     available = ''
 
     def __init__(self, request):
         ThemeParent.__init__(self, request)
 
+        sheetsnames = ['stylesheets', 'stylesheets_print', 'stylesheets_projection']
+
+        # include css and icon files from this theme when in inherited theme
+        if self.name is not NAME:
+            for sheetsname in sheetsnames:
+                sheets = getattr(self, sheetsname)
+                for sheet in reversed(sheets):
+                    link = (sheet[0], THEME_PATH + "/css/" + sheet[1])
+                    setattr(self, sheetsname, (link,) + getattr(self, sheetsname))
+
+            for key, val in self.icons.items():
+                val = list(val)
+                val[1] = THEME_PATH + "/img/" + val[1]
+                self.icons[key] = tuple(val)
+
         # bootstrap css file should be before themes
-        for sheet in BOOTSTRAP_THEME_CSS:
-            link = ("all", "../../bootstrap/css/" +sheet)
+        for sheet in reversed(BOOTSTRAP_THEME_CSS):
+            link = (sheet[0], "../../bootstrap/css/" +sheet[1])
             self.stylesheets = (link,) + self.stylesheets
 
         self.available = get_available_actions(request.cfg,
@@ -80,7 +98,7 @@ class Theme(ThemeParent):
     </div>
   </div> <!-- /navbar -->"""
 
-    def actionsMenu(self):
+    def actionsmenu(self):
         request = self.request
         page = self.request.page
         _ = request.getText
@@ -390,7 +408,7 @@ class Theme(ThemeParent):
 
             self._startnav(),
             self.navibar(d),
-            self.actionsMenu(),
+            self.actionsmenu(),
             self._endnav1(),
             self.search_user_form(d),
             self._endnav2(),
@@ -520,6 +538,7 @@ class Theme(ThemeParent):
             self.emit_custom_html(self.cfg.page_footer2),
         ]
         return u'\n'.join(html)
+
 
 def execute(request):
     """
