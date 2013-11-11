@@ -342,7 +342,7 @@ class Theme(ThemeParent):
             if urls:
                 out = """
                   <div class="input-group-btn">
-        <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" tabindex="-1">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
           <i class="glyphicon glyphicon-user"></i> <span class="caret"></span>
         </button>
         <ul class="dropdown-menu pull-left">
@@ -372,8 +372,8 @@ class Theme(ThemeParent):
 
       <input class="form-control search" placeholder="Search" name="value">
       <div class="input-group-btn">
-        <input class="btn btn-primary" name="titlesearch" type="submit" value="%s">
-        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" tabindex="-1">
+        <button class="btn btn-primary" name="titlesearch" type="submit">%s</button>
+        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
           <span class="caret"></span>
         </button>
         <ul class="dropdown-menu pull-right" role="menu">
