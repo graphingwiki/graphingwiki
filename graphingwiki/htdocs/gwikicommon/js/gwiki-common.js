@@ -80,18 +80,21 @@ window.addEvent('domready', function() {
     }
 
     // DynamicTextareas for textareas with .dynamic
+    // Added body check to workaround a weird phantomjs bug
     if ($$('textarea.dynamic')) {
         loader.load('DynamicTextarea', function(){
             $$('textarea.dynamic').setStyles({
                 'resize': 'none',
                 'overflow': 'hidden'
             });
-            
-	    document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
-                if (!document.id(e.target).retrieve('dynamic')) {
-                    new DynamicTextarea(e.target);
-                    document.id(e.target).store('dynamic', true).focus();
-                }
+
+            if (document.body) {
+		document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
+                    if (!document.id(e.target).retrieve('dynamic')) {
+			new DynamicTextarea(e.target);
+			document.id(e.target).store('dynamic', true).focus();
+                    }
+		}
             });
         });
     }
