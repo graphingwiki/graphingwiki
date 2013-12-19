@@ -1,36 +1,106 @@
-.chat {
+#content .collab_chat {
+    background-color: white;
     position: relative;
+    height: 400px;
+    width: 94%;
+    left: 3%;
+
+    border: 1px solid lightgrey;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.05) inset, 0px 0px 5px rgba(0, 0, 0, 0.1);
+    padding-right: 0px;
+}
+
+#content .collab_chat .chat-wrapper {
+    display: block;
     width: 100%;
+    height: 370px;
+    padding: 0;
+    margin: 0;
+}
+
+#content .collab_chat .toolbar {
+    display: block;
+    width: 100%;
+    height: 30px;
+    background-color: #6385A6;
+    padding: 0px;
+    margin-right: 0px;
+}
+
+#content .collab_chat .toolbar .channel-label {
+    color: #EFEFEF;
+    text-shadow: 1px 1px 2px #111;
+    padding: 0.5em;
+    line-height: 30px;
+}
+
+#content .collab_chat .chat {
+    position: relative;
+    display: inline-block;
+    float: left;
+    width: 75%;
+    height: 100%;
+    background-color: #FCFEFF;
+
+    margin: 0px;
+    margin-right: 0;
+    padding: 0px;
+}
+
+#content .collab_chat .userlist {
+    position: relative;
+    display: inline-block;
+    background-color: #2E3D4C;
+    width: 25%;
     height: 100%;
 
+    margin: 0;
+    padding: 0;
+    overflow-y: scroll;
+}
+
+#content .collab_chat .userlist .users {
+    list-style: none;
     margin: 0px;
     padding: 0px;
 }
 
-.chat .output-container {
+#content .collab_chat .userlist .users .user {
+    color: #EFEFEF;
+    text-shadow: 1px 1px 2px #111;
+    padding: 0.5em;
+    margin: 0px;
+}
+
+#content .collab_chat .userlist .users .user:hover {
+    background-color: #FCFEFF;
+}
+
+#content .collab_chat .chat .output-container {
     position: absolute;
     top: 0px;
     left: 0px;
     right: 0px;
+    margin: 0px;
     bottom: 2.1em;
     overflow-y: scroll;
 }
 
-.chat .output {
+#content .collab_chat .chat .output {
     padding: 5px;
-    padding-right: 10px;
 }
 
-.chat .input-container {
+#content .collab_chat .chat .input-container {
     position: absolute;
     height: 2.1em;
     left: 0px;
     right: 20px;
     bottom: 0px;
-    background: blue;
+    background-color: blue;
+    margin: 0px;
 }
 
-.chat .input {
+#content .collab_chat .chat .input {
     display: block;
     position: absolute;
     width: 100%;
@@ -52,29 +122,24 @@
     margin: 0px;
 
     font-size: 1em;
-    box-shadow: 0px 2px 3px rgba(0, 0, 0, 0.2) inset;
-    background: rgb(255, 255, 250);
+    background-color: #FCFEFF;
 }
 
-.chat .output .message {
+#content .collab_chat .chat .output .message {
     display: block;
     width: 100%;
-    margin-top: 2px;
-    padding: 0px;
-    padding-left: 5px;
-    padding-top: 3px;
-    padding-bottom: 3px;
-    border-radius: 3px;
+    margin: 0.4em 0;
+    padding: 6px;
 }
 
-.chat .output .message .time {
+#content .collab_chat .chat .output .message .time {
     display: inline-block;
     color: #999;
     font-size: 0.75em;
     padding-right: 0.25em;
 }
 
-.chat .output .message .sender {
+#content .collab_chat .chat .output .message .sender {
     display: inline-block;
     color: rgba(0, 0, 0, 0.8);
 
@@ -90,7 +155,7 @@
     padding-right: 0.25em;
 }
 
-.chat .output .message .body {
+#content .collab_chat .chat .output .message .body {
     display: inline;
     padding: 1px;
     padding-right: 0.55em;
@@ -99,10 +164,4 @@
     border-radius: 1em;
     border-bottom-left-radius: 0px;
     border-top-left-radius: 0px;
-}
-
-.chat .output .message .room-message {
-    color: grey;
-    padding-left: 20px;
-    font-size: 0.9em;
 }
