@@ -15,8 +15,8 @@ var initChat = (function() {
                     obj.removeEventListener(type, callback, false);
                 }
             };
-        } 
-        
+        }
+
         if (obj.attachEvent && obj.detachEvent) {
             var wrapped = function() {
                 callback(window.event);
@@ -29,15 +29,15 @@ var initChat = (function() {
             };
         }
     };
-    
+
     var EventSource = (function() {
         var _has = Object.prototype.hasOwnProperty;
         var _slice = Array.prototype.slice;
-        
+
         var EventSource = function() {};
-        
+
         EventSource.prototype._callbacks = null;
-        
+
         EventSource.prototype.trigger = function(type) {
             var callbacks = this._callbacks;
             if (!callbacks || !_has.call(callbacks, type)) return;
@@ -45,7 +45,7 @@ var initChat = (function() {
             var args = _slice.call(arguments, 1, arguments.length);
             var list = callbacks[type];
             list = _slice.call(list, 0, list.length);
-            
+
             for (var i = 0, len = list.length; i < len; i++) {
                 var obj = list[i];
 
@@ -55,7 +55,7 @@ var initChat = (function() {
                 }
             }
         };
-        
+
         EventSource.prototype.listen = function(type, callback, context) {
             var callbacks = this._callbacks;
             if (!callbacks) {
@@ -64,14 +64,14 @@ var initChat = (function() {
             if (!_has.call(callbacks, type)) {
                 callbacks[type] = [];
             }
-            
+
             var list = callbacks[type];
             var obj = {
                 callback: callback,
                 context: context
             };
             list.push(obj);
-            
+
             return {
                 unlisten: function() {
                     obj.callback = null;
@@ -80,7 +80,7 @@ var initChat = (function() {
                     for (var i = list.length-1; i >= 0; i--) {
                         if (list[i] === obj) list.splice(i, 1);
                     }
-                    
+
                     if ((list.length === 0) && (callbacks[type] === list)) {
                         delete callbacks[type];
                     }
@@ -118,7 +118,7 @@ var initChat = (function() {
             }
             items[key] = value;
         };
-        
+
         Dict.prototype.get = function(key, _default) {
             var items = this._items;
             if (_has.call(items, key)) {
@@ -126,7 +126,7 @@ var initChat = (function() {
             }
             return arguments.length === 1 ? null : _default;
         };
-        
+
         Dict.prototype.pop = function(key, _default) {
             var items = this._items;
             if (_has.call(items, key)) {
@@ -149,7 +149,7 @@ var initChat = (function() {
                 if (_has.call(items, key)) {
                     func.call(ctx, items[key], key, this);
                 }
-            }       
+            }
         };
 
         Dict.prototype.count = function() {
@@ -171,7 +171,7 @@ var initChat = (function() {
         var formatTime = function(timestamp) {
             var dateObj = new Date(timestamp);
             return {
-                time: (pad(dateObj.getHours(), 2) + ":" + 
+                time: (pad(dateObj.getHours(), 2) + ":" +
                        pad(dateObj.getMinutes(), 2)),
                 date: (pad(dateObj.getFullYear(), 4) + "-" +
                        pad(dateObj.getMonth() + 1, 2) + "-" +
@@ -248,7 +248,7 @@ var initChat = (function() {
             h = (h * 6) % 6;
             s = Math.max(Math.min(s, 1.0), 0.0);
             v = Math.max(Math.min(v, 1.0), 0.0);
-            
+
             var max = v;
             var min = v * (1 - s);
             var mid = min + (max - min) * (1 - Math.abs(1 - h % 2));
@@ -271,22 +271,65 @@ var initChat = (function() {
             element.className = className;
             return element;
         };
-        
+
         var appendText = function(element, text) {
             element.appendChild(document.createTextNode(text));
         };
 
         var UI = function(container) {
+
+            var UserList = window.Class({
+                initialize: function() {
+                    this._container = createElement("div", "userlist");
+                    this._list = createElement("ul", "users");
+
+                    this._container.appendChild(this._list);
+                },
+
+                userJoin: function(key) {
+                    var user = createElement("li", "user");
+                    user.id = key;
+                    user.innerHTML = key;
+                    this._list.appendChild(user);
+                },
+
+                userLeave: function(key) {
+                    var user = document.getElementById(key)
+                    this._list.removeChild(user);
+                },
+
+                element: function() {
+                    return this._container;
+                },
+
+                destroy: function() {
+                    this._listener.destroy();
+                    this._model = null;
+                    this._container = null;
+                },
+            });
+
             this.container = container;
 
+            this.tools = createElement("div", "toolbar");
+            this.channelLabel = createElement("span", "channel-label");
+            this.tools.appendChild(this.channelLabel);
+            this.container.appendChild(this.tools);
+
+            this.chatWrapper = createElement("div", "chat-wrapper");
+
             this.chat = createElement("div", "chat");
-            this.container.appendChild(this.chat);
-            
+            this.chatWrapper.appendChild(this.chat);
+
+            this.userlist = new UserList();
+            this.chatWrapper.appendChild(this.userlist.element());
+            this.container.appendChild(this.chatWrapper);
+
             this.area = createElement("div", "output");
             this.areaContainer = createElement("div", "output-container");
             this.areaContainer.appendChild(this.area);
             this.chat.appendChild(this.areaContainer);
-            
+
             this.input = createElement("input", "input");
             this.input.placeholder = "<write your message here>";
             this.inputContainer = createElement("div", "input-container");
@@ -317,12 +360,12 @@ var initChat = (function() {
                     _this.trigger("output", text);
                 }
                 _this._scrollToBottom();
-	        return false;
+            return false;
             });
         };
-        
+
         UI.prototype = new EventSource();
-        
+
         UI.prototype.addMessage = function(timestamp, sender, body) {
             var formatted = formatTime(timestamp);
             var previous = this.previous;
@@ -352,7 +395,7 @@ var initChat = (function() {
                 var senderDiv = createElement("div", "sender");
                 senderDiv.style.color = hsv(hue, 0.35, 0.575);
                 // Whitespaces around the sender make copy-pastes clearer.
-                appendText(senderDiv, " <" + sender + "> ");
+                appendText(senderDiv, sender);
                 msgDiv.appendChild(senderDiv);
 
                 var bodyDiv = createElement("div", "body");
@@ -382,7 +425,7 @@ var initChat = (function() {
         };
 
         UI.prototype._scrollToBottom = function() {
-	    this.areaContainer.scrollTop = this.areaContainer.scrollHeight;
+        this.areaContainer.scrollTop = this.areaContainer.scrollHeight;
         };
 
         UI.prototype.showError = function(error) {
@@ -393,6 +436,18 @@ var initChat = (function() {
             log(status);
         };
 
+        UI.prototype.userJoin = function(key, value) {
+            this.userlist.userJoin(key);
+        };
+
+        UI.prototype.userLeave = function(key) {
+            this.userlist.userLeave(key);
+        };
+
+        UI.prototype.setChannelLabel = function(label) {
+            this.channelLabel.textContent = label;
+        }
+
         return UI;
     })();
 
@@ -400,7 +455,7 @@ var initChat = (function() {
         var getRoomJid = function(roomName, baseJid) {
             var node = Strophe.getNodeFromJid(roomName);
             if (node !== null) {
-                return roomName;                
+                return roomName;
             }
             var domain = Strophe.getDomainFromJid(baseJid);
             return roomName + "@conference." + domain;
@@ -412,49 +467,49 @@ var initChat = (function() {
             }
             return element.innerText;
         };
-        
+
         var iterChildren = function(element, func, context) {
             var children = element.childNodes;
-            
+
             for (var i = 0, child = null; child = children[i]; i++) {
                 if (func.call(context, child, i) === false) break;
-	    }
+            }
         };
-        
+
         var now = Date.now || function() {
-	    return (new Date()).getTime();
+        return (new Date()).getTime();
         };
 
         var rex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d*)Z$/;
 
         var parseDelay = function(stanza) {
-	    var timestamp = null;
-            
+        var timestamp = null;
+
             iterChildren(stanza, function(child) {
-	        if (!child.tagName) return;;
-	        if (child.tagName.toLowerCase() !== "delay") return;
-	        if (child.getAttribute("xmlns") !== "urn:xmpp:delay") return;
-	        
-	        var stamp = child.getAttribute("stamp");
-	        if (stamp === null) return;
-                
-	        var newStamp = stamp.match(rex);
-	        if (newStamp === null) return;
-                
+            if (!child.tagName) return;;
+            if (child.tagName.toLowerCase() !== "delay") return;
+            if (child.getAttribute("xmlns") !== "urn:xmpp:delay") return;
+
+            var stamp = child.getAttribute("stamp");
+            if (stamp === null) return;
+
+            var newStamp = stamp.match(rex);
+            if (newStamp === null) return;
+
                 var fraction = newStamp.pop();
-	        
-	        newStamp.shift();
-	        newStamp[1] -= 1;
-	        timestamp = Date.UTC.apply(null, newStamp);
-                
+
+            newStamp.shift();
+            newStamp[1] -= 1;
+            timestamp = Date.UTC.apply(null, newStamp);
+
                 if (fraction) {
                     timestamp += 1000 * Number("0." + fraction);
                 }
-	    });
-	    
-	    return timestamp === null ? now() : timestamp;
+        });
+
+        return timestamp === null ? now() : timestamp;
         };
-        
+
         var bound = function(method, context) {
             return function() {
                 return method.apply(context, arguments);
@@ -467,7 +522,7 @@ var initChat = (function() {
             this.password = password;
 
             this.strophe = new Strophe.Connection(boshUri);
-            this.strophe.connect(jid, password, 
+            this.strophe.connect(jid, password,
                                  bound(this._statusChanged, this));
 
             this.participants = new Dict();
@@ -520,34 +575,34 @@ var initChat = (function() {
         };
 
         Connection.prototype.send = function(message) {
-	    var msg = $msg({
-                to: this.roomJid, 
-                type: "groupchat"
-            });
-            
-	    msg.c("body").t(message);
-	    this.strophe.send(msg.tree());
+            var msg = $msg({
+                    to: this.roomJid,
+                    type: "groupchat"
+                });
+
+            msg.c("body").t(message);
+            this.strophe.send(msg.tree());
         };
-        
+
         Connection.prototype._connected = function() {
             this.strophe.addHandler(bound(this._handleMessage, this),
                                     null, "message", null, null,
-			            this.roomJid, { matchBare: true });
+                        this.roomJid, { matchBare: true });
 
             this.strophe.addHandler(bound(this._handlePresence, this),
                                     null, "presence", null, null,
-			            this.roomJid, { matchBare: true });
+                        this.roomJid, { matchBare: true });
 
-	    var resource = Strophe.getNodeFromJid(this.jid);
-	    resource = resource + "-" + ((999 * Math.random()) | 0);
+            var resource = Strophe.getNodeFromJid(this.jid);
+            resource = resource + "-" + ((999 * Math.random()) | 0);
 
-            var presence = $pres({ 
-                to: this.roomJid + "/" + resource 
+            var presence = $pres({
+                to: this.roomJid + "/" + resource
             });
             presence.c("x", {
                 xmlns: "http://jabber.org/protocol/muc"
             })
-	    this.strophe.send(presence);
+            this.strophe.send(presence);
 
             this.trigger("connected");
         };
@@ -557,9 +612,9 @@ var initChat = (function() {
         };
 
         Connection.prototype._handleMessage = function(msg) {
-	    var from = msg.getAttribute("from");
-	    var sender = Strophe.getResourceFromJid(from);
-            
+        var from = msg.getAttribute("from");
+        var sender = Strophe.getResourceFromJid(from);
+
             iterChildren(msg, function(child) {
                 if (child.tagName && child.tagName.toLowerCase() === "body") {
                     var timestamp = parseDelay(msg);
@@ -567,32 +622,34 @@ var initChat = (function() {
                     return false;
                 }
             }, this);
-	    
-	    return true;
+
+        return true;
         };
 
         Connection.prototype._handlePresence = function(pres) {
-	    var type = pres.getAttribute("type");
+        var type = pres.getAttribute("type");
 
-	    var from = pres.getAttribute("from");
-	    var sender = Strophe.getResourceFromJid(from);
+        var from = pres.getAttribute("from");
+        var sender = Strophe.getResourceFromJid(from);
 
-            if (type !== "unavailable" && this.participants.contains(from)) {
-                return;
-            }
+        if (type !== "unavailable" && this.participants.contains(from)) {
+            return;
+        }
 
-            if (type === "unavailable") {
-                var msg = "has left the room";
-                this.participants.pop(from);
-            } else {
-                var msg = "has entered the room";
-                this.participants.set(from, true);
-            }
-            this.trigger("message", now(), null, sender + " " + msg);
+        if (type === "unavailable") {
+            var msg = "has left the room";
+            this.participants.pop(from);
+            this.trigger("participantLeave", sender);
+        } else {
+            var msg = "has entered the room";
+            this.participants.set(from, true);
+            this.trigger("participantJoin", sender, true);
+        }
+        this.trigger("message", now(), null, sender + " " + msg);
 
-	    return true;
+        return true;
         };
-        
+
         Connection.prototype._setStatus = function(isError, status) {
             this.status = status;
             this.trigger("statusChanged", isError, status);
@@ -600,33 +657,35 @@ var initChat = (function() {
 
         Connection.prototype._statusChanged = function(status) {
             if (status == Strophe.Status.CONNECTING) {
-	        this._setStatus(false, "Connecting");
+            this._setStatus(false, "Connecting");
             } else if (status == Strophe.Status.CONNFAIL) {
-	        this._setStatus(true, "Connection failed");
+            this._setStatus(true, "Connection failed");
                 this.strophe.disconnect();
             } else if (status == Strophe.Status.AUTHENTICATING) {
-	        this._setStatus(false, "Authenticating");
+            this._setStatus(false, "Authenticating");
             } else if (status == Strophe.Status.AUTHFAIL) {
-	        this._setStatus(true, "Authentication failed");
+            this._setStatus(true, "Authentication failed");
                 this.strophe.disconnect();
             } else if (status == Strophe.Status.DISCONNECTING) {
-	        this._setStatus(false, "Disconnecting");
+            this._setStatus(false, "Disconnecting");
             } else if (status == Strophe.Status.DISCONNECTED) {
-	        this._setStatus(false, "Disconnected");
-	        this._disconnected();
+            this._setStatus(false, "Disconnected");
+            this._disconnected();
             } else if (status == Strophe.Status.CONNECTED) {
-	        this._setStatus(false, "Connected");
-	        this._connected();
+            this._setStatus(false, "Connected");
+            this._connected();
             }
         };
 
         return Connection;
     })();
-                      
+
     return function(container, boshUri, roomJid, jid, password) {
         var main = function(container) {
             var ui = new UI(container);
             var conn = new Connection(boshUri, roomJid, jid, password);
+
+            ui.setChannelLabel(roomJid);
 
             conn.listen("statusChanged", function(isError, status) {
                 if (isError) {
@@ -635,12 +694,15 @@ var initChat = (function() {
                     ui.showStatus(status);
                 }
             });
-            
+
             conn.listen("connected", function() {
                 var listener = ui.listen("output", conn.send, conn);
                 conn.listen("disconnected", listener.unlisten);
             });
             conn.listen("message", ui.addMessage, ui);
+
+            conn.listen("participantJoin", ui.userJoin, ui);
+            conn.listen("participantLeave", ui.userLeave, ui);
         };
 
         var check = function() {
