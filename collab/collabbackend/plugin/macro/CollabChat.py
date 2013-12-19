@@ -1,4 +1,3 @@
-import string
 import random
 
 SCRIPT = """
@@ -36,7 +35,7 @@ def macro_CollabChat(self, _kwargs={}):
   bosh = self.request.cfg.collab_chat_bosh
   creds = self.request.cfg.collab_chat_creds
 
-  id = "".join([random.choice(string.letters) for _ in range(32)])
+  id = "chat-%x" % random.randint(2 ** 63, 2 ** 64 - 1)
 
   result = list()
   result.append(self.formatter.div(1, **{ "id": id, "class": "collab_chat" }))
