@@ -81,20 +81,3 @@ dt.collab_key:hover {
 dd.collab_val {
   display: none;
 }
-
-div.collab_chat {
-  background: white;
-
-  position: relative;
-  height: 300px;
-  width: 94%;
-  left: 3%;
-
-  border: 1px solid lightgrey;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.05) inset, 0px 0px 5px rgba(0, 0, 0, 0.1);
-}
-
-#content .collab_chat div {
-    margin-right: 0px;
-    padding-right: 0.4em;
-}
