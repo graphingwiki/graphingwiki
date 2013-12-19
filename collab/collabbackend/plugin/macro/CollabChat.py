@@ -21,18 +21,28 @@ SCRIPT = """
 </script>
 """
 
-def execute(self, args):
+def macro_CollabChat(self, _kwargs={}):
+
+  subroom = _kwargs.get("room", None)
+
+  if subroom:
+    room = "%(collab)s.%(room)s" % {
+      "collab": self.request.cfg.interwikiname,
+      "room": subroom
+      }
+  else:
     room = self.request.cfg.interwikiname
-    bosh = self.request.cfg.collab_chat_bosh
-    creds = self.request.cfg.collab_chat_creds
 
-    id = "".join([random.choice(string.letters) for _ in range(32)])
+  bosh = self.request.cfg.collab_chat_bosh
+  creds = self.request.cfg.collab_chat_creds
 
-    result = list()
-    result.append(self.formatter.div(1, **{ "id": id, "class": "collab_chat" }))
-    result.append(self.formatter.div(0))
+  id = "".join([random.choice(string.letters) for _ in range(32)])
 
-    script = SCRIPT % { "bosh": bosh, "room": room, "creds": creds, "id": id }
-    result.append(script)
+  result = list()
+  result.append(self.formatter.div(1, **{ "id": id, "class": "collab_chat" }))
+  result.append(self.formatter.div(0))
 
-    return "".join(result)
+  script = SCRIPT % { "bosh": bosh, "room": room, "creds": creds, "id": id }
+  result.append(script)
+
+  return "".join(result)
