@@ -20,18 +20,9 @@ SCRIPT = """
 </script>
 """
 
-def macro_CollabChat(self, _kwargs={}):
+def macro_CollabChat(self, args):
 
-  subroom = _kwargs.get("room", None)
-
-  if subroom:
-    room = "%(collab)s.%(room)s" % {
-      "collab": self.request.cfg.interwikiname,
-      "room": subroom
-      }
-  else:
-    room = self.request.cfg.interwikiname
-
+  room = self.request.cfg.interwikiname
   bosh = self.request.cfg.collab_chat_bosh
   creds = self.request.cfg.collab_chat_creds
 
