@@ -289,12 +289,12 @@ var initChat = (function() {
                 userJoin: function(key) {
                     var user = createElement("li", "user");
                     user.id = key;
-                    user.innerHTML = key;
+                    user.textContent = key;
                     this._list.appendChild(user);
                 },
 
                 userLeave: function(key) {
-                    var user = document.getElementById(key)
+                    var user = document.getElementById(key);
                     this._list.removeChild(user);
                 },
 
