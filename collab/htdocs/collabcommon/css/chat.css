@@ -56,7 +56,7 @@
 
     margin: 0;
     padding: 0;
-    overflow-y: scroll;
+    overflow: auto;
 }
 
 #content .collab_chat .userlist .users {
