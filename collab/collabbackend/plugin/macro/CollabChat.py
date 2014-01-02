@@ -27,10 +27,9 @@ def macro_CollabChat(self, args):
   subroom_id = self.request.page.page_name.lower()
 
   if subroom_id:
-    subrooms = subroom_id.split("/")
-    for subroom in subrooms:
-      if subroom not in room_mask:
-        room.append(subroom)
+    subroom_id = [".".join(subroom_id.replace(".","").split("/"))]
+    subrooms = set(subroom_id) - set(room_mask)
+    room.extend(subrooms)
 
   bosh = self.request.cfg.collab_chat_bosh
   creds = self.request.cfg.collab_chat_creds
