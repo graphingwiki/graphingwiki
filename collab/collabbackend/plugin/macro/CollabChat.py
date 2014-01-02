@@ -22,7 +22,16 @@ SCRIPT = """
 
 def macro_CollabChat(self, args):
 
-  room = self.request.cfg.interwikiname
+  room = [self.request.cfg.interwikiname]
+  room_mask = [maskable.lower() for maskable in getattr(self.request.cfg, "collabchat_room_mask", [])]
+  subroom_id = self.request.page.page_name.lower()
+
+  if subroom_id:
+    subrooms = subroom_id.split("/")
+    for subroom in subrooms:
+      if subroom not in room_mask:
+        room.append(subroom)
+
   bosh = self.request.cfg.collab_chat_bosh
   creds = self.request.cfg.collab_chat_creds
 
@@ -32,7 +41,7 @@ def macro_CollabChat(self, args):
   result.append(self.formatter.div(1, **{ "id": id, "class": "collab_chat" }))
   result.append(self.formatter.div(0))
 
-  script = SCRIPT % { "bosh": bosh, "room": room, "creds": creds, "id": id }
+  script = SCRIPT % { "bosh": bosh, "room": ".".join(room), "creds": creds, "id": id }
   result.append(script)
 
   return "".join(result)
