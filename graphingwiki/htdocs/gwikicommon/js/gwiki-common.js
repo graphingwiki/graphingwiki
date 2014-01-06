@@ -89,13 +89,13 @@ window.addEvent('domready', function() {
             });
 
             if (document.body) {
-		document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
+                document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e){
                     if (!document.id(e.target).retrieve('dynamic')) {
-			new DynamicTextarea(e.target);
-			document.id(e.target).store('dynamic', true).focus();
+                        new DynamicTextarea(e.target);
+                        document.id(e.target).store('dynamic', true).focus();
                     }
-		}
-            });
+                });
+            }
         });
     }
 
