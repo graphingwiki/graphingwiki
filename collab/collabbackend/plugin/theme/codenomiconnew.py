@@ -7,11 +7,11 @@ from collabbackend.plugin.theme.opencollabnew import Theme as ThemeParent
 
 
 class Theme(ThemeParent):
-    name = "codenomicon"
+    name = "codenomiconnew"
     css_files = ['screen']
 
     def logo(self):
-        url = self.cfg.url_prefix_static + "/codenomicon/img/logo.png"
+        url = self.cfg.url_prefix_static + "/codenomiconnew/img/logo.png"
         return u'''<div id="logo">
         <img height="29px" src="%s"></img>
         </div>''' % url
