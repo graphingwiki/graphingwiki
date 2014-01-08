@@ -22,7 +22,7 @@ SCRIPT = """
 
 def macro_CollabChat(self, args):
     room = [self.request.cfg.interwikiname]
-    room_mask = [maskable.lower() for maskable in getattr(self.request.cfg, "collabchat_room_mask", [])]
+    room_mask = [maskable.lower() for maskable in getattr(self.request.cfg, "collab_chat_room_mask", [])]
     subroom_id = self.request.page.page_name.lower()
 
     if subroom_id:
