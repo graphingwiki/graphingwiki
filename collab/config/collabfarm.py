@@ -132,6 +132,7 @@ class FarmConfig(DefaultConfig):
     collab_baseurl = 'https://localhost/collab/'
     collab_chat_bosh = '/bosh/'
     collab_chat_creds = '/collab/?action=authcredentials'
+    collab_chat_room_mask = [ u'Collab', u'CollabChat', u'FrontPage' ]
     # Set your xmpp domain here if autodetection fails
     #collab_chat_domain = ''
 
