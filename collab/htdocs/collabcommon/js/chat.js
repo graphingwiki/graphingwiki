@@ -278,42 +278,41 @@
 
             var UI = function(container) {
 
-                var UserList = window.Class({
-                    initialize: function() {
+                var UserList = (function() {
+                    var UserList = function(){
                         this._container = createElement("div", "userlist");
                         this._list = createElement("ul", "users");
-
                         this._container.appendChild(this._list);
-                    },
+                    };
 
-                    userJoin: function(key) {
+                    UserList.prototype.userJoin = function(key) {
                         var user = createElement("li", "user");
                         user.id = key;
                         user.textContent = key;
                         this._list.appendChild(user);
-                    },
+                    };
 
-                    userLeave: function(key) {
+                    UserList.prototype.userLeave = function(key) {
                         var user = document.getElementById(key);
                         this._list.removeChild(user);
-                    },
+                    };
 
-                    element: function() {
+                    UserList.prototype.element = function() {
                         return this._container;
-                    },
+                    };
 
-                    destroy: function() {
-                        this._listener.destroy();
-                        this._model = null;
-                        this._container = null;
-                    },
-                });
+                    return UserList;
+                })();
 
                 this.container = container;
 
                 this.tools = createElement("div", "toolbar");
+                this.toolset = createElement("div", "toolset");
                 this.channelLabel = createElement("span", "channel-label");
+                this.connectionStatus = createElement("span", "connection-status");
                 this.tools.appendChild(this.channelLabel);
+                this.toolset.appendChild(this.connectionStatus);
+                this.tools.appendChild(this.toolset);
                 this.container.appendChild(this.tools);
 
                 this.chatWrapper = createElement("div", "chat-wrapper");
@@ -428,12 +427,8 @@
                 this.areaContainer.scrollTop = this.areaContainer.scrollHeight;
             };
 
-            UI.prototype.showError = function(error) {
-                alert(error);
-            };
-
-            UI.prototype.showStatus = function(status) {
-                log(status);
+            UI.prototype.connectionStatusChanged = function(status) {
+                this.connectionStatus.textContent = status.toLowerCase();
             };
 
             UI.prototype.userJoin = function(key, value) {
@@ -688,11 +683,7 @@
                 ui.setChannelLabel(roomJid);
 
                 conn.listen("statusChanged", function(isError, status) {
-                    if (isError) {
-                        ui.showError(status);
-                    } else {
-                        ui.showStatus(status);
-                    }
+                    ui.connectionStatusChanged(status);
                 });
 
                 conn.listen("connected", function() {
