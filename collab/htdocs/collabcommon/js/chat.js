@@ -340,8 +340,7 @@ var initChat = (function() {
 
             var _this = this;
             listenEvent(this.areaContainer, "scroll", function(event) {
-                _this.isAtBottom = (this.scrollTop + this.clientHeight
-                                    === this.scrollHeight);
+                _this.isAtBottom = (this.scrollTop + this.clientHeight) === this.scrollHeight;
             });
             listenEvent(window, "resize", function() {
                 if (_this.isAtBottom) {
@@ -372,7 +371,7 @@ var initChat = (function() {
 
             var dateDiv = null;
             if (formatted.date !== previous.date) {
-                var dateDiv = createElement("div", "message");
+                dateDiv = createElement("div", "message");
                 var bodyDiv = createElement("div", "room-message");
                 appendText(bodyDiv, "day changed to " + formatted.date);
                 dateDiv.appendChild(bodyDiv);
@@ -427,7 +426,7 @@ var initChat = (function() {
             this.areaContainer.scrollTop = this.areaContainer.scrollHeight;
         };
 
-        UI.prototype.connectionStatusChanged = function(status) {
+        UI.prototype.connectionStatusChanged = function(status) {
             this.connectionStatus.textContent = status.toLowerCase();
         };
 
@@ -441,7 +440,7 @@ var initChat = (function() {
 
         UI.prototype.setChannelLabel = function(label) {
             this.channelLabel.textContent = label;
-        }
+        };
 
         return UI;
     })();
@@ -457,7 +456,7 @@ var initChat = (function() {
         };
 
         var getText = function(element) {
-            if (element.textContent != null) {
+            if (element.textContent !== void 0) {
                 return element.textContent;
             }
             return element.innerText;
@@ -481,7 +480,7 @@ var initChat = (function() {
         var timestamp = null;
 
             iterChildren(stanza, function(child) {
-            if (!child.tagName) return;;
+            if (!child.tagName) return;
             if (child.tagName.toLowerCase() !== "delay") return;
             if (child.getAttribute("xmlns") !== "urn:xmpp:delay") return;
 
@@ -596,7 +595,7 @@ var initChat = (function() {
             });
             presence.c("x", {
                 xmlns: "http://jabber.org/protocol/muc"
-            })
+            });
             this.strophe.send(presence);
 
             this.trigger("connected");
@@ -631,12 +630,14 @@ var initChat = (function() {
                 return;
             }
 
+            var msg = ""
+
             if (type === "unavailable") {
-                var msg = "has left the room";
+                msg = "has left the room";
                 this.participants.pop(from);
                 this.trigger("participantLeave", sender);
             } else {
-                var msg = "has entered the room";
+                msg = "has entered the room";
                 this.participants.set(from, true);
                 this.trigger("participantJoin", sender, true);
             }
