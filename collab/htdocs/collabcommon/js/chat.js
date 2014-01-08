@@ -630,8 +630,7 @@ var initChat = (function() {
                 return;
             }
 
-            var msg = ""
-
+            var msg = "";
             if (type === "unavailable") {
                 msg = "has left the room";
                 this.participants.pop(from);
