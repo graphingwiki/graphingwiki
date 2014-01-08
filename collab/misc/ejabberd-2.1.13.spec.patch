@@ -1,28 +1,30 @@
 --- ejabberd.spec.orig	2013-06-29 08:23:52.000000000 +0300
-+++ ejabberd.spec	2013-08-27 02:16:06.807793388 +0300
-@@ -22,7 +22,7 @@
++++ ejabberd.spec	2014-01-06 19:13:42.184451195 +0200
+@@ -21,8 +21,9 @@
+ 
  
  Name:           ejabberd
++Epoch:          10
  Version:        2.1.13
 -Release:        1%{?dist}
 +Release:        1%{?dist}.collab
  Summary:        A distributed, fault-tolerant Jabber/XMPP server
  
  Group:          Applications/Internet
-@@ -59,6 +59,8 @@
+@@ -59,6 +60,8 @@
  Patch7: ejabberd-0007-Support-SASL-GSSAPI-authentication-thanks-to-Mikael-.patch
  # Disable IP restriction for ejabberdctl (seems that it doesn't work well)
  Patch8: ejabberd-0008-Disable-INET_DIST_INTERFACE-by-default.patch
 +# Collab
-+Patch99: ejabberd-2.1.13.collab.patch
++Patch9: ejabberd-2.1.13.collab.patch
  
  BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
  
-@@ -154,6 +156,7 @@
+@@ -154,6 +157,7 @@
  %patch6 -p1 -b .versioned_docdir
  %patch7 -p1 -b .gssapi
  %patch8 -p1 -b .disable_ip_restriction_for_ejabberdctl
-+%patch99 -p1 -b .collab
++%patch9 -p1 -b .collab
  
  
  %build
