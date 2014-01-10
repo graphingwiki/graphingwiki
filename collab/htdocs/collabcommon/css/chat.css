@@ -93,7 +93,10 @@
 }
 
 #content .collab_chat .userlist .users .user:hover {
+    color: #111;
     background-color: #FCFEFF;
+    text-shadow: none;
+    font-weight: bold;
 }
 
 #content .collab_chat .chat .output-container {
