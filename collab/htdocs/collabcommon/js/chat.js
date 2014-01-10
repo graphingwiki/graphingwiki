@@ -425,6 +425,13 @@ var initChat = (function() {
             this.userlist.removeChild(user);
         };
 
+        UI.prototype.onDisconnect = function() {
+            var users = this.userlist;
+            while (users.firstChild) {
+                this.userlist.removeChild(users.firstChild);
+            }
+        };
+
         UI.prototype.setChannelLabel = function(label) {
             this.channelLabel.textContent = label;
         };
@@ -718,6 +725,7 @@ var initChat = (function() {
             conn.listen("connected", function() {
                 var listener = ui.listen("output", conn.send, conn);
                 conn.listen("disconnected", listener.unlisten);
+                conn.listen("disconnected", ui.onDisconnect, ui);
             });
             conn.listen("message", ui.addMessage, ui);
 
