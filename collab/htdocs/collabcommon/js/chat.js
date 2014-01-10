@@ -278,32 +278,6 @@ var initChat = (function() {
 
         var UI = function(container) {
 
-            var UserList = (function() {
-                var UserList = function(){
-                    this._container = createElement("div", "userlist");
-                    this._list = createElement("ul", "users");
-                    this._container.appendChild(this._list);
-                };
-
-                UserList.prototype.userJoin = function(key) {
-                    var user = createElement("li", "user");
-                    user.id = key;
-                    user.textContent = key;
-                    this._list.appendChild(user);
-                };
-
-                UserList.prototype.userLeave = function(key) {
-                    var user = document.getElementById(key);
-                    this._list.removeChild(user);
-                };
-
-                UserList.prototype.element = function() {
-                    return this._container;
-                };
-
-                return UserList;
-            })();
-
             this.container = container;
 
             this.tools = createElement("div", "toolbar");
@@ -320,8 +294,11 @@ var initChat = (function() {
             this.chat = createElement("div", "chat");
             this.chatWrapper.appendChild(this.chat);
 
-            this.userlist = new UserList();
-            this.chatWrapper.appendChild(this.userlist.element());
+            this.userlistContainer = createElement("div", "userlist");
+            this.userlist = createElement("ul", "users");
+            this.userlistContainer.appendChild(this.userlist);
+
+            this.chatWrapper.appendChild(this.userlistContainer);
             this.container.appendChild(this.chatWrapper);
 
             this.area = createElement("div", "output");
@@ -342,10 +319,12 @@ var initChat = (function() {
             listenEvent(this.areaContainer, "scroll", function(event) {
                 _this.isAtBottom = (this.scrollTop + this.clientHeight) === this.scrollHeight;
             });
+
             listenEvent(this.areaContainer, "mousewheel", this.preventWheelGestures.bind(this));
             listenEvent(this.areaContainer, "wheel", this.preventWheelGestures.bind(this));
-            listenEvent(this.userlist.element(), "mousewheel", this.preventWheelGestures.bind(this));
-            listenEvent(this.userlist.element(), "wheel", this.preventWheelGestures.bind(this));
+            listenEvent(this.userlistContainer, "mousewheel", this.preventWheelGestures.bind(this));
+            listenEvent(this.userlistContainer, "wheel", this.preventWheelGestures.bind(this));
+
             listenEvent(window, "resize", function() {
                 if (_this.isAtBottom) {
                     _this._scrollToBottom();
@@ -435,11 +414,15 @@ var initChat = (function() {
         };
 
         UI.prototype.userJoin = function(key, value) {
-            this.userlist.userJoin(key);
+            var user = createElement("li", "user");
+            user.id = key;
+            user.textContent = key;
+            this.userlist.appendChild(user);
         };
 
         UI.prototype.userLeave = function(key) {
-            this.userlist.userLeave(key);
+            var user = document.getElementById(key);
+            this.userlist.removeChild(user);
         };
 
         UI.prototype.setChannelLabel = function(label) {
