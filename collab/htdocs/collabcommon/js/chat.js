@@ -342,6 +342,10 @@ var initChat = (function() {
             listenEvent(this.areaContainer, "scroll", function(event) {
                 _this.isAtBottom = (this.scrollTop + this.clientHeight) === this.scrollHeight;
             });
+            listenEvent(this.areaContainer, "mousewheel", this.preventWheelGestures.bind(this));
+            listenEvent(this.areaContainer, "wheel", this.preventWheelGestures.bind(this));
+            listenEvent(this.userlist.element(), "mousewheel", this.preventWheelGestures.bind(this));
+            listenEvent(this.userlist.element(), "wheel", this.preventWheelGestures.bind(this));
             listenEvent(window, "resize", function() {
                 if (_this.isAtBottom) {
                     _this._scrollToBottom();
@@ -440,6 +444,48 @@ var initChat = (function() {
 
         UI.prototype.setChannelLabel = function(label) {
             this.channelLabel.textContent = label;
+        };
+
+        UI.prototype.preventWheelGestures = function(event, _element) {
+            var element = _element || event.currentTarget;
+
+            var deltaX = 0;
+            var deltaY = 0;
+            if (event.type === "mousewheel") {
+                deltaX = -(event.wheelDeltaX || 0);
+                deltaY = -(event.wheelDeltaY || (deltaX === 0 ? event.wheelDelta : 0)) || 0;
+            } else if (event.type === "wheel") {
+                deltaX = event.deltaX;
+                deltaY = event.deltaY;
+            }
+
+            var left = element.scrollLeft;
+            var ignoreX =
+                (deltaX === 0) ||
+                (deltaX > 0 && left >= element.scrollWidth - element.clientWidth) ||
+                (deltaX < 0 && left <= 0);
+
+            var top = element.scrollTop;
+            var ignoreY =
+                (deltaY === 0) ||
+                (deltaY > 0 && top >= element.scrollHeight - element.clientHeight) ||
+                (deltaY < 0 && top <= 0);
+
+            if (!ignoreX && deltaX > 0 && left === element.scrollWidth - element.clientWidth - 1) {
+                element.scrollLeft += 1;
+                ignoreX = true;
+            }
+            if (!ignoreY && deltaY > 0 && top === element.scrollHeight - element.clientHeight - 1) {
+                element.scrollTop += 1;
+                ignoreY = true;
+            }
+
+            if (ignoreX && ignoreY) {
+                event.stopPropagation();
+                event.preventDefault();
+                return false;
+            }
+            return true;
         };
 
         return UI;
