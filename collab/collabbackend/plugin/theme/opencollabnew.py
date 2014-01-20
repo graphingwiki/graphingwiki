@@ -43,9 +43,15 @@ class Theme(ThemeParent):
 
     css_files = []
 
+    GLYPHICONS = {
+        'FrontPage': 'glyphicon glyphicon-home',
+        'CollabList': 'glyphicon glyphicon-globe',
+        'edit': 'glyphicon glyphicon-edit',
+        'RecentChanges': 'glyphicon glyphicon-time',
+    }
+
     def __init__(self, request):
         ThemeParent.__init__(self, request)
-
         sheetsnames = ['stylesheets', 'stylesheets_print', 'stylesheets_projection']
 
         # include css and icon files from this theme when in inherited theme
@@ -78,7 +84,7 @@ class Theme(ThemeParent):
     def logo(self):
         mylogo = ThemeParent.logo(self)
         if not mylogo:
-            mylogo = u'''<div id="logo"><span class="navbar-brand">%s</span></div>''' % \
+            mylogo = u'''<span class="navbar-brand">%s</span>''' % \
                      wikiutil.escape(self.cfg.sitename, True)
 
         return mylogo
@@ -92,7 +98,9 @@ class Theme(ThemeParent):
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
+        <div id="logo">
         %s
+        </div>
       </div>
       <div class="collapse navbar-collapse" id="main-nav">
         <ul class="nav navbar-nav"> <!-- nav -->""" % (self.logo())
@@ -138,13 +146,20 @@ class Theme(ThemeParent):
         val += '<i class="glyphicon glyphicon-folder-open"></i></a>'
         val += '\n            <ul class="dropdown-menu">\n'
 
+        ignored = [
+            'Despam',
+            'SpellCheck',
+            'LikePages',
+            'LocalSiteMap',
+            'RenderAsDocbook',
+            'MyPages',
+            'SubscribeUser',
+            'N3Dump',
+            'RdfInfer',
+            'Invite',
+        ]
+
         menu = [
-            'info',
-            'edit',
-            'AttachFile',
-            'raw',
-            'print',
-            '',
             'RenamePage',
             'CopyPage',
             'DeletePage',
@@ -190,6 +205,9 @@ class Theme(ThemeParent):
         val += _s + '<li>%s</li>\n' % (self.subscribeLink(page))
 
         for action in menu:
+            if action in ignored:
+                continue
+
             if not action:
                 val += _s + '<li class="divider"></li>\n'
                 continue
@@ -228,8 +246,7 @@ class Theme(ThemeParent):
           </li>
 """
 
-        more = [item for item in self.available if not item in titles
-        and not item in ('AttachFile', )]
+        more = [item for item in self.available if not item in titles and item not in ignored]
         more.sort()
         if not more:
             return val
@@ -250,7 +267,7 @@ class Theme(ThemeParent):
     def _wraplink(self, html):
         return u'          <li>' + html + u'</li>'
 
-    def navibar(self, d):
+    def _navibar(self, d):
         _ = self.request.getText
 
         content = ThemeParent.navibar(self, d)
@@ -275,7 +292,7 @@ class Theme(ThemeParent):
             wikiutil.getLocalizedPage(self.request, 'RecentChanges').page_name
         content = content.replace('>%s<' % (page_recentchanges),
                                   ' title="%s">' % (page_recentchanges) +
-                                  '<i class="glyphicon glyphicon-list-alt"></i><')
+                                  '<i class="glyphicon glyphicon-time"></i><')
         page_findpage = \
             wikiutil.getLocalizedPage(self.request, 'FindPage').page_name
         content = content.replace('>%s<' % (page_findpage),
@@ -294,7 +311,7 @@ class Theme(ThemeParent):
         if quicklinks:
             val = """<li class="active dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-               <i class="icon-star-empty" title="%s"></i></a>
+               <i class="glyphicon glyphicon-star-empty" title="%s"></i></a>
             <ul class="dropdown-menu">\n""" % _("Quicklinks")
 
             for item in quicklinks:
@@ -306,6 +323,56 @@ class Theme(ThemeParent):
             content += val
 
         return content
+
+    def navibar(self, d):
+        """ Assemble the navibar
+
+        @param d: parameter dictionary
+        @rtype: unicode
+        @return: navibar html
+        """
+        request = self.request
+        found = {} # pages we found. prevent duplicates
+        items = [] # navibar items
+        item = u'<li class="%s">%s</li>'
+        item_icon = u'title="%s"><i class="%s"></i><'
+        current = d['page_name']
+
+        #
+        default_items = [
+            u'CollabList',
+            getattr(request.cfg, 'page_front_page', u"FrontPage"),
+            u'RecentChanges',
+        ]
+
+        nav_items = getattr(request.cfg, 'navi_bar_new', default_items)
+
+        for text in nav_items:
+            pagename, link = self.splitNavilink(text)
+            if pagename in self.GLYPHICONS:
+                icon = item_icon % (pagename, self.GLYPHICONS[pagename])
+                link = link.replace(">%s<" % pagename, icon)
+            if pagename == current:
+                cls = 'wikilink current'
+            else:
+                cls = 'wikilink'
+            items.append(item % (cls, link))
+            found[pagename] = 1
+
+        # Add user links to wiki links, eliminating duplicates.
+        #userlinks = request.user.getQuickLinks()
+        #for text in userlinks:
+        #    # Split text without localization, user knows what he wants
+        #    pagename, link = self.splitNavilink(text, localize=0)
+        #    if not pagename in found:
+        #        if pagename == current:
+        #            cls = 'userlink current'
+        #        else:
+        #            cls = 'userlink'
+        #        items.append(item % (cls, link))
+        #        found[pagename] = 1
+
+        return u''.join(items)
 
     def username(self, d):
         request = self.request
@@ -345,7 +412,7 @@ class Theme(ThemeParent):
         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
           <i class="glyphicon glyphicon-user"></i> <span class="caret"></span>
         </button>
-        <ul class="dropdown-menu pull-left">
+        <ul class="dropdown-menu navbar-left">
             <li class="nav-header"><a href="%s">%s</a></li>
                 """ % (linkpage, name)
 
@@ -365,7 +432,7 @@ class Theme(ThemeParent):
         return """
   <form method="get" action="%s">
 
-    <div class="input-group navbar-form form-group pull-right">\n%s
+    <div class="input-group navbar-form form-group navbar-right">\n%s
             <input type="hidden" name="action" value="fullsearch">
             <input type="hidden" name="context" value="180">
 
@@ -376,7 +443,7 @@ class Theme(ThemeParent):
         <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
           <span class="caret"></span>
         </button>
-        <ul class="dropdown-menu pull-right" role="menu">
+        <ul class="dropdown-menu navbar-right" role="menu">
           <li></li>
           <li><input class="btn btn-link" name="metasearch" type="submit" value="%s"></li>
           <li><input class="btn btn-link" name="fullsearch" type="submit" value="%s"></li>
@@ -463,13 +530,13 @@ class Theme(ThemeParent):
                     link = page.link_to(request, title)
                     items.append(link)
 
-        val = """  <div class="navbar-collapse collapse breadcrumb">
-    <ul class="breadcrumb pull-left">"""
+        val = """  <div class="navbar breadcrumb">
+    <ul class="breadcrumb navbar-left">"""
 
         for item in items:
             val += '\n      <li>%s</li>' % item
 
-        val += '\n    </ul>\n    <ul class="breadcrumb pull-right">'
+        val += '\n    </ul>\n    <ul class="breadcrumb navbar-right">'
         actions = getattr(request.cfg, 'bootstrap_actions',
                           BREADCRUMB_ACTIONS)
         for i, (act, text) in enumerate(actions.iteritems()):

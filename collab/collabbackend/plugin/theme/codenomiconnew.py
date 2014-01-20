@@ -12,9 +12,7 @@ class Theme(ThemeParent):
 
     def logo(self):
         url = self.cfg.url_prefix_static + "/codenomiconnew/img/logo.png"
-        return u'''<div id="logo">
-        <img height="29px" src="%s"></img>
-        </div>''' % url
+        return u'''<img src="%s"></img>''' % url
 
 
 def execute(request):
