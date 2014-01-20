@@ -71,7 +71,7 @@ window.addEvent('domready', function() {
     }
 
     // AttachTree
-    if ($$('.attachtree_area')) {
+    if ($$('.attachtree_area').length) {
         loader.load('AttachTree', function() {
             $$('.attachtree_area').each(function(el) {
                 new AttachTree(el);
