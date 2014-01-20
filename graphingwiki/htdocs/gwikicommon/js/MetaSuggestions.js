@@ -2,12 +2,13 @@
  MetaSuggestions
  - Folcsonomic meta suggestion widget.
  License: MIT <http://www.opensource.org/licenses/mit-license.php>
- Copyright: 2011 by Lauri Pokka
+ Author: Lauri Pokka
  Depends: MooTools
+ Provides: gwiki.MetaSuggestions
  */
 
-
-(function() {
+(function(exports) {
+    "use strict";
 
     var SuggestionList = new Class({
 
@@ -182,7 +183,7 @@
     });
 
 
-    this.MetaSuggestions = new Class({
+    exports.MetaSuggestions = new Class({
         Implements: [Options, Events],
 
         options: {
@@ -352,4 +353,4 @@
         }
     });
 
-})();
+})(window.gwiki);

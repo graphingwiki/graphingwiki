@@ -2,12 +2,14 @@
   AttachTree
  - js collapsing for attachment tree
  License: MIT <http://www.opensource.org/licenses/mit-license.php>
- Copyright: 2011 by Lauri Pokka
+ Author: Lauri Pokka
  Depends: MooTools Element.Delegation
+ Provides: gwiki.AttachTree
  */
+(function(exports) {
+    "use strict";
 
-(function() {
-    this.AttachTree = new Class({
+    exports.AttachTree = new Class({
         initialize: function(element) {
             this.element = document.id(element);
 
@@ -33,4 +35,4 @@
             li.getNext('.attachtree_list').toggleClass('hidden');
         }
     });
-})();
+})(window.gwiki);

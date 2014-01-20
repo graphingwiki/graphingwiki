@@ -4,10 +4,15 @@
  License:	MIT <http://www.opensource.org/licenses/mit-license.php>
  Copyright: 2011 by Lauri Pokka
  Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick More/Date
+ provides: [gwiki.MetaTable, gwiki.InterMetaTable]
  */
 
 (function($, exports) {
     "use strict";
+
+    var InlineEditor = exports.InlineEditor;
+    var DynamicTextarea = window.DynamicTextarea;
+    var Overlay = exports.Overlay;
 
     var preformatTable = function(tab) {
         var head = tab.getElement('thead');
@@ -670,4 +675,4 @@
     });
 
 //Use mootools document.id for $
-})(document.id, window);
+})(document.id, window.gwiki);
