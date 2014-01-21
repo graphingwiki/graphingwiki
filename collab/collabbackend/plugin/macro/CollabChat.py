@@ -2,12 +2,36 @@ import random
 
 SCRIPT = """
 <script>
-(function() {
+
+requirejs.config({
+    baseUrl: '/moin_static',
+
+    paths: {
+        gwikicommon: 'gwikicommon/js',
+        collabcommon: 'collabcommon/js/common',
+        collabchat: 'collabcommon/js/CollabChat'
+    },
+
+    shim: {
+        'gwikicommon/mootools-core-yc': {
+            exports: 'MooTools'
+        },
+        'gwikicommon/mootools-more-yc': {
+            deps: ['gwikicommon/mootools-core-yc'],
+        },
+    },
+});
+
+requirejs([
+        "collabchat/Chat",
+        "gwikicommon/mootools-more-yc",
+    ], function(Chat) {
+
     var request = new Request.JSON({
         "url": "%(creds)s",
 
         "onSuccess": function(creds) {
-            initChat("%(id)s", "%(bosh)s", "%(room)s", creds.jid, creds.password);
+            new Chat("%(id)s", "%(bosh)s", "%(room)s", creds.jid, creds.password);
         },
 
         "onFailure": function() {
@@ -16,7 +40,8 @@ SCRIPT = """
     });
 
     request.send();
-})();
+});
+
 </script>
 """
 
@@ -26,21 +51,22 @@ def macro_CollabChat(self, args):
     subroom_id = self.request.page.page_name.lower()
 
     if subroom_id:
-        subroom_id = [".".join(subroom_id.replace(".", "").split("/"))]
-        subrooms = set(subroom_id) - set(room_mask)
-        room.extend(subrooms)
+      subroom_id = [".".join(subroom_id.replace(".", "").split("/"))]
+      subrooms = set(subroom_id) - set(room_mask)
+      room.extend(subrooms)
 
     bosh = self.request.cfg.collab_chat_bosh
     creds = self.request.cfg.collab_chat_creds
 
     id = "chat-%x" % random.randint(2 ** 63, 2 ** 64 - 1)
 
-    result = list()
-    result.append(self.formatter.div(1, **{ "id": id, "class": "collab_chat" }))
-    result.append(self.formatter.div(0))
+    html = list()
+    html.append(self.formatter.div(1, **{"id": id, "class": "collab_chat"}))
+    html.append(self.formatter.div(0))
 
-    script = SCRIPT % { "bosh": bosh, "room": ".".join(room), "creds": creds, "id": id }
-    result.append(script)
+    script = SCRIPT % {  "id": id, "bosh": bosh, "creds": creds, "room": ".".join(room) }
 
-    return "".join(result)
+    html.append(script)
+
+    return "".join(html)
 
