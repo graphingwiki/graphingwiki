@@ -12,19 +12,15 @@ requirejs.config({
         collabchat: 'collabcommon/js/CollabChat'
     },
 
-    shim: {
-        'gwikicommon/mootools-core-yc': {
-            exports: 'MooTools'
-        },
-        'gwikicommon/mootools-more-yc': {
-            deps: ['gwikicommon/mootools-core-yc'],
-        },
-    },
+    map: {
+      '*': {
+        'css': 'gwikicommon/css'
+      }
+    }
 });
 
 requirejs([
         "collabchat/Chat",
-        "gwikicommon/mootools-more-yc",
     ], function(Chat) {
 
     var request = new Request.JSON({
@@ -51,9 +47,9 @@ def macro_CollabChat(self, args):
     subroom_id = self.request.page.page_name.lower()
 
     if subroom_id:
-      subroom_id = [".".join(subroom_id.replace(".", "").split("/"))]
-      subrooms = set(subroom_id) - set(room_mask)
-      room.extend(subrooms)
+        subroom_id = [".".join(subroom_id.replace(".", "").split("/"))]
+        subrooms = set(subroom_id) - set(room_mask)
+        room.extend(subrooms)
 
     bosh = self.request.cfg.collab_chat_bosh
     creds = self.request.cfg.collab_chat_creds
