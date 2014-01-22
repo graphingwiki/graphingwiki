@@ -162,6 +162,7 @@ class FarmConfig(DefaultConfig):
 
     for script in ['js/mootools-core-yc.js', \
                    'js/mootools-more-yc.js', \
+                   'js/require.js', \
                    'js/gwiki-common.js', \
                    'simile/timeline/timeline_ajax/simile-ajax-api.js', \
                    'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
