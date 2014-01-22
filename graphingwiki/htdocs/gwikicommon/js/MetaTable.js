@@ -1,8 +1,8 @@
 /*
  MetaTable.js
  - js improvements for MetaTable
- License:	MIT <http://www.opensource.org/licenses/mit-license.php>
- Copyright: 2011 by Lauri Pokka
+ License: MIT <http://www.opensource.org/licenses/mit-license.php>
+ Author: Lauri Pokka
  Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick More/Date
  provides: [gwiki.MetaTable, gwiki.InterMetaTable]
  */
@@ -174,75 +174,29 @@
         }
     });
 
-
-    var MetaTable = exports.MetaTable = new Class({
-        Extends: HideableTable,
-        options: {
-            thSelector: 'td.head_cell:not(.edit)',
-            tableArguments: {}
-        },
-
-        initialize: function(table) {
-            table = $(table);
-            preformatTable(table);
-            this.parent.apply(this, arguments);
-
-            this.tableArgs = Object.merge({
-                'args': '',
-                'template': null,
-                'autorefresh': false,
-                'nametemplate': ''
-            }, this.options.tableArguments);
-
-            this.metaRequest = new Request.HTML();
-            this.metas = retrieveMetas(this.body);
-
+    var EditableTable = new Class({
+        enableValueEdit: function() {
             var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
-
+        },
+        enableKeyEdit: function(){
             this.head.addEvent('shiftclick:relay(span[data-key])', this.keyEdit.bind(this));
-
-            if (this.tableArgs.autorefresh) {
-                this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
-            }
-
-            var parent = table.getParent('div.metatable');
-            if (parent && parent.getNext('a') && parent.getNext('a').get('text') == "[edit]") {
-                new Element('a.jslink[text=[new row]]')
-                    .setStyles({'font-size': 'inherit'})
-                    .addEvent('click', this.newPage.bind(this))
-                    .inject(parent, 'after');
-            }
-
-            this.enableSort();
-            this.enableHiding();
         },
 
-        setTable: function(tab) {
-            tab = preformatTable(tab);
-
-            this.head.getElements(this.options.thSelector).destroy();
-            this.head.adopt(tab.getElement('thead').getElements(this.options.thSelector));
-
-            this.body.getElements('tr').destroy();
-            this.body.adopt(tab.getElement('tbody').getElements('tr'));
-
-            this.setParsers();
-            this.enableHiding();
-
-            return this;
+        isUpdating: function(){
+            return false;
         },
 
         valueEdit: function(event) {
             event.preventDefault();
 
-            if (this.metaRequest.isRunning()) {
+            if (this.isUpdating()) {
                 this.valueEdit.delay(100, this, event);
                 return;
             }
 
             var target = $(event.target),
-                key, index, page, oldValue = "";
+                key, index, page, collab, oldValue = "", metas;
 
             if (target.get('tag') == 'td') {
                 //add new value, page and key can be retrieved from first span
@@ -250,13 +204,16 @@
                     var first = target.getElement('span');
                     page = first.get('data-page');
                     key = first.get('data-key');
+                    collab = first.get('data-collab');
+                    metas = collab ? this.metas[collab] : this.metas;
+
                     //only one span without value => use that span
                     if (target.children.length == 1 && first.get('text') === "") {
                         index = 0;
                         target = first;
                     }else{
                         //append new value to existing ones if key had values
-                        index = this.metas[page][key].length;
+                        index = metas[page][key].length;
                         target = new Element('span').inject(target);
                     }
                 } else {
@@ -270,7 +227,9 @@
                 page = target.get('data-page');
                 key = target.get('data-key');
                 index = target.get('data-index');
-                oldValue = this.metas[page][key][index];
+                collab = target.get('data-collab');
+                metas = collab ? this.metas[collab] : this.metas;
+                oldValue = metas[page][key][index];
             }
 
             if (this.inlineEditor) this.inlineEditor.cancel();
@@ -281,22 +240,23 @@
                 key: key,
 
                 onSave: function(value) {
-                    if (!this.metas[page][key]) this.metas[page][key] = [""];
+                    if (!metas[page][key]) metas[page][key] = [""];
 
                     var oldData = {};
                     oldData[page] = {};
-                    oldData[page][key] = Array.clone(this.metas[page][key]);
+                    oldData[page][key] = Array.clone(metas[page][key]);
 
-                    this.metas[page][key][index] = value;
+                    metas[page][key][index] = value;
 
                     var args = {};
                     args[page] = {};
-                    args[page][key] = this.metas[page][key];
+                    args[page][key] = metas[page][key];
 
                     new Request.SetMetas({
                         metas: args,
                         checkArgs: page,
                         checkData: oldData,
+                        url: collab? "../"+ collab +"/" : "",
                         onSuccess: function() {
                             this.inlineEditor = null;
                             this.refresh();
@@ -316,7 +276,7 @@
             event.stopPropagation();
             event.preventDefault();
 
-            if (this.metaRequest.isRunning()) {
+            if (this.isUpdating()) {
                 this.keyEdit.delay(100, this, event);
                 return;
             }
@@ -372,7 +332,68 @@
                     parent.removeClass('edit');
                 }
             });
+        }
+    });
+
+    var MetaTable = exports.MetaTable = new Class({
+        Extends: HideableTable,
+        Implements: [EditableTable],
+
+        options: {
+            thSelector: 'td.head_cell:not(.edit)',
+            tableArguments: {}
         },
+
+        initialize: function(table) {
+            table = $(table);
+            preformatTable(table);
+            this.parent.apply(this, arguments);
+
+            this.tableArgs = Object.merge({
+                'args': '',
+                'template': null,
+                'autorefresh': false,
+                'nametemplate': ''
+            }, this.options.tableArguments);
+
+            this.metaRequest = new Request.HTML();
+            this.metas = retrieveMetas(this.body);
+
+            this.enableValueEdit();
+            this.enableKeyEdit();
+
+
+            if (this.tableArgs.autorefresh) {
+                this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
+            }
+
+            var parent = table.getParent('div.metatable');
+            if (parent && parent.getNext('a') && parent.getNext('a').get('text') == "[edit]") {
+                new Element('a.jslink[text=[new row]]')
+                    .setStyles({'font-size': 'inherit'})
+                    .addEvent('click', this.newPage.bind(this))
+                    .inject(parent, 'after');
+            }
+
+            this.enableSort();
+            this.enableHiding();
+        },
+
+        setTable: function(tab) {
+            tab = preformatTable(tab);
+
+            this.head.getElements(this.options.thSelector).destroy();
+            this.head.adopt(tab.getElement('thead').getElements(this.options.thSelector));
+
+            this.body.getElements('tr').destroy();
+            this.body.adopt(tab.getElement('tbody').getElements('tr'));
+
+            this.setParsers();
+            this.enableHiding();
+
+            return this;
+        },
+
 
         newPage: function(event) {
             if (event) event.preventDefault();
@@ -401,6 +422,10 @@
                 this.refresh();
             }.bind(this));
 
+        },
+
+        isUpdating: function(){
+            return this.metaRequest.isRunning();
         },
 
         refresh: function() {
@@ -536,6 +561,7 @@
 
     var InterMetaTable =  exports.InterMetaTable = new Class({
         Extends: HideableTable,
+        Implements: [EditableTable],
 
         options: {
             selector: "",
@@ -556,9 +582,11 @@
 
             this.parent.apply(this, [null, opts]);
 
+            this.enableValueEdit();
+
             if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
             if (typeOf(this.options.keys) == "string") this.options.keys = [this.options.keys];
-            this.updateTable();
+            this.refresh();
         },
 
         build: function() {
@@ -613,8 +641,19 @@
             this.setHeaders([""].concat(sortedKeys.map(function(key){return keys[key];}).flatten()));
             this.thead.rows[0].addClass('meta_header');
 
+            var genEl = function(collab, page, key, index, html) {
+                return new Element('span', {
+                    'html': html,
+                    'data-collab': collab,
+                    'data-page': page,
+                    'data-key': key,
+                    'data-index': index
+                });
+            };
+
             Object.each(this.metas, function(pages, collab) {
                 Object.each(pages, function(metas, page) {
+
                     var vals = [new Element('a', {
                         text: (collab ? collab + ':' : "") + page,
                         href: this.options.baseurl + collab + '/' + page
@@ -622,14 +661,19 @@
 
                     sortedKeys.each(function(key) {
                         if (!metas[key] || metas[key].length === 0) {
-                            vals.push(" ");
+                            vals.push(genEl(collab, page, key, 0, ""));
                         } else {
-                            vals.push(this._format(metas[key], this.formatted[collab]).join(", "));
+                            var formatted = this._format(metas[key], this.formatted[collab]);
+                            vals.push(formatted.map(function(html, index){
+                                return genEl(collab, page, key, index, html).outerHTML;
+                            }).join(", "));
+
                             if (Number.from(metas[key])) {
                                 foots[key] += Number.from(metas[key]);
                             } else {
                                 foots[key] = null;
                             }
+
 
                         }
                     }, this);
@@ -649,16 +693,17 @@
 
         isUpdating: function() {
             if (!this.requests || this.requests.length === 0) return false;
-            return this.requests.some(function(request) {
+            return this.requests.every(function(request) {
                 return request.isRunning();
             });
         },
 
-        updateTable: function() {
+        refresh: function(collabs) {
+            collabs = collabs||this.options.collabs;
             if (this.isUpdating()) return;
 
             this.requests = [];
-            this.options.collabs.each(function(collab) {
+            collabs.each(function(collab) {
                 this.requests.push(new Request.JSON({
                     url: this.options.baseurl + collab + '/?action=getMetaJSON',
                     data: 'args=' + encodeURIComponent(this.options.selector) + '&formatted=true',
