@@ -172,11 +172,6 @@ class FarmConfig(DefaultConfig):
 
     # html_head = '' # omit if you already have something
 
-    for script in ['js/strophe.js', \
-                   'js/chat.js']:
-        html_head += '<script src="%s" type="text/javascript"></script>' \
-                     % (url_prefix_static + '/collabcommon/' + script)
-
     # stylesheets = [] # omit if you already have something
 
     for type, style in [('all', 'chat.css'), \
