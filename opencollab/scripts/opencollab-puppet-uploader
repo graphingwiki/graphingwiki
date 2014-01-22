@@ -129,13 +129,12 @@ def main():
                 if isinstance(val, (datetime, date)):
                     val = calendar.timegm(val.timetuple())
                 else:
-                    try:
-                        val = mktime_tz(parsedate_tz(val))
-                    except:
+                    parsed = parsedate_tz(val)
+                    if parsed is None:
                         print >>sys.stderr, "Failed to parse timestamp" + \
                             "(%s in file %s)" % (repr(val), inputfile)
                         continue
-                    val = mktime_tz(parsedate_tz(val))
+                    val = mktime_tz(parsed)
                 metas[page][key].add('<<DateTime(%s)>>' % (val))
             elif key in MEMORY_FACTS:
                 nro, mgn = values[key].split()

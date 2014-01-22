@@ -13,6 +13,27 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
     margin-top: 51px;
 }
 
+@media (max-width: 767px), (min-width: 1200px) {
+
+    #main-nav li a:after {
+        content: " " attr(title);
+    }
+}
+
+@media (min-width: 767px) {
+    #main-nav {
+        min-width: 800px;
+    }
+
+    .navbar .input-group {
+        width: 350px;
+    }
+
+    .navbar-form.navbar-right:last-child {
+        margin-right: 0;
+    }
+}
+
 #message {
     clear: both;
     margin: 0;
@@ -34,12 +55,8 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 }
 
 
-#header .navbar {
+.navbar {
     border-radius: 0;
-}
-
-.navbar .input-group {
-    width: 350px;
 }
 
 .navbar-inverse {
@@ -85,10 +102,10 @@ ul.dropdown-menu li {
     border-radius: 0;
 }
 
-.navbar.breadcrumb, .navbar-collapse.breadcrumb {
-    height: 25px;
+.navbar.breadcrumb {
     margin-bottom: 0;
     padding: 0;
+    min-height: 0;
 }
 
 .breadcrumb .breadcrumb {

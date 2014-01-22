@@ -14,6 +14,6 @@ div#content div.right p {
         text-align: right;
 }
 
-span.meta_editicon {
+span.meta_editicon, .meta_footer_link {
         display: none;
 }

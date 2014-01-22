@@ -4,15 +4,18 @@
  License: MIT <http://www.opensource.org/licenses/mit-license.php>
  Copyright: 2011 by Lauri Pokka
  Depends: MooTools DynamicTextArea
+ provides: gwiki.MetaFormEdit
  */
 
-(function() {
-    if (this.MetaFormEdit) return;
+(function(exports) {
+    "use strict";
+
+    if (exports.MetaFormEdit) return;
 
     var FIELD_SELECTOR = '.metaformedit';
-    var SEPARATOR = window.GWIKISEPARATOR;
+    var SEPARATOR = exports.GWIKISEPARATOR;
 
-    var MetaformEdit = this.MetaFormEdit = new Class({
+    var MetaformEdit = exports.MetaFormEdit = new Class({
         initialize: function (form) {
             this.form = document.id(form);
 
