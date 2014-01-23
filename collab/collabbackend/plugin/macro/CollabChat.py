@@ -3,24 +3,8 @@ import random
 SCRIPT = """
 <script>
 
-requirejs.config({
-    baseUrl: '/moin_static',
-
-    paths: {
-        gwikicommon: 'gwikicommon/js',
-        collabcommon: 'collabcommon/js/common',
-        collabchat: 'collabcommon/js/CollabChat'
-    },
-
-    map: {
-      '*': {
-        'css': 'gwikicommon/css'
-      }
-    }
-});
-
 requirejs([
-        "collabchat/Chat",
+        "collabcommon/js/CollabChat/Chat",
     ], function(Chat) {
 
     var request = new Request.JSON({
