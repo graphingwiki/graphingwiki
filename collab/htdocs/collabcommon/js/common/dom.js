@@ -1,4 +1,6 @@
 define(function() {
+    "use strict";
+    
     var keys = Object.keys;
 
     var createListener = function(target, listeners, useCapture) {
