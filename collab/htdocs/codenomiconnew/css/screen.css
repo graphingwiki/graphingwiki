@@ -13,6 +13,10 @@
     margin: 3px 10px;
 }
 
+#logo img {
+    height: 29px;
+}
+
 .navbar-inverse {
     background: #00365b;
     border-color: #002041;

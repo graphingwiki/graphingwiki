@@ -487,7 +487,7 @@ def do_macro(request, args, **kw):
         req_url = request.script_root + "/" + \
             url_escape(request.page.page_name) + \
             '?action=' + action + '&args=' + url_escape(args)
-        return '<a href="%s" id="footer">[%s]</a>\n' % \
+        return '<a href="%s" class="meta_footer_link">[%s]</a>\n' % \
             (request.getQualifiedURL(req_url), _(linktext))
 
     # If the user has no write access to this page, omit editlink

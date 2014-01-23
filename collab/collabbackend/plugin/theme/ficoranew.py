@@ -17,8 +17,8 @@ class Theme(ThemeParent):
     def logo(self):
         mylogo = basetheme.Theme.logo(self)
         if not mylogo:
-            mylogo = u'<div id="logo"><a href="' + \
+            mylogo = u'<a href="' + \
                 self.request.script_root + '/' + self.request.cfg.page_front_page + \
                 '"><img src="' + self.cfg.url_prefix_static + \
-                '/ficoranew/img2/cert-fi.png" alt="CERT-FI"></a></div>'
+                '/ficoranew/img2/cert-fi.png" alt="CERT-FI"></a>'
         return mylogo
