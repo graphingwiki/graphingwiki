@@ -32,6 +32,7 @@ Request.SetMetas = new Class({
         this.options.data = 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(this.options.metas));
         var args = arguments;
         new Request.GetMetas({
+            collaburl: this.options.url,
             onSuccess: function(json) {
                 var failreason = "";
                 if (Object.every(this.options.checkData, function(metas, page) {
@@ -83,7 +84,8 @@ Request.GetMetas = new Class({
     options: {
         args: "",
         cacheNamespace: "metaCache",
-        link: "chain"
+        link: "chain",
+        collaburl: ""
     },
 
     get: function(args, onlyvalues) {
@@ -99,6 +101,11 @@ Request.GetMetas = new Class({
 
         if (onlyvalues) {
             opts.url = "?action=incGetMetaJSON&formatted=true&getvalues=" + encodeURIComponent(args);
+        }
+
+        if (this.options.collaburl) {
+            opts.url = this.options.collaburl + opts.url;
+            this.options.cacheNamespace += "." + this.options.collaburl;
         }
 
         if ("localStorage" in window) {
