@@ -1,4 +1,6 @@
 define(function() {
+    "use strict";
+
     var _has = Object.prototype.hasOwnProperty;
 
     var Dict = function(init) {
