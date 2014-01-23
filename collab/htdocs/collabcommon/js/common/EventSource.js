@@ -1,30 +1,9 @@
 define(function() {
+    "use strict";
+
     var _has = Object.prototype.hasOwnProperty;
     var _slice = Array.prototype.slice;
 
-    var listenEvent = function(obj, type, callback) {
-        if (obj.addEventListener && obj.removeEventListener) {
-            obj.addEventListener(type, callback, false);
-            return {
-                unlisten: function() {
-                    obj.removeEventListener(type, callback, false);
-                }
-            };
-        }
-
-        if (obj.attachEvent && obj.detachEvent) {
-            var wrapped = function() {
-                callback(window.event);
-            };
-            obj.attachEvent("on" + type, wrapped);
-            return {
-                unlisten: function() {
-                    obj.detachEvent("on" + type, wrapped);
-                }
-            };
-        }
-    };
-        
     var EventSource = function() {};
 
     EventSource.prototype._callbacks = null;
