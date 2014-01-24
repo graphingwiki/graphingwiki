@@ -4,7 +4,7 @@ SCRIPT = """
 <script>
 
 requirejs([
-        "collabcommon/js/CollabChat/Chat",
+        "collabcommon/CollabChat/Chat",
     ], function(Chat) {
 
     var request = new Request.JSON({

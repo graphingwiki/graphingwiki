@@ -1,6 +1,6 @@
 define([
-    "collabcommon/js/CollabChat/Connection", 
-    "collabcommon/js/CollabChat/UI"
+    "collabcommon/CollabChat/Connection", 
+    "collabcommon/CollabChat/UI"
 ], function(
     Connection, 
     UI) 

@@ -1,7 +1,7 @@
 define([
-    "collabcommon/js/common/Dict", 
-    "collabcommon/js/common/EventSource",
-    "collabcommon/js/common/Strophe",
+    "collabcommon/common/Dict", 
+    "collabcommon/common/EventSource",
+    "collabcommon/common/Strophe",
 ], function(
     Dict, 
     EventSource

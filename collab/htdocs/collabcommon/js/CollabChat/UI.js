@@ -1,6 +1,6 @@
 define([
-    "collabcommon/js/common/EventSource",
-    "collabcommon/js/common/dom",
+    "collabcommon/common/EventSource",
+    "collabcommon/common/dom",
 ], function(
     EventSource,
     dom
