@@ -6,10 +6,12 @@
  Depends: MooTools Element.Delegation
  Provides: gwiki.AttachTree
  */
-(function(exports) {
+define([
+    'mootools'
+], function(){
     "use strict";
 
-    exports.AttachTree = new Class({
+    return new Class({
         initialize: function(element) {
             this.element = document.id(element);
 
@@ -35,4 +37,4 @@
             li.getNext('.attachtree_list').toggleClass('hidden');
         }
     });
-})(window.gwiki);
+});

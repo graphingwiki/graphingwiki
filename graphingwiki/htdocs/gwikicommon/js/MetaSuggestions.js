@@ -4,10 +4,12 @@
  License: MIT <http://www.opensource.org/licenses/mit-license.php>
  Author: Lauri Pokka
  Depends: MooTools
- Provides: gwiki.MetaSuggestions
+ Provides: MetaSuggestions
  */
-
-(function(exports) {
+define([
+    './MetaRequest',
+    'mootools'
+], function(Request) {
     "use strict";
 
     var SuggestionList = new Class({
@@ -183,7 +185,7 @@
     });
 
 
-    exports.MetaSuggestions = new Class({
+    var MetaSuggestions = new Class({
         Implements: [Options, Events],
 
         options: {
@@ -353,4 +355,6 @@
         }
     });
 
-})(window.gwiki);
+    return MetaSuggestions;
+
+});

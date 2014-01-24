@@ -1,223 +1,249 @@
 /*
----
-description: DynamicTextarea
+ ---
+ description: DynamicTextarea
 
-license: MIT-style
+ license: MIT-style
 
-authors:
-- Amadeus Demarzi (http://amadeusamade.us)
+ authors:
+ - Amadeus Demarzi (http://amadeusamade.us)
 
-requires:
+ Amdfied by Lauri Pokka
+
+ requires:
  core/1.3: [Core/Class, Core/Element, Core/Element.Event, Core/Element.Style, Core/Element.Dimensions]
 
-provides: [DynamicTextarea]
-...
-*/
+ provides: [DynamicTextarea]
+ ...
+ */
+define([
+    'mootools'
+], function() {
+    "use strict";
 
-(function(){
+    var DynamicTextarea = new Class({
 
-// Prevent the plugin from overwriting existing variables
-if (this.DynamicTextarea) return;
+        Implements: [Options, Events],
 
-var DynamicTextarea = this.DynamicTextarea = new Class({
+        options: {
+            value: '',
+            minRows: 1,
+            delay: true,
+            lineHeight: null,
+            offset: 0,
+            padding: 0
 
-	Implements: [Options, Events],
+            // AVAILABLE EVENTS
+            // onCustomLineHeight: (function) - custom ways of determining lineHeight if necessary
 
-	options: {
-		value: '',
-		minRows: 1,
-		delay: true,
-		lineHeight: null,
-		offset: 0,
-		padding: 0
+            // onInit: (function)
 
-		// AVAILABLE EVENTS
-		// onCustomLineHeight: (function) - custom ways of determining lineHeight if necessary
+            // onFocus: (function)
+            // onBlur: (function)
 
-		// onInit: (function)
+            // onKeyPress: (function)
+            // onResize: (function)
 
-		// onFocus: (function)
-		// onBlur: (function)
+            // onEnable: (function)
+            // onDisable: (function)
 
-		// onKeyPress: (function)
-		// onResize: (function)
+            // onClean: (function)
+        },
 
-		// onEnable: (function)
-		// onDisable: (function)
+        textarea: null,
 
-		// onClean: (function)
-	},
+        initialize: function(textarea, options) {
+            this.textarea = document.id(textarea);
+            if (!this.textarea) return;
 
-	textarea: null,
+            this.setOptions(options);
 
-	initialize: function(textarea,options) {
-		this.textarea = document.id(textarea);
-		if (!this.textarea) return;
+            this.parentEl = new Element('div', {
+                styles: {
+                    padding: 0,
+                    margin: 0,
+                    border: 0,
+                    height: 'auto',
+                    width: 'auto'
+                }
+            })
+                .inject(this.textarea, 'after')
+                .adopt(this.textarea);
 
-		this.setOptions(options);
+            // Prebind common methods
+            ['focus', 'delayCheck', 'blur', 'scrollFix', 'checkSize', 'clean', 'disable', 'enable', 'getLineHeight']
+                .each(function(method) {
+                    this[method] = this[method].bind(this);
+                }, this);
 
-		this.parentEl = new Element('div',{
-			styles:{
-				padding:0,
-				margin:0,
-				border:0,
-				height:'auto',
-				width:'auto'
-			}
-		})
-			.inject(this.textarea,'after')
-			.adopt(this.textarea);
+            // Firefox and Opera handle scroll heights differently than all other browsers
+            if (window.Browser.firefox || window.Browser.opera) {
+                this.options.offset =
+                    parseInt(this.textarea.getStyle('padding-top'), 10) +
+                        parseInt(this.textarea.getStyle('padding-bottom'), 10) +
+                        parseInt(this.textarea.getStyle('border-bottom-width'), 10) +
+                        parseInt(this.textarea.getStyle('border-top-width'), 10);
+            } else {
+                this.options.offset =
+                    parseInt(this.textarea.getStyle('border-bottom-width'), 10) +
+                        parseInt(this.textarea.getStyle('border-top-width'), 10);
+                this.options.padding =
+                    parseInt(this.textarea.getStyle('padding-top'), 10) +
+                        parseInt(this.textarea.getStyle('padding-bottom'), 10);
+            }
 
-		// Prebind common methods
-		['focus','delayCheck','blur','scrollFix','checkSize','clean','disable','enable','getLineHeight']
-			.each(function(method){
-				this[method] = this[method].bind(this);
-			},this);
+            // Disable browser resize handles, set appropriate styles
+            this.textarea.set({
+                'rows': 1,
+                'styles': {
+                    'resize': 'none',
+                    '-moz-resize': 'none',
+                    '-webkit-resize': 'none',
+                    'position': 'relative',
+                    'display': 'block',
+                    'overflow': 'hidden',
+                    'height': 'auto'
+                }
+            });
 
-		// Firefox and Opera handle scroll heights differently than all other browsers
-		if (window.Browser.firefox || window.Browser.opera) {
-			this.options.offset =
-				parseInt(this.textarea.getStyle('padding-top'),10) +
-				parseInt(this.textarea.getStyle('padding-bottom'),10) +
-				parseInt(this.textarea.getStyle('border-bottom-width'),10) +
-				parseInt(this.textarea.getStyle('border-top-width'),10);
-		} else {
-			this.options.offset =
-				parseInt(this.textarea.getStyle('border-bottom-width'),10) +
-				parseInt(this.textarea.getStyle('border-top-width'),10);
-			this.options.padding =
-				parseInt(this.textarea.getStyle('padding-top'),10) +
-				parseInt(this.textarea.getStyle('padding-bottom'),10);
-		}
+            this.getLineHeight();
+            this.fireEvent('customLineHeight');
 
-		// Disable browser resize handles, set appropriate styles
-		this.textarea.set({
-			'rows': 1,
-			'styles': {
-				'resize': 'none',
-				'-moz-resize': 'none',
-				'-webkit-resize': 'none',
-				'position': 'relative',
-				'display': 'block',
-				'overflow': 'hidden',
-				'height': 'auto'
-			}
-		});
+            // Set the height of the textarea, based on content
+            this.checkSize(true);
+            this.textarea.addEvent('focus', this.focus);
+            this.fireEvent('init', [textarea, options]);
+        },
 
-		this.getLineHeight();
-		this.fireEvent('customLineHeight');
+        // This is the only crossbrowser method to determine ACTUAL lineHeight in a textarea (that I am aware of)
+        getLineHeight: function() {
+            var backupValue = this.textarea.value;
+            this.textarea.value = 'M';
+            this.options.lineHeight = this.textarea.getScrollSize().y - this.options.padding;
+            this.textarea.value = backupValue;
+            this.textarea.setStyle('height', this.options.lineHeight * this.options.minRows);
+        },
 
-		// Set the height of the textarea, based on content
-		this.checkSize(true);
-		this.textarea.addEvent('focus',this.focus);
-		this.fireEvent('init',[textarea,options]);
-	},
+        // Stops a small scroll jump on some browsers
+        scrollFix: function() {
+            this.textarea.scrollTo(0, 0);
+        },
 
-	// This is the only crossbrowser method to determine ACTUAL lineHeight in a textarea (that I am aware of)
-	getLineHeight: function(){
-		var backupValue = this.textarea.value;
-		this.textarea.value = 'M';
-		this.options.lineHeight = this.textarea.getScrollSize().y - this.options.padding;
-		this.textarea.value = backupValue;
-		this.textarea.setStyle('height', this.options.lineHeight * this.options.minRows);
-	},
+        // Add interactive events, and fire focus event
+        focus: function() {
+            this.textarea.addEvents({
+                'keydown': this.delayCheck,
+                'keypress': this.delayCheck,
+                'blur': this.blur,
+                'scroll': this.scrollFix
+            });
+            return this.fireEvent('focus');
+        },
 
-	// Stops a small scroll jump on some browsers
-	scrollFix: function(){
-		this.textarea.scrollTo(0,0);
-	},
+        // Clean out extraneaous events, and fire blur event
+        blur: function() {
+            this.textarea.removeEvents({
+                'keydown': this.delayCheck,
+                'keypress': this.delayCheck,
+                'blur': this.blur,
+                'scroll': this.scrollFix
+            });
+            return this.fireEvent('blur');
+        },
 
-	// Add interactive events, and fire focus event
-	focus: function(){
-		this.textarea.addEvents({
-			'keydown': this.delayCheck,
-			'keypress': this.delayCheck,
-			'blur': this.blur,
-			'scroll': this.scrollFix
-		});
-		return this.fireEvent('focus');
-	},
+        // Delay checkSize because text hasn't been injected into the textarea yet
+        delayCheck: function() {
+            if (this.options.delay === true)
+                this.options.delay = this.checkSize.delay(1);
+        },
 
-	// Clean out extraneaous events, and fire blur event
-	blur: function(){
-		this.textarea.removeEvents({
-			'keydown': this.delayCheck,
-			'keypress': this.delayCheck,
-			'blur': this.blur,
-			'scroll': this.scrollFix
-		});
-		return this.fireEvent('blur');
-	},
+        // Determine if it needs to be resized or not, and resize if necessary
+        checkSize: function(forced) {
+            var oldValue = this.options.value,
+                modifiedParent = false;
 
-	// Delay checkSize because text hasn't been injected into the textarea yet
-	delayCheck: function(){
-		if (this.options.delay === true)
-			this.options.delay = this.checkSize.delay(1);
-	},
+            this.options.value = this.textarea.value;
+            this.options.delay = false;
 
-	// Determine if it needs to be resized or not, and resize if necessary
-	checkSize: function(forced) {
-		var oldValue = this.options.value,
-			modifiedParent = false;
+            if (this.options.value === oldValue && forced !== true)
+                return this.options.delay = true;
 
-		this.options.value = this.textarea.value;
-		this.options.delay = false;
+            if (!oldValue || this.options.value.length < oldValue.length || forced) {
+                modifiedParent = true;
+                this.parentEl.setStyle('height', this.parentEl.getSize().y);
+                this.textarea.setStyle('height', this.options.minRows * this.options.lineHeight);
+            }
 
-		if (this.options.value === oldValue && forced!==true)
-			return this.options.delay = true;
+            var tempHeight = this.textarea.getScrollSize().y,
+                offsetHeight = this.textarea.offsetHeight,
+                cssHeight = tempHeight - this.options.padding,
+                scrollHeight = tempHeight + this.options.offset;
 
-		if (!oldValue || this.options.value.length < oldValue.length || forced) {
-			modifiedParent = true;
-			this.parentEl.setStyle('height',this.parentEl.getSize().y);
-			this.textarea.setStyle('height', this.options.minRows * this.options.lineHeight);
-		}
+            if (scrollHeight !== offsetHeight && cssHeight > this.options.minRows * this.options.lineHeight) {
+                this.textarea.setStyle('height', cssHeight);
+                this.fireEvent('resize');
+            }
 
-		var tempHeight = this.textarea.getScrollSize().y,
-			offsetHeight = this.textarea.offsetHeight,
-			cssHeight = tempHeight - this.options.padding,
-			scrollHeight = tempHeight + this.options.offset;
+            if (modifiedParent) this.parentEl.setStyle('height', 'auto');
 
-		if (scrollHeight !== offsetHeight && cssHeight > this.options.minRows * this.options.lineHeight){
-			this.textarea.setStyle('height',cssHeight);
-			this.fireEvent('resize');
-		}
+            this.options.delay = true;
+            if (forced !== true)
+                return this.fireEvent('keyPress');
+        },
 
-		if(modifiedParent) this.parentEl.setStyle('height','auto');
+        // Clean out this textarea's event handlers
+        clean: function() {
+            this.textarea.removeEvents({
+                'focus': this.focus,
+                'keydown': this.delayCheck,
+                'keypress': this.delayCheck,
+                'blur': this.blur,
+                'scroll': this.scrollFix
+            });
+            return this.fireEvent('clean');
+        },
 
-		this.options.delay = true;
-		if (forced !== true)
-			return this.fireEvent('keyPress');
-	},
+        // Disable the textarea
+        disable: function() {
+            this.textarea.blur();
+            this.clean();
+            this.textarea.set(this.options.disabled, true);
+            return this.fireEvent('disable');
+        },
 
-	// Clean out this textarea's event handlers
-	clean: function(){
-		this.textarea.removeEvents({
-			'focus': this.focus,
-			'keydown': this.delayCheck,
-			'keypress': this.delayCheck,
-			'blur': this.blur,
-			'scroll': this.scrollFix
-		});
-		return this.fireEvent('clean');
-	},
+        // Enables the textarea
+        enable: function() {
+            this.textarea.addEvents({
+                'focus': this.focus,
+                'scroll': this.scrollFix
+            });
+            this.textarea.set(this.options.disabled, false);
+            return this.fireEvent('enable');
+        }
+    });
 
-	// Disable the textarea
-	disable: function(){
-		this.textarea.blur();
-		this.clean();
-		this.textarea.set(this.options.disabled,true);
-		return this.fireEvent('disable');
-	},
+    var GwikiDynamicTextarea = new Class({
+        Extends: DynamicTextarea,
+        options: {
+            horizontalGrow: true,
+            maxWidth: 650,
+            onResize: function() {
+                var x = this.textarea.getSize().x - 2 * this.textarea.getStyle('paddingLeft').toInt() - 2 * this.textarea.getStyle('borderWidth').toInt();
+                if (this.textarea.getStyle('width').toInt() != this.options.maxWidth && this.options.minRows * this.options.lineHeight < this.textarea.getScrollSize().y) {
+                    if (!this.origWidth) this.origWidth = x;
+                    this.textarea.setStyle('width', this.options.maxWidth);
+                    this.checkSize(true);
+                }
+            },
+            onBlur: function() {
+                if (this.origWidth)  this.textarea.setStyle('width', this.origWidth);
+                this.checkSize(true);
+            }
+        }
+    });
 
-	// Enables the textarea
-	enable: function(){
-		this.textarea.addEvents({
-			'focus': this.focus,
-			'scroll': this.scrollFix
-		});
-		this.textarea.set(this.options.disabled,false);
-		return this.fireEvent('enable');
-	}
+    return {
+        DynamicTextarea: DynamicTextarea,
+        GwikiDynamicTextarea: GwikiDynamicTextarea
+
+    }
 });
-
-})();

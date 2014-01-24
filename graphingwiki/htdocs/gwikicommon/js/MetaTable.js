@@ -6,13 +6,17 @@
  Depends: MooTools HtmlTable.sort InlineEditor Request.SetMetas Events.shiftclick More/Date
  provides: [gwiki.MetaTable, gwiki.InterMetaTable]
  */
+define([
+    './InlineEditor',
+    './DynamicTextarea',
+    './Overlay',
+    'mootools-more'
 
-(function($, exports) {
+], function(InlineEditor, dt, Overlay) {
     "use strict";
 
-    var InlineEditor = exports.InlineEditor;
-    var DynamicTextarea = window.DynamicTextarea;
-    var Overlay = exports.Overlay;
+    var DynamicTextarea = dt.DynamicTextarea,
+        $ = document.id;
 
     var preformatTable = function(tab) {
         var head = tab.getElement('thead');
@@ -36,9 +40,7 @@
             else {
                 Object.each(metas, function(values, key) {
                     var values2 = o1[page][key];
-                    if (!values2 ||
-                        !values.every(values2.contains.bind(values2)) ||
-                        !values2.every(values.contains.bind(values)))
+                    if (!values2 || !values.every(values2.contains.bind(values2)) || !values2.every(values.contains.bind(values)))
                         changed.include(page);
                 });
             }
@@ -49,14 +51,14 @@
 
     var retrieveMetas = function(tbody) {
         var metas = {};
-        tbody.getElements('tr').each(function(row){
+        tbody.getElements('tr').each(function(row) {
             var page = row.getElement('.meta_page');
             if (page) page = page.get('text');
             if (page && !metas[page]) metas[page] = {};
 
             var vals = {};
 
-            row.getElements('.meta_cell span').each(function(span){
+            row.getElements('.meta_cell span').each(function(span) {
                 var val = span.get('data-value') || span.get('text');
                 var page = span.get('data-page');
                 var key = span.get('data-key');
@@ -80,7 +82,7 @@
         number: true
     };
     if (!HtmlTable.ParserPriority.contains("numberSpan")) {
-        HtmlTable.ParserPriority.splice(0,0, "numberSpan")
+        HtmlTable.ParserPriority.splice(0, 0, "numberSpan")
     }
 
     var HideableTable = new Class({
@@ -179,11 +181,11 @@
             var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
         },
-        enableKeyEdit: function(){
+        enableKeyEdit: function() {
             this.head.addEvent('shiftclick:relay(span[data-key])', this.keyEdit.bind(this));
         },
 
-        isUpdating: function(){
+        isUpdating: function() {
             return false;
         },
 
@@ -211,7 +213,7 @@
                     if (target.children.length == 1 && first.get('text') === "") {
                         index = 0;
                         target = first;
-                    }else{
+                    } else {
                         //append new value to existing ones if key had values
                         index = metas[page][key].length;
                         target = new Element('span').inject(target);
@@ -256,7 +258,7 @@
                         metas: args,
                         checkArgs: page,
                         checkData: oldData,
-                        url: collab? "../"+ collab +"/" : "",
+                        url: collab ? "../" + collab + "/" : "",
                         onSuccess: function() {
                             this.inlineEditor = null;
                             this.refresh();
@@ -287,7 +289,7 @@
             var oldKey = target.get('data-key');
 
             //check that the key is really meta-key and not indirection
-            if (!Object.some(this.metas, function(metas, page){
+            if (!Object.some(this.metas, function(metas, page) {
                 return metas[oldKey];
             })) return;
 
@@ -335,7 +337,7 @@
         }
     });
 
-    var MetaTable = exports.MetaTable = new Class({
+    var MetaTable = new Class({
         Extends: HideableTable,
         Implements: [EditableTable],
 
@@ -424,7 +426,7 @@
 
         },
 
-        isUpdating: function(){
+        isUpdating: function() {
             return this.metaRequest.isRunning();
         },
 
@@ -438,7 +440,7 @@
                 data: 'args=' + encodeURIComponent(this.tableArgs.args),
                 evalScripts: false,
                 onSuccess: function(nodes) {
-                    var tab = $$(nodes).filter(function(n){
+                    var tab = $$(nodes).filter(function(n) {
                         return typeOf(n.getElement) == "function";
                     }).getElement('table').clean();
 
@@ -559,7 +561,7 @@
         }
     });
 
-    var InterMetaTable =  exports.InterMetaTable = new Class({
+    var InterMetaTable = new Class({
         Extends: HideableTable,
         Implements: [EditableTable],
 
@@ -638,7 +640,9 @@
             });
 
             //this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
-            this.setHeaders([""].concat(sortedKeys.map(function(key){return keys[key];}).flatten()));
+            this.setHeaders([""].concat(sortedKeys.map(function(key) {
+                return keys[key];
+            }).flatten()));
             this.thead.rows[0].addClass('meta_header');
 
             var genEl = function(collab, page, key, index, html) {
@@ -664,7 +668,7 @@
                             vals.push(genEl(collab, page, key, 0, ""));
                         } else {
                             var formatted = this._format(metas[key], this.formatted[collab]);
-                            vals.push(formatted.map(function(html, index){
+                            vals.push(formatted.map(function(html, index) {
                                 return genEl(collab, page, key, index, html).outerHTML;
                             }).join(", "));
 
@@ -699,7 +703,7 @@
         },
 
         refresh: function(collabs) {
-            collabs = collabs||this.options.collabs;
+            collabs = collabs || this.options.collabs;
             if (this.isUpdating()) return;
 
             this.requests = [];
@@ -719,5 +723,8 @@
         }
     });
 
-//Use mootools document.id for $
-})(document.id, window.gwiki);
+    return {
+        MetaTable: MetaTable,
+        InterMetaTable: InterMetaTable
+    };
+});

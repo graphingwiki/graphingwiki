@@ -7,15 +7,23 @@
  provides: gwiki.MetaFormEdit
  */
 
-(function(exports) {
+define([
+    './DynamicTextarea',
+    'config',
+    './DatePicker',
+    'mootools-more'
+], function(
+    dt,
+    config,
+    Picker,
+    _mt
+    ){
     "use strict";
+    var gwikiseparator = config.gwikiseparator,
+        dateformat = config.dateformat,
+        FIELD_SELECTOR = '.metaformedit';
 
-    if (exports.MetaFormEdit) return;
-
-    var FIELD_SELECTOR = '.metaformedit';
-    var SEPARATOR = exports.GWIKISEPARATOR;
-
-    var MetaformEdit = exports.MetaFormEdit = new Class({
+    return new Class({
         initialize: function (form) {
             this.form = document.id(form);
 
@@ -27,7 +35,7 @@
                     }).destroy();
             });
 
-            this.SEPARATOR = SEPARATOR;
+            this.SEPARATOR = gwikiseparator;
             this.FIELD_SELECTOR = FIELD_SELECTOR;
 
             this.clean();
@@ -41,7 +49,7 @@
         // Add dynamic scaling and automatic select hiding
         _setupTextArea: function(textarea) {
             var dd = textarea.getParent('dd');
-            var dynText = new GwikiDynamicTextarea(textarea);
+            var dynText = new dt.GwikiDynamicTextarea(textarea);
             var siblings = dd.getElements('select');
             siblings.removeClass('hidden');
             if (siblings.length > 0) {
@@ -280,4 +288,4 @@
         }
     });
 
-})();
+});
