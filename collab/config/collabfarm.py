@@ -167,16 +167,6 @@ class FarmConfig(DefaultConfig):
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
 
-    # require.js base configuration: set the baseurl for all scripts 
-    # to the root of /htdocs. this is global and should not be edited
-    # by plugin/macro developers
-
-    html_head += '''
-    requirejs.config({
-        baseUrl: '%(url_prefix_static)s',
-    })
-    ''' % {"url_prefix_static": url_prefix_static}
-
     ## for htdocs/collabcommon
 
     # html_head = '' # omit if you already have something
