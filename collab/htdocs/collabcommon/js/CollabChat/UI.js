@@ -26,7 +26,7 @@ define([
         };
     };
 
-    var linkRex = /https?:\/\/(?=\S)[^\\\\"\{\}\|\^\~\[\]]+/g;
+    var linkRex = /https?:\/\/(?=\S)[^\\\"\{\}\|\^\~\[\]]+/g;
     var linkify = function(text, linkAttributes) {
         var result = [];
 
