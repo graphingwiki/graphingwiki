@@ -153,6 +153,7 @@
     width: 100%;
     margin: 0.4em 0;
     padding: 6px;
+    word-wrap: break-word;
 }
 
 #content .collab_chat .chat .output .message .time {
