@@ -110,7 +110,6 @@ class Theme(ThemeParent):
 
     def _endnav2(self):
         return """    </div> <!-- /collapse -->
-    </div>
   </div> <!-- /navbar -->"""
 
     def actionsmenu(self):
@@ -335,7 +334,7 @@ class Theme(ThemeParent):
         found = {} # pages we found. prevent duplicates
         items = [] # navibar items
         item = u'<li class="%s">%s</li>'
-        item_icon = u'title="%s"><i class="%s"></i><'
+        item_icon = u' title="%s"><i class="%s"></i><'
         current = d['page_name']
 
         #
