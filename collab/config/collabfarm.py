@@ -161,9 +161,7 @@ class FarmConfig(DefaultConfig):
     ''' % {"url_prefix_static": url_prefix_static}
 
     for script in ['js/require.js',
-                   'js/gwiki-common.js', \
-                   'simile/timeline/timeline_ajax/simile-ajax-api.js', \
-                   'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
+                   'js/gwiki-common.js']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
 
