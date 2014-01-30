@@ -4,6 +4,18 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
             2013 by Lauri Pokka
 */
 
+body {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#page {
+    -webkit-flex: 1 auto;
+    flex: 1 auto;
+}
 
 #top-padding {
     /*
@@ -245,15 +257,8 @@ a.download {
 }
 
 #page {
-/*    margin: 0 -180px 0 0; */
-    margin: 0 0 0 0;
+    margin: 0;
     padding: 2px 45px 20px 45px;
-
-   /*
-   TODO: make text/gui editor NOT use #page css, we don't want columns there!
-    */
-	min-height: 100%;
-	margin-bottom: 50px;
 }
 
 #page #content {
