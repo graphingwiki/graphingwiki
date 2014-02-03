@@ -97,8 +97,7 @@ require(['config', 'mootools-more'], function(config) {
         }
     });
 
-    window.addEvent('domready', function() {
-
+    var init =  function() {
         // MetaFormEdit improvements
         var fields = $$('.metaformedit');
         if (fields.length > 0) {
@@ -175,7 +174,8 @@ require(['config', 'mootools-more'], function(config) {
 
         //DnD file attachment upload
         initDnDUpload(document.window);
-    });
+    };
+
 
     var initDnDUpload = function(el) {
         if (!window.addEventListener) return;
@@ -539,4 +539,10 @@ require(['config', 'mootools-more'], function(config) {
         };
 
     };
+
+    if (["complete", "interactive"].indexOf(document.readyState) != -1) {
+        init();
+    }else {
+        window.addEventListener('DOMContentLoaded', init, false);
+    }
 });
