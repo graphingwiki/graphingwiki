@@ -12,7 +12,7 @@ body {
     min-height: 100vh;
 }
 
-#page {
+#page, #metaformedit {
     -webkit-flex: 1 auto;
     flex: 1 auto;
 }
@@ -33,9 +33,6 @@ body {
 }
 
 @media (min-width: 767px) {
-    #main-nav {
-        min-width: 800px;
-    }
 
     .navbar .input-group {
         width: 350px;
@@ -44,6 +41,25 @@ body {
     .navbar-form.navbar-right:last-child {
         margin-right: 0;
     }
+
+
+    .breadcrumb.navbar-left {
+        max-width: calc(100% - 500px);
+        overflow: hidden;
+        white-space: nowrap;
+    }
+}
+
+a[data-toggle=dropdown] {
+    cursor: pointer;
+}
+
+.navbar .editmenu {
+    padding-left: 15px;
+}
+
+.navbar .editmenu li {
+    margin: 0;
 }
 
 #message {
@@ -76,15 +92,18 @@ body {
     border-color: #1198cb;
 }
 
-.nav.navbar-nav > li > a, .navbar .navbar-brand {
+.nav.navbar-nav > li > a, .navbar .navbar-brand a {
     padding-left: 5px;
     padding-right: 5px;
     color: rgba(255, 255, 255, 0.90) !important;
     background: transparent !important;
 }
 
-.navbar-nav > li:hover > a, .navbar-header span:hover {
+.navbar-nav > li:hover > a,
+.navbar-header span:hover,
+.navbar-header .navbar-brand a:hover {
     color: white !important;
+    text-decoration: none;
 }
 
 ul.dropdown-menu li {
@@ -112,6 +131,10 @@ ul.dropdown-menu li {
 
 .navbar .btn {
     border-radius: 0;
+}
+
+.breadcrumb li {
+    margin-left: 0;
 }
 
 .navbar.breadcrumb {

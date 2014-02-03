@@ -20,11 +20,45 @@ from graphingwiki.plugin.macro.LinkedIn import nodes
 
 # FIXME: Caching of relevant portions
 
-BREADCRUMB_ACTIONS = {'print': 'Print View',
-                      'raw': 'Raw Text',
-                      'info': 'Info',
-                      'AttachFile': 'Attachments',
-                      'Invite': 'Invite'}
+BREADCRUMB_ACTIONS = [
+    'print',
+    'raw',
+    'info',
+    'AttachFile',
+    'Invite',
+]
+
+EDIT_ACTIONS = [
+    'revert',
+    'CopyPage',
+    'RenamePage',
+    'DeletePage',
+    'MetaFormEdit',
+    'MetaEdit',
+]
+
+ACTION_NAMES = {
+    'info': 'Info',
+    'edit': 'Edit',
+    'AttachFile': 'Attachments',
+    'raw': 'Raw Text',
+    'print': 'Print View',
+    'refresh': 'Delete Cache',
+    'SpellCheck': 'Check Spelling',
+    'RenamePage': 'Rename Page',
+    'CopyPage': 'Copy Page',
+    'DeletePage': 'Delete Page',
+    'LikePages': 'Like Pages',
+    'LocalSiteMap': 'Local Site Map',
+    'MyPages': 'My Pages',
+    'SubscribeUser': 'Subscribe User',
+    'Despam': 'Remove Spam',
+    'revert': 'Revert to this revision',
+    'PackagePages': 'Package Pages',
+    'RenderAsDocbook': 'Render as Docbook',
+    'SyncPages': 'Sync Pages',
+    'Invite': 'Invite',
+}
 
 BOOTSTRAP_THEME_CSS = [
     ("all", "bootstrap.min")
@@ -45,7 +79,7 @@ class Theme(ThemeParent):
 
     GLYPHICONS = {
         'FrontPage': 'glyphicon glyphicon-home',
-        'CollabList': 'glyphicon glyphicon-globe',
+        'CollabList': 'glyphicon glyphicon-list',
         'edit': 'glyphicon glyphicon-edit',
         'RecentChanges': 'glyphicon glyphicon-time',
     }
@@ -74,7 +108,7 @@ class Theme(ThemeParent):
 
         # bootstrap css file should be before themes
         for sheet in reversed(BOOTSTRAP_THEME_CSS):
-            link = (sheet[0], "../../bootstrap/css/" +sheet[1])
+            link = (sheet[0], "../../bootstrap/css/" + sheet[1])
             self.stylesheets = (link,) + self.stylesheets
 
         self.available = get_available_actions(request.cfg,
@@ -84,35 +118,17 @@ class Theme(ThemeParent):
     def logo(self):
         mylogo = ThemeParent.logo(self)
         if not mylogo:
-            mylogo = u'''<span class="navbar-brand">%s</span>''' % \
+            mylogo = u'''<span>%s</span>''' % \
                      wikiutil.escape(self.cfg.sitename, True)
 
         return mylogo
 
-    def _startnav(self):
-        return u"""  <div class="navbar navbar-inverse navbar-fixed-top">
-    <div class="navbar-header">
-        <button type="button" class="navbar-toggle" data-toggle="collapse"
-                data-target="#main-nav">
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-        <div id="logo">
-        %s
-        </div>
-      </div>
-      <div class="collapse navbar-collapse" id="main-nav">
-        <ul class="nav navbar-nav"> <!-- nav -->""" % (self.logo())
+    def _actiontitle(self, action):
+        _ = self.request.getText
+        name = ACTION_NAMES.get(action, action)
+        return _(name)
 
-    def _endnav1(self):
-        return u"""        </ul> <!-- /nav -->"""
-
-    def _endnav2(self):
-        return """    </div> <!-- /collapse -->
-  </div> <!-- /navbar -->"""
-
-    def actionsmenu(self):
+    def editmenu(self, d):
         request = self.request
         page = self.request.page
         _ = request.getText
@@ -120,30 +136,49 @@ class Theme(ThemeParent):
         editor = request.user.editor_default
         editdisabled = False
 
-        val = ""
+        editurl = u"?action=edit"
+
         if not 'edit' in request.cfg.actions_excluded:
-            if not (page.isWritable() and
-                        request.user.may.write(page.page_name)):
+            if not (page.isWritable() and request.user.may.write(page.page_name)):
                 editdisabled = True
-                val = """          <li class="disabled">
-          <a title="%s"><i class="glyphicon glyphicon-edit"></i> </a>""" % \
-                      _('Immutable Page')
             elif guiworks and editor == 'gui':
-                val = """          <li class="active">
-          <a title="%s" href="?action=edit&editor=gui">""" % _('Edit (GUI)')
-                val += '<i class="glyphicon glyphicon-edit"></i></a>'
-            else:
-                val = """          <li class="active">
-          <a title="%s" href="?action=edit">""" % _('Edit')
-                val += '<i class="glyphicon glyphicon-edit"></i> </a>'
+                editurl += u"&editor=gui"
         else:
             editdisabled = True
 
-        val += '\n          <li class="active dropdown"><a href="#" '
-        val += 'title="%s" class="dropdown-toggle" data-toggle="dropdown">' % \
-               _("More Actions:")
-        val += '<i class="glyphicon glyphicon-folder-open"></i></a>'
-        val += '\n            <ul class="dropdown-menu">\n'
+        links = []
+
+        if editdisabled:
+            return u""
+
+        for action in EDIT_ACTIONS:
+            disabled = False
+
+            if action == 'revert':
+                if not request.user.may.revert(page.page_name) or not request.rev:
+                    disabled = True
+
+            if not disabled:
+                link = u'<li><a href="?action=%s%s">%s</a></li>' % (action, self.rev, self._actiontitle(action))
+                links.append(link)
+
+        return u"""
+    <ul class="nav navbar-nav editmenu">
+        <li>
+            <a href="%s" title="%s"><i class="glyphicon glyphicon-edit"></i></a>
+        </li>
+        <li>
+            <a class="dropdown-toggle" data-toggle="dropdown"><i class="caret"></i></a>
+            <ul class="dropdown-menu">
+                %s
+            </ul>
+        </li>
+    </ul>""" % (editurl, _('Edit'), (u"\n" + u" "*10).join(links))
+
+    def actionsmenu(self, d):
+        request = self.request
+        page = self.request.page
+        _ = request.getText
 
         ignored = [
             'Despam',
@@ -156,174 +191,38 @@ class Theme(ThemeParent):
             'N3Dump',
             'RdfInfer',
             'Invite',
-        ]
-
-        menu = [
-            'RenamePage',
-            'CopyPage',
-            'DeletePage',
-            '',
-            'revert',
             'PackagePages',
-            'SyncPages',
-            'refresh',
-            '',
-            'Despam',
-            'SpellCheck',
-            'LikePages',
-            'LocalSiteMap',
-            'RenderAsDocbook',
-            'MyPages',
-            'SubscribeUser',
+            'Load',
+            'Save',
         ]
 
-        titles = {
-            'info': _('Info'),
-            'edit': _('Edit'),
-            'AttachFile': _('Attachments'),
-            'raw': _('Raw Text'),
-            'print': _('Print View'),
-            'refresh': _('Delete Cache'),
-            'SpellCheck': _('Check Spelling'),
-            'RenamePage': _('Rename Page'),
-            'CopyPage': _('Copy Page'),
-            'DeletePage': _('Delete Page'),
-            'LikePages': _('Like Pages'),
-            'LocalSiteMap': _('Local Site Map'),
-            'MyPages': _('My Pages'),
-            'SubscribeUser': _('Subscribe User'),
-            'Despam': _('Remove Spam'),
-            'revert': _('Revert to this revision'),
-            'PackagePages': _('Package Pages'),
-            'RenderAsDocbook': _('Render as Docbook'),
-            'SyncPages': _('Sync Pages'),
-        }
+        ignored += EDIT_ACTIONS + BREADCRUMB_ACTIONS
 
-        _s = '              '
-        val += _s + '<li>%s</li>\n' % (self.quicklinkLink(page))
-        val += _s + '<li>%s</li>\n' % (self.subscribeLink(page))
+        links = []
 
-        for action in menu:
-            if action in ignored:
-                continue
+        links.append(u'<li>%s</li>\n' % (self.quicklinkLink(page)))
 
-            if not action:
-                val += _s + '<li class="divider"></li>\n'
-                continue
-            disabled = False
+        if self.subscribeLink(page):
+            links.append(u'<li>%s</li>\n' % (self.subscribeLink(page)))
 
-            if action == 'refresh':
-                if not page.canUseCache():
-                    disabled = True
-            elif action == 'revert' and not \
-                request.user.may.revert(page.page_name):
-                disabled = True
-            elif action == 'SubscribeUser' and not \
-                request.user.may.admin(page.page_name):
-                disabled = True
-            elif action == 'Despam' and not request.user.isSuperUser():
-                disabled = True
-            elif action[0].isupper() and not action in self.available:
-                disabled = True
-
-            if disabled:
-                val += _s + '<li class="disabled"><a>%s</a></li>\n' % \
-                       (titles[action])
-            elif action == 'edit':
-                if editdisabled:
-                    continue
-                if editor == "gui":
-                    val += _s + '<li><a href="?action=edit%s">%s</a></li>\n' % \
-                           (self.rev, titles[action])
-                elif guiworks:
-                    val += _s + '<li><a href="?action=edit&editor=gui' + \
-                           '%s">%s</a></li>\n' % (self.rev, _('Edit (GUI)'))
-            else:
-                val += _s + '<li><a href="?action=%s%s">%s</a></li>\n' % \
-                       (action, self.rev, titles[action])
-        val += """            </ul>
-          </li>
-"""
-
-        more = [item for item in self.available if not item in titles and item not in ignored]
+        more = [item for item in self.available if item not in ignored]
         more.sort()
-        if not more:
-            return val
 
-        val += """          <li class="active dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-               <i class="glyphicon glyphicon-wrench" title="%s"></i></a>
-            <ul class="dropdown-menu">\n""" % _("More Actions:")
-        _s = '              '
         for action in more:
-            val += _s + '<li><a href="?action=%s%s">%s</a></li>\n' % \
-                   (action, self.rev, _(action))
-        val += """            </ul>
-          </li>"""
+            link = u'<li><a href="?action=%s%s">%s</a></li>' % (action, self.rev, self._actiontitle(action))
+            links.append(link)
 
-        return val
+        return u"""
+        <li>
+            <a title="%s" class="dropdown-toggle" data-toggle="dropdown">
+                <i class="glyphicon glyphicon-wrench"></i>
+            </a>
+            <ul class="dropdown-menu">
+                %s
+            </ul>
+        </li>""" % (_("More Actions:"),  (u"\n" + u" "*10).join(links))
 
-    def _wraplink(self, html):
-        return u'          <li>' + html + u'</li>'
-
-    def _navibar(self, d):
-        _ = self.request.getText
-
-        content = ThemeParent.navibar(self, d)
-        content = '\n'.join(content.split('\n')[2:-2])
-        content = content.replace('</li>', '</li>\n          ')
-        content = '          ' + content.rstrip()
-
-        content = content.replace('current">', 'current active">')
-        content = content.replace('>%s<' % self.request.cfg.page_front_page,
-                                  ' title="%s">' %
-                                  self.request.cfg.page_front_page +
-                                  '<i class="glyphicon glyphicon-home"></i><')
-
-        content = content.replace('>%s<' % _("CollabList"),
-                                  ' title="%s">' % _("CollabList") +
-                                  '<i class="glyphicon glyphicon-globe"></i><')
-        content = content.replace('>%s<' % _("Collab"),
-                                  ' title="%s">' % _("Collab") +
-                                  '<i class="glyphicon glyphicon-comment"></i><')
-
-        page_recentchanges = \
-            wikiutil.getLocalizedPage(self.request, 'RecentChanges').page_name
-        content = content.replace('>%s<' % (page_recentchanges),
-                                  ' title="%s">' % (page_recentchanges) +
-                                  '<i class="glyphicon glyphicon-time"></i><')
-        page_findpage = \
-            wikiutil.getLocalizedPage(self.request, 'FindPage').page_name
-        content = content.replace('>%s<' % (page_findpage),
-                                  ' title="%s">' % (page_findpage) +
-                                  '<i class="glyphicon glyphicon-search"></i><')
-        page_help_contents = \
-            wikiutil.getLocalizedPage(self.request, 'HelpContents').page_name
-        content = content.replace('">' + page_help_contents,
-                                  '" title="%s">' % page_help_contents +
-                                  '<i class="glyphicon glyphicon-question-sign' +
-                                  '"></i>')
-
-        quicklinks = QUICKLINKS_RE.findall(content)
-        content = QUICKLINKS_RE.sub('', content)
-
-        if quicklinks:
-            val = """<li class="active dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-               <i class="glyphicon glyphicon-star-empty" title="%s"></i></a>
-            <ul class="dropdown-menu">\n""" % _("Quicklinks")
-
-            for item in quicklinks:
-                val += "               %s\n" % (item.replace('', ''))
-
-                val += """            </ul>
-          </li>
-"""
-            content += val
-
-        return content
-
-    def navibar(self, d):
+    def navibar(self, d, *items):
         """ Assemble the navibar
 
         @param d: parameter dictionary
@@ -332,14 +231,12 @@ class Theme(ThemeParent):
         """
         request = self.request
         found = {} # pages we found. prevent duplicates
-        items = [] # navibar items
+        links = [] # navibar items
         item = u'<li class="%s">%s</li>'
         item_icon = u' title="%s"><i class="%s"></i><'
         current = d['page_name']
 
-        #
         default_items = [
-            u'CollabList',
             getattr(request.cfg, 'page_front_page', u"FrontPage"),
             u'RecentChanges',
         ]
@@ -355,7 +252,7 @@ class Theme(ThemeParent):
                 cls = 'wikilink current'
             else:
                 cls = 'wikilink'
-            items.append(item % (cls, link))
+            links.append(item % (cls, link))
             found[pagename] = 1
 
         # Add user links to wiki links, eliminating duplicates.
@@ -371,7 +268,28 @@ class Theme(ThemeParent):
         #        items.append(item % (cls, link))
         #        found[pagename] = 1
 
-        return u''.join(items)
+        return  u"""
+    <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse"
+                    data-target="#main-nav">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <div id="logo" class="navbar-brand">
+                <a href="CollabList">
+                    %s
+                </a>
+            </div>
+        </div>
+        <div class="collapse navbar-collapse" id="main-nav">
+            <ul class="nav navbar-nav">
+                %s
+            </ul>
+            %s
+        </div>
+    </div>""" % (self.logo(),  u'\n'.join(links), u'\n'.join(items))
 
     def username(self, d):
         request = self.request
@@ -406,19 +324,19 @@ class Theme(ThemeParent):
             out = ""
 
             if urls:
-                out = """
+                out = u"""
                   <div class="input-group-btn">
         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-          <i class="glyphicon glyphicon-user"></i> <span class="caret"></span>
+          <i class="glyphicon glyphicon-user"></i></span>
         </button>
-        <ul class="dropdown-menu navbar-left">
+        <ul class="dropdown-menu navbar-right">
             <li class="nav-header"><a href="%s">%s</a></li>
                 """ % (linkpage, name)
 
                 for url in urls:
-                    out += "                  <li>%s</li>\n" % (url)
+                    out += "                  <li>%s</li>\n" % url
 
-                out += """
+                out += u"""
                 </ul>
             </div>"""
 
@@ -428,29 +346,22 @@ class Theme(ThemeParent):
         _ = self.request.getText
         url = self.request.href(d['page'].page_name)
 
-        return """
+        return u"""
   <form method="get" action="%s">
-
-    <div class="input-group navbar-form form-group navbar-right">\n%s
-            <input type="hidden" name="action" value="fullsearch">
-            <input type="hidden" name="context" value="180">
-
-
-      <input class="form-control search" placeholder="Search" name="value">
-      <div class="input-group-btn">
-        <button class="btn btn-primary" name="titlesearch" type="submit">%s</button>
-        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-          <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu navbar-right" role="menu">
-          <li></li>
-          <li><input class="btn btn-link" name="metasearch" type="submit" value="%s"></li>
-          <li><input class="btn btn-link" name="fullsearch" type="submit" value="%s"></li>
-        </ul>
-      </div>
+    <div class="input-group navbar-form form-group navbar-right">
+                <input type="hidden" name="action" value="fullsearch">
+                <input type="hidden" name="context" value="180">
+          <input class="form-control search" placeholder="Search" name="value">
+            <span class="input-group-btn">
+                <button class="btn btn-primary" name="titlesearch" type="submit">
+                    <i class="glyphicon glyphicon-search"></i>
+                </button>
+            </span>
+        %s
     </div>
-  </form>
-        """ % (url, self.username(d), _("Title"), _("Search Full Text"), _("Meta Search"))
+</form>
+
+        """ % (url, self.username(d))
 
     def header(self, d, **kw):
         """ Assemble wiki header
@@ -479,13 +390,13 @@ class Theme(ThemeParent):
             # would then show the extra padding on top.
             u'<div id="top-padding"></div>',
 
-            self._startnav(),
-            self.navibar(d),
-            self.actionsmenu(),
-            self._endnav1(),
-            self.search_user_form(d),
-            self._endnav2(),
-            self.breadcrumbs(),
+
+            self.navibar(
+                d,
+                self.editmenu(d),
+                self.search_user_form(d)
+            ),
+            self.breadcrumbs(d),
             self.msg(d),
             u'</div> <!-- /header -->',
 
@@ -497,7 +408,7 @@ class Theme(ThemeParent):
         ]
         return u'\n'.join(html)
 
-    def breadcrumbs(self):
+    def breadcrumbs(self, d):
         request = self.request
         _ = request.getText
         user = request.user
@@ -538,18 +449,19 @@ class Theme(ThemeParent):
         val += '\n    </ul>\n    <ul class="breadcrumb navbar-right">'
         actions = getattr(request.cfg, 'bootstrap_actions',
                           BREADCRUMB_ACTIONS)
-        for i, (act, text) in enumerate(actions.iteritems()):
+        for i, act in enumerate(actions):
             if act[0].isupper() and not act in self.available:
                 continue
-            span = (i != 0) and '' or ''
-            val += '\n      <li><a href="?action=%s%s">%s</a>%s</li>' % (act, self.rev, text, span)
+            val += '\n      <li><a href="?action=%s%s">%s</a></li>' % (act, self.rev,  self._actiontitle(act))
 
-        val += """
+        val += u"""
       <li class="toggleCommentsButton" style="display:none;">
           <a href="#" class="nbcomment" onClick="toggleComments(); return false;">%s</a>
       </li>
+        %s
     </ul>
-  </div>""" % _('Comments')
+  </div>""" % (_('Comments'), self.actionsmenu(d))
+
 
         return val
 
@@ -566,7 +478,7 @@ class Theme(ThemeParent):
         val = '<div id="message">\n<ul class="inline">\n<li>%s</li>\n' % \
               _("Linked in pages")
         for l in li:
-            val += '<li>%s</li>' % (l)
+            val += '<li>%s</li>' % l
         val += '</div>\n'
         return val
 
@@ -592,8 +504,8 @@ class Theme(ThemeParent):
             # End of page
             self.endPage(),
 
-            '<script src="' + self.cfg.url_prefix_static + \
-            '/bootstrap/js/bootstrap.js"></script>',
+            u'<script src="' + self.cfg.url_prefix_static + \
+            u'/bootstrap/js/bootstrap.js"></script>',
 
             # Pre footer custom html (not recommended!)
             self.emit_custom_html(self.cfg.page_footer1),
@@ -601,7 +513,7 @@ class Theme(ThemeParent):
             self.linkedin(),
 
             # Footer
-            self.breadcrumbs(),
+            self.breadcrumbs(d),
             u'<div id="footer">',
             self.pageinfo(page),
             self.footer_string(),
