@@ -38,7 +38,7 @@ body {
         width: 350px;
     }
 
-    .navbar-form.navbar-right:last-child {
+    .navbar-right:last-child {
         margin-right: 0;
     }
 
@@ -56,10 +56,27 @@ a[data-toggle=dropdown] {
 
 .navbar .editmenu {
     padding-left: 15px;
+    float: right;
 }
 
 .navbar .editmenu li {
     margin: 0;
+}
+
+.navbar li {
+    margin: 0 5px 0 5px;
+}
+
+.navbar .glyphicon {
+    font-size: 1.1em;
+    line-height: 0.9em;
+    vertical-align: sub;
+}
+
+.navbar .glyphicon-user {
+    font-size: 1.3em;
+    line-height: 0.7em;
+    margin: 0 3px;
 }
 
 #message {

@@ -159,16 +159,21 @@ class Theme(ThemeParent):
                     disabled = True
 
             if not disabled:
-                link = u'<li><a href="?action=%s%s">%s</a></li>' % (action, self.rev, self._actiontitle(action))
+                link = u'<li><a href="?action=%s%s">%s</a></li>'  \
+                       % (action, self.rev, self._actiontitle(action))
                 links.append(link)
 
         return u"""
     <ul class="nav navbar-nav editmenu">
         <li>
-            <a href="%s" title="%s"><i class="glyphicon glyphicon-edit"></i></a>
+            <a href="%s" title="%s">
+                <i class="glyphicon glyphicon-edit"></i>
+            </a>
         </li>
         <li>
-            <a class="dropdown-toggle" data-toggle="dropdown"><i class="caret"></i></a>
+            <a class="dropdown-toggle" data-toggle="dropdown">
+                <i class="caret"></i>
+            </a>
             <ul class="dropdown-menu">
                 %s
             </ul>
@@ -319,30 +324,27 @@ class Theme(ThemeParent):
                     continue
                 url = request.page.url(request, {'action': 'userprefs',
                                                  'sub': sub})
-                urls.append('<a href="%s">%s</a>' % (url, obj.title))
+                urls.append('<li><a href="%s">%s</a></li>' % (url, obj.title))
 
             out = ""
 
             if urls:
                 out = u"""
-                  <div class="input-group-btn">
-        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-          <i class="glyphicon glyphicon-user"></i></span>
-        </button>
-        <ul class="dropdown-menu navbar-right">
-            <li class="nav-header"><a href="%s">%s</a></li>
-                """ % (linkpage, name)
-
-                for url in urls:
-                    out += "                  <li>%s</li>\n" % url
-
-                out += u"""
-                </ul>
-            </div>"""
+        <ul class="nav navbar-nav navbar-right">
+            <li>
+            <a class="dropdown-toggle" data-toggle="dropdown">
+              <i class="glyphicon glyphicon-user"></i></span>
+            </a>
+            <ul class="dropdown-menu navbar-right">
+                <li class="nav-header"><a href="%s">%s</a></li>
+                %s
+            </ul>
+            </li>
+        </ul>""" % (linkpage, name, ("\n"+" "*16).join(urls))
 
             return out
 
-    def search_user_form(self, d):
+    def search_form(self, d):
         _ = self.request.getText
         url = self.request.href(d['page'].page_name)
 
@@ -357,11 +359,8 @@ class Theme(ThemeParent):
                     <i class="glyphicon glyphicon-search"></i>
                 </button>
             </span>
-        %s
     </div>
-</form>
-
-        """ % (url, self.username(d))
+    </form>""" % (url)
 
     def header(self, d, **kw):
         """ Assemble wiki header
@@ -393,8 +392,9 @@ class Theme(ThemeParent):
 
             self.navibar(
                 d,
-                self.editmenu(d),
-                self.search_user_form(d)
+                self.username(d),
+                self.search_form(d),
+                self.editmenu(d)
             ),
             self.breadcrumbs(d),
             self.msg(d),
@@ -417,11 +417,10 @@ class Theme(ThemeParent):
         if not user.valid or user.show_page_trail:
             trail = user.getTrail()
             if trail:
-                for pagename in trail:
+                for pagename in trail[::-1]:
                     try:
                         interwiki, page = wikiutil.split_interwiki(pagename)
-                        if interwiki != request.cfg.interwikiname \
-                            and interwiki != 'Self':
+                        if interwiki != request.cfg.interwikiname and interwiki != 'Self':
                             link = (
                                 self.request.formatter.interwikilink(
                                     True, interwiki, page) +
