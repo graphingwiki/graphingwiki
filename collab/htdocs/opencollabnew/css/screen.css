@@ -25,10 +25,14 @@ body {
     margin-top: 51px;
 }
 
-@media (max-width: 767px), (min-width: 1200px) {
+@media (max-width: 767px) {
 
     #main-nav li a:after {
         content: " " attr(title);
+    }
+
+    .breadcrumb.navbar-left {
+        display: none;
     }
 }
 
@@ -42,21 +46,39 @@ body {
         margin-right: 0;
     }
 
+    .navbar .editmenu {
+        float: right;
+    }
+
+    .navbar .glyphicon-user {
+        font-size: 1.3em;
+        line-height: 0.7em;
+        margin: 0 3px;
+    }
+
+    .navbar.breadcrumb {
+        display: -webkit-flex;
+        display: flex;
+    }
+
+    .breadcrumb.navbar-right {
+        -webkit-flex: 0 0 auto;
+        flex: 0 0 auto;
+        margin-left: 30px !important;
+    }
 
     .breadcrumb.navbar-left {
-        max-width: calc(100% - 500px);
+        -webkit-flex: 1 1 auto;
+        flex: 1 1 auto;
+
         overflow: hidden;
+        text-overflow: ellipsis;
         white-space: nowrap;
     }
 }
 
 a[data-toggle=dropdown] {
     cursor: pointer;
-}
-
-.navbar .editmenu {
-    padding-left: 15px;
-    float: right;
 }
 
 .navbar .editmenu li {
@@ -68,15 +90,10 @@ a[data-toggle=dropdown] {
 }
 
 .navbar .glyphicon {
+    /*vertical-align: middle;*/
+    top: 3px;
     font-size: 1.1em;
-    line-height: 0.9em;
-    vertical-align: sub;
-}
-
-.navbar .glyphicon-user {
-    font-size: 1.3em;
-    line-height: 0.7em;
-    margin: 0 3px;
+    line-height: 15px;
 }
 
 #message {
