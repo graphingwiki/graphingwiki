@@ -461,13 +461,23 @@ table tr.header th {
 	color: #fff;
 }
 
-a#footer {
+a.meta_footer_link {
 	background: none;
 	color: #56a;
 }
 
-td.meta_page span.meta_editicon { display: none; }
-td.meta_page:hover span.meta_editicon { display: inline; }
+td.meta_page {
+    text-wrap: none;
+}
+td.meta_page span.meta_editicon {
+    display: none;
+    float: right;
+    margin-left: 5px;
+}
+
+td.meta_page:hover span.meta_editicon {
+    display: inline;
+}
 
 div.inlinegraph {
 	margin-bottom: 10px;
