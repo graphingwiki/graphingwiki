@@ -35,6 +35,7 @@ from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
 from MoinMoin.macro.Include import _sysmsg
 
+from graphingwiki.plugin.action.ShowGraph import GraphShower
 from graphingwiki.plugin.action.metasparkline import write_surface, draw_line
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
@@ -46,14 +47,17 @@ Dependencies = ['metadata']
 def draw_topology(request, args, key):
     args = [x.strip() for x in args.split(',')]
 
-    topology, flowfile = '', ''
+    topology, flowfile, color = '', '', ''
     rotate, width = '', ''
+    graph = GraphShower(request.page.page_name, request)
 
     # take flow file specification from arguments as flow=k.csv,
     # otherwise assume that the argument specifies the topology
     for arg in args:
         if '=' in arg:
             key, val = [x.strip() for x in arg.split('=', 1)]
+            if key == 'color':
+                color = val
             if key == 'flow':
                 flowfile = val
             if key == 'rotate':
@@ -87,6 +91,7 @@ def draw_topology(request, args, key):
     images = dict()
     aliases = dict()
     areas = dict()
+    colors = dict()
 
     # Make a context to calculate font sizes with
     # There must be a better way to do this, I just don't know it!
@@ -100,7 +105,7 @@ def draw_topology(request, args, key):
     allcoords = list()
     for page in pagelist:
         data = get_metas(request, page, 
-                         [topology, 'gwikishapefile', 'tia-name'],
+                         [topology, 'gwikishapefile', 'tia-name', color],
                          checkAccess=False, formatLinks=True)
 
         crds = [x.split(',') for x in data.get(topology, list)]
@@ -120,6 +125,10 @@ def draw_topology(request, args, key):
         allcoords.append((start_x, start_y))
 
         img = data.get('gwikishapefile', list())
+        if color:
+            clr = data.get(color, list())
+            if clr:
+                colors[page] = clr[0]
 
         alias = data.get('tia-name', list())
         # Newer versions of analyzer do not use aliases anymore
@@ -220,7 +229,7 @@ def draw_topology(request, args, key):
 
     # Setup Cairo
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 surface_x, surface_y)
+                                 int(surface_x), int(surface_y))
 
 
     # request.write(repr([surface_x, surface_y]))
@@ -270,17 +279,28 @@ def draw_topology(request, args, key):
         else:
             h = images[page].get_height()
             w = images[page].get_width()
-            ctx.set_source_surface(images[page], start_x, start_y)
+            if colors.has_key(page):
+                clr = graph.hashcolor(colors[page])
+                r, g, b = [int(''.join(x), 16) / 255.0 for x in 
+                           zip(clr[1::2], clr[2::2])]
+                ctx.set_source_rgb(r, g, b)
+            else:
+                ctx.set_source_rgb(1, 1, 1)
 
         midcoords[page] = (start_x + w / 2, start_y + h / 2)
         ctx.rectangle(start_x, start_y, w, h)
+        ctx.fill()
+
+        if images.has_key(page):
+            ctx.set_source_surface(images[page], start_x, start_y)
+            ctx.rectangle(start_x, start_y, w, h)
+            ctx.fill()
 
         text = make_tooltip(request, page)
 
         areas["%s,%s,%s,%s" % (start_x, start_y, start_x + w, start_y + h)] = \
             [page, text, 'rect']
 
-        ctx.fill()
 
         if page in aliases:
             ctx.set_source_rgb(0, 0, 0)
@@ -345,7 +365,7 @@ def draw_topology(request, args, key):
         transl = -surface_x
 
     s2 = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 new_surface_x, new_surface_y)
+                                 int(new_surface_x), int(new_surface_y))
 
     ctx = cairo.Context(s2)
 

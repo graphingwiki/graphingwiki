@@ -4,6 +4,18 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
             2013 by Lauri Pokka
 */
 
+body {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#page, #metaformedit {
+    -webkit-flex: 1 auto;
+    flex: 1 auto;
+}
 
 #top-padding {
     /*
@@ -21,17 +33,50 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 }
 
 @media (min-width: 767px) {
-    #main-nav {
-        min-width: 800px;
-    }
 
     .navbar .input-group {
         width: 350px;
     }
 
-    .navbar-form.navbar-right:last-child {
+    .navbar-right:last-child {
         margin-right: 0;
     }
+
+
+    .breadcrumb.navbar-left {
+        max-width: calc(100% - 500px);
+        overflow: hidden;
+        white-space: nowrap;
+    }
+}
+
+a[data-toggle=dropdown] {
+    cursor: pointer;
+}
+
+.navbar .editmenu {
+    padding-left: 15px;
+    float: right;
+}
+
+.navbar .editmenu li {
+    margin: 0;
+}
+
+.navbar li {
+    margin: 0 5px 0 5px;
+}
+
+.navbar .glyphicon {
+    font-size: 1.1em;
+    line-height: 0.9em;
+    vertical-align: sub;
+}
+
+.navbar .glyphicon-user {
+    font-size: 1.3em;
+    line-height: 0.7em;
+    margin: 0 3px;
 }
 
 #message {
@@ -64,15 +109,18 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
     border-color: #1198cb;
 }
 
-.nav.navbar-nav > li > a, .navbar .navbar-brand {
+.nav.navbar-nav > li > a, .navbar .navbar-brand a {
     padding-left: 5px;
     padding-right: 5px;
     color: rgba(255, 255, 255, 0.90) !important;
     background: transparent !important;
 }
 
-.navbar-nav > li:hover > a, .navbar-header span:hover {
+.navbar-nav > li:hover > a,
+.navbar-header span:hover,
+.navbar-header .navbar-brand a:hover {
     color: white !important;
+    text-decoration: none;
 }
 
 ul.dropdown-menu li {
@@ -100,6 +148,10 @@ ul.dropdown-menu li {
 
 .navbar .btn {
     border-radius: 0;
+}
+
+.breadcrumb li {
+    margin-left: 0;
 }
 
 .navbar.breadcrumb {
@@ -245,15 +297,8 @@ a.download {
 }
 
 #page {
-/*    margin: 0 -180px 0 0; */
-    margin: 0 0 0 0;
+    margin: 0;
     padding: 2px 45px 20px 45px;
-
-   /*
-   TODO: make text/gui editor NOT use #page css, we don't want columns there!
-    */
-	min-height: 100%;
-	margin-bottom: 50px;
 }
 
 #page #content {

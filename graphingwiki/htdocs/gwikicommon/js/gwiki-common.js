@@ -176,6 +176,85 @@ require(['config', 'mootools-more'], function(config) {
         }, false);
     };
 
+    var init =  function() {
+        // MetaFormEdit improvements
+        var fields = $$('.metaformedit');
+        if (fields.length > 0) {
+            require(['gwikicommon/MetaFormEdit'], function(MetaFormEdit) {
+                new MetaFormEdit(fields[0].getParent('form'));
+            });
+        }
+
+        // Apply MooTools tooltips to elements with .mt-tooltip class
+        if ($$('.mt-tooltip').length) {
+            require(['mootools-more'], function(){
+                new Tips('.mt-tooltip', {'className': 'mootip'});
+            })
+        }
+
+        // Apply MetaTable improvements
+        var tables = $$('div.metatable[data-options]');
+        if (tables.length > 0) {
+            require(['gwikicommon/MetaTable', 'config'], function(mt, config) {
+                tables.each(function(div, i) {
+                    new mt.MetaTable(div.getElement('table'), {
+                        tableArguments: JSON.decode(decodeURIComponent(div.getAttribute('data-options'))),
+                        separator: config.gwikiseparator
+                    });
+                });
+            });
+        }
+
+        // InterMetaTable
+        if ($$('div.InterMetaTable').length) {
+            require(['gwikicommon/MetaTable'], function(mt) {
+                $$('div.InterMetaTable').each(function(table) {
+                    var opts = JSON.decode(decodeURIComponent(table.getAttribute('data-options')));
+                    new mt.InterMetaTable(table, opts);
+                });
+            });
+        }
+
+        // Inline Edit
+        if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
+            require(['gwikicommon/InlineEditor'], function() {
+                $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit);
+            });
+        }
+
+        // AttachTree
+        if ($$('.attachtree_area').length) {
+            require(['gwikicommon/AttachTree'], function(AttachTree) {
+                $$('.attachtree_area').each(function(el) {
+                    new AttachTree(el);
+                });
+            });
+        }
+
+        // DynamicTextareas for textareas with .dynamic
+        // Added body check to workaround a weird phantomjs bug
+        if ($$('textarea.dynamic').length) {
+            require(['gwikicommon/DynamicTextarea'], function(dt) {
+                $$('textarea.dynamic').setStyles({
+                    'resize': 'none',
+                    'overflow': 'hidden'
+                });
+
+                if (document.body) {
+                    document.id(document.body).addEvent('focus:relay(textarea.dynamic)', function(e) {
+                        if (!document.id(e.target).retrieve('dynamic')) {
+                            new dt.DynamicTextarea(e.target);
+                            document.id(e.target).store('dynamic', true).focus();
+                        }
+                    });
+                }
+            });
+        }
+
+        //DnD file attachment upload
+        initDnDUpload(document.window);
+    };
+
     window.addEvent('domready', function() {
 
         // MetaFormEdit improvements
@@ -488,4 +567,10 @@ require(['config', 'mootools-more'], function(config) {
         };
 
     };
+
+    if (["complete", "interactive"].indexOf(document.readyState) != -1) {
+        init();
+    }else {
+        window.addEventListener('DOMContentLoaded', init, false);
+    }
 });
