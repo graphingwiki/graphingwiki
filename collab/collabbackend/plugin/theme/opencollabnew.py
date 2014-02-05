@@ -128,57 +128,37 @@ class Theme(ThemeParent):
         name = ACTION_NAMES.get(action, action)
         return _(name)
 
+    def _can_edit(self):
+        request = self.request
+        page = self.request.page
+
+        if 'edit' in request.cfg.actions_excluded or\
+                not page.isWritable() or\
+                not request.user.may.write(page.page_name):
+            return False
+        else:
+            return True
+
     def editmenu(self, d):
         request = self.request
         page = self.request.page
         _ = request.getText
-        guiworks = self.guiworks(page)
         editor = request.user.editor_default
-        editdisabled = False
 
         editurl = u"?action=edit"
 
-        if not 'edit' in request.cfg.actions_excluded:
-            if not (page.isWritable() and request.user.may.write(page.page_name)):
-                editdisabled = True
-            elif guiworks and editor == 'gui':
-                editurl += u"&editor=gui"
-        else:
-            editdisabled = True
+        if self.guiworks(page) and editor == 'gui':
+            editurl += u"&editor=gui"
 
-        links = []
-
-        if editdisabled:
+        if not self._can_edit():
             return u""
-
-        for action in EDIT_ACTIONS:
-            disabled = False
-
-            if action == 'revert':
-                if not request.user.may.revert(page.page_name) or not request.rev:
-                    disabled = True
-
-            if not disabled:
-                link = u'<li><a href="?action=%s%s">%s</a></li>'  \
-                       % (action, self.rev, self._actiontitle(action))
-                links.append(link)
 
         return u"""
     <ul class="nav navbar-nav editmenu">
         <li>
-            <a href="%s" title="%s">
-                <i class="glyphicon glyphicon-edit"></i>
-            </a>
+            <a href="%s">%s</a>
         </li>
-        <li>
-            <a class="dropdown-toggle" data-toggle="dropdown">
-                <i class="caret"></i>
-            </a>
-            <ul class="dropdown-menu">
-                %s
-            </ul>
-        </li>
-    </ul>""" % (editurl, _('Edit'), (u"\n" + u" "*10).join(links))
+    </ul>""" % (editurl, _('Edit'))
 
     def actionsmenu(self, d):
         request = self.request
@@ -195,10 +175,10 @@ class Theme(ThemeParent):
             'SubscribeUser',
             'N3Dump',
             'RdfInfer',
-            'Invite',
             'PackagePages',
             'Load',
             'Save',
+            'SyncPages',
         ]
 
         ignored += EDIT_ACTIONS + BREADCRUMB_ACTIONS
@@ -210,11 +190,25 @@ class Theme(ThemeParent):
         if self.subscribeLink(page):
             links.append(u'<li>%s</li>\n' % (self.subscribeLink(page)))
 
-        more = [item for item in self.available if item not in ignored]
-        more.sort()
+        actions = [item for item in self.available if item not in ignored]
+        actions.sort()
 
-        for action in more:
-            link = u'<li><a href="?action=%s%s">%s</a></li>' % (action, self.rev, self._actiontitle(action))
+        if self._can_edit():
+            for action in EDIT_ACTIONS:
+                if action == 'revert':
+                    if not request.user.may.revert(page.page_name) or not request.rev:
+                        continue
+
+                link = u'<li><a href="?action=%s%s">%s</a></li>' % \
+                   (action, self.rev, self._actiontitle(action))
+                links.append(link)
+
+            links.append(u'<li class="divider"></li>')
+
+
+        for action in actions:
+            link = u'<li><a href="?action=%s%s">%s</a></li>' % \
+                   (action, self.rev, self._actiontitle(action))
             links.append(link)
 
         return u"""
@@ -225,7 +219,7 @@ class Theme(ThemeParent):
             <ul class="dropdown-menu">
                 %s
             </ul>
-        </li>""" % (_("More Actions:"),  (u"\n" + u" "*10).join(links))
+        </li>""" % (_("More Actions"),  (u"\n" + u" "*10).join(links))
 
     def navibar(self, d, *items):
         """ Assemble the navibar
@@ -332,15 +326,15 @@ class Theme(ThemeParent):
                 out = u"""
         <ul class="nav navbar-nav navbar-right">
             <li>
-            <a class="dropdown-toggle" data-toggle="dropdown">
-              <i class="glyphicon glyphicon-user"></i></span>
+            <a class="dropdown-toggle" data-toggle="dropdown" title="%s">
+              <i class="glyphicon glyphicon-user"></i>
             </a>
             <ul class="dropdown-menu navbar-right">
                 <li class="nav-header"><a href="%s">%s</a></li>
                 %s
             </ul>
             </li>
-        </ul>""" % (linkpage, name, ("\n"+" "*16).join(urls))
+        </ul>""" % (_('User Preferences'), linkpage, name, ("\n"+" "*16).join(urls))
 
             return out
 
