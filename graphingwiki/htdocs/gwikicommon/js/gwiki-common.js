@@ -10,12 +10,9 @@ require(['config', 'mootools-more'], function(config) {
     });
 
     Element.Events.shiftclick = {
-        base: 'click', // the base event type
+        base: 'mousedown', // the base event type
         condition: function(event) {
-            if (event.shift) {
-                event.preventDefault();
-                return true;
-            }
+            return (event.shift == true);
         }
     };
 
