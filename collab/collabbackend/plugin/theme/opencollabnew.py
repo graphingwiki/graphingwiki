@@ -343,18 +343,20 @@ class Theme(ThemeParent):
         url = self.request.href(d['page'].page_name)
 
         return u"""
-  <form method="get" action="%s">
-    <div class="input-group navbar-form form-group navbar-right">
-                <input type="hidden" name="action" value="fullsearch">
-                <input type="hidden" name="context" value="180">
-          <input class="form-control search" placeholder="Search" name="value">
-            <span class="input-group-btn">
-                <button class="btn btn-primary" name="titlesearch" type="submit">
-                    <i class="glyphicon glyphicon-search"></i>
-                </button>
-            </span>
+  <form method="get" class="navbar-right navbar-form" action="%s">
+    <div class="form-group">
+      <div class="input-group">
+        <input type="hidden" name="action" value="fullsearch">
+        <input type="hidden" name="context" value="180">
+        <input type="text" class="form-control search" placeholder="Search" name="value">
+        <span class="input-group-btn">
+            <button class="btn btn-primary" name="titlesearch" type="submit">
+                <i class="glyphicon glyphicon-search"></i>
+            </button>
+        </span>
+      </div>
     </div>
-    </form>""" % (url)
+  </form>""" % (url)
 
     def header(self, d, **kw):
         """ Assemble wiki header

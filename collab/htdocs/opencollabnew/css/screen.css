@@ -39,11 +39,12 @@ body {
 @media (min-width: 767px) {
 
     .navbar .input-group {
-        width: 350px;
+        width: 300px;
+        margin-right: -15px;
     }
 
-    .navbar-right:last-child {
-        margin-right: 0;
+    .navbar .search {
+        width: 100%;
     }
 
     .navbar .editmenu {
