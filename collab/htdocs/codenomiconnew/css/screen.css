@@ -29,3 +29,13 @@
 #footer {
     background: #00365b;
 }
+
+/* color: #5cb346*/
+
+table tr.meta_header td,
+table tr.meta_header th,
+table tr.header td,
+table tr.header th {
+	background: #5cb346;
+	color: #fff;
+}
