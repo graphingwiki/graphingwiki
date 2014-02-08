@@ -53,7 +53,7 @@ def plot_box(texts):
         max_text_len = 268
     # Make the actual surface
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 max_text_len, box_height)
+                                 int(max_text_len), box_height)
 
     ctx = cairo.Context(surface)
     ctx.select_font_face(*CAIRO_BOLD)
@@ -82,16 +82,18 @@ def plot_box(texts):
         ctx.show_text(text)
     
     data = write_surface(surface)
-    
+    LAW
     return data
 
-def plot_tll(level='4', text='7'):
+def plot_tll(level='4', text='7', law=None):
     if not level in LEVELS:
         level = '4'
+    if not law:
+        law = LAW % (text)
 
     texts = [(LEVELS[level], CAIRO_BOLD),
              ('Suojaustaso %s' % (LEVELSROMAN[level]), CAIRO_BOLD),
-             (LAW % (text), CAIRO_NORMAL)]
+             (law, CAIRO_NORMAL)]
 
     return plot_box(texts)
 
@@ -115,18 +117,19 @@ def execute(macro, args):
     key = cache_key(request, (macro.name, arglist))
 
     if not cache_exists(request, key):
+        law = None
         if len(arglist) == 1:
             level = args[0]
         elif len(arglist):
             level = args[0]
-            level_text = ','.join(arglist[1:])
-            if len(level_text) > 11:
-                level_text = level_text[:11]
-            # html injection prevention
-            level_text = form_escape(level_text)
+            if arglist[1].isdigit():
+                level_text = ','.join(arglist[1:])
+            else:
+                level_text = ''
+                law = ','.join(arglist[1:])
 
         if not error:
-            data = plot_tll(level, level_text)
+            data = plot_tll(level, level_text, law)
         else:
             data = plot_error(request, key)
 
