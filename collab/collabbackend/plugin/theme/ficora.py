@@ -20,7 +20,7 @@ class Theme(basetheme.Theme):
         if not mylogo:
             mylogo = u'<div id="logo"><img src="' + \
                 self.cfg.url_prefix_static + \
-                '/ficora/img2/cert-fi.png" alt="CERT-FI"></div>'
+                '/ficora/img2/kyberturvallisuus_pos_rgb.png" alt="CERT-FI"></div>'
         return mylogo
 
     def header(self, d, **kw):
