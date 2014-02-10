@@ -523,10 +523,11 @@ define([
             });
 
             var controls = new Element('div.clearfix').adopt(
-                new Element('button', {
+                new Element('button.btn.btn-primary', {
                     text: 'Save',
                     styles: {
-                        'float': 'left'
+                        'float': 'left',
+                        'margin-top': '10px'
                     },
                     events: {
                         'click': this.send.bind(this)

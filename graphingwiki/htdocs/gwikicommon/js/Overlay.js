@@ -47,7 +47,7 @@ define([
                 'border-radius': '5px'
             }).inject(this.positioner);
 
-            var close = new Element('div.close-button[text=x]')
+            var close = new Element('button.close-button', {html: '&times;'})
                 .addEvent('click', this.cancel.bind(this))
                 .inject(this.container);
 

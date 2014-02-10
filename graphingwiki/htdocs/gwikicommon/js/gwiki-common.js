@@ -101,7 +101,11 @@ require(['config', 'mootools-more'], function(config) {
 
                                 var progress = new Element('div').inject(new Element('div.progress.hidden').inject(div));
 
-                                div.grab(new Element('input[type=button][value=Send]').addEvent('click',function(e) {
+                                div.grab(new Element('input',{
+                                    'type': 'button',
+                                    'value': 'Send',
+                                    'class': 'btn btn-primary'
+                                }).addEvent('click',function(e) {
                                     var xhr = new XMLHttpRequest();
                                     xhr.open('POST', '?action=ajaxUtils&util=uploadFile', true);
 
