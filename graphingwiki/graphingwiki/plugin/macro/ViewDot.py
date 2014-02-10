@@ -131,5 +131,5 @@ def execute(macro, args):
     if old_url:
         request.url = old_url
 
-    return '<a href="%s&view=View" id="footer">[%s]</a>\n</div>' % \
+    return '<a href="%s&view=View" class="graph-link">[%s]</a>\n</div>' % \
         (req_url, _('View'))

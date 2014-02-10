@@ -109,5 +109,5 @@ def execute(macro, args):
     if old_url:
         request.url = old_url
 
-    return u'<a href="%s" id="footer" class="graph-link">[%s]</a>\n' % \
+    return u'<a href="%s" class="graph-link">[%s]</a>\n' % \
            (req_url, _('examine')) + u'</div>'

@@ -1601,7 +1601,7 @@ class GraphShower(object):
 
         self.request.write(image_p(image_uri, _(text), mappi))
         self.request.write(
-            u'<a href="%s" id="footer" class="graph-link">[%s]</a>\n' % \
+            u'<a href="%s" class="graph-link">[%s]</a>\n' % \
                 (image_uri, _('download')) + u'</div>')
 
     def send_legend(self):
