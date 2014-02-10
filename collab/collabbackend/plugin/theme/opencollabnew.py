@@ -151,15 +151,14 @@ class Theme(ThemeParent):
         if self.guiworks(page) and editor == 'gui':
             editurl += u"&editor=gui"
 
+        li = '<li><a href="%s">%s</a></li>' %  (editurl, _('Edit'))
         if not self._can_edit():
-            return u""
+            li = ""
 
         return u"""
     <ul class="nav navbar-nav editmenu">
-        <li>
-            <a href="%s">%s</a>
-        </li>
-    </ul>""" % (editurl, _('Edit'))
+        %s
+    </ul>""" %li
 
     def actionsmenu(self, d):
         request = self.request
