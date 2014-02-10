@@ -179,6 +179,9 @@ class Theme(ThemeParent):
             'Load',
             'Save',
             'SyncPages',
+            'CheckTranslation',
+            'RecommendPage',
+            'SvgEditor',
         ]
 
         ignored += EDIT_ACTIONS + BREADCRUMB_ACTIONS
