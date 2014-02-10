@@ -133,8 +133,8 @@ class Theme(ThemeParent):
             self.stylesheets = (link,) + self.stylesheets
 
         actions = get_available_actions(request.cfg,
-                                               request.page,
-                                               request.user)
+                                        request.page,
+                                        request.user)
 
         excluded = self.EXCLUDED_ACTIONS + getattr(request.cfg, 'actions_excluded', [])
         included = getattr(request.cfg, 'actions_included', [])
@@ -158,8 +158,8 @@ class Theme(ThemeParent):
         request = self.request
         page = self.request.page
 
-        if 'edit' in request.cfg.actions_excluded or\
-                not page.isWritable() or\
+        if 'edit' in request.cfg.actions_excluded or \
+                not page.isWritable() or \
                 not request.user.may.write(page.page_name):
             return False
         else:
@@ -176,20 +176,19 @@ class Theme(ThemeParent):
         if self.guiworks(page) and editor == 'gui':
             editurl += u"&editor=gui"
 
-        li = '<li><a href="%s">%s</a></li>' %  (editurl, _('Edit'))
+        li = '<li><a href="%s">%s</a></li>' % (editurl, _('Edit'))
         if not self._can_edit():
             li = ""
 
         return u"""
     <ul class="nav navbar-nav editmenu">
         %s
-    </ul>""" %li
+    </ul>""" % li
 
     def actionsmenu(self, d):
         request = self.request
         page = self.request.page
         _ = request.getText
-
 
         ignored = EDIT_ACTIONS + self.BREADCRUMB_ACTIONS
 
@@ -210,11 +209,10 @@ class Theme(ThemeParent):
                         continue
 
                 link = u'<li><a href="?action=%s%s">%s</a></li>' % \
-                   (action, self.rev, self._actiontitle(action))
+                       (action, self.rev, self._actiontitle(action))
                 links.append(link)
 
             links.append(u'<li class="divider"></li>')
-
 
         for action in actions:
             link = u'<li><a href="?action=%s%s">%s</a></li>' % \
@@ -229,7 +227,7 @@ class Theme(ThemeParent):
             <ul class="dropdown-menu">
                 %s
             </ul>
-        </li>""" % (_("More Actions"),  (u"\n" + u" "*10).join(links))
+        </li>""" % (_("More Actions"), (u"\n" + u" " * 10).join(links))
 
     def navibar(self, d, *items):
         """ Assemble the navibar
@@ -239,8 +237,8 @@ class Theme(ThemeParent):
         @return: navibar html
         """
         request = self.request
-        found = {} # pages we found. prevent duplicates
-        links = [] # navibar items
+        found = {}  # pages we found. prevent duplicates
+        links = []  # navibar items
         item = u'<li class="%s">%s</li>'
         item_icon = u' title="%s"><i class="%s"></i><'
         current = d['page_name']
@@ -258,7 +256,7 @@ class Theme(ThemeParent):
             pagename, link = self.splitNavilink(text)
             if i == 0:
                 if text:
-                    link = link.replace(">%s<" % pagename, '>' + self.logo() +'<')
+                    link = link.replace(">%s<" % pagename, '>' + self.logo() + '<')
                     logolink = link
                 continue
             if pagename in self.GLYPHICONS:
@@ -285,7 +283,7 @@ class Theme(ThemeParent):
         #        items.append(item % (cls, link))
         #        found[pagename] = 1
 
-        return  u"""
+        return u"""
     <div class="navbar navbar-inverse navbar-fixed-top">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse"
@@ -304,13 +302,12 @@ class Theme(ThemeParent):
             </ul>
             %s
         </div>
-    </div>""" % (logolink,  u'\n'.join(links), u'\n'.join(items))
+    </div>""" % (logolink, u'\n'.join(links), u'\n'.join(items))
 
     def username(self, d):
         request = self.request
         _ = request.getText
 
-        userlinks = []
         # Add username/homepage link for registered users. We don't care
         # if it exists, the user can create it.
         if request.user.valid and request.user.name:
@@ -350,7 +347,7 @@ class Theme(ThemeParent):
                 %s
             </ul>
             </li>
-        </ul>""" % (_('User Preferences'), linkpage, name, ("\n"+" "*16).join(urls))
+        </ul>""" % (_('User Preferences'), linkpage, name, ("\n" + " " * 16).join(urls))
 
             return out
 
@@ -372,7 +369,7 @@ class Theme(ThemeParent):
         </span>
       </div>
     </div>
-  </form>""" % (url)
+  </form>""" % url
 
     def header(self, d, **kw):
         """ Assemble wiki header
@@ -383,7 +380,7 @@ class Theme(ThemeParent):
         """
         if self.request.rev:
             if self.request.page.current_rev() != self.request.rev:
-                self.rev = '&rev=%d' % (self.request.rev)
+                self.rev = '&amp;rev=%d' % self.request.rev
         else:
             self.rev = ''
 
@@ -463,7 +460,7 @@ class Theme(ThemeParent):
         for i, act in enumerate(actions):
             if act[0].isupper() and not act in self.available_actions:
                 continue
-            val += '\n      <li><a href="?action=%s%s">%s</a></li>' % (act, self.rev,  self._actiontitle(act))
+            val += '\n      <li><a href="?action=%s%s">%s</a></li>' % (act, self.rev, self._actiontitle(act))
 
         val += u"""
       <li class="toggleCommentsButton" style="display:none;">
@@ -472,7 +469,6 @@ class Theme(ThemeParent):
         %s
     </ul>
   </div>""" % (_('Comments'), self.actionsmenu(d))
-
 
         return val
 
@@ -490,7 +486,7 @@ class Theme(ThemeParent):
               _("Linked in pages")
         for l in li:
             val += '<li>%s</li>' % l
-        val += '</div>\n'
+        val += '</ul></div>\n'
         return val
 
     def footer_string(self):
@@ -515,9 +511,6 @@ class Theme(ThemeParent):
             # End of page
             self.endPage(),
 
-            u'<script src="' + self.cfg.url_prefix_static + \
-            u'/bootstrap/js/bootstrap.js"></script>',
-
             # Pre footer custom html (not recommended!)
             self.emit_custom_html(self.cfg.page_footer1),
 
@@ -528,10 +521,15 @@ class Theme(ThemeParent):
             u'<div id="footer">',
             self.pageinfo(page),
             self.footer_string(),
+            self.credits(d),
+            self.showversion(d, **keywords),
             u'</div>',
 
             # Post footer custom html
             self.emit_custom_html(self.cfg.page_footer2),
+
+            u'<script src="' + self.cfg.url_prefix_static +
+            u'/bootstrap/js/bootstrap.js" type="text/javascript"></script>',
         ]
         return u'\n'.join(html)
 
@@ -545,4 +543,3 @@ def execute(request):
     @return: Theme object
     """
     return Theme(request)
-
