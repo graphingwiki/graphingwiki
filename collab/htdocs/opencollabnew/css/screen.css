@@ -187,6 +187,10 @@ ul.dropdown-menu li {
     font-size: 14px;
 }
 
+.thumbnail {
+    border: none;
+}
+
 /* Hide locationline on editor*/
 #locationline {
     display: none;
