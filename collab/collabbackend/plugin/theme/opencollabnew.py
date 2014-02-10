@@ -20,14 +20,6 @@ from graphingwiki.plugin.macro.LinkedIn import nodes
 
 # FIXME: Caching of relevant portions
 
-BREADCRUMB_ACTIONS = [
-    'print',
-    'raw',
-    'info',
-    'AttachFile',
-    'Invite',
-]
-
 EDIT_ACTIONS = [
     'revert',
     'CopyPage',
@@ -85,6 +77,34 @@ class Theme(ThemeParent):
         'Collab': 'glyphicon glyphicon-comment',
     }
 
+    BREADCRUMB_ACTIONS = [
+        'print',
+        'raw',
+        'info',
+        'AttachFile',
+        'Invite',
+    ]
+
+    EXCLUDED_ACTIONS = [
+        'Despam',
+        'SpellCheck',
+        'LikePages',
+        'LocalSiteMap',
+        'RenderAsDocbook',
+        'MyPages',
+        'SubscribeUser',
+        'N3Dump',
+        'RdfInfer',
+        'PackagePages',
+        'Load',
+        'Save',
+        'SyncPages',
+        'CheckTranslation',
+        'RecommendPage',
+        'SvgEditor',
+        'SlideShow',
+    ]
+
     def __init__(self, request):
         ThemeParent.__init__(self, request)
         sheetsnames = ['stylesheets', 'stylesheets_print', 'stylesheets_projection']
@@ -112,9 +132,14 @@ class Theme(ThemeParent):
             link = (sheet[0], "../../bootstrap/css/" + sheet[1])
             self.stylesheets = (link,) + self.stylesheets
 
-        self.available = get_available_actions(request.cfg,
+        actions = get_available_actions(request.cfg,
                                                request.page,
                                                request.user)
+
+        excluded = self.EXCLUDED_ACTIONS + getattr(request.cfg, 'actions_excluded', [])
+        included = getattr(request.cfg, 'actions_included', [])
+        self.available_actions = [action for action in actions
+                                  if action in included or action not in excluded]
 
     def logo(self):
         mylogo = ThemeParent.logo(self)
@@ -165,26 +190,8 @@ class Theme(ThemeParent):
         page = self.request.page
         _ = request.getText
 
-        ignored = [
-            'Despam',
-            'SpellCheck',
-            'LikePages',
-            'LocalSiteMap',
-            'RenderAsDocbook',
-            'MyPages',
-            'SubscribeUser',
-            'N3Dump',
-            'RdfInfer',
-            'PackagePages',
-            'Load',
-            'Save',
-            'SyncPages',
-            'CheckTranslation',
-            'RecommendPage',
-            'SvgEditor',
-        ]
 
-        ignored += EDIT_ACTIONS + BREADCRUMB_ACTIONS
+        ignored = EDIT_ACTIONS + self.BREADCRUMB_ACTIONS
 
         links = []
 
@@ -193,7 +200,7 @@ class Theme(ThemeParent):
         if self.subscribeLink(page):
             links.append(u'<li>%s</li>\n' % (self.subscribeLink(page)))
 
-        actions = [item for item in self.available if item not in ignored]
+        actions = [item for item in self.available_actions if item not in ignored]
         actions.sort()
 
         if self._can_edit():
@@ -452,9 +459,9 @@ class Theme(ThemeParent):
 
         val += '\n    </ul>\n    <ul class="breadcrumb navbar-right">'
         actions = getattr(request.cfg, 'bootstrap_actions',
-                          BREADCRUMB_ACTIONS)
+                          self.BREADCRUMB_ACTIONS)
         for i, act in enumerate(actions):
-            if act[0].isupper() and not act in self.available:
+            if act[0].isupper() and not act in self.available_actions:
                 continue
             val += '\n      <li><a href="?action=%s%s">%s</a></li>' % (act, self.rev,  self._actiontitle(act))
 
