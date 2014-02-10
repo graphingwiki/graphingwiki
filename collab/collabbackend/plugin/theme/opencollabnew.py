@@ -82,6 +82,7 @@ class Theme(ThemeParent):
         'CollabList': 'glyphicon glyphicon-list',
         'edit': 'glyphicon glyphicon-edit',
         'RecentChanges': 'glyphicon glyphicon-time',
+        'Collab': 'glyphicon glyphicon-comment',
     }
 
     def __init__(self, request):
@@ -236,17 +237,25 @@ class Theme(ThemeParent):
         current = d['page_name']
 
         default_items = [
+            u'CollabList',
             getattr(request.cfg, 'page_front_page', u"FrontPage"),
             u'RecentChanges',
         ]
 
+        logolink = self.logo()
         nav_items = getattr(request.cfg, 'navi_bar_new', default_items)
 
-        for text in nav_items:
+        for i, text in enumerate(nav_items):
             pagename, link = self.splitNavilink(text)
+            if i == 0:
+                if text:
+                    link = link.replace(">%s<" % pagename, '>' + self.logo() +'<')
+                    logolink = link
+                continue
             if pagename in self.GLYPHICONS:
                 icon = item_icon % (pagename, self.GLYPHICONS[pagename])
                 link = link.replace(">%s<" % pagename, icon)
+
             if pagename == current:
                 cls = 'wikilink current'
             else:
@@ -277,9 +286,7 @@ class Theme(ThemeParent):
               <span class="icon-bar"></span>
             </button>
             <div id="logo" class="navbar-brand">
-                <a href="CollabList">
                     %s
-                </a>
             </div>
         </div>
         <div class="collapse navbar-collapse" id="main-nav">
@@ -288,7 +295,7 @@ class Theme(ThemeParent):
             </ul>
             %s
         </div>
-    </div>""" % (self.logo(),  u'\n'.join(links), u'\n'.join(items))
+    </div>""" % (logolink,  u'\n'.join(links), u'\n'.join(items))
 
     def username(self, d):
         request = self.request
