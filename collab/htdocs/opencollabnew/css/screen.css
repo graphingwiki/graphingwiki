@@ -12,17 +12,26 @@ body {
     min-height: 100vh;
 }
 
-#page, #metaformedit {
-    -webkit-flex: 1 auto;
-    flex: 1 auto;
-}
-
 #top-padding {
     /*
     Push body 50px down using #top-padding element that is present only
     when the static navbar is (not in editors).
- */
+    */
     margin-top: 51px;
+}
+
+h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+    /*
+    Hack for making anchors to jump over the navbar
+     (and 10px more while we are at it)
+     */
+    padding-top: 61px;
+    margin-top: -61px;
+}
+
+#page, #metaformedit {
+    -webkit-flex: 1 auto;
+    flex: 1 auto;
 }
 
 @media (max-width: 767px) {
