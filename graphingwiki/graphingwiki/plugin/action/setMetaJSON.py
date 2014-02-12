@@ -39,6 +39,7 @@ def doit(request, pagename, indata):
             raise ValueError(e)
 
 def execute(pagename, request):
+    _ = request.getText
     if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
