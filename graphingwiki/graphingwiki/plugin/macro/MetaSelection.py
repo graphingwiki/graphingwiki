@@ -43,7 +43,7 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
         if head:
             kw = dict()
             if rev:
-                kw['querystr'] = '?action=recall&rev=' + rev
+                kw['querystr'] = '?action=recall&amp;rev=' + rev
             out.write(macro.formatter.pagelink(1, data, **kw))
             out.write(macro.formatter.text(data))
             out.write(macro.formatter.pagelink(0))

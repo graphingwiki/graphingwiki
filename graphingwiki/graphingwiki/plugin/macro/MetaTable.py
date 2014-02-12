@@ -161,7 +161,7 @@ def t_cell(request, pagename, vals, head=0,
                 out.append(formatter.span(0))
             kw = dict()
             if rev:
-                kw['querystr'] = '?action=recall&rev=' + rev
+                kw['querystr'] = '?action=recall&amp;rev=' + rev
             linktext = data
             if linkoverride:
                 linktext = linkoverride
@@ -486,7 +486,7 @@ def do_macro(request, args, **kw):
     def action_link(action, linktext, args):
         req_url = request.script_root + "/" + \
             url_escape(request.page.page_name) + \
-            '?action=' + action + '&args=' + url_escape(args)
+            '?action=' + action + '&amp;args=' + url_escape(args)
         return '<a href="%s" class="meta_footer_link">[%s]</a>\n' % \
             (request.getQualifiedURL(req_url), _(linktext))
 

@@ -1181,7 +1181,7 @@ class GraphShower(object):
         request.write(u'<div class="showgraph-panel1">\n')
 	# PANEL 1 
         request.write(u'<a href="javascript:toggle(\'tab0\')">'+
-                      u'View & Include</a><br>\n')
+                      u'View &amp; Include</a><br>\n')
         request.write(u'<table border="1" id="tab0"><tr>\n')
 
         # outputformat
@@ -1914,7 +1914,7 @@ class GraphShower(object):
             # Make filter URL for edge
             filtstr = str()
             for lt in linktypes:
-                filtstr += '&filteredges=%s' % url_escape(lt)
+                filtstr += '&amp;filteredges=%s' % url_escape(lt)
             e.URL = url_reconstruct(self.request.environ) + filtstr
 
             # For display cosmetics, don't show _notype

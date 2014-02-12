@@ -75,9 +75,9 @@ def join_params(uri, args):
     for key in args:
         for val in args[key]:
             if key == 'attachment':
-                argstr = argstr + "&%s=%s" % (key, val)
+                argstr = argstr + "&amp;%s=%s" % (key, val)
             else:
-                argstr = argstr + "&%s=%s" % (url_quote(key), url_quote(val))
+                argstr = argstr + "&amp;%s=%s" % (url_quote(key), url_quote(val))
 
     return uri + "?" + argstr[1:]
 
@@ -131,5 +131,5 @@ def execute(macro, args):
     if old_url:
         request.url = old_url
 
-    return '<a href="%s&view=View" class="graph-link">[%s]</a>\n</div>' % \
+    return '<a href="%s&amp;view=View" class="graph-link">[%s]</a>\n</div>' % \
         (req_url, _('View'))

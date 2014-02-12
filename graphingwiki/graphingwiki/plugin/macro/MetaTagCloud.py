@@ -95,7 +95,7 @@ def execute(macro, args):
    html = []
 
    url = request.script_root + '/' + request.page.page_name + \
-         '?action=MetaSearch&q='
+         '?action=MetaSearch&amp;q='
 
    for tag in show:
       title = ""

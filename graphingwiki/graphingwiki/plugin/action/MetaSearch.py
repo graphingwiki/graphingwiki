@@ -48,7 +48,7 @@ def elemlist(request, formatter, elems, text):
     request.write(formatter.paragraph(0))
     request.write(formatter.bullet_list(1))
     for elem in sorted(elems):
-        kwelem = {'querystr': 'action=MetaSearch&q=' + elem,
+        kwelem = {'querystr': 'action=MetaSearch&amp;q=' + elem,
                  'allowed_attrs': ['title', 'href', 'class'],
                  'class': 'meta_search'}
         request.write(formatter.listitem(1))
