@@ -682,8 +682,13 @@ define([
 
                         }
                     }, this);
-
-                    this.push(vals);
+                    this.push(new Element('tr').adopt(
+                        vals.map(function(el){
+                            return new Element('td', {
+                                html: el.outerHTML? el.outerHTML: el
+                            })
+                        })
+                    ));
                 }, this);
             }, this);
 
