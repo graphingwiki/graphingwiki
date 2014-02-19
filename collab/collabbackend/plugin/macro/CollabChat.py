@@ -7,17 +7,47 @@ requirejs([
         "collabcommon/CollabChat/Chat",
     ], function(Chat) {
 
-    var request = new Request.JSON({
-        "url": "%(creds)s",
+    var request = new XMLHttpRequest();
 
-        "onSuccess": function(creds) {
-            new Chat("%(id)s", "%(bosh)s", "%(room)s", creds.jid, creds.password);
-        },
+    request.open("post", "%(creds)s", true);
 
-        "onFailure": function() {
-            alert("JSON request failed.");
+    request.onload = function(event) {
+        if (request.status !== 200) {
+            alert("CollabChat: Connecting to XMPP server failed: " + request.statusText);
+            return;
         }
-    });
+
+        if (request.response === null) {
+            alert("CollabChat: Request failed: Empty response from server. Request status: " + request.statusText);
+            return;
+        }
+
+        try {
+            creds = JSON.parse(request.responseText);
+        } catch(err) {
+            alert("CollabChat: Parsing JSON response failed: " + err.message);
+            return;
+        }
+
+        new Chat("%(id)s", "%(bosh)s", "%(room)s", creds.jid, creds.password);
+    }
+
+    request.onerror = function(event) {
+        alert("CollabChat: Request failed: " + request.statusText);
+        return;
+    }
+
+    request.ontimeout = function(event) {
+        alert("CollabChat: Connection timed out: " + request.statusText);
+        request.abort();
+    }
+
+    request.onabort = function(event) {
+        console.log("CollabChat: Connection cancelled: " + request.statusText);
+        return;
+    }
+
+    request.timeout = 30000;
 
     request.send();
 });
