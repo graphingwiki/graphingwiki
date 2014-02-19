@@ -128,12 +128,14 @@ a[data-toggle=dropdown] {
 
 
 .navbar {
-    border-radius: 0;
+    border: none;
 }
 
 .navbar-inverse {
-    background: #11a6de;
+    background: #212121;
+    background: rgba(0, 0, 0, 0.87);
     border-color: #1198cb;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .nav.navbar-nav > li > a, .navbar .navbar-brand a {
@@ -211,8 +213,8 @@ ul.dropdown-menu li {
     text-align: left;
     width: 100%;
     height: 100px;
-    background-color: #11a6de;
-	color: #efe;
+    background-color: #212121;
+    color: #9ABDD2;
 }
 
 #footer p {
@@ -222,7 +224,7 @@ ul.dropdown-menu li {
 }
 
 #footer a:link, #footer a:visited {
-	color: #efe;
+	color: #9ABDD2;
 }
 
 #header {
@@ -235,15 +237,15 @@ html {
     background-color: #fff;
 }
 
-a:link { color: #47f; text-decoration: none; }
+a:link { color: #397DDC; text-decoration: none; }
 a:link:hover, a:link:active { text-decoration: underline; color: green; }
-a:visited { text-decoration: none; color: #04a;}
+a:visited { text-decoration: none; color: #0049B0;}
 a:visited:hover { text-decoration: none; color: red; }
 a.nonexistent:link { color: #666 }
 a.nonexistent:hover { color: black; text-decoration: underline }
 
 a.download {
-    font-size: 120%; 
+    font-size: 120%;
     letter-spacing: 0.05em;
     font-weight: bold;
     background: #E7E7E7;
@@ -353,7 +355,7 @@ img .attachment {
 /* We use here dumb css1 ids because of IE suckiness */
 #editor-textarea, #editor-help {
     font-family: monospace;
-    border: 1px solid #8cacbb;  
+    border: 1px solid #8cacbb;
     color: black;
     background-color: white;
     padding: 3px;
@@ -450,7 +452,7 @@ table.navigation {
     float: right;
     margin: 2px;
 }
-        
+
 #openididentifier {
     background: url(../../common/openid.png) no-repeat;
     background-position: 0 50%;
