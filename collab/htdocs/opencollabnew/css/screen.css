@@ -133,7 +133,7 @@ a[data-toggle=dropdown] {
     background: #212121;
     background: rgba(0, 0, 0, 0.87);
     border-color: #1198cb;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
 }
 
 .nav.navbar-nav > li > a, .navbar .navbar-brand a {
