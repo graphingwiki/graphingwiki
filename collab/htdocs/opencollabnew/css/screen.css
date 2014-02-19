@@ -100,8 +100,6 @@ a[data-toggle=dropdown] {
 }
 
 .navbar .glyphicon {
-    /*vertical-align: middle;*/
-    top: 3px;
     font-size: 1.1em;
     line-height: 15px;
 }
@@ -143,6 +141,12 @@ a[data-toggle=dropdown] {
     padding-right: 5px;
     color: rgba(255, 255, 255, 0.90) !important;
     background: transparent !important;
+}
+
+.navbar .navbar-brand {
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    font-weight: 200;
 }
 
 .navbar-nav > li:hover > a,
