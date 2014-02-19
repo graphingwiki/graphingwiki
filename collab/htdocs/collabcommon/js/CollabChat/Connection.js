@@ -1,5 +1,5 @@
 define([
-    "collabcommon/common/Dict", 
+    "collabcommon/common/Dict",
     "collabcommon/common/EventSource",
     "collabcommon/common/Strophe",
 ], function(

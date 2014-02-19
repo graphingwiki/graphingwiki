@@ -1,9 +1,9 @@
 define([
-    "collabcommon/CollabChat/Connection", 
+    "collabcommon/CollabChat/Connection",
     "collabcommon/CollabChat/UI"
 ], function(
-    Connection, 
-    UI) 
+    Connection,
+    UI)
 {
     "use strict";
 
