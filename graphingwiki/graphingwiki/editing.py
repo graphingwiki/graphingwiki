@@ -701,7 +701,12 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               u"This is just filler\n test:: 1\nYeah",
     ...               dict(test=[u"1"]),
     ...               dict(test=[u"1", u"2"]))
-    u'This is just filler\n test:: 1\n test:: 2\nYeah\n'
+    u'This is just filler\n test:: 2\n test:: 1\nYeah\n'
+    >>> replace_metas(request,
+    ...               u"This is just filler\n test:: 2\n test:: 1\nYeah",
+    ...               dict(test=[u"1", u"2"]),
+    ...               dict(test=[u"1", u"2", u"3"]))
+    u'This is just filler\n test:: 3\n test:: 2\n test:: 1\nYeah\n'
 
     Handling the magical duality normal categories (CategoryBah) and
     meta style categories. If categories in metas are actually valid
@@ -1017,7 +1022,7 @@ def replace_metas(request, text, oldmeta, newmeta):
         for value in newmeta[key]:
             value = value.replace("\n", " ").strip()
             if value:
-                alltext += " %s:: %s\n" % (key, value)
+                alltext = " %s:: %s\n" % (key, value) + alltext
 
         newmeta[key] = list()
         return alltext
