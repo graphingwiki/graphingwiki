@@ -10,6 +10,11 @@ body {
     -webkit-flex-direction: column;
     flex-direction: column;
     min-height: 100vh;
+    line-height: 1.25;
+}
+
+p, ul, ol {
+    margin-bottom: 0.5em;
 }
 
 #top-padding {
@@ -25,7 +30,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
     Hack for making anchors to jump over the navbar
      (and 10px more while we are at it)
      */
-    padding-top: 61px;
+    padding-top: 71px;
     margin-top: -61px;
 }
 
