@@ -10,7 +10,7 @@ body {
     -webkit-flex-direction: column;
     flex-direction: column;
     min-height: 100vh;
-    line-height: 1.25;
+    line-height: 1.4;
 }
 
 p, ul, ol {

@@ -72,7 +72,7 @@ a.badinterwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
 a.interwiki:before {content: url(../img/moin-inter.png); margin: 0 0.2em;}
 
 li p {
-    margin: .25em 0;
+    margin: 0;
 }
 
 li.gap {
