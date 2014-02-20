@@ -4,21 +4,19 @@
 #content div.tlp-amber,
 #content div.tlp-green,
 #content div.tlp-white,
-#content div.stop, 
-#content div.thumbsup, 
+#content div.stop,
+#content div.thumbsup,
 #content div.thumbsdown {
     border: 1pt solid #E5E5E5;
     background-color: #F9F9FF;
     color: black;
-    
-    margin: 10pt 30pt 10pt 30pt;
-    background-repeat: no-repeat;
-    background-position: 8px 8px;
-    min-height: 64px; /*64=48+8+8 but doesn't work with IE*/
-    padding-left: 64px;
+
+    margin: 1em 10%;
+    min-height: 1em;
+    padding: 0.5em 1em;
     overflow: auto;
 }
- 
+
 #content div.tlp-red p,
 #content div.tlp-amber p,
 #content div.tlp-green p,
@@ -26,16 +24,27 @@
 #content div.stop p,
 #content div.thumbsup p,
 #content div.thumbsdown p {
-    margin-top: 8px; /*to align text with bg graphic*/
+    margin: 0;
 }
 
-#content div.stop { background-image: url("../img/admon-stop.png"); }
-#content div.thumbsup { background-image: url("../img/admon-thumbsup.png"); }
-#content div.thumbsdown { background-image: url("../img/admon-thumbsdown.png"); }
-#content div.tlp-red { background-image: url("../img/admon-tlp-red.png"); }
-#content div.tlp-amber { background-image: url("../img/admon-tlp-amber.png"); }
-#content div.tlp-green { background-image: url("../img/admon-tlp-green.png"); }
-#content div.tlp-white { background-image: url("../img/admon-tlp-white.png"); }
+#content div.stop:before { content: url("../img/admon-stop.png"); }
+#content div.thumbsup:before { content: url("../img/admon-thumbsup.png"); }
+#content div.thumbsdown:before { content: url("../img/admon-thumbsdown.png"); }
+#content div.tlp-red:before { content: url("../img/admon-tlp-red.png"); }
+#content div.tlp-amber:before { content: url("../img/admon-tlp-amber.png"); }
+#content div.tlp-green:before { content: url("../img/admon-tlp-green.png"); }
+#content div.tlp-white:before { content: url("../img/admon-tlp-white.png"); }
+
+#content div.stop:before,
+#content div.thumbsup:before,
+#content div.thumbsdown:before,
+#content div.tlp-red:before,
+#content div.tlp-amber:before,
+#content div.tlp-green:before,
+#content div.tlp-white:before {
+    float: left;
+    margin-right: 1em;
+}
 
 /* admonition end */
 
