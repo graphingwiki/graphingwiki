@@ -108,13 +108,18 @@ a[data-toggle=dropdown] {
     clear: both;
     margin: 0;
     padding: 5px 10px;
-    border-bottom: 1px solid #c9c9c9;
+    border-bottom: 1px solid #CED6E2;
     background: #E6EAF0;
     font-size: 8pt;
 }
 
 #message .inline {
     margin-left: 0;
+    vertical-align: middle;
+}
+
+#message .inline * {
+    vertical-align: baseline;
 }
 
 /* fixes actionlist table row offset */
