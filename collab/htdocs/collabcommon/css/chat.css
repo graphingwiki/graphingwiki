@@ -13,6 +13,9 @@
 #content .collab_chat div {
     padding: 0;
     margin: 0;
+
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 #content .collab_chat .chat-wrapper {
@@ -147,6 +150,12 @@
     padding: 4px 0.5em;
     word-wrap: break-word;
     white-space: pre-wrap;
+}
+
+#content .collab_chat .chat .output .message .room-message {
+    font-size: 0.8em;
+    color: #888;
+    padding-left: 1em;
 }
 
 #content .collab_chat .chat .output .message .time {
