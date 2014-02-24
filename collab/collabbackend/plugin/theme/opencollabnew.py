@@ -308,6 +308,8 @@ class Theme(ThemeParent):
         request = self.request
         _ = request.getText
 
+        urls = []
+
         # Add username/homepage link for registered users. We don't care
         # if it exists, the user can create it.
         if request.user.valid and request.user.name:
@@ -318,7 +320,8 @@ class Theme(ThemeParent):
                 linkpage = request.script_root + '/' + wikitail
 
             name = request.user.name
-            urls = []
+            urls.append('<li class="nav-header"><a href="%s">%s</a></li>'
+                    % (linkpage, name))
 
             plugins = wikiutil.getPlugins('userprefs', request.cfg)
             for sub in plugins:
@@ -333,23 +336,35 @@ class Theme(ThemeParent):
                                                  'sub': sub})
                 urls.append('<li><a href="%s">%s</a></li>' % (url, obj.title))
 
-            out = ""
+        if request.user.valid:
+            if request.user.auth_method in request.cfg.auth_can_logout:
+                query = {'action': 'logout', 'logout': 'logout'}
+                url = request.page.url(request, query)
+                urls.append('<li><a href="%s">%s</a></li>' % (url, 'Logout'))
+        elif request.cfg.auth_have_login:
+            query = {'action': 'login'}
+            # special direct-login link if the auth methods want no input
+            if request.cfg.auth_login_inputs == ['special_no_input']:
+                query['login'] = '1'
+            url = request.page.url(request, query)
+            urls.append('<li><a href="%s">%s</a></li>' % (url, 'Login'))
 
-            if urls:
-                out = u"""
+        out = ""
+
+        if urls:
+            out = u"""
         <ul class="nav navbar-nav navbar-right">
             <li>
             <a class="dropdown-toggle" data-toggle="dropdown" title="%s">
               <i class="glyphicon glyphicon-user"></i>
             </a>
             <ul class="dropdown-menu navbar-right">
-                <li class="nav-header"><a href="%s">%s</a></li>
                 %s
             </ul>
             </li>
-        </ul>""" % (_('User Preferences'), linkpage, name, ("\n" + " " * 16).join(urls))
+        </ul>""" % (_('User Preferences'), ("\n" + " " * 16).join(urls))
 
-            return out
+        return out
 
     def search_form(self, d):
         _ = self.request.getText
