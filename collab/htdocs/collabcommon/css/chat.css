@@ -93,6 +93,7 @@
     color: #EFEFEF;
     margin: 1px;
     padding: 1px 4px;
+    cursor: default;
 }
 
 #content .collab_chat .userlist .users .user:hover {
