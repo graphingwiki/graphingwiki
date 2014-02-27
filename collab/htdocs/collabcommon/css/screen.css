@@ -9,28 +9,25 @@ a.metaselection_link
 
 ul.metaselection_list {
 	overflow: auto;
-/*	background-color: #d0edff; */
 }
 
 li.metaselection_entry {
 	list-style: none;
-	float: left;
-	display: block;
+	display: inline-block;
 	margin: 10px;
-	padding: 5px 15px 5px 15px;
-	border: 2px solid #ccc;
-	-moz-border-radius-topleft: 1em;
-	min-height: 145px;
+	padding: 10px 20px;
+	border: 2px solid #dbdbdb;
+	min-height: 120px;
+    max-width: 213px;
 	text-align: center;
 	background-color: #fff;
+    vertical-align: top;
 }
 
 li.metaselection_entry:hover {
-	border: 2px solid #76c2ff;
-/*	border-right: 4px solid #76c2ff; */
-	border-bottom: 4px solid #76c2ff;
-	margin: 10px 10px 8px 10px;
-	padding: 6px 15px 4px 15px;
+    border-color: #76c2ff;
+    border-width: 4px;
+    margin: 8px;
 }
 
 li.metaselection_entry img.attachment {
@@ -43,7 +40,7 @@ li.metaselection_entry img.attachment {
 
 li.metaselection_entry a {
 	padding: 0;
-	margin: 5px;
+	margin: 0;
 }
 
 
