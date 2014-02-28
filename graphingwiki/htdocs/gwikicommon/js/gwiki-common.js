@@ -283,7 +283,9 @@ require(['config', 'mootools-more'], function(config) {
                     onSuccess: function(results, f) {
                         page = Object.keys(results)[0];
                         metas = results[page];
-                        formatted = f;
+                        formatted = Object.map(f, function(val) {
+                            return val.replace(/(&nbsp;|\s)/g, ' ');
+                        });
                         base.getElements('dd:nth-include(' + include_level + ')').each(function(dd) {
                             var dt = dd.getPrevious('dt'),
                                 index = getMetaIndex(dt),
@@ -294,7 +296,7 @@ require(['config', 'mootools-more'], function(config) {
                             el.getElements('span.anchor').destroy();
                             el.getElements('.waiting').destroy();
                             if (el.getElement('p')) el = el.getElement('p');
-                            value = el.get('html').trim();
+                            value = el.get('html').trim().replace(/(&nbsp;|\s)/g, ' ');
                             if (value !== "" && metas[key].indexOf(value) === -1) value = Object.keyOf(formatted, value);
 
                             //add empty string to meta-object to point empty meta values
