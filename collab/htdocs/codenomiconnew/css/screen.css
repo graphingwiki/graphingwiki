@@ -18,16 +18,13 @@
 }
 
 .navbar-inverse {
-    background: #00365b;
+    background: rgba(0, 32, 65, 0.87);
     border-color: #002041;
 }
 
 .btn-primary {
     background-color: #00a0de;
     border-color: #0094d3;
-}
-#footer {
-    background: #00365b;
 }
 
 /* color: #5cb346*/
