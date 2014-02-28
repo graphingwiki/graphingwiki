@@ -9,7 +9,7 @@
         baseUrl: baseUrl,
         paths: {
             gwikicommon: 'gwikicommon/js',
-            collabcommon: 'collabcommon/js',
+            collabcommon: 'collabcommon/js'
         },
 
         map: {
