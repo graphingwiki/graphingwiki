@@ -290,7 +290,9 @@ require(['config', 'mootools-more'], function(config) {
                                 key = getKey(dt),
                                 el = dd.clone(),
                                 value;
+
                             el.getElements('span.anchor').destroy();
+                            el.getElements('.waiting').destroy();
                             if (el.getElement('p')) el = el.getElement('p');
                             value = el.get('html').trim();
                             if (value !== "" && metas[key].indexOf(value) === -1) value = Object.keyOf(formatted, value);
@@ -337,7 +339,7 @@ require(['config', 'mootools-more'], function(config) {
         });
 
         var getKey = function(dt) {
-            return dt.get('text');
+            return dt.get('text').trim();
         };
 
         var DtKeyCache = null;
@@ -376,13 +378,13 @@ require(['config', 'mootools-more'], function(config) {
                 dd.getElements('.waiting').destroy();
             }
 
+            if (editor) editor.cancel();
+
             var keyEl = dd.getPrevious('dt');
             var key = getKey(keyEl);
             var index = getMetaIndex(keyEl);
 
             var oldValue = metas[key][index];
-
-            if (editor) editor.cancel();
 
             dd.addClass('edit');
             require(['gwikicommon/InlineEditor', 'gwikicommon/MetaRequest'], function(InlineEditor, Request) {
@@ -437,7 +439,7 @@ require(['config', 'mootools-more'], function(config) {
 
         var editKey = function(dt) {
             if (metas == null) {
-                editValue.delay(100, this, dt);
+                editKey.delay(100, this, dt);
                 if (dt.getElements('.waiting').length == 0)
                     dt.grab(new Element('span.waiting').set('html', '&nbsp;'), 'top');
                 return;
