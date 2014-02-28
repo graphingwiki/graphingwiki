@@ -1,4 +1,5 @@
 .datepicker_dashboard {
+  box-sizing: content-box;
 	position: absolute;
 	font-size: 10px;
 	font-family: "Lucida Grande", LucidaGrande, "Lucida Sans", Geneva, Verdana, sans-serif;
