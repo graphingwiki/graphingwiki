@@ -6,7 +6,6 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
 
 html {
     -ms-overflow-style: scrollbar;
-
 }
 
 body {
@@ -241,7 +240,7 @@ ul.dropdown-menu li {
     padding: 0 30px 0 15px;
 }
 
-#footer a:link, #footer a:visited {
+#credits a:link, #credits a:visited {
 	color: #92AACB;
 }
 
