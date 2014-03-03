@@ -217,7 +217,9 @@ require(['config', 'mootools-more'], function(config) {
         }
 
         // Inline Edit
-        if ($$('dl:not(.collab_list) dt').length && $$('dl:not(.collab_list) dd').length) {
+        if ($$('dl:not(.collab_list) dt').length
+            && $$('dl:not(.collab_list) dd').length
+            && !$$('#content > form#editor').length) {
             require(['gwikicommon/InlineEditor'], function() {
                 $$('.gwikiinclude').include(document.body).each(initInlineMetaEdit);
             });
