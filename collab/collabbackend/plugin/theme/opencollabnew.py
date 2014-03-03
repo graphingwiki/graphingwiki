@@ -2,10 +2,8 @@
 """
     MoinMoin - Bootstrap theme.
 
-    Based on the Ficora theme (c) by Pasi Kemi 
-    (Media Agency Bears: http://www.mediakarhut.fi)
-
-    Modifications by Juhani Eronen <exec@iki.fi> and Lauri Pokka
+    @copyright: 2014 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2013 by Juhani Eronen <exec@iki.fi>
 
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>
 """
@@ -174,7 +172,7 @@ class Theme(ThemeParent):
         editurl = u"?action=edit"
 
         if self.guiworks(page) and editor == 'gui':
-            editurl += u"&editor=gui"
+            editurl += u"&amp;editor=gui"
 
         li = '<li><a href="%s">%s</a></li>' % (editurl, _('Edit'))
         if not self._can_edit():
@@ -284,7 +282,7 @@ class Theme(ThemeParent):
         #        found[pagename] = 1
 
         return u"""
-    <div class="navbar navbar-inverse navbar-fixed-top">
+    <nav class="navbar navbar-inverse navbar-fixed-top">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse"
                     data-target="#main-nav">
@@ -302,7 +300,7 @@ class Theme(ThemeParent):
             </ul>
             %s
         </div>
-    </div>""" % (logolink, u'\n'.join(links), u'\n'.join(items))
+    </nav>""" % (logolink, u'\n'.join(links), u'\n'.join(items))
 
     def username(self, d):
         request = self.request
@@ -376,7 +374,7 @@ class Theme(ThemeParent):
       <div class="input-group">
         <input type="hidden" name="action" value="fullsearch">
         <input type="hidden" name="context" value="180">
-        <input type="text" class="form-control search" placeholder="Search" name="value">
+        <input type="text" autocomplete="off" class="form-control search" placeholder="Search" name="value">
         <span class="input-group-btn">
             <button class="btn btn-primary" name="titlesearch" type="submit">
                 <i class="glyphicon glyphicon-search"></i>
@@ -464,9 +462,10 @@ class Theme(ThemeParent):
                     items.append(link)
 
         val = """  <div class="navbar breadcrumb">
-    <ul class="breadcrumb navbar-left">"""
+    <ul class="breadcrumb navbar-left">
+        <li class="active">%s</li>""" % request.page.page_name
 
-        for item in items:
+        for item in items[1:]:
             val += '\n      <li>%s</li>' % item
 
         val += '\n    </ul>\n    <ul class="breadcrumb navbar-right">'
@@ -532,8 +531,8 @@ class Theme(ThemeParent):
             self.linkedin(),
 
             # Footer
-            self.breadcrumbs(d),
             u'<div id="footer">',
+            self.breadcrumbs(d),
             self.pageinfo(page),
             self.footer_string(),
             self.credits(d),
