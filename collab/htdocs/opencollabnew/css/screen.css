@@ -4,6 +4,11 @@ Copyright (c) 2001, 2002, 2003 by Juergen Hermann
             2013 by Lauri Pokka
 */
 
+html {
+    -ms-overflow-style: scrollbar;
+
+}
+
 body {
     display: -webkit-flex;
     display: flex;
