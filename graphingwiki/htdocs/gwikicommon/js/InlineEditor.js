@@ -3,22 +3,19 @@
  */
 define([
     './MetaSuggestions',
-    './DynamicTextarea',
     './MetaRequest',
     'config',
+    'gwikicommon/DatePicker',
     'mootools'
 ],
     function(
         MetaSuggestions,
-        DynamicTextarea,
         Request,
         config
         ) {
         "use strict";
 
-        var GwikiDynamicTextarea = DynamicTextarea.GwikiDynamicTextarea,
-            DynamicTextarea = DynamicTextarea.DynamicTextarea,
-            dateformat = config.dateformat;
+        var dateformat = config.dateformat;
 
         return new Class({
             Implements: [Events, Options],
@@ -33,7 +30,7 @@ define([
                 autoFormat: true,
                 field: null,
                 width: 20,
-                size: 'compact'
+                compact: false
             },
 
             _keyProperties: {
@@ -65,8 +62,6 @@ define([
                 this.element.addClass('edit');
 
                 this.element.empty();
-
-                if (this.options.inline) this.element.addClass('inline nowrap');
 
                 var oldVal = this.options.oldValue;
                 var type = this._keyProperties.hint;
@@ -104,49 +99,73 @@ define([
                         }
                     }).get(this.options.key, true);
                 } else {
-                    this.input = new Element('textarea', {
-                        text: oldVal,
-                        cols: this.options.width
+                    this.input = new Element('div[contenteditable]', {
+                        text: oldVal
                     }).inject(this.element);
 
-                    this.input.addEvent('keydown', function(e) {
-                        if (e && e.key == "esc") this.cancel();
-                    }.bind(this));
-
-                    var field = this.options.size == "compact" ? DynamicTextarea : GwikiDynamicTextarea;
-                    new field(this.input).addEvent('resize', function() {
-                        this.input.fireEvent('resize');
-                    }.bind(this));
-
-                    if (this.options.key) {
+                    if (false && this.options.key) {
                         this.suggestions = new MetaSuggestions(this.input, {
                             key: this.options.key
                         });
                     }
 
-                    this.input.select();
+                    if (this.input.select) {
+                        this.input.select();
+                    }else{
+                        var selection = window.getSelection();
+                        selection.removeAllRanges();
+                        var range = document.createRange();
+                        range.selectNodeContents(this.input);
+                        selection.addRange(range);
+                    }
                 }
 
+                this.input.addEvent('keydown', function(e) {
+                    var special = e.shift || e.control || e.meta;
 
-                this.element.adopt(
-                    new Element('input', {
-                        type: 'button',
-                        value: 'save',
-                        events: {
-                            click: this.save.bind(this)
+                    if (e && e.key == "enter" && !special) {
+                        this.save();
+                    } else if (e && e.key == "esc") {
+                        this.cancel();
+                    } else if (!special && ["up", "down", "left", "right"].contains(e.key)) {
+                        if (!window.getSelection().isCollapsed) {
+                            this.input.blur();
+                            this.input.focus();
+                            if (["down", "right"].contains(e.key)) {
+                                window.getSelection().collapse(this.input, 1);
+                            } else {
+                                window.getSelection().collapse(this.input, 0);
+                            }
                         }
-                    }),
-                    new Element('input', {
-                        type: 'button',
-                        value: 'cancel',
-                        events: {
-                            click: this.cancel.bind(this)
-                        }
-                    }));
+                    }
+                }.bind(this));
+
+                this.input.focus();
+
+
+                if (!this.options.compact) {
+                    var btngroup = new Element('div').adopt(
+                        new Element('button.btn.btn-primary.btn-sm', {
+                            type: 'button',
+                            text: 'save',
+                            events: {
+                                click: this.save.bind(this)
+                            }
+                        }),
+                        new Element('button.btn.btn-default.btn-sm', {
+                            type: 'button',
+                            text: 'cancel',
+                            events: {
+                                click: this.cancel.bind(this)
+                            }
+                        }));
+
+                    this.element.grab(btngroup);
+                }
             },
 
             save: function() {
-                this.value = this.input.get('value');
+                this.value = this.input.get('tag') == "div" ? this.input.get('text'): this.input.get('value');
                 if (this.value !== this.options.oldValue) {
                     this.fireEvent('save', this.value);
                 } else {

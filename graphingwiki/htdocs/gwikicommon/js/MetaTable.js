@@ -240,6 +240,7 @@ define([
                 autoFormat: false,
                 oldValue: oldValue,
                 key: key,
+                compact: true,
 
                 onSave: function(value) {
                     if (!metas[page][key]) metas[page][key] = [""];
@@ -300,6 +301,7 @@ define([
             var editor = this.inlineEditor = new InlineEditor(target, {
                 autoFormat: false,
                 oldValue: oldKey,
+                compact: true,
                 onSave: function(newKey) {
                     var oldData = Object.map(Object.clone(this.metas), function(metas, page) {
                         var m = Object.subset(metas, [oldKey, newKey]);
@@ -682,6 +684,7 @@ define([
 
                         }
                     }, this);
+
                     this.push(new Element('tr').adopt(
                         vals.map(function(el){
                             return new Element('td', {
