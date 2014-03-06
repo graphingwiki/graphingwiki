@@ -7,6 +7,8 @@ import urlparse
 import xmlrpclib
 import urllib
 import base64
+import socket
+import errno
 from encodings import idna
 
 import httplib
@@ -121,25 +123,32 @@ class Wiki(object):
 
         return other[0]
 
-    def _request(self, name, *args):
-        body = self._dumps(name, args)
-        self.connection.request("POST", self.path, body, self.headers)
-
-        try:
-            response = self.connection.getresponse()
-        except httplib.BadStatusLine:
-            self.connection.close()
-            self.connection.connect()
-            self.connection.request("POST", self.path, body, self.headers)
-            response = self.connection.getresponse()
-
+    def _read_response(self, response):
         data = response.read()
         if response.status == 401:
             raise HttpAuthenticationFailed(response.reason)
         elif response.status != 200:
             raise WikiFailure(response.reason)
-
         return self._loads(data)
+
+    def _request(self, name, *args):
+        body = self._dumps(name, args)
+        try:
+            self.connection.request("POST", self.path, body, self.headers)
+            response = self.connection.getresponse()
+        except socket.error as error:
+            if error.args[0] != errno.EPIPE:
+                raise
+        except httplib.BadStatusLine:
+            pass
+        else:
+            return self._read_response(response)
+
+        self.connection.close()
+        self.connection.connect()
+        self.connection.request("POST", self.path, body, self.headers)
+        response = self.connection.getresponse()
+        return self._read_response(response)
 
     def request(self, name, *args):
         try:
