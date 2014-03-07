@@ -8,6 +8,19 @@ require(['mootools'], function() {
     "use strict";
 
     var body = document.id(document.body);
+
+    body.addEvent('click:relay(.searchmenu a)', function(e){
+        e.preventDefault();
+        var value = this.get('data-value');
+        var parent = this.getParent('form');
+        parent.getElements('.active').removeClass('active');
+        this.getParent('li').addClass('active');
+
+        var btn = parent.getElement('[type=submit]');
+        btn.set('name', value + 'search');
+        return false;
+    });
+
     body.addEvent('click:relay([data-toggle=dropdown])', function(e) {
         e.preventDefault();
         var parent = this.getParent();

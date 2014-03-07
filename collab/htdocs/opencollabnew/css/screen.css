@@ -96,7 +96,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
     }
 }
 
-a[data-toggle=dropdown] {
+[data-toggle=dropdown] {
     cursor: pointer;
 }
 
@@ -170,18 +170,20 @@ a[data-toggle=dropdown] {
     text-decoration: none;
 }
 
-ul.dropdown-menu li {
+.navbar .searchmenu {
+    border-radius: 0;
     margin: 0;
+    padding: 0;
 }
 
-.dropdown-menu > li > input {
-    display: block;
-    padding: 3px 20px;
-    clear: both;
-    font-weight: normal;
-    line-height: 20px;
-    color: #333333;
-    white-space: nowrap;
+.navbar .searchmenu-toggle {
+    position: absolute;
+    margin-left: -25px;
+    padding: 5px;
+}
+
+ul.dropdown-menu li {
+    margin: 0;
 }
 
 .dropdown-menu > li:hover,

@@ -375,11 +375,19 @@ class Theme(ThemeParent):
         <input type="hidden" name="action" value="fullsearch">
         <input type="hidden" name="context" value="180">
         <input type="text" autocomplete="off" class="form-control search" placeholder="Search" name="value">
-        <span class="input-group-btn">
+        <span class="dropdown-toggle searchmenu-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </span>
+        <ul class="dropdown-menu searchmenu">
+            <li class="active"><a href="#" data-value="title">Title Search</a></li>
+            <li class=""><a href="#" data-value="full">Fulltext Search</a></li>
+            <li class=""><a href="#" data-value="meta">Meta Search</a></li>
+        </ul>
+        <div class="input-group-btn">
             <button class="btn btn-primary" name="titlesearch" type="submit">
                 <i class="glyphicon glyphicon-search"></i>
             </button>
-        </span>
+        </div>
       </div>
     </div>
   </form>""" % url
