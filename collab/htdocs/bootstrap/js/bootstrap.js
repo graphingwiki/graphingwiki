@@ -30,20 +30,22 @@ require(['mootools'], function() {
 
             parent.store('show', show)
                 .removeClass('collapse')
-                .addClass('collapsing')
-                .addClass('in');
+                .addClass('collapsing');
 
             if (show) {
                 parent.setStyle.delay(0, parent, ['height', parent.retrieve('height')]);
             } else {
-                parent.setStyle('height', 'auto');
+                parent.setStyle('height', '0');
+                parent.removeClass('in');
             }
 
             var done = function() {
                 parent.removeClass('collapsing');
                 if (!parent.retrieve('show')) {
-                    parent.removeClass('in');
                     parent.addClass('collapse');
+                    parent.setStyle('height', '');
+                }else{
+                    parent.addClass('in');
                 }
             };
 
