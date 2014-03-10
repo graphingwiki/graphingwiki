@@ -15,7 +15,8 @@ class Theme(ThemeParent):
             footer_string = self.cfg.footer_string
         else:
             footer_string = \
-            u'  <p class="footertext">Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki'+ \
+                u'  <p class="footertext">Viestintävirasto<br>' + \
+                'Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki'+ \
                 '<br>Tel. +358 (0)295 390 230</p>'
 
         return footer_string
