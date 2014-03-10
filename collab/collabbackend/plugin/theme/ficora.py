@@ -75,8 +75,8 @@ class Theme(basetheme.Theme):
             footer_string = self.cfg.footer_string
         else:
             footer_string = u'<p>Viestintävirasto<br>' + \
-                'Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki' + \
-                '<br>Puh. 0295 390 230</p>'
+                u'Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki' + \
+                u'<br>Puh. 0295 390 230</p>'
 
         page = d['page']
         html = [

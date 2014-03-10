@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from MoinMoin.theme import modernized as basetheme
 from opencollabnew import Theme as ThemeParent
 
@@ -16,8 +18,8 @@ class Theme(ThemeParent):
         else:
             footer_string = \
                 u'  <p class="footertext">Viestintävirasto<br>' + \
-                'Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki'+ \
-                '<br>Tel. +358 (0)295 390 230</p>'
+                u'Kyberturvallisuuskeskus<br>PL 313<br>00181 Helsinki'+ \
+                u'<br>Tel. +358 (0)295 390 230</p>'
 
         return footer_string
 
