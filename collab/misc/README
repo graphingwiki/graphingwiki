@@ -2,8 +2,9 @@ Building patched ejabberd 2.1.13 in RHEL/CentOS 6
 
 * Install build dependencies:
 
-  yum install autoconf automake expat-devel pam-devel \
-      fedora-usermgmt-devel openssl-devel redhat-rpm-config
+  yum install autoconf automake erlang expat-devel \
+      fedora-usermgmt-devel gcc openssl-devel pam-devel patch \
+      redhat-rpm-config rpm-build yum-utils
 
 * Download and install the source RPM for ejabberd:
 
