@@ -37,6 +37,14 @@ from graphingwiki.util import category_regex, template_regex, encode
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
 
+# Standard Python operators
+OPERATORS = {'<': operator.lt, 
+             '<=': operator.le, 
+             '==': operator.eq,
+             '!=': operator.ne, 
+             '>=': operator.ge, 
+             '>': operator.gt}
+
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
 
@@ -1247,31 +1255,7 @@ def verify_coordinates(coords):
             except:
                 pass
 
-def metatable_parseargs(request, args,
-                        get_all_keys=False,
-                        get_all_pages=False,
-                        checkAccess=True,
-                        include_unsaved=False):
-    if not args:
-        # If called from a macro such as MetaTable,
-        # default to getting the current page
-        req_page = request.page
-        if get_all_pages or req_page is None or req_page.page_name is None:
-            args = ""
-        else:
-            args = req_page.page_name
-
-    # Category, Template matching regexps
-    cat_re = category_regex(request)
-    temp_re = template_regex(request)
-
-    # Standard Python operators
-    operators = {'<': operator.lt, 
-                 '<=': operator.le, 
-                 '==': operator.eq,
-                 '!=': operator.ne, 
-                 '>=': operator.ge, 
-                 '>': operator.gt}
+def _metatable_parseargs(request, args, cat_re, temp_re):
 
     # Arg placeholders
     argset = set([])
@@ -1319,7 +1303,7 @@ def metatable_parseargs(request, args,
 
         op_match = False
         # Check for Python operator comparisons
-        for op in operators:
+        for op in OPERATORS:
             if op in arg:
                 data = arg.rsplit(op)
                 
@@ -1442,6 +1426,32 @@ def metatable_parseargs(request, args,
             if page_re.match(page):
                 argset.add(page)
 
+    return (argset, pageargs, keyspec, excluded_keys, orderspec, 
+            limitregexps, limitops, indirection_keys, styles)
+
+def metatable_parseargs(request, args,
+                        get_all_keys=False,
+                        get_all_pages=False,
+                        checkAccess=True,
+                        include_unsaved=False,
+                        parsefunc=_metatable_parseargs):
+    if not args:
+        # If called from a macro such as MetaTable,
+        # default to getting the current page
+        req_page = request.page
+        if get_all_pages or req_page is None or req_page.page_name is None:
+            args = ""
+        else:
+            args = req_page.page_name
+
+    # Category, Template matching regexps
+    cat_re = category_regex(request)
+    temp_re = template_regex(request)
+
+    argset, pageargs, keyspec, excluded_keys, orderspec, \
+        limitregexps, limitops, indirection_keys, styles = \
+        parsefunc(request, args, cat_re, temp_re)
+
     # If there were no page args, default to all pages
     if not pageargs and not argset:
         pages = request.graphdata.pagenames()
@@ -1522,7 +1532,7 @@ def metatable_parseargs(request, args,
                     for value in values:
                         value, comp = ordervalue(value), ordervalue(comp)
 
-                        if operators[op](value, comp):
+                        if OPERATORS[op](value, comp):
                             clear = True
                             break
 
