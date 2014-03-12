@@ -59,6 +59,8 @@ dl_proto_re = re.compile('(^\s+(.+?)::\s*$\n?)', re.M)
 # Regex for adding new
 dl_add = '^(\\s+?%s::\\s.+?)$'
 
+user_re = re.compile('(^\s+\*\s*(.+)$\n?)', re.M)
+
 default_meta_before = '^----'
 
 # These are the match types for links that really should be noted
@@ -288,6 +290,67 @@ def edit_categories(request, savetext, action, catlist):
         lines.append(" ".join(categories))
 
     return u"\n".join(lines) + u"\n"
+
+def edit_group(request, pagetext, action, userlist):
+    """
+    >>> request = _doctest_request()
+    >>> s = u"= @PAGE@ =\\n" + \
+        u" * [[user2]]\\n" + \
+        u" * [[user1]]\\n"
+
+    Unknown functions not recognized
+    >>> edit_group(request, s, 'djdj', ['user3'])
+    u'= @PAGE@ =\\n * [[user2]]\\n * [[user1]]\\n'
+
+    Set needs even-sized lists
+    >>> edit_group(request, s, 'set', ['user2'])
+    u'= @PAGE@ =\\n * [[user2]]\\n * [[user1]]\\n'
+
+    Basic functions
+    >>> edit_group(request, s, 'add', ['user3'])
+    u'= @PAGE@ =\\n * [[user3]]\\n * [[user2]]\\n * [[user1]]\\n'
+    >>> edit_group(request, s, 'del', ['user2'])
+    u'= @PAGE@ =\\n * [[user1]]\\n'
+    >>> edit_group(request, s, 'set', ['user2', 'user3'])
+    u'= @PAGE@ =\\n * [[user3]]\\n * [[user1]]\\n'
+    >>> edit_group(request, s, 'set', ['user1', 'user3'])
+    u'= @PAGE@ =\\n * [[user2]]\\n * [[user3]]\\n'
+    >>> edit_group(request, s, 'set', ['user1', 'user3', 'user2', 'user4'])
+    u'= @PAGE@ =\\n * [[user4]]\\n * [[user3]]\\n'
+
+    Double users might cause problems
+    >>> s += u" * [[user1]]\\n"
+    >>> edit_group(request, s, 'del', ['user1'])
+    u'= @PAGE@ =\\n * [[user2]]\\n'
+    >>> edit_group(request, s, 'set', ['user1', 'user3'])
+    u'= @PAGE@ =\\n * [[user2]]\\n * [[user3]]\\n * [[user3]]\\n'
+
+    >>> s2 = edit_group(request, s, 'add', ['user3'])
+    >>> s2 = edit_group(request, s, 'add', ['user3'])
+    >>> s2 = edit_group(request, s, 'set', ['user1', 'user2', 'user2', 'user1',
+    ...                 'user3', 'user4'])
+    >>> s2 = edit_group(request, s, 'set', ['user2', 'user1', 'user1', 'user2',
+    ...                 'user3', 'user3'])
+    >>> edit_group(request, s, 'del', ['user3']) == s
+    True
+    """
+    if action == "add":
+        for user in userlist:
+            pagetext = user_re.subn(r' * [[%s]]\n\1' % user, pagetext, 1)[0]
+    elif action == "set":
+        if not len(userlist) % 2:
+            for user1, user2 in zip(userlist[::2], userlist[1::2]):
+                pagetext = re.sub('(^\s+\*\s*(\[\[%s\]\])$\n?)' % user1, 
+                                  r' * [[%s]]\n' % user2,
+                                  pagetext, flags=re.M)
+    elif action == "del":
+        for user in userlist:
+            pagetext = re.sub('(^\s+\*\s*(\[\[%s\]\])$\n?)' % user, '',
+                              pagetext, flags=re.M)
+    else:
+        return pagetext
+
+    return pagetext
 
 def link_to_attachment(globaldata, target):
     if isinstance(target, unicode):
