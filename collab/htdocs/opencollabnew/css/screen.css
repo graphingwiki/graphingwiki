@@ -350,10 +350,15 @@ a.download {
 }
 
 #page #content {
-	clear: both;
 	margin-top: 10px;
 	margin-right: 20px;
 	padding: 0;
+
+    /*
+     * Overflow: hidden forces floats inside the element to
+     * be contained within the borders.
+     */
+    overflow: hidden;
 }
 
 #content div {
