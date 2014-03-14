@@ -353,11 +353,14 @@ a.download {
 	margin-top: 10px;
 	margin-right: 20px;
 	padding: 0;
+}
 
+#page #content,
+.gwikiinclude > div {
     /*
-     * Overflow: hidden forces floats inside the element to
-     * be contained within the borders.
-     */
+    * Overflow: hidden forces floats inside the element to
+    * be contained within the borders.
+    */
     overflow: hidden;
 }
 
