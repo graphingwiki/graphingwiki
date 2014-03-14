@@ -472,7 +472,7 @@ class Theme(ThemeParent):
 
         val = """  <div class="navbar breadcrumb">
     <ul class="breadcrumb navbar-left">
-        <li class="active">%s</li>""" % request.page.page_name
+        <li class="active">%s</li>""" % items[0]
 
         for item in items[1:]:
             val += '\n      <li>%s</li>' % item
