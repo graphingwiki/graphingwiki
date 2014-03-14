@@ -5,12 +5,10 @@ from opencollabnew import Theme as ThemeParent
 
 NAME = "ficoranew"
 
+
 class Theme(ThemeParent):
     name = NAME
-
-    def __init__(self, request):
-        ThemeParent.__init__(self, request)
-        self.stylesheets = self.stylesheets + (('screen', 'screen'),)
+    css_files = ['screen']
 
     def footer_string(self):
         if hasattr(self.cfg, 'footer_string'):
