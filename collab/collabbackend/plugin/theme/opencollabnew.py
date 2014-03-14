@@ -183,7 +183,7 @@ class Theme(ThemeParent):
         %s
     </ul>""" % li
 
-    def actionsmenu(self, d):
+    def actionsmenu(self, d, is_footer):
         request = self.request
         page = self.request.page
         _ = request.getText
@@ -217,15 +217,19 @@ class Theme(ThemeParent):
                    (action, self.rev, self._actiontitle(action))
             links.append(link)
 
+        dropup = ""
+        if is_footer:
+            dropup = "dropup"
+
         return u"""
-        <li>
+        <li class="%s">
             <a title="%s" class="dropdown-toggle" data-toggle="dropdown">
                 <i class="glyphicon glyphicon-wrench"></i>
             </a>
             <ul class="dropdown-menu">
                 %s
             </ul>
-        </li>""" % (_("More Actions"), (u"\n" + u" " * 10).join(links))
+        </li>""" % (dropup, _("More Actions"), (u"\n" + u" " * 10).join(links))
 
     def navibar(self, d, *items):
         """ Assemble the navibar
@@ -439,7 +443,7 @@ class Theme(ThemeParent):
         ]
         return u'\n'.join(html)
 
-    def breadcrumbs(self, d):
+    def breadcrumbs(self, d, is_footer=False):
         request = self.request
         _ = request.getText
         user = request.user
@@ -491,7 +495,7 @@ class Theme(ThemeParent):
       </li>
         %s
     </ul>
-  </div>""" % (_('Comments'), self.actionsmenu(d))
+  </div>""" % (_('Comments'), self.actionsmenu(d, is_footer))
 
         return val
 
@@ -541,7 +545,7 @@ class Theme(ThemeParent):
 
             # Footer
             u'<div id="footer">',
-            self.breadcrumbs(d),
+            self.breadcrumbs(d, True),
             self.pageinfo(page),
             self.footer_string(),
             self.credits(d),
