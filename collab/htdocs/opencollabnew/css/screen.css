@@ -355,13 +355,18 @@ a.download {
 	padding: 0;
 }
 
-#page #content,
-.gwikiinclude > div {
-    /*
-    * Overflow: hidden forces floats inside the element to
-    * be contained within the borders.
-    */
-    overflow: hidden;
+/* Clear fix for floats inside #content and Include */
+.gwikiinclude > div:before,
+#page #content:before,
+.gwikiinclude > div:after,
+#page #content:after {
+    content: "";
+    display: table;
+}
+
+.gwikiinclude > div:after,
+#page #content:after {
+    clear: both;
 }
 
 #content div {
