@@ -8,6 +8,10 @@
     font-size: 16px;
 }
 
+.navbar .glyphicon {
+    top: 3px;
+}
+
 #logo {
     padding: 5px 10px;
     margin: 3px 10px;
