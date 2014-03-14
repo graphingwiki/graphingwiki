@@ -475,11 +475,12 @@ class Theme(ThemeParent):
                     items.append(link)
 
         val = """  <div class="navbar breadcrumb">
-    <ul class="breadcrumb navbar-left">
-        <li class="active">%s</li>""" % items[0]
-
-        for item in items[1:]:
-            val += '\n      <li>%s</li>' % item
+    <ul class="breadcrumb navbar-left">"""
+        for i, item in enumerate(items):
+            if i == 0:
+                val += '\n      <li class="active">%s</li>' % item
+            else:
+                val += '\n      <li>%s</li>' % item
 
         val += '\n    </ul>\n    <ul class="breadcrumb navbar-right">'
         actions = getattr(request.cfg, 'bootstrap_actions',
