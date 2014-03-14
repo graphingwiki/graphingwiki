@@ -242,6 +242,7 @@ class Theme(ThemeParent):
         current = d['page_name']
 
         default_items = [
+            u'',
             u'CollabList',
             getattr(request.cfg, 'page_front_page', u"FrontPage"),
             u'RecentChanges',
