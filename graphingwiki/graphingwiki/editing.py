@@ -59,7 +59,7 @@ dl_proto_re = re.compile('(^\s+(.+?)::\s*$\n?)', re.M)
 # Regex for adding new
 dl_add = '^(\\s+?%s::\\s.+?)$'
 
-user_re = re.compile('(^\s+\*\s*(.+)$\n?)', re.M)
+user_re = re.compile('(^ +\*\s*(.+)$\n?)', re.M)
 
 default_meta_before = '^----'
 
@@ -333,6 +333,12 @@ def edit_group(request, pagetext, action, userlist):
     ...                 'user3', 'user3'])
     >>> edit_group(request, s, 'del', ['user3']) == s
     True
+
+    >>> s = u"#acl user:read,write,delete,revert,admin All:read\\n\\n" + \
+        u" * [[user2]]\\n" + \
+        u" * [[user1]]\\n"
+    >>> edit_group(request, s, 'add', ['user3'])
+    u'#acl user:read,write,delete,revert,admin All:read\\n\\n * [[user3]]\\n * [[user2]]\\n * [[user1]]\\n'
     """
     if action == "add":
         for user in userlist:
