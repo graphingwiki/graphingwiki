@@ -64,12 +64,12 @@ def execute(pagename, request):
             return
 
         if not page:
-            msg =  "Page name not defined!"
+            msg = "Page name not defined!"
             json.dump(dict(status="error", msg=msg), request)
             return
 
         if not request.user.may.write(page):
-            msg =  "You are not allowed to edit this page"
+            msg = "You are not allowed to edit this page"
             json.dump(dict(status="error", msg=msg), request)
             return
 
@@ -80,7 +80,7 @@ def execute(pagename, request):
             return
 
         editor = PageEditor(request, page)
-        msg = editor.saveText(content,  p.get_real_rev())
+        msg = editor.saveText(content, p.get_real_rev())
         json.dump(dict(status="ok", msg=msg), request)
 
 
@@ -90,6 +90,12 @@ def execute(pagename, request):
         return
 
     elif util == "uploadFile":
+        if not request.user.may.write(pagename):
+            msg = u"You are not allowed to edit this page!"
+            json.dump(dict(status="error", msg=msg), request)
+            request.status_code = 403
+            return
+
         from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 
         try:
@@ -107,6 +113,5 @@ def execute(pagename, request):
             except AttachmentAlreadyExists:
                 response['failed'].append(filename)
 
-
-        json.dump(response ,request)
+        json.dump(response, request)
         return

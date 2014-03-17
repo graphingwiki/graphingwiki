@@ -121,9 +121,10 @@ require(['config', 'mootools-more'], function(config) {
 
                                     xhr.onreadystatechange = function(event) {
                                         if (event.target.readyState == 4) {
+                                            progress.getParent().addClass('hidden');
+                                            var json = JSON.parse(xhr.responseText);
                                             if (event.target.status == 200) {
                                                 text.set('text', ' complete!');
-                                                var json = JSON.decode(xhr.responseText);
                                                 failed = json.failed;
 
                                                 for (var i = 0; i < files.length; i++) {
@@ -148,11 +149,14 @@ require(['config', 'mootools-more'], function(config) {
                                                         document.id(e.target).removeClass('hidden').set('value', 'Overwrite');
                                                         overwrite = true;
                                                     }
-                                                    progress.getParent().addClass('hidden');
                                                 }
-                                            }
-                                            else {
-                                                text.set('text', ' Upload failed!');
+                                            } else {
+                                                text.set('text', ' Upload failed!' + json.msg);
+                                                div.grab(
+                                                    new Element('div.alert.alert-danger',{
+                                                        'text': json.msg
+                                                    }), 'after'
+                                                );
                                             }
                                         }
                                     };
