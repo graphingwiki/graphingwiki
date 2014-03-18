@@ -41,7 +41,7 @@ def check_inviting_enabled(request):
     if not getattr(request.cfg, "mail_smarthost", None):
         raise InviteException("No outgoing mail service configured.")
 
-def generate_password(length=8):
+def generate_password(length=10):
     characters = string.letters + string.digits
     return u"".join([SystemRandom().choice(characters) for _ in range(length)])
 
@@ -80,8 +80,8 @@ def add_user_to_group(request, userobj, group, create_link=True, comment=""):
     text = "\n".join(head + tail)
     page.saveText(text, 0, comment=comment)
 
-    logging.info("%s added to group %s in wiki %s (invited by %s)" % 
-                 (userobj.name, group, request.cfg.interwikiname, 
+    logging.info("%s added to group %s in wiki %s (invited by %s)" %
+                 (userobj.name, group, request.cfg.interwikiname,
                   request.user.name))
 
 def invite_user_to_wiki(request, page, email, new_template, old_template,
@@ -90,11 +90,11 @@ def invite_user_to_wiki(request, page, email, new_template, old_template,
     if not user_may_invite(request.user, page):
         raise InviteException("No permissions to invite from '%s'." % page)
 
-    page_url = request.getBaseURL()    
-    return _invite(request, page_url, email, new_template, old_template, 
+    page_url = request.getBaseURL()
+    return _invite(request, page_url, email, new_template, old_template,
                    **custom_vars)
 
-def invite_user_to_page(request, page, email, new_template, old_template, 
+def invite_user_to_page(request, page, email, new_template, old_template,
                         **custom_vars):
     check_inviting_enabled(request)
     if not user_may_invite(request.user, page):
@@ -102,10 +102,10 @@ def invite_user_to_page(request, page, email, new_template, old_template,
 
     page_url = Page(request, page).url(request, relative=False)
     page_url = request.getQualifiedURL(page_url)
-    return _invite(request, page_url, email, new_template, old_template, 
+    return _invite(request, page_url, email, new_template, old_template,
                    **custom_vars)
 
-def _invite(request, page_url, email, new_template, old_template, 
+def _invite(request, page_url, email, new_template, old_template,
             **custom_vars):
     mail_from = request.user.email
     if "@" not in mail_from:
@@ -117,7 +117,7 @@ def _invite(request, page_url, email, new_template, old_template,
                      INVITERUSER=request.user.name,
                      INVITEREMAIL=mail_from,
                      SERVERURL=request.host_url)
-    
+
     old_user = user.get_by_email_address(request, email)
     if old_user:
         variables.update(INVITEDUSER=old_user.name,
@@ -128,7 +128,7 @@ def _invite(request, page_url, email, new_template, old_template,
     if not user.isValidName(request, email):
         raise InviteException("'%s' is not a valid username." % email)
 
-    password = generate_password()        
+    password = generate_password()
     new_user = user.User(request, None, email, password)
     new_user.email = email
     new_user.aliasname = ""
@@ -136,18 +136,18 @@ def _invite(request, page_url, email, new_template, old_template,
 
     variables.update(INVITEDUSER=new_user.name,
                      INVITEDEMAIL=new_user.email,
-                     INVITEDPASSWORD=password)        
+                     INVITEDPASSWORD=password)
     send_message(request, prepare_message(new_template, variables),
                  lambda x: x.lower() == email.lower())
 
     variables.update(INVITEDPASSWORD="******")
     send_message(request, prepare_message(new_template, variables),
                  lambda x: x.lower() != email.lower())
-    
+
     new_user.save()
 
-    logging.info("New user %s added to wiki %s (invited by %s)" % 
-                 (new_user.name, request.cfg.interwikiname, 
+    logging.info("New user %s added to wiki %s (invited by %s)" %
+                 (new_user.name, request.cfg.interwikiname,
                   request.user.name))
 
     return new_user
@@ -169,13 +169,13 @@ def encode_address_field(message, key, encoding, charset):
 
 def prepare_message(template, variables, encoding="utf-8"):
     r"""Return a prepared email.Message object.
-    
+
     >>> template = (u"Subject: @SUBJECT@\n"+
     ...             u"From: @FROM@\n"+
     ...             u"To: @TO@\n"+
     ...             u"BCC: @FROM@\n\n"+
     ...             u"Hello, @GREETED@!")
-    >>> variables = dict(SUBJECT="Test", 
+    >>> variables = dict(SUBJECT="Test",
     ...                  FROM="from@example.com",
     ...                  TO="to@example.com",
     ...                  GREETED="World")
@@ -239,8 +239,8 @@ def send_message(request, message, recipient_filter=lambda x: True):
             try:
                 smtp.sendmail(sender, recipients, message.as_string())
                 for recipient in recipients:
-                    logging.info("%s invited %s to wiki %s" % 
-                                 (sender, recipients, 
+                    logging.info("%s invited %s to wiki %s" %
+                                 (sender, recipients,
                                   request.cfg.interwikiname))
             except smtplib.SMTPSenderRefused, error:
                 if not getattr(request.cfg, "mail_login", None):
