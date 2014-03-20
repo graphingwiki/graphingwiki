@@ -53,7 +53,7 @@ def do_macro(request, **kw):
         active = request.cfg.interwikiname
         path = request.cfg.collab_basedir
 
-        from collabbackend.plugin.xmlrpc.collabList import listCollabs
+        from collabbackend import listCollabs
         collabs = []
         for (shortName, title, motd, link, active) in listCollabs(baseurl, user, path, active):
             collabs.append(shortName)

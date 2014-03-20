@@ -3,16 +3,17 @@
     CollabList macro plugin to MoinMoin
      - Lists collaborations user has access to
 
-    @copyright: 2007-2010 by Timo Mäkinen,
+    @copyright: 2007-2010 by Timo Mï¿½kinen,
                              Marko Laakso <fenris@iki.fi> and
-                             Mika Seppänen
+                             Mika Seppï¿½nen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """
 
 Dependencies = ['myfilesystem']
 
-from collabbackend.plugin.xmlrpc.collabList import listCollabs
+from collabbackend import listCollabs
+
 
 def formatCollabList(f, user, collabs):
     if not collabs:
