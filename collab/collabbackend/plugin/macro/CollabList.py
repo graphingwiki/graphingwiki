@@ -3,9 +3,9 @@
     CollabList macro plugin to MoinMoin
      - Lists collaborations user has access to
 
-    @copyright: 2007-2010 by Timo M�kinen,
+    @copyright: 2007-2010 by Timo Mäkinen,
                              Marko Laakso <fenris@iki.fi> and
-                             Mika Sepp�nen
+                             Mika Seppänen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 """

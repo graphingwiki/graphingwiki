@@ -78,6 +78,19 @@ def checkAccess(user, path):
     f.close()
     return False
 
+
+def getActiveCollab(request):
+    user = request.user.name
+    active = request.cfg.interwikiname
+    path = request.cfg.collab_basedir
+    baseurl = request.cfg.collab_baseurl
+    for collab in listCollabs(baseurl, user, path, active):
+        if collab[4]:
+            return collab
+
+    return None
+
+
 def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     collabs = []
     output = []
