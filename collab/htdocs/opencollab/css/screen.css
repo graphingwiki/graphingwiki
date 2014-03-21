@@ -52,6 +52,11 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
     .breadcrumb.navbar-left, #credits {
         display: none;
     }
+
+    .collab-list-container {
+        left: 0;
+        right: 0;
+    }
 }
 
 @media (min-width: 767px) {
@@ -120,6 +125,52 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 #logo:hover, .navbar-nav li:hover {
     background-color: rgba(250, 250, 250, 0.1);
+}
+
+.collab-list-container {
+    box-sizing: border-box;
+    position: fixed;
+    max-height: 100%;
+    overflow: auto;
+    padding-top: 50px;
+    margin: 0;
+    top: 0;
+    width: 300px;
+    z-index: 2;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+.collab-list-container .spinner-container {
+    background: white;
+    font-size: 30px;
+    padding: 15px 135px 15px 135px;
+}
+.collab-list-container .list-group-item {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    text-decoration: none;
+}
+
+.collab-list-container .list-group-item:hover {
+    text-decoration: none;
+}
+
+.collab-list-container .list-group-item p {
+    color: black;
+}
+
+.collab-list-container span.list-group-item {
+    padding: 1px;
+}
+
+.collab-list-container .list-group-item input {
+    margin: 0;
+    width: 100%;
+    padding: 3px;
+}
+
+.collab-list-container .list-group-item.active p {
+    color: #eee;
 }
 
 #message {
