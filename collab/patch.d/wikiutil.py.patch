@@ -27,7 +27,7 @@
  
 +        # collab list
 +        if hasattr(request.cfg, 'collab_basedir'):
-+            from collabbackend.plugin.xmlrpc.collabList import listCollabs
++            from collabbackend import listCollabs
 +            user = request.user.name
 +            active = request.cfg.interwikiname
 +            path = request.cfg.collab_basedir
