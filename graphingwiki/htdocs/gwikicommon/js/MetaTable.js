@@ -571,7 +571,8 @@ define([
         options: {
             selector: "",
             baseurl: "",
-            sortable: true,
+            sortBy: "",
+            sortDir: 'asc',
             collabs: [""],
             keys: [],
             footer: false,
@@ -587,10 +588,13 @@ define([
 
             this.parent.apply(this, [null, opts]);
 
+            this.enableSort();
             this.enableValueEdit();
 
-            if (typeOf(this.options.collabs) == "string") this.options.collabs = [this.options.collabs];
-            if (typeOf(this.options.keys) == "string") this.options.keys = [this.options.keys];
+            ["sortBy", "sortDir"].forEach(function(key) {
+                if (typeOf(this.options[key]) == "array") this.options[key] = this.options[key][0];
+            }, this);
+
             this.refresh();
         },
 
@@ -649,9 +653,11 @@ define([
             });
 
             //this.setHeaders(([new Element('a.jslink[text=edit]')].concat(Object.sortedValues(keys))));
-            this.setHeaders([""].concat(sortedKeys.map(function(key) {
+            keys = [""].concat(sortedKeys.map(function(key) {
                 return keys[key];
-            }).flatten()));
+            }).flatten());
+
+            this.setHeaders(keys);
             this.thead.rows[0].addClass('meta_header');
 
             var genEl = function(collab, page, key, index, html) {
@@ -704,7 +710,7 @@ define([
             $$(this.body.rows).getFirst('td').addClass('meta_page');
             $$($$(this.body.rows).getElements('td:not(.meta_page)')).addClass('meta_cell');
 
-            this.sort(0, false);
+            this.sort(keys.indexOf(this.options.sortBy), this.options.sortDir == "desc");
             this.enableHiding();
 
             if (!this.isUpdating()) this.container.removeClass('waiting');
