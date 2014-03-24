@@ -635,8 +635,14 @@ define([
 
             var foots = {};
             var sortedKeys;
-            if (this.options.keys.length === 0) sortedKeys = Object.sortedKeys(keys);
-            else sortedKeys = this.options.keys;
+            if (this.options.keys.length === 0) {
+                sortedKeys = Object.sortedKeys(keys);
+            } else {
+                sortedKeys = this.options.keys;
+                sortedKeys.forEach(function(key){
+                    if (!keys[key]) keys[key] = key
+                });
+            }
 
             sortedKeys.each(function(key) {
                 foots[key] = 0;
