@@ -84,6 +84,7 @@ class Theme(ThemeParent):
     ]
 
     EXCLUDED_ACTIONS = [
+        'MetaSearch',
         'Despam',
         'SpellCheck',
         'LikePages',
