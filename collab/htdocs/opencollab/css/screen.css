@@ -76,7 +76,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
     .navbar .glyphicon-user {
         font-size: 1.3em;
-        line-height: 0.7em;
+        line-height: 15px;
         margin: 0 3px;
     }
 
@@ -115,7 +115,6 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 .navbar .glyphicon {
     font-size: 1.1em;
-    line-height: 15px;
 }
 
 #logo {
@@ -204,6 +203,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 .navbar-fixed-top {
     z-index: 990;
+    height: 50px;
 }
 
 .navbar-inverse {
