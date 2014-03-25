@@ -76,8 +76,9 @@ def handleIoc(fobj):
         if "asn" in event:
             asn = event["asn"]
             metas[asn].update(handleAttr(event, asnattr))
-            metas[asn]["gwikicategory"].add("CategoryIdentity")
-            metas[asn]["gwikitemplate"].add("IdentityTemplate")
+            metas[asn]["asn"].add(asn)
+            metas[asn]["gwikicategory"].add("CategoryCustomer")
+            metas[asn]["gwikitemplate"].add("CustomerStubTemplate")
     return metas
 
 
