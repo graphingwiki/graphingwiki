@@ -121,7 +121,7 @@ req.http_redirect = cli_redirect
 # Auth
 if basic_args[-1]:
     import posix, pwd
-    # We need to import contexts before importing users, because otherwise
+    # We need to import contexts before importing User, because otherwise
     # the relative imports in MoinMoin will fail.
     import MoinMoin.web.contexts
     from MoinMoin.user import User
