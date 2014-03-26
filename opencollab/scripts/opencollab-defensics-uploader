@@ -18,7 +18,8 @@ from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
 from opencollab.util.file import hashFile, uploadFile
 
-DEFENSICS_KEYS = []
+DEFENSICS_KEYS = ["Options", "Summary XML", "Settings", "Statistics",
+                  "Summary", "Notes", "Test Plan"]
 
 
 def getText(nodelist):
@@ -36,8 +37,10 @@ def parse_summary(dir, file='summary.xml'):
         label = fact.getAttribute("label")
         if label:
             summary_metas[label].add(getText(fact.childNodes))
+            DEFENSICS_KEYS.append(label)
     for collection in xmldoc.getElementsByTagName("collection"):
         label = collection.getAttribute("label")
+        DEFENSICS_KEYS.append(label)
         for cfact in collection.getElementsByTagName("fact"):
             v = ""
             hash = cfact.getAttribute("hash")
@@ -151,6 +154,7 @@ def parse_tool_options(page_metas):
                 opt_key = opt_key + k
                 opt_value = v
             option_metas[opt_key].add(opt_value)
+            DEFENSICS_KEYS.append(opt_key)
     return option_metas
 
 
@@ -158,12 +162,10 @@ def parse_notes(dir, file='notes.xml'):
     note_metas = Meta()
     xmldoc = minidom.parse(os.path.join(dir, file))
     for value in xmldoc.getElementsByTagName('value'):
-        key = value.getAttribute('key')
-        description = value.getAttribute('description')
+        key = re.sub('\.', ' ', value.getAttribute('key'))
         text_value = getText(value.childNodes)
         note_metas[key].add(text_value)
-        kd = key + " Description"
-        note_metas[kd].add(description)
+        DEFENSICS_KEYS.append(key)
     return note_metas
 
 
@@ -184,7 +186,7 @@ def handle_paths(collab, testplan, dirs, progress, enable):
             else:
                 metas[testrun]["Options"].clear()
             if('main.log.gz' in flist):
-                pass
+                uploadFile(collab, testrun, os.path.join(dir, 'main.log.gz'), 'main.log.gz', progress)
             elif('main.log' in flist):
                 metas[testrun]["Main Log"].add('[[attachment:main.log.gz]]')
                 gzipped = GzipFile(os.path.join(dir, "main.log.gz"), "w")
@@ -228,9 +230,6 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option("-E", "--enable-summary-option-parsing", action="store_true", dest="enable",
         default=False, help="Enable parsing summary.xml options. N.B. these can be *very* lengthy!")
-    parser.add_option("-l", "--last-edit-wins",
-        action="store_true", dest="lasteditwins", default=False,
-        metavar="LAST-EDIT-WINS", help="Replace meta keys and values with LAST-EDIT-WINS semantics.")
     parser.add_option("-n", "--testplan-page-name", action="store",
         type="string", dest="testplan", default=None,
         metavar="TESTPLAN-PAGE", help="Specify a TESTPLAN-PAGE name to link the test runs to.")
@@ -252,7 +251,6 @@ def main():
     x509_ca_file = ops[sect]["x509_ca_file"]
     progress = ops[sect]["progress"]
     verbose = ops[sect]["verbose"]
-    replace = ops[sect]["lasteditwins"]
     dlist = ops[sect]["args"]
     if len(dlist) < 1:
         parser.error("You must supply 1..N input directories. Use -h for help.")
@@ -319,9 +317,9 @@ def main():
     if verbose:
         print "NOTE: Importing metas to", url
     cleared = Meta()
-    if replace:
-        for page, meta in metas.iteritems():
-            cleared[page] = DEFENSICS_KEYS
+    known_keys = set(DEFENSICS_KEYS)
+    for page, meta in metas.iteritems():
+        cleared[page].update(known_keys)
     collab.incSetMeta(cleared, Metas(), metas)
 
 if __name__ == "__main__":
