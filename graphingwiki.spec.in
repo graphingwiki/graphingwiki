@@ -32,13 +32,6 @@ Requires: 	moin < 1.9
 Graphingwiki, a MoinMoin extension to augment Wiki pages with
 semantic data and to visualise this data.
 
-%package raippa
-Summary:        RAIPPA
-Group:		Applications/Internet
-
-%description raippa
-RAIPPA
-
 %package opencollab
 Summary:        OpenCollab SDK
 Group:          Applications/Internet
@@ -61,10 +54,6 @@ cd graphingwiki
 %{__python} setup.py install -O1 --root $RPM_BUILD_ROOT
 cd ..
 
-cd raippa
-%{__python} setup.py install -O1 --root $RPM_BUILD_ROOT
-cd ..
-
 cd opencollab
 %{__python} setup.py install -O1 --root $RPM_BUILD_ROOT
 
@@ -81,11 +70,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{_bindir}/gwiki-*
 %{python_sitelib}/graphingwiki*
-
-%files raippa
-%defattr(-,root,root,-)
-%{python_sitelib}/raippa*
-%{_bindir}/raippa-install
 
 %files opencollab
 %defattr(-,root,root,-)

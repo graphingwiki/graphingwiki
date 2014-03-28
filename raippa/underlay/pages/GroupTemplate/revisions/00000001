@@ -1,9 +1,0 @@
-#acl @PAGE@:read,write,delete,admin,revert All:
-
-##Add group members here.
- * [[student]]
-
-<<TimeTrack(@PAGE@)>>
-
-----
-CategoryGroup
