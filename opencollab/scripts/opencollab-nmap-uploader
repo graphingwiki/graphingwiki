@@ -24,52 +24,6 @@ NMAP_KEYS = ["Hosts Down", "Hosts Total", "Hosts Up",
              "XML Output Version", "listens to", "serves",
              "Audit"]
 
-
-def fix_stylesheet_and_upload(collab, xml_page, file, fname):
-    try:
-        doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e)
-        sys.exit(error)
-
-    stylesheet_nodes = []
-
-    for node in doc.childNodes:
-        if not isinstance(node, ProcessingInstruction):
-            continue
-
-        if node.nodeName != 'xml-stylesheet':
-            continue
-
-        stylesheet_nodes.append(node)
-
-    if len(stylesheet_nodes) != 1:
-        return False
-
-    node = stylesheet_nodes[0]
-
-    data = re.findall("[\t ]*([^=]+=[\'\"][^\'\"]+[\'\"])[\t ]*", node.data)
-    attributes = dict([item.split("=") for item in data])
-
-    stylesheet = attributes["href"].strip('"')
-    if stylesheet.startswith("file://"):
-        stylesheet = stylesheet[7:]
-
-    if not os.path.exists(stylesheet):
-        return False
-
-    stylesheet_data = open(stylesheet).read()
-
-    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nmap.xsl"'
-    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
-
-    xml_data = doc.toxml()
-
-    collab.putAttachment(xml_page, fname, xml_data, True)
-    collab.putAttachment(xml_page, "nmap.xsl", stylesheet_data, True)
-    return True
-
-
 def handle_script(host_ipv4, script, metas):
     """
     This function is meant for implementing any sort of custom
@@ -258,17 +212,11 @@ def main():
                 metas[page]["Audit"].add(audit)
 
         if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
-        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            if verbose:
-                print "NOTE: Uploading", file, "to", xml_page
-            try:
-                status = uploadFile(collab, xml_page, file, fname, progress)
-            except (IOError, TypeError, RuntimeError), msg:
-                sys.exit(msg)
-            else:
-                if verbose:
-                    print "NOTE:" + repr(status)
+            print "NOTE: Uploading", file, "to", xml_page
+        try:
+            status = uploadFile(collab, xml_page, file, fname, progress)
+        except (IOError, TypeError, RuntimeError), msg:
+            sys.exit(msg)
 
     if verbose:
         print "NOTE: Importing metas to", url
