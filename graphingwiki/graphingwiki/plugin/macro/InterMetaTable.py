@@ -28,10 +28,8 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import re
 
 from urllib import quote
-from graphingwiki.util import form_writer as wr
 
 from MoinMoin import config
 
@@ -79,7 +77,7 @@ def do_macro(request, **kw):
 
     return u'''
     <div class="InterMetaTable" data-options="%s"></div>
-    '''% quote(json.dumps(dict(args.items() + kw.items())))
+    ''' % quote(json.dumps(dict(args.items() + kw.items())))
 
 
 def execute(macro, args):
