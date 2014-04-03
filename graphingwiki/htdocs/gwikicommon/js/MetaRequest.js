@@ -17,11 +17,15 @@ define([
                 //onConflict: function(){}
                 method: 'post',
                 metas: {},
+                url: '',
                 checkArgs: '',
                 checkData: {}
             },
-            checkAndSend: function() {
+            send: function(){
                 this.options.data = 'action=setMetaJSON&args=' + encodeURIComponent(JSON.encode(this.options.metas));
+                this.parent();
+            },
+            checkAndSend: function() {
                 var args = arguments;
                 new Request.GetMetas({
                     collaburl: this.options.url,
