@@ -220,6 +220,16 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
+         // Poll
+        if ($$('div.poll').length) {
+            require(['gwikicommon/Poll'], function(Poll) {
+                $$('div.poll').each(function(div) {
+                    var opts = JSON.decode(decodeURIComponent(div.getAttribute('data-options')));
+                    new Poll(div, opts);
+                });
+            });
+        }
+
         // Inline Edit
         if ($$('dl:not(.collab_list) dt').length
             && $$('dl:not(.collab_list) dd').length

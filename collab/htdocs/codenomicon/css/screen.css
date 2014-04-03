@@ -37,3 +37,6 @@ table tr.header th {
 	background: #5cb346;
 	color: #fff;
 }
+.poll th, .poll td {
+    border: 1px solid #5cb346;
+}

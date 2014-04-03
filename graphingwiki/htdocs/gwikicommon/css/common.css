@@ -228,14 +228,6 @@ textarea {
     clear: both;
 }
 
-/**
- * For IE 6/7 only
- * Include this rule to trigger hasLayout and contain floats.
- */
-.clearfix {
-    *zoom: 1;
-}
-
 div.ac-results {
     position: absolute;
     border: 1px solid #999;
@@ -371,4 +363,89 @@ div.ac-results {
 @-webkit-keyframes spin {
   0% { -webkit-transform: rotate(0deg); }
   100% { -webkit-transform: rotate(359deg); }
+}
+
+
+/* Poll macro styles */
+.poll table {
+    border-collapse: inherit;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.poll th, .poll td {
+    padding: 10px;
+    min-width: 80px;
+}
+
+.poll input[type=text] {
+    padding: 5px;
+    width: 80px;
+}
+
+.poll input[type=checkbox] {
+    font-size: 2em;
+    margin: 6px 0;
+}
+
+.poll td, .poll th {
+    text-align: center;
+}
+
+#content .poll td > div {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.poll div > :first-child {
+    flex: 1 1 auto;
+}
+
+.poll td:first-child {
+    text-align: left;
+    min-width: 200px;
+}
+
+.poll td a {
+    margin-left: 5px;
+}
+
+.poll tr.delete {
+    opacity: 0.25;
+}
+
+.poll .save {
+    display: none;
+}
+
+.poll .edit .save {
+    display: inherit;
+}
+
+.poll .btn {
+    border-radius: 0;
+}
+
+.poll .glyphicon, .poll tr {
+    transition: all .1s ease-out;
+}
+
+.poll td:first-child .glyphicon {
+    opacity: 0;
+    cursor: pointer;
+}
+
+.poll td:first-child:hover .glyphicon,
+.poll .edit td:first-child .glyphicon {
+    opacity: 0.5;
+}
+.poll td:first-child .glyphicon:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+
+.poll td:not(:first-child) .glyphicon {
+    font-size: 1.5em;
 }
