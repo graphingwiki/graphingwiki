@@ -213,7 +213,7 @@ define([
         var sender = Strophe.getResourceFromJid(from);
 
         if (type !== "unavailable" && this.participants.contains(from)) {
-            return;
+            return true;
         }
 
         var msg = "";
