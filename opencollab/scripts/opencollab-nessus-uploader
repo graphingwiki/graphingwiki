@@ -157,49 +157,6 @@ def parse_info(nessusrun_page, metas, attach, infoData, id, hostIp,
 
     return metas, attach
 
-
-def fix_stylesheet_and_upload(collab, xml_page, file, fname):
-    try:
-        doc = xml.dom.minidom.parse(file)
-    except xml.parsers.expat.ExpatError, e:
-        error = file + ": " + str(e)
-        sys.exit(error)
-
-    stylesheet_nodes = []
-
-    for node in doc.childNodes:
-        if not isinstance(node, ProcessingInstruction):
-            continue
-
-        if node.nodeName != 'xml-stylesheet':
-            continue
-
-        stylesheet_nodes.append(node)
-
-    if len(stylesheet_nodes) != 1:
-        return False
-
-    node = stylesheet_nodes[0]
-
-    attributes = dict([item.split("=") for item in node.data.split()])
-
-    stylesheet = attributes["href"].strip('"')
-
-    if not os.path.exists(stylesheet):
-        return False
-
-    stylesheet_data = open(stylesheet).read()
-
-    attributes["href"] = '"?action=AttachFile&amp;do=get&amp;target=nessus.xsl"'
-    node.data = " ".join(["=".join(item) for item in attributes.iteritems()])
-
-    xml_data = doc.toxml()
-
-    collab.putAttachment(xml_page, fname, xml_data, True)
-    collab.putAttachment(xml_page, "nessus.xsl", stylesheet_data, True)
-    return True
-
-
 def select_nessus_parser(file, nessusrun_page, severities, audit):
     try:
         doc = xml.dom.minidom.parse(file)
@@ -570,18 +527,14 @@ def main():
             for page in metas:
                 if not 'gwikitemplate' in metas[page]:
                     metas[page]["gwikitemplate"].add(template)
+
         if verbose:
-            print "NOTE: Fixing stylesheet and uploading", file, "and stylesheet to", xml_page
-        if not fix_stylesheet_and_upload(collab, xml_page, file, fname):
-            print "NOTE: Failed to patch xml file, uploading orginal instead"
-            if verbose:
-                print "NOTE: Uploading", file, "to", xml_page
-            try:
-                status = uploadFile(collab, xml_page, file, fname, progress)
-                if verbose:
-                    print "NOTE:" + status
-            except (IOError, TypeError, RuntimeError), msg:
-                sys.exit(msg)
+            print "NOTE: Uploading", file, "to", xml_page
+        try:
+            status = uploadFile(collab, xml_page, file, fname, progress)
+        except (IOError, TypeError, RuntimeError), msg:
+            sys.exit(msg)
+
         if verbose:
             print "NOTE: Importing metas to", url
         cleared = Meta()
