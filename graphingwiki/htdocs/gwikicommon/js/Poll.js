@@ -145,18 +145,21 @@ define([
                 return from;
             };
 
-            this.body.getElements('input[type=text]').forEach(function(el) {
-                var name = el.get('value');
-                var parent = el.getParent('tr');
-                parent.getElements('input[type=checkbox]').forEach(function(inp) {
-                    var key = inp.get('value');
-                    if (inp.get('checked')) {
-                        if (!metas[key])  metas[key] = [];
-                        add(name, metas[key]);
-                    } else {
-                        rm(name, metas[key]);
-                    }
-                });
+            this.body.getElements('input[type=checkbox]').forEach(function(el) {
+                var parent = el.getParent('tr'), name;
+                if (parent.getElement('input[type=text]')) {
+                    name = parent.getElement('input[type=text]').get('value');
+                }else{
+                    name = parent.getElement('td').get('text');
+                }
+
+                var key = el.get('value');
+                if (el.get('checked')) {
+                    if (!metas[key])  metas[key] = [];
+                    add(name, metas[key]);
+                } else {
+                    rm(name, metas[key]);
+                }
             });
 
             this.body.getElements('.delete').forEach(function(tr) {
