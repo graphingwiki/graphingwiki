@@ -594,3 +594,7 @@ td.meta_page:hover span.meta_editicon {
 div.inlinegraph {
 	margin-bottom: 10px;
 }
+
+.glyphicon .fallback {
+    display: none;
+}

@@ -379,7 +379,7 @@ div.ac-results {
 
 .poll input[type=text] {
     padding: 5px;
-    width: 80px;
+    width: 160px;
 }
 
 .poll input[type=checkbox] {
@@ -399,7 +399,7 @@ div.ac-results {
     padding: 0;
 }
 
-.poll div > :first-child {
+.poll div > span {
     flex: 1 1 auto;
 }
 
@@ -424,6 +424,10 @@ div.ac-results {
     display: inherit;
 }
 
+.poll .add .fallback {
+    font-weight: bold;
+    font-size: 1.6em;
+}
 .poll .btn {
     border-radius: 0;
 }
@@ -438,10 +442,11 @@ div.ac-results {
 }
 
 .poll td:first-child:hover .glyphicon,
-.poll .edit td:first-child .glyphicon {
-    opacity: 0.5;
+.poll .edit td:first-child .glyphicon,
+.poll tfoot td:first-child a.glyphicon {
+    opacity: 0.6;
 }
-.poll td:first-child .glyphicon:hover {
+.poll td:first-child a.glyphicon:hover {
     opacity: 1;
     text-decoration: none;
 }

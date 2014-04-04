@@ -19,7 +19,7 @@ define([
             'styles': {
                 color: checked ? "green" : "red"
             }
-        })
+        }).grab(new Element('span.fallback').set('text', checked ? 'x' : ''))
     };
 
     return new Class({
@@ -73,7 +73,7 @@ define([
                 }
             });
 
-            var els = [new Element('div').grab(inp)];
+            var els = [new Element('div').grab(new Element('span').grab(inp))];
 
             this.options.keys.forEach(function(key) {
                 els.push(new Element('input', {
@@ -88,6 +88,7 @@ define([
 
             row.getElement('div').grab(
                 new Element('a.jslink.glyphicon.glyphicon-trash')
+                    .grab(new Element('span.fallback[text=del]'))
                     .addEvent('click', function() {
                         row.destroy();
                         this.checkEdit();
@@ -149,7 +150,7 @@ define([
                 var parent = el.getParent('tr'), name;
                 if (parent.getElement('input[type=text]')) {
                     name = parent.getElement('input[type=text]').get('value');
-                }else{
+                } else {
                     name = parent.getElement('td').get('text');
                 }
 
@@ -216,9 +217,11 @@ define([
                         var tr = new Element('tr').inject(this.body);
                         tr.grab(new Element('td').grab(new Element('div').adopt(
                             new Element('span.name').set('text', voter),
-                             new Element('a.jslink.glyphicon.glyphicon-pencil')
+                            new Element('a.jslink.glyphicon.glyphicon-pencil')
+                                .grab(new Element('span.fallback[text=edit]'))
                                 .addEvent('click', this.toggleEdit),
                             new Element('a.jslink.glyphicon.glyphicon-trash')
+                                .grab(new Element('span.fallback[text=del]'))
                                 .addEvent('click', this.removeRow)
                         )));
                         this.options.keys.forEach(function(key) {
@@ -229,16 +232,14 @@ define([
                     }, this);
 
                     this.footer.adopt(
-                        new Element('td').adopt(
-                            new Element('input.btn.btn-default', {
-                                type: 'button',
-                                value: '+',
+                        new Element('td').grab(new Element('div').adopt(
+                            new Element('a.jslink.glyphicon.glyphicon-plus.add', {
                                 events: {
                                     click: this.addRow
                                 }
-
-                            }),
-                            new Element('input.btn.btn-primary.save.pull-right', {
+                            }).grab(new Element('span.fallback[text=+]')),
+                            new Element('span'),
+                            new Element('input.btn.btn-primary.save', {
                                 type: 'button',
                                 value: 'save',
                                 events: {
@@ -246,7 +247,7 @@ define([
                                 }
                             })
                         )
-                    );
+                    ));
 
                     votes.forEach(function(vote) {
                         this.footer.grab(new Element('td').set('text', vote));
