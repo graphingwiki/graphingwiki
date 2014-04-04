@@ -118,11 +118,12 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 }
 
 #logo {
-    cursor: pointer;
     height: 50px;
 }
 
-#logo:hover, .navbar-nav li:hover {
+
+#logo.collab-list:hover, .navbar-nav li:hover {
+    cursor: pointer;
     background-color: rgba(250, 250, 250, 0.1);
 }
 

@@ -247,7 +247,6 @@ class Theme(ThemeParent):
         current = d['page_name']
 
         default_items = [
-            u'',
             u'CollabList',
             getattr(request.cfg, 'page_front_page', u"FrontPage"),
             u'RecentChanges',
@@ -255,6 +254,11 @@ class Theme(ThemeParent):
 
         logolink = self.logo()
         nav_items = getattr(request.cfg, 'navi_bar_new', default_items)
+
+        if nav_items[0] == "CollabList" and request.user.valid:
+            collablist = "collab-list"
+        else:
+            collablist = ""
 
         for i, text in enumerate(nav_items):
             pagename, link = self.splitNavilink(text)
@@ -296,7 +300,7 @@ class Theme(ThemeParent):
               <span class="icon-bar"></span>
               <span class="icon-bar"></span>
             </button>
-            <div id="logo" class="navbar-brand">
+            <div id="logo" class="navbar-brand %s">
                     %s
             </div>
         </div>
@@ -306,7 +310,7 @@ class Theme(ThemeParent):
             </ul>
             %s
         </div>
-    </nav>""" % (logolink, u'\n'.join(links), u'\n'.join(items))
+    </nav>""" % (collablist, logolink, u'\n'.join(links), u'\n'.join(items))
 
     def username(self, d):
         request = self.request
@@ -448,9 +452,13 @@ class Theme(ThemeParent):
         request = self.request
         _ = request.getText
         user = request.user
+
+        if not user.valid:
+            return ""
+
         items = []
 
-        if not user.valid or user.show_page_trail:
+        if user.show_page_trail:
             trail = user.getTrail()
             if trail:
                 for pagename in trail[::-1]:

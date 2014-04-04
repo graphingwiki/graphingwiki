@@ -73,7 +73,7 @@ require([
         });
     });
 
-    $$('.navbar-brand').addEvent('click', function(e) {
+    $$('.collab-list').addEvent('click', function(e) {
         if ($$('div.collab-list-container').length) {
             return;
         }
