@@ -74,11 +74,11 @@ require([
     });
 
     $$('.collab-list').addEvent('click', function(e) {
+        e.preventDefault();
+
         if ($$('div.collab-list-container').length) {
             return;
         }
-
-        e.preventDefault();
 
         var cont = new Element('div.collab-list-container.list-group.loading').inject(document.body);
         var spinner = new Element('i.glyphicon.glyphicon-refresh.icon-spin');
