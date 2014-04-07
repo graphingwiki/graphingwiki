@@ -348,14 +348,21 @@ class Theme(ThemeParent):
             if request.user.auth_method in request.cfg.auth_can_logout:
                 query = {'action': 'logout', 'logout': 'logout'}
                 url = request.page.url(request, query)
-                urls.append('<li><a href="%s">%s</a></li>' % (url, 'Logout'))
+                urls.append('<li><a href="%s">%s</a></li>' % (url, _('Logout')))
         elif request.cfg.auth_have_login:
             query = {'action': 'login'}
             # special direct-login link if the auth methods want no input
             if request.cfg.auth_login_inputs == ['special_no_input']:
                 query['login'] = '1'
             url = request.page.url(request, query)
-            urls.append('<li><a href="%s">%s</a></li>' % (url, 'Login'))
+            urls.append('<li><a href="%s">%s</a></li>' % (url, _('Login')))
+
+        formadd = getattr(request.cfg, 'user_form_add', ())
+        formcond = getattr(request.cfg, 'user_form_addcondition',
+                           lambda conf, req: True)
+        if formcond(request):
+            for url, text in formadd:
+                urls.append('<li><a href="%s">%s</a></li>' % (url, _(text)))
 
         out = ""
 
