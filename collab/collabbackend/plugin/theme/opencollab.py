@@ -358,8 +358,11 @@ class Theme(ThemeParent):
             urls.append('<li><a href="%s">%s</a></li>' % (url, _('Login')))
 
         formadd = getattr(request.cfg, 'user_form_add', ())
+        # Please note that you need to have a function of the form
+        # lambda self, req: ... to the config as the function is
+        # defined within a class.
         formcond = getattr(request.cfg, 'user_form_addcondition',
-                           lambda conf, req: True)
+                           lambda req: True)
         if formcond(request):
             for url, text in formadd:
                 urls.append('<li><a href="%s">%s</a></li>' % (url, _(text)))
