@@ -214,14 +214,14 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
 }
 
-.nav.navbar-nav > li > a, .navbar .navbar-brand a {
+.nav.navbar-nav > li > a {
     padding-left: 10px;
     padding-right: 10px;
     color: rgba(255, 255, 255, 0.90) !important;
     background: transparent !important;
 }
 
-.navbar .navbar-brand {
+.navbar .navbar-brand span {
     color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
     font-weight: 200;
