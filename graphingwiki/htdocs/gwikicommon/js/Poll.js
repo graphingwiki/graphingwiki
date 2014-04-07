@@ -151,7 +151,7 @@ define([
                 if (parent.getElement('input[type=text]')) {
                     name = parent.getElement('input[type=text]').get('value');
                 } else {
-                    name = parent.getElement('td').get('text');
+                    name = parent.getElement('span').get('text');
                 }
 
                 var key = el.get('value');
@@ -247,7 +247,7 @@ define([
                                 }
                             })
                         )
-                    ));
+                        ));
 
                     votes.forEach(function(vote) {
                         this.footer.grab(new Element('td').set('text', vote));
