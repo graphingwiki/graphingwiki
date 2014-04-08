@@ -133,17 +133,23 @@ define([
             this.checkEdit();
         },
 
-        save: function(event) {
+        save: function() {
             var metas = this.metas;
+            var added = {};
+            var removed = {};
 
-            var add = function(el, to) {
-                if (to.indexOf(el) == -1) to.push(el);
-                return to;
+            var add = function(value, key) {
+                if (metas[key].indexOf(value) == -1) {
+                    metas[key].push(value);
+                    added[key] = (added[key] || []).concat(value);
+                }
             };
-            var rm = function(el, from) {
-                var i = (from || []).indexOf(el);
-                if (i != -1) from.splice(i, 1);
-                return from;
+            var rm = function(value, key) {
+                var i = (metas[key] || []).indexOf(value);
+                if (i != -1) {
+                    metas[key].splice(i, 1);
+                    removed[key] = (removed[key] || []).concat(value);
+                }
             };
 
             this.body.getElements('input[type=checkbox]').forEach(function(el) {
@@ -157,21 +163,21 @@ define([
                 var key = el.get('value');
                 if (el.get('checked')) {
                     if (!metas[key])  metas[key] = [];
-                    add(name, metas[key]);
+                    add(name, key);
                 } else {
-                    rm(name, metas[key]);
+                    rm(name, key);
                 }
             });
 
             this.body.getElements('.delete').forEach(function(tr) {
                 var name = tr.getElement('.name').get('text');
                 this.options.keys.forEach(function(key) {
-                    rm(name, metas[key]);
+                    rm(name, key);
                 })
             }, this);
 
-            new Request.SetMetas({
-                metas: {metas: metas, action: 'set'},
+            new Request.SetMetas2({
+                metas: {add: added, del: removed},
                 url: this.options.pagename,
                 onSuccess: function() {
                     this.update();
