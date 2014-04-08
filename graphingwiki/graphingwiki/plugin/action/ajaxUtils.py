@@ -59,6 +59,7 @@ def execute(pagename, request):
     elif util == "newPage":
         page = form.get('page', [None])[0]
         content = form.get('content', [""])[0]
+        request.content_type = "application/json"
 
         if request.environ['REQUEST_METHOD'] != 'POST':
             return
@@ -85,11 +86,14 @@ def execute(pagename, request):
 
 
     elif util == "getProperties":
+        request.content_type = "application/json"
         key = form.get('key', [''])[0]
         json.dump(get_properties(request, key), request)
         return
 
     elif util == "uploadFile":
+        request.content_type = "application/json"
+
         if not request.user.may.write(pagename):
             msg = u"You are not allowed to edit this page!"
             json.dump(dict(status="error", msg=msg), request)

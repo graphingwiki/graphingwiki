@@ -18,6 +18,9 @@ from graphingwiki import values_to_form
 
 def execute(pagename, request):
     _ = request.getText
+
+    request.content_type = "application/json"
+
     if request.environ['REQUEST_METHOD'] != 'POST':
         #405 Method Not Allowed
         request.status_code = 405
