@@ -454,3 +454,11 @@ div.ac-results {
 .poll td:not(:first-child) .glyphicon {
     font-size: 1.5em;
 }
+
+.poll .invalid{
+    border-color: rgba(233, 24, 27, 0.50);
+    background-color:  rgba(233, 0, 0, 0.30);
+    outline: 0;
+
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 3px rgba(233, 0, 0, 0.60);
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 3px  rgba(233, 0, 0, 0.60);}

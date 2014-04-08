@@ -64,14 +64,17 @@ define([
             var row = new Element('tr').inject(this.body);
             var name = this.options.username;
 
-            var inp = new Element('input[type=text]').set('value', name);
-            inp.addEvent('change', function() {
-                if (this.value) {
-                    row.addClass('invalid');
+            var names = this.rows;
+            var check = function() {
+                if (names[this.value]) {
+                    this.addClass('invalid');
                 } else {
-                    row.removeClass('invalid')
+                    this.removeClass('invalid');
                 }
-            });
+            };
+            var inp = new Element('input[type=text]').set('value', name);
+            inp.addEventListener('blur', check);
+            inp.addEventListener('keyup', check);
 
             var els = [new Element('div').grab(new Element('span').grab(inp))];
 
@@ -137,6 +140,11 @@ define([
             var metas = this.metas;
             var added = {};
             var removed = {};
+
+            if (this.table.getElement('.invalid')) {
+                alert("Cannot save duplicate vote for " +this.table.getElement('.invalid').get('value'))
+                return
+            }
 
             var add = function(value, key) {
                 if (metas[key].indexOf(value) == -1) {
