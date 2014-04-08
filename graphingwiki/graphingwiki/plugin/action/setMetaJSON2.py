@@ -42,9 +42,9 @@ def execute(pagename, request):
         remove = metas.get('del', {})
         put = metas.get('set', {})
 
-        discarded[pagename] = remove
-        added[pagename] = dict(add.items() + put.items())
-        cleared[pagename] = put.keys()
+        discarded[page] = remove
+        added[page] = dict(add.items() + put.items())
+        cleared[page] = put.keys()
 
     indata = json.loads(indata)
 
