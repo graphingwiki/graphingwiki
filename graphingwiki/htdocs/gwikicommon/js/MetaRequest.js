@@ -64,6 +64,48 @@ define([
             }
         });
 
+ /*
+         SetMetas using setMetaJSON2
+         Usage example:
+            var metas = {
+                add: {
+                    'foo': ['bar']
+                 },
+                del: {
+                    'foo': ['oldbar']
+                    },
+                set: {
+                    'bar': ['foo', 'baz']
+                }
+            }
+             new Request.SetMetas2({
+                 metas: metas
+             }).send();
+
+  */
+        Request.SetMetas2 = new Class({
+            Extends: Request.JSON,
+            options: {
+                //onConflict: function(){}
+                metas: {},
+                url: '',
+                batch: false
+            },
+
+            send: function() {
+                var opts = {
+                    action: 'setMetaJSON2',
+                    metas: JSON.stringify(this.options.metas)
+                };
+                if (this.options.batch) {
+                    opts.batch = true;
+                }
+                this.options.data = Object.toQueryString(opts);
+                this.parent();
+
+            }
+        });
+
         /*
          Retrieves metas using incGetMetaJSON and local storage as cache.
          Usage example:
