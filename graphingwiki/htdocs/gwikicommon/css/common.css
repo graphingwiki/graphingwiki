@@ -394,6 +394,8 @@ div.ac-results {
 #content .poll td > div {
     display: flex;
     align-items: center;
+    display: -webkit-flex;
+    -webkit-align-items: center;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -401,6 +403,7 @@ div.ac-results {
 
 .poll div > span {
     flex: 1 1 auto;
+    -webkit-flex: 1 1 auto;
 }
 
 .poll td:first-child {
