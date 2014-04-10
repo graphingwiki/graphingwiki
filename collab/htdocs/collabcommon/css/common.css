@@ -6,7 +6,8 @@
 #content div.tlp-white,
 #content div.stop,
 #content div.thumbsup,
-#content div.thumbsdown {
+#content div.thumbsdown,
+#content div.heartbleed {
     border: 1pt solid #E5E5E5;
     border: 1pt solid rgba(0, 0, 0, 0.1);
     background-color: #F9F9FF;
@@ -16,6 +17,24 @@
     min-height: 1em;
     padding: 0.5em 1em;
     overflow: auto;
+}
+
+.banner {
+    border: 1pt solid rgba(0, 0, 0, 0.1);
+    background-color: #f5f5f5;
+    margin: 0;
+    width: 100%;
+    border-radius: 0;
+    min-height: 50px;
+    padding-left: 10px;
+}
+
+.banner div {
+    padding: 8px;
+}
+
+div.heartbleed.banner:before {
+    height: 50px;
 }
 
 #content div.tlp-red p,
@@ -35,6 +54,19 @@
 #content div.tlp-amber:before { content: url("../img/admon-tlp-amber.png"); }
 #content div.tlp-green:before { content: url("../img/admon-tlp-green.png"); }
 #content div.tlp-white:before { content: url("../img/admon-tlp-white.png"); }
+
+div.heartbleed:before {
+    background: url("../img/heartbleed.svg")  no-repeat;
+    background-size: contain;
+    height: 80px;
+    width: 64px;
+    content: "";
+    float: left;
+}
+
+#content div.heartbleed:before {
+    margin: -5px 1em -5px -5px;
+}
 
 #content div.stop:before,
 #content div.thumbsup:before,
