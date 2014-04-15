@@ -111,7 +111,8 @@ def diffandstore(filename, newtext, dryrun=noop):
         diff = difflib.ndiff(oldtext.splitlines(1), newtext.splitlines(1))
         for line in diff:
             if line[:1] not in string.whitespace:
-                msg.append(line)
+                # Remove password hashes from diff message
+                msg.append(re.sub(r'(:{[A-Z]+}).*', r'\1...', line))
         if not dryrun:
             f = open(filename, 'w')
             f.write(newtext)
