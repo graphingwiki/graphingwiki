@@ -21,6 +21,7 @@ define([
                 showNotifications = false;
             }
 
+            ui.setNotificationStatus(showNotifications);
             ui.setChannelLabel(roomJid);
 
             conn.listen("statusChanged", function(isError, status) {
@@ -40,7 +41,7 @@ define([
 
             ui.listen("notificationPermissionChange", function() {
 
-                if (!showNotifications) {
+                if (showNotifications === false) {
                     notification.checkPermission();
                 }
 
@@ -48,13 +49,13 @@ define([
                 ui.setNotificationStatus(showNotifications);
             });
 
-            notification.listen("notificationPermission", function(perm) {
-                showNotifications = (perm === 'granted') ? true : false;
-                ui.setNotificationStatus(showNotifications);
-            });
-
             ui.listen("chatvisibilitychange", function(isVisible) {
+                if (visible === isVisible) {
+                    return;
+                }
+
                 visible = isVisible;
+
                 if (visible) {
                     notification.clear();
                 }
