@@ -44,6 +44,7 @@
 
 #content .collab_chat .toolbar .chat-button {
     display: inline-block;
+    cursor: default;
     background-color: #2E3D4C;
     font-size: 0.9em;
     line-height: 1.5em;
