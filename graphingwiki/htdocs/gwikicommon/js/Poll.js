@@ -138,6 +138,7 @@ define([
 
         save: function() {
             var metas = this.metas;
+            var ops = [];
             var added = {};
             var removed = {};
 
@@ -148,15 +149,15 @@ define([
 
             var add = function(value, key) {
                 if (metas[key].indexOf(value) == -1) {
+                    ops.push({op: 'add', key: key, value: value});
                     metas[key].push(value);
-                    added[key] = (added[key] || []).concat(value);
                 }
             };
             var rm = function(value, key) {
                 var i = (metas[key] || []).indexOf(value);
                 if (i != -1) {
                     metas[key].splice(i, 1);
-                    removed[key] = (removed[key] || []).concat(value);
+                    ops.push({op: 'del', key:key, value:value});
                 }
             };
 
@@ -185,12 +186,11 @@ define([
             }, this);
 
             new Request.SetMetas2({
-                metas: {add: added, del: removed},
                 url: this.options.pagename,
                 onSuccess: function() {
                     this.update();
                 }.bind(this)
-            }).send();
+            }).send(ops);
 
         },
 

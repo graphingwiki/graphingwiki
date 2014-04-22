@@ -67,40 +67,36 @@ define([
  /*
          SetMetas using setMetaJSON2
          Usage example:
-            var metas = {
-                add: {
-                    'foo': ['bar']
-                 },
-                del: {
-                    'foo': ['oldbar']
-                    },
-                set: {
-                    'bar': ['foo', 'baz']
-                }
-            }
              new Request.SetMetas2({
-                 metas: metas
-             }).send();
+                url: 'page'
+             }).send([
+                {op: 'add', 'key': 'foo', 'value': 'bar'},
+                {op: 'set', 'key': 'foo2', 'value': [1,2,3]},
+                {op: 'del', 'key': 'foo3', 'value': ['foo']}
+             ]);
 
   */
         Request.SetMetas2 = new Class({
             Extends: Request.JSON,
             options: {
-                //onConflict: function(){}
-                metas: {},
+                ops: [],
                 url: '',
-                batch: false
+                onFailure: function(xhr) {
+                    if (xhr.responseText) {
+                        var json = JSON.parse(xhr.responseText);
+                        alert(json.msg);
+                    }
+                }
             },
 
-            send: function() {
-                var opts = {
-                    action: 'setMetaJSON2',
-                    metas: JSON.stringify(this.options.metas)
-                };
-                if (this.options.batch) {
-                    opts.batch = true;
+            send: function(ops) {
+                this.headers['Content-Type'] = "application/json;charset=UTF-8";
+                this.options.url += (this.options.url.indexOf('?') == -1 ? '?' : '&') + 'action=setMetaJSON2';
+                if (ops && !ops instanceof Array) {
+                    ops = [ops];
                 }
-                this.options.data = Object.toQueryString(opts);
+
+                this.options.data = JSON.stringify([].concat(this.options.ops || [], ops || []));
                 this.parent();
 
             }

@@ -243,33 +243,17 @@ define([
                 compact: true,
 
                 onSave: function(value) {
-                    if (!metas[page][key]) metas[page][key] = [""];
-
-                    var oldData = {};
-                    oldData[page] = {};
-                    oldData[page][key] = Array.clone(metas[page][key]);
-
-                    metas[page][key][index] = value;
-
-                    var args = {};
-                    args[page] = {};
-                    args[page][key] = metas[page][key];
-
-                    new Request.SetMetas({
-                        metas: args,
-                        checkArgs: page,
-                        checkData: oldData,
-                        url: collab ? "../" + collab + "/" : "",
-                        onSuccess: function() {
-                            this.inlineEditor = null;
-                            this.refresh();
-                        }.bind(this),
-                        onConflict: function() {
-                            this.inlineEditor.cancel();
-                            this.refresh();
+                    new Request.SetMetas2({
+                        url: (collab ? "../" + collab + "/" : "") + page,
+                        onComplete: function() {
+                            this.refresh([collab]);
                         }.bind(this)
-                    }).checkAndSend();
+                    }).send([
+                            {op: 'del', key: key, value: oldValue},
+                            {op: 'add', key: key, value: value}
+                        ]);
 
+                    this.inlineEditor = null;
                     editor.exit();
                 }.bind(this)
             });
@@ -303,33 +287,24 @@ define([
                 oldValue: oldKey,
                 compact: true,
                 onSave: function(newKey) {
-                    var oldData = Object.map(Object.clone(this.metas), function(metas, page) {
-                        var m = Object.subset(metas, [oldKey, newKey]);
-                        if (!m[newKey]) m[newKey] = [];
-                        return m;
+                    var changes = [];
+                    Object.each(this.metas, function(metas, page) {
+                        if (metas[oldKey]) {
+                            changes.push({op: 'set', page: page, key: oldKey});
+                            changes.push({op: 'add', page: page, key: newKey, value: metas[oldKey]});
+                        }
                     });
 
-                    var args = Object.map(this.metas, function(metas, page) {
-                        var renamed = {};
-                        renamed[newKey] = (metas[newKey] || []).combine(metas[oldKey] || []);
-                        renamed[oldKey] = [];
-                        return renamed;
-                    });
-
-                    new Request.SetMetas({
-                        metas: args,
-                        checkArgs: this.tableArgs.args,
-                        checkData: oldData,
-                        onSuccess: function() {
-                            this.inlineEditor = null;
+                    new Request.SetMetas2({
+                        onComplete: function() {
                             this.refresh();
                         }.bind(this),
-                        onConflict: function() {
-                            this.inlineEditor.cancel();
-                            this.refresh();
+                        onFailure: function() {
+                            alert("Could not edit the key!");
                         }.bind(this)
-                    }).checkAndSend();
+                    }).send(changes);
 
+                    this.inlineEditor = null;
                     editor.exit();
                 }.bind(this),
                 onExit: function() {
@@ -725,8 +700,6 @@ define([
 
         refresh: function(collabs) {
             collabs = collabs || this.options.collabs;
-            if (this.isUpdating()) return;
-
             this.requests = [];
             collabs.each(function(collab) {
                 this.requests.push(new Request.JSON({
