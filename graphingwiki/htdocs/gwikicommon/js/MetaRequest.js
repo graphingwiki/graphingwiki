@@ -81,6 +81,7 @@ define([
             options: {
                 ops: [],
                 url: '',
+                urlEncoded: false,
                 onFailure: function(xhr) {
                     if (xhr.responseText) {
                         var json = JSON.parse(xhr.responseText);
