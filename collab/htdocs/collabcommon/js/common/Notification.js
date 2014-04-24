@@ -22,63 +22,40 @@ define([
 
 
     Notification.prototype.native = function(msg, options) {
-        if (window.Notification.permission !== 'granted' ||
-            this._natives.length > 0) {
+        if (window.Notification.permission !== 'granted') {
             return;
         }
-
-        var opts = options || {};
 
         if (!('Notification' in window)) {
             console.log("Native notifications are not supported by this browser.");
             return;
         }
 
-        var notification = new window.Notification(msg, options);
-
-        notification.onclose = function() {
-            this._natives = [];
-        }.bind(this);
-
+        var opts = options || {};
+        var notification = new window.Notification(msg, opts);
         this._natives.push(notification);
     };
 
 
-    Notification.prototype.clear = function() {
-
-        if (this._natives.length === 0 && this._tabs.length === 0) {
-            return;
-        }
-
-        if (this._natives.length !== 0) {
-            this._natives.forEach(function(notification) {
-                notification.close();
-            });
-        }
-
-        if (this._tabs.length !== 0) {
-            this._tabs = [];
-            window.clearInterval(this._intervalID);
-            document.title = this._defaultTitle;
-        }
-    };
-
-
-    Notification.prototype.tab = function(msg, timeout) {
+    Notification.prototype.tab = function(msg, options, timeout) {
 
             if (this._tabs.length > 0 || typeof msg === 'undefined') {
                 return;
             }
 
-            this._interval = timeout || 1000;
-
             if (this._defaultTitle === null) {
                 this._defaultTitle = document.title;
             }
 
-            this._tabTitle = msg;
-            this._intervalID = window.setInterval(this._tabUpdate.bind(this), this._interval);
-            this._tabs.push(this._intervalID);
+            var tabn = {
+                "msg": msg,
+                "interval": timeout || 1000,
+                "tag": options.tag || null,
+                "body": options.body || "",
+            };
+
+            tabn.intervalID = window.setInterval(this._tabUpdate.bind(this), tabn.interval);
+            this._tabs.push(tabn);
     };
 
 
@@ -98,18 +75,74 @@ define([
 
 
     Notification.prototype._tabUpdate = function() {
-        if (document.title !== this._tabTitle) {
-            document.title = this._tabTitle;
+
+        if (this._tabs.length < 1) {
+            return;
+        }
+
+        var tabn = this._tabs.shift();
+        var title = tabn.msg + tabn.body;
+
+        if (document.title !== title) {
+            document.title = title;
+            this._tabs.push(tabn);
             return;
         }
 
         document.title = this._defaultTitle;
+        this._tabs.push(tabn);
+    };
+
+
+    Notification.prototype.clear = function(tag) {
+
+        if (this._natives.length !== 0) {
+            this._natives.forEach(function(notification) {
+                if (notification.tag === tag) {
+                    notification.close();
+                }
+            });
+        }
+
+        if (this._tabs.length !== 0) {
+            for (var i in this._tabs) {
+                if (this._tabs[i].tag === tag) {
+                    window.clearInterval(this._tabs[i].intervalID);
+                    this._tabs.splice(i, 1);
+                    i--;
+                }
+            }
+
+            if (this._tabs.length === 0) {
+                document.title = this._defaultTitle;
+            }
+        }
+    };
+
+
+    Notification.prototype.clearAll = function() {
+
+        if (this._natives.length === 0 && this._tabs.length === 0) {
+            return;
+        }
+
+        if (this._natives.length !== 0) {
+            this._natives.forEach(function(notification) {
+                notification.close();
+            });
+        }
+
+        if (this._tabs.length !== 0) {
+            this._tabs = [];
+            window.clearInterval(this._intervalID);
+            document.title = this._defaultTitle;
+        }
     };
 
 
     Notification.prototype.destroy = function() {
 
-        this.clear();
+        this.clearAll();
         this._natives = null;
         this._tabs = null;
         this._tabTitle = null;

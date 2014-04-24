@@ -10,12 +10,14 @@ define([
     "use strict";
 
     return function(container, boshUri, roomJid, jid, password) {
+
         var main = function(container) {
             var ui = new UI(container);
             var conn = new Connection(boshUri, roomJid, jid, password);
             var notification = new Notification();
             var visible = false;
             var showNotifications = true;
+            var newMessageNotification = null;
 
             if (window.Notification.permission !== 'granted') {
                 showNotifications = false;
@@ -57,13 +59,15 @@ define([
                 visible = isVisible;
 
                 if (visible) {
-                    notification.clear();
+                    newMessageNotification = null;
+                    notification.clear("CollabChatNotification");
                 }
             });
 
             conn.listen("message", function() {
                 if (visible) {
-                    notification.clear();
+                    newMessageNotification = null;
+                    notification.clear("CollabChatNotification");
                     return;
                 }
 
@@ -71,13 +75,16 @@ define([
                     return;
                 }
 
-                notification.tab("Chat: New message", 1000);
-
-                notification.native("CollabChat: " + roomJid, {
+                var opts = {
                     "tag": "CollabChatNotification",
                     "body": "New message"
-                });
+                };
 
+                notification.tab("CollabChat: " + roomJid, opts, 1000);
+
+                if (newMessageNotification === null) {
+                    notification.native("CollabChat: " + roomJid, opts);
+                }
             }.bind(this));
         };
 
