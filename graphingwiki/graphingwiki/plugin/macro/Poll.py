@@ -48,7 +48,7 @@ def execute(macro, args):
     if args is None:
         args = ''
 
-    opts = {"pagename": pagename}
+    opts = {"pageurl": request.getScriptname() + "/" + pagename}
 
     if request.user.valid and request.user.name:
         opts["username"] = request.user.name
