@@ -3,6 +3,15 @@
     setMetaJSON2 action plugin for MoinMoin/Graphingwiki
      - Refactored meta editing backend with more sensible api
 
+    Reads edit transactions as JSON from POST body.
+    An example JSON message:
+        [
+            {'op' : 'del', 'key': 'foo', 'value': 'bar'},
+            {'op' : 'set', 'key': 'to_be_emptied'},
+            {'op' : 'set', 'key': 'foo2', 'value': ['val1', 'val2']},
+            {'op' : 'add', 'key': 'foo2', 'value': ['bar'], 'page': 'foopage'}
+        ]
+
     @copyright: 2014 by Lauri Pokka larpo@clarifiednetworks.com
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
@@ -14,7 +23,6 @@ except ImportError:
 
 
 from graphingwiki.editing import set_metas
-from graphingwiki import values_to_form
 
 def execute(pagename, request):
     _ = request.getText
@@ -27,11 +35,8 @@ def execute(pagename, request):
         return
 
     pagename = pagename.strip()
+    indata = request.read()
 
-    form = values_to_form(request.values)
-
-    indata = form.get('metas', [None])[0]
-    batch = form.get('batch', [None])[0]
     if not indata:
         #400 Bad Request
         request.status_code = 400
@@ -40,22 +45,29 @@ def execute(pagename, request):
 
     cleared, added, discarded = {}, {}, {}
 
-    def parse(metas, page=pagename):
-        add = metas.get('add', {})
-        remove = metas.get('del', {})
-        put = metas.get('set', {})
+    def parse(row):
+        op = row.get('op', None)
+        page = row.get('page', pagename)
+        key = row.get('key', None)
+        value = row.get('value', [])
+        if type(value) != list:
+            value = [value]
 
-        discarded[page] = remove
-        added[page] = dict(add.items() + put.items())
-        cleared[page] = put.keys()
+        if op == 'set':
+            cleared.setdefault(page, set()).add(key)
+        elif op == 'del':
+            disc = discarded.setdefault(page, dict())
+            disc.setdefault(key, list()).extend(value)
+
+        if op in ['add', 'set']:
+            add = added.setdefault(page, dict())
+            add.setdefault(key, list()).extend(value)
 
     indata = json.loads(indata)
 
-    # edit multiple pages
-    if batch:
-        for _page, _metas in indata.iteritems():
-            parse(_metas, _page)
-    # edit single page
+    if type(indata) is list:
+        for data in indata:
+            parse(data)
     else:
         parse(indata)
 

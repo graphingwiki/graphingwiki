@@ -248,6 +248,15 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
+        // Dismissable banners
+        if ($$('.banner[data-bannername]')) {
+            require(['gwikicommon/Banner'], function(Banner) {
+                $$('.banner[data-bannername]').each(function(banner) {
+                    new Banner(banner)
+                });
+            });
+        }
+
         // DynamicTextareas for textareas with .dynamic
         // Added body check to workaround a weird phantomjs bug
         if ($$('textarea.dynamic').length) {
