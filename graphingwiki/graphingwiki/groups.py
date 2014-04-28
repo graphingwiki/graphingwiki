@@ -35,13 +35,13 @@ def groups_by_user(request, account, recursive=False):
     if not User(request, name=account).exists():
         raise GroupException(_('User not valid: ') + account)
 
-    wiki_groups = set(group for group in 
-                      request.groups.groups_with_member(account) if 
+    wiki_groups = set(group for group in
+                      request.groups.groups_with_member(account) if
                       isinstance(request.groups[group], WikiGroup))
     if recursive:
         return wiki_groups
     else:
-        return set(gn for gn in wiki_groups if 
+        return set(gn for gn in wiki_groups if
                    account in request.groups[gn].members)
 
 def groups_by_user_transitive(request, account):
@@ -112,7 +112,7 @@ def _group_add(request, pagetext, userlist):
     # Empty pages with only whitespace
     if not re.sub('\s', '', pagetext):
         pagetext = ''
-    # 
+    #
     if not user_re.findall(pagetext):
         pagetext += u' * [[%s]]\n' % userlist[0]
         userlist = userlist[1:]
@@ -176,8 +176,8 @@ def _group_del(request, pagetext, userlist):
     u'\\n'
     """
     for user in userlist:
-        pagetext = re.sub('(^\s+\*\s*(\[\[%s\]\])$\n?)' % user, '',
-                          pagetext, flags=re.M)
+        pagetext = re.sub('(?m)(^\s+\*\s*(\[\[%s\]\])$\n?)' % user, '',
+                          pagetext)
     # empty group pages cannot be saved
     if not pagetext:
         pagetext = u'\n'
@@ -247,7 +247,7 @@ def group_del(request, grouppage, accounts):
     pagetext = page.get_raw_body()
     newtext = _group_del(request, pagetext, accounts)
     msg = page.saveText(newtext, 0,
-                        comment="Deleted from group: " + 
+                        comment="Deleted from group: " +
                         ', '.join(accounts))
 
     newmembers = request.groups[grouppage].members
@@ -287,7 +287,7 @@ def group_rename(request, grouppage, accounts):
     pagetext = page.get_raw_body()
     newtext = _group_rename(request, pagetext, accounts)
     msg = page.saveText(newtext, 0,
-                        comment="Changed group members: " + 
+                        comment="Changed group members: " +
                         ' -> '.join(accounts))
 
     newmembers = request.groups[grouppage].members
