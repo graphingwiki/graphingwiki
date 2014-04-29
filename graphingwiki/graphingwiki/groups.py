@@ -187,7 +187,8 @@ def group_add(request, grouppage, accounts, create=False):
     _ = request.getText
 
     try:
-        check_grouppage(request, grouppage)
+        if not create:
+            check_grouppage(request, grouppage)
     except GroupException, err:
         return False, err
     try:
@@ -266,7 +267,7 @@ def group_rename(request, grouppage, accounts):
     except GroupException, err:
         return False, err
     try:
-        check_users(request, accounts)
+        check_users(request, list(accounts)[::2])
     except GroupException, err:
         return False, err
 
