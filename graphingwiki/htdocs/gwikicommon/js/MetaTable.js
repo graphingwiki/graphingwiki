@@ -58,7 +58,7 @@ define([
 
             var vals = {};
 
-            row.getElements('.meta_cell span').each(function(span) {
+            row.getElements('.meta_cell span[data-key]').each(function(span) {
                 var val = span.get('data-value') || span.get('text');
                 var page = span.get('data-page');
                 var key = span.get('data-key');
@@ -178,7 +178,7 @@ define([
 
     var EditableTable = new Class({
         enableValueEdit: function() {
-            var selectors = [".meta_cell span:not(.edit)", ".meta_cell:not(.edit)"];
+            var selectors = [".meta_cell span[data-key]:not(.edit)", ".meta_cell:not(.edit)"];
             this.body.addEvent('shiftclick:relay(' + selectors.join(", ") + ')', this.valueEdit.bind(this));
         },
         enableKeyEdit: function() {
@@ -224,7 +224,7 @@ define([
 
             } else {
                 //edit existing value
-                if (target.get('tag') != 'span') target = target.getParent('span');
+                if (!target.get('data-key')) target = target.getParent('span[data-key]');
 
                 page = target.get('data-page');
                 key = target.get('data-key');
@@ -270,7 +270,7 @@ define([
 
             var target = $(event.target);
 
-            if (target.get('tag') != 'span') target = target.getParent('span');
+            if (!target.get('data-key')) target = target.getParent('span[data-key]');
             var oldKey = target.get('data-key');
 
             //check that the key is really meta-key and not indirection
