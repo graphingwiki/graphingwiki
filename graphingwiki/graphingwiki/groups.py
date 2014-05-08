@@ -222,7 +222,6 @@ def group_del(request, grouppage, accounts):
     _ = request.getText
 
     check_grouppage(request, grouppage)
-    check_users(request, accounts)
 
     page = PageEditor(request, grouppage)
     if page.exists():
