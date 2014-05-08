@@ -186,15 +186,10 @@ def _group_del(request, pagetext, userlist):
 def group_add(request, grouppage, accounts, create=False):
     _ = request.getText
 
-    try:
-        if not create:
-            check_grouppage(request, grouppage)
-    except GroupException, err:
-        return False, err
-    try:
-        check_users(request, accounts)
-    except GroupException, err:
-        return False, err
+    if not create:
+        check_grouppage(request, grouppage)
+
+    check_users(request, accounts)
 
     page = PageEditor(request, grouppage)
     if page.exists():
@@ -202,11 +197,12 @@ def group_add(request, grouppage, accounts, create=False):
     elif create:
         members = set([])
     else:
-        return False, _('Group does not exist: ') + grouppage
+        raise GroupException(_('Group does not exist: ') + grouppage)
 
     for uname in accounts:
         if uname in members:
-            return False, _('User already in group: ') + uname
+            raise GroupException(_('User already in group: ') + uname)
+
     pagetext = page.get_raw_body()
     if not pagetext:
         pagetext = ''
@@ -218,31 +214,25 @@ def group_add(request, grouppage, accounts, create=False):
     if not newmembers == members | set(accounts):
         msg = page.saveText(pagetext, 0,
                             comment="Reverting due to problems in group operation.")
-        return False, _('Add unsuccessful for unknown reasons.')
+        raise GroupException(_('Add unsuccessful for unknown reasons.'))
 
     return True, msg
 
 def group_del(request, grouppage, accounts):
     _ = request.getText
 
-    try:
-        check_grouppage(request, grouppage)
-    except GroupException, err:
-        return False, err
-    try:
-        check_users(request, accounts)
-    except GroupException, err:
-        return False, err
+    check_grouppage(request, grouppage)
+    check_users(request, accounts)
 
     page = PageEditor(request, grouppage)
     if page.exists():
         members = request.groups[grouppage].members
     else:
-        return False, _('Group does not exist: ') + grouppage
+        raise GroupException( _('Group does not exist: ') + grouppage)
 
     for uname in accounts:
         if uname not in members:
-            return False, _('User not in group: ') + uname
+            raise GroupException(_('User not in group: ') + uname)
 
     page = PageEditor(request, grouppage)
     pagetext = page.get_raw_body()
@@ -255,34 +245,28 @@ def group_del(request, grouppage, accounts):
     if not newmembers == members - set(accounts):
         msg = page.saveText(pagetext, 0,
                             comment="Reverting due to problems in group operation.")
-        return False, _('Delete unsuccessful for unknown reasons.')
+        raise GroupException(_('Delete unsuccessful for unknown reasons.'))
 
     return True, msg
 
 def group_rename(request, grouppage, accounts):
     _ = request.getText
 
-    try:
-        check_grouppage(request, grouppage)
-    except GroupException, err:
-        return False, err
-    try:
-        check_users(request, list(accounts)[::2])
-    except GroupException, err:
-        return False, err
+    check_grouppage(request, grouppage)
+    check_users(request, list(accounts)[::2])
 
     if len(accounts) % 2:
-        return False, _('Wrong number of arguments for rename.')
+        raise ValueError(_('Wrong number of arguments for rename.'))
 
     page = PageEditor(request, grouppage)
     if page.exists():
         members = request.groups[grouppage].members
     else:
-        return False, _('Group does not exist: ') + grouppage
+        raise GroupException(_('Group does not exist: ') + grouppage)
 
     for uname in accounts[::2]:
         if uname not in members:
-            return False, _('User not in group: ') + uname
+            raise GroupException(_('User not in group: ') + uname)
 
     page = PageEditor(request, grouppage)
     pagetext = page.get_raw_body()
@@ -299,7 +283,7 @@ def group_rename(request, grouppage, accounts):
     if testmembers != newmembers:
         msg = page.saveText(pagetext, 0,
                             comment="Reverting due to problems in group operation.")
-        return False, _('Rename unsuccessful for unknown reasons.')
+        raise GroupException(_('Rename unsuccessful for unknown reasons.'))
 
     return True, msg
 
