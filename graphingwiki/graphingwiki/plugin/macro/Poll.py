@@ -28,9 +28,6 @@
 
 """
 
-from graphingwiki.editing import metatable_parseargs, get_metas
-
-
 from urllib import quote
 
 from MoinMoin import config
@@ -60,7 +57,6 @@ def execute(macro, args):
             opts.setdefault(key.encode(config.charset), list()).append(val)
         else:
             opts.setdefault('keys', list()).append(arg)
-
 
     return u'''
     <div class="poll" data-options="%s"></div>
