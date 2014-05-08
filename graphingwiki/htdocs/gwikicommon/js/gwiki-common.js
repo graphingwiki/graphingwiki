@@ -1,4 +1,4 @@
-require(['config', 'mootools-more'], function(config) {
+require(['config', 'mootools'], function(config) {
     "use strict";
 
     Slick.definePseudo('nth-include', function(n) {
@@ -16,32 +16,9 @@ require(['config', 'mootools-more'], function(config) {
         }
     };
 
-//Fixing Date to output week numbers in correct (finnish) way
-    Date.implement({
-        getFinWeek: function() {
-            //if first day of year is before friday (<4) => first week number is 1
-            var firstDay = this.clone().set('month', 0).set('date', 1);
-            var weeknum = ((this.get('dayOfYear') + firstDay.getFinDay()) / 7).ceil();
-            weeknum = (firstDay.getFinDay() < 4) ? weeknum : weeknum - 1;
-            return weeknum;
-        },
-        getFinDay: function() {
-            return (this.getDay() + 6) % 7;
-        }
-    });
-
-
     Object.extend({
         sortedKeys: function(object) {
             return Object.keys(object).sort();
-        },
-
-        sortedValues: function(object) {
-            var keys = Object.keys(object).sort();
-            return keys.map(
-                function(key) {
-                    return object[key];
-                }).flatten();
         }
     });
 
@@ -183,10 +160,9 @@ require(['config', 'mootools-more'], function(config) {
 
     var init = function() {
         // MetaFormEdit improvements
-        var fields = $$('.metaformedit');
-        if (fields.length > 0) {
+        if ($$('.metaformedit').length) {
             require(['gwikicommon/MetaFormEdit'], function(MetaFormEdit) {
-                new MetaFormEdit(fields[0].getParent('form'));
+                new MetaFormEdit($$('.metaformedit')[0].getParent('form'));
             });
         }
 
@@ -198,10 +174,9 @@ require(['config', 'mootools-more'], function(config) {
         }
 
         // Apply MetaTable improvements
-        var tables = $$('div.metatable[data-options]');
-        if (tables.length > 0) {
+        if ($$('div.metatable[data-options]').length) {
             require(['gwikicommon/MetaTable', 'config'], function(mt, config) {
-                tables.each(function(div, i) {
+                $$('div.metatable[data-options]').each(function(div, i) {
                     new mt.MetaTable(div.getElement('table'), {
                         tableArguments: JSON.decode(decodeURIComponent(div.getAttribute('data-options'))),
                         separator: config.gwikiseparator
@@ -249,7 +224,7 @@ require(['config', 'mootools-more'], function(config) {
         }
 
         // Dismissable banners
-        if ($$('.banner[data-bannername]')) {
+        if ($$('.banner[data-bannername]').length) {
             require(['gwikicommon/Banner'], function(Banner) {
                 $$('.banner[data-bannername]').each(function(banner) {
                     new Banner(banner)
