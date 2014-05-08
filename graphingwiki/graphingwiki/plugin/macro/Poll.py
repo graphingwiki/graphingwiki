@@ -3,7 +3,7 @@
     Poll macro plugin to MoinMoin/Graphingwiki
      - Polling/voting widget
 
-    @copyright: 2014 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2014 by Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person

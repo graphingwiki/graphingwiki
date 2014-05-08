@@ -2,7 +2,7 @@
 """
     Invite macro plugin
     - wraps Invite action to easily configurable macro 
-    @copyright: 2012 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2012 by Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 from graphingwiki.plugin.action.Invite import *

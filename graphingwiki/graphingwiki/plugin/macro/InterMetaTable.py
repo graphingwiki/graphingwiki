@@ -4,7 +4,7 @@
      - Shows in tabular form the Metadata of desired pages across different
        collab instances
 
-    @copyright: 2011 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2011 by Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person

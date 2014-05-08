@@ -12,7 +12,7 @@
             {'op' : 'add', 'key': 'foo2', 'value': ['bar'], 'page': 'foopage'}
         ]
 
-    @copyright: 2014 by Lauri Pokka larpo@clarifiednetworks.com
+    @copyright: 2014 by Lauri Pokka larpo@codenomicon.com
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 

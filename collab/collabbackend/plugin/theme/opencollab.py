@@ -2,7 +2,7 @@
 """
     MoinMoin - Bootstrap theme.
 
-    @copyright: 2014 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2014 by Lauri Pokka <larpo@codenomicon.com>
     @copyright: 2013 by Juhani Eronen <exec@iki.fi>
 
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>

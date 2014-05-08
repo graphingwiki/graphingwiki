@@ -3,7 +3,7 @@
     GroupEditor macro plugin for MoinMoin/Graphingwiki
     The functionality is implemented on gwikicommon/js/GroupEditor.js
 
-    @copyright: 2014 by Lauri Pokka larpo@clarifiednetworks.com
+    @copyright: 2014 by Lauri Pokka larpo@codenomicon.com
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 from urllib import quote

@@ -3,7 +3,7 @@
     groupsJSON action plugin for MoinMoin/Graphingwiki
      - group editing and listing backend for GroupEditor.js
 
-    @copyright: 2014 by Lauri Pokka larpo@clarifiednetworks.com
+    @copyright: 2014 by Lauri Pokka larpo@codenomicon.com
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
