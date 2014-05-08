@@ -26,7 +26,6 @@ a.cross:after {
 
 .alphabg {
     background: rgba(0, 0, 0, 0.80);
-    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
 }
 
 /* Mootools tooltips */
@@ -38,7 +37,6 @@ a.cross:after {
     z-index: 1050;
 
     background: rgba(0, 0, 0, 0.80);
-    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
     border-radius: 5px;
 }
 
@@ -57,52 +55,60 @@ a.cross:after {
 
 /* MetaMonthCalendar css*/
 
-th.calendar-month {
+.MetaMonthCalendar th, .MetaMonthCalendar td {
+    text-align: center;
     background-color: #DEDEDE;
-    border: solid 1px #ADB9CC;
 }
 
-td.calendar-today {
-    border-width: 2pt;
-    border-color: #8470FF;
-    border-style: solid;
+.MetaMonthCalendar .calendar-month {
+    background-color: #5cb346;
+    border: none;
+}
+
+.MetaMonthCalendar .calendar-month a {
+    margin: 0 5px 0 5px;
+}
+.MetaMonthCalendar td.calendar-day {
+    background-color: white;
+}
+
+.MetaMonthCalendar td.calendar-today {
+    border: 2pt solid #8470FF;
     background-color: #CCFFCC;
 }
 
-td.calendar-topic-workday {
+.MetaMonthCalendar td.calendar-topic-workday {
     border-style: solid;
-    width: 30px;
-    height: 18px;
+    width: 44px;
     background-color: #DDDDFF;
-    text-align: center;
 }
 
-td.calendar-topic-weekend {
-    width: 30px;
-    height: 18px;
+.MetaMonthCalendar td.calendar-topic-weekend {
+    width: 44px;
     background-color: #FFDDDD;
-    text-align: center;
 }
 
-td.calendar-weekend {
+.MetaMonthCalendar td.calendar-weekend {
     background-color: #FEF1E9;
 }
 
-td.calendar-weeknumber {
+.MetaMonthCalendar td.calendar-weeknumber {
     background-color: #CCFFCC;
-    height: 15px;
-    width: 22px;
+    width: 31px;
 }
 
-td.calendar-empty {
-    background-color: #DEDEDE;
+.MetaMonthCalendar td.calendar-empty {
 }
 
-table.month-container > tbody > tr >td,
-table.month-container td table {
+.MetaMonthCalendar td.hastip {
+    background-color: #FFB6C1;
+}
+
+.MetaMonthCalendar table.month-container > tbody > tr >td,
+.MetaMonthCalendar table.month-container td table {
     border: none;
-    padding: 0 0 0 0;
-    margin: 0 0 0 0;
+    padding: 0;
+    margin:0;
     width: 100%;
 }
 
