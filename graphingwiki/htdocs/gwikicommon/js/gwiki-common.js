@@ -1,5 +1,6 @@
-require(['config', 'mootools'], function(config) {
+require(['config', 'mootools-more'], function(config) {
     "use strict";
+    //todo: detect and remove mootools-more dependencies (at least pseudo event :once)
 
     Slick.definePseudo('nth-include', function(n) {
         var node = this, count = 0;
@@ -249,6 +250,15 @@ require(['config', 'mootools'], function(config) {
                         }
                     });
                 }
+            });
+        }
+
+        if ($$('.groupeditor').length) {
+            require(['gwikicommon/GroupEditor'], function(GroupEditor) {
+                $$('.groupeditor').each(function(el) {
+                    var opts = JSON.decode(decodeURIComponent(el.getAttribute('data-options')));
+                    new GroupEditor(el, opts);
+                })
             });
         }
 
