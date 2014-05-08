@@ -1,18 +1,27 @@
 define([
     "collabcommon/CollabChat/Connection",
-    "collabcommon/CollabChat/UI"
+    "collabcommon/CollabChat/UI",
+    "collabcommon/common/Notification"
 ], function(
     Connection,
-    UI)
-{
+    UI,
+    Notification
+) {
     "use strict";
 
     return function(container, boshUri, roomJid, jid, password) {
         var main = function(container) {
             var ui = new UI(container);
-
             var conn = new Connection(boshUri, roomJid, jid, password);
+            var notification = new Notification();
+            var visible = false;
+            var showNotifications = true;
 
+            if (window.Notification.permission !== 'granted') {
+                showNotifications = false;
+            }
+
+            ui.setNotificationStatus(showNotifications);
             ui.setChannelLabel(roomJid);
 
             conn.listen("statusChanged", function(isError, status) {
@@ -24,10 +33,52 @@ define([
                 conn.listen("disconnected", listener.unlisten);
                 conn.listen("disconnected", ui.onDisconnect, ui);
             });
+
             conn.listen("message", ui.addMessage, ui);
 
             conn.listen("participantJoin", ui.userJoin, ui);
             conn.listen("participantLeave", ui.userLeave, ui);
+
+            ui.listen("notificationPermissionChange", function() {
+
+                if (showNotifications === false) {
+                    notification.checkPermission();
+                }
+
+                showNotifications = showNotifications ? false : true;
+                ui.setNotificationStatus(showNotifications);
+            });
+
+            ui.listen("chatvisibilitychange", function(isVisible) {
+                if (visible === isVisible) {
+                    return;
+                }
+
+                visible = isVisible;
+
+                if (visible) {
+                    notification.clear();
+                }
+            });
+
+            conn.listen("message", function() {
+                if (visible) {
+                    notification.clear();
+                    return;
+                }
+
+                if (showNotifications !== true) {
+                    return;
+                }
+
+                notification.tab("Chat: New message", 1000);
+
+                notification.native("CollabChat: " + roomJid, {
+                    "tag": "CollabChatNotification",
+                    "body": "New message"
+                });
+
+            }.bind(this));
         };
 
         var check = function() {

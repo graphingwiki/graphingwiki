@@ -6,7 +6,7 @@ define([
     dom
 ) {
     "use strict";
-    
+
     var pad = function(number, length) {
         number = "" + number;
         while (number.length < length) {
@@ -113,7 +113,7 @@ define([
         return string.match(/^\s*(.*?)\s*$/)[1];
     };
 
-    var createElement = function(tag, className) {
+    var createElement = function(tag, className, type) {
         var element = document.createElement(tag);
         element.className = className;
         return element;
@@ -130,8 +130,22 @@ define([
         this.tools = createElement("div", "toolbar");
         this.toolset = createElement("div", "toolset");
         this.channelLabel = createElement("span", "channel-label");
-        this.connectionStatus = createElement("span", "connection-status");
+        this.connectionStatus = createElement("span", "chat-button");
+        this.notificationCheck = createElement("span", "chat-button");
+        this.notificationCheck.id = "chat-notification-permission";
+
+        if (window.Notification.permission === 'granted') {
+            this.notificationCheck.textContent = "notifications: on";
+        } else {
+            this.notificationCheck.textContent = "notifications: off";
+        }
+
+        this.notificationCheck.onclick = function() {
+            this.trigger("notificationPermissionChange");
+        }.bind(this);
+
         this.tools.appendChild(this.channelLabel);
+        this.toolset.appendChild(this.notificationCheck);
         this.toolset.appendChild(this.connectionStatus);
         this.tools.appendChild(this.toolset);
         this.container.appendChild(this.tools);
@@ -171,6 +185,33 @@ define([
         dom.listen(this.areaContainer, "wheel", dom.preventWheelGestures.bind(this));
         dom.listen(this.userlistContainer, "mousewheel", dom.preventWheelGestures.bind(this));
         dom.listen(this.userlistContainer, "wheel", dom.preventWheelGestures.bind(this));
+
+        var _visibilityHandler = function() {
+            var position = this.chatWrapper.getBoundingClientRect();
+
+            if (document.hidden || position.bottom < 0) {
+                this.trigger("chatvisibilitychange", false);
+                return;
+            }
+
+            this.trigger("chatvisibilitychange", true);
+        };
+
+        var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
+
+        this._observer = new MutationObserver(_visibilityHandler.bind(this));
+
+        this._observer.observe(document.body, {
+            "childList": true,
+            "subtree": true,
+            "attributes": true,
+            "characterdata": true
+        });
+
+        dom.listen(window, "mousewheel", _visibilityHandler.bind(this));
+        dom.listen(window, "wheel", _visibilityHandler.bind(this));
+        dom.listen(window, "resize", _visibilityHandler.bind(this));
+        dom.listen(document, "visibilitychange", _visibilityHandler.bind(this));
 
         dom.listen(window, "resize", function() {
             if (_this.isAtBottom) {
@@ -281,6 +322,15 @@ define([
 
     UI.prototype.setChannelLabel = function(label) {
         this.channelLabel.textContent = label;
+    };
+
+    UI.prototype.setNotificationStatus = function(perm) {
+        if (perm) {
+            this.notificationCheck.textContent = "notifications: on";
+            return;
+        }
+
+        this.notificationCheck.textContent = "notifications: off";
     };
 
     return UI;

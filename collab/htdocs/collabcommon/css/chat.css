@@ -7,7 +7,6 @@
 
     padding: 0;
     margin: 0;
-    line-h
 }
 
 #content .collab_chat div {
@@ -43,15 +42,21 @@
     float: right;
 }
 
-#content .collab_chat .toolbar .connection-status {
+#content .collab_chat .toolbar .chat-button {
     display: inline-block;
-    color: #EFEFEF;
-    font-size: 0.9em;
-    padding: 0 0.75em;
-    line-height: 1.5em;
+    cursor: default;
     background-color: #2E3D4C;
+    font-size: 0.9em;
+    line-height: 1.5em;
+    color: #EFEFEF;
     border-radius: 0.75em;
+    padding: 0 0.75em;
     margin: 0 0.5em;
+}
+
+#content .collab_chat .toolbar #chat-notification-permission:hover {
+    color: #111;
+    background-color: #FCFEFF;
 }
 
 #content .collab_chat .chat {
