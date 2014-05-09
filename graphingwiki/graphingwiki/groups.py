@@ -16,7 +16,6 @@ if __name__ == '__main__':
 
 from MoinMoin.user import User
 from MoinMoin.wikiutil import isGroupPage
-from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.datastruct.backends.wiki_groups import WikiGroup
 
@@ -24,8 +23,10 @@ from editing import _test, _doctest_request
 
 user_re = re.compile('(^ +\*\s*(.+)$\n?)', re.M)
 
+
 class GroupException(Exception):
     pass
+
 
 def groups_by_user(request, account, recursive=False):
     _ = request.getText
@@ -44,6 +45,7 @@ def groups_by_user(request, account, recursive=False):
         return set(gn for gn in wiki_groups if
                    account in request.groups[gn].members)
 
+
 def groups_by_user_transitive(request, account):
     """
     Returns the groups where the user is a member, as well as the
@@ -53,26 +55,32 @@ def groups_by_user_transitive(request, account):
     recursive_groups = groups_by_user(request, account, recursive=True)
     return real_groups, recursive_groups - real_groups
 
+
 def users_by_group(request, grouppage, recursive=False):
     _ = request.getText
 
-    check_grouppage(request, grouppage, writecheck=False)
+    if not check_grouppage(request, grouppage, writecheck=False):
+        raise GroupException(_("Invalid group"), grouppage)
 
     if recursive:
         return request.groups[grouppage]
     else:
         return request.groups[grouppage].members
 
+
 def check_grouppage(request, grouppage, writecheck=True):
     _ = request.getText
 
     if not isGroupPage(grouppage, request.cfg):
-        raise GroupException(_('Not a valid group page: ') + grouppage)
+        return False
     if writecheck:
         if not request.user.may.write(grouppage):
-            raise GroupException(_('You are not allowed to edit this page.'))
+            return False
     if not isinstance(request.groups[grouppage], WikiGroup):
-        raise GroupException(_('Not a wiki group page: ') + grouppage)
+        return False
+
+    return True
+
 
 def check_users(request, accounts):
     _ = request.getText
@@ -82,6 +90,7 @@ def check_users(request, accounts):
     for uname in accounts:
         if not User(request, name=uname).exists():
             raise GroupException(_('User not valid: ') + uname)
+
 
 def _group_add(request, pagetext, userlist):
     """
@@ -121,6 +130,7 @@ def _group_add(request, pagetext, userlist):
 
     return pagetext
 
+
 def _group_rename(request, pagetext, userlist):
     """
     >>> request = _doctest_request()
@@ -153,6 +163,7 @@ def _group_rename(request, pagetext, userlist):
 
     return pagetext
 
+
 def _group_del(request, pagetext, userlist):
     """
     >>> request = _doctest_request()
@@ -183,25 +194,28 @@ def _group_del(request, pagetext, userlist):
         pagetext = u'\n'
     return pagetext
 
+
 def group_add(request, grouppage, accounts, create=False):
     _ = request.getText
 
-    if not create:
-        check_grouppage(request, grouppage)
+    if not create and not check_grouppage(request, grouppage):
+        raise GroupException(_("Invalid group: ") + grouppage)
 
-    check_users(request, accounts)
+    for item in accounts:
+        if not User(request, name=item).exists() and not check_grouppage(request, item, False):
+            raise GroupException(_("Invalid user or group: ") + item)
 
     page = PageEditor(request, grouppage)
     if page.exists():
-        members = request.groups[grouppage].members
+        members = request.groups[grouppage].members | request.groups[grouppage].member_groups
     elif create:
         members = set([])
     else:
         raise GroupException(_('Group does not exist: ') + grouppage)
 
-    for uname in accounts:
-        if uname in members:
-            raise GroupException(_('User already in group: ') + uname)
+    for item in accounts:
+        if item in members:
+            raise GroupException(item + _(' already in group: ') + grouppage)
 
     pagetext = page.get_raw_body()
     if not pagetext:
@@ -210,7 +224,7 @@ def group_add(request, grouppage, accounts, create=False):
     msg = page.saveText(newtext, 0,
                         comment="Added to group: " + ', '.join(accounts))
 
-    newmembers = request.groups[grouppage].members
+    newmembers = request.groups[grouppage].members | request.groups[grouppage].member_groups
     if not newmembers == members | set(accounts):
         msg = page.saveText(pagetext, 0,
                             comment="Reverting due to problems in group operation.")
@@ -218,20 +232,18 @@ def group_add(request, grouppage, accounts, create=False):
 
     return True, msg
 
+
 def group_del(request, grouppage, accounts):
     _ = request.getText
 
-    check_grouppage(request, grouppage)
+    if not check_grouppage(request, grouppage):
+        raise GroupException(_("Invalid group: ") + grouppage)
 
-    page = PageEditor(request, grouppage)
-    if page.exists():
-        members = request.groups[grouppage].members
-    else:
-        raise GroupException( _('Group does not exist: ') + grouppage)
+    members = request.groups[grouppage].members | request.groups[grouppage].member_groups
 
-    for uname in accounts:
-        if uname not in members:
-            raise GroupException(_('User not in group: ') + uname)
+    for name in accounts:
+        if name not in members:
+            raise GroupException(name + _(' not in group: ') + grouppage)
 
     page = PageEditor(request, grouppage)
     pagetext = page.get_raw_body()
@@ -240,7 +252,7 @@ def group_del(request, grouppage, accounts):
                         comment="Deleted from group: " +
                         ', '.join(accounts))
 
-    newmembers = request.groups[grouppage].members
+    newmembers = request.groups[grouppage].members | request.groups[grouppage].member_groups
     if not newmembers == members - set(accounts):
         msg = page.saveText(pagetext, 0,
                             comment="Reverting due to problems in group operation.")
@@ -248,10 +260,13 @@ def group_del(request, grouppage, accounts):
 
     return True, msg
 
+
 def group_rename(request, grouppage, accounts):
     _ = request.getText
 
-    check_grouppage(request, grouppage)
+    if not check_grouppage(request, grouppage):
+        raise GroupException(_("Invalid group: ") + grouppage)
+
     check_users(request, list(accounts)[::2])
 
     if len(accounts) % 2:
