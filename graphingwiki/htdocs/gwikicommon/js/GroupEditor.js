@@ -148,7 +148,10 @@ define([
                         );
                     });
 
-                    el.grab(new Element('a.btn.btn-primary.btn-sm.save[text=save]'));
+                    el.adopt(
+                        new Element('br'),
+                        new Element('a.btn.btn-primary.btn-sm.save[text=save]')
+                    );
                 }.bind(this),
                 onFailure: function(xhr) {
                     alert(xhr.response);
