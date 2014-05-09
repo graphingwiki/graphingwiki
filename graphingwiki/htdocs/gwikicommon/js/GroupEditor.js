@@ -84,7 +84,8 @@ define([
                 }.bind(this),
                 onFailure:  function(xhr) {
                     alert(xhr.response);
-                }
+                    this.update();
+                }.bind(this)
             }).post(JSON.stringify(ops));
         },
 
@@ -107,25 +108,37 @@ define([
 //                            new Element('a.glyphicon.glyphicon-pencil.jslink.edit')
                         ).set('data-value', name));
                         cont.grab(ul);
-                        (group.members.concat(group.groups)).forEach(function(mem) {
-                            var cls = (group.members.indexOf(mem) == -1) ? 'glyphicon glyphicon-folder-open' : '';
+                        (group.members.concat(group.groups)).forEach(function(name) {
+                            var isgroup = group.members.indexOf(name) == -1,
+                                cls,
+                                access = "";
+                            if (isgroup) {
+                                cls = 'glyphicon glyphicon-folder-open';
+                                access = results[name]? "": "(no access)";
+                            }
+
                             ul.grab(new Element('li').adopt(
                                 new Element('span').set('class', cls),
-                                new Element('span.name').set('text', mem),
-                                new Element('a.glyphicon.glyphicon-trash.jslink.rm')
+                                new Element('span.name').set('text', name),
+                                new Element('a.glyphicon.glyphicon-trash.jslink.rm'),
+                                new Element('span.info.denied').set('text', access)
 //                                new Element('a.glyphicon.glyphicon-pencil.jslink.edit')
-                            ).set('data-value', mem));
+                            ).set('data-value', name));
                         });
 
                         var groups = group.groups;
+                        var handled = [];
                         while (groups.length) {
                             var g = groups.pop();
+                            if (handled.indexOf(g) != -1 || !results[g]) continue;
+
+                            handled.push(g);
                             Array.prototype.push.apply(groups, results[g].groups);
                             results[g].members.forEach(function(name) {
                                 ul.grab(new Element('li.recursive').adopt(
                                     new Element('span.glyphicon.glyphicon-link'),
                                     new Element('span.name').set('text', name),
-                                    new Element('span.groupname').set('text', g)
+                                    new Element('span.info.groupname').set('text', '(' + g + ')')
                                 ));
                             })
                         }

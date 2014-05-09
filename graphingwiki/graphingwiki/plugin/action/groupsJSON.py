@@ -34,9 +34,10 @@ def execute(pagename, request):
     if request.environ['REQUEST_METHOD'] == "GET":
         groups = {}
         for group in request.groups:
-            members = request.groups[group].members
-            grps = request.groups[group].member_groups
-            groups[group] = dict(members=members, groups=grps)
+            if request.user.may.read(group):
+                members = request.groups[group].members
+                grps = request.groups[group].member_groups
+                groups[group] = dict(members=members, groups=grps)
 
         json.dump(groups, request, cls=SetEncoder)
         return

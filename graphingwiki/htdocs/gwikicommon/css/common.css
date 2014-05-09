@@ -491,16 +491,12 @@ div.ac-results {
     font-size: 0.8em;
 }
 
-.groupeditor li span.groupname {
+.groupeditor li span.info {
     font-style: italic;
     margin-left: 10px;
 }
-
-.groupeditor li span.groupname:before {
-    content: '(';
-}
-.groupeditor li span.groupname:after {
-    content: ')';
+.groupeditor li span.denied {
+    color: red;
 }
 
 .groupeditor ul a.glyphicon {
