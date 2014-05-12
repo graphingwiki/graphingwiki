@@ -15,12 +15,14 @@ except ImportError:
 
 
 def do_macro(request, **kw):
+    opts = {"baseurl": request.getScriptname()}
+
     return '''
     <h2>Group Editor</h2>
     <div class="groupeditor" data-options="%s">
     </div>
     <hr>
-    ''' % quote(json.dumps(kw.items()))
+    ''' % quote(json.dumps(dict(opts.items() + kw.items())))
 
 
 def execute(macro, args):

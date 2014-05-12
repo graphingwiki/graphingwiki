@@ -10,7 +10,11 @@ define([
     "use strict";
 
     return new Class({
+        Implements: [Options],
+
+        options: {},
         initialize: function(element, opts) {
+            this.setOptions(opts);
             this.element = document.id(element);
 
             this.attach();
@@ -18,12 +22,14 @@ define([
         },
 
         attach: function() {
-            this.element.addEvent('click:relay(a.add)', function(e){
+            this.element.addEvent('click:relay(a.add)', function(e) {
                 var li = new Element('li');
                 li.adopt(
                     new Element('input'),
                     new Element('a.glyphicon.glyphicon-trash.jslink')
-                        .addEvent('click', function(){li.destroy()})
+                        .addEvent('click', function() {
+                            li.destroy()
+                        })
                 );
                 e.target.getSiblings('ul').grab(li);
             });
@@ -93,7 +99,7 @@ define([
             var el = this.element;
             var spinner = new Element('i.glyphicon.glyphicon-refresh.icon-spin');
             el.grab(new Element('div.spinner-container').grab(spinner));
-
+            var baseurl = this.options.baseurl;
             new Request.JSON({
                 url: '?action=groupsJSON',
                 onSuccess: function(results) {
@@ -103,7 +109,10 @@ define([
                     Object.each(results, function(group, name) {
                         var cont  = new Element('div.groupcontainer').inject(el);
                         var ul = new Element('ul').grab(new Element('h4').adopt(
-                            new Element('span.name').set('text', name)
+                            new Element('a.name').set({
+                                'text': name,
+                                'href': baseurl + "/" + name
+                            })
 //                            new Element('a.glyphicon.jslink').set('html', '&nbsp;'),
 //                            new Element('a.glyphicon.glyphicon-pencil.jslink.edit')
                         ).set('data-value', name));
