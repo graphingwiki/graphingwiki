@@ -56,9 +56,11 @@ def main():
         request.close()
 
     if opts.remove:
-        print >> sys.stderr, "Removing file %s" % userfile
+        print >> sys.stderr, "Removing user file %s" % userfile
         if not opts.noop:
             os.unlink(userfile)
+    else:
+        print >> sys.stderr, "Leaving user file %s intact" % userfile
 
 
 if __name__ == "__main__":
