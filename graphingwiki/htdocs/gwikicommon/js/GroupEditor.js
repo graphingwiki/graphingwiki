@@ -155,6 +155,7 @@ define([
                         cont.adopt(
                             new Element('a.jslink.glyphicon.glyphicon-plus.add')
                         );
+                        cont.grab(new Element('br'), 'after')
                     });
 
                     el.adopt(
