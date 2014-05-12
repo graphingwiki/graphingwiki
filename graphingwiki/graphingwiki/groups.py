@@ -267,7 +267,7 @@ def group_rename(request, grouppage, accounts):
     if not check_grouppage(request, grouppage):
         raise GroupException(_("Invalid group: ") + grouppage)
 
-    check_users(request, list(accounts)[::2])
+    check_users(request, accounts[::2])
 
     if len(accounts) % 2:
         raise ValueError(_('Wrong number of arguments for rename.'))
