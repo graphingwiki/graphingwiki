@@ -106,6 +106,12 @@ def geoip_init(request):
     elif not GEO_IP_PATH:
         error = _("ERROR: GeoIP data file not found.")
 
+    elif not os.path.isfile(GEO_IP_PATH):
+        error = _("ERROR: GeoIP data file not found.")
+
+    elif not os.access(GEO_IP_PATH, os.R_OK):
+        error = _("ERROR: GeoIP data file not found.")
+        
     else:
         GEO_IP = GeoIP.open(GEO_IP_PATH, GeoIP.GEOIP_STANDARD)
 
