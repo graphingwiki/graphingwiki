@@ -32,7 +32,7 @@ def wsgiapplication(environ, start_response):
 class CollabBackend(object):
     def __init__(self, inifile='/etc/local/collab/collab.ini'):
         self.config = ConfigParser.RawConfigParser()
-        self.config.read('/etc/local/collab/collab.ini')
+        self.config.read(inifile)
 
         self.wikidir = self.config.get('collab', 'wikidir')
         self.logconf = self.config.get('collab', 'logconf')
