@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@copyright: 2014 Ossi Salmi
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import errno
+import optparse
+
+from collabbackend.clitools import CollabRequest, listAllCollabs
+from graphingwiki.groups import groups_by_user_transitive, users_by_group
+
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] USER")
+    parser.add_option("-a", "--all",
+            action="store_true", dest="all", default=False,
+            help="list all users and groups")
+    parser.add_option("-c", "--collabs",
+            action="store_true", dest="collabs", default=False,
+            help="list collabs instead of users")
+    parser.add_option("-n", "--noop",
+            action="store_true", dest="noop", default=False,
+            help="only print warnings")
+
+    (opts, args) = parser.parse_args()
+
+    if not (args or opts.all):
+        sys.exit(parser.get_usage())
+
+    usergroups = dict()
+
+    if opts.collabs:
+        collabs = args
+    else:
+        collabs = listAllCollabs()
+
+    for collab in collabs:
+        try:
+            request = CollabRequest(collab)
+        except OSError, err:
+            if err.errno == errno.ENOENT:
+                print >> sys.stderr, "No such collab: %s" % collab
+                continue
+            else:
+                raise
+
+        members = set()
+
+        for group in request.request.groups:
+            for user in users_by_group(request.request, group):
+                if opts.all or opts.collabs or user in args:
+                    if request.getUser(user).exists():
+                        members.add(user)
+                    else:
+                        print >> sys.stderr, "PHANTOM: %s in %s:%s" % (
+                                user, collab, group)
+
+        for user in members:
+            real, recursed = groups_by_user_transitive(request.request, user)
+            if user not in usergroups:
+                usergroups[user] = dict()
+            usergroups[user][collab] = (real, recursed)
+
+        request.close()
+
+    if opts.noop:
+        sys.exit()
+
+    for user, collabs in usergroups.iteritems():
+        for collab in collabs:
+            real = " ".join(collabs[collab][0])
+            recursed = " ".join(["%s*" % x for x in collabs[collab][1]])
+            print user, collab, real, recursed
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)

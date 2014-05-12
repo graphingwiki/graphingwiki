@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@copyright: 2014 Ossi Salmi
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import optparse
+
+from collabbackend.clitools import CollabRequest, listAllCollabs
+from graphingwiki.groups import GroupException, groups_by_user, group_del
+
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] USER")
+    parser.add_option("-n", "--noop",
+            action="store_true", dest="noop", default=False,
+            help="dry run, only print changes")
+    parser.add_option("-r", "--remove",
+            action="store_true", dest="remove", default=False,
+            help="remove user file")
+
+    (opts, args) = parser.parse_args()
+
+    if len(args) != 1:
+        sys.exit(parser.get_usage())
+
+    name = args[0]
+
+    request = CollabRequest()
+    user = request.getUser(name)
+
+    if not user.exists():
+        sys.exit("No such user: " + name)
+
+    userfile = user.getFilename()
+
+    request.close()
+
+    for collab in listAllCollabs():
+        request = CollabRequest(collab)
+        usergroups = groups_by_user(request.request, user.name)
+
+        for group in usergroups:
+            print >> sys.stderr, "Removing user %s from %s:%s" % (
+                user.name, collab, group)
+            if not opts.noop:
+                try:
+                    group_del(request.request, group, [user.name])
+                except GroupException, err:
+                    print >> sys.stderr, "%s: %s" % (group, err.message)
+
+        request.close()
+
+    if opts.remove:
+        print >> sys.stderr, "Removing file %s" % userfile
+        if not opts.noop:
+            os.unlink(userfile)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)
