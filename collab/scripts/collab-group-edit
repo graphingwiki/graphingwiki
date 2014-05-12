@@ -16,25 +16,25 @@ from graphingwiki.groups import GroupException, group_add, group_del
 
 def main():
     parser = optparse.OptionParser()
-    parser.set_usage("%prog [options] USER COLLAB GROUP")
+    parser.set_usage("%prog [options] COLLAB GROUP USER")
     parser.add_option("-a", "--add",
             action="store_const", dest="action", const="add",
-            help="add to groups")
+            help="add users to group")
     parser.add_option("-d", "--del",
             action="store_const", dest="action", const="del",
-            help="delete from groups")
+            help="delete users from group")
     parser.add_option("-c", "--create",
             action="store_true", dest="create", default=False,
-            help="create missing groups")
+            help="create group page if missing")
 
     (opts, args) = parser.parse_args()
 
     if len(args) < 3:
         sys.exit(parser.get_usage())
 
-    user = args[0]
-    collab = args[1]
-    grouplist = args[2:]
+    collab = args[0]
+    group = args[1]
+    users = args[2:]
 
     try:
         request = CollabRequest(collab)
@@ -44,14 +44,13 @@ def main():
         else:
             raise
 
-    for group in grouplist:
-        try:
-            if opts.action == "add":
-                group_add(request.request, group, [user], opts.create)
-            elif opts.action == "del":
-                group_del(request.request, group, [user])
-        except GroupException, err:
-            print >> sys.stderr, "%s: %s" % (group, err.message)
+    try:
+        if opts.action == "add":
+            group_add(request.request, group, users, opts.create)
+        elif opts.action == "del":
+            group_del(request.request, group, users)
+    except GroupException, err:
+        print >> sys.stderr, "%s: %s" % (group, err.message)
 
     request.close()
 
