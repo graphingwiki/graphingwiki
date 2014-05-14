@@ -1,6 +1,23 @@
---- ./MoinMoin/user.py.orig	2013-03-17 19:27:10.000000000 +0200
-+++ ./MoinMoin/user.py	2013-06-04 23:51:55.474941588 +0300
-@@ -176,6 +176,10 @@
+--- MoinMoin/user.py.orig	2014-05-14 15:11:15.393828762 +0300
++++ MoinMoin/user.py	2014-05-14 15:14:01.962654730 +0300
+@@ -22,6 +22,7 @@
+ 
+ import os, time, codecs, base64
+ import md5crypt
++import tempfile
+ 
+ try:
+     import crypt
+@@ -35,7 +36,7 @@ from MoinMoin.support.python_compatibili
+ 
+ from MoinMoin import config, caching, wikiutil, i18n, events
+ from werkzeug.security import safe_str_cmp as safe_str_equal
+-from MoinMoin.util import timefuncs, random_string
++from MoinMoin.util import timefuncs, random_string, filesys
+ from MoinMoin.wikiutil import url_quote_plus
+ 
+ 
+@@ -176,6 +177,10 @@ def encodePassword(cfg, pwd, salt=None,
          hash = hash_new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
@@ -11,7 +28,7 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-@@ -384,7 +388,7 @@
+@@ -384,7 +389,7 @@ class User:
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -20,7 +37,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -450,6 +454,10 @@
+@@ -450,6 +455,10 @@ class User:
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -31,3 +48,64 @@
      def exists(self):
          """ Do we have a user account for this user?
  
+@@ -666,25 +675,41 @@ class User:
+         # !!! should write to a temp file here to avoid race conditions,
+         # or even better, use locking
+ 
+-        data = codecs.open(self.__filename(), "w", config.charset)
+-        data.write("# Data saved '%s' for id '%s'\n" % (
+-            time.strftime(self._cfg.datetime_fmt, time.localtime(time.time())),
+-            self.id))
+-        attrs = self.persistent_items()
+-        attrs.sort()
+-        for key, value in attrs:
+-            # Encode list values
+-            if isinstance(value, list):
+-                key += '[]'
+-                value = encodeList(value)
+-            # Encode dict values
+-            elif isinstance(value, dict):
+-                key += '{}'
+-                value = encodeDict(value)
+-            line = u"%s=%s" % (key, unicode(value))
+-            line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
+-            data.write(line + '\n')
+-        data.close()
++        _, usertemp = tempfile.mkstemp(dir=self._request.cfg.user_dir)
++        try:
++            data = codecs.open(usertemp, "w", config.charset)
++            data.write("# Data saved '%s' for id '%s'\n" % (
++                time.strftime(self._cfg.datetime_fmt, 
++                              time.localtime(time.time())),
++                self.id))
++            attrs = self.persistent_items()
++            attrs.sort()
++            for key, value in attrs:
++                # Encode list values
++                if isinstance(value, list):
++                    key += '[]'
++                    value = encodeList(value)
++                # Encode dict values
++                elif isinstance(value, dict):
++                    key += '{}'
++                    value = encodeDict(value)
++                line = u"%s=%s" % (key, unicode(value))
++                line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
++                data.write(line + '\n')
++            data.close()
++        except IOError, err:
++            try:
++                os.remove(usertemp)
++            except:
++                pass # we don't care for errors in the os.remove
++            # throw a nicer exception
++            if err.errno == errno.ENOSPC:
++                raise self.SaveError(_("Cannot save user %s, no storage space left.") % self.name)
++            else:
++                raise self.SaveError(_("An I/O error occurred while saving user %s (errno=%d)") % (self.name, err.errno))
++        # atomically put it in place (except on windows)
++        else:
++            filesys.rename(usertemp, self.__filename())
+ 
+         arena = 'user'
+         key = 'name2id'
