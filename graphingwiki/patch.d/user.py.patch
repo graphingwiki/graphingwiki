@@ -1,5 +1,5 @@
---- MoinMoin/user.py.orig	2014-05-14 15:11:15.393828762 +0300
-+++ MoinMoin/user.py	2014-05-14 15:14:01.962654730 +0300
+--- ./MoinMoin/user.py.orig	2014-05-14 15:11:15.393828762 +0300
++++ ./MoinMoin/user.py	2014-05-14 15:36:58.433526904 +0300
 @@ -22,6 +22,7 @@
  
  import os, time, codecs, base64
@@ -48,7 +48,7 @@
      def exists(self):
          """ Do we have a user account for this user?
  
-@@ -666,25 +675,41 @@ class User:
+@@ -666,25 +675,43 @@ class User:
          # !!! should write to a temp file here to avoid race conditions,
          # or even better, use locking
  
@@ -71,7 +71,8 @@
 -            line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
 -            data.write(line + '\n')
 -        data.close()
-+        _, usertemp = tempfile.mkstemp(dir=self._request.cfg.user_dir)
++        usertempfd, usertemp = tempfile.mkstemp(dir=self._request.cfg.user_dir)
++        os.close(usertempfd)
 +        try:
 +            data = codecs.open(usertemp, "w", config.charset)
 +            data.write("# Data saved '%s' for id '%s'\n" % (
@@ -95,6 +96,7 @@
 +            data.close()
 +        except IOError, err:
 +            try:
++                data.close()
 +                os.remove(usertemp)
 +            except:
 +                pass # we don't care for errors in the os.remove
