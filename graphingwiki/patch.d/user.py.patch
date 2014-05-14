@@ -1,14 +1,16 @@
 --- ./MoinMoin/user.py.orig	2014-05-14 15:11:15.393828762 +0300
-+++ ./MoinMoin/user.py	2014-05-14 15:36:58.433526904 +0300
-@@ -22,6 +22,7 @@
++++ ./MoinMoin/user.py	2014-05-14 16:16:13.173203428 +0300
+@@ -22,6 +22,9 @@
  
  import os, time, codecs, base64
  import md5crypt
 +import tempfile
++import errno
++import error
  
  try:
      import crypt
-@@ -35,7 +36,7 @@ from MoinMoin.support.python_compatibili
+@@ -35,9 +38,11 @@ from MoinMoin.support.python_compatibili
  
  from MoinMoin import config, caching, wikiutil, i18n, events
  from werkzeug.security import safe_str_cmp as safe_str_equal
@@ -16,8 +18,12 @@
 +from MoinMoin.util import timefuncs, random_string, filesys
  from MoinMoin.wikiutil import url_quote_plus
  
++class SaveError(error.Error):
++    pass
  
-@@ -176,6 +177,10 @@ def encodePassword(cfg, pwd, salt=None,
+ def getUserList(request):
+     """ Get a list of all (numerical) user IDs.
+@@ -176,6 +181,10 @@ def encodePassword(cfg, pwd, salt=None,
          hash = hash_new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
@@ -28,7 +34,7 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-@@ -384,7 +389,7 @@ class User:
+@@ -384,7 +393,7 @@ class User:
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -37,7 +43,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -450,6 +455,10 @@ class User:
+@@ -450,6 +459,10 @@ class User:
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -48,7 +54,7 @@
      def exists(self):
          """ Do we have a user account for this user?
  
-@@ -666,25 +675,43 @@ class User:
+@@ -666,25 +679,49 @@ class User:
          # !!! should write to a temp file here to avoid race conditions,
          # or even better, use locking
  
@@ -71,12 +77,12 @@
 -            line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
 -            data.write(line + '\n')
 -        data.close()
-+        usertempfd, usertemp = tempfile.mkstemp(dir=self._request.cfg.user_dir)
-+        os.close(usertempfd)
++        temp = tempfile.NamedTemporaryFile(dir=self._request.cfg.user_dir, 
++                                           delete=False)
 +        try:
-+            data = codecs.open(usertemp, "w", config.charset)
++            data = codecs.getwriter(config.charset)(temp)
 +            data.write("# Data saved '%s' for id '%s'\n" % (
-+                time.strftime(self._cfg.datetime_fmt, 
++                time.strftime(self._cfg.datetime_fmt,
 +                              time.localtime(time.time())),
 +                self.id))
 +            attrs = self.persistent_items()
@@ -93,21 +99,27 @@
 +                line = u"%s=%s" % (key, unicode(value))
 +                line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
 +                data.write(line + '\n')
-+            data.close()
-+        except IOError, err:
-+            try:
-+                data.close()
-+                os.remove(usertemp)
-+            except:
-+                pass # we don't care for errors in the os.remove
++
++            # atomically put it in place (except on windows)
++            filesys.rename(temp.name, self.__filename())
++        except IOError as err:
++            _ = self._request.getText
 +            # throw a nicer exception
 +            if err.errno == errno.ENOSPC:
-+                raise self.SaveError(_("Cannot save user %s, no storage space left.") % self.name)
++                raise SaveError(
++                    _("Cannot save user %s, no storage space left.") % 
++                    self.name)
 +            else:
-+                raise self.SaveError(_("An I/O error occurred while saving user %s (errno=%d)") % (self.name, err.errno))
-+        # atomically put it in place (except on windows)
-+        else:
-+            filesys.rename(usertemp, self.__filename())
++                raise SaveError(
++                    _("An I/O error occurred while saving user %s (errno=%d)")\
++                        % (self.name, err.errno))
++        finally:
++            try:
++                os.remove(temp.name)
++            except:
++                pass # we don't care for errors in the os.remove
++            finally:
++                temp.close()
  
          arena = 'user'
          key = 'name2id'
