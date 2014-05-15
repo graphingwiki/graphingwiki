@@ -21,8 +21,8 @@
 +
 +def filter_unprintable(text):
 +    return ''.join(x for x in text 
-+                   if (not unicodedata.category(x) == 'Cc' and 
-+                       not x in CONTROL_CHARS))
++                   if (not unicodedata.category(x) == 'Cc'
++                       or x in CONTROL_CHARS))
 +
  
  #############################################################################
