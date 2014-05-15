@@ -29,7 +29,7 @@
              # Handle the URL mapping
              if url is None and 'href' in kw:
 -                url = kw['href']
-+                url = quote_urlparts(urllib.quote(kw['href']))
++                url = quote_urlparts(kw['href'])
                  del kw['href']
              if url is not None:
 +                url = quote_urlparts(url)
