@@ -22,6 +22,7 @@ from MoinMoin import log
 logging = log.getLogger(__name__)
 
 from graphingwiki.editing import parse_categories
+from graphingwiki.groups import group_add
 
 class InviteException(Exception):
     pass
@@ -45,40 +46,8 @@ def generate_password(length=10):
     characters = string.letters + string.digits
     return u"".join([SystemRandom().choice(characters) for _ in range(length)])
 
-class GroupException(Exception):
-    pass
-
-def add_user_to_group(request, userobj, group, create_link=True, comment=""):
-    if not wikiutil.isGroupPage(group, request.cfg):
-        raise GroupException("Page '%s' is not a group page." % group)
-    if not (request.user.may.read(group) and request.user.may.write(group)):
-        raise GroupException("No permissions to write to page '%s'." % group)
-
-    member_rex = re.compile(ur"^ \* +(?:\[\[)?(.+?)(?:\]\])? *$", re.UNICODE)
-    page = PageEditor(request, group)
-    text = page.get_raw_body()
-
-    _, head, tail = parse_categories(request, text)
-
-    insertion_point = len(head)
-    for lineno, line in enumerate(head):
-        match = member_rex.match(line)
-        if not match:
-            continue
-
-        if match.group(1).lower() == userobj.name.lower():
-            return
-
-        insertion_point = lineno + 1
-
-    if create_link:
-        template = " * [[%s]]"
-    else:
-        template = " * %s"
-    head.insert(insertion_point, template % userobj.name)
-
-    text = "\n".join(head + tail)
-    page.saveText(text, 0, comment=comment)
+def add_user_to_group(request, userobj, group, comment=""):
+    success, msg = group_add(request, group, [userobj.name])
 
     logging.info("%s added to group %s in wiki %s (invited by %s)" %
                  (userobj.name, group, request.cfg.interwikiname,
