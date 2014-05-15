@@ -8,6 +8,7 @@ from MoinMoin.action import ActionBase
 
 from graphingwiki import values_to_form
 from graphingwiki.invite import *
+from graphingwiki.groups import GroupException
 
 NEW_TEMPLATE_VARIABLE = "invite_new_template"
 NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"

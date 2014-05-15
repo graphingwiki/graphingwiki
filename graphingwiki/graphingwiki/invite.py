@@ -47,7 +47,7 @@ def generate_password(length=10):
     return u"".join([SystemRandom().choice(characters) for _ in range(length)])
 
 def add_user_to_group(request, userobj, group, comment=""):
-    success, msg = group_add(request, group, [userobj.name])
+    success, msg = group_add(request, group, [userobj.name], create=True)
 
     logging.info("%s added to group %s in wiki %s (invited by %s)" %
                  (userobj.name, group, request.cfg.interwikiname,

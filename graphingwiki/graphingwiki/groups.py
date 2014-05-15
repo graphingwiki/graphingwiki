@@ -59,8 +59,9 @@ def groups_by_user_transitive(request, account):
 def users_by_group(request, grouppage, recursive=False):
     _ = request.getText
 
-    if not check_grouppage(request, grouppage, writecheck=False):
-        raise GroupException(_("Invalid group"), grouppage)
+    success, msg = check_grouppage(request, grouppage, writecheck=False)
+    if not success:
+        raise GroupException(msg + "(%s)" % (grouppage))
 
     if recursive:
         return request.groups[grouppage]
@@ -68,18 +69,19 @@ def users_by_group(request, grouppage, recursive=False):
         return request.groups[grouppage].members
 
 
-def check_grouppage(request, grouppage, writecheck=True):
+def check_grouppage(request, grouppage, writecheck=True, createcheck=True):
     _ = request.getText
 
-    if not isGroupPage(grouppage, request.cfg):
-        return False
+    if createcheck:
+        if not isGroupPage(grouppage, request.cfg):
+            return False, _("Group does not exist.")
     if writecheck:
         if not request.user.may.write(grouppage):
-            return False
+            return False, _("You are not allowed to edit this page.")
     if not isinstance(request.groups[grouppage], WikiGroup):
-        return False
+        return False, _("Invalid group.")
 
-    return True
+    return True, ''
 
 
 def check_users(request, accounts):
@@ -198,12 +200,11 @@ def _group_del(request, pagetext, userlist):
 def group_add(request, grouppage, accounts, create=False):
     _ = request.getText
 
-    if not create and not check_grouppage(request, grouppage):
-        raise GroupException(_("Invalid group: ") + grouppage)
+    success, msg = check_grouppage(request, grouppage, createcheck=not create)
+    if not success:
+        raise GroupException(msg + "(%s)" % (grouppage))
 
-    for item in accounts:
-        if not User(request, name=item).exists() and not check_grouppage(request, item, False):
-            raise GroupException(_("Invalid user or group: ") + item)
+    check_users(request, accounts)
 
     page = PageEditor(request, grouppage)
     if page.exists():
@@ -235,9 +236,10 @@ def group_add(request, grouppage, accounts, create=False):
 
 def group_del(request, grouppage, accounts):
     _ = request.getText
-
-    if not check_grouppage(request, grouppage):
-        raise GroupException(_("Invalid group: ") + grouppage)
+    
+    success, msg = check_grouppage(request, grouppage)
+    if not success:
+        raise GroupException(msg + "(%s)" % (grouppage))
 
     members = request.groups[grouppage].members | request.groups[grouppage].member_groups
 
@@ -264,8 +266,9 @@ def group_del(request, grouppage, accounts):
 def group_rename(request, grouppage, accounts):
     _ = request.getText
 
-    if not check_grouppage(request, grouppage):
-        raise GroupException(_("Invalid group: ") + grouppage)
+    success, msg = check_grouppage(request, grouppage)
+    if not success:
+        raise GroupException(msg + "(%s)" % (grouppage))
 
     check_users(request, accounts[::2])
 
