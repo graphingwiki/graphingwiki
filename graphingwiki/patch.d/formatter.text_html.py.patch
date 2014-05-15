@@ -1,0 +1,38 @@
+--- ./MoinMoin/formatter/text_html.py.orig	2014-05-15 12:53:39.493132095 +0300
++++ ./MoinMoin/formatter/text_html.py	2014-05-15 14:02:20.429566723 +0300
+@@ -6,6 +6,8 @@
+     @license: GNU GPL, see COPYING for details.
+ """
+ import os.path, re
++import urllib
++import urlparse
+ 
+ from MoinMoin import log
+ logging = log.getLogger(__name__)
+@@ -534,14 +536,25 @@ class Formatter(FormatterBase):
+                 logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=1/True parameter, please review caller.")
+             else:
+                 logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=0/False parameter, please remove it from the caller.")
++
++        def quote_urlparts(url):
++            """
++            hrefs should be quoted as per RFC3986.
++            """
++            urlp = list(urlparse.urlparse(url))
++            urlp[2] = urllib.quote(urlp[2])
++            urlp[4] = urllib.urlencode(urlparse.parse_qs(urlp[4]), doseq=1)
++            return urlparse.urlunparse(urlp)
++
+         if on:
+             attrs = self._langAttr()
+ 
+             # Handle the URL mapping
+             if url is None and 'href' in kw:
+-                url = kw['href']
++                url = quote_urlparts(urllib.quote(kw['href']))
+                 del kw['href']
+             if url is not None:
++                url = quote_urlparts(url)
+                 url = wikiutil.mapURL(self.request, url)
+                 attrs['href'] = url
+ 
