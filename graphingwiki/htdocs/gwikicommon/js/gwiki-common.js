@@ -178,7 +178,7 @@ require(['config', 'mootools-more'], function(config) {
         if ($$('div.metatable[data-options]').length) {
             require(['gwikicommon/MetaTable', 'config'], function(mt, config) {
                 $$('div.metatable[data-options]').each(function(div, i) {
-                    new mt.MetaTable(div.getElement('table'), {
+                    new mt.MetaTable(div, {
                         tableArguments: JSON.decode(decodeURIComponent(div.getAttribute('data-options'))),
                         separator: config.gwikiseparator
                     });

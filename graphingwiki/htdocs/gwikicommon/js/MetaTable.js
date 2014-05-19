@@ -323,10 +323,11 @@ define([
             tableArguments: {}
         },
 
-        initialize: function(table) {
-            table = $(table);
+        initialize: function(container, options) {
+            container = $(container);
+            var table = container.getElement('table');
             preformatTable(table);
-            this.parent.apply(this, arguments);
+            this.parent.call(this, table, options);
 
             this.tableArgs = Object.merge({
                 'args': '',
@@ -346,12 +347,11 @@ define([
                 this.refresh.periodical(this.tableArgs.autorefresh * 1000, this, null);
             }
 
-            var parent = table.getParent('div.metatable');
-            if (parent && parent.getNext('a') && parent.getNext('a').get('text') == "[edit]") {
+            if (container.getElement('.meta_footer_link')) {
                 new Element('a.jslink[text=[new row]]')
                     .setStyles({'font-size': 'inherit'})
                     .addEvent('click', this.newPage.bind(this))
-                    .inject(parent, 'after');
+                    .inject(container.getElement('.meta_footer_link'), 'before');
             }
 
             this.enableSort();
