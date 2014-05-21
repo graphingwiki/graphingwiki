@@ -3,7 +3,7 @@
     ioclist action plugin to MoinMoin/Graphingwiki
      - Make a wiki page with metas on indicators of compromise
      - Currently supports IPv4 and IPv6 addresses, domains, 
-       urls and email addresses
+       urls, email addresses and md5/sha/sha2 hashes
 
     @copyright: 2013-2014 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -26,11 +26,13 @@ IPV6_RE = re.compile("(?<![\w:\.])((?:(?:(?:[0-9A-Fa-f]{1,4}:){7}(?:[0-9A-Fa-f]{
 
 # With the current tld:s, something like this is the only thing that
 # can work short of constantly querying IANA for the up-to-date tls list
-DOMAIN_RE = re.compile("(?:^|(?<=\s))[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*(?:\\.[A-Za-z]{2,})(?=$|\s)")
+DOMAIN_RE = re.compile("(?:^|(?<=\s))[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*(?:\\.[A-Za-z]{2,})(?=$|\s|\.)")
 
 # From https://www.owasp.org/index.php/OWASP_Validation_Regex_Repository
 URL_RE = re.compile("(?:(?:(?:(?:https?|ftps?|gopher|telnet|nntp)://)|(?:mailto:|news:))(?:%[0-9A-Fa-f]{2}|[-()_.!~*';/?:@&=+$,A-Za-z0-9])+)(?:[).!';/?:,][[:blank:]])?")
-EMAIL_RE = re.compile(r"(?:^|(?<=\s))[a-zA-Z0-9+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,7}(?=$|\s)")
+EMAIL_RE = re.compile(r"(?:^|(?<=\s))[a-zA-Z0-9+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,7}(?=$|\s|\.)")
+
+HASH_RE = re.compile(r"(?:^|(?<=\s))(?:[a-zA-Z0-9]{32}|[a-zA-Z0-9]{40}|[a-zA-Z0-9]{64}|[a-zA-Z0-9]{128})(?=$|\s|\.)")
 
 def is_ipv4(ip):
     try:
@@ -71,21 +73,26 @@ def execute(pagename, request):
     ipv6 = filter(is_ipv6, ipv6)
     ips.update(set(ipv6))
 
+    ips = list(ips)
     domains = set(DOMAIN_RE.findall(form['data'][0]))
     urls = set(URL_RE.findall(form['data'][0]))
     emails = set(EMAIL_RE.findall(form['data'][0]))
+    hashes = set(HASH_RE.findall(form['data'][0]))
 
-    data = {'ip': ips,
-            'domain name': domains}
+    data = {'ip': list(ips),
+            'domain name': list(domains),
+            'url': list(urls),
+            'email address': list(emails),
+            'artifact hash': list(hashes)}
     dataset = set()
-    dataset.update(ips)
-    dataset.update(domains)
+    for key in data:
+        dataset.update(data[key])
 
     graphdata = request.graphdata
     vals_on_keys = graphdata.get_vals_on_keys()
 
-    new_data = {'ip': list(), 'domain name': list(),
-                'url': list(), 'email address': list()}
+    new_data = dict((key, list()) for (key, value) in data.iteritems())
+
     for ip in ips:
         if ip not in vals_on_keys.get('ip', list()):
            new_data['ip'].append(ip)
@@ -98,19 +105,33 @@ def execute(pagename, request):
     for email in emails:
         if email not in vals_on_keys.get('email address', list()):
            new_data['email address'].append(email)
+    for h in hashes:
+        if h not in vals_on_keys.get('artifact hash', list()):
+           new_data['artifact hash'].append(h)
 
-    newdataset = new_data['ip'] + new_data['domain name'] + \
-        new_data['url'] + new_data['email address']
+    newdataset = list()
+    for key in new_data:
+        newdataset.extend(new_data[key])
 
-    old_data = ', '.join(dataset.difference(newdataset))
+    old_data = dataset.difference(newdataset)
     if old_data:
+        vals_on_pages = graphdata.get_vals_on_pages()
+
         if allow_overlap == 'no':
-            msgs.append(_("The following IOC already listed: %s.") % 
-                        old_data)
+            for ioc in old_data:
+                msgs.append(_("The following IOC already listed: %s (%s).") % 
+                            (ioc, ', '.join(vals_on_pages[ioc])))
         else:
-            msgs.append(
-                _("The following IOC already listed: %s. Adding anyway.")%
-                old_data)
+            for ioc in old_data:
+                if newpage in vals_on_pages[ioc]:
+                    for key in data.keys():
+                        if ioc in data[key]:
+                            data[key].remove(ioc)
+                else:
+                    msgs.append(
+                        _("The following IOC already listed: %s (%s).") % 
+                        (ioc, ', '.join(vals_on_pages[ioc])) + " " +
+                        _("Adding anyway."))
 
     if allow_overlap != 'no':
         new_data = data
@@ -121,14 +142,15 @@ def execute(pagename, request):
         return
 
     if not Page(request, newpage).exists():
-        msgs.append(_("Creating page %r with template %r") % 
+        msgs.append(_("Creating page %s with template %s") % 
                               (newpage, template))
         msgs.append(save_template(request, newpage, template))
 
-    msgs.append(_("Added %s IOC") % (len(new_data['ip']) +
-                                     len(new_data['domain name']) +
-                                     len(new_data['ip']) + 
-                                     len(new_data['domain name'])))
+    ioccount = 0
+    for key in new_data:
+        ioccount += len(new_data[key])
+    msgs.append(_("Added %s IOC to list %s") % (ioccount,
+                                                newpage))
 
     edit_meta(request, newpage, {}, new_data)
     msg = ''

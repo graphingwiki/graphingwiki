@@ -3,7 +3,7 @@
     IOCList macro plugin to MoinMoin/Graphingwiki
      - Make a wiki page with metas on indicators of compromise
      - Currently supports IPv4 and IPv6 addresses, domains, 
-       urls and email addresses
+       urls, email addresses and md5/sha/sha2 hashes
 
     @copyright: 2013 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
