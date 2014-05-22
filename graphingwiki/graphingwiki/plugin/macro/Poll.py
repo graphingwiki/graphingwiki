@@ -3,7 +3,7 @@
     Poll macro plugin to MoinMoin/Graphingwiki
      - Polling/voting widget
 
-    @copyright: 2014 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2014 by Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -28,9 +28,6 @@
 
 """
 
-from graphingwiki.editing import metatable_parseargs, get_metas
-
-
 from urllib import quote
 
 from MoinMoin import config
@@ -48,7 +45,7 @@ def execute(macro, args):
     if args is None:
         args = ''
 
-    opts = {"pagename": pagename}
+    opts = {"pageurl": request.getScriptname() + "/" + pagename}
 
     if request.user.valid and request.user.name:
         opts["username"] = request.user.name
@@ -60,7 +57,6 @@ def execute(macro, args):
             opts.setdefault(key.encode(config.charset), list()).append(val)
         else:
             opts.setdefault('keys', list()).append(arg)
-
 
     return u'''
     <div class="poll" data-options="%s"></div>

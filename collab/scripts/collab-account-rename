@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@copyright: 2014 Ossi Salmi
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import optparse
+
+from collabbackend.clitools import CollabRequest, listAllCollabs
+from graphingwiki.groups import GroupException, groups_by_user, group_rename
+
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] OLDUSER NEWUSER")
+    parser.add_option("-n", "--noop",
+            action="store_true", dest="noop", default=False,
+            help="dry run, only print changes")
+
+    (opts, args) = parser.parse_args()
+
+    if len(args) != 2:
+        sys.exit(parser.get_usage())
+
+    old, new = args
+
+    request = CollabRequest()
+
+    if not request.getUser(old).exists():
+        sys.exit("No such user: " + old)
+
+    if request.getUser(new).exists():
+        sys.exit("User already exists: " + new)
+
+    request.close()
+
+    for collab in listAllCollabs():
+        request = CollabRequest(collab)
+        usergroups = groups_by_user(request.request, old)
+
+        for group in usergroups:
+            print >> sys.stderr, "Renaming user %s as %s in %s:%s" % (
+                old, new, collab, group)
+            if not opts.noop:
+                try:
+                    group_rename(request.request, group, [old, new])
+                except GroupException, err:
+                    print >> sys.stderr, "%s: %s" % (group, err.message)
+
+        request.close()
+
+    request = CollabRequest()
+    user = request.getUser(old)
+
+    print >> sys.stderr, "Renaming user %s as %s" % (old, new)
+
+    if not opts.noop:
+        user.name = new
+        user.email = new
+        user.save()
+
+    request.close()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)

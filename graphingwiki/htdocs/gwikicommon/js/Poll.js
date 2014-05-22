@@ -186,7 +186,7 @@ define([
             }, this);
 
             new Request.SetMetas2({
-                url: this.options.pagename,
+                url: this.options.pageurl,
                 onSuccess: function() {
                     this.update();
                 }.bind(this)
@@ -205,7 +205,7 @@ define([
         update: function() {
 
             new Request.JSON({
-                url: this.options.pagename + '?action=getMetaJSON',
+                url: this.options.pageurl + '?action=getMetaJSON',
                 onSuccess: function(results) {
                     this.body.empty();
                     this.table.removeClass('edit');

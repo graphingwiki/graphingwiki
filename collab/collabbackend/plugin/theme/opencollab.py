@@ -2,7 +2,7 @@
 """
     MoinMoin - Bootstrap theme.
 
-    @copyright: 2014 by Lauri Pokka <larpo@clarifiednetworks.com>
+    @copyright: 2014 by Lauri Pokka <larpo@codenomicon.com>
     @copyright: 2013 by Juhani Eronen <exec@iki.fi>
 
     @license: GNU GPL <http://www.gnu.org/licenses/gpl.html>
@@ -19,7 +19,6 @@ from graphingwiki.plugin.macro.LinkedIn import nodes
 # FIXME: Caching of relevant portions
 
 EDIT_ACTIONS = [
-    'revert',
     'CopyPage',
     'RenamePage',
     'DeletePage',
@@ -102,6 +101,7 @@ class Theme(ThemeParent):
         'RecommendPage',
         'SvgEditor',
         'SlideShow',
+        'revert',
     ]
 
     def __init__(self, request):
@@ -168,14 +168,18 @@ class Theme(ThemeParent):
         request = self.request
         page = self.request.page
         _ = request.getText
-        editor = request.user.editor_default
 
-        editurl = u"?action=edit"
+        if self.rev:
+            li = u'<li><a href="?action=revert%s">%s</a></li>' %\
+                 (self.rev, self._actiontitle('revert'))
+        else:
+            editor = request.user.editor_default
+            editurl = u"?action=edit"
+            if self.guiworks(page) and editor == 'gui':
+                editurl += u"&amp;editor=gui"
 
-        if self.guiworks(page) and editor == 'gui':
-            editurl += u"&amp;editor=gui"
+            li = u'<li><a href="%s">%s</a></li>' % (editurl, _('Edit'))
 
-        li = '<li><a href="%s">%s</a></li>' % (editurl, _('Edit'))
         if not self._can_edit():
             li = ""
 
@@ -201,14 +205,10 @@ class Theme(ThemeParent):
         actions = [item for item in self.available_actions if item not in ignored]
         actions.sort()
 
-        if self._can_edit():
+        if self._can_edit() and not self.rev:
             for action in EDIT_ACTIONS:
-                if action == 'revert':
-                    if not request.user.may.revert(page.page_name) or not request.rev:
-                        continue
-
-                link = u'<li><a href="?action=%s%s">%s</a></li>' % \
-                       (action, self.rev, self._actiontitle(action))
+                link = u'<li><a href="?action=%s">%s</a></li>' % \
+                       (action, self._actiontitle(action))
                 links.append(link)
 
             links.append(u'<li class="divider"></li>')

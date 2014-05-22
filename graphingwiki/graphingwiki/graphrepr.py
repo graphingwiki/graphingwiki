@@ -39,6 +39,9 @@ from graphingwiki import gv, igraph
 
 # Constructor for IGraph objects
 class IGraphRepr(object):
+    points = None
+    gr = None
+
     def __init__(self, outgraph):
         # The lgl layout does not represent nodes without edges in
         # any meaningful manner - let's omit them from taking space
@@ -55,6 +58,9 @@ class IGraphRepr(object):
         # edge ID:s need to be integers
         self.edges = [(map_id(x[0]), map_id(x[1])) for x in outgraph.edges]
 
+        if not self.edges:
+            return self.points
+
         self.gr = igraph.Graph(self.edges)
 
         # Not efficient to use node labels as the plotting draws
@@ -66,6 +72,9 @@ class IGraphRepr(object):
         self.points = self.gr.layout_lgl(root=root[0])
 
     def summary(self, **kw):
+        if not self.gr:
+            return 'No data'
+
         return self.gr.summary(**kw)
 
     def layout(self, format="", fname="", height=1024, width=1024):

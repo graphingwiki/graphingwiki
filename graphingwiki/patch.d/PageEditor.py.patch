@@ -1,0 +1,41 @@
+--- ./MoinMoin/PageEditor.py.orig	2014-05-14 14:23:48.509164937 +0300
++++ ./MoinMoin/PageEditor.py	2014-05-14 14:27:02.060837632 +0300
+@@ -17,7 +17,7 @@
+ """
+ 
+ import os, time, codecs, errno
+-
++import unicodedata
+ 
+ from MoinMoin import caching, config, wikiutil, error
+ from MoinMoin.Page import Page
+@@ -53,6 +53,17 @@ addLoadEvent(countdown)
+ </script>
+ """
+ 
++#############################################################################
++### Filtering unprintable characters from page content
++#############################################################################
++
++CONTROL_CHARS = '\x1B\f\n\r\t\v'
++
++def filter_unprintable(text):
++    return ''.join(x for x in text 
++                   if (not unicodedata.category(x) == 'Cc'
++                       or x in CONTROL_CHARS))
++
+ 
+ #############################################################################
+ ### PageEditor - Edit pages
+@@ -997,6 +1008,11 @@ Try a different name.""", wiki=True) % (
+                 filesys.rename(cltfn, clfn)
+ 
+             if not deleted:
++                # Filter unprintable characters from text
++                # content. Unprintable characters are often the result
++                # of copy-pasting text from productivity tools
++                text = filter_unprintable(text)
++
+                 # save to page file
+                 pagefile = os.path.join(revdir, revstr)
+                 f = codecs.open(pagefile, 'wb', config.charset)

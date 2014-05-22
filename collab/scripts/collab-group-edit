@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@copyright: 2014 Ossi Salmi
+@license: MIT <http://www.opensource.org/licenses/mit-license.php>
+"""
+
+import os
+import sys
+import errno
+import optparse
+
+from collabbackend.clitools import CollabRequest
+from graphingwiki.groups import GroupException, group_add, group_del
+
+
+def main():
+    parser = optparse.OptionParser()
+    parser.set_usage("%prog [options] COLLAB GROUP USER")
+    parser.add_option("-a", "--add",
+            action="store_const", dest="action", const="add",
+            help="add users to group")
+    parser.add_option("-d", "--del",
+            action="store_const", dest="action", const="del",
+            help="delete users from group")
+    parser.add_option("-c", "--create",
+            action="store_true", dest="create", default=False,
+            help="create group page if missing")
+
+    (opts, args) = parser.parse_args()
+
+    if len(args) < 3:
+        sys.exit(parser.get_usage())
+
+    collab = args[0]
+    group = args[1]
+    users = args[2:]
+
+    try:
+        request = CollabRequest(collab)
+    except OSError, err:
+        if err.errno == errno.ENOENT:
+            sys.exit("No such collab: %s" % collab)
+        else:
+            raise
+
+    try:
+        if opts.action == "add":
+            group_add(request.request, group, users, opts.create)
+        elif opts.action == "del":
+            group_del(request.request, group, users)
+    except GroupException, err:
+        print >> sys.stderr, "%s: %s" % (group, err.message)
+
+    request.close()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)

@@ -26,20 +26,16 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import calendar, datetime, time
-
+import datetime, time
+from urllib import quote
 
 from MoinMoin.Page import Page
 from graphingwiki.editing import get_metas, metatable_parseargs
-import json
 
-def to_json(data):
-    try:
-        dump = json.dumps(data)
-    except AttributeError:
-        dump = json.write(data)
-
-    return dump
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
     request = macro.request
@@ -169,19 +165,9 @@ def macro_MetaMonthCalendar(macro, action, _trailing_args=[]):
             data[date].append(u'<b>%s :</b> %s<br>%s%s' % (start_time,desc,location,cap))
 
     dateUrl = '?action=' +action + '&date=%Y-%m-%d&categories=' + categories
-    html = u'''
-    <div id="MetaMonthCalendarCont"></div>
-    <script type="text/javascript" src="%s/gwikicommon/js/MetaMonthCalendar.js"></script>
-    <script>
-    window.addEvent('domready', function(){
-        var div = document.id('MetaMonthCalendarCont').set('id','');
-        var cal = new MetaMonthCalendar(div, {
-            tipContent : %s,
-            dateUrl : '%s'
-            });
-    });
-    </script>
-    ''' % (request.cfg.url_prefix_static, to_json(data), dateUrl)
 
-    return html
+    return u'''
+    <div class="MetaMonthCalendar" data-options="%s"></div>
+    ''' % quote(json.dumps(dict(tipContent=data, dateUrl=dateUrl)))
+
 

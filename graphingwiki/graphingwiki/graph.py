@@ -113,7 +113,9 @@ class Nodes(object):
 
     def delete(self, identity):
         self.nodes.pop(identity, None)
-        self.graph.edges._delete(identity)
+        edges = [(x, y) for x, y in self.graph.edges]
+        for parent, child in edges:
+            self.graph.edges.delete(parent, child)
 
     def get(self, identity):
         return self.nodes.get(identity, None)
@@ -274,6 +276,10 @@ class Graph(Node):
     [1]
     >>> sorted(graph.edges)
     []
+
+    Regression test for deleting nodes with links to self.
+    >>> _ = graph.edges.add(1, 1)
+    >>> graph.nodes.delete(1)
     """
     def __init__(self):
         self.__dict__['nodes'] = Nodes(self)

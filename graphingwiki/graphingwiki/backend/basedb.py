@@ -82,6 +82,10 @@ class GraphDataBase(UserDict.DictMixin):
         self.reverse_meta()
         return self.vals_on_keys
 
+    def get_vals_on_pages(self):
+        self.reverse_meta()
+        return self.vals_on_pages
+
     def clear_page(self, pagename):
         raise NotImplementedError()
 
@@ -92,6 +96,8 @@ class GraphDataBase(UserDict.DictMixin):
         return "<%s instance %x>" % (str(self.__class__), id(self))
 
     def reverse_meta(self):
+        if hasattr(self, 'keys_on_pages'):
+            return
         self.keys_on_pages = dict()
         self.vals_on_pages = dict()
         self.vals_on_keys = dict()

@@ -26,7 +26,6 @@ a.cross:after {
 
 .alphabg {
     background: rgba(0, 0, 0, 0.80);
-    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
 }
 
 /* Mootools tooltips */
@@ -38,7 +37,6 @@ a.cross:after {
     z-index: 1050;
 
     background: rgba(0, 0, 0, 0.80);
-    -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr = #CC000000, endColorstr = #CC000000)";
     border-radius: 5px;
 }
 
@@ -57,52 +55,60 @@ a.cross:after {
 
 /* MetaMonthCalendar css*/
 
-th.calendar-month {
+.MetaMonthCalendar th, .MetaMonthCalendar td {
+    text-align: center;
     background-color: #DEDEDE;
-    border: solid 1px #ADB9CC;
 }
 
-td.calendar-today {
-    border-width: 2pt;
-    border-color: #8470FF;
-    border-style: solid;
+.MetaMonthCalendar .calendar-month {
+    background-color: #5cb346;
+    border: none;
+}
+
+.MetaMonthCalendar .calendar-month a {
+    margin: 0 5px 0 5px;
+}
+.MetaMonthCalendar td.calendar-day {
+    background-color: white;
+}
+
+.MetaMonthCalendar td.calendar-today {
+    border: 2pt solid #8470FF;
     background-color: #CCFFCC;
 }
 
-td.calendar-topic-workday {
+.MetaMonthCalendar td.calendar-topic-workday {
     border-style: solid;
-    width: 30px;
-    height: 18px;
+    width: 44px;
     background-color: #DDDDFF;
-    text-align: center;
 }
 
-td.calendar-topic-weekend {
-    width: 30px;
-    height: 18px;
+.MetaMonthCalendar td.calendar-topic-weekend {
+    width: 44px;
     background-color: #FFDDDD;
-    text-align: center;
 }
 
-td.calendar-weekend {
+.MetaMonthCalendar td.calendar-weekend {
     background-color: #FEF1E9;
 }
 
-td.calendar-weeknumber {
+.MetaMonthCalendar td.calendar-weeknumber {
     background-color: #CCFFCC;
-    height: 15px;
-    width: 22px;
+    width: 31px;
 }
 
-td.calendar-empty {
-    background-color: #DEDEDE;
+.MetaMonthCalendar td.calendar-empty {
 }
 
-table.month-container > tbody > tr >td,
-table.month-container td table {
+.MetaMonthCalendar td.hastip {
+    background-color: #FFB6C1;
+}
+
+.MetaMonthCalendar table.month-container > tbody > tr >td,
+.MetaMonthCalendar table.month-container td table {
     border: none;
-    padding: 0 0 0 0;
-    margin: 0 0 0 0;
+    padding: 0;
+    margin:0;
     width: 100%;
 }
 
@@ -365,7 +371,6 @@ div.ac-results {
   100% { -webkit-transform: rotate(359deg); }
 }
 
-
 /* Poll macro styles */
 .poll table {
     border-collapse: inherit;
@@ -431,6 +436,7 @@ div.ac-results {
     font-weight: bold;
     font-size: 1.6em;
 }
+
 .poll .btn {
     border-radius: 0;
 }
@@ -449,6 +455,7 @@ div.ac-results {
 .poll tfoot td:first-child a.glyphicon {
     opacity: 0.6;
 }
+
 .poll td:first-child a.glyphicon:hover {
     opacity: 1;
     text-decoration: none;
@@ -458,10 +465,93 @@ div.ac-results {
     font-size: 1.5em;
 }
 
-.poll .invalid{
+.poll .invalid {
     border-color: rgba(233, 24, 27, 0.50);
-    background-color:  rgba(233, 0, 0, 0.30);
+    background-color: rgba(233, 0, 0, 0.30);
     outline: 0;
 
     box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 3px rgba(233, 0, 0, 0.60);
-    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 3px  rgba(233, 0, 0, 0.60);}
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 3px rgba(233, 0, 0, 0.60);
+}
+
+/* Group Editor */
+
+.groupeditor {
+    margin: 20px;
+    font-size: 14px;
+}
+
+.groupeditor .jslink {
+    text-decoration: none;
+}
+.groupeditor li span.glyphicon {
+    margin-right: 10px;
+}
+
+.groupeditor li.recursive {
+    font-size: 0.8em;
+}
+
+.groupeditor li span.info {
+    font-style: italic;
+    margin-left: 10px;
+}
+.groupeditor li span.denied {
+    color: red;
+}
+
+.groupeditor ul a.glyphicon {
+    float: right;
+    opacity: 0;
+    padding: 3px;
+    display: inline-block;
+}
+
+.groupeditor .groupcontainer:hover ul a.glyphicon {
+    opacity: 0.4;
+}
+
+.groupeditor .groupcontainer ul >*:hover a.glyphicon {
+    opacity: 0.6;
+}
+
+.groupeditor .groupcontainer ul >* a.glyphicon:hover {
+    opacity: 1;
+}
+
+.groupeditor .groupcontainer {
+    padding: 10px 0 10px 20px;
+    display: inline-block;
+    vertical-align: top;
+    margin-bottom: 20px;
+
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.groupeditor .groupcontainer > * {
+    margin-left: 0;
+}
+
+.groupeditor ul {
+    min-width: 200px;
+    margin-right: -10px;
+}
+.groupeditor ul > span {
+    font-size: 1.2em;
+}
+
+.groupeditor .groupcontainer > a {
+    margin-right: 10px;
+}
+
+.groupeditor .delete {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.groupeditor:not(.edited) .save {
+    display: none;
+}
+
+.groupeditor .icon-spin {
+    font-size: 2em;
+}

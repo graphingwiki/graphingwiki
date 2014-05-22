@@ -377,7 +377,9 @@ class GraphShower(object):
             
     def form_args(self):
         request = self.request
-        error = False
+        _ = request.getText
+
+        error = ''
 
         if not self.inline:
             # Get categories for current page, for the category form
@@ -464,22 +466,22 @@ class GraphShower(object):
             try:
                 self.re_order = re.compile(self.orderreg)
             except:
-                error = "Erroneus regexp: s/%s/%s/" % (self.orderreg,
-                                                       self.ordersub)
+                error = _("Erroneus regexp: s/%s/%s/") % (self.orderreg,
+                                                          self.ordersub)
 
         if self.colorsub and self.colorreg:
             try:
                 self.re_color = re.compile(self.colorreg)
             except:
-                error = "Erroneus regexp: s/%s/%s/" % (self.colorreg,
-                                                       self.colorsub)
+                error = _("Erroneus regexp: s/%s/%s/") % (self.colorreg,
+                                                          self.colorsub)
 
         if self.shapesub and self.shapereg:
             try:
                 self.re_shape = re.compile(self.shapereg)
             except:
-                error = "Erroneus regexp: s/%s/%s/" % (self.shapereg,
-                                                       self.shapesub)
+                error = _("Erroneus regexp: s/%s/%s/") % (self.shapereg,
+                                                          self.shapesub)
 
         # Update filters only if needed
         if self.orderby and request.values.has_key('filterorder'):
@@ -1881,10 +1883,7 @@ class GraphShower(object):
         return outgraph
 
     def fail_page(self, reason):
-        if not self.inline:
-            formatter = self.send_headers()
-        else:
-            formatter = self.request.formatter
+        formatter = self.request.formatter
 
         self.request.write(_sysmsg % ('error', reason))
         self.request.write(formatter.endContent())
@@ -1940,6 +1939,7 @@ class GraphShower(object):
         formatter = self.send_headers()
         
         if error:
+            self.send_form()
             self.fail_page(error)
             return
             

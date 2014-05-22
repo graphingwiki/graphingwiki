@@ -14,7 +14,6 @@ body {
     -webkit-flex-direction: column;
     flex-direction: column;
     min-height: 100vh;
-    line-height: 1.4;
 }
 
 p, ul, ol {
@@ -271,6 +270,7 @@ ul.dropdown-menu li {
     margin-bottom: 0;
     padding: 0;
     min-height: 0;
+    height: 36px;
 }
 
 .breadcrumb .breadcrumb {

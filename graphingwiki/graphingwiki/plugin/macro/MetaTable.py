@@ -125,7 +125,7 @@ def t_cell(request, pagename, vals, head=0,
     out = list()
 
     if style is None:
-	style = dict()
+        style = dict()
 
     if not style.has_key('class'):
         if head:
@@ -203,9 +203,8 @@ def construct_table(request, pagelist, metakeys,
     pagename = request.page.page_name
 
     row = 0
-    divfmt = { 'class': "metatable" }
 
-    formatopts = {'tableclass': 'metatable' }
+    formatopts = {'tableclass': 'metatable'}
 
     # Limit the maximum number of pages displayed
     pagepathstrip = options.get('pathstrip', 0)
@@ -249,10 +248,7 @@ def construct_table(request, pagelist, metakeys,
 
     # Start table
     out = list()
-    div = formatter.div(1, **divfmt)
-    out.append(formatter.linebreak() + 
-               div.replace('div', 'div data-options="'
-                           +quote(json.dumps(options))+'"') + 
+    out.append(formatter.linebreak() +
                formatter.table(1, attrs=formatopts))
 
     # If the first column is -, do not send page data
@@ -451,7 +447,6 @@ def construct_table(request, pagelist, metakeys,
     request.formatter.page = tmp_page
 
     out.append(formatter.table(0))
-    out.append(formatter.div(0))
     return out
 
 def do_macro(request, args, **kw):
@@ -476,12 +471,13 @@ def do_macro(request, args, **kw):
         out.append(formatter.table(0) + u'</div>')
         return "".join(out)
 
-
+    options = dict({'args': args}.items() + kw.items())
+    divfmt = { 'class': "metatable" , 'data-options': quote(json.dumps(options))}
+    out.append(formatter.div(1, **divfmt))
     # We're sure the user has the access to the page, so don't check
     out.extend(construct_table(request, pagelist, metakeys,
                                checkAccess=False, styles=styles,
-                               options=dict({'args': args}.items() 
-                                            + kw.items())))
+                               options=options))
 
     def action_link(action, linktext, args):
         req_url = request.script_root + "/" + \
@@ -496,7 +492,7 @@ def do_macro(request, args, **kw):
 
     out.append(action_link('metaCSV', 'csv', args))
     out.append(action_link('metaPackage', 'zip', args))
-
+    out.append(formatter.div(0))
     return "".join(out)
 
 def execute(macro, args):
