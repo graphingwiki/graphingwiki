@@ -653,16 +653,16 @@ def add_meta_regex(request, inclusion, newval, oldtext):
     # patterns after or before of which the metadata
     # should be included
     pattern = getattr(request.cfg, 'gwiki_meta_after', '')
-    repl_str = "\\1\n%s" % re.escape(inclusion)
+    repl_fun = lambda m: m.group(1) + '\n' + inclusion
     if not pattern:
         pattern = getattr(request.cfg, 'gwiki_meta_before', '')
-        repl_str = "%s\n\\1" % re.escape(inclusion)
+        repl_fun = lambda m: inclusion + '\n' + m.group(1)
     if not pattern:
         pattern = default_meta_before
 
     # if pattern is not found on page, just append meta
     pattern_re = re.compile("(%s)" % (pattern), re.M|re.S)
-    newtext, repls = pattern_re.subn(repl_str, oldtext, 1)
+    newtext, repls = pattern_re.subn(repl_fun, oldtext, 1)
     if not repls:
         oldtext = oldtext.strip('\n')
         oldtext += '\n%s\n' % (inclusion)
