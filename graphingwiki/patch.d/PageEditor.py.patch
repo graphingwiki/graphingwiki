@@ -1,5 +1,5 @@
---- ./MoinMoin/PageEditor.py.orig	2014-05-14 14:23:48.509164937 +0300
-+++ ./MoinMoin/PageEditor.py	2014-05-14 14:27:02.060837632 +0300
+--- ./MoinMoin/PageEditor.py.orig	2013-03-17 19:27:09.000000000 +0200
++++ ./MoinMoin/PageEditor.py	2014-05-22 14:58:43.910685415 +0300
 @@ -17,7 +17,7 @@
  """
  
@@ -17,25 +17,40 @@
 +### Filtering unprintable characters from page content
 +#############################################################################
 +
-+CONTROL_CHARS = '\x1B\f\n\r\t\v'
++ALLOWED_CONTROL_CHARS = '\t\n\r'
 +
 +def filter_unprintable(text):
 +    return ''.join(x for x in text 
-+                   if (not unicodedata.category(x) == 'Cc'
-+                       or x in CONTROL_CHARS))
++                   if (not unicodedata.category(x) in ['Cc', 'Cn', 'Cs']
++                       or x in ALLOWED_CONTROL_CHARS))
 +
  
  #############################################################################
  ### PageEditor - Edit pages
-@@ -997,6 +1008,11 @@ Try a different name.""", wiki=True) % (
-                 filesys.rename(cltfn, clfn)
- 
-             if not deleted:
-+                # Filter unprintable characters from text
-+                # content. Unprintable characters are often the result
-+                # of copy-pasting text from productivity tools
-+                text = filter_unprintable(text)
+@@ -1057,6 +1068,26 @@ Try a different name.""", wiki=True) % (
+         """
+         request = self.request
+         _ = self._
 +
-                 # save to page file
-                 pagefile = os.path.join(revdir, revstr)
-                 f = codecs.open(pagefile, 'wb', config.charset)
++        # Depending on the configuration, filter unprintable
++        # characters from text content or warn of them. Unprintable
++        # characters are often undesired, and result from
++        # eg. copy-pasting text from productivity tools.
++        _handle_unprintable = getattr(self.request.cfg, 
++                                      'gwiki_handle_unprintable', '')
++        if _handle_unprintable in ['warn', 'filter']:
++            _newtext = filter_unprintable(newtext)
++            if _handle_unprintable == 'filter':
++                newtext = _newtext
++            elif _newtext != newtext:
++                _pos = 0
++                for i in len(_newtext):
++                    _pos = i
++                    if _newtext[i] != newtext[i]:
++                        break
++                raise self.SaveError(_("Bad character in text at position %s.")%
++                                     (_pos))
++
+         self._save_draft(newtext, rev, **kw)
+         action = kw.get('action', 'SAVE')
+         deleted = kw.get('deleted', False)
