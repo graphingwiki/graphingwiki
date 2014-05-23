@@ -17,10 +17,7 @@ define([
             var notification = new Notification();
             var visible = false;
             var showNotifications = true;
-<<<<<<< local
             var newMessageNotification = null;
-=======
->>>>>>> other
 
             if (window.Notification.permission !== 'granted') {
                 showNotifications = false;
@@ -83,7 +80,7 @@ define([
                     "body": "New message"
                 };
 
-                notification.tab("CollabChat: " + roomJid, opts, 1000);
+                notification.tab("-!- ", opts, 1000);
 
                 if (newMessageNotification === null) {
                     notification.native("CollabChat: " + roomJid, opts);
