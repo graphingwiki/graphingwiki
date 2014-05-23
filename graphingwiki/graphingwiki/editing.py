@@ -889,6 +889,18 @@ def replace_metas(request, text, oldmeta, newmeta):
     ...               {u'gwikicategory': [u'CategoryOnes', u'CategoryTwo', u'', u'']})
     u'----\nCategoryOnes CategoryTwo\n'
 
+    # Empty key behaviour
+    >>> replace_metas(request, 
+    ...               u' ::\n',
+    ...               {},
+    ...               {u'': [u'blaa', u'blöö', '']})
+    u' ::\n'
+    >>> replace_metas(request, 
+    ...               u' :: \n :: blaa\n :: bl\xc3\xb6\xc3\xb6\n',
+    ...               {},
+    ...               {u'': [u'blaa', u'blöö', u'blyy', '']})
+    u' :: \n :: blaa\n :: bl\xc3\xb6\xc3\xb6\n'
+
     """
 
     text = text.rstrip()
@@ -917,6 +929,9 @@ def replace_metas(request, text, oldmeta, newmeta):
     # value b cannot cluster as the key is there no more
     new_metas = dict()
     for key, values in newmeta.iteritems():
+        # Keys should not be empty
+        if not key:
+            continue
         # Keys should not end in ':: ' as this markup is reserved
         key = key.rstrip(':: ').strip()
 
