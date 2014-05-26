@@ -1888,6 +1888,7 @@ class GraphShower(object):
                 e.decorate = ''
                 e.label = ''
                 e.style = 'invis'
+                continue
 
             # Fix linktypes to strings
             linktypes = getattr(e, 'linktype', [NO_TYPE])
@@ -1895,11 +1896,12 @@ class GraphShower(object):
 
             e.linktype = lt
 
-            # Make filter URL for edge
-            filtstr = str()
-            for lt in linktypes:
-                filtstr += '&amp;filteredges=%s' % url_escape(lt)
-            e.URL = url_reconstruct(self.request) + filtstr
+            # Make filter URL for edge if not inline
+            if not self.inline:
+                filtstr = str()
+                for lt in linktypes:
+                    filtstr += '&amp;filteredges=%s' % url_escape(lt)
+                e.URL = url_reconstruct(self.request) + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly
