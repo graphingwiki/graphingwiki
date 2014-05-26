@@ -97,7 +97,7 @@ graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "rectangle", "note", "tab", "box3d", "component"]
 
 def url_reconstruct(request):
-    url = request.script_root + request.page.page_name
+    url = request.script_root + '/' + request.page.page_name
 
     if request.environ.get('QUERY_STRING'):
         url += '?' + request.environ['QUERY_STRING']
