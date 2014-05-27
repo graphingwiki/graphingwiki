@@ -140,6 +140,14 @@ class Theme(ThemeParent):
         self.available_actions = [action for action in actions
                                   if action in included or action not in excluded]
 
+    def title(self, d):
+        """
+        Title only gets called from ThemeBase.send_title in print
+        mode, where it emits html that is not rendered in
+        opencollab-based themes. Overloading to send an empty string.
+        """
+        return u''
+
     def logo(self):
         mylogo = ThemeParent.logo(self)
         if not mylogo:
