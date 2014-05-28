@@ -573,7 +573,7 @@ table tr.meta_header td input {
     color: black;
 }
 
-a.meta_footer_link {
+a.meta_footer_link, a.graph-link {
 	background: none;
 	color: #56a;
 }

@@ -224,10 +224,9 @@ def url_parameters(args):
     return req_url
 
 def url_construct(request, args, pagename=''):
+    req_url = request.script_root + '/'
     if pagename:
-        req_url = request.url_root + pagename
-    else:
-        req_url = request.base_url
+        req_url += pagename
 
     if args:
         req_url += url_parameters(args)

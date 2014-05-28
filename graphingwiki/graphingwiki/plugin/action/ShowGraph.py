@@ -96,26 +96,11 @@ graphvizshapes = ["box", "polygon", "egg", "triangle",
                   "invhouse", "Mdiamond", "Msquare", "Mcircle",
                   "rectangle", "note", "tab", "box3d", "component"]
 
-def url_reconstruct(environ):
-    # Code from PEP 333
-    url = environ['wsgi.url_scheme']+'://'
+def url_reconstruct(request):
+    url = request.script_root + '/' + request.page.page_name
 
-    if environ.get('HTTP_HOST'):
-        url += environ['HTTP_HOST']
-    else:
-        url += environ['SERVER_NAME']
-
-        if environ['wsgi.url_scheme'] == 'https':
-            if environ['SERVER_PORT'] != '443':
-               url += ':' + environ['SERVER_PORT']
-        else:
-            if environ['SERVER_PORT'] != '80':
-               url += ':' + environ['SERVER_PORT']
-
-    url += environ.get('SCRIPT_NAME', '')
-    url += decode_page(environ.get('PATH_INFO', ''))
-    if environ.get('QUERY_STRING'):
-        url += '?' + environ['QUERY_STRING']
+    if request.environ.get('QUERY_STRING'):
+        url += '?' + request.environ['QUERY_STRING']
     return url
 
 def form_optionlist(request, name, data, comparison, 
@@ -1903,6 +1888,7 @@ class GraphShower(object):
                 e.decorate = ''
                 e.label = ''
                 e.style = 'invis'
+                continue
 
             # Fix linktypes to strings
             linktypes = getattr(e, 'linktype', [NO_TYPE])
@@ -1910,11 +1896,12 @@ class GraphShower(object):
 
             e.linktype = lt
 
-            # Make filter URL for edge
-            filtstr = str()
-            for lt in linktypes:
-                filtstr += '&amp;filteredges=%s' % url_escape(lt)
-            e.URL = url_reconstruct(self.request.environ) + filtstr
+            # Make filter URL for edge if not inline
+            if not self.inline:
+                filtstr = str()
+                for lt in linktypes:
+                    filtstr += '&amp;filteredges=%s' % url_escape(lt)
+                e.URL = url_reconstruct(self.request) + filtstr
 
             # For display cosmetics, don't show _notype
             # as it's a bit ugly

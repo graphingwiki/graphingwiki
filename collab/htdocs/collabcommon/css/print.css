@@ -14,6 +14,6 @@ div#content div.right p {
         text-align: right;
 }
 
-span.meta_editicon, .meta_footer_link {
+span.meta_editicon, .meta_footer_link, .graph-link {
         display: none;
 }
