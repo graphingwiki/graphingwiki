@@ -13,6 +13,7 @@ Dependencies = ['myfilesystem']
 import os
 
 from collabbackend import listPublished
+from graphingwiki.invite import user_may_request_invite
 
 
 def formatCollabList(f, user, inviterequests, collabs):
@@ -56,9 +57,11 @@ def formatCollabList(f, user, inviterequests, collabs):
 
 
 def execute(self, args):
+    f = self.formatter
     baseurl = self.request.cfg.collab_baseurl
     user = self.request.user.name
     path = self.request.cfg.collab_basedir
     inviterequests = self.request.session.get('inviterequests', [])
-    return formatCollabList(self.formatter, user, inviterequests,
-                            listPublished(baseurl, user, path))
+    if not user_may_request_invite(self.request.user, self.request.page.page_name):
+        return f.text('No collaborations available for %s.') % f.text(user)
+    return formatCollabList(f, user, inviterequests, listPublished(baseurl, user, path))
