@@ -32,8 +32,14 @@ def user_may_invite(userobj, page):
         return False
     return userobj.may.read(page) and userobj.may.invite(page)
 
+def user_may_request_invite(userobj, page):
+    if not hasattr(userobj.may, "requestinvite"):
+        return False
+    return userobj.may.requestinvite(page)
+
 def check_inviting_enabled(request):
-    if not hasattr(request.user.may, "invite"):
+    if not (hasattr(request.user.may, "invite") or
+            hasattr(request.user.may, "requestinvite")):
         raise InviteException("No invite permissions configured.")
     if not hasattr(request.cfg, "mail_from"):
         raise InviteException("No admin email address configured.")
@@ -73,6 +79,12 @@ def invite_user_to_page(request, page, email, new_template, old_template,
     page_url = request.getQualifiedURL(page_url)
     return _invite(request, page_url, email, new_template, old_template,
                    **custom_vars)
+
+def request_invite(request, page, collab, collab_url, email, template, **custom_vars):
+    check_inviting_enabled(request)
+    if not user_may_request_invite(request.user, page):
+        raise InviteException("No permissions to request invite from '%s'." % page)
+    return _request_invite(request, collab, collab_url, email, template, **custom_vars)
 
 def _invite(request, page_url, email, new_template, old_template,
             **custom_vars):
@@ -120,6 +132,26 @@ def _invite(request, page_url, email, new_template, old_template,
                   request.user.name))
 
     return new_user
+
+def _request_invite(request, collab, collab_url, email, template, **custom_vars):
+    mail_from = request.user.email
+    if "@" not in mail_from:
+        mail_from += "@" + request.cfg.invite_sender_default_domain
+
+    variables = dict(custom_vars)
+    variables.update(ADMINEMAIL=request.cfg.mail_from,
+                     CONTACTEMAIL=email,
+                     REQUESTUSER=request.user.name,
+                     REQUESTEMAIL=mail_from,
+                     COLLAB=collab,
+                     COLLABURL=collab_url,
+                     SERVERURL=request.host_url)
+
+    send_message(request, prepare_message(template, variables))
+
+    inviterequests = request.session.get("inviterequests", [])
+    inviterequests.append(collab)
+    request.session["inviterequests"] = inviterequests
 
 def replace_variables(text, variables):
     for name, variable in variables.iteritems():

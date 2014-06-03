@@ -91,6 +91,36 @@ def getActiveCollab(request):
     return None
 
 
+def getCollabInfo(baseurl, path, shortName):
+    try:
+        text = open(os.path.join(path, shortName, ".url")).read()
+        link = text.strip().decode('utf-8')
+    except IOError:
+        link = baseurl
+        link += shortName
+        link += '/'
+
+    try:
+        text = open(os.path.join(path, shortName, ".title")).read()
+        title = text.strip().decode('utf-8')
+    except IOError:
+        title = shortName.replace("_", " ")
+
+    try:
+        text = open(os.path.join(path, shortName, ".motd")).read()
+        motd = text.strip().decode('utf-8')
+    except IOError:
+        motd = ""
+
+    try:
+        text = open(os.path.join(path, shortName, ".contact")).read()
+        contact = text.strip().decode('utf-8')
+    except IOError:
+        contact = ""
+
+    return (link, title, motd, contact)
+
+
 def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     collabs = []
     output = []
@@ -110,30 +140,47 @@ def listCollabs(baseurl, user, path, activeCollab, nocheck=False):
     collabs.sort()
 
     for shortName in collabs:
-        try:
-            text = open(os.path.join(path, shortName, ".url")).read()
-            link = text.strip().decode('utf-8')
-        except IOError:
-            link = baseurl
-            link += shortName
-            link += '/'
-
-        try:
-            text = open(os.path.join(path, shortName, ".title")).read()
-            title = text.strip().decode('utf-8')
-        except IOError:
-            title = shortName.replace("_", " ")
-
-        try:
-            text = open(os.path.join(path, shortName, ".motd")).read()
-            motd = text.strip().decode('utf-8')
-        except IOError:
-            motd = ""
+        link, title, motd, contact = getCollabInfo(baseurl, path, shortName)
 
         if shortName == activeCollab:
             output.append((shortName, title, motd, link, True))
         else:
             output.append((shortName, title, motd, link, False))
+
+    output.sort(key=lambda x: x[1].lower())
+
+    return output
+
+
+def listPublished(baseurl, user, path):
+    collabs = []
+    output = []
+
+    try:
+        files = os.listdir(path)
+    except:
+        files = []
+
+    for shortName in files:
+        if checkAccess(user, os.path.join(path, shortName)):
+            continue
+
+        try:
+            text = open(os.path.join(path, shortName, '.publish')).read()
+        except IOError:
+            continue
+
+        if text.strip() == 'publish':
+            collabs.append(shortName)
+
+    if not collabs:
+        return []
+
+    collabs.sort()
+
+    for shortName in collabs:
+        link, title, motd, contact = getCollabInfo(baseurl, path, shortName)
+        output.append((shortName, title, motd))
 
     output.sort(key=lambda x: x[1].lower())
 
