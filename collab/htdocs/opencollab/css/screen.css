@@ -199,6 +199,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 .navbar {
     border: none;
+    border-radius: 0;
 }
 
 .navbar-fixed-top {
