@@ -13,6 +13,8 @@ class FarmConfig(DefaultConfig):
     #mail_from = ''
     # Invite default domain, configure if you need invite
     #invite_sender_default_domain = ''
+    # Default contact for invite requests, configure if needed
+    #invite_request_default_contact = ''
 
     navi_bar = [
         u'CollabList',
@@ -139,6 +141,9 @@ class FarmConfig(DefaultConfig):
     collab_chat_room_mask = [ u'Collab', u'CollabChat', u'FrontPage' ]
     # Set your xmpp domain here if autodetection fails
     #collab_chat_domain = ''
+
+    # Disable collab publishing by default
+    collab_allow_publish = False
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
 
