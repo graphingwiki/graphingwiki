@@ -179,6 +179,8 @@ for dent in os.listdir("."):
         'name': os.path.join(dent, '.title'),
         'description': os.path.join(dent, '.motd'),
         'URL': os.path.join(dent, '.url'),
+        'contact': os.path.join(dent, '.contact'),
+        'publish': os.path.join(dent, '.publish'),
     }
 
     if not os.path.isdir(dent) or not os.path.isdir(mydata):
@@ -228,13 +230,16 @@ for dent in os.listdir("."):
 
     msg.extend(diffandstore(myhtaccess, newtext))
 
+    allow_publish = getattr(req.cfg, 'collab_allow_publish', False)
     metas = get_metas(req, 'CollabFacts', myfacts.keys())
 
     for key in myfacts:
-        if metas[key]:
+        val = ''
+        if key == 'publish':
+            if allow_publish and metas[key] and metas[key][0].lower() == 'yes':
+                val = 'publish\n'
+        elif metas[key]:
             val = metas[key][0] + '\n'
-        else:
-            val = ''
         msg.extend(diffandstore(myfacts[key], val))
 
     if msg:
