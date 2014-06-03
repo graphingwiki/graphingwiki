@@ -46,7 +46,7 @@ class requestinvite(ActionBase):
 
     def check_condition(self):
         if not getattr(self.request.cfg, 'invite_request_default_contact', None):
-            return self.formatter.text('Invite request default contact not configured.')
+            return "Invite request default contact not configured."
 
         try:
             self._load_template(TEMPLATE_VARIABLE, TEMPLATE_DEFAULT)
