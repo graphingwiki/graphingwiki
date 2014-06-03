@@ -114,9 +114,12 @@ def diffandstore(filename, newtext, dryrun=noop):
                 # Remove password hashes from diff message
                 msg.append(re.sub(r'(:{[A-Z]+}).*', r'\1...', line))
         if not dryrun:
-            f = open(filename, 'w')
-            f.write(newtext)
-            f.close()
+            if newtext:
+                f = open(filename, 'w')
+                f.write(newtext)
+                f.close()
+            elif os.path.isfile(filename):
+                os.remove(filename)
 
     return msg
 
@@ -172,9 +175,11 @@ for dent in os.listdir("."):
     mydata = os.path.join(mywikidir, dent)
     mytemplate = os.path.join(mydata, 'collab-htaccess-template')
     myhtaccess = os.path.join(dent, '.htaccess')
-    mytitle = os.path.join(dent, '.title')
-    mymotd = os.path.join(dent, '.motd')
-    myurl = os.path.join(dent, '.url')
+    myfacts = {
+        'name': os.path.join(dent, '.title'),
+        'description': os.path.join(dent, '.motd'),
+        'URL': os.path.join(dent, '.url'),
+    }
 
     if not os.path.isdir(dent) or not os.path.isdir(mydata):
         continue
@@ -223,16 +228,14 @@ for dent in os.listdir("."):
 
     msg.extend(diffandstore(myhtaccess, newtext))
 
-    metas = get_metas(req, 'CollabFacts', ['name', 'description', 'URL'])
-    if metas['name']:
-        val = metas['name'][0]
-        msg.extend(diffandstore(mytitle, val  + '\n'))
-    if metas['description']:
-        val = metas['description'][0]
-        msg.extend(diffandstore(mymotd, val  + '\n'))
-    if metas['URL']:
-        val = metas['URL'][0]
-        msg.extend(diffandstore(myurl, val + '\n'))
+    metas = get_metas(req, 'CollabFacts', myfacts.keys())
+
+    for key in myfacts:
+        if metas[key]:
+            val = metas[key][0] + '\n'
+        else:
+            val = ''
+        msg.extend(diffandstore(myfacts[key], val))
 
     if msg:
         print '*** ' + dent + ' ***'
