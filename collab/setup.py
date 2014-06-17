@@ -62,10 +62,16 @@ setup(name='collab', version='$Rev$',
       package_dir={'collabbackend': 'collabbackend'},
       package_data={'collabbackend': ['plugin/*/*.py', 'plugin/__init__.py']},
       data_files=makeDataFiles('share/moin/htdocs', 'htdocs'),
-      scripts=[ 'scripts/collab-archive',
+      scripts=[
         'scripts/collab-account-collablist',
         'scripts/collab-account-create',
         'scripts/collab-account-password',
+        'scripts/collab-account-remove',
+        'scripts/collab-account-rename',
+        'scripts/collab-archive',
         'scripts/collab-auth-ejabberd',
         'scripts/collab-create',
-        'scripts/collab-htaccess'])
+        'scripts/collab-group-edit',
+        'scripts/collab-group-list',
+        'scripts/collab-htaccess',
+      ])
