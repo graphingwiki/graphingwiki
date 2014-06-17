@@ -77,7 +77,7 @@
 -            line = line.replace('\n', ' ').replace('\r', ' ') # no lineseps
 -            data.write(line + '\n')
 -        data.close()
-+        temp = file(self.name + uuid.uuid4().get_hex(), 'w')
++        temp = file(os.path.join(user_dir, self.name + uuid.uuid4().get_hex()), 'w')
 +        try:
 +            data = codecs.getwriter(config.charset)(temp)
 +            data.write("# Data saved '%s' for id '%s'\n" % (
