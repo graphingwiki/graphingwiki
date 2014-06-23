@@ -497,6 +497,34 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
 
     return linkdata
 
+
+# Fetch metas matching abuse-sa filter rule
+def get_metas2(request, rule, keys=None, checkAccess=True):
+    from abusehelper.core import rules, events
+    if type(rule) != rules.rules.Match:
+        rule = rules.parse(unicode(rule))
+
+    results = dict()
+
+    for page, _meta in request.graphdata.items():
+        _page = {u"gwikipagename": page}
+        metas = _meta.get(u"meta", None)
+
+        if checkAccess and not request.user.may.read(page):
+            continue
+
+        if not metas:
+            continue
+
+        data = events.Event(dict(metas.items() + _page.items()))
+        if rule.match(data):
+            if keys:
+                metas = dict((key, metas.get(key, list())) for key in keys)
+
+            results[page] = metas
+
+    return results
+
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
               includeGenerated=True, formatLinks=False, **kw):
