@@ -4,7 +4,7 @@
      - alternative meta retrieval action that uses get_metas2
      and its abuse-sa query language for filtering metas
 
-    @copyright: 2014 Lauri Pokka <larpo@cocdenomicon.com>
+    @copyright: 2014 Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
