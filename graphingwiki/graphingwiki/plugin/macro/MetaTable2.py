@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-"
 """
-    InterMetaTable macro plugin to MoinMoin/Graphingwiki
-     - Shows in tabular form the Metadata of desired pages across different
-       collab instances
+    MetaTable2 macro plugin to MoinMoin/Graphingwiki
+     - Shows metas and pages matching to abusesa filtering rule
 
-    @copyright: 2011 by Lauri Pokka <larpo@codenomicon.com>
+    @copyright: 2014 by Lauri Pokka <larpo@codenomicon.com>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
