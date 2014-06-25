@@ -196,6 +196,17 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
+        // MetaTable2
+        if ($$('div.MetaTable2').length) {
+            require(['gwikicommon/MetaTable'], function(mt) {
+                $$('div.MetaTable2').each(function(table) {
+                    var opts = JSON.decode(decodeURIComponent(table.getAttribute('data-options')));
+                    opts.action = "getMetaJSON2";
+                    new mt.InterMetaTable(table, opts);
+                });
+            });
+        }
+
          // Poll
         if ($$('div.poll').length) {
             require(['gwikicommon/Poll'], function(Poll) {

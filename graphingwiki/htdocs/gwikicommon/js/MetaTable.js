@@ -551,7 +551,8 @@ define([
             collabs: [""],
             keys: [],
             footer: false,
-            inaccessibleCollabs: null
+            inaccessibleCollabs: null,
+            action: "getMetaJSON"
         },
 
         initialize: function(el, opts) {
@@ -618,7 +619,7 @@ define([
                 sortedKeys = Object.sortedKeys(keys);
             } else {
                 sortedKeys = this.options.keys;
-                sortedKeys.forEach(function(key){
+                sortedKeys.forEach(function(key) {
                     if (!keys[key]) keys[key] = key
                 });
             }
@@ -646,10 +647,14 @@ define([
             };
 
             Object.each(this.metas, function(pages, collab) {
+                var pagePrefix = this.options.collabs.length == 1
+                    && this.options.collabs[0] == this.options.active ?
+                     "": collab + ':';
+
                 Object.each(pages, function(metas, page) {
 
                     var vals = [new Element('a', {
-                        text: (collab ? collab + ':' : "") + page,
+                        text: pagePrefix + page,
                         href: this.options.baseurl + collab + '/' + page
                     })];
 
@@ -673,9 +678,9 @@ define([
                     }, this);
 
                     this.push(new Element('tr').adopt(
-                        vals.map(function(el){
+                        vals.map(function(el) {
                             return new Element('td', {
-                                html: el.outerHTML? el.outerHTML: el
+                                html: el.outerHTML ? el.outerHTML : el
                             })
                         })
                     ));
@@ -703,7 +708,7 @@ define([
             this.requests = [];
             collabs.each(function(collab) {
                 this.requests.push(new Request.JSON({
-                    url: this.options.baseurl + collab + '/?action=getMetaJSON',
+                    url: this.options.baseurl + collab + '/?action=' + this.options.action,
                     data: 'args=' + encodeURIComponent(this.options.selector) + '&formatted=true',
                     onSuccess: function(json) {
                         if (!this.metas) this.metas = {};
@@ -711,6 +716,13 @@ define([
                         this.metas[collab] = json.metas;
                         this.formatted[collab] = json.formatted;
                         this.construct();
+                    }.bind(this),
+                    onFailure: function(xhr) {
+                        this.empty();
+                        this.container.removeClass('waiting');
+                        this.push(new Element('tr').grab(
+                            new Element('td').set('text', xhr.responseText)
+                        ));
                     }.bind(this)
                 }).get());
             }, this);
