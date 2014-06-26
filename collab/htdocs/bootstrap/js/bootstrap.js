@@ -6,7 +6,7 @@
  */
 require([
     'collabcommon/common/dom',
-    'mootools'
+    'mootools-more'
 ], function(dom) {
     "use strict";
 
