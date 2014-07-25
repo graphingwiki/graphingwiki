@@ -119,3 +119,16 @@ def execute(pagename, request):
 
         json.dump(response, request)
         return
+
+    elif util == "getAttachments":
+        request.content_type = "application/json"
+        from MoinMoin.action.AttachFile import _get_files, getAttachUrl
+
+        files = _get_files(request, pagename)
+        response = []
+        for name in files:
+            response.append(dict(url=getAttachUrl(pagename, name, request),name=name))
+
+        json.dump(response, request)
+
+    return
