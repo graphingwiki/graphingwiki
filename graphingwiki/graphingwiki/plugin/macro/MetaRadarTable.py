@@ -60,7 +60,7 @@ def execute(macro, args):
     # For multiple radar charts per table row
     try:
         height = ''.join(url_args.get('height', list()))
-        width = ''.join(url_args.get('height', list()))
+        width = ''.join(url_args.get('width', list()))
         if not height: 
             height = MAX_WIDTH
         if not width:
@@ -103,7 +103,9 @@ def execute(macro, args):
               u'<div class="metaradartable">' +
               macro.formatter.table(1))
 
-    rowcount = (len(pagelist)/amount)+1
+    rowcount = (len(pagelist) / amount)
+    if len(pagelist) % amount:
+        rowcount += 1
     # Iterate over the number of rows
     for i in range(rowcount):
 
@@ -120,7 +122,7 @@ def execute(macro, args):
             out.write(macro.formatter.linebreak())
         # Don't make extra squares for the first row
         if i:
-            for i in range(3 - len(pages)):
+            for j in range(amount - len(pages)):
                 out.write(macro.formatter.table_cell(1))
 
         out.write(macro.formatter.table_row(1))
@@ -132,7 +134,7 @@ def execute(macro, args):
                       (url_construct(request, url_args, page)))
             out.write(macro.formatter.linebreak())
         if i:
-            for i in range(3 - len(pages)):
+            for j in range(amount - len(pages)):
                 out.write(macro.formatter.table_cell(1))
 
     out.write(macro.formatter.table(0) + u'</div>')
