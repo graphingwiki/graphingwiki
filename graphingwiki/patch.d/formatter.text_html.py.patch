@@ -1,6 +1,6 @@
---- ./MoinMoin/formatter/text_html.py.orig	2014-05-15 12:53:39.493132095 +0300
-+++ ./MoinMoin/formatter/text_html.py	2014-05-15 14:02:20.429566723 +0300
-@@ -6,6 +6,8 @@
+--- ./MoinMoin/formatter/text_html.py.orig	2014-08-21 17:57:20.000000000 +0300
++++ ./MoinMoin/formatter/text_html.py	2014-09-02 14:05:47.574990040 +0300
+@@ -6,12 +6,14 @@
      @license: GNU GPL, see COPYING for details.
  """
  import os.path, re
@@ -9,7 +9,14 @@
  
  from MoinMoin import log
  logging = log.getLogger(__name__)
-@@ -534,14 +536,25 @@ class Formatter(FormatterBase):
+ 
+ from MoinMoin.formatter import FormatterBase
+-from MoinMoin import wikiutil, i18n
++from MoinMoin import wikiutil, i18n, config
+ from MoinMoin.Page import Page
+ from MoinMoin.action import AttachFile
+ from MoinMoin.support.python_compatibility import set
+@@ -534,14 +536,28 @@
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=1/True parameter, please review caller.")
              else:
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=0/False parameter, please remove it from the caller.")
@@ -19,6 +26,9 @@
 +            hrefs should be quoted as per RFC3986.
 +            """
 +            urlp = list(urlparse.urlparse(url))
++            for part in (2, 4):
++                if isinstance(urlp[part], unicode):
++                    urlp[part] = urlp[part].encode(config.charset)
 +            urlp[2] = urllib.quote(urlp[2])
 +            urlp[4] = urllib.urlencode(urlparse.parse_qs(urlp[4]), doseq=1)
 +            return urlparse.urlunparse(urlp)
