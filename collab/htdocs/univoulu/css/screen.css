@@ -1,0 +1,51 @@
+/*
+    screen.css - Oulu University branded bootstrap theme.
+    Overrides for opencollabnew theme
+
+    Some official colors:
+     dark blue / logo blue: #00407A (0,64,122)
+
+     lighter blue: #2F79BD
+     green: #4F8B0D
+     red: #B31B34
+     brown: #54401F
+     beige: #C7BD8A
+     silver: #8F8F8C
+
+*/
+
+
+#header {
+    font-size: 16px;
+}
+
+#logo {
+    height: 44px;
+    padding: 5px 10px;
+    margin: 3px 10px;
+}
+
+#logo img {
+    height: 32px;
+}
+.navbar-inverse {
+    /*background-color: #2F79BD;*/
+    background-color: #00407A;
+}
+.btn-primary {
+    background-color: #2F79BD;
+    border-color: #2F79BD;
+}
+
+table tr.meta_header td,
+table tr.meta_header th,
+table tr.header td,
+table tr.header th {
+	background: #4F8B0D;
+	/*background: #00407A;*/
+	color: #fff;
+}
+.poll th, .poll td {
+    border: 1px solid #4F8B0D;
+    /*border: 1px solid #00407A;*/
+}
