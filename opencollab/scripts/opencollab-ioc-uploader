@@ -12,12 +12,12 @@ from opencollab.meta import Meta, Metas
 from opencollab.util.config import parseOptions
 from opencollab.wiki import CLIWiki, WikiFailure
 
-linkattr = set(["asn", "ptr", "uuid", "ip"])
+linkattr = set(["asn", "ptr", "reverse dns", "uuid", "ip"])
 ipattr = set(["asn", "cc", "geoip cc", "cymru cc", "ptr", "latitude",
-                "longitude", "abuse contact", "registry", "region",
+                "longitude", "registry", "region",
                 "state", "city", "country", "uuid"])
-asnattr = set(["as name", "bgp prefix", "registry", "allocated"])
-hostattr = set(["ip", "uuid"])
+asnattr = set(["abuse contact", "as name", "bgp prefix", "registry", "bgp prefix allocated"])
+hostattr = set(["host", "domain name", "ip", "uuid"])
 ioc_keys = list(ipattr | asnattr | hostattr - set(["uuid"]))
 
 
@@ -78,7 +78,7 @@ def handleIoc(fobj):
             metas[asn].update(handleAttr(event, asnattr))
             metas[asn]["asn"].add(asn)
             metas[asn]["gwikicategory"].add("CategoryCustomer")
-            metas[asn]["gwikitemplate"].add("CustomerStubTemplate")
+            metas[asn]["gwikitemplate"].add("CustomerTemplate")
     return metas
 
 
