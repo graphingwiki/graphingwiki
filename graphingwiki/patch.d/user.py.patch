@@ -1,8 +1,8 @@
---- ./MoinMoin/user.py.orig	2014-05-21 11:38:15.674104093 +0300
-+++ ./MoinMoin/user.py	2014-05-21 11:41:36.843101639 +0300
-@@ -22,6 +22,9 @@
- 
+--- ./MoinMoin/user.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/user.py	2014-10-20 11:53:32.887284976 +0300
+@@ -23,6 +23,9 @@
  import os, time, codecs, base64
+ from copy import deepcopy
  import md5crypt
 +import errno
 +import error
@@ -10,7 +10,7 @@
  
  try:
      import crypt
-@@ -35,9 +38,11 @@ from MoinMoin.support.python_compatibili
+@@ -36,13 +39,15 @@
  
  from MoinMoin import config, caching, wikiutil, i18n, events
  from werkzeug.security import safe_str_cmp as safe_str_equal
@@ -18,12 +18,16 @@
 +from MoinMoin.util import timefuncs, random_string, filesys
  from MoinMoin.wikiutil import url_quote_plus
  
+ # for efficient lookup <attr> -> userid, we keep an index of this in the cache.
+ # the attribute names in here should be uniquely identifying a user.
+ CACHED_USER_ATTRS = ['name', 'email', 'jid', 'openids', ]
+ 
 +class SaveError(error.Error):
 +    pass
  
  def getUserList(request):
      """ Get a list of all (numerical) user IDs.
-@@ -176,6 +181,10 @@ def encodePassword(cfg, pwd, salt=None,
+@@ -288,6 +293,10 @@
          hash = hash_new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
@@ -34,7 +38,7 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-@@ -384,7 +393,7 @@ class User:
+@@ -496,7 +505,7 @@
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -43,7 +47,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -450,6 +459,10 @@ class User:
+@@ -562,6 +571,10 @@
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -54,7 +58,7 @@
      def exists(self):
          """ Do we have a user account for this user?
  
-@@ -666,25 +679,48 @@ class User:
+@@ -778,25 +791,48 @@
          # !!! should write to a temp file here to avoid race conditions,
          # or even better, use locking
  
@@ -120,5 +124,5 @@
 +            finally:
 +                temp.close()
  
-         arena = 'user'
-         key = 'name2id'
+         if not self.disabled:
+             self.valid = 1

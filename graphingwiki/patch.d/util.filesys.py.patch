@@ -1,6 +1,6 @@
---- ./MoinMoin/util/filesys.py.orig	2012-02-07 23:36:48.000000000 +0200
-+++ ./MoinMoin/util/filesys.py	2012-07-29 22:40:20.452539760 +0300
-@@ -217,7 +217,6 @@ def copytree(src, dst, symlinks=False):
+--- ./MoinMoin/util/filesys.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/util/filesys.py	2014-10-20 11:53:32.888284976 +0300
+@@ -217,7 +217,6 @@
      """
      names = os.listdir(src)
      os.mkdir(dst)

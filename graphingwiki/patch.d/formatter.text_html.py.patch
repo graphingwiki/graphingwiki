@@ -1,5 +1,5 @@
---- ./MoinMoin/formatter/text_html.py.orig	2014-08-21 17:57:20.000000000 +0300
-+++ ./MoinMoin/formatter/text_html.py	2014-09-02 14:05:47.574990040 +0300
+--- ./MoinMoin/formatter/text_html.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/formatter/text_html.py	2014-10-20 11:53:32.872284966 +0300
 @@ -6,12 +6,14 @@
      @license: GNU GPL, see COPYING for details.
  """

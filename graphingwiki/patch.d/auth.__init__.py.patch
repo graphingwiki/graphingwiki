@@ -1,6 +1,6 @@
---- ./MoinMoin/auth/__init__.py.orig	2012-03-13 01:12:27.725815399 +0200
-+++ ./MoinMoin/auth/__init__.py	2012-03-13 01:13:35.365909957 +0200
-@@ -362,7 +362,7 @@ class GivenAuth(BaseAuth):
+--- ./MoinMoin/auth/__init__.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/auth/__init__.py	2014-10-20 11:53:32.869284981 +0300
+@@ -371,7 +371,7 @@
              auth_username = self.transform_username(auth_username)
              logging.debug("auth_username (after decode/transform) = %r" % auth_username)
              u = user.User(request, auth_username=auth_username,
@@ -9,4 +9,3 @@
  
          logging.debug("u: %r" % u)
          if u and self.autocreate:
-

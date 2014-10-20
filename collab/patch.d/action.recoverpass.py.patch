@@ -1,28 +1,23 @@
---- ./MoinMoin/action/recoverpass.py.orig	2010-06-05 19:14:34.000000000 +0300
-+++ ./MoinMoin/action/recoverpass.py	2011-10-26 17:26:58.901943708 +0300
-@@ -70,15 +70,15 @@ def _create_form(request):
+--- ./MoinMoin/action/recoverpass.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/action/recoverpass.py	2014-10-20 12:06:36.379542936 +0300
+@@ -70,15 +70,9 @@
  
      row = html.TR()
      tbl.append(row)
 -    row.append(html.TD().append(html.STRONG().append(html.Text(_("Username")))))
-+    row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
-     row.append(html.TD().append(html.INPUT(type="text", size="36",
-                                            name="name")))
- 
+-    row.append(html.TD().append(html.INPUT(type="text", size="36",
+-                                           name="name")))
+-
 -    row = html.TR()
 -    tbl.append(row)
--    row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
--    row.append(html.TD().append(html.INPUT(type="text", size="36",
+     row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
+     row.append(html.TD().append(html.INPUT(type="text", size="36",
 -                                           name="email")))
-+#     row = html.TR()
-+#     tbl.append(row)
-+#     row.append(html.TD().append(html.STRONG().append(html.Text(_("Email")))))
-+#     row.append(html.TD().append(html.INPUT(type="text", size="36",
-+#                                            name="email")))
++                                           name="name")))
  
      row = html.TR()
      tbl.append(row)
-@@ -104,7 +104,7 @@ def _create_token_form(request, name=Non
+@@ -111,7 +105,7 @@
  
      row = html.TR()
      tbl.append(row)
