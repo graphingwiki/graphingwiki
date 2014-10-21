@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-"
 action_name = 'metaPackage'
 
+import os
 import zipfile
 from datetime import datetime
 from cStringIO import StringIO
@@ -13,6 +14,7 @@ from MoinMoin.action import AttachFile
 
 from graphingwiki import values_to_form
 from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.util import log
 
 def execute(pagename, request):
     pagename_header = '%s-%s.zip' % (pagename, datetime.now().isoformat()[:10])
@@ -50,6 +52,16 @@ def execute(pagename, request):
         counter += 1
         page = Page(request, pagename)
         timestamp = wikiutil.version2timestamp(page.mtime_usecs()) 
+        # Underlay pages are in epoch 0, zipfile in python 2.7 does
+        # not support this.
+        if not timestamp:
+            pagefile, rev, exists = page.get_rev()
+            if rev == 99999999:
+                # We should never get here
+                log.error("Page %s neither in pages or underlay, skipping." % 
+                          (pagename))
+                continue
+            timestamp = os.path.getctime(pagefile)
         pagetext = page.get_raw_body().encode("utf-8")
         filename = str(counter)
         zinfo = zipfile.ZipInfo(filename=filename, date_time=datetime.fromtimestamp(timestamp).timetuple()[:6])
