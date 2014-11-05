@@ -207,6 +207,18 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
+        //csv table dynamic sorting (has table with id of dbw.table[-N])
+        if ($$('[id^=dbw.table]').length) {
+            require(['mootools-more'], function() {
+                $$('[id^=dbw.table]').each(function(table) {
+                    window.ht = new HtmlTable(table, {
+                        sortable: true,
+                        thSelector: 'td'
+                    }).setHeaders(table.getElement('tr'))
+                });
+            });
+        }
+
          // Poll
         if ($$('div.poll').length) {
             require(['gwikicommon/Poll'], function(Poll) {
