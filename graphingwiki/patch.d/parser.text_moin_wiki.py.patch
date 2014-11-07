@@ -1,0 +1,18 @@
+--- ./MoinMoin/parser/text_moin_wiki.py.orig	2014-05-15 12:37:24.000000000 +0300
++++ ./MoinMoin/parser/text_moin_wiki.py	2014-11-07 16:43:55.210419371 +0200
+@@ -729,8 +729,12 @@ class Parser:
+                 if scheme == 'attachment':
+                     mt = wikiutil.MimeType(filename=url)
+                     if mt.major == 'text':
+-                        desc = self._transclude_description(desc, url)
+-                        return self.formatter.attachment_inlined(url, desc)
++                        if mt.minor == 'csv':
++                            desc = self._transclude_description(desc, url)
++                            return self.formatter.attachment_inlined(url, desc, format_args=params)
++                        else:
++                            desc = self._transclude_description(desc, url)
++                            return self.formatter.attachment_inlined(url, desc)
+                     # destinguishs if browser need a plugin in place
+                     elif mt.major == 'image' and mt.minor in config.browser_supported_images:
+                         desc = self._transclude_description(desc, url)
+
