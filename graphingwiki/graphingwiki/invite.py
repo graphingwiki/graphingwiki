@@ -243,7 +243,7 @@ def send_message(request, message, recipient_filter=lambda x: True):
                     logging.info("%s invited %s to wiki %s" %
                                  (sender, recipients,
                                   request.cfg.interwikiname))
-            except smtplib.SMTPSenderRefused, error:
+            except (smtplib.SMTPSenderRefused, smtplib.SMTPRecipientsRefused), error:
                 if not getattr(request.cfg, "mail_login", None):
                     raise error
                 smtp.login(*request.cfg.mail_login.split(" ", 1))
