@@ -197,14 +197,15 @@ def _group_del(request, pagetext, userlist):
     return pagetext
 
 
-def group_add(request, grouppage, accounts, create=False):
+def group_add(request, grouppage, accounts, create=False, usercheck=True):
     _ = request.getText
 
     success, msg = check_grouppage(request, grouppage, createcheck=not create)
     if not success:
         raise GroupException(msg + "(%s)" % (grouppage))
 
-    check_users(request, accounts)
+    if usercheck:
+        check_users(request, accounts)
 
     page = PageEditor(request, grouppage)
     if page.exists():
