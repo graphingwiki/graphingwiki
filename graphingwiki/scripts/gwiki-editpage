@@ -32,7 +32,7 @@ if __name__ == '__main__':
     cp2 = os.path.join(cp, 'config')
     if os.path.isdir(cp2):
         cp = cp2
-    sys.path.append(cp)
+    sys.path.insert(0, cp)
 
     pagename = unicode(args[1], sys.getfilesystemencoding())
 
