@@ -27,7 +27,7 @@ class GetCookie(ActionBase):
     def is_allowed(self):
         may = self.request.user.may
         return may.read(self.pagename)
-    
+
     def do_action(self):
         form = values_to_form(self.request.values)
         days = form.get('days', [u''])[0]
@@ -49,8 +49,8 @@ class GetCookie(ActionBase):
 
         self.filename = filename.encode("ascii", "ignore")
         self.cookie = cookie.data
-    
-        return True, "" 
+
+        return True, ""
 
     def do_action_finish(self, success):
         if success:
@@ -62,11 +62,12 @@ class GetCookie(ActionBase):
             self.render_msg(self.make_form(), "dialog")
 
     def get_form_html(self, buttons_html):
+        pagename = wikiutil.escape(self.pagename)
+
         d = {
-            'pagename': self.pagename,
             'email_label': self.getText("Days:"),
             'buttons_html': buttons_html,
-            'querytext': self.getText('Get cookie for %s' % self.pagename),
+            'querytext': self.getText('Get cookie for %s' % pagename)
         }
         return '''
 <strong>%(querytext)s</strong>
