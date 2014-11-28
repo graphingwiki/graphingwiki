@@ -36,14 +36,14 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if (rel_newpagename.startswith('/') or 
+                    if (rel_newpagename.startswith('/') or
                         rel_newpagename.startswith('../')):
                         return match[1].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             rel_newpagename)
                     else:
                         return match[1].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             newpagename)
 
                 # Else, change absolute link
@@ -61,14 +61,14 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if (rel_newpagename.startswith('/') or 
+                    if (rel_newpagename.startswith('/') or
                         rel_newpagename.startswith('../')):
                         return match[0].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             rel_newpagename)
                     else:
                         return match[0].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             newpagename)
 
                 # Else, change absolute link
@@ -86,14 +86,14 @@ class RenamePage(RenamePageBasic):
                     # If the new page will be a subpage of the
                     # source, retain relative link. Else, make
                     # an absolute link.
-                    if (rel_newpagename.startswith('/') or 
+                    if (rel_newpagename.startswith('/') or
                         rel_newpagename.startswith('../')):
                         return match[0].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             rel_newpagename)
                     else:
                         return match[0].replace(
-                            wikiutil.RelPageName(page, oldpagename), 
+                            wikiutil.RelPageName(page, oldpagename),
                             newpagename)
 
                 # Else, change absolute link
@@ -120,7 +120,7 @@ class RenamePage(RenamePageBasic):
         success = True
 
         try:
-            msg = self.page.saveText(savetext, 0, comment=comment, 
+            msg = self.page.saveText(savetext, 0, comment=comment,
                                      notify=False)
         except self.page.Unchanged:
             msg = _('Error changing links on page %s!') % (self.page.page_name)
@@ -164,7 +164,7 @@ class RenamePage(RenamePageBasic):
 
             comment = form.get('comment', [u''])[0]
             comment = wikiutil.clean_input(comment)
-            comment = "%s (%s)" % (comment, _("changed links:") + 
+            comment = "%s (%s)" % (comment, _("changed links:") +
                                    " %s -> %s" % (self.pagename, newpagename))
 
             # List pages that link to the renamed page
@@ -181,7 +181,7 @@ class RenamePage(RenamePageBasic):
 
                 # If inlink rename of a single page does not work,
                 # continue but make sure to emit a warning
-                success_single, msg = self._inlink_rename(page, newpagename, 
+                success_single, msg = self._inlink_rename(page, newpagename,
                                                           oldpagename, comment)
                 if not success_single:
                     success = False
@@ -202,7 +202,7 @@ class RenamePage(RenamePageBasic):
         form = values_to_form(self.request.values)
 
         if self.subpages:
-            subpages = ' '.join(self.subpages)
+            subpages = ' '.join(map(wikiutil.escape, self.subpages))
 
             d = {
                 'subpage': subpages,
