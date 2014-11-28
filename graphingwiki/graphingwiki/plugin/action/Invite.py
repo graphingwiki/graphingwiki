@@ -57,7 +57,7 @@ class Invite(ActionBase):
 
     def do_action(self):
         form = values_to_form(self.request.values)
-        
+
         template = form.get('template', [''])[0]
         template = wikiutil.clean_input(template).strip().split(',')
         new_template = old_template = None
@@ -98,7 +98,7 @@ class Invite(ActionBase):
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
                     return True, tmp % (email, mygrouppage, unicode(ge))
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
-                return True, tmp % (email, mygrouppage)           
+                return True, tmp % (email, mygrouppage)
 
         except InviteException, ie:
             return False, cgi.escape(unicode(ie).encode(config.charset))
@@ -129,7 +129,6 @@ class Invite(ActionBase):
               template_html = '''<select name="template">%s</select>''' %(template_html)
 
         d = {
-            'pagename': self.pagename,
             'email_label': self.getText("Email:"),
             'buttons_html': buttons_html,
             'querytext': wikiutil.escape(self.querytext),
