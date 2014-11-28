@@ -96,9 +96,9 @@ class Invite(ActionBase):
                     add_user_to_group(self.request, myuser, mygrouppage, comment=mycomment)
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
-                    return True, tmp % (email, mygrouppage, unicode(ge))
+                    return True, cgi.escape(tmp % (email, mygrouppage, unicode(ge)))
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
-                return True, tmp % (email, mygrouppage)
+                return True, cgi.escape(tmp % (email, mygrouppage))
 
         except InviteException, ie:
             return False, cgi.escape(unicode(ie).encode(config.charset))
