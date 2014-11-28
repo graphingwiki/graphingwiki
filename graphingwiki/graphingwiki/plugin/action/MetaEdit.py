@@ -173,11 +173,11 @@ def show_editform(wr, request, pagename, args):
     if uneditable_pages:
         reason = _("No save permission to some pages (%s)" %
                    ','.join(uneditable_pages))
-        wr(_sysmsg % ('warning', reason))
+        wr(_sysmsg, 'warning', reason)
 
     if not pagelist:
         reason = _("No pages to edit.")
-        wr(_sysmsg % ('error', reason))
+        wr(_sysmsg, 'error', reason)
         return
 
     wr(u'<form method="POST" action="%s" enctype="multipart/form-data">\n',
@@ -299,11 +299,6 @@ def show_editform(wr, request, pagename, args):
     wr(u'<input type="submit" name="cancel" value="%s">\n', _('Cancel'))
     wr(u'</form>\n')
 
-    if uneditable_pages:
-        reason = _("No save permission to some pages (%s)" %
-                   ','.join(uneditable_pages))
-        wr(_sysmsg % ('warning', reason))
-
 def execute(pagename, request):
     _ = request.getText
 
@@ -383,7 +378,7 @@ def execute(pagename, request):
                                 key, list()).append("[[attachment:%s]]" % name)
                         except AttachmentAlreadyExists:
                             msgs = ["Attachment '%s' already exists." % name]
-                            
+
             _, msgss = set_metas(request, cleared, dict(), added)
             msgs.extend(msgss)
 
