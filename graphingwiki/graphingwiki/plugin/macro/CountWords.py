@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    FIXME DOCUMENT!
+    CountWords macro plugin to MoinMoin
+     - Show word and characted counts for the current page
 
     @copyright: 2008 by therauli <therauli@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
@@ -26,8 +27,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-#FIXME
-Dependencies = ['page', 'content']
+Dependencies = ['pages']
 
 def execute(macro, args):
     page = macro.request.page
@@ -35,4 +35,4 @@ def execute(macro, args):
     words = len(page.getPageText().split())
     chars = len(page.getPageText())
                 
-    macro.request.write('Page has %d words and %d characters (in markup)<br>' % (words, chars))
+    return macro.formatter.text('Page has %d words and %d characters (in markup)' % (words, chars))
