@@ -73,12 +73,12 @@ def _do_diff(pagename, request):
                                                                att2data)))
     else:
         from MoinMoin.util import diff_text
-        lines = diff_text.diff(att1data, att2data)
+        lines = diff_text.diff(att1data.split("\n"), att2data.split("\n"))
 
         request.write(request.formatter.preformatted(1))
         for line in lines:
                 if line[0] == "@":
-                    request.write(f.rule(1))
+                    request.write(request.formatter.rule(1))
                 request.write(request.formatter.text(line + '\n'))
         request.write(request.formatter.preformatted(0))
 
