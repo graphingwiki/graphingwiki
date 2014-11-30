@@ -33,10 +33,6 @@ def _do_diff(pagename, request):
     request.values = CombinedMultiDict([MultiDict(form)])
     pagename, filename, fpath = AttachFile._access_file(pagename, request)
 
-    f = file('/tmp/a', 'a')
-    f.write("%s %s %s\n" % (pagename, filename, fpath))
-    f.close()
-
     att1data = open(fpath, 'r').read()
 
     form['target'] = [att2]
