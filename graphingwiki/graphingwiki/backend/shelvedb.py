@@ -126,10 +126,6 @@ class GraphData(GraphDataBase):
         self._readlock = _Lock(lock_path, exclusive=False)
         self._writelock = _Lock(lock_path, exclusive=True)
 
-    def _lock(self):
-        filename = os.path.join(gddir, 'graphdata.shelve')
-        os.open()
-
     def __getitem__(self, item):
         page = encode_page(item)
 
@@ -221,7 +217,7 @@ class GraphData(GraphDataBase):
         self.readlock()
         return page in self.db
 
-    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta, 
+    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta,
                                                   acl, mtime, saved):
         pagedata = self.getpage(pagename)
         pagedata[u'meta'] = newmeta
