@@ -39,7 +39,7 @@ class FormPage(Page):
 
     # It's important not to cache this, as the wiki thinks we are
     # using the default parser
-    def send_page_content(self, request, body, format="wiki_form", 
+    def send_page_content(self, request, body, format="wiki_form",
                           format_args='', do_cache=0, **kw):
         kw['format'] = "wiki_form"
         kw['format_args'] = format_args
@@ -56,21 +56,19 @@ def execute(pagename, request):
         backto = form.get('backto', [None])[0]
         if backto:
             request.page = Page(request, backto)
-        
-        request.theme.add_msg(_('You are not allowed to edit this page.'), 
+
+        request.theme.add_msg(_('You are not allowed to edit this page.'),
                               "error")
         request.page.send_page()
         return
-
-    formpage = '../' * pagename.count('/') + pagename
 
     frm = wr(
         u'<form id="metaformedit" method="POST" enctype="multipart/form-data" action="%s">\n',
              actionname(request))+\
           wr(u'<input form="metaformedit" type="hidden" name="action" value="MetaEdit">\n')+\
-          wr(u'<input form="metaformedit" type="hidden" name="gwikiseparator" value="%s">\n', 
+          wr(u'<input form="metaformedit" type="hidden" name="gwikiseparator" value="%s">\n',
              SEPARATOR)
-    
+
     btn = '<div class="saveform"><p class="savemessage">' + \
           wr('<input type=submit name=saveform form="metaformedit" value="%s">',
              _(form.get('saveBtnText', ['Save Changes'])[0])) + \
@@ -99,7 +97,7 @@ def execute(pagename, request):
     error = ''
     newpage = False
     template_text = ''
-    # If the page does not exist but we'd know how to construct it, 
+    # If the page does not exist but we'd know how to construct it,
     # replace the Page content with template and pretend it exists
     if template and not request.page.exists():
         template_page = wikiutil.unquoteWikiname(template)
@@ -160,7 +158,7 @@ def execute(pagename, request):
     def form_selection(request, pagekey, curval, values, description=''):
         msg = wr('<select form="metaformedit" name="%s">', pagekey)
         msg += wr('<option value=""> </option>')
-        
+
         for keyval, showval in values:
             msg += wr('<option value="%s"%s>%s</option>',
                       keyval, curval == keyval and ' selected' or '',
@@ -216,7 +214,7 @@ def execute(pagename, request):
                  'textarea': form_textbox,
                  'radio': form_radio,
                  'date': form_date,
-                 'file': form_file} 
+                 'file': form_file}
 
     def repl_subfun(mo):
         dt, pagekey, val = mo.groups()
@@ -259,7 +257,7 @@ def execute(pagename, request):
             cloneable = "true"
         else:
             cloneable = "false"
-       
+
         if desc:
             msg = msg.replace('</dt>', ' %s</dt>' % \
                                   request.formatter.icon('info'))
@@ -271,7 +269,7 @@ def execute(pagename, request):
         msg += formtypes[formtype](request, pagekey, val, values)
 
 
-        if (not constraint == 'existing' and 
+        if (not constraint == 'existing' and
             not formtype in ['textbox', 'textarea', 'file', 'date']):
             msg += wr('<textarea form="metaformedit" name="%s"></textarea>', pagekey)
 
