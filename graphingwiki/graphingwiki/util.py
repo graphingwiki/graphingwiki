@@ -74,7 +74,7 @@ def xml_document(top):
 
     return xml, top
 
-def xml_node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
+def xml_node_id_and_text(doc, parent, nodename, text='', **kw):
     node = doc.createElement(nodename)
     for key, value in kw.items():
         node.setAttribute(key, value)
@@ -82,10 +82,6 @@ def xml_node_id_and_text(doc, parent, nodename, text='', cdata='', **kw):
 
     if text:
         text = doc.createTextNode(text)
-        node.appendChild(text)
-    # Does not work, I'm probably not using it correctly
-    elif cdata:
-        text = doc.createCDATASection(text)
         node.appendChild(text)
 
     return node
