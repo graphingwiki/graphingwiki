@@ -78,11 +78,11 @@ def execute(pagename, request):
     # Template to use for any new pages
     template = form.get('template', [''])[0]
     if template:
-        frm += '<input form="metaformedit" type="hidden" name="template" value="%s">' % template
+        frm += wr('<input form="metaformedit" type="hidden" name="template" value="%s">', template)
     # Where to after saving page
     backto = form.get('backto', [''])[0]
     if backto:
-        frm += '<input form="metaformedit" type="hidden" name="backto" value="%s">' % backto
+        frm += wr('<input form="metaformedit" type="hidden" name="backto" value="%s">', backto)
 
     old_header = request.cfg.page_header2
     old_footer = request.cfg.page_footer1
