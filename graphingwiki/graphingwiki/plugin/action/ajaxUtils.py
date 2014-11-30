@@ -52,9 +52,7 @@ def execute(pagename, request):
         template = form.get('name', [None])[0]
         template_page = wikiutil.unquoteWikiname(template)
         if request.user.may.read(template_page):
-            editor = PageEditor(request, template_page)
-            text = editor.get_raw_body()
-            request.write(text)
+            Page(request, template_page).send_raw()
 
     elif util == "newPage":
         page = form.get('page', [None])[0]
@@ -106,7 +104,7 @@ def execute(pagename, request):
             overwrite = int(form.get('overwrite', ['0'])[0])
         except:
             overwrite = 0
-        
+
         response = dict(success=list(), failed=list())
         for name in request.files:
             _file = request.files.get(name)
