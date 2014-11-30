@@ -11,7 +11,6 @@ action_name = 'MetaEdit'
 
 from urllib import unquote as url_unquote
 
-from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 from MoinMoin.macro.Include import _sysmsg
@@ -19,8 +18,7 @@ from MoinMoin.macro.Include import _sysmsg
 from graphingwiki import actionname, SEPARATOR, values_to_form
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
-from graphingwiki.util import form_escape, form_unescape, decode_page, \
-    enter_page, exit_page
+from graphingwiki.util import form_writer, enter_page, exit_page
 
 def parse_editform(request, form):
     r"""
@@ -303,8 +301,7 @@ def execute(pagename, request):
     _ = request.getText
 
     def wr(fmt, *args):
-        args = tuple(map(form_escape, args))
-        request.write(fmt % args)
+        request.write(form_writer(fmt, *args))
 
     # This action generates data using the user language
     request.setContentLanguage(request.lang)
