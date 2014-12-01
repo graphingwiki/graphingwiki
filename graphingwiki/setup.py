@@ -108,9 +108,6 @@ setup(
         'graphingwiki.plugin.parser',
         'graphingwiki.plugin.xmlrpc'
     ],
-    package_data={
-        'graphingwiki': ['world_map.png']
-    },
     data_files=makeDataFiles('share/moin/htdocs', 'htdocs'),
     scripts=[
         'scripts/gwiki-rehash',
