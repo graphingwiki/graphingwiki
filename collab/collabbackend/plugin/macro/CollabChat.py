@@ -1,3 +1,7 @@
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import random
 
 SCRIPT = """
@@ -9,7 +13,7 @@ requirejs([
 
     var request = new XMLHttpRequest();
 
-    request.open("post", "%(creds)s", true);
+    request.open("post", %(creds)s, true);
 
     request.onload = function(event) {
         if (request.status !== 200) {
@@ -29,7 +33,7 @@ requirejs([
             return;
         }
 
-        new Chat("%(id)s", "%(bosh)s", "%(room)s", creds.jid, creds.password);
+        new Chat(%(id)s, %(bosh)s, %(room)s, creds.jid, creds.password);
     }
 
     request.onerror = function(event) {
@@ -74,7 +78,12 @@ def macro_CollabChat(self, args):
     html.append(self.formatter.div(1, **{"id": id, "class": "collab_chat"}))
     html.append(self.formatter.div(0))
 
-    script = SCRIPT % {  "id": id, "bosh": bosh, "creds": creds, "room": ".".join(room) }
+    script = SCRIPT % { 
+        "id": json.dumps(id), 
+        "bosh": json.dumps(bosh), 
+        "creds": json.dumps(creds), 
+        "room": json.dumps(".".join(room))
+    }
 
     html.append(script)
 
