@@ -7,9 +7,7 @@ USABILITY ADDON INSTALLATION
     html_head = '' # omit if you already have something
 
     for script in ['js/require.js',
-                   'js/gwiki-common.js', \
-                   'simile/timeline/timeline_ajax/simile-ajax-api.js', \
-                   'simile/timeline/timeline_js/timeline-api.js?bundle=true']:
+                   'js/gwiki-common.js']:
         html_head += '<script src="%s" type="text/javascript"></script>' \
                      % (url_prefix_static + '/gwikicommon/' + script)
 
@@ -27,11 +25,6 @@ DESCRIPTION
  zgrviewer::
    Java applets to browser graphs produced by ZGR
    output format of ShowGraphSimple action
-
- simile::
-   You can use the excellent MIT SIMILE javascript widgets with
-   Graphingwiki for data visualisation with RecentChangesTimeline
-   and MetaTimeLine macros.
 
  js::
    Usability javascript such as MetaTable sorting, inline editing and dynamic MetaFormEdit.
