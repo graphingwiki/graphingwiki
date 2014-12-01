@@ -92,14 +92,6 @@ class RemovingInstall(install):
         install.run(self)
 
 
-old_plugins = {'action': ['ShowProcessGraph.py', 'MetaCSV.py', 'metaCVS.py',
-                          'ShowGraphIE.py', 'MetaTableEdit.py',
-                          'ShowLatexSource.py', 'metaRadarDiagram.py',
-                          'metaeditform.py', 'ShowGraphSimple.py'],
-               'macro': ['metaRadarDiagram.py'],
-               'script': ['scripts/gwiki-debuggraph', 'scripts/moin-showpage',
-                          'scripts/moin-editpage']}
-
 setup(
     name='graphingwiki',
     version='0.1',
