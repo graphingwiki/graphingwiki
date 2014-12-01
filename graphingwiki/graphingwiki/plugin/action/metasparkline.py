@@ -35,7 +35,7 @@
 import os
 import urllib
 
-from tempfile import mkstemp
+from cStringIO import StringIO
 
 from MoinMoin.Page import Page
 
@@ -52,18 +52,10 @@ def cairo_not_found():
 
 def write_surface(surface):
     # Output a PNG file
-    tmp_fileno, tmp_name = mkstemp()
-    try:
-        surface.write_to_png(tmp_name)
-        surface.finish()
-
-        f = file(tmp_name)
-        data = f.read()
-        os.close(tmp_fileno)
-    finally:
-        os.remove(tmp_name)
-
-    return data
+    stringio = StringIO()
+    surface.write_to_png(stringio)
+    surface.finish()
+    return stringio.getvalue()
 
 # Draw a path between a set of points
 def draw_path(ctx, endpoints):
@@ -121,14 +113,14 @@ def plot_sparkdots(results):
             ctx.set_source_rgb(1, 0.0, 0.0)
         else:
             ctx.set_source_rgb(0, 0, 0)
-            
+
         color = (r > 50) and "red" or "gray"
         # FAQ: to light up single pixels sharply, go to pixel + 0.5
         ctx.move_to(i + 0.5, height-r/10-4)
         ctx.line_to(i + 0.5, (height-r/10))
 
         ctx.stroke()
-        
+
     data = write_surface(surface)
     return data
 
@@ -181,7 +173,7 @@ def plot_sparkline(results, text=True):
 
     # Coordinates for the sparkline, 2pxs left for marigins
     # +0.5 for extra sharpness again (Cairo FAQ)
-    coords = zip([x + 0.5 for x in range(2, len(results)+2)], 
+    coords = zip([x + 0.5 for x in range(2, len(results)+2)],
                  [15 - y/10 for y in results])
 
 
@@ -214,9 +206,9 @@ def plot_sparkline(results, text=True):
         ctx.set_source_rgb(0, 0, 0)
         ctx.move_to(len(results)+text_len, 20)
         ctx.show_text(last_val)
-    
+
     data = write_surface(surface)
-    
+
     return data
 
 def calculate_textlen(text):
@@ -242,12 +234,12 @@ def plot_error(request, text="No data"):
                          cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(12)
     ctx.set_line_width(0.6)
-    
+
     ctx.set_source_rgb(0, 0, 0)
     ctx.move_to(0, 20)
     ctx.show_text(request.getText(text))
     data = write_surface(surface)
-    
+
     return data
 
 def execute(pagename, request):
@@ -275,7 +267,7 @@ def execute(pagename, request):
             params[attr] = val
 
     # Show error if args on page and key are not passed
-    if not params['page'] or not params['key']:    
+    if not params['page'] or not params['key']:
         request.write(plot_error(request))
         return
 
@@ -301,7 +293,7 @@ def execute(pagename, request):
             break
 
         metas = get_metas(request, page, metakeys, checkAccess=False)
-                         
+
         val = ''.join(metas.get(key, str()))
         try:
             val = float(val)
