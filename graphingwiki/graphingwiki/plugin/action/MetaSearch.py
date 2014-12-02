@@ -48,9 +48,11 @@ def elemlist(request, formatter, elems, text):
     request.write(formatter.paragraph(0))
     request.write(formatter.bullet_list(1))
     for elem in sorted(elems):
-        kwelem = {'querystr': 'action=MetaSearch&amp;q=' + elem,
-                 'allowed_attrs': ['title', 'href', 'class'],
-                 'class': 'meta_search'}
+        kwelem = {
+            'querystr': wikiutil.makeQueryString({'action': 'MetaSearch', 'q': elem}),
+            'allowed_attrs': ['title', 'href', 'class'],
+            'class': 'meta_search'
+        }
         request.write(formatter.listitem(1))
         request.write(formatter.pagelink(1, request.page.page_name,
                                          request.page, **kwelem))
@@ -105,7 +107,7 @@ def execute(pagename, request):
                 q = ''
             except:
                 request.write(_sysmsg % ('error', _("Bad regexp!")))
-                
+
         graphdata = request.graphdata
         graphdata.reverse_meta()
         keys_on_pages = graphdata.keys_on_pages
@@ -154,7 +156,7 @@ def execute(pagename, request):
             request.write(formatter.text(page))
             request.write(formatter.pagelink(0))
             request.write(formatter.listitem(0))
-                         
+
         request.write(formatter.bullet_list(0))
 
         request.write(formatter.paragraph(1))
@@ -171,7 +173,7 @@ def execute(pagename, request):
             request.write(formatter.text(page))
             request.write(formatter.pagelink(0))
             request.write(formatter.listitem(0))
-                         
+
         request.write(formatter.bullet_list(0))
 
     if mtabq:
