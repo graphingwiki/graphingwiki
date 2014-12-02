@@ -55,7 +55,7 @@ from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
 
 from graphingwiki.util import attachment_file, attachment_url, url_parameters,\
     get_url_ns, load_parents, load_children, nonguaranteeds_p, NO_TYPE, \
-    form_escape, load_node, decode_page, template_regex, category_regex, \
+    form_escape, form_writer, load_node, decode_page, template_regex, category_regex, \
     encode_page, make_tooltip, cache_exists, SPECIAL_ATTRS, cache_key, \
     xml_document, xml_node_id_and_text, geoip_init, geoip_get_coords
 from graphingwiki.editing import ordervalue, verify_coordinates
@@ -136,7 +136,7 @@ def form_optionlist(request, name, data, comparison,
             request.write(u'<option value="%s"%s%s</option><br>\n' % 
                           replvalue(type, type))
         else:
-            request.write(u'<input type="%s" name="%s" ' % (input_type, name) +
+            request.write(u'<input type="%s" name="%s" ' % (form_escape(input_type), form_escape(name)) +
                           u'value="%s"%s%s<br>\n' % 
                           replvalue(type, type))
 
@@ -146,7 +146,7 @@ def form_optionlist(request, name, data, comparison,
             request.write(u'<option value="%s"%s%s</option><br>\n' % 
                           replvalue(default, default_name))
         else:
-            request.write(u'<input type="%s" name="%s" ' % (input_type, name) +
+            request.write(u'<input type="%s" name="%s" ' % (form_escape(input_type), form_escape(name)) +
                       u'value="%s"%s%s<br>\n' % 
                           replvalue(default, default_name))
     if len(data) > 5:
@@ -154,13 +154,13 @@ def form_optionlist(request, name, data, comparison,
 
 
 def form_textbox(request, name, size, value):
-    request.write(u'<input type="text" name="%s" ' % (name) +
+    request.write(u'<input type="text" name="%s" ' % form_escape(name) +
                   u'size=%s value="%s"><br>\n' % 
                   (form_escape(str(size)), form_escape(value)))
 
 def form_checkbox(request, name, value, test, text):
     # Unscale
-    request.write(u'<input type="checkbox" name="%s" ' % (name) +
+    request.write(u'<input type="checkbox" name="%s" ' % form_escape(name) +
                   u'value="%s"%s%s\n' % 
                   (form_escape(value),
                    test and ' checked>' or '>',
@@ -1473,10 +1473,9 @@ class GraphShower(object):
         request.write(u"</table>\n</div>\n</div>\n")
 
         if igraph_found:
-            request.write(form_end % (_('Create'), _('Overview'),
-                                      _('Test'), _('Inline')))
+            request.write(form_writer(form_end, _('Create'), _('Overview'), _('Test'), _('Inline')))
         else:
-            request.write(form_end % (_('Create'), _('Test'), _('Inline')))
+            request.write(form_writer(form_end, _('Create'), _('Test'), _('Inline')))
 
     def generate_layout(self, outgraph):
         # Add all data to graph
