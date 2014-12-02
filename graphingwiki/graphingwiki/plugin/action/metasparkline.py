@@ -45,7 +45,7 @@ from graphingwiki.editing import get_revisions, get_metas
 def image_headers(request):
     request.content_type = 'image/png'
 
-def cairo_not_found():
+def cairo_not_found(request):
     request.content_type = 'text/plain'
     request.write(_("ERROR: Cairo Python extensions not installed. " +\
                        "Not performing layout."))
@@ -244,7 +244,7 @@ def plot_error(request, text="No data"):
 
 def execute(pagename, request):
     if not cairo_found:
-       cairo_not_found()
+       cairo_not_found(request)
        return
 
     image_headers(request)

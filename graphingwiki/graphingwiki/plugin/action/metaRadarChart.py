@@ -81,13 +81,14 @@ def execute(pagename, request):
     _ = request.getText
 
     if not cairo_found:
-        cairo_not_found()
+        cairo_not_found(request)
+        return
 
     # Grab arguments
     args = ', '.join(x for x in request.values.getlist('arg'))
 
     params = {'height': 0, 'width': 0}
-    
+
     # Height and Width
     for attr in ['height', 'width']:
         if request.values.has_key(attr):
@@ -242,5 +243,5 @@ def execute(pagename, request):
     data = write_surface(surface)
 
     image_headers(request)
-        
+
     request.write(data)
