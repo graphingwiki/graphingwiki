@@ -64,16 +64,19 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
-def get_revisions(request, page):
+def get_revisions(request, page, checkAccess=True):
+    pagename = page.page_name
+    if checkAccess and not request.user.may.read(pagename):
+        return [], []
+
     parse_text = importPlugin(request.cfg,
                               'action',
                               'savegraphdata',
                               'parse_text')
-    
+
     alldata = dict()
     revisions = dict()
 
-    pagename = page.page_name
     for rev in page.getRevList():
         revlink = '%s-gwikirevision-%d' % (pagename, rev)
 
