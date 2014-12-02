@@ -80,7 +80,7 @@ def plot_box(texts):
         text_len = ctx.text_extents(text)[4] + 4
         ctx.move_to(max_text_len/2-(text_len/2) + 2, curpos)
         ctx.show_text(text)
-    
+
     data = write_surface(surface)
     LAW
     return data
@@ -136,4 +136,4 @@ def execute(macro, args):
         cache.put(request, key, data, content_type='image/png')
 
     return u'<div class="ST"><img src="%s" alt="%s"></div>' % \
-       (cache.url(request, key), LAW % level_text)
+       (cache.url(request, key), form_escape(LAW % level_text))
