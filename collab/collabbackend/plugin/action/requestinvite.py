@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import cgi
-
 from MoinMoin import wikiutil, config
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
@@ -77,7 +75,7 @@ class requestinvite(ActionBase):
             template = self._load_template(TEMPLATE_VARIABLE, TEMPLATE_DEFAULT)
             request_invite(self.request, self.pagename, self.collab, link, contact, template)
         except InviteException, ie:
-            return False, cgi.escape(unicode(ie).encode(config.charset))
+            return False, wikiutil.escape(unicode(ie).encode(config.charset))
 
         return True, "Invite request for collab '%s' sent." % self.collab
 
