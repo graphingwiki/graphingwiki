@@ -82,7 +82,6 @@ def plot_box(texts):
         ctx.show_text(text)
 
     data = write_surface(surface)
-    LAW
     return data
 
 def plot_tll(level='4', text='7', law=None):
