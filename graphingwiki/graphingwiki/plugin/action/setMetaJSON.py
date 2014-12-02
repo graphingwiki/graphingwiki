@@ -40,6 +40,8 @@ def doit(request, pagename, indata):
 
 def execute(pagename, request):
     _ = request.getText
+    request.content_type = "application/json"
+
     if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
@@ -56,7 +58,6 @@ def execute(pagename, request):
 
     indata = form.get('args', [None])[0]
     if not indata:
-        request.write('No data')
         return
 
     indata = json.loads(indata)
@@ -76,4 +77,6 @@ def execute(pagename, request):
 
     if msg:
         json.dump(dict(status="ok", msg=msg), request)
+
+    return
 
