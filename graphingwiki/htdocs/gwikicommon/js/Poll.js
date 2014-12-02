@@ -139,11 +139,9 @@ define([
         save: function() {
             var metas = this.metas;
             var ops = [];
-            var added = {};
-            var removed = {};
 
             if (this.table.getElement('.invalid')) {
-                alert("Cannot save duplicate vote for " +this.table.getElement('.invalid').get('value'))
+                alert("Cannot save duplicate vote for " +this.table.getElement('.invalid').get('value'));
                 return
             }
 
