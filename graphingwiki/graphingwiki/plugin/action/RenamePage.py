@@ -15,6 +15,7 @@ from MoinMoin.action.RenamePage import RenamePage as RenamePageBasic
 from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import values_to_form
+from graphingwiki.util import form_escape
 
 include_re = re.compile('(<<Include\(([^,\n]+)(.*?)\)>>)')
 
@@ -137,7 +138,7 @@ class RenamePage(RenamePageBasic):
         if msgs is None:
             msgs = msg
         else:
-            msgs = "%s<br>%s" % (msgs, msg)
+            msgs = "%s<br>%s" % (msgs, form_escape(msg))
 
         return msgs
 
