@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-"
 action_name = 'metaCSV'
 
-import cgi
-import urllib
 import csv
 
 from MoinMoin import wikiutil

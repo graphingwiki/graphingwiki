@@ -8,7 +8,6 @@
     @copyright: 2008-2010 by Juhani Eronen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import cgi
 from string import rsplit
 
 from MoinMoin import wikiutil

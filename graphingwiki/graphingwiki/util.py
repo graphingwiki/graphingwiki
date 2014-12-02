@@ -32,7 +32,6 @@
 import re
 import os
 import StringIO
-import cgi
 
 from codecs import getencoder
 from xml.dom.minidom import getDOMImplementation

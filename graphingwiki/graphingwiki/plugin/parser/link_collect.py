@@ -2,8 +2,7 @@
 """
      Link harvesting "parser"
 """
-import cgi, re
- 
+
 from MoinMoin.wikiutil import resolve_interwiki, join_wiki
 from MoinMoin.parser.text_moin_wiki import Parser as WikiParser
 from MoinMoin import macro, wikiutil
