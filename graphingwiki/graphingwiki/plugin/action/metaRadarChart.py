@@ -84,6 +84,8 @@ def execute(pagename, request):
         cairo_not_found(request)
         return
 
+    image_headers(request)
+
     # Grab arguments
     args = ', '.join(x for x in request.values.getlist('arg'))
 
@@ -144,7 +146,6 @@ def execute(pagename, request):
     if not pagelist:
         request.write(plot_error(request))
         return
-
 
     # Populate data to the radar chart
     data = dict()
@@ -241,7 +242,4 @@ def execute(pagename, request):
         ctx.show_text(text)
 
     data = write_surface(surface)
-
-    image_headers(request)
-
     request.write(data)
