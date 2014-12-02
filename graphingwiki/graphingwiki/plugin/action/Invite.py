@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-
-import cgi
-
 from MoinMoin import wikiutil, config
 from MoinMoin.Page import Page
 from MoinMoin.action import ActionBase
@@ -96,13 +93,13 @@ class Invite(ActionBase):
                     add_user_to_group(self.request, myuser, mygrouppage, comment=mycomment)
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
-                    return True, cgi.escape(tmp % (email, mygrouppage, unicode(ge)))
+                    return True, wikiutil.escape(tmp % (email, mygrouppage, unicode(ge)))
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
-                return True, cgi.escape(tmp % (email, mygrouppage))
+                return True, wikiutil.escape(tmp % (email, mygrouppage))
 
         except InviteException, ie:
-            return False, cgi.escape(unicode(ie).encode(config.charset))
-        return True, cgi.escape("Invitation mail sent to address '%s'." % email)
+            return False, wikiutil.escape(unicode(ie).encode(config.charset))
+        return True, wikiutil.escape("Invitation mail sent to address '%s'." % email)
 
     def get_form_html(self, buttons_html):
         template_html = ''
