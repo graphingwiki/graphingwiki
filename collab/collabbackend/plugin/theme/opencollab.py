@@ -335,7 +335,7 @@ class Theme(ThemeParent):
                 wikitail = wikiutil.url_unquote(interwiki[1])
                 linkpage = request.script_root + '/' + wikitail
 
-            name = request.user.name
+            name = wikiutil.escape(request.user.name)
             urls.append('<li class="nav-header"><a href="%s">%s</a></li>'
                     % (linkpage, name))
 
