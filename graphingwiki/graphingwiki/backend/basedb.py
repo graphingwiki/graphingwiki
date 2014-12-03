@@ -1,15 +1,4 @@
 import UserDict
-import re
-import os
-
-from MoinMoin import config
-from MoinMoin import wikiutil
-from MoinMoin.Page import Page
-
-from graphingwiki.util import encode, category_regex, template_regex, \
-    SPECIAL_ATTRS, NO_TYPE, absolute_attach_name, attachment_file, node_type
-from graphingwiki.graph import Graph
-from graphingwiki import actionname
 
 class GraphDataBase(UserDict.DictMixin):
     # Does this backend promise that operations provided by
