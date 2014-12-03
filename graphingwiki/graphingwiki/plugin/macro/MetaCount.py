@@ -27,11 +27,8 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-
-from MoinMoin.Page import Page
-
-from graphingwiki import url_escape
-from graphingwiki.editing import metatable_parseargs, get_metas
+from MoinMoin import wikiutil
+from graphingwiki.editing import metatable_parseargs
 
 Dependencies = ['metadata']
 
@@ -56,17 +53,9 @@ def execute(macro, args):
     if SILENT:
         return "%d " % (len(pagelist))
 
-
-
     # No data -> bail out quickly, Scotty
     if not pagelist:
-        return _("No matches for") + " '%s'" % (args)
+        return _("No matches for") + " '%s'" % (wikiutil.escape(args))
 
-
-
-
-
-
-
-
-    return "%d " % (len(pagelist)) + _("matches for") + " '%s'" % (args)
+    return ("%d " % (len(pagelist)) + _("matches for") +
+            " '%s'" % (wikiutil.escape(args)))

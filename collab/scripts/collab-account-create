@@ -54,5 +54,5 @@ fi
 
 echo
 echo "Creating ${NAME}"
-moin --config-dir=${baseinstancedir}/config account create --name ${NAME} --email ${NAME} --password ${PASSWORD}
+moin --config-dir=${baseinstancedir}/config account create --name "${NAME}" --email "${NAME}" --password "${PASSWORD}"
 echo "done"

@@ -6,12 +6,9 @@
     @copyright: 2009 by Marko Laakso <fenris@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import re
-
 from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas, \
     metas_to_abs_links
 from graphingwiki.util import format_wikitext
