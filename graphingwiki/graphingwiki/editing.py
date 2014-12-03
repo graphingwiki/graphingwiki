@@ -29,7 +29,7 @@ from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
 
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
-from graphingwiki.util import absolute_attach_name, filter_categories
+from graphingwiki.util import filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex, encode
 
@@ -290,18 +290,6 @@ def edit_categories(request, savetext, action, catlist):
         lines.append(" ".join(categories))
 
     return u"\n".join(lines) + u"\n"
-
-def absolute_attach_name(quoted, target):
-    abs_method = target.split(':')[0]
-
-    # Pages from MetaRevisions may have ?action=recall, breaking attach links
-    if '?' in quoted:
-        quoted = quoted.split('?', 1)[0]
-
-    if abs_method in ["attachment", "drawing"] and not '/' in target:
-        target = target.replace(':', ':%s/' % (quoted.replace(' ', '_')), 1)
-
-    return target
 
 def inlinks_key(request, loadedPage, checkAccess=True):
     inLinks = set()
