@@ -32,9 +32,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-import os
-import urllib
-
 from cStringIO import StringIO
 
 from MoinMoin.Page import Page
