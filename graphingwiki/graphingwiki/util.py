@@ -33,6 +33,7 @@ import re
 import os
 import StringIO
 
+import urllib
 from codecs import getencoder
 from xml.dom.minidom import getDOMImplementation
 from xml.sax.saxutils import escape as cgi_escape
@@ -49,7 +50,7 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
 
-from graphingwiki import geoip_found, GeoIP, url_escape, id_escape, SEPARATOR
+from graphingwiki import geoip_found, GeoIP, id_escape, SEPARATOR
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinVersion.release.split('.')[:2]))
@@ -206,22 +207,25 @@ def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))
     return fmt % args
 
-def url_parameters(args):
-    req_url = u'?'
+def _as_str(string):
+    if isinstance(string, unicode):
+        return string.encode("utf-8")
+    return string
 
+def url_parameters(args):
     url_args = list()
     for key in args:
         for val in args[key]:
-            url_args.append(u'='.join(map(url_escape, [key, val])))
+            key = urllib.quote_plus(_as_str(key))
+            val = urllib.quote_plus(_as_str(val))
+            url_args.append(key + '=' + val)
 
-    req_url += u'&'.join(url_args)
-
-    return req_url
+    return "?" + ('&'.join(url_args))
 
 def url_construct(request, args, pagename=''):
     req_url = request.script_root + '/'
     if pagename:
-        req_url += pagename
+        req_url += urllib.quote(_as_str(pagename))
 
     if args:
         req_url += url_parameters(args)
