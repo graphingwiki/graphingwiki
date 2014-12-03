@@ -28,7 +28,6 @@ from MoinMoin import config
 from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
 
-from graphingwiki import underlay_to_pages, url_escape, url_unescape
 from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import absolute_attach_name, filter_categories
 from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
@@ -291,33 +290,6 @@ def edit_categories(request, savetext, action, catlist):
         lines.append(" ".join(categories))
 
     return u"\n".join(lines) + u"\n"
-
-def link_to_attachment(globaldata, target):
-    if isinstance(target, unicode):
-        target = url_escape(encode(target))
-    
-    try:
-        targetPage = globaldata.getpage(target)
-    except KeyError:
-        pass
-    else:
-        targetMeta = targetPage.get("meta", dict())
-        url = targetMeta.get("gwikiURL", set([""]))
-        if url:
-            url = url.pop()
-            # If the URL attribute of the target looks like the
-            # target is a local attachment, correct the link
-            if 'AttachFile' in url and url.startswith('".'):
-                target = 'attachment:' + target.replace(' ', '_')
-
-    target = target.strip('"')
-    if not target.startswith('attachment:'):
-        target = unicode(url_unescape(target), config.charset)
-    else:
-        target = unicode(target, config.charset)
-    target = target.replace('\\"', '"')
-
-    return target
 
 def absolute_attach_name(quoted, target):
     abs_method = target.split(':')[0]
