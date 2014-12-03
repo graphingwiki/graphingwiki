@@ -9,8 +9,6 @@
    @copyright: 2007 by Juhani Eronen
 
 """
-import re
-
 from graphingwiki.editing import metatable_parseargs
 from graphingwiki.util import NO_TYPE
 
