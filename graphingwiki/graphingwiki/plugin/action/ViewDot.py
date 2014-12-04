@@ -198,7 +198,7 @@ class ViewDot(object):
         try:
             data = file(fpath, 'r').read()
         except IOError:
-            fault = _(u'Attachment not found at') + u' %s\n' % repr(fpath)
+            fault = _(u'Can not read attachment') + u'\n'
             if self.inline:
                 request.write(request.formatter.text(fault))
                 return
