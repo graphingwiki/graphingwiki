@@ -40,7 +40,7 @@ from MoinMoin.script import MoinScript
 from MoinMoin.Page import Page, RootPage
 from MoinMoin import config
 
-from graphingwiki.editing import underlay_to_pages
+from graphingwiki import underlay_to_pages
 
 from graphingwiki import install_hooks, RequestCLI
 
