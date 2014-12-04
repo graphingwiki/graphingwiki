@@ -70,23 +70,12 @@ def uri_params(uri):
 
     return uri, args
 
-def join_params(uri, args):
-    argstr = ""
-    for key in args:
-        for val in args[key]:
-            if key == 'attachment':
-                argstr = argstr + "&amp;%s=%s" % (key, val)
-            else:
-                argstr = argstr + "&amp;%s=%s" % (url_quote(key), url_quote(val))
-
-    return uri + "?" + argstr[1:]
-
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
     _ = request.getText
-    
+
     # Import the plugin action to print out the graph html form
     dotviewer = wikiutil.importPlugin(request.cfg,
                                       'action', 'ViewDot',
@@ -94,7 +83,7 @@ def execute(macro, args):
 
     arglist = [x.strip() for x in args.split(',') if x]
     kw = {}
-    
+
     for arg in arglist:
         data = arg.split('=')
         key = data[0]
@@ -107,7 +96,7 @@ def execute(macro, args):
         return ""
 
     uri, args = uri_params(arglist[0])
-    
+
     if not args:
         return ""
 
