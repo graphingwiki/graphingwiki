@@ -28,20 +28,15 @@
 """
 import os
 from tempfile import mkstemp
-from urllib import quote as url_quote
-from urllib import unquote as url_unquote
 
 from MoinMoin import wikiutil
-from MoinMoin import config
-from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.action import AttachFile
-from MoinMoin.error import InternalError
 from MoinMoin.action import cache
 
 from graphingwiki import gv_found, actionname, values_to_form
 from graphingwiki.graphrepr import Graphviz
 from graphingwiki.util import enter_page, exit_page, url_parameters, \
-    encode_page, cache_exists, cache_key
+    encode_page, cache_exists, cache_key, form_escape
 
 class ViewDot(object):
     def __init__(self, pagename, request, **kw):
@@ -54,9 +49,8 @@ class ViewDot(object):
         self.available_graphengines = ['dot', 'neato']
         self.graphengine = kw['graphengine']
 
-        self.dotfile = ""
         self.attachment = ""
-        
+
         self.inline = True
         self.help = False
 
@@ -97,8 +91,6 @@ class ViewDot(object):
         request = self.request
         _ = request.getText
 
-        pagename = self.pagename
-
         ## Begin form
         request.write(u'<form method="GET" action="%s">\n' %
                       actionname(request))
@@ -111,21 +103,19 @@ class ViewDot(object):
         for type in self.available_formats:
             request.write(u'<input type="radio" name="format" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type,
+                          (form_escape(type),
                            type == self.format and " checked>" or ">",
-                           type))
+                           wikiutil.escape(type)))
 
         # graphengine
         request.write(u"<td>\n" + _('Output graphengine') + u"<br>\n")
         for type in self.available_graphengines:
             request.write(u'<input type="radio" name="graphengine" ' +
                           u'value="%s"%s%s<br>\n' %
-                          (type,
+                          (form_escape(type),
                            type == self.graphengine and " checked>" or ">",
-                           type))
+                           wikiutil.escape(type)))
 
-        # dotfile
-        dotfile = self.dotfile
         request.write(_("Dot file") + "<br>\n" +
                       u'<select name="attachment">\n')
 
@@ -134,14 +124,14 @@ class ViewDot(object):
             files = AttachFile._get_files(request, page)
             for file in files:
                 if file.endswith('.dot') or file.endswith('.gv'):
-                    request.write('<option label="%s" value="%s">%s</option>\n' 
-                                  % (file, "attachment:%s/%s" % (page, file),
-                                     "%s/%s" % (page, file)))
+                    request.write('<option label="%s" value="%s">%s</option>\n'
+                                  % (form_escape(file), form_escape("attachment:%s/%s" % (page, file)),
+                                     wikiutil.escape("%s/%s" % (page, file))))
         request.write('</select>\n</table>\n')
         request.write(u'<input type=submit name=view ' +
-                      'value="%s">\n' % _('View'))
+                      'value="%s">\n' % form_escape(_('View')))
         request.write(u'<input type=submit name=help ' +
-                      'value="%s"><br>\n' % _('Inline'))
+                      'value="%s"><br>\n' % form_escape(_('Inline')))
         request.write(u'</form>\n')
 
     def execute(self):
@@ -166,7 +156,7 @@ class ViewDot(object):
                 request.write('&lt;&lt;ViewDot(' + self.urladd + ')&gt;&gt;')
 
             exit_page(request, pagename)
-            return 
+            return
 
         if not self.attachment[:10].lower() == 'attachment':
             fault = _(u'No attachment defined') + u'\n'
@@ -178,7 +168,7 @@ class ViewDot(object):
             return
 
         self.attachment = self.attachment[11:]
-            
+
         pagename, filename = AttachFile.absoluteName(self.attachment,
                                                      self.pagename)
 
@@ -206,7 +196,7 @@ class ViewDot(object):
             request.write(fault)
             return
 
-        self.cache_key = cache_key(self.request, 
+        self.cache_key = cache_key(self.request,
                                    [data, self.graphengine, self.format])
         key = "%s-%s" % (self.cache_key, self.format)
 
@@ -230,7 +220,7 @@ class ViewDot(object):
                     (self.request.cfg.url_prefix_static) + \
                     '%s/gwikicommon/zgrviewer/zgrviewer.jar" ' % \
                     (self.request.cfg.url_prefix_static) + \
-                    'width="%s" height="%s">' % (self.width, self.height)+\
+                    'width="%s" height="%s">' % (form_escape(self.width), form_escape(self.height))+\
                     '<param name="type" ' + \
                     'value="application/x-java-applet;version=1.4" />' + \
                     '<param name="scriptable" value="false" />' + \
@@ -262,7 +252,7 @@ class ViewDot(object):
             request.write('</html></body>')
         else:
             pass # No footer
-            
+
     def getLayoutInFormat(self, graphviz, format):
         tmp_fileno, tmp_name = mkstemp()
         graphviz.layout(fname=tmp_name, format=format)
