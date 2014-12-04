@@ -8,7 +8,6 @@ corrupts itself and it's pessimal at concurrency (uses a lock file).
 Needless to say, it doesn't do ACID.
 
 """
-import itertools
 import shelve
 import random
 import errno
@@ -16,12 +15,9 @@ import fcntl
 import os
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, encode, log
-from graphingwiki import actionname
+from graphingwiki.util import encode_page, decode_page, log
 
 from time import time, sleep
-
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
 
 class LockTimeout(Exception):
     pass
@@ -308,5 +304,4 @@ class GraphData(GraphDataBase):
         pass
 
     abort = commit
-
 
