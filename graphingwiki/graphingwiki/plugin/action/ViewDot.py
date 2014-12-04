@@ -121,6 +121,9 @@ class ViewDot(object):
 
         # Use request.rootpage, request.page has weird failure modes
         for page in request.rootpage.getPageList():
+            # Page#getPageList filters out pages to which the user doesn't have
+            # read access.
+
             files = AttachFile._get_files(request, page)
             for file in files:
                 if file.endswith('.dot') or file.endswith('.gv'):
@@ -137,7 +140,16 @@ class ViewDot(object):
     def execute(self):
         request = self.request
         _ = request.getText
+
         pagename = request.page.page_name
+        if not request.user.may.read(pagename):
+            fault = _(u'Can not read page') + u'\n'
+            if self.inline:
+                request.write(request.formatter.text(fault))
+                return
+            request.content_type = 'text/plain'
+            request.write(fault)
+            return
 
         form = values_to_form(request.values)
         self.formargs(form)
@@ -171,6 +183,14 @@ class ViewDot(object):
 
         pagename, filename = AttachFile.absoluteName(self.attachment,
                                                      self.pagename)
+        if not request.user.may.read(pagename):
+            fault = _(u'Can not read attachment page') + u'\n'
+            if self.inline:
+                request.write(request.formatter.text(fault))
+                return
+            request.content_type = 'text/plain'
+            request.write(fault)
+            return
 
         fname = wikiutil.taintfilename(filename)
         fpath = AttachFile.getFilename(request, pagename, fname)
