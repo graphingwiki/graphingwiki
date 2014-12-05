@@ -27,9 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import unquote as url_unquote
-from urllib import quote as url_quote
-
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.macro.Include import _sysmsg
@@ -78,13 +75,9 @@ def execute(macro, args):
     pagename = uri
 
     # Check out if the start page exists, if not, we'll just bail out
-    try:
-        if not request.user.may.read(pagename):
-            return _sysmsg % (error, 
-        _("InlineGraph: User may not read page") + " %s" % 
-        form_escape(pagename))
-    except:
-        return _("InlineGraph: No data on") + " %s" % pagename
+    if not request.user.may.read(pagename):
+        return _("InlineGraph: User may not read page %s" %
+                 form_escape(pagename))
 
     old_page = request.page
     old_values = request.values
