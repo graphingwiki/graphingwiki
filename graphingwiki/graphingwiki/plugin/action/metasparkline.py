@@ -62,14 +62,6 @@ def draw_path(ctx, endpoints):
 
     return ctx
 
-# Draw a path between a set of points
-def draw_line(ctx, endpoints):
-    ctx.move_to(*endpoints[0])
-    for coord in endpoints[1:]:
-        ctx.line_to(*coord)
-
-    return ctx
-
 def scale_results(data):
     # Scale data to the range [0, 100]
     min_d = min(data)
@@ -238,75 +230,3 @@ def plot_error(request, text="No data"):
     data = write_surface(surface)
 
     return data
-
-def execute(pagename, request):
-    if not cairo_found:
-       cairo_not_found(request)
-       return
-
-    image_headers(request)
-
-    # Handle GET arguments
-    params = {'page': '', 'key': '', 'points': 0, 'style': ''}
-
-    form = values_to_form(request.values)
-
-    for attr in ['page', 'key', 'points', 'style']:
-        if form.has_key(attr):
-            val = ''.join([x for x in form[attr]])
-
-            if attr == 'points':
-                try:
-                    val = int(val)
-                except ValueError:
-                    val = 0
-
-            params[attr] = val
-
-    # Show error if args on page and key are not passed
-    if not params['page'] or not params['key']:
-        request.write(plot_error(request))
-        return
-
-    # Get revision data
-    page = Page(request, params['page'])
-    pagelist, metakeys = get_revisions(request, page)
-
-    # Show error if no data on key
-    if not params['key'] in metakeys:
-        request.write(plot_error(request))
-        return
-
-    # If number of data points to graph are limited
-    end_pts = len(pagelist)
-    if params['points']:
-        end_pts = len(pagelist) - params['points']
-
-    # Pagelist is reversed, go from history to current
-    data = []
-    key = params["key"]
-    for i, page in enumerate(reversed(pagelist)):
-        if i == end_pts:
-            break
-
-        metas = get_metas(request, page, metakeys, checkAccess=False)
-
-        val = ''.join(metas.get(key, str()))
-        try:
-            val = float(val)
-            data.append(val)
-        except ValueError:
-            pass
-
-    # Show error if no valid data
-    if not data:
-        request.write(plot_error(request))
-        return
-
-    if params['style'] == 'dot':
-        request.write(plot_sparkdots(data))
-    elif params['style'] == 'line':
-        request.write(plot_sparkline(data, text=False))
-    else:
-        request.write(plot_sparkline(data))
-

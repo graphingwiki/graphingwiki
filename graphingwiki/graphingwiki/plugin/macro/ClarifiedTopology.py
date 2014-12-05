@@ -36,7 +36,7 @@ from MoinMoin.action import AttachFile
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.plugin.action.ShowGraph import GraphShower
-from graphingwiki.plugin.action.metasparkline import write_surface, draw_line
+from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
     cache_key, cache_exists, latest_edit, encode_page, decode_page
@@ -83,8 +83,8 @@ def draw_topology(request, args, key):
 
     if not pagelist:
         return False, "", \
-            _sysmsg % ('error', "%s: %s" % 
-                       (_("No such topology or empty topology"), 
+            _sysmsg % ('error', "%s: %s" %
+                       (_("No such topology or empty topology"),
                         form_escape(topology)))
 
     coords = dict()
@@ -104,7 +104,7 @@ def draw_topology(request, args, key):
 
     allcoords = list()
     for page in pagelist:
-        data = get_metas(request, page, 
+        data = get_metas(request, page,
                          [topology, 'gwikishapefile', 'tia-name', color],
                          checkAccess=False, formatLinks=True)
 
@@ -174,8 +174,8 @@ def draw_topology(request, args, key):
             flows = csv.reader(file(flowname, 'r').readlines(), delimiter=';')
         except IOError:
             return False, "", \
-                _sysmsg % ('error', "%s: %s" % 
-                           (_("No such flowfile as attachment on topology page"), 
+                _sysmsg % ('error', "%s: %s" %
+                           (_("No such flowfile as attachment on topology page"),
                             form_escape(flowfile)))
 
         flows.next()
@@ -281,7 +281,7 @@ def draw_topology(request, args, key):
             w = images[page].get_width()
             if colors.has_key(page):
                 clr = graph.hashcolor(colors[page])
-                r, g, b = [int(''.join(x), 16) / 255.0 for x in 
+                r, g, b = [int(''.join(x), 16) / 255.0 for x in
                            zip(clr[1::2], clr[2::2])]
                 ctx.set_source_rgb(r, g, b)
             else:
@@ -377,7 +377,7 @@ def draw_topology(request, args, key):
         for coords, data in areas.iteritems():
             corners = coords.split(',')
             corners = [float(x) for x in coords.split(',')]
-            corners = tuple([new_surface_x - corners[1], corners[0], 
+            corners = tuple([new_surface_x - corners[1], corners[0],
                              new_surface_x - corners[3], corners[2]])
             newareas['%s,%s,%s,%s' % corners] = data
         areas = newareas
@@ -387,7 +387,7 @@ def draw_topology(request, args, key):
 
     if rotate:
         ctx.translate(0, -surface_x)
-        
+
     ctx.set_source_surface(surface, 0, 0)
     ctx.paint()
 
@@ -438,5 +438,5 @@ def execute(macro, args):
     map = u'<map id="%s" name="%s">\n' % (key, key)
     map += decode_page(mappi)
     map += u'</map>\n'
-    
+
     return div + map
