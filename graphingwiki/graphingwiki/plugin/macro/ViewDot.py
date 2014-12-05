@@ -27,7 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
 from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \

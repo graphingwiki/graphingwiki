@@ -40,7 +40,7 @@ from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
     cache_key, cache_exists, latest_edit, encode_page, decode_page
-from graphingwiki import cairo, cairo_found
+from graphingwiki import cairo
 
 Dependencies = ['metadata']
 

@@ -8,7 +8,7 @@
 """
 from MoinMoin.action import cache
 
-from graphingwiki.util import encode_page, form_escape, cache_key, cache_exists
+from graphingwiki.util import form_escape, cache_key, cache_exists
 from graphingwiki.plugin.action.metasparkline import plot_error
 from graphingwiki import cairo_found
 

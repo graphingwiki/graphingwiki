@@ -8,9 +8,9 @@
 """
 from MoinMoin.action import cache
 
-from graphingwiki.util import encode_page, form_escape, cache_key, cache_exists
+from graphingwiki.util import form_escape, cache_key, cache_exists
 from graphingwiki.plugin.action.metasparkline import \
-    draw_path, write_surface, plot_error
+    write_surface, plot_error
 from graphingwiki import cairo, cairo_found
 
 LEVELS = {'2': 'SALAINEN',

@@ -27,13 +27,9 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from copy import copy
-
 from MoinMoin.Page import Page
-from MoinMoin import wikiutil
 
-from graphingwiki import cairo, cairo_found
-
+from graphingwiki import cairo_found
 from graphingwiki.util import url_construct
 
 Dependencies = ['metadata']

@@ -31,11 +31,7 @@
 
 """
 
-from urllib import unquote as url_unquote
-
-from MoinMoin import Page
 from MoinMoin.macro import Include as moinInclude
-
 
 from graphingwiki.editing import metatable_parseargs
 
