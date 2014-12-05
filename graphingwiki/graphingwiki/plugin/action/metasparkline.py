@@ -32,13 +32,14 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from cStringIO import StringIO
 
+from cStringIO import StringIO
 from graphingwiki import cairo
 
 
 def image_headers(request):
     request.content_type = 'image/png'
+
 
 def cairo_not_found(request):
     error = request.getText(
@@ -48,12 +49,14 @@ def cairo_not_found(request):
     request.content_type = 'text/plain'
     request.write(error)
 
+
 def write_surface(surface):
     # Output a PNG file
     stringio = StringIO()
     surface.write_to_png(stringio)
     surface.finish()
     return stringio.getvalue()
+
 
 # Draw a path between a set of points
 def draw_path(ctx, endpoints):
@@ -63,12 +66,16 @@ def draw_path(ctx, endpoints):
 
     return ctx
 
-def calculate_textlen(text):
+
+def _calculate_textlen(text):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
 
     ctx = cairo.Context(surface)
-    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_BOLD)
+    ctx.select_font_face(
+        "Times-Roman",
+        cairo.FONT_SLANT_NORMAL,
+        cairo.FONT_WEIGHT_BOLD
+    )
     ctx.set_font_size(12)
 
     # Calculate surface size so that texts will fit
@@ -76,14 +83,21 @@ def calculate_textlen(text):
 
     return text_len
 
+
 def plot_error(request, text="No data"):
     # Just return an error message
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 calculate_textlen(text), 25)
+    surface = cairo.ImageSurface(
+        cairo.FORMAT_ARGB32,
+        _calculate_textlen(text),
+        25
+    )
 
     ctx = cairo.Context(surface)
-    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_BOLD)
+    ctx.select_font_face(
+        "Times-Roman",
+        cairo.FONT_SLANT_NORMAL,
+        cairo.FONT_WEIGHT_BOLD
+    )
     ctx.set_font_size(12)
     ctx.set_line_width(0.6)
 
