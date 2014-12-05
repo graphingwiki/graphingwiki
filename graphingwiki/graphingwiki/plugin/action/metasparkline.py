@@ -34,10 +34,8 @@
 """
 from cStringIO import StringIO
 
-from MoinMoin.Page import Page
+from graphingwiki import cairo
 
-from graphingwiki import cairo, cairo_found, values_to_form
-from graphingwiki.editing import get_revisions, get_metas
 
 def image_headers(request):
     request.content_type = 'image/png'
@@ -61,144 +59,6 @@ def draw_path(ctx, endpoints):
         ctx.line_to(*coord)
 
     return ctx
-
-def scale_results(data):
-    # Scale data to the range [0, 100]
-    min_d = min(data)
-    max_d = max(data)
-    scale = (max_d - min_d) / 100.0
-
-    data = [(x - min_d) / scale for x in data]
-    return data
-
-def plot_sparkdots(results):
-    # Create surface
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 len(results)*2, 15)
-
-    ctx = cairo.Context(surface)
-    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(12)
-    ctx.set_line_width(1)
-
-    width, height = surface.get_width(), surface.get_height()
-
-    # Fill with white
-    ctx.set_source_rgb(1.0, 1.0, 1.0)
-    ctx.rectangle(0, 0, width, height)
-    ctx.fill()
-
-    # Scale results if needed
-    max_val = max(results)
-    min_val = min(results)
-
-    if max_val > 100 or min_val < 0:
-        results = scale_results(results)
-
-    # Draw points, with red if they're above 50% and black otherwise
-    for (r, i) in zip(results, range(0, len(results)*2, 2)):
-        if r > 50:
-            ctx.set_source_rgb(1, 0.0, 0.0)
-        else:
-            ctx.set_source_rgb(0, 0, 0)
-
-        color = (r > 50) and "red" or "gray"
-        # FAQ: to light up single pixels sharply, go to pixel + 0.5
-        ctx.move_to(i + 0.5, height-r/10-4)
-        ctx.line_to(i + 0.5, (height-r/10))
-
-        ctx.stroke()
-
-    data = write_surface(surface)
-    return data
-
-def plot_sparkline(results, text=True):
-    # Scale results if needed
-    max_val = max(results)
-    min_val = min(results)
-    last_val = results[-1]
-
-    if max_val > 100 or min_val < 0:
-        results = scale_results(results)
-
-    text_len = 0
-    if text:
-        # Make a context to calculate font sizes with
-        # There must be a better way to do this, I just don't know it!
-        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
-
-        ctx = cairo.Context(surface)
-        ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
-                             cairo.FONT_WEIGHT_BOLD)
-        ctx.set_font_size(12)
-        ctx.set_line_width(0.5)
-
-        max_val = str(max_val)
-        min_val = str(min_val)
-        last_val = str(last_val)
-
-        # Calculate surface size so that texts will fit
-        text_len = ctx.text_extents(max_val)[4] + \
-            ctx.text_extents(min_val)[4] + \
-            ctx.text_extents(last_val)[4] + 6
-
-    # Make the actual surface
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 len(results)+text_len, 20)
-
-    ctx = cairo.Context(surface)
-    ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
-                         cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(12)
-    ctx.set_line_width(0.6)
-
-    # Fill surface with white
-    width, height = surface.get_width(), surface.get_height()
-
-    ctx.set_source_rgb(1.0, 1.0, 1.0)
-    ctx.rectangle(0, 0, width, height)
-    ctx.fill()
-
-    # Coordinates for the sparkline, 2pxs left for marigins
-    # +0.5 for extra sharpness again (Cairo FAQ)
-    coords = zip([x + 0.5 for x in range(2, len(results)+2)],
-                 [15 - y/10 for y in results])
-
-
-    # Draw the sparkline
-    ctx.set_source_rgb(0, 0, 0)
-    ctx = draw_line(ctx, coords)
-    ctx.stroke()
-
-    # Draw max, min and texts
-    max_pt = coords[results.index(max(results))]
-    ctx.set_source_rgb(1.0, 0, 0)
-    ctx.rectangle(max_pt[0]-2.5, max_pt[1]-2.5, 3, 3)
-    ctx.fill()
-
-    if text:
-        ctx.move_to(len(results)+2, 20)
-        ctx.show_text(max_val)
-
-    min_pt = coords[results.index(min(results))]
-    ctx.set_source_rgb(0, 0, 1.0)
-    ctx.rectangle(min_pt[0]-2.5, min_pt[1]-2.5, 3, 3)
-    ctx.fill()
-
-    if text:
-        text_len = ctx.text_extents(max_val)[4] + 4
-        ctx.move_to(len(results)+text_len, 20)
-        ctx.show_text(min_val)
-
-        text_len += ctx.text_extents(min_val)[4] + 2
-        ctx.set_source_rgb(0, 0, 0)
-        ctx.move_to(len(results)+text_len, 20)
-        ctx.show_text(last_val)
-
-    data = write_surface(surface)
-
-    return data
 
 def calculate_textlen(text):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
