@@ -6,9 +6,7 @@
     @copyright: 2008 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-from copy import copy
 from MoinMoin.action.newpage import NewPage
-from MoinMoin import log
 
 from graphingwiki import values_to_form
 

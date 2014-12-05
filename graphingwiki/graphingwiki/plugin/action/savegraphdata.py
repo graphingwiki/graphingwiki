@@ -26,12 +26,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-
-import re
-import os
-
 from time import time
-from copy import copy
 
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser

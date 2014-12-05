@@ -27,7 +27,6 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-
 import os
 import re
 
@@ -41,9 +40,6 @@ from random import choice, seed
 
 from MoinMoin.action import cache
 from MoinMoin import config
-from MoinMoin import wikiutil
-from MoinMoin.Page import Page
-from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin.macro.Include import _sysmsg
 

@@ -9,15 +9,12 @@
 import re
 import StringIO
 
-from copy import copy
-
-from MoinMoin import config
 from MoinMoin import wikiutil
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
 
 from graphingwiki import actionname, SEPARATOR, values_to_form
-from graphingwiki.util import encode, format_wikitext, form_unescape
+from graphingwiki.util import format_wikitext, form_unescape
 from graphingwiki.util import form_writer as wr
 
 from graphingwiki.editing import get_properties

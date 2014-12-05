@@ -36,9 +36,6 @@ except ImportError:
     cairo_found = False
     pass
 
-from MoinMoin import wikiutil
-from MoinMoin.parser.text_moin_wiki import Parser
-
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.util import SPECIAL_ATTRS
 
