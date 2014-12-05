@@ -41,9 +41,12 @@ def image_headers(request):
     request.content_type = 'image/png'
 
 def cairo_not_found(request):
+    error = request.getText(
+        "ERROR: Cairo Python extensions not installed. " +
+        "Not performing layout."
+    )
     request.content_type = 'text/plain'
-    request.write(_("ERROR: Cairo Python extensions not installed. " +\
-                       "Not performing layout."))
+    request.write(error)
 
 def write_surface(surface):
     # Output a PNG file
