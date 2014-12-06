@@ -35,12 +35,11 @@ from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
 from MoinMoin.macro.Include import _sysmsg
 
+from graphingwiki import cairo, write_surface
 from graphingwiki.plugin.action.ShowGraph import GraphShower
-from graphingwiki.plugin.action.metasparkline import write_surface
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
     cache_key, cache_exists, latest_edit, encode_page, decode_page
-from graphingwiki import cairo
 
 Dependencies = ['metadata']
 

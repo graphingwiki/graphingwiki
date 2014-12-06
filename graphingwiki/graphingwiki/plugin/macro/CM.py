@@ -9,8 +9,7 @@
 from MoinMoin.action import cache
 
 from graphingwiki.util import form_escape, cache_key, cache_exists
-from graphingwiki.plugin.action.metasparkline import plot_error
-from graphingwiki import cairo_found
+from graphingwiki import cairo_found, plot_error
 
 from ST import plot_box, CAIRO_BOLD
 

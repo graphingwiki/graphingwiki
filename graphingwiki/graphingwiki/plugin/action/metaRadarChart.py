@@ -29,18 +29,17 @@
 """
 import math
 
-cairo_found = True
-try:
-    import cairo
-except ImportError:
-    cairo_found = False
-    pass
-
+from graphingwiki import cairo, cairo_found, write_surface, plot_error
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.util import SPECIAL_ATTRS
 
-from metasparkline import draw_path, cairo_not_found, \
-    write_surface, image_headers, plot_error
+# Draw a path between a set of points
+def draw_path(ctx, endpoints):
+    ctx.move_to(*endpoints[-1])
+    for coord in endpoints:
+        ctx.line_to(*coord)
+
+    return ctx
 
 def add_to_center(center, coords):
     return center[0] + coords[0], center[1] + coords[1]
@@ -75,13 +74,16 @@ def spider_radius(ctx, center, radius, sectors):
     return ctx, endpoints
 
 def execute(pagename, request):
-    _ = request.getText
-
     if not cairo_found:
-        cairo_not_found(request)
+        error = request.getText(
+            "ERROR: Cairo Python extensions not installed. " +
+            "Not performing layout."
+        )
+        request.content_type = 'text/plain'
+        request.write(error)
         return
 
-    image_headers(request)
+    request.content_type = "image/png"
 
     # Grab arguments
     args = ', '.join(x for x in request.values.getlist('arg'))
