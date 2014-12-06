@@ -27,8 +27,6 @@ class SetEncoder(json.JSONEncoder):
 
 
 def execute(pagename, request):
-    _ = request.getText
-
     request.content_type = "application/json"
 
     if request.environ['REQUEST_METHOD'] == "GET":

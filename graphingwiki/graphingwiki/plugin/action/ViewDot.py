@@ -63,8 +63,6 @@ class ViewDot(object):
                 self.width = kw['width']
 
     def formargs(self, form):
-        request = self.request
-
         # format
         if form.has_key('format'):
             format = form['format'][0]
@@ -155,8 +153,6 @@ class ViewDot(object):
         self.formargs(form)
 
         if self.help or not self.attachment:
-            formatter = request.formatter
-
             enter_page(request, pagename, 'View .gv attachment')
 
             self.sendForm()

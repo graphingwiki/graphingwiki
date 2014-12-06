@@ -152,8 +152,6 @@ def show_queryform(wr, request, pagename):
 def show_editform(wr, request, pagename, args):
     formatter = request.formatter
 
-    formpage = '../' * pagename.count('/') + pagename
-
     # Note that metatable_parseargs handles read permission checks
     pagelist, metakeys, _ = metatable_parseargs(request, args,
                                                 get_all_keys=True)

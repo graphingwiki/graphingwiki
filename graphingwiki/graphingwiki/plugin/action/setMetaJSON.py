@@ -79,4 +79,3 @@ def execute(pagename, request):
         json.dump(dict(status="ok", msg=msg), request)
 
     return
-

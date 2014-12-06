@@ -25,8 +25,6 @@ except ImportError:
 from graphingwiki.editing import set_metas
 
 def execute(pagename, request):
-    _ = request.getText
-
     request.content_type = "application/json"
 
     if request.environ['REQUEST_METHOD'] != 'POST':
@@ -77,4 +75,3 @@ def execute(pagename, request):
         request.status_code = 403
 
     json.dump(dict(msg=msg), request)
-
