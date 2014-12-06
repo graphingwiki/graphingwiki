@@ -8,7 +8,7 @@
 """
 from MoinMoin.action import cache
 
-from graphingwiki import cairo, cairo_found, write_surface, plot_error
+from graphingwiki import cairo, cairo_found, cairo_surface_to_png
 from graphingwiki.util import form_escape, cache_key, cache_exists
 
 LEVELS = {'2': 'SALAINEN',
@@ -19,10 +19,11 @@ LEVELSROMAN = {'4': 'IV', '3': 'III', '2': 'II'}
 
 LAW = u"JulkL (621/1999) 24.1 \xa7:n %s k"
 
-CAIRO_BOLD = ("sans-serif", cairo.FONT_SLANT_NORMAL,
-              cairo.FONT_WEIGHT_BOLD)
-CAIRO_NORMAL = ("sans-serif", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_NORMAL)
+if cairo_found:
+    CAIRO_BOLD = ("sans-serif", cairo.FONT_SLANT_NORMAL,
+                                cairo.FONT_WEIGHT_BOLD)
+    CAIRO_NORMAL = ("sans-serif", cairo.FONT_SLANT_NORMAL,
+                                  cairo.FONT_WEIGHT_NORMAL)
 
 def plot_box(texts):
     # Make a context to calculate font sizes with
@@ -79,8 +80,7 @@ def plot_box(texts):
         ctx.move_to(max_text_len/2-(text_len/2) + 2, curpos)
         ctx.show_text(text)
 
-    data = write_surface(surface)
-    return data
+    return cairo_surface_to_png(surface)
 
 def plot_tll(level='4', text='7', law=None):
     if not level in LEVELS:
@@ -100,7 +100,6 @@ def execute(macro, args):
     # Handle GET arguments
     level = '4'
     level_text = '7'
-    error = False
 
     if not args:
         args = ''
@@ -108,8 +107,7 @@ def execute(macro, args):
     arglist = [x.strip() for x in args.split(',') if x]
 
     if not cairo_found:
-        error = True
-        key = "Cairo not found"
+        return "Cairo not found."
 
     key = cache_key(request, (macro.name, arglist))
 
@@ -125,11 +123,7 @@ def execute(macro, args):
                 level_text = ''
                 law = ','.join(arglist[1:])
 
-        if not error:
-            data = plot_tll(level, level_text, law)
-        else:
-            data = plot_error(request, key)
-
+        data = plot_tll(level, level_text, law)
         cache.put(request, key, data, content_type='image/png')
 
     return u'<div class="ST"><img src="%s" alt="%s"></div>' % \

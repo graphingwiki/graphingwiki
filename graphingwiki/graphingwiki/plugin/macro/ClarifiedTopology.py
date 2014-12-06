@@ -35,7 +35,7 @@ from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
 from MoinMoin.macro.Include import _sysmsg
 
-from graphingwiki import cairo, write_surface
+from graphingwiki import cairo, cairo_surface_to_png
 from graphingwiki.plugin.action.ShowGraph import GraphShower
 from graphingwiki.editing import metatable_parseargs, get_metas
 from graphingwiki.util import form_escape, make_tooltip, \
@@ -390,7 +390,7 @@ def draw_topology(request, args, key):
     ctx.set_source_surface(surface, 0, 0)
     ctx.paint()
 
-    data = write_surface(s2)
+    data = cairo_surface_to_png(s2)
 
     map = ''
     for coords in areas:

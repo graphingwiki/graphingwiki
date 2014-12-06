@@ -29,9 +29,48 @@
 """
 import math
 
-from graphingwiki import cairo, cairo_found, write_surface, plot_error
+from graphingwiki import cairo, cairo_found, cairo_surface_to_png
 from graphingwiki.editing import metatable_parseargs, get_metas, ordervalue
 from graphingwiki.util import SPECIAL_ATTRS
+
+def _calculate_textlen(text):
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 0, 0)
+
+    ctx = cairo.Context(surface)
+    ctx.select_font_face(
+        "Times-Roman",
+        cairo.FONT_SLANT_NORMAL,
+        cairo.FONT_WEIGHT_BOLD
+    )
+    ctx.set_font_size(12)
+
+    # Calculate surface size so that texts will fit
+    text_len = ctx.text_extents(text)[4]
+
+    return text_len
+
+def plot_error(request, text="No data"):
+    # Just return an error message
+    surface = cairo.ImageSurface(
+        cairo.FORMAT_ARGB32,
+        _calculate_textlen(text),
+        25
+    )
+
+    ctx = cairo.Context(surface)
+    ctx.select_font_face(
+        "Times-Roman",
+        cairo.FONT_SLANT_NORMAL,
+        cairo.FONT_WEIGHT_BOLD
+    )
+    ctx.set_font_size(12)
+    ctx.set_line_width(0.6)
+
+    ctx.set_source_rgb(0, 0, 0)
+    ctx.move_to(0, 20)
+    ctx.show_text(request.getText(text))
+
+    return cairo_surface_to_png(surface)
 
 # Draw a path between a set of points
 def draw_path(ctx, endpoints):
@@ -240,5 +279,4 @@ def execute(pagename, request):
         ctx.move_to(*point)
         ctx.show_text(text)
 
-    data = write_surface(surface)
-    request.write(data)
+    request.write(cairo_surface_to_png(surface))
