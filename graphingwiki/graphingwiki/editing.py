@@ -8,7 +8,6 @@
 """
 import os
 import re
-import sys
 import string
 import socket
 import copy
@@ -22,15 +21,13 @@ except ImportError:
 from MoinMoin.action.AttachFile import getAttachDir, getFilename, _addLogEntry
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.Page import Page
-from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 from MoinMoin import wikiutil
 from MoinMoin import config
 from MoinMoin import caching
-from MoinMoin.wikiutil import importPlugin,  PluginMissingError, AbsPageName
+from MoinMoin.wikiutil import importPlugin, AbsPageName
 
-from graphingwiki.util import nonguaranteeds_p, decode_page, encode_page
 from graphingwiki.util import filter_categories
-from graphingwiki.util import NO_TYPE, SPECIAL_ATTRS, editable_p
+from graphingwiki.util import SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex, encode
 
 CATEGORY_KEY = "gwikicategory"
