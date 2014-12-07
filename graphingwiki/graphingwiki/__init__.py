@@ -117,7 +117,7 @@ igraph = None
 
 try:
     import igraph
-except:
+except ImportError:
     igraph_found = False
     pass
 
