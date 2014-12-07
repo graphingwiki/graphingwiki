@@ -4,14 +4,12 @@
     @copyright: 2008 by Joachim Viide
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
 import os
 import struct
 import base64
 import shelve
-import xmlrpclib
 
-from graphingwiki.editing import get_metas, metatable_parseargs, decode_page
+from graphingwiki.editing import get_metas, metatable_parseargs
 
 from MoinMoin.util.lock import WriteLock
 from MoinMoin.Page import Page

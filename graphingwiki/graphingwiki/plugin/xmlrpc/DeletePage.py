@@ -6,12 +6,9 @@
     @copyright: 2008 by therauli <therauli@ee.oulu.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-import os
 import xmlrpclib
 
 from MoinMoin.PageEditor import PageEditor
-from MoinMoin import config
 
 def delete(request, pagename, comment = None):
     _ = request.getText

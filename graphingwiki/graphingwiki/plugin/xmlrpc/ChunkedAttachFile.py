@@ -1,12 +1,9 @@
-import os
 import xmlrpclib
 try:
     from hashlib import md5
 except ImportError:
     from md5 import md5
 
-from tempfile import mkdtemp
-from shutil import rmtree
 from cStringIO import StringIO
 
 from graphingwiki.editing import save_attachfile

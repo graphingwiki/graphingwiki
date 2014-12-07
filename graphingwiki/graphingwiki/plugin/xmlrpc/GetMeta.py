@@ -6,8 +6,6 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import urllib
- 
 from graphingwiki.editing import metatable_parseargs, get_metas
 
 def execute(xmlrpcobj, args, keysonly=True):

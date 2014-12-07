@@ -7,8 +7,6 @@
     @copyright: 2009 by Erno Kuusela <erno@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import urllib
- 
 from graphingwiki.editing import metatable_parseargs, get_metas
 
 #Used by action/getMetaJSON.py
