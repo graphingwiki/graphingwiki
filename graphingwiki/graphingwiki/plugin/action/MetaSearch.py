@@ -28,13 +28,12 @@
 
 """
 import re
-from MoinMoin.macro.Include import _sysmsg
 
 from MoinMoin import wikiutil
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
 
 from graphingwiki import actionname
-from graphingwiki.util import form_escape
+from graphingwiki.util import form_escape, render_error
 
 regexp_re = re.compile('^/.+/$')
 
@@ -103,10 +102,10 @@ def execute(pagename, request):
     if q:
         if regexp_re.match(q):
             try:
-                page_re = re.compile("%s" % q[1:-1])
+                page_re = re.compile(q[1:-1])
                 q = ''
-            except:
-                request.write(_sysmsg % ('error', _("Bad regexp!")))
+            except re.error:
+                request.write(render_error(_("Bad regexp!")))
 
         graphdata = request.graphdata
         graphdata.reverse_meta()
