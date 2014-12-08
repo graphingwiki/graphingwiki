@@ -232,6 +232,12 @@ def url_construct(request, args, pagename=''):
 
     return req_url
 
+def render_error(text):
+    return '<p><strong class="error">%s</strong></p>' % form_escape(text)
+
+def render_warning(text):
+    return '<p><strong class="warning">%s</strong></p>' % form_escape(text)
+
 def make_tooltip(request, pagename, format=''):
     if not request.user.may.read(pagename):
         return str()
