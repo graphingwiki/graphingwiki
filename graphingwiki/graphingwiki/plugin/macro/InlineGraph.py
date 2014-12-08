@@ -29,7 +29,6 @@
 """
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.macro.Include import _sysmsg
 from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
     MultiDict
 
