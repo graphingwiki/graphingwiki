@@ -33,13 +33,13 @@ import csv
 
 from MoinMoin.action import cache
 from MoinMoin.action import AttachFile
-from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki import cairo, cairo_surface_to_png
 from graphingwiki.plugin.action.ShowGraph import GraphShower
 from graphingwiki.editing import metatable_parseargs, get_metas
-from graphingwiki.util import form_escape, make_tooltip, \
-    cache_key, cache_exists, latest_edit, encode_page, decode_page
+from graphingwiki.util import (form_escape, make_tooltip, cache_key,
+                               cache_exists, latest_edit, encode_page,
+                               decode_page, render_error)
 
 Dependencies = ['metadata']
 
@@ -81,10 +81,8 @@ def draw_topology(request, args, key):
                                                      get_all_keys=True)
 
     if not pagelist:
-        return False, "", \
-            _sysmsg % ('error', "%s: %s" %
-                       (_("No such topology or empty topology"),
-                        form_escape(topology)))
+        return (False, "", render_error("%s: %s" %
+                (_("No such topology or empty topology"), topology)))
 
     coords = dict()
     images = dict()
@@ -172,10 +170,9 @@ def draw_topology(request, args, key):
         try:
             flows = csv.reader(file(flowname, 'r').readlines(), delimiter=';')
         except IOError:
-            return False, "", \
-                _sysmsg % ('error', "%s: %s" %
-                           (_("No such flowfile as attachment on topology page"),
-                            form_escape(flowfile)))
+            return (False, "", render_error("%s: %s" %
+                    (_("No such flowfile as attachment on topology page"),
+                     flowfile)))
 
         flows.next()
         for line in flows:
@@ -361,7 +358,6 @@ def draw_topology(request, args, key):
         temp = surface_x
         surface_x = surface_y
         surface_y = temp
-        transl = -surface_x
 
     s2 = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  int(new_surface_x), int(new_surface_y))
