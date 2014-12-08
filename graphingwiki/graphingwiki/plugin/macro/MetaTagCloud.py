@@ -1,145 +1,142 @@
 # -*- coding: iso-8859-1 -*-
 """
-   MoinMoin - MetaTagCloud
+    MoinMoin - MetaTagCloud
 
-   Based on TagCloud.py "Create tagcloud"
-   @copyright: 2007 by Christian Groh
+    Based on TagCloud.py "Create tagcloud"
+    @copyright: 2007 by Christian Groh
 
-   Adapted for use in Graphingwiki to visualise metakeys
-   @copyright: 2007 by Juhani Eronen
+    Adapted for use in Graphingwiki to visualise metakeys
+    @copyright: 2007 by Juhani Eronen
 
 """
+from MoinMoin import wikiutil
 from graphingwiki.editing import metatable_parseargs
-from graphingwiki.util import NO_TYPE
+from graphingwiki.util import NO_TYPE, form_escape, url_construct
 
 Dependencies = ["namespace"]
 
+
 def execute(macro, args):
-   mode = 'keys'
+    mode = 'keys'
 
-   request = macro.request
+    request = macro.request
 
-   # get params
-   if args:
-      args = [x.strip() for x in args.split(',')]
-   else:
-      args = []
+    # get params
+    if args:
+        args = [x.strip() for x in args.split(',')]
+    else:
+        args = []
 
-   kw = {}
-   for arg in args:
-      if '=' in arg:
-         key, value = arg.split('=', 1)
-         if key == "metaMaxTags":
-            kw[str(key.strip())] = value
-         if key == "metaShowMode":
-            if value in ['keys', 'values']:
-               mode = value
+    kw = {}
+    for arg in args:
+        if '=' in arg:
+            key, value = arg.split('=', 1)
+            if key == "metaMaxTags":
+                kw[str(key.strip())] = value
+            if key == "metaShowMode":
+                if value in ['keys', 'values']:
+                    mode = value
 
-   args = filter(lambda x:
-                 x.split('=')[0] not in ["metaMaxTags", "metaShowMode"],
-                 args)
+    args = filter(
+        lambda x: x.split('=')[0] not in ["metaMaxTags", "metaShowMode"],
+        args
+    )
 
-   try:
-      maxTags = int(kw["metaMaxTags"])
-   except (KeyError, ValueError):
-      maxTags = 50
+    try:
+        maxTags = int(kw["metaMaxTags"])
+    except (KeyError, ValueError):
+        maxTags = 50
 
-   #{level:hits , level:hits , ...}
-   level = { 0 : 4 , 1 : 7 , 2 : 12 , 3 : 18 , 4 : 25 , 5 : 35 , 6 : 50 , 7 : 60 , 8 : 90 }
+    # [(hits, fontsize), (hits, fontsize), ...]
+    levels = [
+        (4, "0.65em"),
+        (7, "0.75em"),
+        (12, "0.9em"),
+        (18, "1.0em"),
+        (25, "1.05em"),
+        (35, "1.1em"),
+        (50, "1.15em"),
+        (60, "1.2em"),
+        (90, "1.25em"),
+        (None, "1.3em")
+    ]
 
-   tags = []
+    tags = []
 
-   if not args:
-      args = ''
-   else:
-      args = ','.join(args)
+    if not args:
+        args = ''
+    else:
+        args = ','.join(args)
 
-   pagelist, metakeys, _ = metatable_parseargs(macro.request, args,
-                                               get_all_pages = True)
-    
-   if not hasattr(request.graphdata, 'keys_on_pages'):
-      request.graphdata.reverse_meta()
+    pagelist, metakeys, _ = metatable_parseargs(
+        macro.request,
+        args,
+        get_all_pages=True
+    )
 
-   for name in pagelist:
-      page = request.graphdata.getpage(name)
-      if mode == 'keys':
-         tags.extend(x for x in page.get('meta', {}).keys())
-         tags.extend(x for x in page.get('out', {}).keys() if x != NO_TYPE)
-      else:
-         for key in page.get('meta', {}).keys():
-            if key in ['label', 'URL']:
-               continue
-#            print key, repr(page['meta'][key])
-            tags.extend(x.strip('"') for x in page['meta'][key])
-         for key in page.get('out', {}).keys():
-            if key == NO_TYPE:
-               continue
-#            print repr(page['out'][key])
-            tags.extend(page['out'][key])
+    if not hasattr(request.graphdata, 'keys_on_pages'):
+        request.graphdata.reverse_meta()
 
-   taglist = frozenset(tags)
+    for name in pagelist:
+        page = request.graphdata.getpage(name)
+        if mode == 'keys':
+            tags.extend(x for x in page.get('meta', {}).keys())
+            tags.extend(x for x in page.get('out', {}).keys() if x != NO_TYPE)
+        else:
+            for key in page.get('meta', {}).keys():
+                if key in ['label', 'URL']:
+                    continue
+                tags.extend(x.strip('"') for x in page['meta'][key])
+            for key in page.get('out', {}).keys():
+                if key == NO_TYPE:
+                    continue
+                tags.extend(page['out'][key])
 
-   def sort(t):
-      return t[1]
+    taglist = frozenset(tags)
 
-   show = []
-   for tag in taglist:
-      cnt = tags.count(tag)
-      show.append((tag, cnt, tag))
-   show.sort(key=sort, reverse=True)
-   show = show[0:maxTags]
-   show.sort()
+    def sort(t):
+        return t[1]
 
-   html = []
+    show = []
+    for tag in taglist:
+        cnt = tags.count(tag)
+        show.append((tag, cnt, tag))
+    show.sort(key=sort, reverse=True)
+    show = show[0:maxTags]
+    show.sort()
 
-   url = request.script_root + '/' + request.page.page_name + \
-         '?action=MetaSearch&amp;q='
+    html = []
 
-   for tag in show:
-      title = ""
-      if mode == 'keys':
-         data = request.graphdata.keys_on_pages.get(tag[2])
-         if data:
-            title = '\n'.join(x for x in 
-                              sorted(request.graphdata.keys_on_pages.get(tag[2]), key=unicode.lower))
-      else:
-         data = request.graphdata.vals_on_pages.get(tag[2])
-         if data:
-            title = '\n'.join(x for x in
-                              sorted(request.graphdata.vals_on_pages.get(tag[2]), key=unicode.lower))
+    for tag in show:
+        if mode == 'keys':
+            data = request.graphdata.keys_on_pages.get(tag[2])
+        else:
+            data = request.graphdata.vals_on_pages.get(tag[2])
 
-      pagename = tag[0]
-      hits = tag[1]
+        if not data:
+            data = []
+        title = '\n'.join(sorted(data, key=unicode.lower))
 
-      #level0
-      if hits < level[0]:
-         html.append(u'<span style="font-size:0.65em;"><a title="%s" href="%s"> %s</a></span>' % (title, url + pagename, tag[0]))
-      #level1
-      elif hits < level[1]:
-         html.append(u'<span style="font-size:0.75em;"><a title="%s" href="%s"> %s</a></span>' % (title, url + pagename, tag[0]))
-      #level2
-      elif hits < level[2]:
-         html.append(u'<span style="font-size:0.9em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level3
-      elif hits < level[3]:
-         html.append(u'<span style="font-size:1.0em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level4
-      elif hits < level[4]:
-         html.append(u'<span style="font-size:1.05em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level5
-      elif hits < level[5]:
-         html.append(u'<span style="font-size:1.1em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level6
-      elif hits < level[6]:
-         html.append(u'<span style="font-size:1.15em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level7
-      elif hits < level[7]:
-         html.append(u'<span style="font-size:1.2em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level8
-      elif hits < level[8]:
-         html.append(u'<span style="font-size:1.25em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
-      #level9
-      else:
-         html.append(u'<span style="font-size:1.3em;"><a title="%s" href="%s"> %s</a></span>'% (title, url + pagename, tag[0]))
+        pagename = tag[0]
+        hits = tag[1]
+        url = url_construct(request, {
+            "action": ["MetaSearch"],
+            "q": [pagename]
+        }, request.page.page_name)
 
-   return ''.join(html)
+        fontsize = "0.1em"
+        for _hits, _fontsize in levels:
+            if _hits is None or hits < _hits:
+                fontsize = _fontsize
+                break
+
+        html.append(
+            u'<span style="font-size:%s;"><a title="%s" href="%s"> %s</a></span>' % (
+                form_escape(fontsize),
+                form_escape(title),
+                form_escape(url),
+                wikiutil.escape(pagename)
+            )
+        )
+
+    return ''.join(html)
