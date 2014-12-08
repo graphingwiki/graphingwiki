@@ -9,10 +9,8 @@
 
 Dependencies = ['metadata']
 
-from MoinMoin.macro.Include import _sysmsg
-
 from graphingwiki.editing import get_metas
-from graphingwiki.util import format_wikitext
+from graphingwiki.util import format_wikitext, render_error
 
 vector_keys_str = {'AV': 'AccessVector',
                    'AC': 'AccessComplexity',
@@ -257,8 +255,8 @@ def execute(macro, args):
         args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
     if len(args) not in [0,1,2]:
-        return _sysmsg % ('error', 
-                          _("CVSS: Need to specify a page or page and type (score|vector)."))
+        return render_error(_("CVSS: Need to specify a page or page and " +
+                              "type (score|vector)."))
 
     # Get all non-empty args
     args = [x for x in args if x]
@@ -274,8 +272,8 @@ def execute(macro, args):
         page = args[0]
         type = args[1]
         if type not in tset:
-            return _sysmsg % ('error', 
-                _("CVSS: The type needs to be either score or vector."))
+            return render_error(_("CVSS: The type needs to be either score " +
+                                  "or vector."))
 
     base_metas = get_metas(request, page, ["Access Vector", "Access Complexity", "Authentication", "Confidentiality", "Integrity", "Availability"])
     vector = buildVector(base_metas)
@@ -287,6 +285,4 @@ def execute(macro, args):
         bstring = "%s" % bscore
         return format_wikitext(request, bstring)
     else:
-        return _sysmsg % ('error', 
-                          _("CVSS: Invalid value(s) in Base Metrics."))
-
+        return render_error(_("CVSS: Invalid value(s) in Base Metrics."))
