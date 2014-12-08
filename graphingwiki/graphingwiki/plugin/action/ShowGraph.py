@@ -41,7 +41,6 @@ from random import choice, seed
 from MoinMoin.action import cache
 from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
-from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki import gv_found, igraph_found, actionname, \
     url_escape, values_to_form, pil_found, pil_image
@@ -49,11 +48,15 @@ from graphingwiki import gv_found, igraph_found, actionname, \
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
 
-from graphingwiki.util import attachment_file, attachment_url, url_parameters,\
-    get_url_ns, load_parents, load_children, nonguaranteeds_p, NO_TYPE, \
-    form_escape, form_writer, load_node, decode_page, template_regex, category_regex, \
-    encode_page, make_tooltip, cache_exists, SPECIAL_ATTRS, cache_key, \
-    xml_document, xml_node_id_and_text, geoip_init, geoip_get_coords
+from graphingwiki.util import (attachment_file, attachment_url, url_parameters,
+                               get_url_ns, load_parents, load_children,
+                               nonguaranteeds_p, NO_TYPE, form_escape,
+                               form_writer, load_node, decode_page,
+                               template_regex, category_regex, encode_page,
+                               make_tooltip, cache_exists, SPECIAL_ATTRS,
+                               cache_key, xml_document, xml_node_id_and_text,
+                               geoip_init, geoip_get_coords,
+                               render_error, render_warning)
 from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math
@@ -1075,7 +1078,6 @@ class GraphShower(object):
             legendgraph = Graphviz(key, rankdir='LR', constraint='false')
         legend = legendgraph.subg.add("clusterLegend",
                                       label=_('Legend'))
-        subrank = self.pagename.count('/')
 
         colorURL = get_url_ns(self.request, self.app_page, self.colorby)
         shapeURL = get_url_ns(self.request, self.app_page, self.shapeby)
@@ -1865,7 +1867,7 @@ class GraphShower(object):
     def fail_page(self, reason):
         formatter = self.request.formatter
 
-        self.request.write(_sysmsg % ('error', reason))
+        self.request.write(render_error(reason))
         self.request.write(formatter.endContent())
 
         if not self.inline:
@@ -1915,7 +1917,7 @@ class GraphShower(object):
         if self.format == 'kml':
             self.GEO_IP, geo_error = geoip_init(self.request)
             if geo_error:
-                error += _sysmsg % ('error', geo_error)
+                error += render_error(geo_error)
                 self.format = 'error'
 
         formatter = self.send_headers()
@@ -1992,7 +1994,7 @@ class GraphShower(object):
 
         if self.format not in self.nonwrapped_formats and not self.inline:
             for reason in warnings:
-                self.request.write(_sysmsg % ('warning', reason))
+                self.request.write(render_warning(reason))
             self.send_form()
 
         if self.help == 'inline':
