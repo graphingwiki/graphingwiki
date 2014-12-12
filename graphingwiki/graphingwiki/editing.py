@@ -28,18 +28,19 @@ from MoinMoin.wikiutil import importPlugin, AbsPageName
 
 from graphingwiki.util import filter_categories
 from graphingwiki.util import SPECIAL_ATTRS, editable_p
-from graphingwiki.util import category_regex, template_regex, encode
+from graphingwiki.util import category_regex, template_regex
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
 
 # Standard Python operators
-OPERATORS = {'<': operator.lt, 
-             '<=': operator.le, 
+OPERATORS = {'<': operator.lt,
+             '<=': operator.le,
              '==': operator.eq,
-             '!=': operator.ne, 
-             '>=': operator.ge, 
+             '!=': operator.ne,
+             '>=': operator.ge,
              '>': operator.gt}
+
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -60,6 +61,8 @@ default_meta_before = '^----'
 # These are the match types for links that really should be noted
 linktypes = ["wikiname_bracket", "word",
              "interwiki", "url", "url_bracket"]
+
+
 def get_revisions(request, page, checkAccess=True):
     pagename = page.page_name
     if checkAccess and not request.user.may.read(pagename):
@@ -72,7 +75,7 @@ def get_revisions(request, page, checkAccess=True):
 
     alldata = dict()
     revisions = dict()
-
+    
     for rev in page.getRevList():
         revlink = '%s-gwikirevision-%d' % (pagename, rev)
 
@@ -87,7 +90,7 @@ def get_revisions(request, page, checkAccess=True):
         text = revpage.get_raw_body()
         alldata = parse_text(request, revpage, text)
         if alldata.has_key(pagename):
-            alldata[pagename].setdefault('meta', 
+            alldata[pagename].setdefault('meta',
                                          dict())[u'gwikirevision'] = \
                                          [unicode(rev)]
             # Do the cache.
@@ -96,8 +99,8 @@ def get_revisions(request, page, checkAccess=True):
             # Add revision as meta so that it is shown in the table
             revisions[rev] = revlink
 
-    pagelist = [revisions[x] for x in sorted(revisions.keys(), 
-                                             key=ordervalue, 
+    pagelist = [revisions[x] for x in sorted(revisions.keys(),
+                                             key=ordervalue,
                                              reverse=True)]
 
     metakeys = set()
@@ -110,12 +113,13 @@ def get_revisions(request, page, checkAccess=True):
 
 PROPERTIES = ['constraint', 'description', 'hint', 'hidden', 'default']
 
+
 def get_properties(request, pagename):
     properties = dict()
     if pagename:
         if not pagename.endswith('Property'):
             pagename = '%sProperty' % (pagename)
-        _, metakeys, _ = metatable_parseargs(request, pagename, 
+        _, metakeys, _ = metatable_parseargs(request, pagename,
                                              get_all_keys=True)
         properties = get_metas(request, pagename, metakeys)
         for prop in properties:
@@ -124,10 +128,11 @@ def get_properties(request, pagename):
             properties[prop] = properties[prop][0]
 
     for prop in PROPERTIES:
-        if not properties.has_key(prop):
+        if not prop in properties:
             properties[prop] = ''
 
     return properties
+
 
 def getmeta_to_table(input):
     keyoccur = dict()
@@ -157,7 +162,8 @@ def getmeta_to_table(input):
             row.extend(val)
         table.append(row)
 
-    return table    
+    return table
+
 
 def parse_categories(request, text):
     r"""
@@ -253,7 +259,7 @@ def edit_categories(request, savetext, action, catlist):
        "## This is not a category line\\n" +\
        "CategoryIdentity hlh\\n" +\
        "CategoryBlaa\\n"
-    >>> 
+    >>>
     >>> edit_categories(request, s, 'add', ['CategoryEi'])
     u'= @PAGE@ =\\n[[TableOfContents]]\\n[[LinkedIn]]\\n----\\n## This is not a category line\\nCategoryIdentity hlh\\n----\\nCategoryBlaa CategoryEi\\n'
     >>> edit_categories(request, s, 'set', ['CategoryEi'])
@@ -379,8 +385,9 @@ def metas_to_abs_links(request, page, values):
 
     return new_values
 
-def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta, 
-                        metakeys, key, curpage, curkey, 
+
+def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
+                        metakeys, key, curpage, curkey,
                         prev='', formatLinks=False, linkdata=None):
     if not linkdata:
         linkdata = dict()
@@ -413,7 +420,7 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
     for indir_page in set(pages):
         # Relative pages etc
         indir_page = \
-            wikiutil.AbsPageName(request.page.page_name, 
+            wikiutil.AbsPageName(request.page.page_name,
                                  indir_page)
 
         if request.user.may.read(indir_page):
@@ -442,17 +449,17 @@ def add_matching_redirs(request, loadedPage, loadedOuts, loadedMeta,
             elif not target_key in outs:
                 continue
 
-            # Handle inlinks separately 
-            if 'gwikiinlinks' in metakeys: 
-                inLinks = inlinks_key(request, loadedPage,  
-                                      checkAccess=checkAccess) 
+            # Handle inlinks separately
+            if 'gwikiinlinks' in metakeys:
+                inLinks = inlinks_key(request, loadedPage,
+                                      checkAccess=checkAccess)
 
-                loadedOuts[key] = inLinks 
-                continue 
+                loadedOuts[key] = inLinks
+                continue
 
-            linkdata = add_matching_redirs(request, loadedPage, loadedOuts, 
-                                           loadedMeta, metakeys, key, 
-                                           indir_page, newkey, target_key, 
+            linkdata = add_matching_redirs(request, loadedPage, loadedOuts,
+                                           loadedMeta, metakeys, key,
+                                           indir_page, newkey, target_key,
                                            formatLinks, linkdata)
 
     return linkdata
@@ -1547,7 +1554,6 @@ def metatable_parseargs(request, args,
                 if not clear:
                     break
                             
-
         # Add page if all the regexps and operators have matched
         if clear:
             pagelist.add(page)
@@ -1746,6 +1752,7 @@ def save_pagecachefile(request, pagename, content, cfname, overwrite=False):
 
     return True
 
+
 def load_pagecachefile(request, pagename, cfname):
     try:
         entry, exists = check_pagecachefile(request, pagename, cfname)
@@ -1761,6 +1768,7 @@ def load_pagecachefile(request, pagename, cfname):
 
     return cfdata
 
+
 def delete_pagecachefile(request, pagename, cfname):
     try:
         entry, exists = check_pagecachefile(request, pagename, cfname)
@@ -1773,19 +1781,25 @@ def delete_pagecachefile(request, pagename, cfname):
 
     return True
 
+
 def list_pagecachefiles(request, pagename):
     page = Page(request, pagename)
-    return caching.get_cache_list(request, page, 'item')    
+    return caching.get_cache_list(request, page, 'item')
+
 
 def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     class Request(object):
         pass
+
     class Config(object):
         pass
+
     class Object(object):
         pass
+
     class Cache(object):
         pass
+
     class GraphData(dict):
         def getpage(self, page):
             return self.get(page, dict())
@@ -1803,6 +1817,7 @@ def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
     request.user.may.write = lambda x: mayWrite
 
     return request
+
 
 def _test():
     import doctest
