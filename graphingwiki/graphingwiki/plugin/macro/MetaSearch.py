@@ -31,11 +31,11 @@ from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas
 
+
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
     request = macro.request
-    _ = request.getText
 
     if not args:
         return ''
@@ -53,7 +53,7 @@ def execute(macro, args):
     for page in pagelist:
         text = ''
         if namekey:
-            metas = get_metas(request, page, [namekey], 
+            metas = get_metas(request, page, [namekey],
                               checkAccess=False, formatLinks=True)
             text = ', '.join(metas[namekey])
 
