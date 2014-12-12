@@ -17,6 +17,7 @@ from graphingwiki.editing import metatable_parseargs, get_metas
 
 Dependencies = ['metadata']
 
+
 def t_cell(macro, value):
     out = macro.request
 
@@ -41,6 +42,7 @@ def t_cell(macro, value):
     out.redirect()
 
     out.write(value.getvalue().strip())
+
 
 def construct_table(macro, pagelist, key, sort_order):
     request = macro.request
@@ -81,11 +83,11 @@ def construct_table(macro, pagelist, key, sort_order):
         tmp.append((count, value))
 
     if sort_order == "value":
-        tmp.sort(key=lambda (x,y): y)
+        tmp.sort(key=lambda (x, y): y)
     elif sort_order == "count":
-        tmp.sort(key=lambda (x,y): x, reverse=True)
+        tmp.sort(key=lambda (x, y): x, reverse=True)
 
-    s = sum(map(lambda (x,y): x, tmp))
+    s = sum(map(lambda (x, y): x, tmp))
 
     tmp.append((s, "Sum"))
 
@@ -103,11 +105,12 @@ def construct_table(macro, pagelist, key, sort_order):
         t_cell(macro, u"%d" % value)
         request.write(macro.formatter.table_row(0))
 
-    request.page = orginalPage 
+    request.page = orginalPage
     request.formatter.page = orginalPage
 
     request.write(macro.formatter.table(0))
     request.write(u'</div>')
+
 
 def show_error(macro, args, error):
     request = macro.request
@@ -116,10 +119,11 @@ def show_error(macro, args, error):
                   u'<div class="metatable">' +
                   macro.formatter.table(1))
     request.write(macro.formatter.table_row(1))
-    t_cell(macro, "%s: MetaValueDistribution(%s)" % (error, args))
+    t_cell(macro, "%s: !MetaValueDistribution(%s)" % (error, args))
     request.write(macro.formatter.table_row(0))
     request.write(macro.formatter.table(0) +
                   u'</div>')
+
 
 def execute(macro, args):
     request = macro.request
@@ -131,7 +135,7 @@ def execute(macro, args):
 
     sort_order = 'value'
     if args[-1].strip().lower() == 'value':
-         args = args[:-1]
+        args = args[:-1]
     elif args[-1].strip().lower() == 'count':
         sort_order = 'count'
         args = args[:-1]
