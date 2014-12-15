@@ -13,10 +13,11 @@ from graphingwiki.util import format_wikitext
 
 Dependencies = ['metadata']
 
+
 def t_cell(macro, vals, head=0, style=dict(), rev=''):
     out = macro.request
 
-    if not style.has_key('class'):
+    if not 'class' in style:
         if head:
             style['class'] = 'meta_page'
         else:
@@ -34,7 +35,7 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
 
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
-            out.write(macro.formatter.text(',') + \
+            out.write(macro.formatter.text(',') +
                       macro.formatter.linebreak())
 
         if head:
@@ -58,11 +59,11 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
     if cellstyle == 'list':
         out.write(macro.formatter.bullet_list(1))
 
-def construct_table(macro, pagelist, metakeys, 
+
+def construct_table(macro, pagelist, metakeys,
                     legend='', checkAccess=True, styles=dict()):
     request = macro.request
     request.page.formatter = request.formatter
-    _ = request.getText
 
     row = 0
 
@@ -80,7 +81,7 @@ def construct_table(macro, pagelist, metakeys,
 
     for key in metakeys:
         style = styles.get(key, dict())
-        
+
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
 
@@ -102,11 +103,11 @@ def construct_table(macro, pagelist, metakeys,
     for page in pagelist:
 
         if '-gwikirevision-' in page:
-            metas = get_metas(request, page, metakeys, 
+            metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess, formatLinks=True)
             page, revision = page.split('-gwikirevision-')
         else:
-            metas = get_metas(request, page, metakeys, 
+            metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess, formatLinks=True)
             revision = ''
 
@@ -136,17 +137,18 @@ def construct_table(macro, pagelist, metakeys,
     request.write(macro.formatter.table(0))
     request.write(u'</div>')
 
+
 def formatMetaSelection(request, pages, keys, styles, addpagename=False):
 
     f = request.formatter
     divfmt = {'class': 'metaselection_area'}
     listfmt = {'class': 'metaselection_list'}
     entryfmt = {'class': 'metaselection_entry'}
-    
+
     result = ''
     result = f.div(1, **divfmt)
     result += f.bullet_list(1, **listfmt)
-    
+
     tmp_page = request.page
 
     for page in pages:
@@ -155,7 +157,7 @@ def formatMetaSelection(request, pages, keys, styles, addpagename=False):
         request.page = pageobj
         request.formatter.page = pageobj
 
-        metas = get_metas(request, page, keys, 
+        metas = get_metas(request, page, keys,
                           checkAccess=True, formatLinks=True)
 
         result += f.listitem(1, **entryfmt)
@@ -168,7 +170,7 @@ def formatMetaSelection(request, pages, keys, styles, addpagename=False):
                 result += pageobj.link_to_raw(request, text=text, **args)
 
         if addpagename:
-            result += pageobj.link_to_raw(request, 
+            result += pageobj.link_to_raw(request,
                                           text=pageobj.page_name, **args)
 
         result += f.listitem(0)
@@ -179,6 +181,7 @@ def formatMetaSelection(request, pages, keys, styles, addpagename=False):
     result += f.bullet_list(0)
     result += f.div(0)
     return result
+
 
 def execute(self, args):
     if args is None:
