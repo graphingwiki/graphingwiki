@@ -53,65 +53,6 @@ a.cross:after {
     padding: 3px 6px 6px;
 }
 
-/* MetaMonthCalendar css*/
-
-.MetaMonthCalendar th, .MetaMonthCalendar td {
-    text-align: center;
-    background-color: #DEDEDE;
-}
-
-.MetaMonthCalendar .calendar-month {
-    background-color: #5cb346;
-    border: none;
-}
-
-.MetaMonthCalendar .calendar-month a {
-    margin: 0 5px 0 5px;
-}
-.MetaMonthCalendar td.calendar-day {
-    background-color: white;
-}
-
-.MetaMonthCalendar td.calendar-today {
-    border: 2pt solid #8470FF;
-    background-color: #CCFFCC;
-}
-
-.MetaMonthCalendar td.calendar-topic-workday {
-    border-style: solid;
-    width: 44px;
-    background-color: #DDDDFF;
-}
-
-.MetaMonthCalendar td.calendar-topic-weekend {
-    width: 44px;
-    background-color: #FFDDDD;
-}
-
-.MetaMonthCalendar td.calendar-weekend {
-    background-color: #FEF1E9;
-}
-
-.MetaMonthCalendar td.calendar-weeknumber {
-    background-color: #CCFFCC;
-    width: 31px;
-}
-
-.MetaMonthCalendar td.calendar-empty {
-}
-
-.MetaMonthCalendar td.hastip {
-    background-color: #FFB6C1;
-}
-
-.MetaMonthCalendar table.month-container > tbody > tr >td,
-.MetaMonthCalendar table.month-container td table {
-    border: none;
-    padding: 0;
-    margin:0;
-    width: 100%;
-}
-
 table.metatable thead td,
 table.metatable thead div {
     white-space: nowrap;

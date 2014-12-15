@@ -285,15 +285,6 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
-        if ($$('.MetaMonthCalendar').length) {
-            require(['gwikicommon/MetaMonthCalendar'], function(MetaMonthCalendar){
-                $$('.MetaMonthCalendar').each(function(div){
-                    var opts = JSON.decode(decodeURIComponent(div.getAttribute('data-options')));
-                    new MetaMonthCalendar(div, opts)
-                });
-            })
-        }
-
         //DnD file attachment upload
         initDnDUpload(document.window);
     };
