@@ -16,10 +16,11 @@ from graphingwiki.editing import ordervalue
 
 Dependencies = ['metadata']
 
+
 def t_cell(macro, vals, head=0, style=dict(), rev=''):
     out = str()
 
-    if not style.has_key('class'):
+    if not 'class' in style:
         if head:
             style['class'] = 'meta_page'
         else:
@@ -62,12 +63,12 @@ def t_cell(macro, vals, head=0, style=dict(), rev=''):
 
     return out
 
-def construct_table(macro, pagelist, metakeys, 
-                    legend='', checkAccess=True, styles=dict(), 
+
+def construct_table(macro, pagelist, metakeys,
+                    legend='', checkAccess=True, styles=dict(),
                     addpagename=False):
     request = macro.request
     request.page.formatter = request.formatter
-    _ = request.getText
     out = str()
 
     row = 0
@@ -90,9 +91,9 @@ def construct_table(macro, pagelist, metakeys,
     page_vals = dict()
 
     for page in pagelist:
-        page_vals[page] = get_metas(request, page, metakeys, 
+        page_vals[page] = get_metas(request, page, metakeys,
                                     checkAccess=False, formatLinks=True)
-        
+
         x_val = page_vals[page].get(x_key, set())
         y_val = page_vals[page].get(y_key, set())
         x_values.update([(page, x) for x in x_val])
@@ -102,11 +103,11 @@ def construct_table(macro, pagelist, metakeys,
 
     header_cells = list()
     # Make header row
-    for oval, value, page in sorted((ordervalue(y), y, page) \
-                                        for page, y in y_values):
+    for oval, value, page in sorted((ordervalue(y), y, page)
+                                    for page, y in y_values):
 
         style = styles.get(y_key, dict())
-        
+
         # Styles can modify key naming
         name = style.get('gwikiname', '').strip('"')
 
@@ -136,8 +137,8 @@ def construct_table(macro, pagelist, metakeys,
     # Table
     row_cells = list()
     row_values = list()
-    for oval, x_value, page in sorted((ordervalue(x), x, page) \
-                                          for page, x in x_values):
+    for oval, x_value, page in sorted((ordervalue(x), x, page)
+                                      for page, x in x_values):
         if not (oval, x_value) in row_values:
             row_cells.append((oval, x_value, page))
             row_values.append((oval, x_value))
@@ -151,11 +152,11 @@ def construct_table(macro, pagelist, metakeys,
             out += f.table_row(1, {'rowclass': 'metamatrix-even-row'})
         value = metas_to_abs_links(request, page, [x_value])
         out += t_cell(macro, value)
-        
+
         for y_value, showvalue in header_cells:
             style = styles.get(y_value, dict())
-            
-            if not style.has_key('class'):
+
+            if not 'class' in style:
                 style['class'] = 'meta_cell'
 
             out += f.table_cell(1, attrs=style)
@@ -164,36 +165,31 @@ def construct_table(macro, pagelist, metakeys,
                 pageobj = Page(request, page)
 
                 if (x_value in page_vals[page].get(x_key, set()) and
-                    y_value in page_vals[page].get(y_key, set())):
+                        y_value in page_vals[page].get(y_key, set())):
 
                     result = ''
 
                     args = {'class': 'metamatrix_link'}
 
-                    # Were there vals?
-                    vals = None
-
                     for key in metakeys:
                         for val in page_vals[page].get(key, list()):
-                            
+
                             # Strip ugly brackets from bracketed links
                             val = val.lstrip('[').strip(']')
 
                             result += f.listitem(1, **entryfmt)
 
-                            result += pageobj.link_to(request, 
+                            result += pageobj.link_to(request,
                                                       text=val, **args)
                             result += f.listitem(0)
-
-                            vals = val
 
                     if addpagename:
                         result += f.listitem(1, **entryfmt)
                         result += pageobj.link_to(request, **args)
                         result += f.listitem(0)
-                        
+
                     out += result
-                    
+
         out += macro.formatter.table_row(0)
 
     request.page = tmp_page
@@ -203,6 +199,7 @@ def construct_table(macro, pagelist, metakeys,
     out += u'</div>'
 
     return out
+
 
 def execute(self, args):
     if args is None:
@@ -219,11 +216,11 @@ def execute(self, args):
                                               args, get_all_keys=True)
 
     if len(keys) < 2:
-        return _sysmsg % ('error', 
+        return _sysmsg % ('error',
                           self.request.getText('Need a minimum of two keys to build matrix'))
 
     legend = "%s/%s" % (keys[0], keys[1])
 
-    return construct_table(self, pages, keys, legend=legend, 
-                           checkAccess=False, styles=styles, 
+    return construct_table(self, pages, keys, legend=legend,
+                           checkAccess=False, styles=styles,
                            addpagename=addpagename)
