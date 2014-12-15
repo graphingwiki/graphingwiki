@@ -55,7 +55,6 @@ def execute(macro, args):
         split = args.index('')
     except ValueError:
         metatableargs = ','.join(args)
-        pass
 
     if split:
         metatableargs = ','.join(args[:split])
