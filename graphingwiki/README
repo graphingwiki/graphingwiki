@@ -10,12 +10,10 @@ scripts, please refer to the documentation in the subdirectory
 ../collab.
 
 Preconditions:
- - Python 2.4 and Graphviz 2.8+ along with its python bindings,
+ - Python 2.6 and Graphviz 2.8+ along with its python bindings,
    available from graphviz.org as graphviz-<version>.rpm and
    graphviz-python-<version>.rpm. Source installs need to be built
    with --enable-python.
-
- - Python prior to version 2.6 requires python-json
 
  - MoinMoin 1.8+ installed.
 
@@ -32,7 +30,7 @@ Preconditions:
 
  EITHER add (or your equivalent for the Python installation) to wikiconfig
 
-  plugin_dirs = ['/usr/lib/python2.4/site-packages/graphingwiki/plugin']
+  plugin_dirs = ['/usr/lib/python2.6/site-packages/graphingwiki/plugin']
 
 4. Populate the graph data of existing pages
    % gwiki-rehash WIKIDIR
