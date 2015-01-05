@@ -27,15 +27,17 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+import urllib
+
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
 from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
     MultiDict
 
 from graphingwiki.util import form_escape, url_construct
-from graphingwiki import url_unescape
 
 Dependencies = ['metadata']
+
 
 def uri_params(uri):
     args = {}
@@ -45,11 +47,12 @@ def uri_params(uri):
         argstr = argstr.split('&')
 
         for arg in argstr:
-            key, val = map(url_unescape, arg.split('='))
+            key, val = map(urllib.unquote_plus, arg.split('='))
             args.setdefault(key, list()).append(val)
 
     return uri, args
-    
+
+
 def execute(macro, args):
     formatter = macro.formatter
     macro.request.page.formatter = formatter
@@ -91,7 +94,7 @@ def execute(macro, args):
     request.url = req_url
 
     request.write(u'<div class="inlinegraph">')
-    graphshower(request.page.page_name, request, 
+    graphshower(request.page.page_name, request,
                 urladd=urladd, app_page=request.page.page_name, inline=1)
 
     request.page = old_page
