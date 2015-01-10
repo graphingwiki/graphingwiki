@@ -31,13 +31,13 @@
 
 import re
 import os
+import cgi
 import StringIO
 
 import urllib
 from codecs import getencoder
 from xml.dom.minidom import getDOMImplementation
-from xml.sax.saxutils import escape as cgi_escape
-from xml.sax.saxutils import unescape as cgi_unescape
+from xml.sax import saxutils
 
 from MoinMoin.action import cache
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
@@ -196,12 +196,30 @@ UNQUOTEDATTRS = dict()
 UNQUOTEDATTRS.update([(y, x) for x, y in QUOTEDATTRS.items()])
 
 def form_escape(text):
-    # Escape characters that break value fields in html forms
-    return cgi_escape(text, QUOTEDATTRS)
+    # Deprecated, use parameter_escape() instead.
+    return parameter_escape(text)
 
 def form_unescape(text):
-    # Unescape characters that break value fields in html forms
-    return cgi_unescape(text, UNQUOTEDATTRS)
+    # Deprecated, use parameter_unescape() instead.
+    return parameter_unescape(text)
+
+def text_escape(text):
+    """Escape function to be used for content going to HTML text body.
+
+       Entity encodes "<", ">" and "&".
+    """
+    return cgi.escape(text)
+
+def parameter_escape(text):
+    """Escape function to be used for content going to HTML parameter values.
+
+       This is not enough for style and on* parameters.
+       This is not enough for URLs.
+    """
+    return saxutils.escape(text, QUOTEDATTRS)
+
+def parameter_unescape(text):
+    return saxutils.unescape(text, UNQUOTEDATTRS)
 
 def form_writer(fmt, *args):
     args = tuple(map(form_escape, args))
