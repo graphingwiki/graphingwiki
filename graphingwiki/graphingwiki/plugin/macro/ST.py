@@ -9,7 +9,7 @@
 from MoinMoin.action import cache
 
 from graphingwiki import cairo, cairo_found, cairo_surface_to_png
-from graphingwiki.util import form_escape, cache_key, cache_exists
+from graphingwiki.util import parameter_escape, cache_key, cache_exists
 
 LEVELS = {'2': 'SALAINEN',
           '3': 'LUOTTAMUKSELLINEN',
@@ -17,13 +17,14 @@ LEVELS = {'2': 'SALAINEN',
 
 LEVELSROMAN = {'4': 'IV', '3': 'III', '2': 'II'}
 
-LAW = u"JulkL (621/1999) 24.1 \xa7:n %s k"
+LAW = u"JulkL (621/1999) 24.1 \xa7:n {0} k"
 
 if cairo_found:
     CAIRO_BOLD = ("sans-serif", cairo.FONT_SLANT_NORMAL,
                                 cairo.FONT_WEIGHT_BOLD)
     CAIRO_NORMAL = ("sans-serif", cairo.FONT_SLANT_NORMAL,
                                   cairo.FONT_WEIGHT_NORMAL)
+
 
 def plot_box(texts):
     # Make a context to calculate font sizes with
@@ -82,17 +83,19 @@ def plot_box(texts):
 
     return cairo_surface_to_png(surface)
 
+
 def plot_tll(level='4', text='7', law=None):
-    if not level in LEVELS:
+    if level not in LEVELS:
         level = '4'
     if not law:
-        law = LAW % (text)
+        law = LAW.format(text)
 
     texts = [(LEVELS[level], CAIRO_BOLD),
-             ('Suojaustaso %s' % (LEVELSROMAN[level]), CAIRO_BOLD),
+             ('Suojaustaso {0}'.format(LEVELSROMAN[level]), CAIRO_BOLD),
              (law, CAIRO_NORMAL)]
 
     return plot_box(texts)
+
 
 def execute(macro, args):
     request = macro.request
@@ -126,5 +129,5 @@ def execute(macro, args):
         data = plot_tll(level, level_text, law)
         cache.put(request, key, data, content_type='image/png')
 
-    return u'<div class="ST"><img src="%s" alt="%s"></div>' % \
-       (cache.url(request, key), form_escape(LAW % level_text))
+    return u'<div class="ST"><img src="{0}" alt="{1}"></div>'.format(
+        cache.url(request, key), parameter_escape(LAW.format(level_text)))
