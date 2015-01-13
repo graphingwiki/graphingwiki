@@ -9,7 +9,7 @@
 from MoinMoin.action import cache
 
 from graphingwiki import cairo_found
-from graphingwiki.util import parameter_escape, cache_key, cache_exists
+from graphingwiki.util import cache_key, cache_exists
 
 if cairo_found:
     from ST import plot_box, CAIRO_BOLD
@@ -46,5 +46,11 @@ def execute(macro, args):
         data = plot_box(key)
         cache.put(request, ckey, data, content_type='image/png')
 
-    return u'<div class="CM"><img src="{0}" alt="{1}"></div>'.format(
-           cache.url(request, ckey), parameter_escape(level_text))
+    f = macro.formatter
+
+    divfmt = {"class": "CM"}
+
+    result = f.div(1, **divfmt)
+    result += f.image(src=cache.url(request, ckey), alt=level_text)
+    result += f.div(0)
+    return result

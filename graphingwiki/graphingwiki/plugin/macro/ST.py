@@ -9,7 +9,7 @@
 from MoinMoin.action import cache
 
 from graphingwiki import cairo, cairo_found, cairo_surface_to_png
-from graphingwiki.util import parameter_escape, cache_key, cache_exists
+from graphingwiki.util import cache_key, cache_exists
 
 LEVELS = {'2': 'SALAINEN',
           '3': 'LUOTTAMUKSELLINEN',
@@ -129,5 +129,11 @@ def execute(macro, args):
         data = plot_tll(level, level_text, law)
         cache.put(request, key, data, content_type='image/png')
 
-    return u'<div class="ST"><img src="{0}" alt="{1}"></div>'.format(
-        cache.url(request, key), parameter_escape(LAW.format(level_text)))
+        f = macro.formatter
+
+        divfmt = {"class": "ST"}
+
+        result = f.div(1, **divfmt)
+        result += f.image(src=cache.url(request, key), alt=LAW.format(level_text))
+        result += f.div(0)
+        return result
