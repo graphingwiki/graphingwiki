@@ -129,11 +129,11 @@ def execute(macro, args):
         data = plot_tll(level, level_text, law)
         cache.put(request, key, data, content_type='image/png')
 
-        f = macro.formatter
+    f = macro.formatter
 
-        divfmt = {"class": "ST"}
+    divfmt = {"class": "ST"}
 
-        result = f.div(1, **divfmt)
-        result += f.image(src=cache.url(request, key), alt=LAW.format(level_text))
-        result += f.div(0)
-        return result
+    result = f.div(1, **divfmt)
+    result += f.image(src=cache.url(request, key), alt=LAW.format(level_text))
+    result += f.div(0)
+    return result
