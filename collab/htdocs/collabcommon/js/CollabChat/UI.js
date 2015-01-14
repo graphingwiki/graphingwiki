@@ -1,6 +1,6 @@
 define([
     "collabcommon/common/EventSource",
-    "collabcommon/common/dom",
+    "collabcommon/common/dom"
 ], function(
     EventSource,
     dom
@@ -134,7 +134,7 @@ define([
         this.notificationCheck = createElement("span", "chat-button");
         this.notificationCheck.id = "chat-notification-permission";
 
-        if (window.Notification.permission === 'granted') {
+        if ("Notification" in window && window.Notification.permission === 'granted') {
             this.notificationCheck.textContent = "notifications: on";
         } else {
             this.notificationCheck.textContent = "notifications: off";
@@ -195,11 +195,11 @@ define([
             }
 
             this.trigger("chatvisibilitychange", true);
-        };
+        }.bind(this);
 
         var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
 
-        this._observer = new MutationObserver(_visibilityHandler.bind(this));
+        this._observer = new MutationObserver(_visibilityHandler);
 
         this._observer.observe(document.body, {
             "childList": true,
@@ -208,16 +208,17 @@ define([
             "characterdata": true
         });
 
-        dom.listen(window, "mousewheel", _visibilityHandler.bind(this));
-        dom.listen(window, "wheel", _visibilityHandler.bind(this));
-        dom.listen(window, "resize", _visibilityHandler.bind(this));
-        dom.listen(document, "visibilitychange", _visibilityHandler.bind(this));
+        dom.listen(window, "mousewheel", _visibilityHandler);
+        dom.listen(window, "wheel", _visibilityHandler);
+        dom.listen(window, "resize", _visibilityHandler);
+        dom.listen(document, "visibilitychange", _visibilityHandler);
 
         dom.listen(window, "resize", function() {
             if (_this.isAtBottom) {
                 _this._scrollToBottom();
             }
         });
+
         dom.listen(this.input, "keypress", function(event) {
             if (event.keyCode !== 13) {
                 return true;

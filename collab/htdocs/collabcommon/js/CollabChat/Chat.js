@@ -19,7 +19,7 @@ define([
             var showNotifications = true;
             var newMessageNotification = null;
 
-            if (window.Notification.permission !== 'granted') {
+            if (!("Notification" in window) || window.Notification.permission !== 'granted') {
                 showNotifications = false;
             }
 
@@ -64,14 +64,14 @@ define([
                 }
             });
 
-            conn.listen("message", function() {
+            conn.listen("message", function(timestamp, from, msg) {
                 if (visible) {
                     newMessageNotification = null;
                     notification.clear("CollabChatNotification");
                     return;
                 }
 
-                if (showNotifications !== true) {
+                if (showNotifications !== true || from === null) {
                     return;
                 }
 
