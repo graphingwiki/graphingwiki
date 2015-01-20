@@ -114,6 +114,7 @@
     margin: 0px;
     bottom: 2.1em;
     overflow-y: scroll;
+     -webkit-overflow-scrolling: touch;
 }
 
 #content .collab_chat .chat .output {
