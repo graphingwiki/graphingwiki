@@ -26,6 +26,9 @@ define([
 
         var opts = options || {};
         var notification = new window.Notification(msg, opts);
+        notification.addEventListener("click", function() {
+            window.focus();
+        });
         this._natives.push(notification);
     };
 
