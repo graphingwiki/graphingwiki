@@ -7,14 +7,14 @@ from graphingwiki.editing import set_metas
 def save_report(request, control, activity):
     second = time.time()
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(int(second)))
-    ts = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(int(second)))
+    ts = time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime(int(second)))
 
     second *= 10**6
     timestamp += ".%06d" % (second % (10**6),)
-    pagename = "Stress-%s" % timestamp
+    pagename = "Pressure-%s" % timestamp
 
     cleared = {pagename: set(["in control", "activity", "time"])}
-    metas = {"gwikicategory": ["CategoryStress"],
+    metas = {"gwikicategory": ["CategoryPressure"],
              "in control": [control],
              "activity": [activity],
              "time": [ts],
@@ -40,7 +40,7 @@ def execute(pagename, request):
         return
 
     for key in values_to_form(request.values):
-        if len(key) == 10 and key.startswith("stress_"):
+        if len(key) == 10 and key.startswith("pressure_"):
             try:
                 control = {"0":"yes", "1":"no"}[key[7]]
                 activity = {"0":"low","1":"medium","2":"high"}[key[9]]
