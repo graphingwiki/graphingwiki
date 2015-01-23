@@ -139,7 +139,18 @@ define([
             this.roomJid, { matchBare: true });
 
         var resource = Strophe.getNodeFromJid(this.jid);
-        resource = resource + "-" + ((999 * Math.random()) | 0);
+        var id = ((999 * Math.random()) | 0);
+
+        var storage = window.sessionStorage;
+        if (storage){
+            if (storage.getItem("webchatid")){
+                id = storage.getItem("webchatid");
+            }else{
+                storage.setItem("webchatid", id);
+            }
+        }
+
+        resource = resource + "-" + id;
 
         var presence = $pres({
             to: this.roomJid + "/" + resource
