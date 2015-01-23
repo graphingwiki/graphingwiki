@@ -11,10 +11,10 @@ def save_report(request, control, activity):
 
     second *= 10**6
     timestamp += ".%06d" % (second % (10**6),)
-    pagename = "Pressure-%s" % timestamp
+    pagename = "Stress-%s" % timestamp
 
     cleared = {pagename: set(["in control", "activity", "time"])}
-    metas = {"gwikicategory": ["CategoryPressure"],
+    metas = {"gwikicategory": ["CategoryStress"],
              "in control": [control],
              "activity": [activity],
              "time": [ts],
@@ -40,7 +40,7 @@ def execute(pagename, request):
         return
 
     for key in values_to_form(request.values):
-        if len(key) == 10 and key.startswith("pressure_"):
+        if len(key) == 10 and key.startswith("stress_"):
             try:
                 control = {"0":"yes", "1":"no"}[key[7]]
                 activity = {"0":"low","1":"medium","2":"high"}[key[9]]
