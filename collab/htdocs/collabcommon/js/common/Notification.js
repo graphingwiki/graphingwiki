@@ -9,7 +9,7 @@ define([
 
         this._tabs = [];
         this._natives = [];
-        this._defaultTitle = null;
+        this._defaultTitle = document.title;
 
         this._boundDestroy = this.destroy.bind(this);
         window.addEventListener("unload", this._boundDestroy);
@@ -37,10 +37,6 @@ define([
 
             if (this._tabs.length > 0 || typeof msg === 'undefined') {
                 return;
-            }
-
-            if (this._defaultTitle === null) {
-                this._defaultTitle = document.title;
             }
 
             var tabn = {
