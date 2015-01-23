@@ -64,14 +64,14 @@ define([
                 }
             });
 
-            conn.listen("message", function(timestamp, from, msg) {
+            conn.listen("message", function(timestamp, from, msg, fromSelf) {
                 if (visible) {
                     newMessageNotification = null;
                     notification.clear("CollabChatNotification");
                     return;
                 }
 
-                if (showNotifications !== true || from === null) {
+                if (showNotifications !== true || from === null || fromSelf) {
                     return;
                 }
 

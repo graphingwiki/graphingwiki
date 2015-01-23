@@ -57,16 +57,16 @@ define([
         return timestamp === null ? now() : timestamp;
     };
 
-    var onUnload = function(fn){
+    var onUnload = function(fn) {
         var events = ["beforeunload", "unload"];
-        var callback = function(){
-            events.forEach(function(event){
+        var callback = function() {
+            events.forEach(function(event) {
                 window.removeEventListener(event, callback)
             });
             fn();
         };
 
-        events.forEach(function(event){
+        events.forEach(function(event) {
             window.addEventListener(event, callback);
         });
     };
@@ -85,7 +85,7 @@ define([
         this.queue = [];
         this.timeout = null;
 
-        onUnload(function(){
+        onUnload(function() {
             this.strophe.disconnect();
         }.bind(this));
 
@@ -113,7 +113,8 @@ define([
 
         for (var i = 0, len = this.queue.length; i < len; i++) {
             var obj = this.queue[i];
-            this.trigger("message", obj.timestamp, obj.sender, obj.text);
+            var isSelf = this.resource === obj.sender || Strophe.getNodeFromJid(this.jid) === obj.sender;
+            this.trigger("message", obj.timestamp, obj.sender, obj.text, isSelf);
         }
         this.queue = [];
     };
