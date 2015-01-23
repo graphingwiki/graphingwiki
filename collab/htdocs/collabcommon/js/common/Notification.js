@@ -1,12 +1,9 @@
 define([
     "./EventSource"
-], function(
-    EventSource
-) {
+], function(EventSource) {
     "use strict";
 
     var Notification = function(timeout) {
-
         this._tabs = [];
         this._natives = [];
         this._defaultTitle = document.title;
@@ -19,7 +16,6 @@ define([
     Notification.prototype = new EventSource(this);
 
     Notification.prototype.native = function(msg, options) {
-
         if (!('Notification' in window) || window.Notification.permission !== 'granted') {
             return;
         }
@@ -34,20 +30,19 @@ define([
 
 
     Notification.prototype.tab = function(msg, options, timeout) {
+        if (this._tabs.length > 0 || typeof msg === 'undefined') {
+            return;
+        }
 
-            if (this._tabs.length > 0 || typeof msg === 'undefined') {
-                return;
-            }
+        var tabn = {
+            "msg": msg,
+            "interval": timeout || 1000,
+            "tag": options.tag || null,
+            "body": options.body || ""
+        };
 
-            var tabn = {
-                "msg": msg,
-                "interval": timeout || 1000,
-                "tag": options.tag || null,
-                "body": options.body || ""
-            };
-
-            tabn.intervalID = window.setInterval(this._tabUpdate.bind(this), tabn.interval);
-            this._tabs.push(tabn);
+        tabn.intervalID = window.setInterval(this._tabUpdate.bind(this), tabn.interval);
+        this._tabs.push(tabn);
     };
 
 
@@ -71,7 +66,6 @@ define([
 
 
     Notification.prototype._tabUpdate = function() {
-
         if (this._tabs.length < 1) {
             return;
         }
@@ -81,7 +75,7 @@ define([
 
         if (document.title !== title) {
             document.title = title;
-        }else{
+        } else {
             document.title = this._defaultTitle;
         }
 
@@ -90,18 +84,17 @@ define([
 
 
     Notification.prototype.clear = function(tag) {
-
         this._natives.forEach(function(notification) {
             if (notification.tag === tag) {
                 notification.close();
             }
         });
 
-        this._tabs = this._tabs.filter(function(tab){
+        this._tabs = this._tabs.filter(function(tab) {
             if (tab.tag === tag) {
                 clearInterval(tab.intervalID);
                 return false;
-            }else{
+            } else {
                 return true;
             }
         });
@@ -113,7 +106,6 @@ define([
 
 
     Notification.prototype.clearAll = function() {
-
         this._natives.forEach(function(notification) {
             notification.close();
         });
@@ -121,7 +113,7 @@ define([
         this._natives = [];
 
         if (this._tabs.length !== 0) {
-            this._tabs.forEach(function(tab){
+            this._tabs.forEach(function(tab) {
                 clearInterval(tab.intervalID);
             });
 
