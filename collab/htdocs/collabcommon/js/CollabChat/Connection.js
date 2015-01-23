@@ -1,11 +1,8 @@
 define([
     "collabcommon/common/Dict",
     "collabcommon/common/EventSource",
-    "collabcommon/common/Strophe",
-], function(
-    Dict, 
-    EventSource
-) {
+    "collabcommon/common/Strophe"
+], function(Dict, EventSource) {
     "use strict";
 
     var getRoomJid = function(roomName, baseJid) {
@@ -17,13 +14,6 @@ define([
         return roomName + "@conference." + domain;
     };
 
-    var getText = function(element) {
-        if (element.textContent !== void 0) {
-            return element.textContent;
-        }
-        return element.innerText;
-    };
-
     var iterChildren = function(element, func, context) {
         var children = element.childNodes;
 
@@ -32,67 +22,53 @@ define([
         }
     };
 
-    var listenEvent = function(obj, type, callback) {
-        if (obj.addEventListener && obj.removeEventListener) {
-            obj.addEventListener(type, callback, false);
-            return {
-                unlisten: function() {
-                    obj.removeEventListener(type, callback, false);
-                }
-            };
-        }
-
-        if (obj.attachEvent && obj.detachEvent) {
-            var wrapped = function() {
-                callback(window.event);
-            };
-            obj.attachEvent("on" + type, wrapped);
-            return {
-                unlisten: function() {
-                    obj.detachEvent("on" + type, wrapped);
-                }
-            };
-        }
-    };
 
     var now = Date.now || function() {
-    return (new Date()).getTime();
+        return (new Date()).getTime();
     };
 
     var rex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d*)Z$/;
 
     var parseDelay = function(stanza) {
-    var timestamp = null;
+        var timestamp = null;
 
         iterChildren(stanza, function(child) {
-        if (!child.tagName) return;
-        if (child.tagName.toLowerCase() !== "delay") return;
-        if (child.getAttribute("xmlns") !== "urn:xmpp:delay") return;
+            if (!child.tagName) return;
+            if (child.tagName.toLowerCase() !== "delay") return;
+            if (child.getAttribute("xmlns") !== "urn:xmpp:delay") return;
 
-        var stamp = child.getAttribute("stamp");
-        if (stamp === null) return;
+            var stamp = child.getAttribute("stamp");
+            if (stamp === null) return;
 
-        var newStamp = stamp.match(rex);
-        if (newStamp === null) return;
+            var newStamp = stamp.match(rex);
+            if (newStamp === null) return;
 
             var fraction = newStamp.pop();
 
-        newStamp.shift();
-        newStamp[1] -= 1;
-        timestamp = Date.UTC.apply(null, newStamp);
+            newStamp.shift();
+            newStamp[1] -= 1;
+            timestamp = Date.UTC.apply(null, newStamp);
 
-        if (fraction) {
-            timestamp += 1000 * Number("0." + fraction);
-        }
-    });
+            if (fraction) {
+                timestamp += 1000 * Number("0." + fraction);
+            }
+        });
 
-    return timestamp === null ? now() : timestamp;
+        return timestamp === null ? now() : timestamp;
     };
 
-    var bound = function(method, context) {
-        return function() {
-            return method.apply(context, arguments);
+    var onUnload = function(fn){
+        var events = ["beforeunload", "unload"];
+        var callback = function(){
+            events.forEach(function(event){
+                window.removeEventListener(event, callback)
+            });
+            fn();
         };
+
+        events.forEach(function(event){
+            window.addEventListener(event, callback);
+        });
     };
 
     var Connection = function(boshUri, roomJid, jid, password) {
@@ -102,37 +78,25 @@ define([
         this.password = password;
 
         this.strophe = new Strophe.Connection(boshUri);
-        this.strophe.connect(jid, password,
-                             bound(this._statusChanged, this));
+        this.strophe.connect(jid, password, this._statusChanged.bind(this));
 
         this.participants = new Dict();
 
         this.queue = [];
         this.timeout = null;
 
-        // Uncomment the following lines for debug logging
-        //Strophe.log = function(level, msg) { log("debug", msg); };
-        //this.strophe.xmlOutput = function(xml) { log(">", xml); };
-        //this.strophe.xmlInput = function(xml) { log(">", xml); };
-
-        var cleanup = bound(function() {
+        onUnload(function(){
             this.strophe.disconnect();
-            for (var i = 0, len = listeners.length; i < len; i++) {
-                listeners[i].unlisten();
-            }
-        }, this);
+        }.bind(this));
 
-        var listeners = [
-            listenEvent(window, "beforeunload", cleanup),
-            listenEvent(window, "unload", cleanup)
-        ];
+
     };
 
     Connection.prototype = new EventSource(this);
 
     Connection.prototype._addToQueue = function(timestamp, sender, text) {
         if (this.timeout === null) {
-            this.timeout = setTimeout(bound(this._flushQueue, this), 0);
+            this.timeout = setTimeout(this._flushQueue.bind(this), 0);
         }
         this.queue.push({
             timestamp: timestamp,
@@ -156,22 +120,22 @@ define([
 
     Connection.prototype.send = function(message) {
         var msg = $msg({
-                to: this.roomJid,
-                type: "groupchat"
-            });
+            to: this.roomJid,
+            type: "groupchat"
+        });
 
         msg.c("body").t(message);
         this.strophe.send(msg.tree());
     };
 
     Connection.prototype._connected = function() {
-        this.strophe.addHandler(bound(this._handleMessage, this),
-                                null, "message", null, null,
-                    this.roomJid, { matchBare: true });
+        this.strophe.addHandler(this._handleMessage.bind(this),
+            null, "message", null, null,
+            this.roomJid, { matchBare: true });
 
-        this.strophe.addHandler(bound(this._handlePresence, this),
-                                null, "presence", null, null,
-                    this.roomJid, { matchBare: true });
+        this.strophe.addHandler(this._handlePresence.bind(this),
+            null, "presence", null, null,
+            this.roomJid, { matchBare: true });
 
         var resource = Strophe.getNodeFromJid(this.jid);
         resource = resource + "-" + ((999 * Math.random()) | 0);
@@ -198,7 +162,7 @@ define([
         iterChildren(msg, function(child) {
             if (child.tagName && child.tagName.toLowerCase() === "body") {
                 var timestamp = parseDelay(msg);
-                this._addToQueue(timestamp, sender, getText(child));
+                this._addToQueue(timestamp, sender, child.textContent);
                 return false;
             }
         }, this);

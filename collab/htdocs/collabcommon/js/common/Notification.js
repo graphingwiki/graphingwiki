@@ -12,6 +12,7 @@ define([
         this._defaultTitle = null;
 
         this._boundDestroy = this.destroy.bind(this);
+        window.addEventListener("unload", this._boundDestroy);
         window.addEventListener("beforeunload", this._boundDestroy);
     };
 
@@ -133,6 +134,7 @@ define([
 
     Notification.prototype.destroy = function() {
         this.clearAll();
+        window.removeEventListener("unload", this._boundDestroy);
         window.removeEventListener("beforeunload", this._boundDestroy);
     };
 
