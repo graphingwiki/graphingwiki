@@ -20,3 +20,24 @@ Building patched ejabberd 2.1.13 in RHEL/CentOS 6
   rpmbuild -bb ejabberd.spec
 
 The binary packages are created under ~/rpmbuild/RPMS.
+
+
+Building patched ejabberd 2.1.11 in Ubuntu 14.04
+
+* Install build dependencies:
+
+  apt-get install build-essential
+  apt-get build-dep ejabberd
+
+* Download and extract the sources:
+
+  wget http://archive.ubuntu.com/ubuntu/pool/universe/e/ejabberd/ejabberd_2.1.11-1ubuntu2.1.dsc \
+       http://archive.ubuntu.com/ubuntu/pool/universe/e/ejabberd/ejabberd_2.1.11-1ubuntu2.1.tar.gz
+  dpkg-source -x ejabberd_2.1.11-1ubuntu2.1.dsc
+
+* Patch and build the packages (patch for 2.1.13 works here too):
+
+  cp graphingwiki/collab/misc/ejabberd-2.1.13.collab.patch ejabberd-2.1.11/debian/patches
+  echo ejabberd-2.1.13.collab.patch >> ejabberd-2.1.11/debian/patches/series
+  vim ejabberd-2.1.11/debian/changelog
+  cd ejabberd-2.1.11 && dpkg-buildpackage -b
