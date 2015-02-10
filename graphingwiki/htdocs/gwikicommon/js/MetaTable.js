@@ -249,8 +249,8 @@ define([
                             this.refresh([collab]);
                         }.bind(this)
                     }).send([
-                            {op: 'del', key: key, value: oldValue},
-                            {op: 'add', key: key, value: value}
+                            {op: 'del', key: key, value: oldValue, page: page},
+                            {op: 'add', key: key, value: value, page: page}
                         ]);
 
                     this.inlineEditor = null;
