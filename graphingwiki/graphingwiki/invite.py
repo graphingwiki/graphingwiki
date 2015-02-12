@@ -109,9 +109,10 @@ def _invite(request, page_url, email, new_template, old_template,
     if not user.isValidName(request, email):
         raise InviteException("'%s' is not a valid username." % email)
 
+    new_email = email.lower()
     password = generate_password()
-    new_user = user.User(request, None, email, password)
-    new_user.email = email
+    new_user = user.User(request, None, new_email, password)
+    new_user.email = new_email
     new_user.aliasname = ""
     new_user.password = password
 

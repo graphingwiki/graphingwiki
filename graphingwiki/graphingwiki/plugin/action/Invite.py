@@ -14,6 +14,7 @@ OLD_TEMPLATE_DEFAULT = "InviteOldTemplate"
 GROUP_DEFAULT_VARIABLE = "invite_group_default"
 GROUP_DEFAULT_DEFAULT = ""
 
+
 class Invite(ActionBase):
     def __init__(self, pagename, request, **kw):
         ActionBase.__init__(self, pagename, request)
@@ -88,13 +89,19 @@ class Invite(ActionBase):
                 mygrouppage = getattr(self.request.cfg, GROUP_DEFAULT_VARIABLE, GROUP_DEFAULT_DEFAULT)
 
             if mygrouppage:
-                mycomment = "invited %s" % (email)
+                mycomment = "invited {0}.".format(myuser.email)
                 try:
                     add_user_to_group(self.request, myuser, mygrouppage, comment=mycomment)
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
+                    if myuser.email != email:
+                        tmp += " Please note that the email addred was converted to lower case!"
                     return True, wikiutil.escape(tmp % (email, mygrouppage, unicode(ge)))
+
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
+                if myuser.email != email:
+                    tmp += " Please note that the email addred was converted to lower case!"
+
                 return True, wikiutil.escape(tmp % (email, mygrouppage))
 
         except InviteException, ie:
