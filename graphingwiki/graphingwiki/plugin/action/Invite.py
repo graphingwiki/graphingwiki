@@ -95,12 +95,12 @@ class Invite(ActionBase):
                 except GroupException, ge:
                     tmp = "User invitation mail sent to address '%s', but could not add the user to group '%s': %s"
                     if myuser.email != email:
-                        tmp += " Please note that the email addred was converted to lower case!"
+                        tmp += " Please note that the email address was converted to lower case!"
                     return True, wikiutil.escape(tmp % (email, mygrouppage, unicode(ge)))
 
                 tmp = "User invitation mail sent to address '%s' and the user was added to group '%s'."
                 if myuser.email != email:
-                    tmp += " Please note that the email addred was converted to lower case!"
+                    tmp += " Please note that the email address was converted to lower case!"
 
                 return True, wikiutil.escape(tmp % (email, mygrouppage))
 
