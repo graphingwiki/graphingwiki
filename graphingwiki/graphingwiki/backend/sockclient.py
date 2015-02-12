@@ -1,19 +1,11 @@
-import itertools
 import os
+import json
 from time import time
+from socket import socket, AF_UNIX, SOCK_STREAM, SHUT_RDWR
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, encode
-from graphingwiki import actionname
+from graphingwiki.util import NO_TYPE
 
-from MoinMoin.util.lock import ReadLock, WriteLock
-
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE
-
-from socket import socket, AF_UNIX, SOCK_STREAM, SHUT_RDWR, error as SocketError
-
-from select import select, error as SelectError
-import json
 
 class SockClientError(Exception):
     pass

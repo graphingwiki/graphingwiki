@@ -1,18 +1,14 @@
-import itertools
 import os
-from time import time
 from collections import defaultdict
-
-from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, encode
-from graphingwiki import actionname
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, log
 
 import durus.client_storage, durus.connection
 from durus.persistent_dict import PersistentDict
 from durus.persistent_list import PersistentList
 from durus.btree import BTree as DurusBTree
 from durus.persistent import Persistent
+
+from graphingwiki.util import log
+
 
 class PageMeta(Persistent):
     def __init__(self):
@@ -193,7 +189,6 @@ class GraphData:
         #log.info("%s outlinks %s" % (frompage, self.metasbyname[frompage].outlinks.items()))
         
     def dump_db(self):
-        from pprint import pformat
         log.debug("db dump:")
         log.debug(dict(self.dbroot.items()))
 
