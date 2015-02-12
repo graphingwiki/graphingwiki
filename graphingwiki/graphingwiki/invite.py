@@ -13,29 +13,30 @@ from email.Charset import Charset, QP
 from email.Utils import getaddresses
 
 from MoinMoin import user
-from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.PageEditor import PageEditor
 from MoinMoin.mail.sendmail import encodeAddress
 
 from MoinMoin import log
 logging = log.getLogger(__name__)
 
-from graphingwiki.editing import parse_categories
 from graphingwiki.groups import group_add
+
 
 class InviteException(Exception):
     pass
+
 
 def user_may_invite(userobj, page):
     if not hasattr(userobj.may, "invite"):
         return False
     return userobj.may.read(page) and userobj.may.invite(page)
 
+
 def user_may_request_invite(userobj, page):
     if not hasattr(userobj.may, "requestinvite"):
         return False
     return userobj.may.requestinvite(page)
+
 
 def check_inviting_enabled(request):
     if not (hasattr(request.user.may, "invite") or
@@ -48,9 +49,11 @@ def check_inviting_enabled(request):
     if not getattr(request.cfg, "mail_smarthost", None):
         raise InviteException("No outgoing mail service configured.")
 
+
 def generate_password(length=10):
     characters = string.letters + string.digits
     return u"".join([SystemRandom().choice(characters) for _ in range(length)])
+
 
 def add_user_to_group(request, userobj, group, comment=""):
     success, msg = group_add(request, group, [userobj.name], create=True)
@@ -58,6 +61,7 @@ def add_user_to_group(request, userobj, group, comment=""):
     logging.info("%s added to group %s in wiki %s (invited by %s)" %
                  (userobj.name, group, request.cfg.interwikiname,
                   request.user.name))
+
 
 def invite_user_to_wiki(request, page, email, new_template, old_template,
                         **custom_vars):
@@ -68,6 +72,7 @@ def invite_user_to_wiki(request, page, email, new_template, old_template,
     page_url = request.getBaseURL()
     return _invite(request, page_url, email, new_template, old_template,
                    **custom_vars)
+
 
 def invite_user_to_page(request, page, email, new_template, old_template,
                         **custom_vars):
@@ -80,11 +85,13 @@ def invite_user_to_page(request, page, email, new_template, old_template,
     return _invite(request, page_url, email, new_template, old_template,
                    **custom_vars)
 
+
 def request_invite(request, page, collab, collab_url, email, template, **custom_vars):
     check_inviting_enabled(request)
     if not user_may_request_invite(request.user, page):
         raise InviteException("No permissions to request invite from '%s'." % page)
     return _request_invite(request, collab, collab_url, email, template, **custom_vars)
+
 
 def _invite(request, page_url, email, new_template, old_template,
             **custom_vars):
@@ -142,6 +149,7 @@ def _invite(request, page_url, email, new_template, old_template,
 
     return new_user
 
+
 def _request_invite(request, collab, collab_url, email, template, **custom_vars):
     mail_from = request.user.email
     if "@" not in mail_from:
@@ -162,10 +170,12 @@ def _request_invite(request, collab, collab_url, email, template, **custom_vars)
     inviterequests.append(collab)
     request.session["inviterequests"] = inviterequests
 
+
 def replace_variables(text, variables):
     for name, variable in variables.iteritems():
         text = re.sub("@%s@" % name, variable, text)
     return text
+
 
 def encode_address_field(message, key, encoding, charset):
     values = message.get_all(key, list())
@@ -176,6 +186,7 @@ def encode_address_field(message, key, encoding, charset):
         if not isinstance(value, unicode):
             value = value.decode(encoding)
         message[key] = encodeAddress(value, charset)
+
 
 def prepare_message(template, variables, encoding="utf-8"):
     r"""Return a prepared email.Message object.
@@ -205,7 +216,7 @@ def prepare_message(template, variables, encoding="utf-8"):
     template = template.encode(encoding)
     message = message_from_string(template)
 
-    DEFAULT_HEADERS = { "to": "@INVITEDEMAIL@", "from": "@INVITEREMAIL@" }
+    DEFAULT_HEADERS = {"to": "@INVITEDEMAIL@", "from": "@INVITEREMAIL@"}
     for key, value in DEFAULT_HEADERS.iteritems():
         if key not in message:
             value = replace_variables(value, variables)
@@ -223,6 +234,7 @@ def prepare_message(template, variables, encoding="utf-8"):
     encode_address_field(message, "cc", encoding, charset)
     encode_address_field(message, "bcc", encoding, charset)
     return message
+
 
 def send_message(request, message, recipient_filter=lambda x: True):
     sender = message["from"]
