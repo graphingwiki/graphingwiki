@@ -106,13 +106,21 @@ def _invite(request, page_url, email, new_template, old_template,
         send_message(request, prepare_message(old_template, variables))
         return old_user
 
-    if not user.isValidName(request, email):
-        raise InviteException("'%s' is not a valid username." % email)
+    force_lower = False
+    if hasattr(request.cfg, "username_force_lowercase"):
+        if request.cfg.username_force_lowercase:
+            force_lower = True
+            email = email.lower()
 
-    new_email = email.lower()
+    if not user.isValidName(request, email):
+        exception_msg = "'{0}' is not a valid username.".format(email)
+        if force_lower:
+            exception_msg += ' (email address was converted to lowecase)'
+        raise InviteException(exception_msg)
+
     password = generate_password()
-    new_user = user.User(request, None, new_email, password)
-    new_user.email = new_email
+    new_user = user.User(request, None, email, password)
+    new_user.email = email
     new_user.aliasname = ""
     new_user.password = password
 
