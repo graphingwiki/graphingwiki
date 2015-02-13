@@ -76,7 +76,7 @@ class FarmConfig(DefaultConfig):
     user_form_disable = [ 'name', 'aliasname', 'email' ]
 
     # Force usernames to lower case (needed for ejabberd stuff)
-    username_force_lowecase = False
+    username_force_lowercase = False
 
     # Disable gui editor
     #editor_default = 'text'
