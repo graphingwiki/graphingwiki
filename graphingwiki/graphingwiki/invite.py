@@ -122,7 +122,7 @@ def _invite(request, page_url, email, new_template, old_template,
     if not user.isValidName(request, email):
         exception_msg = "'{0}' is not a valid username.".format(email)
         if force_lower:
-            exception_msg += ' (email address was converted to lowecase)'
+            exception_msg += ' (email address was converted to lowercase)'
         raise InviteException(exception_msg)
 
     password = generate_password()
