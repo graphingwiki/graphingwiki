@@ -109,10 +109,6 @@ define([
         return "#" + hsvFill[total.length] + total;
     };
 
-    var trim = function(string) {
-        return string.match(/^\s*(.*?)\s*$/)[1];
-    };
-
     var createElement = function(tag, className, type) {
         var element = document.createElement(tag);
         element.className = className;
@@ -167,7 +163,7 @@ define([
         this.areaContainer.appendChild(this.area);
         this.chat.appendChild(this.areaContainer);
 
-        this.input = createElement("input", "input");
+        this.input = createElement("textarea", "input");
         this.input.placeholder = "<write your message here>";
         this.inputContainer = createElement("div", "input-container");
         this.inputContainer.appendChild(this.input);
@@ -224,7 +220,8 @@ define([
                 return true;
             }
 
-            var text = trim(this.value);
+            event.preventDefault();
+            var text = this.value.trim();
             this.value = "";
             if (text) {
                 _this.trigger("output", text);

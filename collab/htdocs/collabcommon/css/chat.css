@@ -148,6 +148,7 @@
 
     font-size: 1em;
     background-color: #FCFEFF;
+    resize: none;
 }
 
 #content .collab_chat .chat .output .message {
