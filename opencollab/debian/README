@@ -1,7 +1,0 @@
-The Debian Package opencollab
-----------------------------
-
-Opencollab is an XML-RPC SDK for GraphingWiki and a set of useful example scripts.
-Man pages will be implemented as pod files.
-
- -- Lari Huttunen <debian@huttu.net>  Tue, 05 Jan 2010 15:50:08 +0200
