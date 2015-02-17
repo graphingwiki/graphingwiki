@@ -113,11 +113,9 @@ def _invite(request, page_url, email, new_template, old_template,
         send_message(request, prepare_message(old_template, variables))
         return old_user
 
-    force_lower = False
-    if hasattr(request.cfg, "username_force_lowercase"):
-        if request.cfg.username_force_lowercase:
-            force_lower = True
-            email = email.lower()
+    force_lower = getattr(request.cfg, "username_force_lowercase", False)
+    if force_lower:
+        email = email.lower()
 
     if not user.isValidName(request, email):
         exception_msg = "'{0}' is not a valid username.".format(email)
