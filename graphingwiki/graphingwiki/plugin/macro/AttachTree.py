@@ -63,7 +63,7 @@ def render(req, f, content, parent='', depth=0):
             result += f.listitem(0)
         else:
             result += f.listitem(1, **direntryfmt)
-            result += f.text(entry)
+            result += f.text(unquote(entry))
             result += f.listitem(0)
             result += render(req, f, values, fullname, depth + 1)
 
