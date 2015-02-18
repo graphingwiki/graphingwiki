@@ -3,17 +3,23 @@
     @copyright: 2008 by Joachim Viide, Pekka Pietikäinen, Mika Seppänen
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-import urlparse
-import xmlrpclib
+import sys
+import errno
 import urllib
 import base64
 import socket
-import errno
+import random
+import getpass
+import urlparse
+import xmlrpclib
 from encodings import idna
 
 import httplib
 from httplib import HTTPConnection
 from _sslwrapper import HTTPSConnection
+
+from meta import Meta
+from util.file import md5obj
 
 
 class WikiFailure(Exception):
@@ -167,13 +173,6 @@ class Wiki(object):
         except AuthenticationFailed:
             return False
         return True
-
-import sys
-import random
-import getpass
-
-from meta import Meta
-from util.file import md5obj
 
 
 class GraphingWiki(Wiki):
@@ -333,7 +332,7 @@ class GraphingWiki(Wiki):
             keys[key] = list(values)
 
         # If no categories specified, do not set categories to empty
-        if not 'category' in keys:
+        if 'category' not in keys:
             categoryMode = 'add'
 
         categories = keys.pop("category", list())

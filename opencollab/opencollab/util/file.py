@@ -7,6 +7,7 @@ import os
 import sys
 import cStringIO
 
+
 def md5obj(data=''):
     major, minor = sys.version_info[:2]
     # md5 is deprecated since version 2.5
@@ -17,6 +18,7 @@ def md5obj(data=''):
     import md5
     return md5.new(data)
 
+
 def hashFile(f):
     """
     Expect a file name or a cStringIO.StringIO object.
@@ -24,10 +26,11 @@ def hashFile(f):
     try:
         data = f.read()
     except AttributeError:
-        fobj = file(f,'rb')
+        fobj = file(f, 'rb')
         data = fobj.read()
         fobj.close()
     return md5obj(data).hexdigest()
+
 
 def uploadFile(collab, page_name, file, file_name, progress=False, data=None):
     if file and data:
@@ -63,13 +66,14 @@ def uploadFile(collab, page_name, file, file_name, progress=False, data=None):
             sys.stdout.flush()
         parts_uploaded = True
     if progress:
-        if parts_uploaded == True:
+        if parts_uploaded is True:
             sys.stdout.write("\n")
         else:
             sys.stdout.write("NOTE: Already uploaded %s\n" % file_name)
     sys.stdout.flush()
     file_obj.close()
     return parts_uploaded
+
 
 def downloadFile(collab, page, attachment, dpath, verbose=False):
     fp = os.path.join(dpath, attachment)
@@ -91,4 +95,3 @@ def downloadFile(collab, page, attachment, dpath, verbose=False):
         sys.stdout.write("\n")
     sys.stdout.flush()
     file.close()
-

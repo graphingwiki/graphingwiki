@@ -16,6 +16,7 @@ except:
     import email.Utils
     from email.Utils import getaddresses
 
+
 def imapAuth(imapserver, imapuser, imappass):
     try:
         mailbox = imaplib.IMAP4_SSL(imapserver)
@@ -36,6 +37,7 @@ def imapAuth(imapserver, imapuser, imappass):
         sys.exit(error)
     return mailbox
 
+
 def decodePayload(charset, payload):
     try:
         dec_payload = unicode(payload, charset, "ignore")
@@ -43,6 +45,7 @@ def decodePayload(charset, payload):
         return None
     else:
         return dec_payload
+
 
 def getMessagesAndUpload(mailbox, collab):
     metas = Metas()
@@ -76,7 +79,7 @@ def getMessagesAndUpload(mailbox, collab):
                 charset = part.get_content_charset()
                 payload = part.get_payload(decode=True)
                 if charset is not None:
-                    dec_payload = decodePayload(charset, payload) 
+                    dec_payload = decodePayload(charset, payload)
                 else:
                     dec_payload = None
                 if dec_payload is None:
@@ -91,7 +94,7 @@ def getMessagesAndUpload(mailbox, collab):
                 else:
                     metas[cpage]["html"].add(dec_payload)
             else:
-                filename = part.get_filename() 
+                filename = part.get_filename()
                 if filename is None:
                     ext = mimetypes.guess_extension(part.get_content_type())
                     if not ext:
@@ -103,6 +106,7 @@ def getMessagesAndUpload(mailbox, collab):
                     uploadFile(collab, cpage, ufile, filename)
             counter += 1
     return metas
+
 
 def lexifyTokens(metas):
     quotes = re.compile('(^[\"\']|[\"\']$)')
@@ -123,11 +127,12 @@ def lexifyTokens(metas):
                     token = punct.sub('', token)
                     token = rest.sub('', token)
                     token = token.lower()
-                    new_metas[cpage]["Lexeme"].add("[[%s]]" % token) 
+                    new_metas[cpage]["Lexeme"].add("[[%s]]" % token)
                     # Scalability issues. :)
-                    #if token:
-                    #    new_metas[token]["TYPE"].add("LEXEME")
+                    # if token:
+                    #     new_metas[token]["TYPE"].add("LEXEME")
     return new_metas
+
 
 class html(HTMLParser.HTMLParser):
     """
@@ -137,26 +142,32 @@ class html(HTMLParser.HTMLParser):
         HTMLParser.HTMLParser.__init__(self)
         self._plaintext = ""
         self._ignore = False
+
     def handle_starttag(self, tag, attrs):
         if tag == "script":
             self._ignore = True
+
     def handle_endtag(self, tag):
         if tag == "script":
             self._ignore = False
+
     def handle_data(self, data):
-        if len(data)>0 and not self._ignore:
+        if len(data) > 0 and not self._ignore:
             self._plaintext += data
+
     def get_plaintext(self):
         return self._plaintext
-    def error(self,msg):
+
+    def error(self, msg):
         # ignore all errors
         pass
+
 
 def parseHTML(metas):
     new_metas = copy.deepcopy(metas)
     for cpage in metas:
         for html_part in metas[cpage]["html"]:
-            #page_html = html_part.get_payload(decode=True)
+            # page_html = html_part.get_payload(decode=True)
             parser = html()
             try:
                 parser.feed(html_part)
@@ -167,8 +178,9 @@ def parseHTML(metas):
                 new_metas[cpage]["text"].add(parser.get_plaintext())
     return new_metas
 
+
 def parseMetaData(metas):
-    #new_metas = Metas()
+    # new_metas = Metas()
     new_metas = copy.deepcopy(metas)
     gtlt = re.compile('[<>]')
     for cpage in metas:
@@ -187,7 +199,7 @@ def parseMetaData(metas):
         new_metas[cpage]["From"].add(msg_from)
         date = msg.get_all('date', []).pop()
         new_metas[cpage]["Date"].add(date)
-        subject = msg.get_all('subject',[]).pop()
+        subject = msg.get_all('subject', []).pop()
         subject = email.Header.decode_header(subject).pop()
         if subject[1] is not None:
             subject = unicode(subject[0], subject[1])
@@ -202,6 +214,7 @@ def parseMetaData(metas):
         new_metas[cpage]["Message-ID"].add(msgid)
     return new_metas
 
+
 def getRrType(rr):
     try:
         socket.inet_aton(rr)
@@ -211,10 +224,11 @@ def getRrType(rr):
         type = "IPv4"
     return type
 
+
 def parseURLs(metas):
     new_metas = copy.deepcopy(metas)
     href = re.compile('(href|HREF|src|SRC|title)=(3D)?')
-    schema = re.compile('xmlns(:\w)?=') 
+    schema = re.compile('xmlns(:\w)?=')
     quote = re.compile('[\'\"]')
     tag = re.compile('[<>]')
     for cpage in metas:
@@ -233,12 +247,11 @@ def parseURLs(metas):
                         type = getRrType(rr)
                         new_metas[cpage]["SPAM RR"].add('[[%s]]' % match.group())
                         new_metas[rr]["TYPE"].add(type)
-                        token = href.sub(' ', token) 
+                        token = href.sub(' ', token)
                         token = quote.sub(' ', token)
                         token = tag.sub(' ', token)
                         url = token.split()
                         for i in url:
-                            if url_all_re.search(i): 
+                            if url_all_re.search(i):
                                 new_metas[cpage]["SPAM URL"].add(i)
     return new_metas
-

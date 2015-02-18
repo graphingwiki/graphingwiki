@@ -4,6 +4,7 @@ import sys
 from opencollab.wiki import WikiFailure
 from opencollab.meta import Metas
 
+
 def importMetas(collab, metas, template, verbose, replace=True):
     failed = []
     for page, pmeta in metas.iteritems():
@@ -17,6 +18,7 @@ def importMetas(collab, metas, template, verbose, replace=True):
                 print page, status
     return failed
 
+
 def getPages(collab, search_string):
     pages = Metas()
     try:
@@ -28,4 +30,3 @@ def getPages(collab, search_string):
         sys.exit(error)
     pages = collab.getMeta(search_string)
     return pages
-
