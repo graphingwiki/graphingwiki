@@ -31,13 +31,14 @@ def execute(macro, args):
             template = args[0]
 
     html = [
-        u'<form class="macro" method="POST" action="%s">' % \
-            (request.href(f.page.page_name)),
+        u'<form class="macro" method="POST" action="%s">' %
+        (request.href(f.page.page_name)),
         u'<div class="ioclist">',
         u'<input type="hidden" name="action" value="ioclist">',
-        u'<input type="hidden" name="allow_overlap" value="%s">' % \
-            form_escape(allow_overlap),
-        u'<input type="hidden" name="template" value="%s">' % form_escape(template),
+        u'<input type="hidden" name="allow_overlap" value="%s">' %
+        form_escape(allow_overlap),
+        u'<input type="hidden" name="template" value="%s">' %
+        form_escape(template),
         u'<p class="ioctext">Enter IOC:s in the text box below</p>',
         u'<textarea rows=10 cols=80 name="data"></textarea>',
         u'<p class="ioctext">List name',
