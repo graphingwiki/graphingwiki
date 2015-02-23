@@ -6,13 +6,13 @@
     @copyright: 2007 by Juhani Eronen <exec@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-Dependencies = ['metadata']
-
 from MoinMoin.macro.Include import _sysmsg
 
 from graphingwiki.editing import get_metas
 from graphingwiki.util import format_wikitext
+
+Dependencies = ['metadata']
+
 
 def execute(macro, args):
     request = macro.request
@@ -22,7 +22,7 @@ def execute(macro, args):
         args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
     if not args or len(args) not in [1, 2]:
-        return _sysmsg % ('error', 
+        return _sysmsg % ('error',
                           _("GetMetaData: Need to specify page, or page and key"))
 
     # Get all non-empty args
@@ -37,7 +37,7 @@ def execute(macro, args):
         key = args[1]
     # Faulty args
     else:
-        return _sysmsg % ('error', 
+        return _sysmsg % ('error',
                           _("GetMetaData: Need to specify page, or page and key"))
 
     vals = get_metas(request, page, [key], formatLinks=True)

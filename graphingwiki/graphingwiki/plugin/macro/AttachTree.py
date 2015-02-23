@@ -34,6 +34,7 @@ import os
 
 from MoinMoin.action.AttachFile import _get_files, getAttachUrl
 
+
 def walk(*paths):
     result = dict()
     for path in paths:
@@ -41,6 +42,7 @@ def walk(*paths):
         for bite in path.split(quote(os.sep, safe="")):
             current = current.setdefault(bite, dict())
     return result
+
 
 def render(req, f, content, parent='', depth=0):
     listfmt = {'class': 'attachtree_list'}
@@ -70,6 +72,7 @@ def render(req, f, content, parent='', depth=0):
     result += f.bullet_list(0)
     return result
 
+
 def formatAttachTree(request, f):
     files = _get_files(request, f.page.page_name)
 
@@ -83,6 +86,7 @@ def formatAttachTree(request, f):
     result += f.div(0)
 
     return result
-        
+
+
 def execute(self, args):
     return formatAttachTree(self.request, self.formatter)

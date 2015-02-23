@@ -43,6 +43,7 @@ from graphingwiki.util import (form_escape, make_tooltip, cache_key,
 
 Dependencies = ['metadata']
 
+
 def draw_topology(request, args, key):
     args = [x.strip() for x in args.split(',')]
 
@@ -73,8 +74,6 @@ def draw_topology(request, args, key):
 
     # Get all containers
     args = 'CategoryContainer, %s=/.+/' % (topology)
-
-    #request.write(args)
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
@@ -158,7 +157,7 @@ def draw_topology(request, args, key):
             end_x = text_end
 
         # If there was no image or a problem with loading the image
-        if not page in images:
+        if page not in images:
             # Lack of image -> black 10x10 rectangle is drawn
             end_x, end_y = start_x + 10, start_y + 10
 
@@ -227,7 +226,6 @@ def draw_topology(request, args, key):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                  int(surface_x), int(surface_y))
 
-
     # request.write(repr([surface_x, surface_y]))
     ctx = cairo.Context(surface)
     ctx.select_font_face("Times-Roman", cairo.FONT_SLANT_NORMAL,
@@ -255,14 +253,10 @@ def draw_topology(request, args, key):
 
     midcoords = dict()
     for page in pagelist:
-        if not coords.has_key(page):
+        if page not in coords:
             continue
 
         x, y = coords[page]
-#         request.write('<br>' + repr(get_metas(request, page, ['tia-name'])) + '<br>')
-#         request.write(repr(coords[page]) + '<br>')
-#         request.write(str(x-min_x) + '<br>')
-#         request.write(str(y-min_y) + '<br>')
 
         # FIXME need more data to align different backgrounds
         # correctly, this is just guessing
@@ -270,14 +264,14 @@ def draw_topology(request, args, key):
         start_y = y - min_y + (diff_y / 3)
 
         w, h = 10, 10
-        if not images.has_key(page):
+        if page not in images:
             ctx.set_source_rgb(0, 0, 0)
         else:
             h = images[page].get_height()
             w = images[page].get_width()
-            if colors.has_key(page):
+            if page in colors:
                 clr = graph.hashcolor(colors[page])
-                r, g, b = [int(''.join(x), 16) / 255.0 for x in
+                r, g, b = [int(''.join(i), 16) / 255.0 for i in
                            zip(clr[1::2], clr[2::2])]
                 ctx.set_source_rgb(r, g, b)
             else:
@@ -287,7 +281,7 @@ def draw_topology(request, args, key):
         ctx.rectangle(start_x, start_y, w, h)
         ctx.fill()
 
-        if images.has_key(page):
+        if page in images:
             ctx.set_source_surface(images[page], start_x, start_y)
             ctx.rectangle(start_x, start_y, w, h)
             ctx.fill()
@@ -297,7 +291,6 @@ def draw_topology(request, args, key):
         areas["%s,%s,%s,%s" % (start_x, start_y, start_x + w, start_y + h)] = \
             [page, text, 'rect']
 
-
         if page in aliases:
             ctx.set_source_rgb(0, 0, 0)
             if rotate:
@@ -305,8 +298,8 @@ def draw_topology(request, args, key):
             else:
                 ctx.move_to(start_x, start_y + h + 10)
 
-            ## FIXME, should parse links more nicely, now just removes
-            ## square brackets
+            # FIXME, should parse links more nicely, now just removes
+            # square brackets
             text = aliases[page].lstrip('[').rstrip(']')
 
             if rotate:
@@ -321,15 +314,13 @@ def draw_topology(request, args, key):
         ctx.set_line_width(1)
         ctx.set_source_rgb(0, 0, 0)
         for start, end in flowcoords:
-            if (not midcoords.has_key(start) or
-                not midcoords.has_key(end)):
+            if (start not in midcoords) or (end not in midcoords):
                 continue
+
             sx, sy = midcoords[start]
             ex, ey = midcoords[end]
             ctx.move_to(sx, sy)
             ctx.line_to(ex, ey)
-            #request.write("%s %s<br>" % (start, end))
-            #request.write("%s %s %s %s<br>" % (sx, sy, ex, ey))
             ctx.stroke()
 
     s2 = surface
@@ -343,8 +334,8 @@ def draw_topology(request, args, key):
         # Recalculate image map data
         newareas = dict()
         for coords, data in areas.iteritems():
-            corners = [float(x) for x in coords.split(',')]
-            corners = tuple(x / factor for x in corners)
+            corners = [float(i) for i in coords.split(',')]
+            corners = tuple(i / factor for i in corners)
             newareas['%s,%s,%s,%s' % corners] = data
         areas = newareas
     else:
@@ -360,7 +351,7 @@ def draw_topology(request, args, key):
         surface_y = temp
 
     s2 = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                 int(new_surface_x), int(new_surface_y))
+                            int(new_surface_x), int(new_surface_y))
 
     ctx = cairo.Context(s2)
 
@@ -371,7 +362,7 @@ def draw_topology(request, args, key):
         newareas = dict()
         for coords, data in areas.iteritems():
             corners = coords.split(',')
-            corners = [float(x) for x in coords.split(',')]
+            corners = [float(i) for i in coords.split(',')]
             corners = tuple([new_surface_x - corners[1], corners[0],
                              new_surface_x - corners[3], corners[2]])
             newareas['%s,%s,%s,%s' % corners] = data
@@ -399,6 +390,7 @@ def draw_topology(request, args, key):
             (form_escape(pagelink), shape, coords, tooltip)
 
     return True, data, map
+
 
 def execute(macro, args):
     formatter = macro.formatter

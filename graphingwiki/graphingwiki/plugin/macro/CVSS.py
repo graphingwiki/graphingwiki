@@ -3,14 +3,14 @@
     CVSS base score macro plugin to MoinMoin
      - Return the value of a calculated base score.
 
-    @copyright: 2007-2010 by Juhani Eronen <exec@iki.fi>, Lari Huttunen <debian@huttu.net>
+    @copyright: 2007-2010 by Juhani Eronen <exec@iki.fi>,
+                             Lari Huttunen <debian@huttu.net>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
-
-Dependencies = ['metadata']
-
 from graphingwiki.editing import get_metas
 from graphingwiki.util import format_wikitext, render_error
+
+Dependencies = ['metadata']
 
 vector_keys_str = {'AV': 'AccessVector',
                    'AC': 'AccessComplexity',
@@ -37,14 +37,14 @@ vector_str = {'AV': {'L': "Local access",
                      'S': "Requires single instance",
                      'M': "Requires multiple instances"},
               'C': {'N': "None",
-                     'P': "Partial",
-                     'C': "Complete"},
+                    'P': "Partial",
+                    'C': "Complete"},
               'I': {'N': "None",
-                     'P': "Partial",
-                     'C': "Complete"},
+                    'P': "Partial",
+                    'C': "Complete"},
               'A': {'N': "None",
-                     'P': "Partial",
-                     'C': "Complete"},
+                    'P': "Partial",
+                    'C': "Complete"},
               'E': {'U': 'Unproven',
                     'P': 'Proof-of-concept',
                     'F': 'Functional',
@@ -125,14 +125,16 @@ vector_val = {'AV': {'L': 0.395,
                      'H': 1.51}
               }
 
+
 def parse_cvss(cvss_raw):
     cvss = dict()
-    
+
     for asp in cvss_raw.split('/'):
         vec, val = asp.split(':')
         cvss[vec] = val
 
     return cvss
+
 
 def cvssval(cvss, vec):
     # If it does not exist, always return 1.0 (except with CollateralDamagePotential)
@@ -146,6 +148,7 @@ def cvssval(cvss, vec):
         if not val:
             return 1.0
         return vector_val.get(vec, {}).get(val, 1.0)
+
 
 def calcimpact(impact):
     return impact == 0.0 and 0.0 or 1.176
@@ -180,6 +183,7 @@ def calcimpact(impact):
 #                         partial:          0.275
 #                         complete:         0.660
 
+
 def basescore(cvss, impact=None):
     if not impact:
         impact = 10.41 * (1-(1-cvssval(cvss, 'C')) *
@@ -190,11 +194,11 @@ def basescore(cvss, impact=None):
                            cvssval(cvss, 'AC') *
                            cvssval(cvss, 'Au'))
 
-    base = ((0.6 * impact) + 
-            (0.4 * exploitability - 1.5)) * \
-            calcimpact(impact)
+    base = (((0.6 * impact) + (0.4 * exploitability - 1.5)) *
+            calcimpact(impact))
 
     return round(base, 1)
+
 
 def buildVector(base_metas):
     vector = ""
@@ -246,6 +250,7 @@ def buildVector(base_metas):
         vector += "A:C"
     return vector
 
+
 def execute(macro, args):
     tset = set(['score', 'vector'])
     request = macro.request
@@ -254,7 +259,7 @@ def execute(macro, args):
     if args:
         args = [x.strip() for x in args.split(',')]
     # Wrong number of arguments
-    if len(args) not in [0,1,2]:
+    if len(args) not in [0, 1, 2]:
         return render_error(_("CVSS: Need to specify a page or page and " +
                               "type (score|vector)."))
 

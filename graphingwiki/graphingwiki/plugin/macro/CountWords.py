@@ -29,10 +29,11 @@
 """
 Dependencies = ['pages']
 
+
 def execute(macro, args):
     page = macro.request.page
 
     words = len(page.getPageText().split())
     chars = len(page.getPageText())
-                
+
     return macro.formatter.text('Page has %d words and %d characters (in markup)' % (words, chars))
