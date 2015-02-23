@@ -6,12 +6,8 @@
     @copyright: 2014 by Lauri Pokka larpo@codenomicon.com
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
+import json
 from urllib import quote
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
 
 def do_macro(request, **kw):
