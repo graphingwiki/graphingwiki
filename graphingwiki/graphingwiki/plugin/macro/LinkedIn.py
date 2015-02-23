@@ -31,6 +31,7 @@ from graphingwiki.util import NO_TYPE
 
 Dependencies = ['pagelinks']
 
+
 def nodes(request, pagename, meta):
     formatter = request.formatter
     out = []
@@ -50,12 +51,13 @@ def nodes(request, pagename, meta):
             typeinfo = ''
             if meta and type != NO_TYPE:
                 typeinfo = " (%s)" % (type)
-            if not page in nodes:
+            if page not in nodes:
                 out.append(formatter.pagelink(1, page) +
                            formatter.text(page + typeinfo) +
                            formatter.pagelink(0, page))
                 nodes.add(page)
     return out
+
 
 def execute(macro, args):
     pagename = macro.formatter.page.page_name
