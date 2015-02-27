@@ -39,7 +39,7 @@
     DEALINGS IN THE SOFTWARE.
 
 """
-from MoinMoin import wikiutil
+from graphingwiki.util import text_escape
 from graphingwiki.editing import metatable_parseargs
 
 Dependencies = ['metadata']
@@ -66,7 +66,7 @@ def execute(macro, args):
         return "{0}".format(len(pagelist))
 
     if not pagelist:
-        return _("No matches for") + " '{0}'".format(wikiutil.escape(args))
+        return _("No matches for") + " '{0}'".format(text_escape(args))
 
     return "{0} {1} '{2}'".format(len(pagelist), _("matches for"),
-                                  wikiutil.escape(args))
+                                  text_escape(args))
