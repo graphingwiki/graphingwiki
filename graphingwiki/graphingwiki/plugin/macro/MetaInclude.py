@@ -33,8 +33,8 @@
 
 from MoinMoin.macro import Include as moinInclude
 
+from graphingwiki.util import text_escape
 from graphingwiki.editing import metatable_parseargs
-from MoinMoin import wikiutil
 
 
 def make_pagelist(pagelist):
@@ -42,7 +42,7 @@ def make_pagelist(pagelist):
 
 
 def execute(macro, args):
-    # parse arguments
+    # Parse arguments
     if args is None:
         args = ''
 
@@ -60,12 +60,13 @@ def execute(macro, args):
         metatableargs = ','.join(args[:split])
         includeargs = ','.join(args[split + 1:])
 
-    #get pages
-    pagelist, metakeys, styles = metatable_parseargs(macro.request, metatableargs, get_all_keys=True)
+    # Get pages
+    pagelist, metakeys, styles = metatable_parseargs(macro.request,
+                                                     metatableargs,
+                                                     get_all_keys=True)
 
-    #if on matches
     if not pagelist:
-        return "No match for '{0}'".format(wikiutil.escape(metatableargs))
+        return "No match for '{0}'".format(text_escape(metatableargs))
 
-    #use MoinMoin's include to print the pages
+    # Use MoinMoin's include to print the pages
     return moinInclude.execute(macro, make_pagelist(pagelist) + includeargs)
