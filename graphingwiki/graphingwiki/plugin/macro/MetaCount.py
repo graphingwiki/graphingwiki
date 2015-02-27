@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-"
 """
-    MetaCount macro plugin to MoinMoin/Graphingwiki
-     - Counts how many mathces there are for given metatable argument string
+    Counts how many matches there are for given metatable query
+
+    Show how many people there are:
+
+    <<MetaCount(CategoryPerson)>>
+
+    -> "2 matches for 'CategoryPerson'".
+
+    If you want only the number, you can use "gwikisilent" argument.
+
+    There are <<MetaCount(CategoryPerson, gwikisilent)>> people.
+
+    -> "There are 2 people."
 
     @copyright: 2008 by therauli <therauli@ee.oulu.fi>
+                2015 by Mika Seppänen <mika.seppanen@iki.fi>
     @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 
     Permission is hereby granted, free of charge, to any person
@@ -32,30 +44,29 @@ from graphingwiki.editing import metatable_parseargs
 
 Dependencies = ['metadata']
 
+
 def execute(macro, args):
     _ = macro.request.getText
-    SILENT = False
+    silent = False
 
     if args is None:
         args = ''
     else:
         args = args.strip().split(',')
         if args[-1].strip() == 'gwikisilent':
-            SILENT = True
+            silent = True
             args = args[:-1]
 
         args = ','.join(args)
 
-    # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(macro.request, args,
                                                      get_all_keys=True)
 
-    if SILENT:
-        return "%d " % (len(pagelist))
+    if silent:
+        return "{0}".format(len(pagelist))
 
-    # No data -> bail out quickly, Scotty
     if not pagelist:
-        return _("No matches for") + " '%s'" % (wikiutil.escape(args))
+        return _("No matches for") + " '{0}'".format(wikiutil.escape(args))
 
-    return ("%d " % (len(pagelist)) + _("matches for") +
-            " '%s'" % (wikiutil.escape(args)))
+    return "{0} {1} '{2}'".format(len(pagelist), _("matches for"),
+                                  wikiutil.escape(args))
