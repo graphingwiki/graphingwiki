@@ -45,38 +45,39 @@ except ImportError:
 Dependencies = ['metadata']
 
 # SVG color scheme
-COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 
-          'azure', 'beige', 'bisque', 'black', 'blanchedalmond', 
-          'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 
-          'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 
-          'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 
-          'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 
-          'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 
-          'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 
-          'darkslateblue', 'darkslategray', 'darkslategrey', 
-          'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 
-          'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 
-          'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 
-          'goldenrod', 'gray', 'grey', 'green', 'greenyellow', 'honeydew', 
-          'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 
-          'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 
-          'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray', 
-          'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon', 
-          'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 
-          'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 
-          'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 
-          'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 
-          'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 
-          'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 
-          'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 
-          'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 
-          'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 
-          'plum', 'powderblue', 'purple', 'red', 'rosybrown', 'royalblue', 
-          'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 
-          'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 
-          'slategrey', 'snow', 'springgreen', 'steelblue', 'tan', 'teal', 
-          'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 
+COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
+          'azure', 'beige', 'bisque', 'black', 'blanchedalmond',
+          'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
+          'chartreuse', 'chocolate', 'coral', 'cornflowerblue',
+          'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan',
+          'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey',
+          'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange',
+          'darkorchid', 'darkred', 'darksalmon', 'darkseagreen',
+          'darkslateblue', 'darkslategray', 'darkslategrey',
+          'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue',
+          'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite',
+          'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold',
+          'goldenrod', 'gray', 'grey', 'green', 'greenyellow', 'honeydew',
+          'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
+          'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue',
+          'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray',
+          'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon',
+          'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey',
+          'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen',
+          'magenta', 'maroon', 'mediumaquamarine', 'mediumblue',
+          'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue',
+          'mediumspringgreen', 'mediumturquoise', 'mediumvioletred',
+          'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite',
+          'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered',
+          'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise',
+          'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink',
+          'plum', 'powderblue', 'purple', 'red', 'rosybrown', 'royalblue',
+          'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell',
+          'sienna', 'silver', 'skyblue', 'slateblue', 'slategray',
+          'slategrey', 'snow', 'springgreen', 'steelblue', 'tan', 'teal',
+          'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
           'whitesmoke', 'yellow', 'yellowgreen']
+
 
 def wrap_span(request, pagename, key, data, id):
     fdata = format_wikitext(request, data, pagename)
@@ -113,13 +114,14 @@ def wrap_span(request, pagename, key, data, id):
     if data == fdata or header:
         return form_writer(
             u'<span data-page="%s" data-key="%s" data-index="%s">',
-            pagename, key, str(id)) + fdata +'</span>'
+            pagename, key, str(id)) + fdata + '</span>'
 
     return form_writer(
         u'<span data-page="%s" data-key="%s" data-value="%s" data-index="%s">',
-        pagename, key, data, str(id)) + fdata +'</span>'
+        pagename, key, data, str(id)) + fdata + '</span>'
 
-def t_cell(request, pagename, vals, head=0, 
+
+def t_cell(request, pagename, vals, head=0,
            style=None, rev='', key='', pathstrip=0, linkoverride=''):
     formatter = request.formatter
     out = list()
@@ -127,7 +129,7 @@ def t_cell(request, pagename, vals, head=0,
     if style is None:
         style = dict()
 
-    if not style.has_key('class'):
+    if "class" not in style:
         if head:
             style['class'] = 'meta_page'
         else:
@@ -141,7 +143,7 @@ def t_cell(request, pagename, vals, head=0,
 
     first_val = True
 
-    for i, data in sorted(enumerate(vals), cmp=lambda x,y: cmp(x[1], y[1])):
+    for i, data in sorted(enumerate(vals), cmp=lambda x, y: cmp(x[1], y[1])):
         # cosmetic for having a "a, b, c" kind of lists
         if cellstyle not in ['list'] and not first_val:
             out.append(formatter.text(',') + formatter.linebreak())
@@ -195,8 +197,9 @@ def t_cell(request, pagename, vals, head=0,
     out.append(formatter.table_cell(0))
     return out
 
-def construct_table(request, pagelist, metakeys, 
-                    legend='', checkAccess=True, styles=dict(), options=dict()):
+
+def construct_table(request, pagelist, metakeys, legend='',
+                    checkAccess=True, styles=dict(), options=dict()):
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
@@ -265,15 +268,14 @@ def construct_table(request, pagelist, metakeys,
             if legend:
                 out.extend(t_cell(request, pagename, [legend]))
             elif limit:
-                message = ["Showing (%s/%s) pages" % 
+                message = ["Showing (%s/%s) pages" %
                            (len(pagelist), maxpages)]
-                    
+
                 out.extend(t_cell(request, pagename, message))
             else:
                 out.extend(t_cell(request, pagename, [legend]))
 
-
-    def key_cell(request, metas, key, page, 
+    def key_cell(request, metas, key, page,
                  styles, propoverride, propdefault):
         out = list()
         style = styles.get(key, dict())
@@ -288,7 +290,7 @@ def construct_table(request, pagelist, metakeys,
             if properties == emptyprop:
                 properties = propdefault
 
-            colors = [x.strip() for x in properties 
+            colors = [x.strip() for x in properties
                       if x.startswith('color')]
             colormatch = None
             # Get first color match
@@ -296,7 +298,7 @@ def construct_table(request, pagelist, metakeys,
                 colorval = properties.get(color)
                 # See that color is valid (either in the colorlist
                 # or a valid hex color)
-                if not colorval in COLORS:
+                if colorval not in COLORS:
                     if not re.match('#[0-9a-f]{6}', colorval):
                         continue
                 color = color.split()[-1]
@@ -322,17 +324,17 @@ def construct_table(request, pagelist, metakeys,
 
     def page_rev_metas(request, page, metakeys, checkAccess):
         if '-gwikirevision-' in page:
-            metas = get_metas(request, page, metakeys, 
+            metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess)
             page, revision = page.split('-gwikirevision-')
         else:
-            metas = get_metas(request, page, metakeys, 
+            metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess)
             revision = ''
 
         return metas, page, revision
 
-    def page_cell(request, page, revision, row, send_pages, 
+    def page_cell(request, page, revision, row, send_pages,
                   pagelinkonly, pagepathstrip):
         out = list()
 
@@ -342,28 +344,28 @@ def construct_table(request, pagelist, metakeys,
 
         if row:
             if row % 2:
-                out.append(formatter.table_row(1, {'rowclass': 
+                out.append(formatter.table_row(1, {'rowclass':
                                                    'metatable-odd-row'}))
 
             else:
-                out.append(formatter.table_row(1, {'rowclass': 
+                out.append(formatter.table_row(1, {'rowclass':
                                                    'metatable-even-row'}))
 
         if send_pages:
             linktext = ''
             if pagelinkonly:
                 linktext = _('[link]')
-            out.extend(t_cell(request, page, [page], head=1, rev=revision, 
+            out.extend(t_cell(request, page, [page], head=1, rev=revision,
                               pathstrip=pagepathstrip, linkoverride=linktext))
 
         return out
 
     if transpose:
         for page in pagelist:
-            metas, page, revision = page_rev_metas(request, page, 
+            metas, page, revision = page_rev_metas(request, page,
                                                    metakeys, checkAccess)
 
-            out.extend(page_cell(request, page, revision, 0, send_pages, 
+            out.extend(page_cell(request, page, revision, 0, send_pages,
                                  pagelinkonly, pagepathstrip))
     else:
         for key in metakeys:
@@ -382,10 +384,10 @@ def construct_table(request, pagelist, metakeys,
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, pagename, [name], 
+                out.extend(t_cell(request, pagename, [name],
                                   style=headerstyle, key=key))
             else:
-                out.extend(t_cell(request, pagename, [key], 
+                out.extend(t_cell(request, pagename, [key],
                                   style=headerstyle, key=key))
 
     if metakeys:
@@ -411,34 +413,34 @@ def construct_table(request, pagelist, metakeys,
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, pagename, [name], 
+                out.extend(t_cell(request, pagename, [name],
                                   style=headerstyle, key=key))
             else:
-                out.extend(t_cell(request, pagename, [key], 
+                out.extend(t_cell(request, pagename, [key],
                                   style=headerstyle, key=key))
 
             row = row + 1
 
             for page in pagelist:
-                metas, page, revision = page_rev_metas(request, page, 
+                metas, page, revision = page_rev_metas(request, page,
                                                        metakeys, checkAccess)
-                out.extend(key_cell(request, metas, key, page, 
+                out.extend(key_cell(request, metas, key, page,
                                     styles, propoverride, propdefault))
 
             out.append(formatter.table_row(0))
     else:
         for page in pagelist:
-            metas, page, revision = page_rev_metas(request, page, 
+            metas, page, revision = page_rev_metas(request, page,
                                                    metakeys, checkAccess)
 
             row = row + 1
 
-            out.extend(page_cell(request, page, revision, row, send_pages, 
+            out.extend(page_cell(request, page, revision, row, send_pages,
                                  pagelinkonly, pagepathstrip))
 
             emptyprop = dict().fromkeys(PROPERTIES, '')
             for key in metakeys:
-                out.extend(key_cell(request, metas, key, page, 
+                out.extend(key_cell(request, metas, key, page,
                                     styles, propoverride, propdefault))
 
             out.append(formatter.table_row(0))
@@ -448,6 +450,7 @@ def construct_table(request, pagelist, metakeys,
 
     out.append(formatter.table(0))
     return out
+
 
 def do_macro(request, args, **kw):
     formatter = request.formatter
@@ -459,20 +462,20 @@ def do_macro(request, args, **kw):
     pagelist, metakeys, styles = metatable_parseargs(request, args,
                                                      get_all_keys=True)
 
-   # No data -> bail out quickly, Scotty
+    # No data -> bail out quickly, Scotty
     if not pagelist:
-        out.append(formatter.linebreak() + u'<div class="metatable">' + 
+        out.append(formatter.linebreak() + u'<div class="metatable">' +
                    formatter.table(1))
         if kw.get('silent'):
             out.extend(t_cell(request, pagename, ["%s" % _("No matches")]))
         else:
-            out.extend(t_cell(request, pagename, 
+            out.extend(t_cell(request, pagename,
                               ["%s '%s'" % (_("No matches for"), args)]))
         out.append(formatter.table(0) + u'</div>')
         return "".join(out)
 
     options = dict({'args': args}.items() + kw.items())
-    divfmt = { 'class': "metatable" , 'data-options': quote(json.dumps(options))}
+    divfmt = {'class': "metatable", 'data-options': quote(json.dumps(options))}
     out.append(formatter.div(1, **divfmt))
     # We're sure the user has the access to the page, so don't check
     out.extend(construct_table(request, pagelist, metakeys,
@@ -495,6 +498,7 @@ def do_macro(request, args, **kw):
     out.append(formatter.div(0))
     return "".join(out)
 
+
 def execute(macro, args):
     request = macro.request
 
@@ -503,7 +507,7 @@ def execute(macro, args):
 
     optargs = {}
 
-    #parse keyworded arguments (template etc)
+    # Parse keyworded arguments (template etc)
     opts = re.findall("(?:^|,)\s*([^,|]+)\s*:=\s*([^,]+)\s*", args)
     args = re.sub("(?:^|,)\s*[^,|]+:=[^,]+\s*", "", args)
     for opt in opts:
