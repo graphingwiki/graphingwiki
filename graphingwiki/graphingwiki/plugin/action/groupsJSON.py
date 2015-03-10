@@ -13,7 +13,9 @@ except ImportError:
     import json
 
 from graphingwiki.groups import GroupException, group_add, group_rename, group_del
+from graphingwiki.invite import invite_user_to_wiki
 from MoinMoin.datastruct.backends.wiki_groups import WikiGroup
+from MoinMoin.wikiutil import isGroupPage
 
 
 class SetEncoder(json.JSONEncoder):
@@ -58,7 +60,12 @@ def execute(pagename, request):
                 elif op == "del":
                     group_del(request, group, [name])
                 elif op == "add":
-                    group_add(request, group, [name], row.get('create', False))
+                    if isGroupPage(name, request.cfg):
+                        group_add(request, group, [name], row.get('create', False), False)
+                    else:
+                        group_add(request, group, [name], row.get('create', False))
+                elif op == "invite":
+                    invite_user_to_wiki(request, group, name)
                 else:
                     raise ValueError("Bad operation")
 
