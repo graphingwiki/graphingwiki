@@ -32,16 +32,28 @@ define([
                         })
                 );
                 e.target.getSiblings('ul').grab(li);
+                li.getElement('input').focus();
             });
 
-            this.element.addEvent('click:relay(a.edit)', function(e) {
-                var el = e.target.getSiblings('.name')[0];
-                var name = el.parentElement.get('data-value');
+            this.element.addEvent('click:relay(a.inv)', function(e) {
+                e.target.getParent('li, h4').hasClass('reinvite');
 
-                if (el.get('tag') == "input") {
-                    new Element('span.name').set('text', name).replaces(el);
-                } else {
-                    new Element('input.name').set('value', name).replaces(el);
+                var parent = e.target.getSiblings('.name')[0].parentElement;
+
+                parent.toggleClass('reinvite');
+
+                if (parent.get('tag') !== "li") {
+                    parent.getParent('ul').getElements('li[data-value]').each(function(li) {
+                        if (li.hasClass('group') || li.hasClass('recursive')) {
+                            return
+                        }
+
+                        if (parent.hasClass('reinvite')) {
+                            li.addClass('reinvite');
+                        } else {
+                            li.removeClass('reinvite');
+                        }
+                    })
                 }
             });
 
@@ -52,7 +64,7 @@ define([
             this.element.addEvent('click:relay(.save)', this.save.bind(this));
 
             this.element.addEvent('click:relay(.jslink)', function() {
-                if (this.element.getElements('input, .delete').length) {
+                if (this.element.getElements('input, .delete, .reinvite').length) {
                     this.element.addClass('edited');
                 } else {
                     this.element.removeClass('edited');
@@ -60,35 +72,89 @@ define([
             }.bind(this));
         },
 
-        save: function(){
+        save: function() {
             var ops = [];
+
+            var alreadyInvited = function(user) {
+                return ops.filter(function(op) {
+                    return user == op.name;
+                }).length > 0;
+            };
+
+            var traverseGroup = function(name) {
+                var group = this.groups[name];
+                var members = group.members.slice();
+                group.groups.map(traverseGroup).forEach(function(mems) {
+                    mems.forEach(function(member) {
+                        if (members.indexOf(member) === -1) {
+                            members.push(member);
+                        }
+                    })
+                });
+                return members;
+            }.bind(this);
+
+            var accessibleUsers = traverseGroup("AccessGroup");
 
             this.element.getElements('.delete').each(function(el) {
                 var group = el.getParent('ul').getElement('h4').get('data-value');
                 var name = el.get('data-value');
                 ops.push({op: 'del', group: group, name: name});
-            }).destroy();
+            });
 
-            this.element.getElements('input').each(function(el){
+            this.element.getElements('li.reinvite').each(function(el) {
+                if (el.hasClass('delete')) {
+                    return;
+                }
                 var group = el.getParent('ul').getElement('h4').get('data-value');
-                var value = el.get('value');
-                if (el.hasClass('name')){
-                    var old = el.getParent('[data-value]').get('data-value');
-                    ops.push({op: 'rename', group: group, name: old, to: value});
-                }else{
-                    ops.push({op: 'add', group: group, name: value});
+                var name = el.get('data-value');
+                if (!alreadyInvited(name)) {
+                    ops.push({op: 'invite', group: group, name: name});
                 }
             });
+
+            this.element.getElements('input').each(function(el) {
+                var group = el.getParent('ul').getElement('h4').get('data-value');
+                var name = el.get('value');
+
+                // Invite users only if they haven't previously been able to access the collab
+                (name.match(/Group$/) ? traverseGroup(name) : [name]).forEach(function(n) {
+                    if (accessibleUsers.indexOf(n) === -1 && !alreadyInvited(n)) {
+                        ops.push({op: 'invite', group: group, name: n});
+                    }
+                });
+
+                ops.push({op: 'add', group: group, name: name});
+            }.bind(this));
+
+
+            var inviteConfirmation = "";
+
+            ops
+                .filter(function(op) {
+                    return op.op === "invite"
+                })
+                .forEach(function(op) {
+                    if (inviteConfirmation.length == 0) {
+                        inviteConfirmation += "Following users will be sent an invitation email:"
+                    }
+
+                    inviteConfirmation += "\n * " + op.name;
+                });
+
+            if (inviteConfirmation.length > 0 && !confirm(inviteConfirmation)) {
+                return;
+            }
 
             new Request({
                 headers: {
                     'Content-Type': "application/json;charset=UTF-8"
                 },
                 url: '?action=groupsJSON',
-                onSuccess: function(){
+                onSuccess: function() {
                     this.update();
                 }.bind(this),
-                onFailure:  function(xhr) {
+                onFailure: function(xhr) {
                     alert(xhr.response);
                     this.update();
                 }.bind(this)
@@ -107,14 +173,13 @@ define([
                     el.empty();
 
                     Object.each(results, function(group, name) {
-                        var cont  = new Element('div.groupcontainer').inject(el);
+                        var cont = new Element('div.groupcontainer').inject(el);
                         var ul = new Element('ul').grab(new Element('h4').adopt(
                             new Element('a.name').set({
                                 'text': name,
                                 'href': baseurl + "/" + name
-                            })
-//                            new Element('a.glyphicon.jslink').set('html', '&nbsp;'),
-//                            new Element('a.glyphicon.glyphicon-pencil.jslink.edit')
+                            }),
+                            new Element('a.glyphicon.glyphicon-envelope.jslink.inv')
                         ).set('data-value', name));
                         cont.grab(ul);
                         (group.members.concat(group.groups)).forEach(function(name) {
@@ -122,20 +187,23 @@ define([
                                 cls,
                                 access = "";
                             if (isgroup) {
-                                cls = 'glyphicon glyphicon-folder-open';
-                                access = results[name]? "": "(no access)";
+                                ul.grab(new Element('li.group').adopt(
+                                    new Element('span').set('class', 'glyphicon glyphicon-folder-open'),
+                                    new Element('span.name').set('text', name),
+                                    new Element('a.glyphicon.jslink').set('html', '&nbsp;'),
+                                    new Element('a.glyphicon.glyphicon-trash.jslink.rm'),
+                                    new Element('span.info.denied').set('text', results[name] ? "" : "(no access)")
+                                ).set('data-value', name));
+                            } else {
+                                ul.grab(new Element('li').adopt(
+                                    new Element('span.name').set('text', name),
+                                    new Element('a.glyphicon.glyphicon-envelope.jslink.inv'),
+                                    new Element('a.glyphicon.glyphicon-trash.jslink.rm')
+                                ).set('data-value', name));
                             }
-
-                            ul.grab(new Element('li').adopt(
-                                new Element('span').set('class', cls),
-                                new Element('span.name').set('text', name),
-                                new Element('a.glyphicon.glyphicon-trash.jslink.rm'),
-                                new Element('span.info.denied').set('text', access)
-//                                new Element('a.glyphicon.glyphicon-pencil.jslink.edit')
-                            ).set('data-value', name));
                         });
 
-                        var groups = group.groups;
+                        var groups = group.groups.slice();
                         var handled = [];
                         while (groups.length) {
                             var g = groups.pop();

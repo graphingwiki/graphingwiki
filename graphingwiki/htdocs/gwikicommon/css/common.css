@@ -489,6 +489,10 @@ div.ac-results {
     opacity: 0.5;
 }
 
+.groupeditor .reinvite .inv, .groupeditor .groupcontainer:hover ul *.reinvite a.inv {
+    opacity: 0.8
+}
+
 .groupeditor:not(.edited) .save {
     display: none;
 }
