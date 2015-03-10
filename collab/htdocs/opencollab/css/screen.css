@@ -598,6 +598,6 @@ div.inlinegraph {
 	margin-bottom: 10px;
 }
 
-.glyphicon .fallback {
+.glyphicon .fallback, .no-bootstrap {
     display: none;
 }

@@ -15,6 +15,13 @@ def do_macro(request, **kw):
 
     return '''
     <h2>Group Editor</h2>
+    <div class="no-bootstrap warning">
+    <p>
+        <strong>
+        Bootstrap-based theme (opencollab, codedenomicon, ficora etc) is required for this editor to function properly.
+        </strong>
+    </p>
+    </div>
     <div class="groupeditor" data-options="%s">
     </div>
     <hr>
