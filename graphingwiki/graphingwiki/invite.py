@@ -21,6 +21,13 @@ logging = log.getLogger(__name__)
 
 from graphingwiki.groups import group_add
 
+NEW_TEMPLATE_VARIABLE = "invite_new_template"
+NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"
+OLD_TEMPLATE_VARIABLE = "invite_old_template"
+OLD_TEMPLATE_DEFAULT = "InviteOldTemplate"
+GROUP_DEFAULT_VARIABLE = "invite_group_default"
+GROUP_DEFAULT_DEFAULT = ""
+
 
 class InviteException(Exception):
     pass
@@ -63,7 +70,7 @@ def add_user_to_group(request, userobj, group, comment=""):
                   request.user.name))
 
 
-def invite_user_to_wiki(request, page, email, new_template, old_template,
+def invite_user_to_wiki(request, page, email, new_template=None, old_template=None,
                         **custom_vars):
     check_inviting_enabled(request)
     if not user_may_invite(request.user, page):
@@ -74,7 +81,7 @@ def invite_user_to_wiki(request, page, email, new_template, old_template,
                    **custom_vars)
 
 
-def invite_user_to_page(request, page, email, new_template, old_template,
+def invite_user_to_page(request, page, email, new_template=None, old_template=None,
                         **custom_vars):
     check_inviting_enabled(request)
     if not user_may_invite(request.user, page):
@@ -92,6 +99,15 @@ def request_invite(request, page, collab, collab_url, email, template, **custom_
         raise InviteException("No permissions to request invite from '%s'." % page)
     return _request_invite(request, collab, collab_url, email, template, **custom_vars)
 
+def load_template(request, name):
+    if not request.user.may.read(name):
+        raise InviteException("You are not allowed to read template page '%s'." % name)
+
+    page = Page(request, name)
+    if not page.exists():
+        raise InviteException("Template page '%s' does not exist." % name)
+
+    return page.get_raw_body()
 
 def _invite(request, page_url, email, new_template, old_template,
             **custom_vars):
@@ -110,7 +126,12 @@ def _invite(request, page_url, email, new_template, old_template,
     if old_user:
         variables.update(INVITEDUSER=old_user.name,
                          INVITEDEMAIL=old_user.email)
-        send_message(request, prepare_message(old_template, variables))
+
+        if not old_template:
+            old_template = getattr(request.cfg, OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
+
+        template = load_template(request, old_template)
+        send_message(request, prepare_message(template, variables))
         return old_user
 
     force_lower = getattr(request.cfg, "username_force_lowercase", False)
@@ -132,11 +153,16 @@ def _invite(request, page_url, email, new_template, old_template,
     variables.update(INVITEDUSER=new_user.name,
                      INVITEDEMAIL=new_user.email,
                      INVITEDPASSWORD=password)
-    send_message(request, prepare_message(new_template, variables),
+    if not new_template:
+        new_template = getattr(request.cfg, NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
+
+    template = load_template(request, new_template)
+
+    send_message(request, prepare_message(template, variables),
                  lambda x: x.lower() == email.lower())
 
     variables.update(INVITEDPASSWORD="******")
-    send_message(request, prepare_message(new_template, variables),
+    send_message(request, prepare_message(template, variables),
                  lambda x: x.lower() != email.lower())
 
     new_user.save()

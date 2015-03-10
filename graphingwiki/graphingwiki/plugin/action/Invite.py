@@ -7,13 +7,6 @@ from graphingwiki import values_to_form
 from graphingwiki.invite import *
 from graphingwiki.groups import GroupException
 
-NEW_TEMPLATE_VARIABLE = "invite_new_template"
-NEW_TEMPLATE_DEFAULT = "InviteNewTemplate"
-OLD_TEMPLATE_VARIABLE = "invite_old_template"
-OLD_TEMPLATE_DEFAULT = "InviteOldTemplate"
-GROUP_DEFAULT_VARIABLE = "invite_group_default"
-GROUP_DEFAULT_DEFAULT = ""
-
 
 class Invite(ActionBase):
     def __init__(self, pagename, request, **kw):
@@ -26,25 +19,12 @@ class Invite(ActionBase):
         self.template = kw.get('template', [])
         self.querytext = kw.get('text', [self.getText('Invite user to visit this page')])[0]
 
-    def _load_template(self, variable, default):
-        if not variable and default:
-            name = default
-        else:
-            name = getattr(self.request.cfg, variable, default)
-
-        if not self.request.user.may.read(name):
-            raise InviteException("You are not allowed to read template page '%s'." % name)
-
-        page = Page(self.request, name)
-        if not page.exists():
-            raise InviteException("Template page '%s' does not exist." % name)
-
-        return page.get_raw_body()
-
     def check_condition(self):
         try:
-            self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
-            self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
+            new_template = getattr(self.request.cfg, NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
+            old_template = getattr(self.request.cfg, OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
+            load_template(self.request, new_template)
+            load_template(self.request, old_template)
             check_inviting_enabled(self.request)
         except InviteException, ie:
             return unicode(ie)
@@ -71,16 +51,6 @@ class Invite(ActionBase):
 
         pagename = self.pagename
         try:
-            if new_template:
-                new_template = self._load_template(None, new_template)
-            else:
-                new_template = self._load_template(NEW_TEMPLATE_VARIABLE, NEW_TEMPLATE_DEFAULT)
-
-            if old_template:
-                old_template = self._load_template(None, old_template)
-            else:
-                old_template = self._load_template(OLD_TEMPLATE_VARIABLE, OLD_TEMPLATE_DEFAULT)
-
             if wikiutil.isGroupPage(pagename, self.request.cfg):
                 myuser = invite_user_to_wiki(self.request, pagename, email, new_template, old_template)
                 mygrouppage = pagename
