@@ -480,6 +480,10 @@ def iter_metas(request, rule, keys=None, checkAccess=True):
         if not metas:
             continue
 
+        _out = request.graphdata.get_out(page)
+        if _out.has_key('gwikicategory'):
+            metas.setdefault(u'gwikicategory', []).extend(_out.get("gwikicategory"))
+
         data = events.Event(dict(metas.items() + _page.items()))
         if rule.match(data):
             if keys:
