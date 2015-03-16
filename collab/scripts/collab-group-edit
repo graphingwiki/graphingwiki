@@ -26,6 +26,9 @@ def main():
     parser.add_option("-c", "--create",
             action="store_true", dest="create", default=False,
             help="create group page if missing")
+    parser.add_option("-u", "--nousercheck",
+            action="store_false", dest="usercheck", default=True,
+            help="allow adding nonexistent users")
 
     (opts, args) = parser.parse_args()
 
@@ -46,7 +49,8 @@ def main():
 
     try:
         if opts.action == "add":
-            group_add(request.request, group, users, opts.create)
+            group_add(request.request, group, users,
+                      opts.create, opts.usercheck)
         elif opts.action == "del":
             group_del(request.request, group, users)
     except GroupException, err:
