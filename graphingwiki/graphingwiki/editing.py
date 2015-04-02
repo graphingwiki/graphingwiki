@@ -1047,6 +1047,10 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         # Filter out uneditables, such as inlinks
         metakeys = editable_p(metakeys)
+
+        # Lazy pages do not have any page text, which is why we need
+        # to get the metakeys that are not changed with this call from
+        # the backend
         if lazypage:
             _, keys, _ = metatable_parseargs(request, page, 
                                              get_all_keys=True, checkAccess=False)
