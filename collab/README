@@ -1,8 +1,9 @@
 # Full installation instructions for graphingwiki on collabbackend.
 # The script is assumed to be run as root.  These instructions have
-# been tested on Ubuntu 12.0.4 and 10.0.4, and may actually miss some
-# of the major errors. The instructions assume you are using the bash
-# shell.
+# been tested on Ubuntu 12.04 and 10.04, and may actually miss some of
+# the major errors. There are minor differences when installing on
+# Ubuntu 14.04, they are marked in comments. The instructions assume
+# you are using the bash shell.
 
 ## Install apache, graphingwiki, igraph
 apt-get install libapache2-mod-wsgi apache2 apache2-mpm-worker ssl-cert
@@ -32,8 +33,11 @@ ErrorLog /srv/www/log/https/error_log
 CustomLog /srv/www/log/https/access_log combined
 LogLevel warn
 SSLEngine on
-SSLProtocol all -SSLv2
-SSLCipherSuite ALL:!ADH:!EXPORT:!SSLv2:RC4+RSA:+HIGH:+MEDIUM:+LOW
+SSLProtocol all -SSLv2 -SSLv3
+SSLHonorCipherOrder on
+SSLCipherSuite "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK"
+SSLCompression off
+SSLInsecureRenegotiation off
 SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
 SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
 <Files ~ "\.(cgi|shtml|phtml|php3?)$">
@@ -48,6 +52,8 @@ SetEnvIf User-Agent ".*MSIE.*" \
 </VirtualHost>                                  
 EOF
 
+# In Ubuntu 14.04 the directory below has changed to
+# /etc/apache2/conf-enabled/collab.conf
 cat <<EOF > /etc/apache2/conf.d/collab.conf
 <Directory "/srv/www/https/collab">
   Options +ExecCGI
@@ -60,7 +66,8 @@ EOF
 
 a2ensite 000-default.conf
 
-# If you use Apache 2.4, you should add the following to collab.conf:
+# If you use Apache 2.4 (as in Ubuntu 14.04), you should add the
+# following to collab.conf:
 # <Directory "/srv/www/https/moin_static">
 #  require all granted
 # </Directory>
@@ -88,6 +95,7 @@ apt-get install libgv-python graphviz
 
 ## OPTIONAL: Install igraph, if you want to layout large graphs
 # https://launchpad.net/~igraph/+archive/ppa
+# With Ubuntu 14.04 the required package is software-properties-common
 apt-get install python-software-properties
 add-apt-repository ppa:igraph/ppa
 apt-get update
@@ -173,7 +181,10 @@ su - collab -s /bin/bash -c "collab-create collab collab"
 su - collab -s /bin/bash -c "collab-htaccess"
 
 # Making htaccess to the base collab
-# Omit the AuthGroupFile if you use Apache 2.4
+
+# If you use Apache 2.4 (as in Ubuntu 14.04), omit the AuthGroupFile
+# and add the line
+# DirectoryIndex wsgi
 cat <<EOF > /srv/wikis/collab/htdocs/.htaccess
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f

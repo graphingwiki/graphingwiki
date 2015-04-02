@@ -8,13 +8,15 @@
  
  from MoinMoin import log
  logging = log.getLogger(__name__)
-@@ -45,7 +46,14 @@ def _importConfigModule(name):
+@@ -45,7 +46,16 @@ def _importConfigModule(name):
      @return: module, modification time
      """
      try:
 -        module = __import__(name, globals(), {})
 +        configdir = None
 +        for entry in sys.path:
++            if not entry:
++                continue
 +            if entry.endswith('MoinMoin/support'):
 +                continue
 +            configdir = [entry]
