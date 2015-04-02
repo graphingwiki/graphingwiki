@@ -122,7 +122,7 @@ def parse_text(request, page, text):
     newreq = request
     newreq.page = lcpage = LinkCollectingPage(newreq, pagename, text)
     parserclass = importPlugin(request.cfg, "parser",
-                                   'link_collect', "Parser")
+                               'link_collect', "Parser")
     myformatter = importPlugin(request.cfg, "formatter",
                                'nullformatter', "Formatter")
     lcpage.formatter = myformatter(newreq)
@@ -527,14 +527,14 @@ def _clear_page(request, pagename):
         del request.graphdata[pagename][u'acl']
         del request.graphdata[pagename][u'meta']
 
-def execute(pagename, request, text, pagedir, pageitem):
+def execute(pagename, request, text, pageitem):
     try:
-        return execute2(pagename, request, text, pagedir, pageitem)
+        return execute2(pagename, request, text, pageitem)
     except:
         request.graphdata.abort()
         raise
 
-def execute2(pagename, request, text, pagedir, pageitem):
+def execute2(pagename, request, text, pageitem):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return

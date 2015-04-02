@@ -29,7 +29,7 @@ from MoinMoin.wikiutil import importPlugin, AbsPageName
 from graphingwiki.util import filter_categories
 from graphingwiki.util import SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex
-from graphingwiki.savegraphdata import parse_text, parse_categories
+from graphingwiki.savegraphdata import parse_text, parse_categories, execute
 from graphingwiki.tests import doctest_request
 
 CATEGORY_KEY = "gwikicategory"
@@ -528,8 +528,16 @@ def remove_preformatted(text):
 
     return text, keys_to_markers, markers_to_keys
 
-def edit_meta(request, pagename, oldmeta, newmeta):
+def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
     page = PageEditor(request, pagename)
+
+    if lazypage:
+        if oldmeta == newmeta:
+            return u'Unchanged'
+        text = replace_metas(request, '', {}, oldmeta)
+        text = replace_metas(request, text, oldmeta, newmeta)
+        msg = execute(pagename, request, text, page)
+        return "Thank you for your changes. Your attention to detail is appreciated."
 
     text = page.get_raw_body()
     text = replace_metas(request, text, oldmeta, newmeta)
@@ -998,7 +1006,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     # beginning of this function, not doing so causes extra edits.
     return text.rstrip() + '\n'
 
-def set_metas(request, cleared, discarded, added):
+def set_metas(request, cleared, discarded, added, lazypage=False):
     pages = set(cleared) | set(discarded) | set(added)
 
     # Discard empties and junk
@@ -1027,12 +1035,22 @@ def set_metas(request, cleared, discarded, added):
             del pageDiscarded[TEMPLATE_KEY]
         # Save templates for empty pages
         if TEMPLATE_KEY in pageAdded:
-            save_template(request, page, ''.join(pageAdded[TEMPLATE_KEY]))
-            del pageAdded[TEMPLATE_KEY]
+            # In lazy pages, just add template meta, metas in
+            # templates are added when pages are frozen
+            # FIXME: set vs add and template metas?
+            if not lazypage:
+                save_template(request, page, ''.join(pageAdded[TEMPLATE_KEY]))
+                del pageAdded[TEMPLATE_KEY]
+            else:
+                pageAdded[TEMPLATE_KEY] = [pageAdded[TEMPLATE_KEY]]
 
         metakeys = set(pageCleared) | set(pageDiscarded) | set(pageAdded)
         # Filter out uneditables, such as inlinks
         metakeys = editable_p(metakeys)
+        if lazypage:
+            _, keys, _ = metatable_parseargs(request, page, 
+                                             get_all_keys=True, checkAccess=False)
+            metakeys = set(metakeys) | set(keys)
 
         old = get_metas(request, page, metakeys, 
                         checkAccess=False, includeGenerated=False)
@@ -1062,7 +1080,7 @@ def set_metas(request, cleared, discarded, added):
             ordered.extend(values)
             new[key] = ordered
 
-        msg.append(edit_meta(request, page, old, new))
+        msg.append(edit_meta(request, page, old, new, lazypage))
 
     return True, msg
 

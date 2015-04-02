@@ -277,10 +277,9 @@ def graphdata_commit(self, *args):
 ## text of the saved page?
 
 def graphdata_save(self, result, _):
-    path = underlay_to_pages(self.request, self)
     text = self.get_raw_body()
 
-    graphsaver(self.page_name, self.request, text, path, self)
+    graphsaver(self.page_name, self.request, text, self)
 
 def graphdata_copy(self, result, (args, _)):
     newpagename = args[0]
@@ -288,7 +287,7 @@ def graphdata_copy(self, result, (args, _)):
     text = self.get_raw_body()
     path = underlay_to_pages(self.request, self)
 
-    graphsaver(newpagename, self.request, text, path, self)
+    graphsaver(newpagename, self.request, text, self)
 
 def graphdata_rename(self, (success, msg), _):
     if not success:
@@ -299,7 +298,7 @@ def graphdata_rename(self, (success, msg), _):
     # Rename is really filesystem-level rename, no old data is really
     # left behind, so it should be cleared.  When saving with text
     # 'deleted\n', no graph data is actually saved.
-    graphsaver(self.page_name, self.request, 'deleted\n', path, self)
+    graphsaver(self.page_name, self.request, 'deleted\n', self)
 
     # Rename might litter empty directories data/pagename and
     # data/pagename/cache, let's remove them

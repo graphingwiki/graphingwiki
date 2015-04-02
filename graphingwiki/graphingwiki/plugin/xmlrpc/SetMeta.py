@@ -42,7 +42,7 @@ def do_action(request, page, inmetas, action='add', createpage=True,
     if template:
         added[page]['gwikitemplate'] = template
 
-    _, msg = set_metas(request, cleared, discarded, added)
+    _, msg = set_metas(request, cleared, discarded, added, lazypage=True)
     return msg
 
 # Gets data in the same format as process_edit
