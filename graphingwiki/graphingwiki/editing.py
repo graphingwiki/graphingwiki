@@ -29,6 +29,8 @@ from MoinMoin.wikiutil import importPlugin, AbsPageName
 from graphingwiki.util import filter_categories
 from graphingwiki.util import SPECIAL_ATTRS, editable_p
 from graphingwiki.util import category_regex, template_regex
+from graphingwiki.savegraphdata import parse_text, parse_categories
+from graphingwiki.tests import doctest_request
 
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
@@ -40,7 +42,6 @@ OPERATORS = {'<': operator.lt,
              '!=': operator.ne,
              '>=': operator.ge,
              '>': operator.gt}
-
 
 def macro_re(macroname):
     return re.compile(r'(?<!#)\s*?\[\[(%s)\((.*?)\)\]\]' % macroname)
@@ -67,11 +68,6 @@ def get_revisions(request, page, checkAccess=True):
     pagename = page.page_name
     if checkAccess and not request.user.may.read(pagename):
         return [], []
-
-    parse_text = importPlugin(request.cfg,
-                              'action',
-                              'savegraphdata',
-                              'parse_text')
 
     alldata = dict()
     revisions = dict()
@@ -164,83 +160,9 @@ def getmeta_to_table(input):
 
     return table
 
-
-def parse_categories(request, text):
-    r"""
-    Parse category names from the page. Return a list of parsed categories,
-    list of the preceding text lines and a list of the lines with categories.
-
-    >>> request = _doctest_request()
-    >>> parse_categories(request, "CategoryTest")
-    (['CategoryTest'], [], ['CategoryTest'])
-
-    Take into account only the categories that come after all other text
-    (excluding whitespaces):
-
-    >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
-    (['CategoryTest'], ['Blah', 'CategoryNot blah'], ['CategoryTest', ''])
-
-    The line lists are returned in a way that the original text can be
-    easily reconstructed from them.
-
-    >>> original_text = "Blah\nCategoryNot blah\n--------\nCategoryTest\n"
-    >>> _, head, tail = parse_categories(request, original_text)
-    >>> tail[0] == "--------"
-    True
-    >>> "\n".join(head + tail) == original_text
-    True
-
-    >>> original_text = "Blah\nCategoryNot blah\nCategoryTest\n"
-    >>> _, head, tail = parse_categories(request, original_text)
-    >>> "\n".join(head + tail) == original_text
-    True
-
-    Regression test, bug #540: Pages with only categories (or whitespaces) 
-    on several lines don't get parsed correctly:
-
-    >>> parse_categories(request, "\nCategoryTest")
-    (['CategoryTest'], [''], ['CategoryTest'])
-    """
-
-    other_lines = text.splitlines()
-    if text.endswith("\n"):
-        other_lines.append("")
-
-    categories = list()
-    category_lines = list()
-    unknown_lines = list()
-
-    # Start looking at lines from the end to the beginning
-    while other_lines:
-        if not other_lines[-1].strip() or other_lines[-1].startswith("##"):
-            unknown_lines.insert(0, other_lines.pop())
-            continue
-
-        # TODO: this code is broken, will not work for extended links
-        # categories, e.g ["category hebrew"]
-        candidates = other_lines[-1].split()
-        confirmed = filter_categories(request, candidates)
-
-        # A category line is defined as a line that contains only categories
-        if len(confirmed) < len(candidates):
-            # The line was not a category line
-            break
-
-        categories.extend(confirmed)
-        category_lines[:0] = unknown_lines
-        category_lines.insert(0, other_lines.pop())
-        unknown_lines = list()
-
-    if other_lines and re.match("^\s*-{4,}\s*$", other_lines[-1]):
-        category_lines[:0] = unknown_lines
-        category_lines.insert(0, other_lines.pop())
-    else:
-        other_lines.extend(unknown_lines)
-    return categories, other_lines, category_lines
-
 def edit_categories(request, savetext, action, catlist):
     """
-    >>> request = _doctest_request()
+    >>> request = doctest_request()
     >>> s = "= @PAGE@ =\\n" + \
         "[[TableOfContents]]\\n" + \
         "[[LinkedIn]]\\n" + \
@@ -625,7 +547,7 @@ def edit_meta(request, pagename, oldmeta, newmeta):
 
 def add_meta_regex(request, inclusion, newval, oldtext):
     """
-    >>> request = _doctest_request()
+    >>> request = doctest_request()
     >>> s = "= @PAGE@ =\\n" + \
         "[[TableOfContents]]\\n" + \
         "[[LinkedIn]]\\n" + \
@@ -676,7 +598,7 @@ def add_meta_regex(request, inclusion, newval, oldtext):
 
 def replace_metas(request, text, oldmeta, newmeta):
     r"""
-    >>> request = _doctest_request()
+    >>> request = doctest_request()
 
     Replacing metas:
     >>> replace_metas(request,
@@ -1793,39 +1715,6 @@ def delete_pagecachefile(request, pagename, cfname):
 def list_pagecachefiles(request, pagename):
     page = Page(request, pagename)
     return caching.get_cache_list(request, page, 'item')
-
-
-def _doctest_request(graphdata=dict(), mayRead=True, mayWrite=True):
-    class Request(object):
-        pass
-
-    class Config(object):
-        pass
-
-    class Object(object):
-        pass
-
-    class Cache(object):
-        pass
-
-    class GraphData(dict):
-        def getpage(self, page):
-            return self.get(page, dict())
-    
-    request = Request()
-    request.cfg = Config()
-    request.cfg.cache = Cache()
-    request.cfg.cache.page_category_regex = category_regex(request)
-    request.cfg.cache.page_category_regexact = category_regex(request, act=True)
-    request.graphdata = GraphData(graphdata)
-
-    request.user = Object()
-    request.user.may = Object()
-    request.user.may.read = lambda x: mayRead
-    request.user.may.write = lambda x: mayWrite
-
-    return request
-
 
 def _test():
     import doctest

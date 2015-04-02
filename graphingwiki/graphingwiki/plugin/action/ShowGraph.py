@@ -43,7 +43,7 @@ from MoinMoin import config
 from MoinMoin.formatter.text_plain import Formatter as TextFormatter
 
 from graphingwiki import gv_found, igraph_found, actionname, \
-    url_escape, values_to_form, pil_found, pil_image
+    values_to_form, pil_found, pil_image
 
 from graphingwiki.graph import Graph
 from graphingwiki.graphrepr import GraphRepr, Graphviz, IGraphRepr
@@ -56,7 +56,7 @@ from graphingwiki.util import (attachment_file, attachment_url, url_parameters,
                                make_tooltip, cache_exists, SPECIAL_ATTRS,
                                cache_key, xml_document, xml_node_id_and_text,
                                geoip_init, geoip_get_coords,
-                               render_error, render_warning)
+                               render_error, render_warning, url_escape)
 from graphingwiki.editing import ordervalue, verify_coordinates
 
 import math

@@ -21,8 +21,9 @@ from MoinMoin.Page import Page
 
 import MoinMoin.macro.Include as Include
 
-from graphingwiki import actionname, id_escape, SEPARATOR
+from graphingwiki import actionname
 from graphingwiki.util import form_writer as wr
+from graphingwiki.util import id_escape, SEPARATOR
 
 Dependencies = ["time"]
 generates_headings = True

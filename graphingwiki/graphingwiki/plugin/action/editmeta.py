@@ -17,10 +17,9 @@ from MoinMoin.PageEditor import PageEditor
 
 from graphingwiki import values_to_form
 from graphingwiki.editing import dl_proto_re
+from graphingwiki.savegraphdata import parse_text
 
 import MetaEdit
-
-from savegraphdata import parse_text
 
 def execute(pagename, request):
     form = values_to_form(request.values)

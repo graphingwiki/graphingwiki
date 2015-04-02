@@ -14,11 +14,11 @@ from urllib import unquote as url_unquote
 from MoinMoin.Page import Page
 from MoinMoin.action.AttachFile import add_attachment, AttachmentAlreadyExists
 
-from graphingwiki import actionname, SEPARATOR, values_to_form
+from graphingwiki import actionname, values_to_form
 from graphingwiki.editing import get_metas, set_metas, editable_p
 from graphingwiki.editing import metatable_parseargs, edit_meta, save_template
 from graphingwiki.util import (form_writer, enter_page, exit_page,
-                               render_error, render_warning)
+                               render_error, render_warning, SEPARATOR)
 
 def parse_editform(request, form):
     r"""

@@ -50,11 +50,19 @@ from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
 
-from graphingwiki import geoip_found, GeoIP, id_escape, SEPARATOR
 from graphingwiki.graph import Graph
 
 MOIN_VERSION = float('.'.join(MoinVersion.release.split('.')[:2]))
+SEPARATOR = '-gwikiseparator-'
 
+geoip_found = True
+GeoIP = None
+
+try:
+    import GeoIP
+except ImportError:
+    geoip_found = False
+    pass
 
 import logging
 log = logging.getLogger("graphingwiki")
@@ -64,6 +72,22 @@ class NullHandler(logging.Handler):
     def emit(self, record):
         pass
 log.addHandler(NullHandler())
+
+def url_escape(text):
+    # Escape characters that break links in html values fields, 
+    # macros and urls with parameters
+    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
+
+def url_unescape(text):
+    return re.sub(r"%([0-9a-f]{2})", lambda mo: chr(int(mo.group(1), 16)), text)
+
+def id_escape(text):
+    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
+    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
+
+def id_unescape(text):
+    chr_re = re.compile('_([0-9a-f]{2})_')
+    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
 # Some XML output helpers
 def xml_document(top):

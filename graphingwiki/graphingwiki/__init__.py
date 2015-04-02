@@ -23,7 +23,7 @@ import socket
 import xmlrpclib
 from cStringIO import StringIO
 
-SEPARATOR = '-gwikiseparator-'
+from graphingwiki.savegraphdata import execute as graphsaver
 
 def RequestCLI(pagename='', parse=True):
     """
@@ -53,22 +53,6 @@ def actionname(request, pagename=None):
         return request.page.url(request)
     else:
         return Page(request, pagename).url(request)
-
-def url_escape(text):
-    # Escape characters that break links in html values fields, 
-    # macros and urls with parameters
-    return re.sub('[\]"\?#&+]', lambda mo: '%%%02x' % ord(mo.group()), text)
-
-def url_unescape(text):
-    return re.sub(r"%([0-9a-f]{2})", lambda mo: chr(int(mo.group(1), 16)), text)
-
-def id_escape(text):
-    chr_re = re.compile('[^a-zA-Z0-9-_:.]')
-    return chr_re.sub(lambda mo: '_%02x_' % ord(mo.group()), text)
-
-def id_unescape(text):
-    chr_re = re.compile('_([0-9a-f]{2})_')
-    return chr_re.sub(lambda mo: chr(int(mo.group(1), 16)), text)
 
 def values_to_form(values):
     # Form keys are not unicode for some reason
@@ -133,15 +117,6 @@ try:
     import cairo
 except ImportError:
     cairo_found = False
-    pass
-
-geoip_found = True
-GeoIP = None
-
-try:
-    import GeoIP
-except ImportError:
-    geoip_found = False
     pass
 
 # HTTP Auth support to wikisync:
@@ -297,24 +272,11 @@ def graphdata_commit(self, *args):
     if graphdata is not None:
         graphdata.commit()
 
-def _get_save_plugin(self):
-    # Save to graph file if plugin available.
-    try:
-        graphsaver = importPlugin(self.request.cfg, "action", "savegraphdata")
-    except PluginMissingError:
-        return
-
-    return graphsaver
 
 ## TODO: Hook PageEditor.sendEditor to add data on template to the
 ## text of the saved page?
 
 def graphdata_save(self, result, _):
-    graphsaver = _get_save_plugin(self)
-
-    if not graphsaver:
-        return
-
     path = underlay_to_pages(self.request, self)
     text = self.get_raw_body()
 
@@ -322,10 +284,6 @@ def graphdata_save(self, result, _):
 
 def graphdata_copy(self, result, (args, _)):
     newpagename = args[0]
-    graphsaver = _get_save_plugin(self)
-
-    if not graphsaver:
-        return
 
     text = self.get_raw_body()
     path = underlay_to_pages(self.request, self)
@@ -336,7 +294,6 @@ def graphdata_rename(self, (success, msg), _):
     if not success:
         return
 
-    graphsaver = _get_save_plugin(self)
     path = underlay_to_pages(self.request, self)
 
     # Rename is really filesystem-level rename, no old data is really

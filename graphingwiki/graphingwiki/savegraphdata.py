@@ -26,6 +26,8 @@
     DEALINGS IN THE SOFTWARE.
 
 """
+import re
+
 from time import time
 
 # MoinMoin imports
@@ -36,8 +38,82 @@ from MoinMoin.wikiutil import AbsPageName
 from MoinMoin import config
 
 # graphlib imports
-from graphingwiki.util import node_type, SPECIAL_ATTRS, NO_TYPE, delete_moin_caches
-from graphingwiki.editing import parse_categories
+from graphingwiki.util import (node_type, SPECIAL_ATTRS, NO_TYPE, 
+                               delete_moin_caches, filter_categories)
+
+def parse_categories(request, text):
+    r"""
+    Parse category names from the page. Return a list of parsed categories,
+    list of the preceding text lines and a list of the lines with categories.
+
+    >>> from graphingwiki.tests import doctest_request
+    >>> request = doctest_request()
+    >>> parse_categories(request, "CategoryTest")
+    (['CategoryTest'], [], ['CategoryTest'])
+
+    Take into account only the categories that come after all other text
+    (excluding whitespaces):
+
+    >>> parse_categories(request, "Blah\nCategoryNot blah\nCategoryTest\n")
+    (['CategoryTest'], ['Blah', 'CategoryNot blah'], ['CategoryTest', ''])
+
+    The line lists are returned in a way that the original text can be
+    easily reconstructed from them.
+
+    >>> original_text = "Blah\nCategoryNot blah\n--------\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> tail[0] == "--------"
+    True
+    >>> "\n".join(head + tail) == original_text
+    True
+
+    >>> original_text = "Blah\nCategoryNot blah\nCategoryTest\n"
+    >>> _, head, tail = parse_categories(request, original_text)
+    >>> "\n".join(head + tail) == original_text
+    True
+
+    Regression test, bug #540: Pages with only categories (or whitespaces) 
+    on several lines don't get parsed correctly:
+
+    >>> parse_categories(request, "\nCategoryTest")
+    (['CategoryTest'], [''], ['CategoryTest'])
+    """
+
+    other_lines = text.splitlines()
+    if text.endswith("\n"):
+        other_lines.append("")
+
+    categories = list()
+    category_lines = list()
+    unknown_lines = list()
+
+    # Start looking at lines from the end to the beginning
+    while other_lines:
+        if not other_lines[-1].strip() or other_lines[-1].startswith("##"):
+            unknown_lines.insert(0, other_lines.pop())
+            continue
+
+        # TODO: this code is broken, will not work for extended links
+        # categories, e.g ["category hebrew"]
+        candidates = other_lines[-1].split()
+        confirmed = filter_categories(request, candidates)
+
+        # A category line is defined as a line that contains only categories
+        if len(confirmed) < len(candidates):
+            # The line was not a category line
+            break
+
+        categories.extend(confirmed)
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+        unknown_lines = list()
+
+    if other_lines and re.match("^\s*-{4,}\s*$", other_lines[-1]):
+        category_lines[:0] = unknown_lines
+        category_lines.insert(0, other_lines.pop())
+    else:
+        other_lines.extend(unknown_lines)
+    return categories, other_lines, category_lines
 
 
 def parse_text(request, page, text):
@@ -549,3 +625,10 @@ class LinkCollectingPage(Page):
         kw['format_args'] = format_args
         kw['do_cache'] = 0
         apply(Page.send_page_content, (self, request, self.parser, body), kw)
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()

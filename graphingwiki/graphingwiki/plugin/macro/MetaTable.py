@@ -32,10 +32,9 @@ from urllib import quote
 
 from MoinMoin.Page import Page
 
-from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas, \
     get_properties, PROPERTIES, add_matching_redirs
-from graphingwiki.util import format_wikitext, form_writer
+from graphingwiki.util import format_wikitext, form_writer, url_escape
 
 try:
     import simplejson as json
