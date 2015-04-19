@@ -140,7 +140,7 @@ class GraphData(GraphDataBase):
             pagedoc = self.getpagedoc(pagename)
         except KeyError:
             pagedoc = self.pagemeta_class(pagename=pagename, out={}, meta={},
-                                          mtime=0, saved=0, acl=u'')
+                                          mtime=0, saved=SAVED_NONE, acl=u'')
             self.savepage(pagedoc)
 
         return pagedoc
@@ -170,7 +170,7 @@ class GraphData(GraphDataBase):
         try:
             pagedoc = self.getpagedoc(pagename)
         except KeyError:
-            return 0
+            return SAVED_NONE
         else:
             return pagedoc.saved
 
@@ -184,7 +184,7 @@ class GraphData(GraphDataBase):
     def clear_page(self, pagename):
         if self.get_in(pagename):
             pagedoc = self.getpagedoc(pagename)
-            pagedoc.saved = 0
+            pagedoc.saved = SAVED_NONE
             pagedoc.out.clear()
             pagedoc.meta.clear()
             self.savepage(pagedoc)

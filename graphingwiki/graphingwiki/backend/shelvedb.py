@@ -15,7 +15,7 @@ import fcntl
 import os
 
 from graphingwiki.backend.basedb import GraphDataBase
-from graphingwiki.util import encode_page, decode_page, log
+from graphingwiki.util import encode_page, decode_page, log, SAVED_NONE
 
 from time import time, sleep
 
@@ -148,7 +148,7 @@ class GraphData(GraphDataBase):
         self.cache.pop(page, None)
 
     def is_saved(self, pagename):
-        return self.getpage(pagename).get('saved', 0)
+        return self.getpage(pagename).get('saved', SAVED_NONE)
 
     def get_out(self, pagename):
         return self.getpage(pagename).get(u'out', {})
@@ -225,7 +225,7 @@ class GraphData(GraphDataBase):
     def clear_page(self, pagename):
         if self.get_in(pagename):
             pagedata = self.getpage(pagename)
-            pagedata[u'saved'] = 0
+            pagedata[u'saved'] = SAVED_NONE
             pagedata[u'meta'] = dict()
             pagedata[u'out'] = dict()
             self.savepage(pagename, pagedata)

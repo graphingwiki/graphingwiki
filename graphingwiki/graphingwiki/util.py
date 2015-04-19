@@ -55,6 +55,10 @@ from graphingwiki.graph import Graph
 MOIN_VERSION = float('.'.join(MoinVersion.release.split('.')[:2]))
 SEPARATOR = '-gwikiseparator-'
 
+SAVED_PAGE = 2
+SAVED_LAZY = 1
+SAVED_NONE = 0
+
 geoip_found = True
 GeoIP = None
 

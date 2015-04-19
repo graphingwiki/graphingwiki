@@ -37,9 +37,9 @@ from MoinMoin.Page import Page
 from MoinMoin.wikiutil import AbsPageName
 from MoinMoin import config
 
-# graphlib imports
-from graphingwiki.util import (node_type, SPECIAL_ATTRS, NO_TYPE, 
-                               delete_moin_caches, filter_categories)
+# gwiki imports
+from graphingwiki.util import (node_type, SPECIAL_ATTRS, SAVED_PAGE, SAVED_NONE,
+                               NO_TYPE, delete_moin_caches, filter_categories)
 
 def parse_categories(request, text):
     r"""
@@ -522,12 +522,12 @@ def _clear_page(request, pagename):
     if not request.graphdata[pagename].get('in', {}):
         del request.graphdata[pagename]
     else:
-        request.graphdata[pagename][u'saved'] = 0
+        request.graphdata[pagename][u'saved'] = SAVED_NONE
         del request.graphdata[pagename][u'mtime']
         del request.graphdata[pagename][u'acl']
         del request.graphdata[pagename][u'meta']
 
-def execute(pagename, request, text, pageitem, saved=2):
+def execute(pagename, request, text, pageitem, saved=SAVED_PAGE):
     # saved: 2 for normal pages, 1 for lazy, 0 for not saved at all
     try:
         return execute2(pagename, request, text, pageitem, saved)

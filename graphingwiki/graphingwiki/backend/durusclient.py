@@ -7,15 +7,14 @@ from durus.persistent_list import PersistentList
 from durus.btree import BTree as DurusBTree
 from durus.persistent import Persistent
 
-from graphingwiki.util import log
-
+from graphingwiki.util import log, SAVED_NONE
 
 class PageMeta(Persistent):
     def __init__(self):
         self.outlinks = Metas()
         self.unlinks = Metas()
         self.mtime = 0
-        self.saved = 0
+        self.saved = SAVED_NONE
         self.acl = u''
 
     def asdict(self):

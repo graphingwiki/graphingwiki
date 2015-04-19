@@ -27,7 +27,7 @@ from MoinMoin import caching
 from MoinMoin.wikiutil import importPlugin, AbsPageName
 
 from graphingwiki.util import filter_categories
-from graphingwiki.util import SPECIAL_ATTRS, editable_p
+from graphingwiki.util import SPECIAL_ATTRS, SAVED_LAZY, editable_p
 from graphingwiki.util import category_regex, template_regex
 from graphingwiki.savegraphdata import parse_text, parse_categories, execute
 from graphingwiki.tests import doctest_request
@@ -525,7 +525,7 @@ def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
             return request.getText('Unchanged')
         text = replace_metas(request, '', {}, oldmeta)
         text = replace_metas(request, text, oldmeta, newmeta)
-        msg = execute(pagename, request, text, page)
+        msg = execute(pagename, request, text, page, saved=SAVED_LAZY)
         return request.getText(
             "Thank you for your changes. Your attention to detail is appreciated.")
 
@@ -1042,8 +1042,8 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
         # to get the metakeys that are not changed with this call from
         # the backend
         if lazypage:
-            _, keys, _ = metatable_parseargs(request, page, 
-                                             get_all_keys=True, checkAccess=False)
+            _, keys, _ = metatable_parseargs(request, page,
+                                             get_all_keys=True)
             metakeys = set(metakeys) | set(keys)
 
         old = get_metas(request, page, metakeys, 
