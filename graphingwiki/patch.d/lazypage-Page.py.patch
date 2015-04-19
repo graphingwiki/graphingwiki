@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-02 12:24:28.252446341 +0300
++++ ./MoinMoin/Page.py	2015-04-20 00:13:25.440200977 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -10,79 +10,76 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
-@@ -218,6 +217,32 @@ class Page(object):
+@@ -218,6 +218,25 @@ class Page(object):
                      # return empty text (note that we never store empty pages,
                      # so this is detectable and also safe when passed to a
                      # function expecting a string)
 +                    if self.exists():
 +                        from graphingwiki.editing import (metatable_parseargs, get_metas, 
 +                                                          replace_metas)
-+                        # FIXME: checkAccess?
 +                        _, metakeys, _ = metatable_parseargs(self.request, self.page_name,
-+                                                             get_all_keys=True)
-+                        pagemeta = get_metas(self.request, self.page_name, metakeys)
++                                                             get_all_keys=True, checkAccess=False)
++                        pagemeta = get_metas(self.request, self.page_name, metakeys, checkAccess=False)
 +                        template = pagemeta.get('gwikitemplate', [''])[0]
 +                        if template:
 +                            template_page = wikiutil.unquoteWikiname(template)
 +                            if self.request.user.may.read(template_page):
 +                                temp_body = Page(self.request, template_page).get_raw_body()
 +                                _, metakeys, _ = metatable_parseargs(self.request, template_page,
-+                                                                     get_all_keys=True,
-+                                                                     checkAccess=False)
++                                                                     get_all_keys=True)
 +                                temp_meta = get_metas(self.request, template_page, metakeys)
-+                                # actual meta keys are a combination
-+                                # of template meta and page meta
-+                                # FIXME: add vs set
-+                                newmeta = {}
-+                                for key in temp_meta:
-+                                    newmeta[key] = temp_meta[key]
-+                                for key in pagemeta:
-+                                    newmeta.setdefault(key, list()).extend(pagemeta[key])
-+                                text = replace_metas(self.request, temp_body, temp_meta, newmeta)
-+                                return text
++                        else:
++                            temp_body = ''
++                            temp_meta = dict()
++                        text = replace_metas(self.request, temp_body, temp_meta, pagemeta)
++                        return text
                      return u""
                  else:
                      raise
-@@ -599,7 +624,14 @@ class Page(object):
+@@ -597,9 +616,15 @@ class Page(object):
+         """ Can this page be changed?
+ 
          @rtype: bool
-         @return: true, if this page is writable or does not exist
+-        @return: true, if this page is writable or does not exist
++        @return: true, if this page is in the backend, writable or does not exist
          """
 -        return os.access(self._text_filename(), os.W_OK) or not self.exists()
-+        if not os.access(self._text_filename(), os.W_OK):
-+            if self.exists():
-+                if self._in_backend():
-+                    return True
-+                return False
-+        elif self.exists():
++        if self._in_backend():
++            return True
++        if os.access(self._text_filename(), os.W_OK):
++            return True
++        if not self.exists():
 +            return True
 +        return False
  
      def isUnderlayPage(self, includeDeleted=True):
          """ Does this page live in the underlay dir?
-@@ -626,6 +658,11 @@ class Page(object):
+@@ -626,7 +651,12 @@ class Page(object):
          """
          return self.exists(domain='standard', includeDeleted=includeDeleted)
  
+-    def exists(self, rev=0, domain=None, includeDeleted=False):
 +    def _in_backend(self):
 +        if self.page_name in self.request.graphdata:
-+            return self.request.graphdata.getpage(self.page_name).get(u'saved')
++            return self.request.graphdata.getpage(self.page_name).get(u'saved') != 0
 +        return False
 +
-     def exists(self, rev=0, domain=None, includeDeleted=False):
++    def exists(self, rev=0, domain=None, includeDeleted=False, includeBackend=True):
          """ Does this page exist?
  
-@@ -644,6 +681,10 @@ class Page(object):
+         This is the lower level method for checking page existence. Use
+@@ -644,6 +674,10 @@ class Page(object):
          if domain == 'underlay' and not self.request.cfg.data_underlay_dir:
              return False
  
 +        # If it's in the backend, it exists
-+        if self._in_backend():
++        if includeBackend and self._in_backend():
 +            return True
 +
          if includeDeleted:
              # Look for page directory, ignore page state
              if domain is None:
-@@ -1090,7 +1131,11 @@ class Page(object):
+@@ -1090,7 +1124,11 @@ class Page(object):
              # to ensure cacheability where supported. Because we are sending
              # RAW (file) content, the file mtime is correct as Last-Modified header.
              request.status_code = 200
@@ -95,3 +92,21 @@
              text = self.encodeTextMimeType(self.body)
              #request.headers['Content-Length'] = len(text)  # XXX WRONG! text is unicode obj, but we send utf-8!
              if content_disposition:
+@@ -1826,7 +1864,7 @@ class RootPage(Page):
+ 
+         return underlay, path
+ 
+-    def getPageList(self, user=None, exists=1, filter=None, include_underlay=True, return_objects=False):
++    def getPageList(self, user=None, exists=1, filter=None, include_underlay=True, return_objects=False, include_backend=True):
+         """ List user readable pages under current page
+ 
+         Currently only request.rootpage is used to list pages, but if we
+@@ -1895,7 +1933,7 @@ class RootPage(Page):
+                     continue
+ 
+                 # Filter deleted pages
+-                if exists and not page.exists():
++                if exists and not page.exists(includeBackend=include_backend):
+                     continue
+ 
+                 # Filter out page user may not read.

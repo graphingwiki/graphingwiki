@@ -207,11 +207,11 @@ def strip_meta(key, val):
 def add_link(new_data, pagename, nodename, linktype):
     edge = [pagename, nodename]
 
-    add_in(new_data, edge, linktype)
+    add_in(new_data, edge, linktype, time())
     add_out(new_data, edge, linktype)
 
 
-def add_in(new_data, (frm, to), linktype):
+def add_in(new_data, (frm, to), linktype, cur_time):
     "Add in-links from current node to local nodes"
 
     if hasattr(new_data, 'add_in'):
@@ -231,7 +231,7 @@ def add_in(new_data, (frm, to), linktype):
         temp[u'in'][linktype].append(frm)
 
     # Notification that the destination has changed
-    temp[u'mtime'] = time()
+    temp[u'mtime'] = cur_time
     
     new_data[to] = temp
 
@@ -258,7 +258,7 @@ def add_out(new_data, (frm, to), linktype):
     new_data[frm] = temp
 
 
-def remove_in(new_data, (frm, to), linktype):
+def remove_in(new_data, (frm, to), linktype, cur_time):
     "Remove in-links from local nodes to current node"
 
     if hasattr(new_data, 'remove_in'):
@@ -279,7 +279,7 @@ def remove_in(new_data, (frm, to), linktype):
             temp[u'in'][type].remove(frm)
 
             # Notification that the destination has changed
-            temp[u'mtime'] = time()
+            temp[u'mtime'] = cur_time
 
         if not temp[u'in'][type]:
             del temp[u'in'][type]
@@ -572,7 +572,7 @@ def execute2(pagename, request, text, pageitem, saved):
         for edge in changed_del_in[page]:
             #print 'delin', repr(page), edge
             linktype, src = edge
-            remove_in(request.graphdata, [src, page], [linktype])
+            remove_in(request.graphdata, [src, page], [linktype], cur_time)
 
     for page in changed_new_out:
         for i, edge in enumerate(changed_new_out[page]):
@@ -584,7 +584,7 @@ def execute2(pagename, request, text, pageitem, saved):
         for edge in changed_new_in[page]:
             #print 'addin', repr(page), edge
             linktype, src = edge
-            add_in(request.graphdata, [src, page], linktype)
+            add_in(request.graphdata, [src, page], linktype, cur_time)
 
 
     ## Remove deleted pages from the shelve

@@ -96,7 +96,7 @@ def parse_editform(request, form):
 
         if oldKey:
             oldMetas = get_metas(request, page, [oldKey],
-                                 abs_attach=False, includeGenerated=False)
+                                 abs_attach=False, indirection=False)
             oldValues = oldMetas[oldKey]
 
             oldMeta.setdefault(oldKey, list()).extend(oldValues)

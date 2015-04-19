@@ -424,8 +424,8 @@ def get_metas2(request, rule, keys=None, checkAccess=True):
 
 # Fetch requested metakey value for the given page.
 def get_metas(request, name, metakeys, checkAccess=True, 
-              includeGenerated=True, formatLinks=False, **kw):
-    if not includeGenerated:
+              indirection=True, formatLinks=False, **kw):
+    if not indirection:
         metakeys = [x for x in metakeys if not '->' in x]
 
     metakeys = set(metakeys)
@@ -457,7 +457,7 @@ def get_metas(request, name, metakeys, checkAccess=True,
     for key in loadedOuts:
         loadedOutsIndir.setdefault(key, set()).update(loadedOuts[key])
 
-    if includeGenerated:
+    if indirection:
         # Handle inlinks separately
         if 'gwikiinlinks' in metakeys:
             inLinks = inlinks_key(request, loadedPage, checkAccess=checkAccess)
@@ -523,7 +523,10 @@ def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
     if lazypage:
         if oldmeta == newmeta:
             return request.getText('Unchanged')
-        text = replace_metas(request, '', {}, oldmeta)
+        if newmeta[TEMPLATE_KEY]:
+            text = Page(request, newmeta[TEMPLATE_KEY][0]).get_raw_body()
+        else:
+            text = replace_metas(request, '', {}, oldmeta)
         text = replace_metas(request, text, oldmeta, newmeta)
         msg = execute(pagename, request, text, page, saved=SAVED_LAZY)
         return request.getText(
@@ -1016,7 +1019,10 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
         pageCleared = cleared.get(page, set())
         pageDiscarded = discarded.get(page, dict())
         pageAdded = added.get(page, dict())
-        
+
+        template = ''
+        oldpage = page
+
         # Template clears might make sense at some point, not implemented
         if TEMPLATE_KEY in pageCleared:
             pageCleared.remove(TEMPLATE_KEY)
@@ -1025,11 +1031,10 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
             del pageDiscarded[TEMPLATE_KEY]
         # Save templates for empty pages
         if TEMPLATE_KEY in pageAdded:
-            # In lazy pages, just add template meta, metas in
-            # templates are added when pages are frozen
-            # FIXME: set vs add and template metas?
+            template = pageAdded[TEMPLATE_KEY]
             if not lazypage:
-                save_template(request, page, ''.join(pageAdded[TEMPLATE_KEY]))
+                save_template(request, page,
+                              ''.join(pageAdded[TEMPLATE_KEY]))
                 del pageAdded[TEMPLATE_KEY]
             else:
                 pageAdded[TEMPLATE_KEY] = [pageAdded[TEMPLATE_KEY]]
@@ -1038,16 +1043,19 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
         # Filter out uneditables, such as inlinks
         metakeys = editable_p(metakeys)
 
-        # Lazy pages do not have any page text, which is why we need
-        # to get the metakeys that are not changed with this call from
-        # the backend
+        # Grab the keys for the old metadata versions for lazy
+        # pages. For yet unsaved lazy pages, the old metadata is in
+        # the specified template.
         if lazypage:
-            _, keys, _ = metatable_parseargs(request, page,
-                                             get_all_keys=True)
-            metakeys = set(metakeys) | set(keys)
+            if not request.graphdata.is_saved(page):
+                oldpage = template
+            _, lazykeys, _ = metatable_parseargs(request, oldpage,
+                                                 get_all_keys=True)
+            metakeys = set(metakeys) | set(lazykeys)
 
-        old = get_metas(request, page, metakeys, 
-                        checkAccess=False, includeGenerated=False)
+        # FIXME: remove checkAccess after ACL revamp
+        old = get_metas(request, oldpage, metakeys, 
+                        checkAccess=False, indirection=False)
 
         new = dict()
         for key in old:
@@ -1542,9 +1550,10 @@ def _order_pagelist(request, pagelist, orderspec):
 
     return pagelist
 
-
+# FIXME: remove checkAccess after ACL revamp
 def metatable_parseargs(request, args,
                         get_all_keys=False,
+                        checkAccess=True,
                         parsefunc=_metatable_parseargs):
     if not args:
         # If called from a macro such as MetaTable,
@@ -1582,8 +1591,10 @@ def metatable_parseargs(request, args,
 
     # Only return saved pages
     filtered_pages = filter(request.graphdata.is_saved, filtered_pages)
-    # Only return pages that can be read by the current user
-    filtered_pages = filter(request.user.may.read, filtered_pages)
+    # FIXME: remove checkAccess after ACL revamp
+    if checkAccess:
+        # Only return pages that can be read by the current user
+        filtered_pages = filter(request.user.may.read, filtered_pages)
 
     keyspec, excluded_keys, indirection_keys = keys
     # Either list all metakeys, or just the ones specified
