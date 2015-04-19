@@ -94,7 +94,7 @@ class GraphData(GraphDataBase):
             out = couchdb.mapping.DictField()
             meta = couchdb.mapping.DictField()
             mtime = couchdb.mapping.FloatField()
-            saved = couchdb.mapping.BooleanField()
+            saved = couchdb.mapping.FloatField()
             acl = couchdb.mapping.TextField()
 
             by_pagename = couchdb.mapping.ViewField(dbname,
@@ -140,7 +140,7 @@ class GraphData(GraphDataBase):
             pagedoc = self.getpagedoc(pagename)
         except KeyError:
             pagedoc = self.pagemeta_class(pagename=pagename, out={}, meta={},
-                               mtime=0, saved=True, acl=u'')
+                                          mtime=0, saved=0, acl=u'')
             self.savepage(pagedoc)
 
         return pagedoc
@@ -170,7 +170,7 @@ class GraphData(GraphDataBase):
         try:
             pagedoc = self.getpagedoc(pagename)
         except KeyError:
-            return True
+            return 0
         else:
             return pagedoc.saved
 
@@ -184,7 +184,7 @@ class GraphData(GraphDataBase):
     def clear_page(self, pagename):
         if self.get_in(pagename):
             pagedoc = self.getpagedoc(pagename)
-            pagedoc.saved = False
+            pagedoc.saved = 0
             pagedoc.out.clear()
             pagedoc.meta.clear()
             self.savepage(pagedoc)

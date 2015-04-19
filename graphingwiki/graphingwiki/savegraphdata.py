@@ -522,19 +522,20 @@ def _clear_page(request, pagename):
     if not request.graphdata[pagename].get('in', {}):
         del request.graphdata[pagename]
     else:
-        request.graphdata[pagename][u'saved'] = False
+        request.graphdata[pagename][u'saved'] = 0
         del request.graphdata[pagename][u'mtime']
         del request.graphdata[pagename][u'acl']
         del request.graphdata[pagename][u'meta']
 
-def execute(pagename, request, text, pageitem):
+def execute(pagename, request, text, pageitem, saved=2):
+    # saved: 2 for normal pages, 1 for lazy, 0 for not saved at all
     try:
-        return execute2(pagename, request, text, pageitem)
+        return execute2(pagename, request, text, pageitem, saved)
     except:
         request.graphdata.abort()
         raise
 
-def execute2(pagename, request, text, pageitem):
+def execute2(pagename, request, text, pageitem, saved):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
@@ -558,7 +559,7 @@ def execute2(pagename, request, text, pageitem):
     request.graphdata.set_page_meta_and_acl_and_mtime_and_saved(pagename,
                                                                 new_data.get(pagename, dict()).get(u'meta', dict()),
                                                                 new_data.get(pagename, dict()).get(u'acl', ''),
-                                                                cur_time, True)
+                                                                cur_time, saved)
 
     # Save the links that have truly changed
     for page in changed_del_out:

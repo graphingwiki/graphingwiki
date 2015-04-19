@@ -15,7 +15,7 @@ class PageMeta(Persistent):
         self.outlinks = Metas()
         self.unlinks = Metas()
         self.mtime = 0
-        self.saved = True
+        self.saved = 0
         self.acl = u''
 
     def asdict(self):

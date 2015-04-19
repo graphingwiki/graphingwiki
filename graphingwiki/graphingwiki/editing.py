@@ -482,17 +482,6 @@ def get_metas(request, name, metakeys, checkAccess=True,
             
     return pageMeta
 
-def get_pages(request):
-    def group_filter(name):
-        # aw crap, SystemPagesGroup is not a system page
-        if name == 'SystemPagesGroup':
-            return False
-        if wikiutil.isSystemPage(request, name):
-            return False
-        return request.user.may.read(name)
-
-    return request.rootpage.getPageList(filter=group_filter)
-
 def remove_preformatted(text):
     # Before setting metas, remove preformatted areas
     preformatted_re = re.compile('((^ [^:]+?:: )?({{{[^{]*?}}}))', re.M|re.S)
@@ -533,11 +522,12 @@ def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
 
     if lazypage:
         if oldmeta == newmeta:
-            return u'Unchanged'
+            return request.getText('Unchanged')
         text = replace_metas(request, '', {}, oldmeta)
         text = replace_metas(request, text, oldmeta, newmeta)
         msg = execute(pagename, request, text, page)
-        return "Thank you for your changes. Your attention to detail is appreciated."
+        return request.getText(
+            "Thank you for your changes. Your attention to detail is appreciated.")
 
     text = page.get_raw_body()
     text = replace_metas(request, text, oldmeta, newmeta)

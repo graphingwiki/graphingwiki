@@ -148,7 +148,7 @@ class GraphData(GraphDataBase):
         self.cache.pop(page, None)
 
     def is_saved(self, pagename):
-        return self.getpage(pagename).get('saved', False)
+        return self.getpage(pagename).get('saved', 0)
 
     def get_out(self, pagename):
         return self.getpage(pagename).get(u'out', {})
@@ -225,7 +225,7 @@ class GraphData(GraphDataBase):
     def clear_page(self, pagename):
         if self.get_in(pagename):
             pagedata = self.getpage(pagename)
-            pagedata[u'saved'] = False
+            pagedata[u'saved'] = 0
             pagedata[u'meta'] = dict()
             pagedata[u'out'] = dict()
             self.savepage(pagename, pagedata)
