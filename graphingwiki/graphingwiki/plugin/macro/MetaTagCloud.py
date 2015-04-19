@@ -70,8 +70,7 @@ def execute(macro, args):
 
     pagelist, metakeys, _ = metatable_parseargs(
         macro.request,
-        args,
-        get_all_pages=True
+        args
     )
 
     if not hasattr(request.graphdata, 'keys_on_pages'):

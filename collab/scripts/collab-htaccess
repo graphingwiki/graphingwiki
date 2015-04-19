@@ -91,7 +91,7 @@ import MoinMoin.web.contexts
 from MoinMoin.user import User, getUserList, isValidName
 from MoinMoin.config import multiconfig
 
-from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.editing import get_metas
 from graphingwiki import RequestCLI
 
 def diffandstore(filename, newtext, dryrun=noop):

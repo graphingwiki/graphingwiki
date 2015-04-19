@@ -1204,32 +1204,29 @@ def verify_coordinates(coords):
             try:
                 retval = re.sub(regex, replacement, coords)
                 return retval
-            except:
+            except re.error:
                 pass
 
 def _metatable_parseargs(request, args, cat_re, temp_re):
-
-    # Arg placeholders
-    argset = set([])
+    # Return value placeholders
+    pageargs = set([])
     keyspec = list()
     excluded_keys = list()
     orderspec = list()
     limitregexps = dict()
     limitops = dict()
 
-    # Capacity for storing indirection keys in metadata comparisons
-    # and regexps, eg. k->c=/.+/
+    # indirection keys in metadata comparisons and regexps,
+    # eg. k->c=/.+/
     indirection_keys = list()
 
-    # list styles
+    # Column display styles for MetaTable
     styles = dict()
 
-    # Flag: were there page arguments?
-    pageargs = False
-
-    # Regex preprocessing
+    # Main argument handling loop
     for arg in (x.strip() for x in args.split(',') if x.strip()):
-        # metadata key spec, move on
+
+        # key list specification
         if arg.startswith('||') and arg.endswith('||'):
             # take order, strip empty ones, look at styles
             for key in arg.split('||'):
@@ -1244,7 +1241,7 @@ def _metatable_parseargs(request, args, cat_re, temp_re):
                     if style:
                         styles[key] = style[0]
 
-                # Grab key exclusions
+                # key exclusions
                 if key.startswith('!'):
                     excluded_keys.append(key.lstrip('!'))
                     continue
@@ -1254,7 +1251,7 @@ def _metatable_parseargs(request, args, cat_re, temp_re):
             continue
 
         op_match = False
-        # Check for Python operator comparisons
+        # Python operator comparisons
         for op in OPERATORS:
             if op in arg:
                 data = arg.rsplit(op)
@@ -1280,15 +1277,13 @@ def _metatable_parseargs(request, args, cat_re, temp_re):
                 limitops.setdefault(key, list()).append((comp, op))
                 op_match = True
 
-            # One of the operators matched, no need to go forward
+            # One of the operators matched, process next arg
             if op_match:
                 break
-
-        # One of the operators matched, process next arg
         if op_match:
             continue
 
-        # Metadata regexp, move on
+        # Metadata regex
         if '=' in arg:
             data = arg.split("=")
             key = data[0]
@@ -1340,28 +1335,23 @@ def _metatable_parseargs(request, args, cat_re, temp_re):
                                                re.IGNORECASE | re.UNICODE))
             continue
 
-        # order spec
+        # pagelist order specification
         if arg.startswith('>>') or arg.startswith('<<'):
             # eg. [('<<', 'koo'), ('>>', 'kk')]
             orderspec = re.findall('(?:(<<|>>)([^<>]+))', arg)
             continue
 
-        # Ok, we have a page arg, i.e. a page or page regexp in args
-        pageargs = True
-
-        # Normal pages, check perms, encode and move on
+        # Normal page
         if not regexp_re.match(arg):
             # Fix relative links
             if (arg.startswith('/') or arg.startswith('./') or
                 arg.startswith('../')):
                 arg = wikiutil.AbsPageName(request.page.page_name, arg)
 
-            argset.add(arg)
+            pageargs.add(arg)
             continue
 
-        # Ok, it's a page regexp
-
-        # if there's something wrong with the regexp, ignore it and move on
+        # Page regex
         try:
             arg = arg[1:-1]
             # Fix relative links
@@ -1370,47 +1360,28 @@ def _metatable_parseargs(request, args, cat_re, temp_re):
                 arg = wikiutil.AbsPageName(request.page.page_name, arg)
 
             page_re = re.compile("%s" % arg)
-        except:
+        except re.error:
+            # If there's something wrong with the regex, ignore
+            # it. FIXME: Might be more useful to display errors to the
+            # user?
             continue
 
-        # Get all pages, check which of them match to the supplied regexp
+        # Check which pages match to the supplied regexp
         for page in request.graphdata:
             if page_re.match(page):
-                argset.add(page)
+                pageargs.add(page)
 
-    return (argset, pageargs, keyspec, excluded_keys, orderspec, 
-            limitregexps, limitops, indirection_keys, styles)
+    return (pageargs, (keyspec, excluded_keys, indirection_keys), 
+            (limitregexps, limitops), orderspec, styles)
 
-def metatable_parseargs(request, args,
-                        get_all_keys=False,
-                        get_all_pages=False,
-                        checkAccess=True,
-                        include_unsaved=False,
-                        parsefunc=_metatable_parseargs):
-    if not args:
-        # If called from a macro such as MetaTable,
-        # default to getting the current page
-        req_page = request.page
-        if get_all_pages or req_page is None or req_page.page_name is None:
-            args = ""
-        else:
-            args = req_page.page_name
-
-    # Category, Template matching regexps
-    cat_re = category_regex(request)
-    temp_re = template_regex(request)
-
-    argset, pageargs, keyspec, excluded_keys, orderspec, \
-        limitregexps, limitops, indirection_keys, styles = \
-        parsefunc(request, args, cat_re, temp_re)
-
+def _list_pages(request, pageargs, cat_re, temp_re):
     # If there were no page args, default to all pages
-    if not pageargs and not argset:
+    if not pageargs:
         pages = request.graphdata.pagenames()
     else:
         pages = set()
-        categories = set(filter_categories(request, argset))
-        other = argset - categories
+        categories = set(filter_categories(request, pageargs))
+        other = pageargs - categories
 
         for arg in categories:
             newpages = request.graphdata.get_in(arg).get(CATEGORY_KEY, list())
@@ -1423,98 +1394,82 @@ def metatable_parseargs(request, args,
 
         pages.update(other)
 
-    pagelist = set()
-    for page in pages:
-        clear = True
-        # Filter by regexps (if any)
-        if limitregexps:
-            # We're sure we have access to read the page, don't check again
-            metas = get_metas(request, page, limitregexps, checkAccess=False)
+    return pages
 
-            for key, re_limits in limitregexps.iteritems():
+def _filter_page_by_meta_regex(request, page, regexfilters):
+    # If there are no regexes to match to, success
+    if not regexfilters:
+        return True
 
-                values = metas[key]
-                if not values:
-                    clear = False
+    # We're sure we have access to read the page, don't check again
+    metas = get_metas(request, page, regexfilters.keys(), checkAccess=False)
+
+    for key, re_filters in regexfilters.iteritems():
+        values = metas[key]
+
+        # Fail if value is required by meta regex and none exists
+        if not values:
+            return False
+
+        for re_filter in re_filters:
+            passed_filter = False
+
+            # Iterate all the keys for the value for a match
+            for value in values:
+                if re_filter.search(value):
+                    # A single value matching the regex is enough
+                    passed_filter = True
                     break
 
-                for re_limit in re_limits:
-                    clear = False
+            # Fail if none of the values matched the regex
+            if not passed_filter:
+                return False
 
-                    # Iterate all the keys for the value for a match
-                    for value in values:
-                        if re_limit.search(value):
+    # None of the matches failed, success
+    return True
 
-                            clear = True
-                            # Single match is enough
-                            break
+def _filter_page_by_meta_operator(request, page, opfilters):
+    # If there are no operator comparisons, success
+    if not opfilters:
+        return True
 
-                    # If one of the key's regexps did not match
-                    if not clear:
-                        break
+    # We're sure we have access to read the page, don't check again
+    metas = get_metas(request, page, opfilters.keys(), checkAccess=False)
 
-                # If all of the regexps for a single page did not match
-                if not clear:
+    for key, complist in opfilters.iteritems():
+        values = metas[key]
+
+        for (comp, op) in complist:
+            # Special cases where the lack of values can be considered
+            # a match in operator comparison
+            if not values:
+                # Non-existent values cannot be "not equal"
+                if op == '!=':
+                    continue
+                # The comparison 'key1==' is a supported way of
+                # matching pages that don't have any values for key1
+                elif op == '==' and not comp:
+                    continue
+
+            passed_filter = False
+
+            # Iterate all the keys for the value for a match
+            for value in values:
+                value, comp = ordervalue(value), ordervalue(comp)
+
+                if OPERATORS[op](value, comp):
+                    # A single successful operator comparison is enough
+                    passed_filter = True
                     break
 
-        if not clear:
-            continue
+            # Fail if none of the comparisons were successful
+            if not passed_filter:
+                return False
 
-        if limitops:
-            # We're sure we have access to read the page, don't check again
-            metas = get_metas(request, page, limitops, checkAccess=False)
+    # None of the comparisons failed, success
+    return True
 
-            for key, complist in limitops.iteritems():
-                values = metas[key]
-
-                for (comp, op) in complist:
-                    clear = False
-
-                    # The non-existance of values is good for not
-                    # equal, bad for the other comparisons
-                    if not values:
-                        if op == '!=':
-                            clear = True
-                            continue
-                        elif op == '==' and not comp:
-                            clear = True
-                            continue
-
-                    # Must match any
-                    for value in values:
-                        value, comp = ordervalue(value), ordervalue(comp)
-
-                        if OPERATORS[op](value, comp):
-                            clear = True
-                            break
-
-                    # If one of the comparisons for a single key were not True
-                    if not clear:
-                        break
-
-                # If all of the comparisons for a single page were not True
-                if not clear:
-                    break
-                            
-        # Add page if all the regexps and operators have matched
-        if clear:
-            pagelist.add(page)
-
-    # Filter to saved pages that can be read by the current user
-    def is_saved(name):
-        if include_unsaved:
-            return True
-        return request.graphdata.is_saved(name)
-
-    def can_be_read(name):
-        return request.user.may.read(name)
-
-    # Only give saved pages
-    pagelist = filter(is_saved, pagelist)
-    # Only give pages that can be read by the current user
-    if checkAccess:
-        pagelist = filter(can_be_read, pagelist)
-
+def _list_metakeys(request, keyspec, pagelist, indirection_keys, excluded_keys, get_all_keys):
     metakeys = set([])
     if not keyspec:
         for name in pagelist:
@@ -1539,6 +1494,9 @@ def metatable_parseargs(request, args,
     else:
         metakeys = keyspec
 
+    return metakeys
+
+def _order_pagelist(request, pagelist, orderspec):
     # sorting pagelist
     if not orderspec:
         pagelist = sorted(pagelist, key=ordervalue)
@@ -1582,7 +1540,59 @@ def metatable_parseargs(request, args,
 
         pagelist = sorted(pagelist, cmp=comparison)
 
-    return pagelist, metakeys, styles
+    return pagelist
+
+
+def metatable_parseargs(request, args,
+                        get_all_keys=False,
+                        parsefunc=_metatable_parseargs):
+    if not args:
+        # If called from a macro such as MetaTable,
+        # default to getting the current page
+        req_page = request.page
+        if req_page is None or req_page.page_name is None:
+            args = ""
+        else:
+            args = req_page.page_name
+
+    # Category, Template matching regexps
+    cat_re = category_regex(request)
+    temp_re = template_regex(request)
+
+    pageargs, keys, filters, orderspec, styles = parsefunc(request, args, cat_re, temp_re)
+
+    # List pages according to page arguments (pagename, category, page regex)
+    pages = _list_pages(request, pageargs, cat_re, temp_re)
+
+    filtered_pages = set()
+    regexfilters, opfilters = filters
+    for page in pages:
+        # Filter by meta value regexes, if any
+        passed_filter = _filter_page_by_meta_regex(request, page, regexfilters)
+
+        if not passed_filter:
+            continue
+
+        # Filter by meta value operator comparisons (<, >, == etc), if any
+        passed_filter = _filter_page_by_meta_operator(request, page, opfilters)
+                            
+        # Add page if all the regexps and operators have matched
+        if passed_filter:
+            filtered_pages.add(page)
+
+    # Only return saved pages
+    filtered_pages = filter(request.graphdata.is_saved, filtered_pages)
+    # Only return pages that can be read by the current user
+    filtered_pages = filter(request.user.may.read, filtered_pages)
+
+    keyspec, excluded_keys, indirection_keys = keys
+    # Either list all metakeys, or just the ones specified
+    metakeys = _list_metakeys(request, keyspec, filtered_pages, 
+                              indirection_keys, excluded_keys, get_all_keys)
+    # Order the page list according to order specification
+    filtered_pages = _order_pagelist(request, filtered_pages, orderspec)
+
+    return filtered_pages, metakeys, styles
 
 def check_attachfile(request, pagename, aname):
     # Check that the attach dir exists
