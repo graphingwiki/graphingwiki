@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-20 01:11:52.212257847 +0300
++++ ./MoinMoin/Page.py	2015-04-20 01:28:50.496274361 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -60,8 +60,8 @@
 -    def exists(self, rev=0, domain=None, includeDeleted=False):
 +    def _in_backend(self):
 +        if self.page_name in self.request.graphdata:
-+            return self.request.graphdata.getpage(self.page_name).get(u'saved') != 0
-+        return False
++            return self.request.graphdata.is_saved(self.page_name)
++        return 0
 +
 +    def exists(self, rev=0, domain=None, includeDeleted=False, includeBackend=True):
          """ Does this page exist?
