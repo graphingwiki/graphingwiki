@@ -1053,9 +1053,8 @@ def set_metas(request, cleared, discarded, added, lazypage=False):
                                                  get_all_keys=True)
             metakeys = set(metakeys) | set(lazykeys)
 
-        # FIXME: remove checkAccess after ACL revamp
         old = get_metas(request, oldpage, metakeys, 
-                        checkAccess=False, indirection=False)
+                        indirection=False)
 
         new = dict()
         for key in old:
@@ -1550,10 +1549,8 @@ def _order_pagelist(request, pagelist, orderspec):
 
     return pagelist
 
-# FIXME: remove checkAccess after ACL revamp
 def metatable_parseargs(request, args,
                         get_all_keys=False,
-                        checkAccess=True,
                         parsefunc=_metatable_parseargs):
     if not args:
         # If called from a macro such as MetaTable,
@@ -1591,10 +1588,8 @@ def metatable_parseargs(request, args,
 
     # Only return saved pages
     filtered_pages = filter(request.graphdata.is_saved, filtered_pages)
-    # FIXME: remove checkAccess after ACL revamp
-    if checkAccess:
-        # Only return pages that can be read by the current user
-        filtered_pages = filter(request.user.may.read, filtered_pages)
+    # Only return pages that can be read by the current user
+    filtered_pages = filter(request.user.may.read, filtered_pages)
 
     keyspec, excluded_keys, indirection_keys = keys
     # Either list all metakeys, or just the ones specified

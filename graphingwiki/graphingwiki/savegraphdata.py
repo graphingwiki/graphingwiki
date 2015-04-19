@@ -147,7 +147,7 @@ def parse_text(request, page, text):
             # Add all ACL:s on multiple lines to an one-lines
             acls = new_data.get(pagename, dict()).get('acl', '')
             acls = acls.strip() + args
-            new_data.setdefault(pagename, dict())['acl'] = acls
+            new_data.setdefault(pagename, dict()).setdefault('acl', list()).append(acls)
 
     for metakey, value in p.definitions.iteritems():
         for ltype, item in value:
@@ -558,7 +558,7 @@ def execute2(pagename, request, text, pageitem, saved):
 
     request.graphdata.set_page_meta_and_acl_and_mtime_and_saved(pagename,
                                                                 new_data.get(pagename, dict()).get(u'meta', dict()),
-                                                                new_data.get(pagename, dict()).get(u'acl', ''),
+                                                                new_data.get(pagename, dict()).get(u'acl', []),
                                                                 cur_time, saved)
 
     # Save the links that have truly changed

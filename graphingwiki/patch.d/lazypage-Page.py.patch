@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-20 00:13:25.440200977 +0300
++++ ./MoinMoin/Page.py	2015-04-20 01:11:52.212257847 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -10,7 +10,7 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
-@@ -218,6 +218,25 @@ class Page(object):
+@@ -218,6 +217,24 @@ class Page(object):
                      # return empty text (note that we never store empty pages,
                      # so this is detectable and also safe when passed to a
                      # function expecting a string)
@@ -18,9 +18,11 @@
 +                        from graphingwiki.editing import (metatable_parseargs, get_metas, 
 +                                                          replace_metas)
 +                        _, metakeys, _ = metatable_parseargs(self.request, self.page_name,
-+                                                             get_all_keys=True, checkAccess=False)
++                                                             get_all_keys=True)
 +                        pagemeta = get_metas(self.request, self.page_name, metakeys, checkAccess=False)
 +                        template = pagemeta.get('gwikitemplate', [''])[0]
++                        temp_body = ''
++                        temp_meta = dict()
 +                        if template:
 +                            template_page = wikiutil.unquoteWikiname(template)
 +                            if self.request.user.may.read(template_page):
@@ -28,15 +30,12 @@
 +                                _, metakeys, _ = metatable_parseargs(self.request, template_page,
 +                                                                     get_all_keys=True)
 +                                temp_meta = get_metas(self.request, template_page, metakeys)
-+                        else:
-+                            temp_body = ''
-+                            temp_meta = dict()
 +                        text = replace_metas(self.request, temp_body, temp_meta, pagemeta)
 +                        return text
                      return u""
                  else:
                      raise
-@@ -597,9 +616,15 @@ class Page(object):
+@@ -597,9 +614,15 @@ class Page(object):
          """ Can this page be changed?
  
          @rtype: bool
@@ -54,7 +53,7 @@
  
      def isUnderlayPage(self, includeDeleted=True):
          """ Does this page live in the underlay dir?
-@@ -626,7 +651,12 @@ class Page(object):
+@@ -626,7 +649,12 @@ class Page(object):
          """
          return self.exists(domain='standard', includeDeleted=includeDeleted)
  
@@ -68,7 +67,7 @@
          """ Does this page exist?
  
          This is the lower level method for checking page existence. Use
-@@ -644,6 +674,10 @@ class Page(object):
+@@ -644,6 +672,10 @@ class Page(object):
          if domain == 'underlay' and not self.request.cfg.data_underlay_dir:
              return False
  
@@ -79,7 +78,7 @@
          if includeDeleted:
              # Look for page directory, ignore page state
              if domain is None:
-@@ -1090,7 +1124,11 @@ class Page(object):
+@@ -1090,7 +1122,11 @@ class Page(object):
              # to ensure cacheability where supported. Because we are sending
              # RAW (file) content, the file mtime is correct as Last-Modified header.
              request.status_code = 200
@@ -92,7 +91,27 @@
              text = self.encodeTextMimeType(self.body)
              #request.headers['Content-Length'] = len(text)  # XXX WRONG! text is unicode obj, but we send utf-8!
              if content_disposition:
-@@ -1826,7 +1864,7 @@ class RootPage(Page):
+@@ -1731,13 +1767,17 @@ class Page(object):
+         """
+         from MoinMoin import security
+         if self.exists() and self.rev == 0:
+-            return self.pi['acl']
++            page = self.request.graphdata.getpage(self.page_name)
++            acl = page.get('acl', [])
++            return security.AccessControlList(self.request.cfg, acl)
+         try:
+             lastRevision = self.getRevList()[0]
+         except IndexError:
+             return security.AccessControlList(self.request.cfg)
+         if self.rev == lastRevision:
+-            return self.pi['acl']
++            page = self.request.graphdata.getpage(self.page_name)
++            acl = page.get('acl', [])
++            return security.AccessControlList(self.request.cfg, acl)
+ 
+         return Page(self.request, self.page_name, rev=lastRevision).parseACL()
+ 
+@@ -1826,7 +1866,7 @@ class RootPage(Page):
  
          return underlay, path
  
@@ -101,7 +120,7 @@
          """ List user readable pages under current page
  
          Currently only request.rootpage is used to list pages, but if we
-@@ -1895,7 +1933,7 @@ class RootPage(Page):
+@@ -1895,7 +1935,7 @@ class RootPage(Page):
                      continue
  
                  # Filter deleted pages
