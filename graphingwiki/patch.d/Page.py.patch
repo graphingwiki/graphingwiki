@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-21 06:19:39.597958518 +0300
++++ ./MoinMoin/Page.py	2015-04-21 08:14:52.518070628 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -44,3 +44,16 @@
  
      def size(self, rev=0):
          """ Get Page size.
+@@ -789,6 +788,12 @@ class Page(object):
+         @rtype: string
+         @return: formatted link
+         """
++        # Optimising closing of links
++        if kw.get('on', None) == 0:
++            formatter=getattr(self, 'formatter', None)
++            if formatter:
++                return formatter.url(0, '', None)
++
+         if not text:
+             text = self.split_title()
+         text = wikiutil.escape(text)
