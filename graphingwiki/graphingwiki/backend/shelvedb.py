@@ -213,8 +213,8 @@ class GraphData(GraphDataBase):
         self.readlock()
         return page in self.db
 
-    def set_page_meta_and_acl_and_mtime_and_saved(self, pagename, newmeta,
-                                                  acl, mtime, saved):
+    def set_page_meta_and_info(self, pagename, newmeta,
+                               acl, mtime, saved):
         pagedata = self.getpage(pagename)
         pagedata[u'meta'] = newmeta
         pagedata[u'acl'] = acl

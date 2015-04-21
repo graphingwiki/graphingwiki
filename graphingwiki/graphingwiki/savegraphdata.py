@@ -528,7 +528,6 @@ def _clear_page(request, pagename):
         del request.graphdata[pagename][u'meta']
 
 def execute(pagename, request, text, pageitem, saved=SAVED_PAGE):
-    # saved: 2 for normal pages, 1 for lazy, 0 for not saved at all
     try:
         return execute2(pagename, request, text, pageitem, saved)
     except:
@@ -556,10 +555,11 @@ def execute2(pagename, request, text, pageitem, saved):
     # Insert metas and other stuff from parsed content
     cur_time = time()
 
-    request.graphdata.set_page_meta_and_acl_and_mtime_and_saved(pagename,
-                                                                new_data.get(pagename, dict()).get(u'meta', dict()),
-                                                                new_data.get(pagename, dict()).get(u'acl', []),
-                                                                cur_time, saved)
+    request.graphdata.set_page_meta_and_info(
+        pagename,
+        new_data.get(pagename, dict()).get(u'meta', dict()),
+        new_data.get(pagename, dict()).get(u'acl', []),
+        cur_time, saved)
 
     # Save the links that have truly changed
     for page in changed_del_out:
