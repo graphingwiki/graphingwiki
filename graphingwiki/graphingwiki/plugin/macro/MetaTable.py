@@ -31,6 +31,7 @@ import re
 from urllib import quote
 
 from MoinMoin.Page import Page
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas, \
@@ -79,8 +80,8 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 
-def wrap_span(request, pagename, key, data, id):
-    fdata = format_wikitext(request, data, pagename)
+def wrap_span(request, pageobj, key, data, id, parser=None):
+    fdata = format_wikitext(request, data, parser)
 
     if not key:
         return fdata
@@ -93,7 +94,7 @@ def wrap_span(request, pagename, key, data, id):
     if '->' in key:
         # Get indirection data, the same function get_metas uses
         linkdata = add_matching_redirs(request, request.page, {}, {}, {},
-                                       key, pagename, key)
+                                       key, pageobj.page_name, key)
 
         # Broken link, do not give anything editable as this will not
         # work in any case.
@@ -114,15 +115,16 @@ def wrap_span(request, pagename, key, data, id):
     if data == fdata or header:
         return form_writer(
             u'<span data-page="%s" data-key="%s" data-index="%s">',
-            pagename, key, str(id)) + fdata + '</span>'
+            pageobj.page_name, key, str(id)) + fdata + '</span>'
 
     return form_writer(
         u'<span data-page="%s" data-key="%s" data-value="%s" data-index="%s">',
-        pagename, key, data, str(id)) + fdata + '</span>'
+        pageobj.page_name, key, data, str(id)) + fdata + '</span>'
 
 
-def t_cell(request, pagename, vals, head=0,
-           style=None, rev='', key='', pathstrip=0, linkoverride=''):
+def t_cell(request, pageobj, vals, head=0,
+           style=None, rev='', key='', 
+           pathstrip=0, linkoverride='', parser=None):
     formatter = request.formatter
     out = list()
 
@@ -149,17 +151,17 @@ def t_cell(request, pagename, vals, head=0,
             out.append(formatter.text(',') + formatter.linebreak())
 
         if head:
-            page = Page(request, data)
             if request.user.may.write(data):
                 img = request.theme.make_icon('edit')
                 out.append(formatter.span(1, css_class="meta_editicon"))
-                out.append(page.link_to_raw(request, img,
-                                            querystr={'action': 'edit'},
-                                            rel='nofollow'))
+                out.append(pageobj.link_to_raw(request, img,
+                                               querystr={'action': 'edit'},
+                                               rel='nofollow'))
                 img = request.theme.make_icon('formedit')
-                out.append(page.link_to_raw(request, img,
-                                            querystr={'action': 'MetaFormEdit'},
-                                            rel='nofollow'))
+                out.append(pageobj.link_to_raw(request, img,
+                                               querystr={'action': 
+                                                         'MetaFormEdit'},
+                                               rel='nofollow'))
                 out.append(formatter.span(0))
             kw = dict()
             if rev:
@@ -181,7 +183,8 @@ def t_cell(request, pagename, vals, head=0,
             if cellstyle == 'list':
                 out.append(formatter.listitem(1))
 
-            out.append(wrap_span(request, pagename, key, data, i))
+            out.append(wrap_span(request, pageobj, key, data, 
+                                 i, parser=parser))
 
             if cellstyle == 'list':
                 out.append(formatter.listitem(0))
@@ -189,7 +192,8 @@ def t_cell(request, pagename, vals, head=0,
         first_val = False
 
     if not vals:
-        out.append(wrap_span(request, pagename, key, '', 0))
+        out.append(wrap_span(request, pageobj, key, '', 0,
+                             parser=parser))
 
     if cellstyle == 'list':
         out.append(formatter.bullet_list(1))
@@ -199,7 +203,8 @@ def t_cell(request, pagename, vals, head=0,
 
 
 def construct_table(request, pagelist, metakeys, legend='',
-                    checkAccess=True, styles=dict(), options=dict()):
+                    checkAccess=True, styles=dict(), 
+                    options=dict(), parser=None):
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
@@ -266,22 +271,26 @@ def construct_table(request, pagelist, metakeys, legend='',
         if send_pages:
             # Upper left cell contains table size or has the desired legend
             if legend:
-                out.extend(t_cell(request, pagename, [legend]))
+                out.extend(t_cell(request, pagename, [legend], 
+                                  parser=parser))
             elif limit:
                 message = ["Showing (%s/%s) pages" %
                            (len(pagelist), maxpages)]
 
-                out.extend(t_cell(request, pagename, message))
+                out.extend(t_cell(request, pagename, message,
+                                  parser=parser))
             else:
-                out.extend(t_cell(request, pagename, [legend]))
+                out.extend(t_cell(request, pagename, [legend],
+                                  parser=parser))
 
-    def key_cell(request, metas, key, page,
+    def key_cell(request, metas, key, pageobj,
                  styles, propoverride, propdefault):
         out = list()
         style = styles.get(key, dict())
 
         if key == 'gwikipagename':
-            out.extend(t_cell(request, page, [page], head=1, style=style))
+            out.extend(t_cell(request, pageobj, [pageobj.page_name], 
+                              head=1, style=style, parser=parser))
         else:
             if propoverride:
                 properties = propoverride
@@ -315,7 +324,8 @@ def construct_table(request, pagelist, metakeys, legend='',
             if colormatch:
                 style['bgcolor'] = colormatch
 
-            out.extend(t_cell(request, page, metas[key], style=style, key=key))
+            out.extend(t_cell(request, pageobj, metas[key], 
+                              style=style, key=key, parser=parser))
 
             if colormatch:
                 del style['bgcolor']
@@ -334,13 +344,9 @@ def construct_table(request, pagelist, metakeys, legend='',
 
         return metas, page, revision
 
-    def page_cell(request, page, revision, row, send_pages,
+    def page_cell(request, pageobj, revision, row, send_pages,
                   pagelinkonly, pagepathstrip):
         out = list()
-
-        pageobj = Page(request, page)
-        request.page = pageobj
-        request.formatter.page = pageobj
 
         if row:
             if row % 2:
@@ -355,17 +361,24 @@ def construct_table(request, pagelist, metakeys, legend='',
             linktext = ''
             if pagelinkonly:
                 linktext = _('[link]')
-            out.extend(t_cell(request, page, [page], head=1, rev=revision,
-                              pathstrip=pagepathstrip, linkoverride=linktext))
+            out.extend(t_cell(request, pageobj, [pageobj.page_name], 
+                              head=1, rev=revision, pathstrip=pagepathstrip,
+                              linkoverride=linktext, parser=parser))
 
         return out
+
+    tmp_page = request.page
 
     if transpose:
         for page in pagelist:
             metas, page, revision = page_rev_metas(request, page,
                                                    metakeys, checkAccess)
 
-            out.extend(page_cell(request, page, revision, 0, send_pages,
+            pageobj = Page(request, page)
+            request.page = pageobj
+            request.formatter.page = pageobj
+
+            out.extend(page_cell(request, pageobj, revision, 0, send_pages,
                                  pagelinkonly, pagepathstrip))
     else:
         for key in metakeys:
@@ -384,16 +397,16 @@ def construct_table(request, pagelist, metakeys, legend='',
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, pagename, [name],
-                                  style=headerstyle, key=key))
+                out.extend(t_cell(request, request.page, [name],
+                                  style=headerstyle, key=key,
+                                  parser=parser))
             else:
-                out.extend(t_cell(request, pagename, [key],
-                                  style=headerstyle, key=key))
+                out.extend(t_cell(request, request.page, [key],
+                                  style=headerstyle, key=key,
+                                  parser=parser))
 
     if metakeys:
         out.append(formatter.table_row(0))
-
-    tmp_page = request.page
 
     if transpose:
         emptyprop = dict().fromkeys(PROPERTIES, '')
@@ -413,18 +426,25 @@ def construct_table(request, pagelist, metakeys, legend='',
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, pagename, [name],
-                                  style=headerstyle, key=key))
+                out.extend(t_cell(request, tmp_page, [name],
+                                  style=headerstyle, key=key,
+                                  parser=parser))
             else:
-                out.extend(t_cell(request, pagename, [key],
-                                  style=headerstyle, key=key))
+                out.extend(t_cell(request, tmp_page, [key],
+                                  style=headerstyle, key=key,
+                                  parser=parser))
 
             row = row + 1
 
             for page in pagelist:
                 metas, page, revision = page_rev_metas(request, page,
-                                                       metakeys, checkAccess)
-                out.extend(key_cell(request, metas, key, page,
+                                                       [key], checkAccess)
+
+                pageobj = Page(request, page)
+                request.page = pageobj
+                request.formatter.page = pageobj
+
+                out.extend(key_cell(request, metas, key, pageobj,
                                     styles, propoverride, propdefault))
 
             out.append(formatter.table_row(0))
@@ -435,12 +455,16 @@ def construct_table(request, pagelist, metakeys, legend='',
 
             row = row + 1
 
-            out.extend(page_cell(request, page, revision, row, send_pages,
-                                 pagelinkonly, pagepathstrip))
+            pageobj = Page(request, page)
+            request.page = pageobj
+            request.formatter.page = pageobj
+
+            out.extend(page_cell(request, pageobj, revision, row, 
+                                 send_pages, pagelinkonly, pagepathstrip))
 
             emptyprop = dict().fromkeys(PROPERTIES, '')
             for key in metakeys:
-                out.extend(key_cell(request, metas, key, page,
+                out.extend(key_cell(request, metas, key, pageobj,
                                     styles, propoverride, propdefault))
 
             out.append(formatter.table_row(0))
@@ -467,12 +491,14 @@ def do_macro(request, args, **kw):
         out.append(formatter.linebreak() + u'<div class="metatable">' +
                    formatter.table(1))
         if kw.get('silent'):
-            out.extend(t_cell(request, pagename, ["%s" % _("No matches")]))
+            out.extend(t_cell(request, request.page, ["%s" % _("No matches")]))
         else:
-            out.extend(t_cell(request, pagename,
+            out.extend(t_cell(request, request.page,
                               ["%s '%s'" % (_("No matches for"), args)]))
         out.append(formatter.table(0) + u'</div>')
         return "".join(out)
+
+    parser = Parser('', request)
 
     options = dict({'args': args}.items() + kw.items())
     divfmt = {'class': "metatable", 'data-options': quote(json.dumps(options))}
@@ -480,7 +506,7 @@ def do_macro(request, args, **kw):
     # We're sure the user has the access to the page, so don't check
     out.extend(construct_table(request, pagelist, metakeys,
                                checkAccess=False, styles=styles,
-                               options=options))
+                               options=options, parser=parser))
 
     def action_link(action, linktext, args):
         req_url = request.script_root + "/" + \

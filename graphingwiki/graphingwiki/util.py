@@ -373,17 +373,17 @@ def get_url_ns(request, pagename, link):
     else:
         return '../' * subrank + './%sProperty' % (link)
 
-def format_wikitext(request, data, pagename=None):
-    from MoinMoin.parser.text_moin_wiki import Parser
-
-    if pagename:
-        oldpage = request.page
-        request.page = Page(request, pagename)
-
+def format_wikitext(request, data, parser=None):
     request.page.formatter = request.formatter
     request.formatter.page = request.page
-    parser = Parser(data, request)
+
+    if not parser:
+        from MoinMoin.parser.text_moin_wiki import Parser
+        parser = Parser(data, request)
+    else:
+        parser.raw = data
     parser.request = request
+    parser.formatter = request.formatter
     # No line anchors of any type to table cells
     request.page.formatter.in_p = 1
     parser._line_anchordef = lambda: ''
@@ -395,17 +395,8 @@ def format_wikitext(request, data, pagename=None):
     if '?action=recall' in request.page.page_name:
         parser._macro_repl = lambda x: x
 
-    # Using StringIO in order to strip the output
-    data = StringIO.StringIO()
-    request.redirect(data)
-    # Produces output on a single table cell
-    request.page.format(parser)
-    request.redirect()
-
-    if pagename:
-        request.page = oldpage
-
-    return data.getvalue().strip()
+    out = parser.scan(data, inhibit_p=True)
+    return out.strip()
 
 def wrap_span(request, key, data, id):
     if not key:
