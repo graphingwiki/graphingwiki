@@ -1,6 +1,6 @@
---- ./MoinMoin/parser/text_moin_wiki.py.orig	2014-05-15 12:37:24.000000000 +0300
-+++ ./MoinMoin/parser/text_moin_wiki.py	2014-11-07 16:43:55.210419371 +0200
-@@ -729,8 +729,12 @@ class Parser:
+--- ./MoinMoin/parser/text_moin_wiki.py.orig	2014-10-17 22:45:33.000000000 +0300
++++ ./MoinMoin/parser/text_moin_wiki.py	2015-04-29 14:40:41.284018265 +0300
+@@ -728,8 +728,12 @@ class Parser:
                  if scheme == 'attachment':
                      mt = wikiutil.MimeType(filename=url)
                      if mt.major == 'text':
@@ -15,4 +15,16 @@
                      # destinguishs if browser need a plugin in place
                      elif mt.major == 'image' and mt.minor in config.browser_supported_images:
                          desc = self._transclude_description(desc, url)
-
+@@ -873,9 +877,10 @@ class Parser:
+                     tag_attrs, query_args = self._get_params(params,
+                                                              tag_attrs={},
+                                                              acceptable_attrs=acceptable_attrs)
+-                    return (self.formatter.pagelink(1, abs_page_name, anchor=anchor, querystr=query_args, **tag_attrs) +
++                    page = Page(self.request, abs_page_name, formatter=self.formatter)
++                    return (self.formatter.pagelink(1, abs_page_name, page=page, anchor=anchor, querystr=query_args, **tag_attrs) +
+                             self._link_description(desc, target, page_name_and_anchor) +
+-                            self.formatter.pagelink(0, abs_page_name))
++                            self.formatter.pagelink(0, abs_page_name, page=page))
+                 else: # interwiki link
+                     page_name, anchor = wikiutil.split_anchor(page_name)
+                     tag_attrs, query_args = self._get_params(params,

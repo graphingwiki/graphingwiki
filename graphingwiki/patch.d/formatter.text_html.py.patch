@@ -1,5 +1,5 @@
 --- ./MoinMoin/formatter/text_html.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/formatter/text_html.py	2014-10-20 11:53:32.872284966 +0300
++++ ./MoinMoin/formatter/text_html.py	2015-04-29 14:37:42.472015365 +0300
 @@ -6,12 +6,14 @@
      @license: GNU GPL, see COPYING for details.
  """
@@ -16,7 +16,26 @@
  from MoinMoin.Page import Page
  from MoinMoin.action import AttachFile
  from MoinMoin.support.python_compatibility import set
-@@ -534,14 +536,28 @@
+@@ -474,11 +476,13 @@ class Formatter(FormatterBase):
+             del kw['generated']
+         if page is None:
+             page = Page(self.request, pagename, formatter=self)
+-        if self.request.user.show_nonexist_qm and on and not page.exists():
+-            self.pagelink_preclosed = True
+-            return (page.link_to(self.request, on=1, **kw) +
+-                    self.text("?") +
+-                    page.link_to(self.request, on=0, **kw))
++        if on and not page.exists():
++            kw['css_class'] = 'nonexistent'
++            if self.request.user.show_nonexist_qm:
++                self.pagelink_preclosed = True
++                return (page.link_to(self.request, on=1, **kw) +
++                        self.text("?") +
++                        page.link_to(self.request, on=0, **kw))
+         elif not on and self.pagelink_preclosed:
+             self.pagelink_preclosed = False
+             return ""
+@@ -534,14 +538,28 @@ class Formatter(FormatterBase):
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=1/True parameter, please review caller.")
              else:
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=0/False parameter, please remove it from the caller.")

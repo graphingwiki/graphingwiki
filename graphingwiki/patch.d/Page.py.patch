@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-21 08:14:52.518070628 +0300
++++ ./MoinMoin/Page.py	2015-04-29 14:32:28.428010272 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -44,7 +44,7 @@
  
      def size(self, rev=0):
          """ Get Page size.
-@@ -789,6 +788,12 @@ class Page(object):
+@@ -789,13 +788,20 @@ class Page(object):
          @rtype: string
          @return: formatted link
          """
@@ -57,3 +57,14 @@
          if not text:
              text = self.split_title()
          text = wikiutil.escape(text)
+ 
+-        # Add css class for non existing page
+-        if not self.exists():
+-            kw['css_class'] = 'nonexistent'
++        # Add css class for non existing page (if not done by formatter.pagelink)
++        if not kw.has_key('css_class'):
++            if not self.exists():
++                kw['css_class'] = 'nonexistent'
+ 
+         attachment_indicator = kw.get('attachment_indicator')
+         if attachment_indicator is None:
