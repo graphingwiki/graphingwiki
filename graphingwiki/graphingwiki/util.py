@@ -41,6 +41,7 @@ from xml.sax import saxutils
 
 from MoinMoin.action import cache
 from MoinMoin.formatter.text_html import Formatter as HtmlFormatter
+from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin import version as MoinVersion
 from MoinMoin import caching
 from MoinMoin import config
@@ -315,7 +316,6 @@ _url_re = None
 def get_url_re():
     global _url_re
     if not _url_re:
-        from MoinMoin.parser.text_moin_wiki import Parser
         # Ripped off from Parser
         url_pattern = u'|'.join(config.url_schemas)
         url_rule = ur'%(url_guard)s(%(url)s)\:([^\s\<%(punct)s]|([%(punct)s][^\s\<%(punct)s]))+' % {
@@ -378,11 +378,15 @@ def format_wikitext(request, data, parser=None):
     request.formatter.page = request.page
 
     if not parser:
-        from MoinMoin.parser.text_moin_wiki import Parser
         parser = Parser(data, request)
     else:
         parser.raw = data
     parser.request = request
+
+    # Do not store pagelinks for values in metadata listings
+    plstore = getattr(request.formatter, '_store_pagelinks', 0)
+    request.formatter._store_pagelinks = 0
+
     parser.formatter = request.formatter
     # No line anchors of any type to table cells
     request.page.formatter.in_p = 1
@@ -396,6 +400,8 @@ def format_wikitext(request, data, parser=None):
         parser._macro_repl = lambda x: x
 
     out = parser.scan(data, inhibit_p=True)
+
+    request.formatter._store_pagelinks = plstore
     return out.strip()
 
 def wrap_span(request, key, data, id):
