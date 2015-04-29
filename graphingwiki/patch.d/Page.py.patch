@@ -1,6 +1,6 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2014-10-20 11:58:03.418392494 +0300
-@@ -108,8 +108,7 @@
++++ ./MoinMoin/Page.py	2015-04-21 06:19:39.597958518 +0300
+@@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
          """
@@ -10,3 +10,37 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
+@@ -626,6 +625,11 @@ class Page(object):
+         """
+         return self.exists(domain='standard', includeDeleted=includeDeleted)
+ 
++    def _in_backend(self):
++        if self.page_name in self.request.graphdata:
++            return self.request.graphdata.is_saved(self.page_name)
++        return 0
++
+     def exists(self, rev=0, domain=None, includeDeleted=False):
+         """ Does this page exist?
+ 
+@@ -656,16 +660,11 @@ class Page(object):
+                     return True
+             return False
+         else:
+-            # Look for non-deleted pages only, using get_rev
+-            if not rev and self.rev:
+-                rev = self.rev
+-
+-            if domain is None:
+-                use_underlay = -1
+-            else:
+-                use_underlay = domain == 'underlay'
+-            d, d, exists = self.get_rev(use_underlay, rev)
+-            return exists
++            # If it's in the backend, it exists
++            if self._in_backend():
++                return True
++            elif includeBackend:
++                return False
+ 
+     def size(self, rev=0):
+         """ Get Page size.
