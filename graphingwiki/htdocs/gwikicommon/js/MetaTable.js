@@ -198,6 +198,7 @@ define([
             }
 
             var target = $(event.target),
+                baseUrl = this.options.baseurl,
                 key, index, page, collab, oldValue = "", metas;
 
             if (target.get('tag') == 'td') {
@@ -244,7 +245,7 @@ define([
 
                 onSave: function(value) {
                     new Request.SetMetas2({
-                        url: (collab ? "../" + collab + "/" : "") + page,
+                        url: (collab && baseUrl) ? baseUrl + collab + "/" : "",
                         onComplete: function() {
                             this.refresh([collab]);
                         }.bind(this)
@@ -524,7 +525,7 @@ define([
             };
 
             new Request.JSON({
-                url: page,
+                url: "",
                 method: 'post',
                 data: Object.toQueryString(data),
                 onSuccess: function(response) {
