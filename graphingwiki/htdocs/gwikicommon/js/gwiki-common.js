@@ -212,22 +212,20 @@ require(['config', 'mootools-more'], function(config) {
         // when more than one table is present on the same page.
         if ($$('[id^=dbw.table]').length) {
             require(['mootools-more'], function() {
-                var CustomTable = new Class({
-                    Extends: HtmlTable,
-                    headClick: function(event, el){
-                        var td = event.target.get("tag") === "td" ? event.target : event.target.getParent('td');
-                        //ignore headers that have inputs suchs as submit buttons (breaks diff)
-                        if (td.getElements('input,button').length === 0) {
-                            this.parent(event, el);
-                        }
-                    }
-                });
-
                 $$('[id^=dbw.table]').each(function(table) {
-                    new CustomTable(table, {
+                    var headerRow = table.getElement('tr');
+                    headerRow.getElements('td').each(function(td){
+                        // ignore header cells that have inputs
+                        // such as submit buttons in page history
+                        if (td.getElements('input,button').length  > 0) {
+                            td.addClass('table-th-nosort');
+                        }
+                    });
+
+                    new HtmlTable(table, {
                         sortable: true,
                         thSelector: 'td'
-                    }).setHeaders(table.getElement('tr'))
+                    }).setHeaders(headerRow);
                 });
             });
         }
