@@ -207,11 +207,24 @@ require(['config', 'mootools-more'], function(config) {
             });
         }
 
-        //csv table dynamic sorting (has table with id of dbw.table[-N])
+        // Dynamic sorting for tables, including csv tables and page history table.
+        // These tables have id of dbw.table[-N], where the [-N] part appears
+        // when more than one table is present on the same page.
         if ($$('[id^=dbw.table]').length) {
             require(['mootools-more'], function() {
+                var CustomTable = new Class({
+                    Extends: HtmlTable,
+                    headClick: function(event, el){
+                        var td = event.target.get("tag") === "td" ? event.target : event.target.getParent('td');
+                        //ignore headers that have inputs suchs as submit buttons (breaks diff)
+                        if (td.getElements('input,button').length === 0) {
+                            this.parent(event, el);
+                        }
+                    }
+                });
+
                 $$('[id^=dbw.table]').each(function(table) {
-                    window.ht = new HtmlTable(table, {
+                    new CustomTable(table, {
                         sortable: true,
                         thSelector: 'td'
                     }).setHeaders(table.getElement('tr'))
