@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-04-29 14:32:28.428010272 +0300
++++ ./MoinMoin/Page.py	2015-06-01 12:45:43.507574476 +0300
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -10,18 +10,20 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
-@@ -626,6 +625,11 @@ class Page(object):
+@@ -626,7 +625,12 @@ class Page(object):
          """
          return self.exists(domain='standard', includeDeleted=includeDeleted)
  
+-    def exists(self, rev=0, domain=None, includeDeleted=False):
 +    def _in_backend(self):
 +        if self.page_name in self.request.graphdata:
 +            return self.request.graphdata.is_saved(self.page_name)
 +        return 0
 +
-     def exists(self, rev=0, domain=None, includeDeleted=False):
++    def exists(self, rev=0, domain=None, includeDeleted=False, includeBackend=True):
          """ Does this page exist?
  
+         This is the lower level method for checking page existence. Use
 @@ -656,16 +660,11 @@ class Page(object):
                      return True
              return False
