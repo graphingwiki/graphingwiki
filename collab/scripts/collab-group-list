@@ -7,6 +7,7 @@
 
 import os
 import sys
+import locale
 import errno
 import optparse
 
@@ -31,6 +32,9 @@ def main():
 
     if not (args or opts.all):
         sys.exit(parser.get_usage())
+
+    encoding = locale.getpreferredencoding()
+    args = [unicode(a, encoding) for a in args]
 
     usergroups = dict()
 

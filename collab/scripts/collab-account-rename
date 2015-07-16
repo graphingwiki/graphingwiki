@@ -7,6 +7,7 @@
 
 import os
 import sys
+import locale
 import optparse
 
 from collabbackend.clitools import CollabRequest, listAllCollabs
@@ -24,6 +25,9 @@ def main():
 
     if len(args) != 2:
         sys.exit(parser.get_usage())
+
+    encoding = locale.getpreferredencoding()
+    args = [unicode(a, encoding) for a in args]
 
     old, new = args
 

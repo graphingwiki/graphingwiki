@@ -7,6 +7,7 @@
 
 import os
 import sys
+import locale
 import errno
 import optparse
 
@@ -34,6 +35,9 @@ def main():
 
     if len(args) < 3:
         sys.exit(parser.get_usage())
+
+    encoding = locale.getpreferredencoding()
+    args = [unicode(a, encoding) for a in args]
 
     collab = args[0]
     group = args[1]
