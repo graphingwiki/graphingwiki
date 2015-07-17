@@ -253,10 +253,12 @@ def prepare_message(template, variables, encoding="utf-8"):
     charset.body_encoding = QP
     message.set_charset(charset)
 
-    encode_address_field(message, "from", encoding, charset)
-    encode_address_field(message, "to", encoding, charset)
-    encode_address_field(message, "cc", encoding, charset)
-    encode_address_field(message, "bcc", encoding, charset)
+    for field in ("from", "to", "cc", "bcc"):
+        try:
+            encode_address_field(message, field, encoding, charset)
+        except UnicodeEncodeError as error:
+            raise InviteException("Invalid '{0}' address: {1}".format(field, error))
+
     return message
 
 
