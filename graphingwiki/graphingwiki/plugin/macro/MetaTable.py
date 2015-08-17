@@ -305,7 +305,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             return out
 
         colors = [x.strip() for x in properties
-                  if x.startswith('color')]
+                  if x.startswith('color ')]
         colormatch = None
         # Get first color match
         for color in colors:
@@ -313,7 +313,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             # See that color is valid (either in the colorlist
             # or a valid hex color)
             if colorval not in COLORS:
-                if not re.match('#[0-9a-f]{6}', colorval):
+                if not re.match('#[0-9a-fA-F]{6}', colorval):
                     continue
             color = color.split()[-1]
 
