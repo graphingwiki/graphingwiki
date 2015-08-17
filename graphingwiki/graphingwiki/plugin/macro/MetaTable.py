@@ -224,11 +224,7 @@ def construct_table(request, pagelist, metakeys, legend='',
     if pagepathstrip < 0:
         pagepathstrip = 0
 
-    # To include only a [link] to page instead of pagename
-    pagelinkonly = options.get('pagelinkonly', 0)
-    # Transpose table, i.e. make table lanscape instead of portrait
-    transpose = options.get('transpose', 0)
-
+    ## Properties
     # Default and override properties
     propdefault = options.get('propdefault', '')
     propoverride = options.get('propoverride', '')
@@ -236,6 +232,21 @@ def construct_table(request, pagelist, metakeys, legend='',
         propoverride = get_properties(request, propoverride)
     if propdefault:
         propdefault = get_properties(request, propdefault)
+    # Properties dict per key
+    properties = dict()
+    emptyprop = dict().fromkeys(PROPERTIES, '')
+    for key in metakeys:
+        if propoverride:
+            properties[key] = propoverride
+        else:
+            properties[key] = get_properties(request, key)
+        if properties[key] == emptyprop:
+            properties[key] = propdefault
+
+    # To include only a [link] to page instead of pagename
+    pagelinkonly = options.get('pagelinkonly', 0)
+    # Transpose table, i.e. make table lanscape instead of portrait
+    transpose = options.get('transpose', 0)
 
     # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
@@ -284,53 +295,47 @@ def construct_table(request, pagelist, metakeys, legend='',
                                   parser=parser))
 
     def key_cell(request, metas, key, pageobj,
-                 styles, propoverride, propdefault):
+                 styles, properties):
         out = list()
         style = styles.get(key, dict())
 
         if key == 'gwikipagename':
             out.extend(t_cell(request, pageobj, [pageobj.page_name], 
                               head=1, style=style, parser=parser))
-        else:
-            if propoverride:
-                properties = propoverride
-            else:
-                properties = get_properties(request, key)
-            if properties == emptyprop:
-                properties = propdefault
-
-            colors = [x.strip() for x in properties
-                      if x.startswith('color')]
-            colormatch = None
-            # Get first color match
-            for color in colors:
-                colorval = properties.get(color)
-                # See that color is valid (either in the colorlist
-                # or a valid hex color)
-                if colorval not in COLORS:
-                    if not re.match('#[0-9a-f]{6}', colorval):
-                        continue
-                color = color.split()[-1]
-
-                try:
-                    color_p = re.compile(color)
-                except:
-                    continue
-                for val in metas[key]:
-                    if color_p.match(val):
-                        colormatch = colorval
-                if colormatch:
-                    break
-            if colormatch:
-                style['bgcolor'] = colormatch
-
-            out.extend(t_cell(request, pageobj, metas[key], 
-                              style=style, key=key, parser=parser))
-
-            if colormatch:
-                del style['bgcolor']
-
             return out
+
+        colors = [x.strip() for x in properties
+                  if x.startswith('color')]
+        colormatch = None
+        # Get first color match
+        for color in colors:
+            colorval = properties.get(color)
+            # See that color is valid (either in the colorlist
+            # or a valid hex color)
+            if colorval not in COLORS:
+                if not re.match('#[0-9a-f]{6}', colorval):
+                    continue
+            color = color.split()[-1]
+
+            try:
+                color_p = re.compile(color)
+            except:
+                continue
+            for val in metas[key]:
+                if color_p.match(val):
+                    colormatch = colorval
+            if colormatch:
+                break
+        if colormatch:
+            style['bgcolor'] = colormatch
+
+        out.extend(t_cell(request, pageobj, metas[key], 
+                          style=style, key=key, parser=parser))
+
+        if colormatch:
+            del style['bgcolor']
+
+        return out
 
     def page_rev_metas(request, page, metakeys, checkAccess):
         if '-gwikirevision-' in page:
@@ -409,7 +414,6 @@ def construct_table(request, pagelist, metakeys, legend='',
         out.append(formatter.table_row(0))
 
     if transpose:
-        emptyprop = dict().fromkeys(PROPERTIES, '')
         for key in metakeys:
             style = styles.get(key, dict())
 
@@ -445,7 +449,7 @@ def construct_table(request, pagelist, metakeys, legend='',
                 request.formatter.page = pageobj
 
                 out.extend(key_cell(request, metas, key, pageobj,
-                                    styles, propoverride, propdefault))
+                                    styles, properties[key]))
 
             out.append(formatter.table_row(0))
     else:
@@ -462,10 +466,9 @@ def construct_table(request, pagelist, metakeys, legend='',
             out.extend(page_cell(request, pageobj, revision, row, 
                                  send_pages, pagelinkonly, pagepathstrip))
 
-            emptyprop = dict().fromkeys(PROPERTIES, '')
             for key in metakeys:
                 out.extend(key_cell(request, metas, key, pageobj,
-                                    styles, propoverride, propdefault))
+                                    styles, properties[key]))
 
             out.append(formatter.table_row(0))
 
