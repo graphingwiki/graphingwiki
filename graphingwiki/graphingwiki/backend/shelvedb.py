@@ -13,6 +13,7 @@ import random
 import errno
 import fcntl
 import os
+import glob
 
 from graphingwiki.backend.basedb import GraphDataBase
 from graphingwiki.util import encode_page, decode_page, log, SAVED_NONE
@@ -107,9 +108,7 @@ class GraphData(GraphDataBase):
         else:
             self.shelveopen = shelve.open
 
-        # XXX (falsely) assumes shelve.open creates file with same name;
-        # it happens to work with the bsddb backend.
-        if not os.path.exists(self.graphshelve):
+        if not glob.glob(self.graphshelve + '*'):
             db = self.shelveopen(self.graphshelve, 'c')
             db.close()
 
