@@ -29,7 +29,8 @@ from MoinMoin.wikiutil import importPlugin, AbsPageName
 from graphingwiki.util import filter_categories
 from graphingwiki.util import SPECIAL_ATTRS, SAVED_LAZY, editable_p
 from graphingwiki.util import category_regex, template_regex
-from graphingwiki.savegraphdata import parse_text, parse_categories, execute
+from graphingwiki.savegraphdata import parse_text, parse_categories
+from graphingwiki.savegraphdata import execute as savegraphdata
 from graphingwiki.tests import doctest_request
 
 CATEGORY_KEY = "gwikicategory"
@@ -528,7 +529,7 @@ def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
         else:
             text = replace_metas(request, '', {}, oldmeta)
         text = replace_metas(request, text, oldmeta, newmeta)
-        msg = execute(pagename, request, text, page, saved=SAVED_LAZY)
+        msg = savegraphdata(pagename, request, text, page, saved=SAVED_LAZY)
         return request.getText(
             "Thank you for your changes. Your attention to detail is appreciated.")
 

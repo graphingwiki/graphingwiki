@@ -38,8 +38,9 @@ from MoinMoin.wikiutil import AbsPageName
 from MoinMoin import config
 
 # gwiki imports
-from graphingwiki.util import (node_type, SPECIAL_ATTRS, SAVED_PAGE, SAVED_NONE,
-                               NO_TYPE, delete_moin_caches, filter_categories)
+from graphingwiki.util import (node_type, SPECIAL_ATTRS, SAVED_PAGE,
+                               SAVED_LAZY, SAVED_NONE, NO_TYPE,
+                               delete_moin_caches, filter_categories)
 
 def parse_categories(request, text):
     r"""
@@ -602,7 +603,8 @@ def execute2(pagename, request, text, pageitem, saved):
             if not exists:
                 _clear_page(request, pagename)
     
-    delete_moin_caches(request, pageitem)
+    if saved != SAVED_LAZY:
+        delete_moin_caches(request, pageitem)
     request.graphdata.post_save(pagename)
 
 # - code below lifted from MetaFormEdit -
