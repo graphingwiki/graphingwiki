@@ -1,0 +1,42 @@
+/*
+    screen.css - Synopsys branded bootstrap theme.
+    Overrides for opencollab theme
+*/
+
+
+#header {
+    font-size: 16px;
+}
+
+#logo {
+    padding: 15px 10px;
+    margin: 0 0 0 5px;
+}
+
+#logo img {
+    height: 25px;
+}
+
+.navbar-inverse {
+    /* snps gray, snps green, opaque snps green */
+    /*background: rgba(66 , 67, 72, 0.90);*/
+    /*background: #4E9D2D; */
+
+    background: hsla(97, 100%, 28%, 0.9);
+}
+
+.btn-primary {
+    background-color: #00a0de;
+    border-color: #0099d7;
+}
+
+table tr.meta_header td,
+table tr.meta_header th,
+table tr.header td,
+table tr.header th {
+	background: #4E9D2D;
+	color: #fff;
+}
+.poll th, .poll td {
+    border: 1px solid #4E9D2D;
+}
