@@ -19,15 +19,25 @@
 
 .navbar-inverse {
     /* snps gray, snps green, opaque snps green */
-    /*background: rgba(66 , 67, 72, 0.90);*/
+    background: rgba(66 , 67, 72, 0.90);
     /*background: #4E9D2D; */
-
-    background: hsla(97, 100%, 28%, 0.9);
+    /*background: hsla(97, 100%, 28%, 0.9);*/
 }
 
-.btn-primary {
-    background-color: #00a0de;
-    border-color: #0099d7;
+.btn-primary, .btn-primary:active, .btn-primary:focus {
+    background-color: #4E9D2D;
+    border-color: #4b972d;
+    outline: none;
+}
+
+.btn-primary:hover {
+    background-color: #66b42d;
+    border-color: #4E9D2D;
+}
+
+.btn-primary:active {
+    background-color: #66b42d;
+    border-color: #66b42d;
 }
 
 table tr.meta_header td,
