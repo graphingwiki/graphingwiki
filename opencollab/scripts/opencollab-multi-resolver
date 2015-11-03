@@ -42,15 +42,16 @@ def shred_triplets(resolved):
     return collab_metas
 
 
-def expand_ipv4(rr, new):
+def expand_ipv4(rr, new, enable_abusix):
     new.append(rr + ";PTR")
     rev = re.split('\.', rr)
     rev.reverse()
     new.append('.'.join(rev) + ".origin.asn.cymru.com;TXT")
-    new.append('.'.join(rev) + ".abuse-contacts.abusix.org;TXT")
+    if enable_abusix:  
+        new.append('.'.join(rev) + ".abuse-contacts.abusix.org;TXT")
 
 
-def expand_ipv6(rr, new):
+def expand_ipv6(rr, new, enable_abusix):
     rev = []
     comprr = IPy.IP(rr).strCompressed()
     exprr = IPy.IP(rr).strFullsize()
@@ -63,6 +64,8 @@ def expand_ipv6(rr, new):
     rev.reverse()
     addr = '.'.join(rev)
     new.append(addr + ".origin6.asn.cymru.com;TXT")
+    if enable_abusix:
+        new.append(addr + ".abuse-contacts.abusix.org;TXT")
 
 
 def expand_as(rr, new):
@@ -98,7 +101,7 @@ def resolve_requests(expanded, mresolve):
     return sout, err
 
 
-def generate_requests(resolved, new):
+def generate_requests(resolved, new, enable_abusix):
     expanded = []
     rr_type = re.compile(';TYPE;')
     for triplet in new.split('\n'):
@@ -119,14 +122,14 @@ def generate_requests(resolved, new):
                         elif as_re.search(subj):
                             expand_as(subj, expanded)
                     else:
-                        expand_ipv6(subj, expanded)
+                        expand_ipv6(subj, expanded, enable_abusix)
                 else:
-                    expand_ipv4(subj, expanded)
+                    expand_ipv4(subj, expanded, enable_abusix)
         resolved.add(triplet)
     return expanded, resolved
 
 
-def seed_initial(new, srv):
+def seed_initial(new, srv, enable_abusix):
     expanded = []
     resolved = set([])
     for rr in new:
@@ -146,10 +149,10 @@ def seed_initial(new, srv):
                     expand_as(rr, expanded)
             else:
                 resolved.add(rr + ";TYPE;IPv6")
-                expand_ipv6(rr, expanded)
+                expand_ipv6(rr, expanded, enable_abusix)
         else:
             resolved.add(rr + ";TYPE;IPv4")
-            expand_ipv4(rr, expanded)
+            expand_ipv4(rr, expanded, enable_abusix)
     return expanded, resolved
 
 
@@ -164,6 +167,8 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option("-D", "--debug",
         action="store_true", dest="debug", default=False)
+    parser.add_option("-E", "--enable-abusix",
+        action="store_true", dest="abusix", default=False)
     parser.add_option("-m", "--mresolve-path",
         dest="mresolvepath", default="/usr/bin/mresolve", metavar="MRESOLVE-PATH",
         help=("MRESOLVE-PATH. defaults to /usr/bin/mresolve."))
@@ -190,6 +195,7 @@ def main():
     recurse = ops[sect]["recurse"]
     srv = ops[sect]["srv"]
     debug = ops[sect]["debug"]
+    enable_abusix = ops[sect]["abusix"]
     if verbose:
         print "Reading input identities from STDIN."
     new = read_input()
@@ -199,7 +205,7 @@ def main():
         sys.exit()
     if verbose:
         print "Expanding initial requests."
-    expanded, resolved = seed_initial(new, srv)
+    expanded, resolved = seed_initial(new, srv, enable_abusix)
     if recurse:
         if verbose:
             print "Resolving requests recursively."
@@ -207,7 +213,7 @@ def main():
             new, err = resolve_requests(expanded, mresolvepath)
             if verbose:
                 print err
-            expanded, resolved = generate_requests(resolved, new)
+            expanded, resolved = generate_requests(resolved, new, enable_abusix)
     else:
         if verbose:
             print "Resolving requests."
