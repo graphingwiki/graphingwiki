@@ -32,6 +32,14 @@ pre {
 	font-size: 10pt;
 }
 
+a.hidelink {
+        display: none;
+}
+
+div.include-link {
+        display: none;
+}
+
 a.interwiki:before, a.badinterwiki:before {
 	content: attr(title) ":";
 	background-image: none;
@@ -53,7 +61,7 @@ img.attachment {
 
 /* user interface styles */
 
-#header, #sidebar, #footer, #timings, #credits, #interwiki, #pagelocation {
+#header, #sidebar, #footer, #timings, #credits, #interwiki, #pagelocation, #message {
 	display: none;
 }
 
