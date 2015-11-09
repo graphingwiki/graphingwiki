@@ -112,6 +112,7 @@ setup(
         'scripts/collab-account-rename',
         'scripts/collab-archive',
         'scripts/collab-auth-ejabberd',
+        'scripts/collab-check',
         'scripts/collab-create',
         'scripts/collab-group-edit',
         'scripts/collab-group-list',

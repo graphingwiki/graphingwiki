@@ -1,0 +1,48 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2015 by Marko Laakso
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+myerr() {
+  echo $@ 2>&1
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+if [ $# -eq 1 ]; then
+  tocheck=$1
+  shift
+else
+  tocheck="*"
+fi
+
+if [ $# -gt 0 ]; then
+  myerr "Usage: $0 [<collab>]"
+fi
+
+
+cd ${wikidir} || myerr "Failed to cd to wikidir: ${wikidir}"
+
+for collab in ${tocheck}; do
+  for page in AccessGroup FrontPage CollabFacts; do
+    if [ ! -d ${collab}/data/pages/${page} ]; then
+      echo "${collab}: has no ${page}" 1>&2
+    fi
+  done
+
+  eventstamp=`grep -v "AccessGroup" ${collab}/data/event-log | \
+      tail -1 | cut -c1-10`
+  editstamp=`grep -v "AccessGroup" ${collab}/data/edit-log | \
+      tail -1 | cut -c1-10`
+
+  echo "${collab}: last event (except AccessGroup)" `date -d @${eventstamp}`
+  echo "${collab}: last edit (except AccessGroup) " `date -d @${editstamp}`
+done
