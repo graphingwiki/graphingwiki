@@ -21,15 +21,18 @@ if [ $# -ne 1 ]; then
   myerr "Usage: $0 <collabname>"
 fi
 
+COLLABCHATLOGS="/srv/wikis/collab/log/jabber"
+
 MYCOLLAB=$1
 MYCOLLABWIKIDIR=${wikidir}/${MYCOLLAB}
 MYCOLLABHTMLDIR=${htmldir}/${MYCOLLAB}
+MYDATE=`date +%F`
 
 mkdir -p ${archivedir}
 
 if [ -d ${MYCOLLABWIKIDIR} ]; then
   cd ${wikidir}
-  tar jcvf ${archivedir}/${MYCOLLAB}-`date '+%Y-%m-%d'`.tar.bz2  ${MYCOLLAB}
+  tar jcvf ${archivedir}/${MYCOLLAB}-${MYDATE}.tar.bz2  ${MYCOLLAB}
   echo "Remove ${MYCOLLABWIKIDIR}? (y/N)"
   read sure
   if [ "${sure}blah" = "yblah" ]; then
@@ -49,3 +52,12 @@ else
   echo "ERR: No ${MYCOLLABHTMLDIR}"
 fi
 
+CHATLOGDIRS=`cd ${COLLABCHATLOGS} && ls -d ${MYCOLLAB}@* ${MYCOLLAB}.*@* 2>/dev/null`
+if [ "$?blah" = "0blah" ]; then
+  cd ${COLLABCHATLOGS}
+  tar jcvf ${archivedir}/${MYCOLLAB}-chatlogs-${MYDATE}.tar.bz2 ${CHATLOGDIRS}
+  echo "To remove CollabChat logs, run the following commands:"
+  for dir in ${CHATLOGDIRS}; do
+      echo " rm -rf ${COLLABCHATLOGS}/$dir"
+  done
+fi
