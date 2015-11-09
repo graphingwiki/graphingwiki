@@ -15,6 +15,10 @@ import string
 import signal
 import atexit
 import time
+import getopt
+import posix
+import pwd
+import ConfigParser
 
 def cleanup_handler(signum, frame):
     sys.exit(0)
@@ -24,10 +28,6 @@ def delpid():
         os.remove(mypidfile)
     except OSError:
         pass
-
-import posix, pwd
-
-import getopt
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "vn")
@@ -43,8 +43,6 @@ for opt, arg in opts:
         verbose = True
     elif opt == '-n':
         noop = True
-
-import ConfigParser
 
 config = ConfigParser.RawConfigParser()
 config.read('/etc/local/collab/collab.ini')
@@ -91,7 +89,7 @@ import MoinMoin.web.contexts
 from MoinMoin.user import User, getUserList, isValidName
 from MoinMoin.config import multiconfig
 
-from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.editing import get_metas
 from graphingwiki import RequestCLI
 
 def diffandstore(filename, newtext, dryrun=noop):
@@ -112,7 +110,7 @@ def diffandstore(filename, newtext, dryrun=noop):
         for line in diff:
             if line[:1] not in string.whitespace:
                 # Remove password hashes from diff message
-                msg.append(re.sub(r'(:(\$\d\$)|({[A-Z]+})).*', r'\1...', line))
+                msg.append(re.sub(r'(:(\$\d\$|{[A-Z]+})).*', r'\1...', line))
         if not dryrun:
             if newtext:
                 f = open(filename, 'w')
@@ -143,7 +141,6 @@ sys.path.insert(0, os.path.join(mybaseinstancedir, 'config'))
 req = RequestCLI('FrontPage', parse=False)
 
 # Auth
-import posix, pwd
 req.user = User(req, auth_username=pwd.getpwuid(posix.getuid())[0])
 
 content = ""
@@ -209,7 +206,7 @@ for dent in os.listdir("."):
     for member in req.groups.get("AccessGroup"):
         if isgroup(member):
             continue
-        if re.search('[^\w@.\-\']', member, re.U) is not None:
+        if re.search(r"[^\w@.'-]", member, re.U) is not None:
             if verbose:
                 print >> sys.stderr, "INVALID: " + member + " in " + dent
             continue
