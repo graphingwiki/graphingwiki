@@ -112,7 +112,7 @@ def diffandstore(filename, newtext, dryrun=noop):
         for line in diff:
             if line[:1] not in string.whitespace:
                 # Remove password hashes from diff message
-                msg.append(re.sub(r'(:{[A-Z]+}).*', r'\1...', line))
+                msg.append(re.sub(r'(:(\$\d\$)|({[A-Z]+})).*', r'\1...', line))
         if not dryrun:
             if newtext:
                 f = open(filename, 'w')
@@ -152,8 +152,8 @@ for id in getUserList(req):
     myuser = User(req, id=id)
     myuser.load_from_id()
     if myuser.valid and isValidName(req, myuser.name) and myuser.enc_password:
-        content = content + myuser.name + ":" + \
-                  myuser.enc_password + os.linesep
+        password = re.sub(r'^{PASSLIB}', '', myuser.enc_password)
+        content = content + myuser.name + ":" + password + os.linesep
         allusers[myuser.name] = 0
 
 msg = diffandstore(myhtpasswd, content)
