@@ -3,19 +3,21 @@
 """
 collab-auth-ejabberd: Provide external auth for ejabberd against collab
 
-@copyright: 2009-2010 by Mika Seppänen, Marko Laakso, Joachim Viide
+@copyright: 2009-2015 by Mika Seppänen, Marko Laakso, Joachim Viide
 @license: MIT <http://www.opensource.org/licenses/mit-license.php>
 """
 
 import os
 import sys
 import time
-from struct import *
+from struct import pack, unpack
 
 import ConfigParser
 
+
 def _parse_list(value):
     return [x.strip() for x in value.split(",")]
+
 
 config = ConfigParser.RawConfigParser()
 config.read('/etc/local/collab/collab.ini')
@@ -43,6 +45,7 @@ from graphingwiki import RequestCLI
 
 os.chdir(myhtmldir)
 
+
 class RequestCache(object):
     def __init__(self, refresh_interval=0):
         self.refresh_interval = refresh_interval
@@ -55,8 +58,8 @@ class RequestCache(object):
         mydata = os.path.join(mywikidir, wikiname)
         myconfig = os.path.join(mydata, 'config')
 
-        ## check that instance is under collab/* URLs not just any instance
-        ## and check that there is config a dir for the instance
+        # check that instance is under collab/* URLs not just any instance
+        # and check that there is config a dir for the instance
         if checkWiki:
             if not os.path.isdir(wikiname) or not os.path.isdir(myconfig):
                 return False
@@ -96,7 +99,7 @@ class RequestCache(object):
 
             if self.refresh_interval > 0:
                 until = self.refresh_interval - now % self.refresh_interval
-                self.next_refresh = now  + until
+                self.next_refresh = now + until
             else:
                 self.next_refresh = float("-inf")
         self.last_check = now
@@ -112,6 +115,7 @@ class RequestCache(object):
 
 request_cache = RequestCache(mycacherefreshtime)
 
+
 def checkAccess(user, wiki):
     r = request_cache.get(wiki, 'AccessGroup')
     if not r:
@@ -121,10 +125,12 @@ def checkAccess(user, wiki):
     members = [m for m in r.groups.get("AccessGroup") if not isgroup(m)]
     return user in members
 
+
 def from_ejabberd():
     input_length = sys.stdin.read(2)
     (size,) = unpack('>h', input_length)
     return sys.stdin.read(size).split(':', 1)
+
 
 def to_ejabberd(bool):
     answer = 0
@@ -134,13 +140,16 @@ def to_ejabberd(bool):
     sys.stdout.write(token)
     sys.stdout.flush()
 
+
 def to_ejabberd_string(string):
     token = pack('>h', len(string)) + string
     sys.stdout.write(token)
     sys.stdout.flush()
 
+
 def convertUsername(username):
     return username.replace("%", "@")
+
 
 def auth(args):
     start = time.time()
@@ -164,6 +173,7 @@ def auth(args):
     logging.info("auth from user %s@%s returned %s in %d ms" % (username, server, result, elapsedTime))
     return result
 
+
 def isuser(args):
     start = time.time()
     try:
@@ -180,6 +190,7 @@ def isuser(args):
     logging.info("isuser from user %s@%s returned %s in %d ms" % (username, server, result, elapsedTime))
     return result
 
+
 def setpass(args):
     try:
         username, server, password = args.split(':', 2)
@@ -189,6 +200,7 @@ def setpass(args):
 
     logging.info("setpass from user %s@%s ignored" % (username, server))
     return False
+
 
 def getaff(args):
     start = time.time()
@@ -211,6 +223,7 @@ def getaff(args):
     elapsedTime = 1000 * (time.time() - start)
     logging.info("getaff from user %s@%s and room %s@%s returned %s in %d ms" % (username, server, room, roomServer, result, elapsedTime))
     return result
+
 
 while True:
     data = from_ejabberd()
