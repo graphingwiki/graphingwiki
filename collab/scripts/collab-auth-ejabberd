@@ -14,6 +14,9 @@ from struct import *
 
 import ConfigParser
 
+def _parse_list(value):
+    return [x.strip() for x in value.split(",")]
+
 config = ConfigParser.RawConfigParser()
 config.read('/etc/local/collab/collab.ini')
 
@@ -22,8 +25,8 @@ mybaseinstancedir = config.get('collab', 'baseinstancedir')
 mywikidir = config.get('collab', 'wikidir')
 myhtmldir = config.get('collab', 'htmldir')
 mycacherefreshtime = config.getfloat('collab', 'cacherefreshtime')
-myjabberdomain = config.get('jabber', 'jabberdomain')
-myconferencedomain = config.get('jabber', 'conferencedomain')
+myjabberdomains = _parse_list(config.get('jabber', 'jabberdomain'))
+myconferencedomains = _parse_list(config.get('jabber', 'conferencedomain'))
 
 from MoinMoin import log
 log.load_config(mylogconf)
@@ -198,9 +201,9 @@ def getaff(args):
     logging.info("getaff from user %s@%s and room %s@%s called" % (username, server, room, roomServer))
 
     result = "none"
-    if server != myjabberdomain:
+    if server not in myjabberdomains:
         result = "none"
-    elif roomServer != myconferencedomain:
+    elif roomServer not in myconferencedomains:
         result = "none"
     elif checkAccess(convertUsername(username), room.split(".", 1)[0]):
         result = "member"
