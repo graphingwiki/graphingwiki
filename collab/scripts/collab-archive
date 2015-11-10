@@ -17,11 +17,17 @@ else
   myerr "No ${CFG}"
 fi
 
+if [ -z "${chatlogdir}" ]; then
+    myerr "Missing chatlogdir in ${CFG}"
+fi
+
+if [ ! -d "${chatlogdir}" ]; then
+    myerr "Missing chatlogdir ${chatlogdir}"
+fi
+
 if [ $# -ne 1 ]; then
   myerr "Usage: $0 <collabname>"
 fi
-
-COLLABCHATLOGS="/srv/wikis/collab/log/jabber"
 
 MYCOLLAB=$1
 MYCOLLABWIKIDIR=${wikidir}/${MYCOLLAB}
@@ -52,12 +58,12 @@ else
   echo "ERR: No ${MYCOLLABHTMLDIR}"
 fi
 
-CHATLOGDIRS=`cd ${COLLABCHATLOGS} && ls -d ${MYCOLLAB}@* ${MYCOLLAB}.*@* 2>/dev/null`
+CHATLOGDIRS=`cd ${chatlogdir} && ls -d ${MYCOLLAB}@* ${MYCOLLAB}.*@* 2>/dev/null`
 if [ "$?blah" = "0blah" ]; then
-  cd ${COLLABCHATLOGS}
+  cd "${chatlogdir}"
   tar jcvf ${archivedir}/${MYCOLLAB}-chatlogs-${MYDATE}.tar.bz2 ${CHATLOGDIRS}
   echo "To remove CollabChat logs, run the following commands:"
   for dir in ${CHATLOGDIRS}; do
-      echo " rm -rf ${COLLABCHATLOGS}/$dir"
+      echo " rm -rf ${chatlogdir}/${dir}"
   done
 fi

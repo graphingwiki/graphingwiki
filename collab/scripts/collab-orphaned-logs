@@ -20,12 +20,18 @@ else
   myerr "No ${CFG}"
 fi
 
-LOGS="/srv/wikis/collab/log/jabber"
+if [ -z "${chatlogdir}" ]; then
+    myerr "Missing chatlogdir in ${CFG}"
+fi
 
-LOGCHATS=`cd $LOGS && ls |cut -d"@" -f1 |cut -d"." -f1 |sort -u`
+if [ ! -d "${chatlogdir}" ]; then
+    myerr "Missing chatlogdir ${chatlogdir}"
+fi
+
+LOGCHATS=`cd "${chatlogdir}" && ls |cut -d'@' -f1 |cut -d'.' -f1 |sort -u`
 for collab in ${LOGCHATS}; do
     if [ ! -d "${wikidir}/${collab}" ]; then
-        LOGDIRS=`ls -d -- ${LOGS}/${collab}@* ${LOGS}/${collab}.*@* 2>/dev/null`
+        LOGDIRS=`ls -d -- ${chatlogdir}/${collab}@* ${chatlogdir}/${collab}.*@* 2>/dev/null`
         for dir in "${LOGDIRS}"; do
             if [ ! -z "${dir}" ]; then
                 echo "${dir}"
