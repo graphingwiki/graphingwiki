@@ -1,0 +1,35 @@
+#!/bin/sh
+# -*- coding: utf-8 -*-
+
+##  @copyright: 2015 by Ossi Herrala
+##  @license: MIT <http://www.opensource.org/licenses/mit-license.php>
+
+# collab-orphaned-logs: List log directories without associated collab
+#                       instance.
+
+myerr() {
+  echo $@ 2>&1
+  exit 1
+}
+
+CFG=/etc/local/collab/collab.ini
+
+if [ -f ${CFG} ]; then
+  . ${CFG} 2> /dev/null
+else
+  myerr "No ${CFG}"
+fi
+
+LOGS="/srv/wikis/collab/log/jabber"
+
+LOGCHATS=`cd $LOGS && ls |cut -d"@" -f1 |cut -d"." -f1 |sort -u`
+for collab in ${LOGCHATS}; do
+    if [ ! -d "${wikidir}/${collab}" ]; then
+        LOGDIRS=`ls -d -- ${LOGS}/${collab}@* ${LOGS}/${collab}.*@* 2>/dev/null`
+        for dir in "${LOGDIRS}"; do
+            if [ ! -z "${dir}" ]; then
+                echo "${dir}"
+            fi
+        done
+    fi
+done
