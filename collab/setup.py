@@ -107,6 +107,7 @@ setup(
     scripts=[
         'scripts/collab-account-collablist',
         'scripts/collab-account-create',
+        'scripts/collab-account-notify',
         'scripts/collab-account-password',
         'scripts/collab-account-remove',
         'scripts/collab-account-rename',

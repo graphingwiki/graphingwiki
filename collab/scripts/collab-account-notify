@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import sys
+import time
+import subprocess
+from subprocess import Popen
+
+
+def read_input():
+    new = []
+    for line in sys.stdin:
+        new.append(line.strip())
+    return new
+
+
+def format_verp_envelope(to_addr, envelope_addr):
+    to_parts = to_addr.split("@")
+    envelope_parts = envelope_addr.split("@")
+    if len(to_parts) != 2 or len(envelope_parts) != 2:
+        return None
+    return envelope_parts[0] + "+" + to_parts[0] + "=" + to_parts[1] + "@" + envelope_parts[1]  
+
+
+def format_body(from_addr, to_addr, body_text): 
+    from_line="From: {0}".format(from_addr)
+    to_line="To: {0}".format(to_addr)
+    recipient_line="Some news on your collab user account: {0}".format(to_addr)
+    subject_line="Subject: {0}".format(recipient_line)
+    greeting_line="Dear user of the hosted Collab service,"
+    return from_line + "\n" + to_line + "\n" + subject_line + "\n\n" + greeting_line + "\n\n" + recipient_line + "\n\n" + body_text
+
+
+def send_mail(envelope, to_addr, body):
+    cmd = "/usr/sbin/sendmail -f" + envelope + " " + to_addr
+    sm = Popen(cmd, shell=True, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=1)
+    sm.stdin.write(body) 
+    (sout, err) = sm.communicate()
+    return sout, err
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit("You will need to specify an input file for the body text.")
+    else:
+        try:
+            fp = open(sys.argv[1], "r")
+            body_text = fp.read()
+            fp.close()
+        except IOError as e:
+            sys.exit(e)
+    # The address for the VERP envelope.
+    envelope_addr="FixMe"
+    from_addr="FixMe"
+    to_addresses = read_input()
+    for to_addr in to_addresses:
+    	current_envelope = format_verp_envelope(to_addr, envelope_addr)
+        if current_envelope is not None:
+            body = format_body(from_addr, to_addr, body_text)
+            print "Sending notification to: {0}".format(to_addr)
+            (sout, err) = send_mail(current_envelope, to_addr, body)
+            if sout:
+                print sout
+            if err:
+                sys.exit(err)
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Script interrupted via CTRL-C."
