@@ -60,6 +60,9 @@ class FarmConfig(DefaultConfig):
     # uncomment this if you want to allow Moin package installation
     # packagepages_actions_excluded = []
 
+    # disable notification events
+    event_handlers = []
+
     # disable reverse DNS
     log_reverse_dns_lookups = False
 
