@@ -98,8 +98,7 @@ class FarmConfig(DefaultConfig):
 
     # default ACLs
     acl_rights_valid = ["read", "write", "delete", "revert", "admin", "invite"]
-    acl_rights_default = u"Trusted:admin,read,write,delete,revert,invite" +\
-        " collab:admin,read,write All:"
+    acl_rights_default = u"Trusted:admin,read,write,delete,revert,invite collab:admin,read,write All:"
 
     # Add your superusers to these lines
     acl_rights_before  = u"collab:read,write,admin,delete,revert,invite"
@@ -155,7 +154,6 @@ class FarmConfig(DefaultConfig):
 
     gwikivariables = {'GWIKITEST': 'I am the bestest!'}
 
-    #invite_sender_default_domain = ''
     #invite_new_template = 'InviteNewTemplate'
     #invite_old_template = 'InviteOldTemplate'
     invite_group_default = 'AccessGroup'
