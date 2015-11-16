@@ -30,8 +30,7 @@ def delpid():
         pass
 
 if os.getuid() == 0:
-    print "ERROR: {0}: Don't run command as root".format(sys.argv[0])
-    sys.exit(1)
+    sys.exit("ERROR: {0}: Don't run command as root".format(sys.argv[0]))
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "vn")
