@@ -70,6 +70,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if os.getuid() == 0:
+        sys.exit("ERROR: {0}: Don't run command as root".format(sys.argv[0]))
     try:
         main()
     except KeyboardInterrupt:

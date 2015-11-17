@@ -9,6 +9,10 @@ myerr() {
   exit 1
 }
 
+if [ `id -u` = 0 ]; then
+    myerr "ERROR: $0: Don't run command as root"
+fi
+
 CFG=/etc/local/collab/collab.ini
 
 if [ -f ${CFG} ]; then
