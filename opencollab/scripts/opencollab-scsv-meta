@@ -16,6 +16,28 @@ from opencollab.wiki import WikiFailure
 from opencollab.util.config import parseOptions
 
 
+def to_rows(pages):
+    counts = {}
+    for page, metas in pages.iteritems():
+        for key, values in metas.iteritems():
+            counts[key] = max(counts.get(key, 0), len(values))
+    keys = sorted(counts.keys())
+
+    keyrow = ["Page name"]
+    for key in keys:
+        keyrow.extend([key] * counts[key])
+    yield keyrow
+
+    for page in sorted(pages):
+        metas = pages[page]
+        row = [encode(page)]
+        for key in keys:
+            values = sorted(metas.get(key, []))
+            row.extend(map(encode, values))
+            row.extend([""] * (counts[key] - len(values)))
+        yield row
+
+
 def encode(x):
     return x.encode("utf-8")
 
@@ -71,26 +93,8 @@ while True:
 for operation, argument in operations:
     if operation == "get":
         results = collab.getMeta(argument)
-
-        wr = csv.writer(sys.stdout, delimiter=";")
-
-        counts = dict()
-        for page, metas in results.items():
-            for key, values in metas.items():
-                counts[key] = max(counts.get(key, 0), len(values))
-
-        keyrow = ["Page name"]
-        for key, count in counts.items():
-            keyrow.extend([key] * count)
-        wr.writerow(keyrow)
-
-        for page, metas in results.items():
-            row = [encode(page)]
-            for key, values in metas.items():
-                row.extend(map(encode, values))
-                row.extend([""] * (counts[key] - len(values)))
-            wr.writerow(row)
-
+        writer = csv.writer(sys.stdout, delimiter=";")
+        writer.writerows(to_rows(results))
         sys.stdout.flush()
     else:
         replace = operation == "set"
