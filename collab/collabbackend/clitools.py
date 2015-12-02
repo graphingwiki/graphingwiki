@@ -74,12 +74,8 @@ class CollabRequest(object):
 
 
 def listAllCollabs(wikidir=backend.wikidir):
-    collabs = list()
-
     for collab in os.listdir(wikidir):
         mydata = os.path.join(wikidir, collab)
         myconfig = os.path.join(mydata, "config", collab + ".py")
         if os.path.exists(myconfig):
-            collabs.append(collab)
-
-    return collabs
+            yield collab
