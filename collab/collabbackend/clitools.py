@@ -59,6 +59,12 @@ class CollabRequest(object):
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def close(self):
         if self.request:
             self.request.finish()
