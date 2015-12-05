@@ -1,5 +1,5 @@
 --- ./MoinMoin/PageEditor.py.orig	2015-04-19 22:54:50.684124516 +0300
-+++ ./MoinMoin/PageEditor.py	2015-12-05 17:34:40.205272304 +0200
++++ ./MoinMoin/PageEditor.py	2015-12-05 19:37:49.125013830 +0200
 @@ -17,7 +17,7 @@
  """
  
@@ -75,7 +75,64 @@
              event = PageRenamedEvent(request, newpage, self, comment)
              send_event(event)
  
-@@ -1066,6 +1087,26 @@ Try a different name.""", wiki=True) % (
+@@ -713,6 +734,7 @@ Try a different name.""", wiki=True) % (
+         request = self.request
+         _ = self._
+         success = True
++        lazy = self.is_lazy()
+         if not (request.user.may.write(self.page_name)
+                 and request.user.may.delete(self.page_name)):
+             log_attempt('delete/no permissions', False, request, pagename=self.page_name)
+@@ -720,10 +742,14 @@ Try a different name.""", wiki=True) % (
+             raise self.AccessDenied(msg)
+ 
+         try:
+-            msg = self.saveText(u"deleted\n", 0, comment=comment or u'', deleted=True, notify=False)
+-            msg = msg.replace(
+-                _("Thank you for your changes. Your attention to detail is appreciated."),
+-                _('Page "%s" was successfully deleted!') % (wikiutil.escape(self.page_name), ))
++            if lazy:
++                request.graphdata.clear_page(self.page_name)
++                msg = _('Page "%s" was successfully deleted!') % (wikiutil.escape(self.page_name))
++            else:
++                msg = self.saveText(u"deleted\n", 0, comment=comment or u'', deleted=True, notify=False)
++                msg = msg.replace(
++                    _("Thank you for your changes. Your attention to detail is appreciated."),
++                    _('Page "%s" was successfully deleted!') % (wikiutil.escape(self.page_name), ))
+ 
+             event = PageDeletedEvent(request, self, comment)
+             send_event(event)
+@@ -734,18 +760,20 @@ Try a different name.""", wiki=True) % (
+             success = False
+             msg = "SaveError has occurred in PageEditor.deletePage. We need locking there."
+ 
+-        # delete pagelinks
+-        arena = self
+-        key = 'pagelinks'
+-        cache = caching.CacheEntry(request, arena, key, scope='item')
+-        cache.remove()
+-
+-        # clean the cache
+-        for formatter_name in self.cfg.caching_formats:
++        if not lazy:
++            # delete pagelinks
+             arena = self
+-            key = formatter_name
++            key = 'pagelinks'
+             cache = caching.CacheEntry(request, arena, key, scope='item')
+             cache.remove()
++
++            # clean the cache
++            for formatter_name in self.cfg.caching_formats:
++                arena = self
++                key = formatter_name
++                cache = caching.CacheEntry(request, arena, key, scope='item')
++                cache.remove()
++
+         return success, msg
+ 
+     def _get_local_timestamp(self):
+@@ -1066,6 +1094,26 @@ Try a different name.""", wiki=True) % (
          """
          request = self.request
          _ = self._
