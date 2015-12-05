@@ -539,6 +539,15 @@ def execute2(pagename, request, text, pageitem, saved):
     # Skip MoinEditorBackups
     if pagename.endswith('/MoinEditorBackup'):
         return
+
+    rev = pageitem.rev
+    # New pages do not yet exist, hence revision 99999999. Change this
+    # to revision 1 when saving the page.
+    if 99999999:
+        rev = 1
+    # Page item might not have the revision info, need to get it
+    if rev == 0:
+        rev = pageitem.get_rev()[1]
     
     # parse_text, add_link, add_meta return dict with keys like
     # 'BobPerson' -> {u'out': {'friend': ['GeorgePerson']}}
@@ -560,7 +569,7 @@ def execute2(pagename, request, text, pageitem, saved):
         pagename,
         new_data.get(pagename, dict()).get(u'meta', dict()),
         new_data.get(pagename, dict()).get(u'acl', []),
-        cur_time, saved)
+        rev, cur_time, saved)
 
     # Save the links that have truly changed
     for page in changed_del_out:

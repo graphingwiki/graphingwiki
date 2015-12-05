@@ -20,6 +20,9 @@ from graphingwiki.util import encode_page, decode_page, log, SAVED_NONE
 
 from time import time, sleep
 
+DIRNAME = 'graphdata'
+FILENAME = 'graphdata.shelve'
+
 class LockTimeout(Exception):
     pass
 
@@ -96,10 +99,10 @@ class GraphData(GraphDataBase):
         log.debug("shelve graphdb init")
         GraphDataBase.__init__(self, request, **kw)
 
-        gddir = os.path.join(request.cfg.data_dir, 'graphdata')
+        gddir = os.path.join(request.cfg.data_dir, DIRNAME)
         if not os.path.isdir(gddir):
             os.mkdir(gddir)
-        self.graphshelve = os.path.join(gddir, 'graphdata.shelve')
+        self.graphshelve = os.path.join(gddir, FILENAME)
 
         self.use_sq_dict = getattr(request.cfg, 'use_sq_dict', False)
         if self.use_sq_dict:
@@ -213,10 +216,11 @@ class GraphData(GraphDataBase):
         return page in self.db
 
     def set_page_meta_and_info(self, pagename, newmeta,
-                               acl, mtime, saved):
+                               acl, rev, mtime, saved):
         pagedata = self.getpage(pagename)
         pagedata[u'meta'] = newmeta
         pagedata[u'acl'] = acl
+        pagedata[u'rev'] = rev
         pagedata[u'mtime'] = mtime
         pagedata[u'saved'] = saved
         self.savepage(pagename, pagedata)

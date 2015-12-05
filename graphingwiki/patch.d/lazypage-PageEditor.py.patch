@@ -1,0 +1,104 @@
+--- ./MoinMoin/PageEditor.py.orig	2015-04-19 22:54:50.684124516 +0300
++++ ./MoinMoin/PageEditor.py	2015-12-05 17:34:40.205272304 +0200
+@@ -17,7 +17,7 @@
+ """
+ 
+ import os, time, codecs, errno
+-
++import unicodedata
+ 
+ from MoinMoin import caching, config, wikiutil, error
+ from MoinMoin.Page import Page
+@@ -54,6 +54,17 @@ addLoadEvent(countdown)
+ </script>
+ """
+ 
++#############################################################################
++### Filtering unprintable characters from page content
++#############################################################################
++
++ALLOWED_CONTROL_CHARS = '\t\n\r'
++
++def filter_unprintable(text):
++    return ''.join(x for x in text 
++                   if (not unicodedata.category(x) in ['Cc', 'Cn', 'Cs']
++                       or x in ALLOWED_CONTROL_CHARS))
++
+ 
+ #############################################################################
+ ### PageEditor - Edit pages
+@@ -638,24 +649,34 @@ Try a different name.""", wiki=True) % (
+         # exists. We should have global edit-lock to avoid this.
+         # See http://docs.python.org/lib/os-file-dir.html
+         try:
+-            os.rename(oldpath, newpath)
+-            self.error = None
+-            # Save page text with a comment about the old name
+-            savetext = u"## page was renamed from %s\n%s" % (self.page_name, savetext)
+-            newpage.saveText(savetext, 0, comment=comment, extra=self.page_name, action='SAVE/RENAME', notify=False)
+-            # delete pagelinks
+-            arena = newpage
+-            key = 'pagelinks'
+-            cache = caching.CacheEntry(request, arena, key, scope='item')
+-            cache.remove()
++            if self.is_lazy():
++                # Lazy pages may have attachments
++                if os.path.exists(oldpath):
++                    os.rename(oldpath, newpath)
++                pagedata = request.graphdata.getpage(self.page_name)
++                request.graphdata.clear_page(self.page_name)
++                request.graphdata.savepage(newpagename, pagedata)
++            else:
++                os.rename(oldpath, newpath)
++                # Save page text with a comment about the old name
++                savetext = u"## page was renamed from %s\n%s" % (self.page_name, savetext)
++                newpage.saveText(savetext, 0, comment=comment, extra=self.page_name, action='SAVE/RENAME', notify=False)
+ 
+-            # clean the cache
+-            for formatter_name in self.cfg.caching_formats:
++                # delete pagelinks
+                 arena = newpage
+-                key = formatter_name
++                key = 'pagelinks'
+                 cache = caching.CacheEntry(request, arena, key, scope='item')
+                 cache.remove()
+ 
++                # clean the cache
++                for formatter_name in self.cfg.caching_formats:
++                    arena = newpage
++                    key = formatter_name
++                    cache = caching.CacheEntry(request, arena, key, scope='item')
++                    cache.remove()
++
++            self.error = None
++
+             event = PageRenamedEvent(request, newpage, self, comment)
+             send_event(event)
+ 
+@@ -1066,6 +1087,26 @@ Try a different name.""", wiki=True) % (
+         """
+         request = self.request
+         _ = self._
++
++        # Depending on the configuration, filter unprintable
++        # characters from text content or warn of them. Unprintable
++        # characters are often undesired, and result from
++        # eg. copy-pasting text from productivity tools.
++        _handle_unprintable = getattr(self.request.cfg, 
++                                      'gwiki_handle_unprintable', '')
++        if _handle_unprintable in ['warn', 'filter']:
++            _newtext = filter_unprintable(newtext)
++            if _handle_unprintable == 'filter':
++                newtext = _newtext
++            elif _newtext != newtext:
++                _pos = 0
++                for i in len(_newtext):
++                    _pos = i
++                    if _newtext[i] != newtext[i]:
++                        break
++                raise self.SaveError(_("Bad character in text at position %s.")%
++                                     (_pos))
++
+         self._save_draft(newtext, rev, **kw)
+         action = kw.get('action', 'SAVE')
+         deleted = kw.get('deleted', False)

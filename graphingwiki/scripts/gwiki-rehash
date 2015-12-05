@@ -31,16 +31,15 @@
 
 import os, sys
 
-import shutil
 from codecs import getencoder
 from optparse import OptionParser
 
 from MoinMoin.wikiutil import quoteWikinameFS, unquoteWikiname
-from MoinMoin.script import MoinScript
 from MoinMoin.Page import Page, RootPage
 from MoinMoin import config
 
-from graphingwiki import underlay_to_pages, install_hooks, RequestCLI
+from graphingwiki.backend.shelvedb import DIRNAME, FILENAME
+from graphingwiki import install_hooks, RequestCLI
 from graphingwiki.savegraphdata import execute as graphsaver
 
 pages = []
@@ -114,10 +113,16 @@ except UserInputException, page:
     sys.exit(2)
 
 if not retain_shelve:
-    gddir = os.path.join(datadir, 'graphdata')
+    gddir = os.path.join(datadir, DIRNAME)
     if os.path.exists(gddir):
-        shutil.rmtree(gddir)
-        sys.stderr.write('Removed graphdata directory (%s)\n' % gddir)
+        graphshelve = os.path.join(gddir, FILENAME)
+        os.unlink(graphshelve)
+        sys.stderr.write('Removed graphdata file (%s)\n' % graphshelve)
+        for fname in ['read_lock', 'write_lock']:
+            lockfile = os.path.join(gddir, fname)
+            if os.path.isfile(lockfile):
+                os.unlink(lockfile)
+                sys.stderr.write('Removed lockfile (%s)\n' % lockfile)
 elif not options.filename:
     for file in os.listdir(datadir):
         if file.startswith('read_lock') or file.startswith('write_lock'):
