@@ -49,6 +49,7 @@ from MoinMoin.action import AttachFile
 from MoinMoin.Page import Page
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.logfile import editlog
+from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki.graph import Graph
 
@@ -401,18 +402,24 @@ def get_url_ns(request, pagename, link):
     else:
         return '../' * subrank + './%sProperty' % (link)
 
-def format_wikitext(request, data, pagename=None):
-    from MoinMoin.parser.text_moin_wiki import Parser
+def format_wikitext(request, data, pagename=None, pageobj=None):
+    curpage = request.page
+    page_changed = False
 
-    if pagename:
-        oldpage = request.page
+    if pageobj and curpage != pageobj:
+        request.page = pageobj
+        page_changed = True
+    elif pagename and pagename != request.page.page_name:
         request.page = Page(request, pagename)
+        page_changed = True
 
     request.page.formatter = request.formatter
-    request.formatter.page = request.page
+    if page_changed:
+        request.formatter.page = request.page
+
     parser = Parser(data, request)
-    parser.request = request
-    # No line anchors of any type to table cells
+    # Omit line anchors
+    in_p = request.page.formatter.in_p
     request.page.formatter.in_p = 1
     parser._line_anchordef = lambda: ''
 
@@ -426,11 +433,11 @@ def format_wikitext(request, data, pagename=None):
     # Using StringIO in order to strip the output
     data = StringIO.StringIO()
     request.redirect(data)
-    # Produces output on a single table cell
     request.page.format(parser)
     request.redirect()
+    request.page.formatter.in_p = in_p
 
-    if pagename:
+    if page_changed:
         request.page = oldpage
 
     return data.getvalue().strip()

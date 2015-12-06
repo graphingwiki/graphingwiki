@@ -8,7 +8,7 @@
 """
 from MoinMoin.Page import Page
 
-from graphingwiki.editing import metatable_parseargs, get_metas
+from graphingwiki.editing import metatable_parseargs, get_metas, REVISION_MARKER
 from graphingwiki.util import format_wikitext
 
 Dependencies = ['metadata']
@@ -102,10 +102,10 @@ def construct_table(macro, pagelist, metakeys,
 
     for page in pagelist:
 
-        if '-gwikirevision-' in page:
+        if REVISION_MARKER in page:
             metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess, formatLinks=True)
-            page, revision = page.split('-gwikirevision-')
+            page, revision = page.split(REVISION_MARKER)
         else:
             metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess, formatLinks=True)

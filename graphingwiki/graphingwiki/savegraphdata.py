@@ -543,7 +543,7 @@ def execute2(pagename, request, text, pageitem, saved):
     rev = pageitem.rev
     # New pages do not yet exist, hence revision 99999999. Change this
     # to revision 1 when saving the page.
-    if 99999999:
+    if rev == 99999999:
         rev = 1
     # Page item might not have the revision info, need to get it
     if rev == 0:

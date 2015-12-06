@@ -33,6 +33,7 @@ from graphingwiki.savegraphdata import parse_text, parse_categories
 from graphingwiki.savegraphdata import execute as savegraphdata
 from graphingwiki.tests import doctest_request
 
+REVISION_MARKER = "#"
 CATEGORY_KEY = "gwikicategory"
 TEMPLATE_KEY = "gwikitemplate"
 
@@ -74,7 +75,7 @@ def get_revisions(request, page, checkAccess=True):
     revisions = dict()
     
     for rev in page.getRevList():
-        revlink = '%s-gwikirevision-%d' % (pagename, rev)
+        revlink = '%s%s%d' % (pagename, REVISION_MARKER, rev)
 
         # Data about revisions is now cached to the graphdata
         # at the same time this is used.

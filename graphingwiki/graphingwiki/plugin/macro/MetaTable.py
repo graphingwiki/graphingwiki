@@ -33,7 +33,7 @@ from urllib import quote
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import metatable_parseargs, get_metas, \
-    get_properties, PROPERTIES, add_matching_redirs
+    get_properties, PROPERTIES, add_matching_redirs, REVISION_MARKER
 from graphingwiki.util import format_wikitext, form_writer, url_escape
 
 try:
@@ -78,8 +78,8 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 
-def wrap_span(request, pagename, key, data, id):
-    fdata = format_wikitext(request, data, pagename)
+def wrap_span(request, pagename, key, data, id, pageobj=None):
+    fdata = format_wikitext(request, data, pagename, pageobj)
 
     if not key:
         return fdata
@@ -121,7 +121,7 @@ def wrap_span(request, pagename, key, data, id):
 
 
 def t_cell(request, pagename, vals, head=0,
-           style=None, rev='', key='', pathstrip=0, linkoverride=''):
+           style=None, rev='', key='', pathstrip=0, linkoverride='', pageobj=None):
     formatter = request.formatter
     out = list()
 
@@ -148,21 +148,28 @@ def t_cell(request, pagename, vals, head=0,
             out.append(formatter.text(',') + formatter.linebreak())
 
         if head:
-            page = Page(request, data)
-            if request.user.may.write(data):
-                img = request.theme.make_icon('edit')
-                out.append(formatter.span(1, css_class="meta_editicon"))
-                out.append(page.link_to_raw(request, img,
-                                            querystr={'action': 'edit'},
-                                            rel='nofollow'))
-                img = request.theme.make_icon('formedit')
-                out.append(page.link_to_raw(request, img,
-                                            querystr={'action': 'MetaFormEdit'},
-                                            rel='nofollow'))
-                out.append(formatter.span(0))
+            if not pageobj:
+                pageobj = Page(request, data)
+                
+            currev = request.graphdata.getpage(pageobj.page_name)['rev']
             kw = dict()
-            if rev:
-                kw['querystr'] = '?action=recall&amp;rev=' + rev
+            if request.user.may.write(data):
+                # Editlinks for current revisions (either no mention
+                # of revision, or current rev), recall links for
+                # previous revisions
+                if not rev or rev == currev:
+                    img = request.theme.make_icon('edit')
+                    out.append(formatter.span(1, css_class="meta_editicon"))
+                    out.append(pageobj.link_to_raw(request, img,
+                                                querystr={'action': 'edit'},
+                                                rel='nofollow'))
+                    img = request.theme.make_icon('formedit')
+                    out.append(pageobj.link_to_raw(request, img,
+                                                querystr={'action': 'MetaFormEdit'},
+                                                rel='nofollow'))
+                    out.append(formatter.span(0))
+                elif rev:
+                    kw['querystr'] = '?action=recall&amp;rev={}'.format(rev)
             linktext = data
             if linkoverride:
                 linktext = linkoverride
@@ -173,14 +180,14 @@ def t_cell(request, pagename, vals, head=0,
                 if pathstrip:
                     linktext = '/'.join(reversed(
                             dataparts[:-pathstrip-1:-1]))
-            out.append(formatter.pagelink(1, data, **kw))
+            out.append(formatter.pagelink(1, data, pageobj, **kw))
             out.append(formatter.text(linktext))
             out.append(formatter.pagelink(0))
         elif data.strip():
             if cellstyle == 'list':
                 out.append(formatter.listitem(1))
 
-            out.append(wrap_span(request, pagename, key, data, i))
+            out.append(wrap_span(request, pagename, key, data, i, pageobj))
 
             if cellstyle == 'list':
                 out.append(formatter.listitem(0))
@@ -188,7 +195,7 @@ def t_cell(request, pagename, vals, head=0,
         first_val = False
 
     if not vals:
-        out.append(wrap_span(request, pagename, key, '', 0))
+        out.append(wrap_span(request, pagename, key, '', 0, pageobj))
 
     if cellstyle == 'list':
         out.append(formatter.bullet_list(1))
@@ -196,6 +203,30 @@ def t_cell(request, pagename, vals, head=0,
     out.append(formatter.table_cell(0))
     return out
 
+def prepare_properties(properties):
+    # for now, it's just colors
+    prepared_properties = dict()
+    prepared_properties['colors'] = list()
+    colors = [x.strip() for x in properties
+              if x.startswith('color')]
+    colormatch = None
+    # Get first color match
+    for color in colors:
+        colorval = properties.get(color)
+        # See that color is valid (either in the colorlist
+        # or a valid hex color)
+        if colorval not in COLORS:
+            if not re.match('#[0-9a-f]{6}', colorval):
+                continue
+        color = color.split()[-1]
+
+        try:
+            color_p = re.compile(color)
+            prepared_properties['colors'].append((color_p, colorval))
+        except re.error:
+            continue
+
+    return prepared_properties
 
 def construct_table(request, pagelist, metakeys, legend='',
                     checkAccess=True, styles=dict(), options=dict()):
@@ -224,13 +255,27 @@ def construct_table(request, pagelist, metakeys, legend='',
     transpose = options.get('transpose', 0)
 
     # Default and override properties
-    propdefault = options.get('propdefault', '')
+    properties = dict()
+    emptyprop = dict().fromkeys(PROPERTIES, "")
+
     propoverride = options.get('propoverride', '')
     if propoverride:
         propoverride = get_properties(request, propoverride)
-    if propdefault:
-        propdefault = get_properties(request, propdefault)
-
+        propoverride = prepare_properties(propoverride)
+        for key in metakeys:
+            properties[key] = propoverride
+    else:
+        propdefault = options.get('propdefault', '')
+        if propdefault:
+            propdefault = get_properties(request, propdefault)
+            propdefault = prepare_properties(propdefault)
+        for key in metakeys:
+            keyproperties = get_properties(request, key)
+            if keyproperties != emptyprop:
+                properties[key] = prepare_properties(keyproperties)
+            elif propdefault:
+                properties[key] = propdefault
+                
     # Limit the maximum number of pages displayed
     maxpages = len(pagelist)
     limit = options.get('limit', 0)
@@ -274,38 +319,15 @@ def construct_table(request, pagelist, metakeys, legend='',
             else:
                 out.extend(t_cell(request, pagename, [legend]))
 
-    def key_cell(request, metas, key, page,
-                 styles, propoverride, propdefault):
+    def key_cell(request, metas, key, page, pageobj, styles, properties):
         out = list()
         style = styles.get(key, dict())
 
         if key == 'gwikipagename':
-            out.extend(t_cell(request, page, [page], head=1, style=style))
+            out.extend(t_cell(request, page, [page], head=1, style=style, pageobj=pageobj))
         else:
-            if propoverride:
-                properties = propoverride
-            else:
-                properties = get_properties(request, key)
-            if properties == emptyprop:
-                properties = propdefault
-
-            colors = [x.strip() for x in properties
-                      if x.startswith('color')]
-            colormatch = None
-            # Get first color match
-            for color in colors:
-                colorval = properties.get(color)
-                # See that color is valid (either in the colorlist
-                # or a valid hex color)
-                if colorval not in COLORS:
-                    if not re.match('#[0-9a-f]{6}', colorval):
-                        continue
-                color = color.split()[-1]
-
-                try:
-                    color_p = re.compile(color)
-                except:
-                    continue
+            colormatch = False
+            for (color_p, colorval) in properties.get(key, dict()).get('colors', list()):
                 for val in metas[key]:
                     if color_p.match(val):
                         colormatch = colorval
@@ -314,7 +336,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             if colormatch:
                 style['bgcolor'] = colormatch
 
-            out.extend(t_cell(request, page, metas[key], style=style, key=key))
+            out.extend(t_cell(request, page, metas[key], style=style, key=key, pageobj=pageobj))
 
             if colormatch:
                 del style['bgcolor']
@@ -322,10 +344,11 @@ def construct_table(request, pagelist, metakeys, legend='',
             return out
 
     def page_rev_metas(request, page, metakeys, checkAccess):
-        if '-gwikirevision-' in page:
+        if REVISION_MARKER in page:
             metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess)
-            page, revision = page.split('-gwikirevision-')
+            page, revision = page.split(REVISION_MARKER)
+            revision = int(revision)
         else:
             metas = get_metas(request, page, metakeys,
                               checkAccess=checkAccess)
@@ -333,13 +356,9 @@ def construct_table(request, pagelist, metakeys, legend='',
 
         return metas, page, revision
 
-    def page_cell(request, page, revision, row, send_pages,
+    def page_cell(request, page, pageobj, revision, row, send_pages,
                   pagelinkonly, pagepathstrip):
         out = list()
-
-        pageobj = Page(request, page)
-        request.page = pageobj
-        request.formatter.page = pageobj
 
         if row:
             if row % 2:
@@ -355,16 +374,24 @@ def construct_table(request, pagelist, metakeys, legend='',
             if pagelinkonly:
                 linktext = _('[link]')
             out.extend(t_cell(request, page, [page], head=1, rev=revision,
-                              pathstrip=pagepathstrip, linkoverride=linktext))
+                              pathstrip=pagepathstrip, linkoverride=linktext, pageobj=pageobj))
 
         return out
 
+    tmp_page = request.page
+
+    pageobjs = list()
     if transpose:
         for page in pagelist:
             metas, page, revision = page_rev_metas(request, page,
                                                    metakeys, checkAccess)
 
-            out.extend(page_cell(request, page, revision, 0, send_pages,
+            pageobj = Page(request, page)
+            pageobjs.append(pageobj)
+            request.page = pageobj
+            request.formatter.page = pageobj
+
+            out.extend(page_cell(request, page, pageobj, revision, 0, send_pages,
                                  pagelinkonly, pagepathstrip))
     else:
         for key in metakeys:
@@ -392,10 +419,7 @@ def construct_table(request, pagelist, metakeys, legend='',
     if metakeys:
         out.append(formatter.table_row(0))
 
-    tmp_page = request.page
-
     if transpose:
-        emptyprop = dict().fromkeys(PROPERTIES, '')
         for key in metakeys:
             style = styles.get(key, dict())
 
@@ -420,11 +444,11 @@ def construct_table(request, pagelist, metakeys, legend='',
 
             row = row + 1
 
-            for page in pagelist:
+            for i, page in enumerate(pagelist):
                 metas, page, revision = page_rev_metas(request, page,
                                                        metakeys, checkAccess)
-                out.extend(key_cell(request, metas, key, page,
-                                    styles, propoverride, propdefault))
+                pageobj = pageobjs[i]
+                out.extend(key_cell(request, metas, key, page, pageobj, styles, properties))
 
             out.append(formatter.table_row(0))
     else:
@@ -432,15 +456,17 @@ def construct_table(request, pagelist, metakeys, legend='',
             metas, page, revision = page_rev_metas(request, page,
                                                    metakeys, checkAccess)
 
+            pageobj = Page(request, page)
+            request.page = pageobj
+            request.formatter.page = pageobj
+
             row = row + 1
 
-            out.extend(page_cell(request, page, revision, row, send_pages,
+            out.extend(page_cell(request, page, pageobj, revision, row, send_pages,
                                  pagelinkonly, pagepathstrip))
 
-            emptyprop = dict().fromkeys(PROPERTIES, '')
             for key in metakeys:
-                out.extend(key_cell(request, metas, key, page,
-                                    styles, propoverride, propdefault))
+                out.extend(key_cell(request, metas, key, page, pageobj, styles, properties))
 
             out.append(formatter.table_row(0))
 
