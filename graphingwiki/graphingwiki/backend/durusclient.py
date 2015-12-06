@@ -160,7 +160,8 @@ class GraphData:
 
     # implement savegraphdata-ish api
 
-    def set_page_meta_and_info(self, pagename, newmeta, acl, mtime, saved):
+    def set_page_meta_and_info(self, pagename, newmeta, acl, 
+                               rev, editor, mtime, saved):
         p = self.getpage(pagename)
         p.unlinks.update(newmeta)
         p.acl = acl

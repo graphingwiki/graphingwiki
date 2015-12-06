@@ -32,9 +32,10 @@ from time import time
 
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser
-from MoinMoin.wikiutil import importPlugin, get_processing_instructions
+from MoinMoin.wikiutil import importPlugin, get_processing_instructions, version2timestamp
 from MoinMoin.Page import Page 
 from MoinMoin.wikiutil import AbsPageName
+from MoinMoin.user import User
 from MoinMoin import config
 
 # gwiki imports
@@ -524,9 +525,12 @@ def _clear_page(request, pagename):
         del request.graphdata[pagename]
     else:
         request.graphdata[pagename][u'saved'] = SAVED_NONE
-        del request.graphdata[pagename][u'mtime']
         del request.graphdata[pagename][u'acl']
+        del request.graphdata[pagename][u'rev']
+        del request.graphdata[pagename][u'editor']
+        del request.graphdata[pagename][u'mtime']
         del request.graphdata[pagename][u'meta']
+        del request.graphdata[pagename][u'out']
 
 def execute(pagename, request, text, pageitem, saved=SAVED_PAGE):
     try:
@@ -540,15 +544,32 @@ def execute2(pagename, request, text, pageitem, saved):
     if pagename.endswith('/MoinEditorBackup'):
         return
 
+    editor = ''
+    log = pageitem.editlog_entry()
+    cur_time = 0
+    if log:
+        # XXX mimicked the weird auth string from editlog
+        editor = User(request, log.userid, auth_method="editlog:76")
+        editor = editor.name
+        cur_time = version2timestamp(log.ed_time_usecs)
+    else:
+        cur_time = time()
+
+    if not editor and request.user.valid:
+        editor = request.user.name
+        
     rev = pageitem.rev
-    # New pages do not yet exist, hence revision 99999999. Change this
-    # to revision 1 when saving the page.
-    if rev == 99999999:
-        rev = 1
     # Page item might not have the revision info, need to get it
-    if rev == 0:
-        rev = pageitem.get_rev()[1]
-    
+    if not rev:
+        if saved == SAVED_LAZY:
+            if pagename in request.graphdata:
+                rev = request.graphdata.getpage(pagename)['rev']
+            else:
+                rev = 0
+            rev = rev + 1
+        else:
+            rev = pageitem.get_rev()[1]
+
     # parse_text, add_link, add_meta return dict with keys like
     # 'BobPerson' -> {u'out': {'friend': ['GeorgePerson']}}
     # (ie. same as what graphdata contains)
@@ -563,13 +584,12 @@ def execute2(pagename, request, text, pageitem, saved):
         changed_meta(request, pagename, old_outs, new_data)
 
     # Insert metas and other stuff from parsed content
-    cur_time = time()
-
-    request.graphdata.set_page_meta_and_info(
-        pagename,
-        new_data.get(pagename, dict()).get(u'meta', dict()),
-        new_data.get(pagename, dict()).get(u'acl', []),
-        rev, cur_time, saved)
+    if hasattr(request.graphdata, 'set_page_meta_and_info'):
+        request.graphdata.set_page_meta_and_info(
+            pagename,
+            new_data.get(pagename, dict()).get(u'meta', dict()),
+            new_data.get(pagename, dict()).get(u'acl', []),
+            rev, editor, cur_time, saved)
 
     # Save the links that have truly changed
     for page in changed_del_out:

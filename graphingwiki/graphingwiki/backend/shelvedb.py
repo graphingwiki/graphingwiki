@@ -215,20 +215,25 @@ class GraphData(GraphDataBase):
         self.readlock()
         return page in self.db
 
-    def set_page_meta_and_info(self, pagename, newmeta,
-                               acl, rev, mtime, saved):
+    def set_page_meta_and_info(self, pagename, newmeta, acl,
+                               rev, editor, mtime, saved):
         pagedata = self.getpage(pagename)
-        pagedata[u'meta'] = newmeta
+        pagedata[u'saved'] = saved
         pagedata[u'acl'] = acl
         pagedata[u'rev'] = rev
+        pagedata[u'editor'] = editor
         pagedata[u'mtime'] = mtime
-        pagedata[u'saved'] = saved
+        pagedata[u'meta'] = newmeta
         self.savepage(pagename, pagedata)
 
     def clear_page(self, pagename):
         if self.get_in(pagename):
             pagedata = self.getpage(pagename)
             pagedata[u'saved'] = SAVED_NONE
+            del pagedata[u'acl']
+            del pagedata[u'rev']
+            del pagedata[u'editor']
+            del pagedata[u'mtime']
             pagedata[u'meta'] = dict()
             pagedata[u'out'] = dict()
             self.savepage(pagename, pagedata)

@@ -191,7 +191,8 @@ class GraphData(GraphDataBase):
         else:
             self.delpage(pagename)
 
-    def set_page_meta_and_info(self, pagename, newmeta, acl, mtime, saved):
+    def set_page_meta_and_info(self, pagename, newmeta, acl, 
+                               rev, editor, mtime, saved):
         pagedoc = self.getpagedoc(pagename)
         pagedoc.meta.clear()
         pagedoc.meta.update(newmeta)
