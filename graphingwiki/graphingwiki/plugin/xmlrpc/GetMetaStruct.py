@@ -24,4 +24,5 @@ def do_action(request, args):
     return out
 
 def execute(xmlrpcobj, args):
+    args = xmlrpcobj._instr(args)
     return do_action(xmlrpcobj.request, args)

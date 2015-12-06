@@ -45,11 +45,9 @@ def execute(pagename, request):
     if request.environ['REQUEST_METHOD'] != 'POST':
         return
 
-    if not request.user.may.write(pagename):
-        sendfault(request, 1, _("You are not allowed to edit this page"))
-        return
-
-    pagename = pagename.strip()
+    # normalization is performed in set_metas, this check is retained
+    # to provide early feedback to the user.
+    pagename = wikiutil.normalize_pagename(pagename, request.cfg)
     if not pagename:
         sendfault(request, 2, _("No page name entered"))
         return

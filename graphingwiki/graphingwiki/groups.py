@@ -15,7 +15,7 @@ if __name__ == '__main__':
     import MoinMoin.web.contexts
 
 from MoinMoin.user import User
-from MoinMoin.wikiutil import isGroupPage
+from MoinMoin.wikiutil import isGroupPage, normalize_pagename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.datastruct.backends.wiki_groups import WikiGroup
 
@@ -72,6 +72,7 @@ def users_by_group(request, grouppage, recursive=False):
 def check_grouppage(request, grouppage, writecheck=True, createcheck=True):
     _ = request.getText
 
+    grouppage = normalize_pagename(grouppage, request.cfg)
     if createcheck:
         if not isGroupPage(grouppage, request.cfg):
             return False, _("Group does not exist.")

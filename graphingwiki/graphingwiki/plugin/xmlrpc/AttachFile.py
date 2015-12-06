@@ -14,6 +14,8 @@ from graphingwiki.editing import load_attachfile
 from graphingwiki.editing import delete_attachfile
 from graphingwiki.editing import list_attachments
 
+from MoinMoin.wikiutil import normalize_pagename
+
 def list(request, pagename):
     _ = request.getText
     # check ACLs
@@ -79,6 +81,11 @@ def execute(xmlrpcobj, pagename, filename, action='save',
     _ = request.getText
 
     pagename = xmlrpcobj._instr(pagename)
+    filename = xmlrpcobj._instr(filename)
+    pagename = normalize_pagename(pagename, request.cfg)
+    # Fault at empty pagenames
+    if not pagename:
+        return xmlrpclib.Fault(3, _("No page name entered"))
 
     if action == 'list':
         success = list(request, pagename)

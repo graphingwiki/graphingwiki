@@ -11,6 +11,7 @@ from graphingwiki.editing import metatable_parseargs, get_metas
 def execute(xmlrpcobj, args, keysonly=True):
     request = xmlrpcobj.request
     _ = request.getText
+    args = xmlrpcobj._instr(args)
 
     # Expects MetaTable arguments
     pagelist, metakeys, _ = metatable_parseargs(request, args, 

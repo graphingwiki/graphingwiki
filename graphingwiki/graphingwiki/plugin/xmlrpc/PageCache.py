@@ -15,6 +15,8 @@ from graphingwiki.editing import delete_pagecachefile
 from graphingwiki.editing import list_pagecachefiles
 from graphingwiki.util import cache_key
 
+from MoinMoin.wikiutil import normalize_pagename
+
 def list(request, pagename):
     _ = request.getText
     # check ACLs
@@ -81,10 +83,16 @@ def execute(xmlrpcobj, pagename, filename=None, action='save',
     _ = request.getText
 
     pagename = xmlrpcobj._instr(pagename)
+    pagename = normalize_pagename(pagename, request.cfg)
+    # Fault at empty pagenames
+    if not pagename:
+        return xmlrpclib.Fault(3, _("No page name entered"))
 
     # It is possible just to attach data to the cache
     if not filename:
         filename = cache_key(request, (pagename, content))
+    else:
+        filename = xmlrpcobj._instr(filename)
 
     if action == 'list':
         success = list(request, pagename)
