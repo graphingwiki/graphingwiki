@@ -2014,18 +2014,16 @@ class GraphShower(object):
                 self.request.write(formatter.text(_(\
                     "ERROR: Graphviz Python extensions not installed. " +\
                     "Not performing layout.")))
-
-            # XXX sometimes gr is not bound here -> crash on reference
-
-            if self.format == 'dot':
-                self.send_gv(gr)
             else:
-                if self.legend == 'top':
-                    self.send_legend()
-                    self.send_graph(gr.graphviz)
+                if self.format == 'dot':
+                    self.send_gv(gr)
                 else:
-                    self.send_graph(gr.graphviz)
-                    self.send_legend()
+                    if self.legend == 'top':
+                        self.send_legend()
+                        self.send_graph(gr.graphviz)
+                    else:
+                        self.send_graph(gr.graphviz)
+                        self.send_legend()
         else:
             self.test_graph(gr, outgraph)
 
