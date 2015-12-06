@@ -522,7 +522,7 @@ def remove_preformatted(text):
 def edit_meta(request, pagename, oldmeta, newmeta, lazypage=False):
     page = PageEditor(request, pagename)
 
-    if lazypage:
+    if _is_lazy(request, lazypage):
         if oldmeta == newmeta:
             return request.getText('Unchanged')
         if newmeta[TEMPLATE_KEY]:
@@ -1001,7 +1001,12 @@ def replace_metas(request, text, oldmeta, newmeta):
     # beginning of this function, not doing so causes extra edits.
     return text.rstrip() + '\n'
 
+def _is_lazy(request, lazypage):
+    return lazypage and getattr(request.cfg, 'gwiki_use_lazy_pages', False)
+
 def set_metas(request, cleared, discarded, added, lazypage=False):
+    lazypage = _is_lazy(request, lazypage)
+
     pages = set(cleared) | set(discarded) | set(added)
 
     # Discard empties and junk

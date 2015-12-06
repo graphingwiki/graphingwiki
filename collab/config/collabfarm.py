@@ -149,6 +149,7 @@ class FarmConfig(DefaultConfig):
     collab_allow_publish = False
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
+    gwiki_use_lazy_pages = False
 
     gwikivariables = {'GWIKITEST': 'I am the bestest!'}
 

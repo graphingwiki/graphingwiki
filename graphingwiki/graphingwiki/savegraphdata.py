@@ -545,7 +545,9 @@ def execute2(pagename, request, text, pageitem, saved):
         return
 
     editor = ''
-    log = pageitem.editlog_entry()
+    log = ''
+    if saved != SAVED_LAZY:
+        log = pageitem.editlog_entry()
     cur_time = 0
     if log:
         # XXX mimicked the weird auth string from editlog
