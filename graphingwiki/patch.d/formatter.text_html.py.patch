@@ -41,7 +41,7 @@
  
      def interwikilink(self, on, interwiki='', pagename='', **kw):
          """
-@@ -534,14 +537,28 @@ class Formatter(FormatterBase):
+@@ -534,12 +537,25 @@ class Formatter(FormatterBase):
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=1/True parameter, please review caller.")
              else:
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=0/False parameter, please remove it from the caller.")
@@ -67,7 +67,4 @@
 +                url = quote_urlparts(kw['href'])
                  del kw['href']
              if url is not None:
-+                url = quote_urlparts(url)
                  url = wikiutil.mapURL(self.request, url)
-                 attrs['href'] = url
- 
