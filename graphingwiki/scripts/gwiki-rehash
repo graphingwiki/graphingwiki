@@ -97,7 +97,7 @@ try:
 
         for page in pagelist:
             pageobj = Page(request, page)
-            if not pageobj.exists():
+            if not pageobj.exists(include_backend=False):
                 raise UserInputException(page)
             pageobjs.append(pageobj)
 
