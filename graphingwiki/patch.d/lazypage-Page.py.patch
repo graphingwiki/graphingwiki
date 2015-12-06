@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2015-04-21 06:08:39.249947809 +0300
-+++ ./MoinMoin/Page.py	2015-08-26 19:24:27.492848584 +0300
++++ ./MoinMoin/Page.py	2015-12-07 00:48:25.893339512 +0200
 @@ -38,6 +38,7 @@ import os, re, codecs
  
  from MoinMoin import log
@@ -18,7 +18,7 @@
          old_pos = self.log_pos
          new_pos, items = elog.news(old_pos)
          if items:
-@@ -218,6 +218,25 @@ class Page(object):
+@@ -218,6 +218,26 @@ class Page(object):
                      # return empty text (note that we never store empty pages,
                      # so this is detectable and also safe when passed to a
                      # function expecting a string)
@@ -27,7 +27,8 @@
 +                                                          replace_metas)
 +                        _, metakeys, _ = metatable_parseargs(self.request, self.page_name,
 +                                                             get_all_keys=True)
-+                        pagemeta = get_metas(self.request, self.page_name, metakeys, checkAccess=False)
++                        pagemeta = get_metas(self.request, self.page_name, metakeys, 
++                                             indirection=False, checkAccess=False)
 +                        template = pagemeta.get('gwikitemplate', [''])[0]
 +                        temp_body = ''
 +                        temp_meta = dict()
@@ -44,7 +45,7 @@
                      return u""
                  else:
                      raise
-@@ -525,7 +544,7 @@ class Page(object):
+@@ -525,7 +545,7 @@ class Page(object):
              entry = request.cfg.cache.meta.getItem(request, cache_name, cache_key)
          else:
              entry = None
@@ -53,7 +54,7 @@
              from MoinMoin.logfile import editlog
              wanted_rev = "%08d" % self.get_real_rev()
              edit_log = editlog.EditLog(request, rootpagename=self.page_name)
-@@ -597,9 +616,15 @@ class Page(object):
+@@ -597,9 +617,15 @@ class Page(object):
          """ Can this page be changed?
  
          @rtype: bool
@@ -71,7 +72,7 @@
  
      def isUnderlayPage(self, includeDeleted=True):
          """ Does this page live in the underlay dir?
-@@ -626,7 +651,15 @@ class Page(object):
+@@ -626,7 +652,15 @@ class Page(object):
          """
          return self.exists(domain='standard', includeDeleted=includeDeleted)
  
@@ -88,7 +89,7 @@
          """ Does this page exist?
  
          This is the lower level method for checking page existence. Use
-@@ -644,6 +677,7 @@ class Page(object):
+@@ -644,6 +678,7 @@ class Page(object):
          if domain == 'underlay' and not self.request.cfg.data_underlay_dir:
              return False
  
@@ -96,7 +97,7 @@
          if includeDeleted:
              # Look for page directory, ignore page state
              if domain is None:
-@@ -656,6 +690,12 @@ class Page(object):
+@@ -656,6 +691,12 @@ class Page(object):
                      return True
              return False
          else:
@@ -109,7 +110,7 @@
              # Look for non-deleted pages only, using get_rev
              if not rev and self.rev:
                  rev = self.rev
-@@ -1090,7 +1130,11 @@ class Page(object):
+@@ -1090,7 +1131,11 @@ class Page(object):
              # to ensure cacheability where supported. Because we are sending
              # RAW (file) content, the file mtime is correct as Last-Modified header.
              request.status_code = 200
@@ -122,7 +123,7 @@
              text = self.encodeTextMimeType(self.body)
              #request.headers['Content-Length'] = len(text)  # XXX WRONG! text is unicode obj, but we send utf-8!
              if content_disposition:
-@@ -1353,10 +1397,11 @@ class Page(object):
+@@ -1353,10 +1398,11 @@ class Page(object):
  
          # cache the pagelinks
          if do_cache and self.default_formatter and page_exists:
@@ -138,7 +139,7 @@
  
          # restore old formatter (hopefully we dont throw any exception that is catched again)
          if old_formatter is no_formatter:
-@@ -1418,7 +1463,7 @@ class Page(object):
+@@ -1418,7 +1464,7 @@ class Page(object):
              Parser = wikiutil.searchAndImportPlugin(request.cfg, "parser", "plain")
          parser = Parser(body, request, format_args=format_args, **kw)
  
@@ -147,7 +148,7 @@
              self.format(parser)
          else:
              try:
-@@ -1495,8 +1540,9 @@ class Page(object):
+@@ -1495,8 +1541,9 @@ class Page(object):
          src = formatter.assemble_code(text)
          code = compile(src.encode(config.charset),
                         self.page_name.encode(config.charset), 'exec')
@@ -159,7 +160,7 @@
          return code
  
      def _specialPageText(self, request, special_type):
-@@ -1601,7 +1647,7 @@ class Page(object):
+@@ -1601,7 +1648,7 @@ class Page(object):
          @rtype: list
          @return: page names this page links to
          """
@@ -168,7 +169,7 @@
              cache = caching.CacheEntry(request, self, 'pagelinks', scope='item', do_locking=False, use_pickle=True)
              if cache.needsUpdate(self._text_filename()):
                  links = self.parsePageLinks(request)
-@@ -1612,6 +1658,8 @@ class Page(object):
+@@ -1612,6 +1659,8 @@ class Page(object):
                  except caching.CacheError:
                      links = self.parsePageLinks(request)
                      cache.update(links)
@@ -177,7 +178,7 @@
          else:
              links = []
          return links
-@@ -1731,13 +1779,17 @@ class Page(object):
+@@ -1731,13 +1780,17 @@ class Page(object):
          """
          from MoinMoin import security
          if self.exists() and self.rev == 0:
@@ -197,7 +198,7 @@
  
          return Page(self.request, self.page_name, rev=lastRevision).parseACL()
  
-@@ -1826,7 +1878,7 @@ class RootPage(Page):
+@@ -1826,7 +1879,7 @@ class RootPage(Page):
  
          return underlay, path
  
@@ -206,7 +207,7 @@
          """ List user readable pages under current page
  
          Currently only request.rootpage is used to list pages, but if we
-@@ -1895,7 +1947,7 @@ class RootPage(Page):
+@@ -1895,7 +1948,7 @@ class RootPage(Page):
                      continue
  
                  # Filter deleted pages
