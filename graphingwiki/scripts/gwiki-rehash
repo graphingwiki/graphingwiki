@@ -39,8 +39,10 @@ from MoinMoin.Page import Page, RootPage
 from MoinMoin import config
 
 from graphingwiki.backend.shelvedb import DIRNAME, FILENAME
+from graphingwiki.editing import replace_metas
+from graphingwiki.util import SAVED_PAGE, SAVED_LAZY
 from graphingwiki import install_hooks, RequestCLI
-from graphingwiki.savegraphdata import execute as graphsaver
+from graphingwiki import savegraphdata
 
 pages = []
 retain_shelve = False
@@ -106,6 +108,37 @@ try:
     else:
         pages = root.getPageList(user="", include_underlay=True, filter=filter,
                                  return_objects=True, include_backend=False)
+        lazypages = list()
+        # XXX move somewhere else, also pretty similar to Page.get_body
+        if hasattr(request.cfg, 'gwiki_lazy_pages'):
+            dirname = savegraphdata._json_dirname(request)
+            for fname in savegraphdata.list_json(request):
+                page_data = savegraphdata.load_json(request, fsname=fname)
+                if not page_data:
+                    continue
+                page_data = page_data[0]
+                pagename = fname.replace(dirname + '/', '', 1)
+                pagename = pagename[:pagename.rfind('.json')]
+                pagename = unquoteWikiname(pagename)
+
+                pageobj = Page(request, pagename)
+                template = page_data.get('meta', dict()).get('gwikitemplate', [''])[0]
+                template_data = dict()
+                temp_body = ''
+                if template:
+                    temp_pageobj = Page(request, template)
+                    temp_body = temp_pageobj.get_raw_body()
+                    template_data = savegraphdata.parse_text(request, temp_pageobj, temp_body)
+                    template_data = template_data[template]
+                    page_data['meta'].pop('gwikitemplate')
+                text = replace_metas(request, temp_body, 
+                                     template_data.get('meta', dict()), 
+                                     page_data.get('meta', dict()))
+                pageobj.body = text
+                pageobj.rehash_editor = page_data.get('editor', '')
+                pageobj.rehash_edittime = page_data['mtime']
+                pageobj.rev = page_data['rev']
+                lazypages.append(pageobj)
 
 except UserInputException, page:
     print >> sys.stderr, "page %s does not exist" % (page)
@@ -132,7 +165,7 @@ elif not options.filename:
                              "and rehash the crashed pages.\n")
             sys.exit(1)
 
-total = len(pages)
+total = len(pages) + len(lazypages)
 padding = len(str(total))
 count = 1
 
@@ -155,17 +188,26 @@ if options.filename:
     scriptcontext._graphdata.readlock = lambda: None
     scriptcontext._graphdata.writelock = lambda: None
 
-for pageobj in pages:
+def _counter(pageobj, padding, count, total):
     page_enc = _e(pageobj.page_name)
     print "(%*d/%*d) Rehashing %s " % (padding, count, padding, total, page_enc)
-    count += 1
+    return count + 1
+
+def _save(scriptcontext, pageobj, saved=SAVED_PAGE):
     # Implant relevant bits for this page into our recycleable scriptcontext
-    
     scriptcontext.page = pageobj
     text = pageobj.get_raw_body()
 
     # Apply the graphsaver action to the page
-    graphsaver(pageobj.page_name, scriptcontext, text, pageobj)
+    savegraphdata.execute(pageobj.page_name, scriptcontext, text, pageobj, saved)
+
+for pageobj in pages:
+    count = _counter(pageobj, padding, count, total)
+    _save(scriptcontext, pageobj)
+
+for pageobj in lazypages:
+    count = _counter(pageobj, padding, count, total)
+    _save(scriptcontext, pageobj, saved=SAVED_LAZY)
 
 # Must finish the scriptcontext to ensure that metadata is saved & committed
 scriptcontext.finish()

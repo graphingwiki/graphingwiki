@@ -1002,7 +1002,7 @@ def replace_metas(request, text, oldmeta, newmeta):
     return text.rstrip() + '\n'
 
 def _is_lazy(request, lazypage):
-    return lazypage and getattr(request.cfg, 'gwiki_use_lazy_pages', False)
+    return lazypage and getattr(request.cfg, 'gwiki_lazy_pages', False)
 
 def set_metas(request, cleared, discarded, added, lazypage=False):
     lazypage = _is_lazy(request, lazypage)

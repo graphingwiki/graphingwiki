@@ -27,14 +27,21 @@
 
 """
 import re
+import os
 
 from time import time
+from glob import glob
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 # MoinMoin imports
 from MoinMoin.parser.text_moin_wiki import Parser
 from MoinMoin.wikiutil import importPlugin, get_processing_instructions, version2timestamp
 from MoinMoin.Page import Page 
-from MoinMoin.wikiutil import AbsPageName
+from MoinMoin.wikiutil import AbsPageName, quoteWikinameFS
 from MoinMoin.user import User
 from MoinMoin import config
 
@@ -532,6 +539,48 @@ def _clear_page(request, pagename):
         del request.graphdata[pagename][u'meta']
         del request.graphdata[pagename][u'out']
 
+def _json_dirname(request):
+    return os.path.join(request.cfg.data_dir, request.cfg.gwiki_lazy_backupdir)
+
+def list_json(request):
+    if not hasattr(request.cfg, 'gwiki_lazy_backupdir'):
+        return list()
+    dirname = _json_dirname(request)
+    if not os.path.isdir(dirname):
+        return list()
+    return glob(os.path.join(dirname, '*.json'))
+
+def save_json(request, pagename, graphdata):
+    dirname = _json_dirname(request)
+    if not os.path.isdir(dirname):
+        os.mkdir(dirname)
+    filename = os.path.join(dirname, quoteWikinameFS(pagename) + '.json')
+    data = list()
+    if os.path.isfile(filename):
+        with file(filename, 'rb') as f:
+            data = json.load(f)
+    data.insert(0, graphdata)
+    with file(filename, 'wb') as f:
+        json.dump(data, f)
+
+def load_json(request, pagename=None, fsname=None):
+    data = list()
+    if not pagename and not fsname:
+        return data
+    if not hasattr(request.cfg, 'gwiki_lazy_backupdir'):
+        return data
+    dirname = _json_dirname(request)
+    if not os.path.isdir(dirname):
+        return data
+    if pagename:
+        filename = os.path.join(dirname, quoteWikinameFS(pagename) + '.json')
+    else:
+        filename = fsname
+    if os.path.isfile(filename):
+        with file(filename, 'rb') as f:
+            data = json.load(f)
+    return data
+
 def execute(pagename, request, text, pageitem, saved=SAVED_PAGE):
     try:
         return execute2(pagename, request, text, pageitem, saved)
@@ -548,6 +597,9 @@ def execute2(pagename, request, text, pageitem, saved):
     log = ''
     if saved != SAVED_LAZY:
         log = pageitem.editlog_entry()
+    elif request.graphdata.doing_rehash:
+        editor = pageitem.rehash_editor
+        cur_time = pageitem.rehash_edittime        
     cur_time = 0
     if log:
         # XXX mimicked the weird auth string from editlog
@@ -618,6 +670,9 @@ def execute2(pagename, request, text, pageitem, saved):
             linktype, src = edge
             add_in(request.graphdata, [src, page], linktype, cur_time)
 
+    if not request.graphdata.doing_rehash and saved == SAVED_LAZY and \
+       hasattr(request.cfg, 'gwiki_lazy_backupdir'):
+        save_json(request, pagename, request.graphdata.getpage(pagename))
 
     ## Remove deleted pages from the shelve
     # 1. Removing data at the moment of deletion

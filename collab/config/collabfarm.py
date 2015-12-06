@@ -1,3 +1,5 @@
+import os
+
 from MoinMoin.config.multiconfig import DefaultConfig
 
 class FarmConfig(DefaultConfig):
@@ -149,7 +151,8 @@ class FarmConfig(DefaultConfig):
     collab_allow_publish = False
 
     gwiki_geoip_path = '/etc/local/collab/GeoIPCity.dat'
-    gwiki_use_lazy_pages = False
+    gwiki_lazy_pages = False
+    #gwiki_lazy_backupdir = 'graphdata'
 
     gwikivariables = {'GWIKITEST': 'I am the bestest!'}
 
