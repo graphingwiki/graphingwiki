@@ -1,4 +1,5 @@
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.wikiutil import normalize_pagename
 
 from graphingwiki import values_to_form
 
@@ -20,6 +21,11 @@ def execute(pagename, request):
     content = form.get('content', [None])[0]
     if not content:
         sendfault(request,  "Missing page content")
+        return
+
+    pagename = normalize_pagename(pagename, request.cfg)
+    if not pagename:
+        sendfault(request, "No page name entered")
         return
 
     if not request.user.may.write(pagename):

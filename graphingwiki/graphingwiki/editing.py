@@ -1080,7 +1080,8 @@ def set_metas(request, cleared, discarded, added):
     pages = set(cleared) | set(discarded) | set(added)
 
     # Discard empties and junk
-    pages = [x.strip() for x in pages if x.strip()]
+    pages = [wikiutil.normalize_pagename(x, request.cfg) for x in pages]
+    pages = [x for x in pages if x]
 
     msg = list()
 

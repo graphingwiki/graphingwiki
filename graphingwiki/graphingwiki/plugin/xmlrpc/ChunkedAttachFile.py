@@ -16,6 +16,8 @@ from graphingwiki.editing import delete_pagecachefile
 from graphingwiki.editing import load_attachfile
 from graphingwiki.editing import delete_attachfile
 
+from MoinMoin.wikiutil import normalize_pagename
+
 CHUNK_SIZE = 1024 * 1024
 
 def runChecked(func, request, pagename, filename, *args, **keys):
@@ -146,19 +148,24 @@ def reassembly(request, pagename, filename, chunkSize, digests, overwrite=True):
 
     return xmlrpclib.Fault(2, _("Attachment not saved"))
 
-def execute(xmlrpcobj, page, file, action='info', start=None, end=None):
+def execute(xmlrpcobj, page, fname, action='info', start=None, end=None):
     request = xmlrpcobj.request
     _ = request.getText
 
     page = xmlrpcobj._instr(page)
+    fname = xmlrpcobj._instr(fname)
+    page = normalize_pagename(page, request.cfg)
+    # Fault at empty pagenames
+    if not page:
+        return xmlrpclib.Fault(3, _("No page name entered"))
 
     if action == 'info':
-        success = runChecked(info, request, page, file)
+        success = runChecked(info, request, page, fname)
     elif action == 'load' and None not in (start, end):
-        success = runChecked(load, request, page, file, start, end)
+        success = runChecked(load, request, page, fname, start, end)
     elif action == 'reassembly' and start is not None:
         chunk, digests = start, end
-        success = runChecked(reassembly, request, page, file, chunk, digests)
+        success = runChecked(reassembly, request, page, fname, chunk, digests)
     else:
         success = xmlrpclib.Fault(3, _("No method specified or invalid span"))
 

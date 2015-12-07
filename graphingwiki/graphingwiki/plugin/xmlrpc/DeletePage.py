@@ -9,6 +9,7 @@
 import xmlrpclib
 
 from MoinMoin.PageEditor import PageEditor
+from MoinMoin.wikiutil import normalize_pagename
 
 def delete(request, pagename, comment = None):
     _ = request.getText
@@ -32,6 +33,10 @@ def execute(xmlrpcobj, pagename, comment = None):
     _ = request.getText
 
     pagename = xmlrpcobj._instr(pagename)
+    pagename = normalize_pagename(pagename, request.cfg)
+    # Fault at empty pagenames
+    if not pagename:
+        return xmlrpclib.Fault(2, _("No page name entered"))
 
     if comment:
         comment = xmlrpcobj._instr(comment)

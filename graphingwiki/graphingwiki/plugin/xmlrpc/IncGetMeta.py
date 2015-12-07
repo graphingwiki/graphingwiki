@@ -90,4 +90,5 @@ def inc_get_metas(request, args, handle=None):
 
 def execute(xmlrpcobj, query, handle=None):
     request = xmlrpcobj.request
+    query = xmlrpcobj._instr(query)
     return inc_get_metas(request, query, handle)
