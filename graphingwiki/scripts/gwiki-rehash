@@ -29,7 +29,8 @@
 
 """
 
-import os, sys
+import os
+import sys
 
 from codecs import getencoder
 from optparse import OptionParser
@@ -117,7 +118,7 @@ try:
                 if not page_data:
                     continue
                 page_data = page_data[0]
-                pagename = fname.replace(dirname + '/', '', 1)
+                pagename = os.path.split(fname)[-1]
                 pagename = pagename[:pagename.rfind('.json')]
                 pagename = unquoteWikiname(pagename)
 
