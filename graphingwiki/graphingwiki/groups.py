@@ -18,6 +18,7 @@ from MoinMoin.user import User
 from MoinMoin.wikiutil import isGroupPage, normalize_pagename
 from MoinMoin.PageEditor import PageEditor
 from MoinMoin.datastruct.backends.wiki_groups import WikiGroup
+from MoinMoin.datastruct.backends import GroupDoesNotExistError
 
 from editing import _test, _doctest_request
 
@@ -73,14 +74,17 @@ def check_grouppage(request, grouppage, writecheck=True, createcheck=True):
     _ = request.getText
 
     grouppage = normalize_pagename(grouppage, request.cfg)
-    if createcheck:
-        if not isGroupPage(grouppage, request.cfg):
-            return False, _("Group does not exist.")
+    if not isGroupPage(grouppage, request.cfg):
+        return False, _("Invalid group name.")
     if writecheck:
         if not request.user.may.write(grouppage):
             return False, _("You are not allowed to edit this page.")
-    if not isinstance(request.groups[grouppage], WikiGroup):
-        return False, _("Invalid group.")
+    if createcheck:
+        try:
+            if not isinstance(request.groups[grouppage], WikiGroup):
+                return False, _("Invalid group.")
+        except GroupDoesNotExistError:
+            return False, _("Invalid group.")
 
     return True, ''
 
