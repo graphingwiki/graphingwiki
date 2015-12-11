@@ -67,7 +67,7 @@ def logCookieRequest(request, cfg, username, (issued, expires, target), version)
     if cfg["acls"] and not request.user.may.admin(pagename):
         return xmlrpclib.Fault(1, "User is not allowed to admin bookkeeping page")
 
-    bookkeepingPage = Page(request, pagename) 
+    bookkeepingPage = Page(request, pagename)
     if not bookkeepingPage.exists():
         if cfg["acls"]:
             acls = cfg["acls"] % username
@@ -87,7 +87,7 @@ def logCookieRequest(request, cfg, username, (issued, expires, target), version)
     if isinstance(result, xmlrpclib.Fault):
         return xmlrpclib.Fault(1, "Failed to edit bookkeeping page: " + repr(result))
 
-    return None 
+    return None
 
 def countUsage(request, page, key):
     metas = get_metas(request, page, [key], checkAccess=False)
@@ -156,29 +156,14 @@ def signCookie(cfg, input):
 
     s = SMIME.SMIME()
     s.load_key(cfg["key"], cfg["cert"])
-    p7 = s.sign(buffer)
+    p7 = s.sign(buffer, SMIME.PKCS7_DETACHED)
 
     buffer = BIO.MemoryBuffer(input)
 
     out = BIO.MemoryBuffer()
-    out2 = BIO.MemoryBuffer()
-    p7.write(out2)
     s.write(out, p7, buffer)
-    result = out.read()
-    if not result.endswith('\n'):
-        result += '\n'
-    for line in result.split('\n'):
-        if line.startswith('Content-Type'):
-            boundary = line.split('boundary="')[1].rstrip('"')
-            break
-    content_type = """Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-"""
-    result += "--%s\n%s\n%s\n--%s--\n" % (boundary, content_type, 
-                                          out2.read(), boundary)
 
-    return xmlrpclib.Binary(result)
+    return xmlrpclib.Binary(out.read())
 
 def createCookieString(values):
     lines = list()
@@ -286,6 +271,6 @@ def execute(xmlrpcobj, page, ttl=None, version=""):
 
     failure = logCookieRequest(request, cfg, username, (issued, expires, pagename), version)
     if failure:
-        return failure 
-    
+        return failure
+
     return signCookie(cfg, cookie)
