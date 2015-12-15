@@ -18,7 +18,7 @@ from MoinMoin import log
 log.load_config(backend.logconf)
 
 import MoinMoin.web.contexts
-from MoinMoin.user import User
+from MoinMoin.user import User, getUserId
 from MoinMoin.config import multiconfig
 
 from graphingwiki import RequestCLI
@@ -74,6 +74,9 @@ class CollabRequest(object):
                 sys.path.remove(self.confdir)
             if self.farmconfdir in sys.path:
                 sys.path.remove(self.farmconfdir)
+
+    def validUser(self, user):
+        return getUserId(self.request, user) != None
 
     def getUser(self, user):
         return User(self.request, auth_username=user)
