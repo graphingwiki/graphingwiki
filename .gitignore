@@ -1,6 +1,4 @@
 *.pyc
 *~
 
-collab/build/*
-graphingwiki/build/*
-opencollab/build/*
+build/
