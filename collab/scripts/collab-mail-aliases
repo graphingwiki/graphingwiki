@@ -38,7 +38,7 @@ def main():
                 emailto = set()
                 for user in users_by_group(request.request, group,
                                            recursive=True):
-                    if request.getUser(user).exists():
+                    if request.validUser(user):
                         emailto.add(user)
 
                 if len(emailto) > 0:

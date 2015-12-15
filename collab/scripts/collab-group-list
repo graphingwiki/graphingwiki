@@ -58,7 +58,7 @@ def main():
         for group in request.request.groups:
             for user in users_by_group(request.request, group):
                 if opts.all or opts.collabs or user in args:
-                    if request.getUser(user).exists():
+                    if request.validUser(user):
                         members.add(user)
                     else:
                         print >> sys.stderr, "PHANTOM: %s in %s:%s" % (
