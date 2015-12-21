@@ -8,11 +8,8 @@
 """
 from graphingwiki.editing import metatable_parseargs, get_metas
 
-def execute(xmlrpcobj, args, keysonly=True):
-    request = xmlrpcobj.request
-    _ = request.getText
-    args = xmlrpcobj._instr(args)
-
+#Used by action/metaCSV.py
+def do_action(request, args, keysonly=True):
     # Expects MetaTable arguments
     pagelist, metakeys, _ = metatable_parseargs(request, args, 
                                                 get_all_keys=True)
@@ -36,3 +33,10 @@ def execute(xmlrpcobj, args, keysonly=True):
         out.append(row)
 
     return out
+
+def execute(xmlrpcobj, args, keysonly=True):
+    request = xmlrpcobj.request
+    _ = request.getText
+    args = xmlrpcobj._instr(args)
+
+    return do_action(request, args, keysonly)

@@ -17,9 +17,7 @@ def execute(pagename, request):
     request.content_type = 'text/csv; charset=UTF-8'
     request.headers['Content-Disposition'] = \
         'attachment; filename="%s"' % pagename_header
-    GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta')
-    class x: pass
-    x.request = request
+    GetMeta = wikiutil.importPlugin(request.cfg, 'xmlrpc', 'GetMeta', 'do_action')
 
     form = values_to_form(request.values)
 
@@ -28,7 +26,7 @@ def execute(pagename, request):
     except (KeyError, IndexError):
         args = u''
 
-    table = GetMeta(x, args, keysonly=False)
+    table = GetMeta(request, args, keysonly=False)
     table = getmeta_to_table(table)
     if 0:
         print '--', table, '--'
