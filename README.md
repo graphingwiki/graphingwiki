@@ -12,13 +12,10 @@ Backend](https://github.com/graphingwiki/collabbackend) repository.
 
 ### Preconditions
 
-* Python 2.6 and Graphviz 2.8+ along with its python bindings,
-    available from graphviz.org as graphviz-<version>.rpm and
-  graphviz-python-<version>.rpm. Source installs need to be built
-  with --enable-python.
+* Python 2.6 and Graphviz 2.8+ along with its python bindings, available from graphviz.org as graphviz-<version>.rpm and
+  graphviz-python-<version>.rpm. Source installs need to be built with --enable-python.
 * MoinMoin 1.8+ installed.
-  * A MoinMoin wiki installed in directory WIKIDIR (with config
-      directory in WIKIDIR/config and data in WIKIDIR/data)
+* A MoinMoin wiki installed in directory WIKIDIR (with config directory in WIKIDIR/config and data in WIKIDIR/data)
 
 ### Steps
 
