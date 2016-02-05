@@ -107,7 +107,7 @@ try:
         retain_shelve = True
     else:
         pages = root.getPageList(user="", include_underlay=True, filter=filter,
-                                 return_objects=True)
+                                 return_objects=True, includeBackend=False)
 
 except UserInputException, page:
     print >> sys.stderr, "page %s does not exist" % (page)

@@ -1,5 +1,5 @@
 --- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2015-06-01 12:45:43.507574476 +0300
++++ ./MoinMoin/Page.py	2016-02-05 20:20:23.598923780 +0200
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object
@@ -24,29 +24,20 @@
          """ Does this page exist?
  
          This is the lower level method for checking page existence. Use
-@@ -656,16 +660,11 @@ class Page(object):
+@@ -656,6 +660,12 @@ class Page(object):
                      return True
              return False
          else:
--            # Look for non-deleted pages only, using get_rev
--            if not rev and self.rev:
--                rev = self.rev
--
--            if domain is None:
--                use_underlay = -1
--            else:
--                use_underlay = domain == 'underlay'
--            d, d, exists = self.get_rev(use_underlay, rev)
--            return exists
 +            # If it's in the backend, it exists
 +            if self._in_backend():
 +                return True
 +            elif includeBackend:
 +                return False
- 
-     def size(self, rev=0):
-         """ Get Page size.
-@@ -789,13 +788,20 @@ class Page(object):
++
+             # Look for non-deleted pages only, using get_rev
+             if not rev and self.rev:
+                 rev = self.rev
+@@ -789,13 +799,20 @@ class Page(object):
          @rtype: string
          @return: formatted link
          """
@@ -70,3 +61,21 @@
  
          attachment_indicator = kw.get('attachment_indicator')
          if attachment_indicator is None:
+@@ -1826,7 +1843,7 @@ class RootPage(Page):
+ 
+         return underlay, path
+ 
+-    def getPageList(self, user=None, exists=1, filter=None, include_underlay=True, return_objects=False):
++    def getPageList(self, user=None, exists=1, filter=None, include_underlay=True, return_objects=False, includeBackend=True):
+         """ List user readable pages under current page
+ 
+         Currently only request.rootpage is used to list pages, but if we
+@@ -1895,7 +1912,7 @@ class RootPage(Page):
+                     continue
+ 
+                 # Filter deleted pages
+-                if exists and not page.exists():
++                if exists and not page.exists(includeBackend=includeBackend):
+                     continue
+ 
+                 # Filter out page user may not read.
