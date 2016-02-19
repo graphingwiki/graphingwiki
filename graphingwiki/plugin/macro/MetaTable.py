@@ -218,7 +218,6 @@ def construct_table(request, pagelist, metakeys, legend='',
         pagepathstrip = int(pagepathstrip)
     except ValueError:
         pagepathstrip = 0
-        pass
     if pagepathstrip < 0:
         pagepathstrip = 0
 
@@ -253,7 +252,6 @@ def construct_table(request, pagelist, metakeys, legend='',
         limit = int(limit)
     except ValueError:
         limit = 0
-        pass
     if limit > maxpages or limit < 0:
         limit = 0
     if limit:
