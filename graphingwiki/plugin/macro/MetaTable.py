@@ -31,7 +31,6 @@ import re
 from urllib import quote
 
 from MoinMoin.Page import Page
-from MoinMoin.parser.text_moin_wiki import Parser
 
 from graphingwiki import url_escape
 from graphingwiki.editing import metatable_parseargs, get_metas, \
@@ -80,8 +79,8 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 
-def wrap_span(request, pageobj, key, data, id, parser=None):
-    fdata = format_wikitext(request, data, parser)
+def wrap_span(request, pageobj, key, data, id):
+    fdata = format_wikitext(request, data)
 
     if not key:
         return fdata
@@ -122,7 +121,7 @@ def wrap_span(request, pageobj, key, data, id, parser=None):
 
 def t_cell(request, pageobj, vals, head=0,
            style=None, rev='', key='',
-           pathstrip=0, linkoverride='', parser=None):
+           pathstrip=0, linkoverride=''):
     formatter = request.formatter
     out = list()
 
@@ -182,7 +181,7 @@ def t_cell(request, pageobj, vals, head=0,
                 out.append(formatter.listitem(1))
 
             out.append(wrap_span(request, pageobj, key, data,
-                                 i, parser=parser))
+                                 i))
 
             if cellstyle == 'list':
                 out.append(formatter.listitem(0))
@@ -190,8 +189,7 @@ def t_cell(request, pageobj, vals, head=0,
         first_val = False
 
     if not vals:
-        out.append(wrap_span(request, pageobj, key, '', 0,
-                             parser=parser))
+        out.append(wrap_span(request, pageobj, key, '', 0))
 
     if cellstyle == 'list':
         out.append(formatter.bullet_list(1))
@@ -202,7 +200,7 @@ def t_cell(request, pageobj, vals, head=0,
 
 def construct_table(request, pagelist, metakeys, legend='',
                     checkAccess=True, styles=dict(),
-                    options=dict(), parser=None):
+                    options=dict()):
     request.page.formatter = request.formatter
     formatter = request.formatter
     _ = request.getText
@@ -278,17 +276,14 @@ def construct_table(request, pagelist, metakeys, legend='',
         if send_pages:
             # Upper left cell contains table size or has the desired legend
             if legend:
-                out.extend(t_cell(request, pagename, [legend],
-                                  parser=parser))
+                out.extend(t_cell(request, pagename, [legend]))
             elif limit:
                 message = ["Showing (%s/%s) pages" %
                            (len(pagelist), maxpages)]
 
-                out.extend(t_cell(request, pagename, message,
-                                  parser=parser))
+                out.extend(t_cell(request, pagename, message))
             else:
-                out.extend(t_cell(request, pagename, [legend],
-                                  parser=parser))
+                out.extend(t_cell(request, pagename, [legend]))
 
     def key_cell(request, metas, key, pageobj,
                  styles, properties):
@@ -297,7 +292,7 @@ def construct_table(request, pagelist, metakeys, legend='',
 
         if key == 'gwikipagename':
             out.extend(t_cell(request, pageobj, [pageobj.page_name],
-                              head=1, style=style, parser=parser))
+                              head=1, style=style))
             return out
 
         colors = [x.strip() for x in properties
@@ -326,7 +321,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             style['bgcolor'] = colormatch
 
         out.extend(t_cell(request, pageobj, metas[key],
-                          style=style, key=key, parser=parser))
+                          style=style, key=key))
 
         if colormatch:
             del style['bgcolor']
@@ -364,7 +359,7 @@ def construct_table(request, pagelist, metakeys, legend='',
                 linktext = _('[link]')
             out.extend(t_cell(request, pageobj, [pageobj.page_name],
                               head=1, rev=revision, pathstrip=pagepathstrip,
-                              linkoverride=linktext, parser=parser))
+                              linkoverride=linktext))
 
         return out
 
@@ -399,12 +394,10 @@ def construct_table(request, pagelist, metakeys, legend='',
 
             if name:
                 out.extend(t_cell(request, request.page, [name],
-                                  style=headerstyle, key=key,
-                                  parser=parser))
+                                  style=headerstyle, key=key))
             else:
                 out.extend(t_cell(request, request.page, [key],
-                                  style=headerstyle, key=key,
-                                  parser=parser))
+                                  style=headerstyle, key=key))
 
     if metakeys:
         out.append(formatter.table_row(0))
@@ -427,12 +420,10 @@ def construct_table(request, pagelist, metakeys, legend='',
 
             if name:
                 out.extend(t_cell(request, tmp_page, [name],
-                                  style=headerstyle, key=key,
-                                  parser=parser))
+                                  style=headerstyle, key=key))
             else:
                 out.extend(t_cell(request, tmp_page, [key],
-                                  style=headerstyle, key=key,
-                                  parser=parser))
+                                  style=headerstyle, key=key))
 
             row = row + 1
 
@@ -496,15 +487,13 @@ def do_macro(request, args, **kw):
         out.append(formatter.table(0) + u'</div>')
         return "".join(out)
 
-    parser = Parser('', request)
-
     options = dict({'args': args}.items() + kw.items())
     divfmt = {'class': "metatable", 'data-options': quote(json.dumps(options))}
     out.append(formatter.div(1, **divfmt))
     # We're sure the user has the access to the page, so don't check
     out.extend(construct_table(request, pagelist, metakeys,
                                checkAccess=False, styles=styles,
-                               options=options, parser=parser))
+                               options=options))
 
     def action_link(action, linktext, args):
         req_url = request.script_root + "/" + \
