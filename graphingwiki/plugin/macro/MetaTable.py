@@ -79,8 +79,12 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 
-def wrap_span(request, pageobj, key, data, id):
-    fdata = format_wikitext(request, data)
+def wrap_span(request, cache, pageobj, key, data, id):
+    format_cache = cache.setdefault("format_wikitext", dict())
+
+    if data not in format_cache:
+        format_cache[data] = format_wikitext(request, data)
+    fdata = format_cache.get(data)
 
     if not key:
         return fdata
@@ -119,7 +123,7 @@ def wrap_span(request, pageobj, key, data, id):
         pageobj.page_name, key, data, str(id)) + fdata + '</span>'
 
 
-def t_cell(request, pageobj, vals, head=0,
+def t_cell(request, cache, pageobj, vals, head=0,
            style=None, rev='', key='',
            pathstrip=0, linkoverride=''):
     formatter = request.formatter
@@ -149,13 +153,15 @@ def t_cell(request, pageobj, vals, head=0,
 
         if head:
             if request.user.may.write(data):
-                img = request.theme.make_icon('edit')
+                icon_cache = cache.get("icons")
+                edit_icon = icon_cache.get("edit")
+                formedit_icon = icon_cache.get("formedit")
+
                 out.append(formatter.span(1, css_class="meta_editicon"))
-                out.append(pageobj.link_to_raw(request, img,
+                out.append(pageobj.link_to_raw(request, edit_icon,
                                                querystr={'action': 'edit'},
                                                rel='nofollow'))
-                img = request.theme.make_icon('formedit')
-                out.append(pageobj.link_to_raw(request, img,
+                out.append(pageobj.link_to_raw(request, formedit_icon,
                                                querystr={'action':
                                                          'MetaFormEdit'},
                                                rel='nofollow'))
@@ -180,7 +186,7 @@ def t_cell(request, pageobj, vals, head=0,
             if cellstyle == 'list':
                 out.append(formatter.listitem(1))
 
-            out.append(wrap_span(request, pageobj, key, data,
+            out.append(wrap_span(request, cache, pageobj, key, data,
                                  i))
 
             if cellstyle == 'list':
@@ -189,7 +195,7 @@ def t_cell(request, pageobj, vals, head=0,
         first_val = False
 
     if not vals:
-        out.append(wrap_span(request, pageobj, key, '', 0))
+        out.append(wrap_span(request, cache, pageobj, key, '', 0))
 
     if cellstyle == 'list':
         out.append(formatter.bullet_list(1))
@@ -198,7 +204,7 @@ def t_cell(request, pageobj, vals, head=0,
     return out
 
 
-def construct_table(request, pagelist, metakeys, legend='',
+def construct_table(request, cache, pagelist, metakeys, legend='',
                     checkAccess=True, styles=dict(),
                     options=dict()):
     request.page.formatter = request.formatter
@@ -209,6 +215,11 @@ def construct_table(request, pagelist, metakeys, legend='',
     row = 0
 
     formatopts = {'tableclass': 'metatable'}
+
+    # Populate icon cache
+    icon_cache = cache.setdefault("icons", dict())
+    icon_cache["edit"] = request.theme.make_icon('edit')
+    icon_cache["formedit"] = request.theme.make_icon('formedit')
 
     # Limit the maximum number of pages displayed
     pagepathstrip = options.get('pathstrip', 0)
@@ -276,22 +287,22 @@ def construct_table(request, pagelist, metakeys, legend='',
         if send_pages:
             # Upper left cell contains table size or has the desired legend
             if legend:
-                out.extend(t_cell(request, pagename, [legend]))
+                out.extend(t_cell(request, cache, pagename, [legend]))
             elif limit:
                 message = ["Showing (%s/%s) pages" %
                            (len(pagelist), maxpages)]
 
-                out.extend(t_cell(request, pagename, message))
+                out.extend(t_cell(request, cache, pagename, message))
             else:
-                out.extend(t_cell(request, pagename, [legend]))
+                out.extend(t_cell(request, cache, pagename, [legend]))
 
-    def key_cell(request, metas, key, pageobj,
+    def key_cell(request, cache, metas, key, pageobj,
                  styles, properties):
         out = list()
         style = styles.get(key, dict())
 
         if key == 'gwikipagename':
-            out.extend(t_cell(request, pageobj, [pageobj.page_name],
+            out.extend(t_cell(request, cache, pageobj, [pageobj.page_name],
                               head=1, style=style))
             return out
 
@@ -320,7 +331,7 @@ def construct_table(request, pagelist, metakeys, legend='',
         if colormatch:
             style['bgcolor'] = colormatch
 
-        out.extend(t_cell(request, pageobj, metas[key],
+        out.extend(t_cell(request, cache, pageobj, metas[key],
                           style=style, key=key))
 
         if colormatch:
@@ -340,7 +351,7 @@ def construct_table(request, pagelist, metakeys, legend='',
 
         return metas, page, revision
 
-    def page_cell(request, pageobj, revision, row, send_pages,
+    def page_cell(request, cache, pageobj, revision, row, send_pages,
                   pagelinkonly, pagepathstrip):
         out = list()
 
@@ -357,7 +368,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             linktext = ''
             if pagelinkonly:
                 linktext = _('[link]')
-            out.extend(t_cell(request, pageobj, [pageobj.page_name],
+            out.extend(t_cell(request, cache, pageobj, [pageobj.page_name],
                               head=1, rev=revision, pathstrip=pagepathstrip,
                               linkoverride=linktext))
 
@@ -374,7 +385,7 @@ def construct_table(request, pagelist, metakeys, legend='',
             request.page = pageobj
             request.formatter.page = pageobj
 
-            out.extend(page_cell(request, pageobj, revision, 0, send_pages,
+            out.extend(page_cell(request, cache, pageobj, revision, 0, send_pages,
                                  pagelinkonly, pagepathstrip))
     else:
         for key in metakeys:
@@ -393,10 +404,10 @@ def construct_table(request, pagelist, metakeys, legend='',
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, request.page, [name],
+                out.extend(t_cell(request, cache, request.page, [name],
                                   style=headerstyle, key=key))
             else:
-                out.extend(t_cell(request, request.page, [key],
+                out.extend(t_cell(request, cache, request.page, [key],
                                   style=headerstyle, key=key))
 
     if metakeys:
@@ -419,10 +430,10 @@ def construct_table(request, pagelist, metakeys, legend='',
                     headerstyle[st] = style[st]
 
             if name:
-                out.extend(t_cell(request, tmp_page, [name],
+                out.extend(t_cell(request, cache, tmp_page, [name],
                                   style=headerstyle, key=key))
             else:
-                out.extend(t_cell(request, tmp_page, [key],
+                out.extend(t_cell(request, cache, tmp_page, [key],
                                   style=headerstyle, key=key))
 
             row = row + 1
@@ -435,7 +446,7 @@ def construct_table(request, pagelist, metakeys, legend='',
                 request.page = pageobj
                 request.formatter.page = pageobj
 
-                out.extend(key_cell(request, metas, key, pageobj,
+                out.extend(key_cell(request, cache, metas, key, pageobj,
                                     styles, properties[key]))
 
             out.append(formatter.table_row(0))
@@ -450,11 +461,11 @@ def construct_table(request, pagelist, metakeys, legend='',
             request.page = pageobj
             request.formatter.page = pageobj
 
-            out.extend(page_cell(request, pageobj, revision, row,
+            out.extend(page_cell(request, cache, pageobj, revision, row,
                                  send_pages, pagelinkonly, pagepathstrip))
 
             for key in metakeys:
-                out.extend(key_cell(request, metas, key, pageobj,
+                out.extend(key_cell(request, cache, metas, key, pageobj,
                                     styles, properties[key]))
 
             out.append(formatter.table_row(0))
@@ -470,6 +481,7 @@ def do_macro(request, args, **kw):
     formatter = request.formatter
     _ = request.getText
     out = list()
+    cache = dict()
 
     # Note, metatable_parseargs deals with permissions
     pagelist, metakeys, styles = metatable_parseargs(request, args,
@@ -480,9 +492,9 @@ def do_macro(request, args, **kw):
         out.append(formatter.linebreak() + u'<div class="metatable">' +
                    formatter.table(1))
         if kw.get('silent'):
-            out.extend(t_cell(request, request.page, ["%s" % _("No matches")]))
+            out.extend(t_cell(request, cache, request.page, ["%s" % _("No matches")]))
         else:
-            out.extend(t_cell(request, request.page,
+            out.extend(t_cell(request, cache, request.page,
                               ["%s '%s'" % (_("No matches for"), args)]))
         out.append(formatter.table(0) + u'</div>')
         return "".join(out)
@@ -491,7 +503,7 @@ def do_macro(request, args, **kw):
     divfmt = {'class': "metatable", 'data-options': quote(json.dumps(options))}
     out.append(formatter.div(1, **divfmt))
     # We're sure the user has the access to the page, so don't check
-    out.extend(construct_table(request, pagelist, metakeys,
+    out.extend(construct_table(request, cache, pagelist, metakeys,
                                checkAccess=False, styles=styles,
                                options=options))
 
