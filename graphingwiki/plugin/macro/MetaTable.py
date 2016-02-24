@@ -79,12 +79,8 @@ COLORS = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine',
           'whitesmoke', 'yellow', 'yellowgreen']
 
 
-def wrap_span(request, cache, pageobj, key, data, id):
-    format_cache = cache.setdefault("format_wikitext", dict())
-
-    if data not in format_cache:
-        format_cache[data] = format_wikitext(request, data)
-    fdata = format_cache.get(data)
+def wrap_span(request, pageobj, key, data, id):
+    fdata = format_wikitext(request, data)
 
     if not key:
         return fdata
@@ -186,7 +182,7 @@ def t_cell(request, cache, pageobj, vals, head=0,
             if cellstyle == 'list':
                 out.append(formatter.listitem(1))
 
-            out.append(wrap_span(request, cache, pageobj, key, data,
+            out.append(wrap_span(request, pageobj, key, data,
                                  i))
 
             if cellstyle == 'list':
@@ -195,7 +191,7 @@ def t_cell(request, cache, pageobj, vals, head=0,
         first_val = False
 
     if not vals:
-        out.append(wrap_span(request, cache, pageobj, key, '', 0))
+        out.append(wrap_span(request, pageobj, key, '', 0))
 
     if cellstyle == 'list':
         out.append(formatter.bullet_list(1))
