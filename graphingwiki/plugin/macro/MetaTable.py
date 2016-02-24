@@ -168,7 +168,7 @@ def t_cell(request, cache, pageobj, vals, head=0,
                 out.append(formatter.span(0))
             kw = dict()
             if rev:
-                kw['querystr'] = '?action=recall&amp;rev=' + rev
+                kw['querystr'] = 'action=recall&rev=' + rev
             linktext = data
             if linkoverride:
                 linktext = linkoverride
