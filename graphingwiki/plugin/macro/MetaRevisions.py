@@ -31,14 +31,13 @@
 from MoinMoin.Page import Page
 
 from graphingwiki.editing import get_revisions
-
 from MetaTable import construct_table
 
 Dependencies = ['metadata']
 
+
 def execute(macro, args):
     request = macro.request
-    _ = macro.request.getText
 
     if args:
         page = Page(request, args)
@@ -46,6 +45,6 @@ def execute(macro, args):
         page = request.page
 
     pagelist, metakeys = get_revisions(request, page)
-    
-    return "".join(construct_table(macro.request, pagelist, 
+
+    return "".join(construct_table(request, dict(), pagelist,
                                    metakeys, 'Meta by Revision'))
