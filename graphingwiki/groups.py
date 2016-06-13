@@ -192,9 +192,18 @@ def _group_del(request, pagetext, userlist):
     >>> s = u" * [[user1]]\\n"
     >>> _group_del(request, s, ['user1'])
     u'\\n'
+
+    Handle whitespaces
+    >>> request = _doctest_request()
+    >>> s = u"= @PAGE@ =\\n" + \
+        u" * [[user2]]  \\n" + \
+        u" * [[user3]]\t\\n" + \
+        u" * [[user1]]  "
+    >>> _group_del(request, s, ['user2', 'user3'])
+    u'= @PAGE@ =\\n * [[user1]]  '
     """
     for user in userlist:
-        pagetext = re.sub('(?m)(^\s+\*\s*(\[\[%s\]\])$\n?)' % user, '',
+        pagetext = re.sub('(?m)(^\s+\*\s*(\[\[%s\]\])\s*$\n?)' % user, '',
                           pagetext)
     # empty group pages cannot be saved
     if not pagetext:
