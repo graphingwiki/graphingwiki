@@ -42,10 +42,13 @@ def RequestCLI(pagename='', parse=True):
             script.parser.set_defaults(page=pagename)
         script.options, script.args = script.parser.parse_args()
         script.init_request()
+        script.request.finish = lambda: graphdata_close(script.request)
         return script.request
 
     # Default values
-    return ScriptContext(None, pagename)
+    context = ScriptContext(None, pagename)
+    context.finish = lambda: graphdata_close(context)
+    return context
 
 # Get action name for forms
 def actionname(request, pagename=None):

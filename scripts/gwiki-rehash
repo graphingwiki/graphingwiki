@@ -167,5 +167,3 @@ for pageobj in pages:
 
 # Must finish the scriptcontext to ensure that metadata is saved & committed
 scriptcontext.finish()
-scriptcontext.graphdata.commit()
-scriptcontext.graphdata.close()
