@@ -1,0 +1,32 @@
+--- ./MoinMoin/userprefs/prefs.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/userprefs/prefs.py	2016-10-06 17:10:46.000000000 +0300
+@@ -124,6 +124,19 @@
+             request.user.jid = new_jid
+ 
+ 
++        if not 'phone' in request.user.auth_attribs:
++            # try to get the phone number
++            new_phone = wikiutil.clean_input(form.get('phone', '')).strip()
++
++            if new_phone and request.cfg.user_phone_unique:
++                other = user.get_by_phone_number(request, new_phone)
++                if other is not None and other.id != request.user.id:
++                    return 'error', _("This phone number already belongs to somebody else.")
++
++            # done checking the phone number, set it
++            request.user.phone = new_phone
++
++
+         if not 'aliasname' in request.user.auth_attribs:
+             # aliasname
+             request.user.aliasname = wikiutil.clean_input(form.get('aliasname', '')).strip()
+@@ -181,7 +194,8 @@
+         already_handled = ['name', 'email',
+                            'aliasname', 'edit_rows', 'editor_default',
+                            'editor_ui', 'tz_offset', 'datetime_fmt',
+-                           'theme_name', 'language', 'real_language', 'jid']
++                           'theme_name', 'language', 'real_language',
++                           'jid', 'phone']
+         for field in self.cfg.user_form_fields:
+             key = field[0]
+             if ((key in self.cfg.user_form_disable)

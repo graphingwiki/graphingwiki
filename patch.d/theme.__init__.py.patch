@@ -1,5 +1,5 @@
 --- ./MoinMoin/theme/__init__.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/theme/__init__.py	2014-10-20 11:53:32.884284973 +0300
++++ ./MoinMoin/theme/__init__.py	2016-10-06 17:10:46.000000000 +0300
 @@ -48,6 +48,7 @@
          'diff':        (_("Diffs"),               "moin-diff.png",   15, 11),
          'info':        (_("Info"),                "moin-info.png",   12, 11),
@@ -8,3 +8,12 @@
          'unsubscribe': (_("Unsubscribe"),         "moin-unsubscribe.png", 14, 10),
          'subscribe':   (_("Subscribe"),           "moin-subscribe.png", 14, 10),
          'raw':         (_("Raw"),                 "moin-raw.png",    12, 13),
+@@ -1349,7 +1350,7 @@
+         @rtype: unicode
+         @return: subscribe or unsubscribe link
+         """
+-        if not ((self.cfg.mail_enabled or self.cfg.jabber_enabled) and self.request.user.valid):
++        if not ((self.cfg.mail_enabled or self.cfg.jabber_enabled or self.cfg.sms_enabled) and self.request.user.valid):
+             return ''
+ 
+         _ = self.request.getText

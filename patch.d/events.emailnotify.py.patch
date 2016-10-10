@@ -1,0 +1,11 @@
+--- ./MoinMoin/events/emailnotify.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/events/emailnotify.py	2016-10-06 17:10:46.000000000 +0300
+@@ -144,7 +144,7 @@
+         notification_fn = notification.attachment_removed
+ 
+     subscribers = page.getSubscribers(request, return_users=1)
+-    notification.filter_subscriber_list(event, subscribers, False)
++    notification.filter_subscriber_list(event, subscribers)
+     recipients = []
+ 
+     for lang in subscribers:

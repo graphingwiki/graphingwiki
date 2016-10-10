@@ -1,0 +1,105 @@
+--- ./MoinMoin/config/multiconfig.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/config/multiconfig.py	2016-10-06 17:10:46.000000000 +0300
+@@ -12,6 +12,7 @@
+ import os
+ import sys
+ import time
++import imp
+ 
+ from MoinMoin import log
+ logging = log.getLogger(__name__)
+@@ -34,6 +35,25 @@
+ _config_cache = {}
+ 
+ 
++def _findConfigModule(name):
++    """ Try to find config module or raise ImportError
++
++    Return first module that is a single file, skipping packages with
++    colliding names.
++    """
++    for path in sys.path:
++        if not path:
++            continue
++        try:
++            fp, pathname, description = imp.find_module(name, [path])
++            if not fp:
++                continue
++            return fp, pathname, description
++        except ImportError:
++            continue
++    raise ImportError('No module named %s' % name)
++
++
+ def _importConfigModule(name):
+     """ Import and return configuration module and its modification time
+ 
+@@ -45,7 +65,8 @@
+     @return: module, modification time
+     """
+     try:
+-        module = __import__(name, globals(), {})
++        fp, pathname, description = _findConfigModule(name)
++        module = imp.load_module(name, fp, pathname, description)
+         mtime = os.path.getmtime(module.__file__)
+     except ImportError:
+         raise
+@@ -220,6 +241,7 @@
+     cache = None
+     mail_enabled = None
+     jabber_enabled = None
++    sms_enabled = None
+     auth_can_logout = None
+     auth_have_login = None
+     auth_login_inputs = None
+@@ -380,6 +402,9 @@
+             from xmlrpclib import Server
+             self.notification_server = Server(self.notification_bot_uri, )
+ 
++        # check if email to sms gateway is available and set flag:
++        self.sms_enabled = self.mail_sms_gateway is not None
++
+         # Cache variables for the properties below
+         self._iwid = self._iwid_full = self._meta_dict = None
+ 
+@@ -1090,6 +1115,7 @@
+         FileAttachedEvent.__name__,
+      ], None),
+     ('jabber_subscribed_events_default', [], None),
++    ('sms_subscribed_events_default', [], None),
+ 
+     ('tz_offset', 0.0,
+      "default time zone offset in hours from UTC"),
+@@ -1226,6 +1252,8 @@
+        "if True, check email addresses for uniqueness and don't accept duplicates."),
+       ('jid_unique', True,
+        "if True, check Jabber IDs for uniqueness and don't accept duplicates."),
++      ('phone_unique', True,
++       "if True, check phone numbers for uniqueness and don't accept duplicates."),
+ 
+       ('homewiki', u'Self',
+        "interwiki name of the wiki where the user home pages are located [Unicode] - useful if you have ''many'' users. You could even link to nonwiki \"user pages\" if the wiki username is in the target URL."),
+@@ -1279,6 +1307,7 @@
+         ('aliasname', _('Alias-Name'), "text", "36", ''),
+         ('email', _('Email'), "text", "36", ''),
+         ('jid', _('Jabber ID'), "text", "36", ''),
++        ('phone', _('Phone number'), "text", "36", ''),
+         ('css_url', _('User CSS URL'), "text", "40", _('(Leave it empty for disabling user CSS)')),
+         ('edit_rows', _('Editor size'), "text", "3", ''),
+        ],
+@@ -1292,6 +1321,7 @@
+         'password2': '',
+         'email': '',
+         'jid': '',
++        'phone': '',
+         'css_url': '',
+         'edit_rows': "20",
+        },
+@@ -1327,6 +1357,7 @@
+       ('login', None, "'username userpass' for SMTP server authentication (None = don't use auth)."),
+       ('smarthost', None, "Address of SMTP server to use for sending mail (None = don't use SMTP server)."),
+       ('sendmail', None, "sendmail command to use for sending mail (None = don't use sendmail)"),
++      ('sms_gateway', None, "Domain of SMS to email gateway server (None = don't use SMS)."),
+ 
+       ('import_subpage_template', u"$from-$date-$subject", "Create subpages using this template when importing mail."),
+       ('import_pagename_search', ['subject', 'to', ], "Where to look for target pagename specification."),

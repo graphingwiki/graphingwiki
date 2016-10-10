@@ -1,5 +1,5 @@
 --- ./MoinMoin/user.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/user.py	2014-10-20 11:53:32.887284976 +0300
++++ ./MoinMoin/user.py	2016-10-06 17:10:46.000000000 +0300
 @@ -23,6 +23,9 @@
  import os, time, codecs, base64
  from copy import deepcopy
@@ -20,14 +20,28 @@
  
  # for efficient lookup <attr> -> userid, we keep an index of this in the cache.
  # the attribute names in here should be uniquely identifying a user.
- CACHED_USER_ATTRS = ['name', 'email', 'jid', 'openids', ]
+-CACHED_USER_ATTRS = ['name', 'email', 'jid', 'openids', ]
++CACHED_USER_ATTRS = ['name', 'email', 'jid', 'openids', 'phone' ]
  
 +class SaveError(error.Error):
 +    pass
  
  def getUserList(request):
      """ Get a list of all (numerical) user IDs.
-@@ -288,6 +293,10 @@
+@@ -79,6 +84,12 @@
+     if uid is not None:
+         return User(request, uid)
+ 
++def get_by_phone_number(request, phone_number):
++    """ Searches for an user with a perticular phone number and returns it. """
++    uid = _getUserIdByKey(request, 'phone', phone_number, case=False)
++    if uid is not None:
++        return User(request, uid)
++
+ def _getUserIdByKey(request, key, search, case=True):
+     """ Get the user ID for a specified key/value pair.
+ 
+@@ -288,6 +299,10 @@
          hash = hash_new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
@@ -38,16 +52,17 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-@@ -496,7 +505,7 @@
+@@ -496,7 +511,8 @@
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
 -        self.theme_name = self._cfg.theme_default
++        self.sms_subscribed_events = self._cfg.sms_subscribed_events_default
 +        self.theme_name = '<default>'
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -562,6 +571,10 @@
+@@ -562,6 +578,10 @@
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -58,7 +73,7 @@
      def exists(self):
          """ Do we have a user account for this user?
  
-@@ -778,25 +791,48 @@
+@@ -778,25 +798,48 @@
          # !!! should write to a temp file here to avoid race conditions,
          # or even better, use locking
  

@@ -1,0 +1,25 @@
+--- ./MoinMoin/action/subscribe.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/action/subscribe.py	2016-10-06 17:10:46.000000000 +0300
+@@ -21,17 +21,17 @@
+     if not request.user.may.read(pagename):
+         request.theme.add_msg(_("You are not allowed to subscribe to a page you can't read."), "error")
+ 
+-    # Check if mail is enabled
+-    elif not cfg.mail_enabled and not cfg.jabber_enabled:
+-        request.theme.add_msg(_("This wiki is not enabled for mail/Jabber processing."), "error")
++    # Check if any notification method is enabled
++    elif not cfg.mail_enabled and not cfg.jabber_enabled and not cfg.sms_enabled:
++        request.theme.add_msg(_("This wiki is not enabled for notification processing."), "error")
+ 
+     # Suggest visitors to login
+     elif not request.user.valid:
+         request.theme.add_msg(_("You must log in to use subscriptions."), "error")
+ 
+     # Suggest users without email to add their email address
+-    elif not request.user.email and not request.user.jid:
+-        request.theme.add_msg(_("Add your email address or Jabber ID in your user settings to use subscriptions."),
++    elif not request.user.email and not request.user.jid and not request.user.phone:
++        request.theme.add_msg(_("Add your email address, Jabber ID or phone number in your user settings to use subscriptions."),
+                               "error")
+ 
+     elif request.user.isSubscribedTo([pagename]):
