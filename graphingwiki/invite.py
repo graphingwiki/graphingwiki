@@ -240,7 +240,7 @@ def prepare_message(template, variables, encoding="utf-8"):
     template = template.encode(encoding)
     message = message_from_string(template)
 
-    DEFAULT_HEADERS = {"to": "@INVITEDEMAIL@", "from": "@INVITEREMAIL@"}
+    DEFAULT_HEADERS = {"To": "@INVITEDEMAIL@", "From": "@INVITEREMAIL@"}
     for key, value in DEFAULT_HEADERS.iteritems():
         if key not in message:
             value = replace_variables(value, variables)
@@ -253,7 +253,7 @@ def prepare_message(template, variables, encoding="utf-8"):
     charset.body_encoding = QP
     message.set_charset(charset)
 
-    for field in ("from", "to", "cc", "bcc"):
+    for field in ("From", "To", "Cc", "Bcc"):
         try:
             encode_address_field(message, field, encoding, charset)
         except UnicodeEncodeError as error:
@@ -263,9 +263,9 @@ def prepare_message(template, variables, encoding="utf-8"):
 
 
 def send_message(request, message, recipient_filter=lambda x: True):
-    sender = message["from"]
+    sender = message["From"]
     recipients = set()
-    for field in ["to", "cc", "bcc"]:
+    for field in ["To", "Cc", "Bcc"]:
         values = message.get_all(field, [])
         for _, address in getaddresses(values):
             if recipient_filter(address):
