@@ -179,7 +179,7 @@
                  to_pos = to_match.start()
              else:
 -                result.append(_sysmsg % ('warning', 'Include: ' + _('Nothing found for "%s"!')) % to_re)
-+                result.appned(render_warning(_('Include: Nothing found for "%s"!') % to_re))
++                result.append(render_warning(_('Include: Nothing found for "%s"!') % to_re))
  
          if titlesonly:
              levelstack = []
