@@ -1,0 +1,128 @@
+--- ./MoinMoin/events/smsnotify.py.orig	1970-01-01 02:00:00.000000000 +0200
++++ ./MoinMoin/events/smsnotify.py	2016-11-15 14:59:47.000000000 +0200
+@@ -0,0 +1,125 @@
++# -*- coding: iso-8859-1 -*-
++"""
++    MoinMoin - email to sms notification plugin
++
++    @copyright: 2016 by Ossi Salmi <osalmi@iki.fi>
++    @license: GNU GPL, see COPYING for details.
++"""
++
++from MoinMoin.Page import Page
++from MoinMoin.mail import sendmail
++from MoinMoin.user import superusers
++
++import MoinMoin.events as ev
++import MoinMoin.events.notification as notification
++
++from emailnotify import prep_page_changed_mail
++
++
++def send_notification(request, from_address, emails, data):
++    subject = u''
++    message = data['subject'][:160]
++    return sendmail.sendmail(request, emails, subject, message,
++                             mail_from=from_address, mask_recipients=False)
++
++
++def handle_page_changed(event):
++    comment = event.comment
++    page = event.page
++    request = event.request
++    trivial = isinstance(event, ev.TrivialPageChangedEvent)
++    old_page = None
++
++    if isinstance(event, (ev.PageChangedEvent, ev.TrivialPageChangedEvent)):
++        change_type = "page_changed"
++    elif isinstance(event, ev.PageDeletedEvent):
++        change_type = "page_deleted"
++    elif isinstance(event, ev.PageRenamedEvent):
++        change_type = "page_renamed"
++        old_page = event.old_page
++
++    subscribers = page.getSubscribers(request, return_users=1)
++    notification.filter_subscriber_list(event, subscribers, for_sms=True)
++    mail_from = page.cfg.mail_from
++    mail_domain = page.cfg.mail_sms_domain
++
++    if subscribers:
++        recipients = set()
++
++        # get a list of old revisions, and append a diff
++        revisions = page.getRevList()
++
++        # send email to all subscribers
++        for lang in subscribers:
++            emails = [u"{0}@{1}".format(u.phone, mail_domain) for u in subscribers[lang]]
++            names = [u.name for u in subscribers[lang]]
++            data = prep_page_changed_mail(request, page, comment, lang, revisions,
++                                          trivial=trivial, change_type=change_type,
++                                          old_page=old_page)
++
++            if send_notification(request, mail_from, emails, data):
++                recipients.update(names)
++
++        if recipients:
++            return notification.Success(recipients)
++
++
++def handle_file_changed(event):
++    mail_from = event.request.cfg.mail_from
++    mail_domain = event.request.cfg.mail_sms_domain
++    request = event.request
++    page = Page(request, event.pagename)
++
++    if isinstance(event, ev.FileAttachedEvent):
++        notification_fn = notification.attachment_added
++    elif isinstance(event, ev.FileRemovedEvent):
++        notification_fn = notification.attachment_removed
++
++    subscribers = page.getSubscribers(request, return_users=1)
++    notification.filter_subscriber_list(event, subscribers, for_sms=True)
++
++    if subscribers:
++        recipients = set()
++        for lang in subscribers:
++            _ = lambda text: request.getText(text, lang=lang)
++
++            data = notification_fn(request, _, event.pagename, event.filename, event.size)
++
++            emails = [u"{0}@{1}".format(u.phone, mail_domain) for u in subscribers[lang]]
++            names = [u.name for u in subscribers[lang]]
++
++            if send_notification(request, mail_from, emails, data):
++                recipients.update(names)
++
++        if recipients:
++            return notification.Success(recipients)
++
++
++def handle_user_created(event):
++    request = event.request
++    sitename = request.cfg.sitename
++    mail_from = request.cfg.mail_from
++    mail_domain = request.cfg.mail_sms_domain
++    event_name = event.name
++    email = event.user.email or u"NOT SET"
++    username = event.user.name
++
++    for usr in superusers(request):
++        if usr.phone and event_name in usr.sms_subscribed_events:
++            _ = lambda text: request.getText(text, lang=usr.language or 'en')
++            data = notification.user_created_message(request, _, sitename, username, email)
++            emails = [u"{0}@{1}".format(usr.phone, mail_domain)]
++            send_notification(request, mail_from, emails, data)
++
++
++def handle(event):
++    if not event.request.cfg.sms_enabled:
++        return
++
++    if isinstance(event, (ev.PageChangedEvent, ev.TrivialPageChangedEvent,
++                          ev.PageDeletedEvent, ev.PageRenamedEvent)):
++        return handle_page_changed(event)
++    elif isinstance(event, (ev.FileAttachedEvent, ev.FileRemovedEvent)):
++        return handle_file_changed(event)
++    elif isinstance(event, ev.UserCreatedEvent):
++        return handle_user_created(event)

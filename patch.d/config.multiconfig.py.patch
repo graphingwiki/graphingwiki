@@ -57,7 +57,7 @@
              self.notification_server = Server(self.notification_bot_uri, )
  
 +        # check if email to sms gateway is available and set flag:
-+        self.sms_enabled = self.mail_sms_gateway is not None
++        self.sms_enabled = self.mail_sms_domain is not None
 +
          # Cache variables for the properties below
          self._iwid = self._iwid_full = self._meta_dict = None
@@ -99,7 +99,7 @@
        ('login', None, "'username userpass' for SMTP server authentication (None = don't use auth)."),
        ('smarthost', None, "Address of SMTP server to use for sending mail (None = don't use SMTP server)."),
        ('sendmail', None, "sendmail command to use for sending mail (None = don't use sendmail)"),
-+      ('sms_gateway', None, "Domain of SMS to email gateway server (None = don't use SMS)."),
++      ('sms_domain', None, "Domain of SMS to email gateway server (None = don't use SMS)."),
  
        ('import_subpage_template', u"$from-$date-$subject", "Create subpages using this template when importing mail."),
        ('import_pagename_search', ['subject', 'to', ], "Where to look for target pagename specification."),
