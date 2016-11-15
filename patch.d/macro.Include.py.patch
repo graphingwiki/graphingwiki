@@ -87,7 +87,7 @@
      args = text and args_re.match(text)
      if not args:
 -        return (_sysmsg % ('error', _('Invalid include arguments "%s"!')) % (text, ))
-+        return render_error(_('Invalid include arguments "%s"!').format(text))
++        return render_error(_('Invalid include arguments "%s"!') % (text,))
  
      # prepare including page
      result = []
@@ -122,7 +122,7 @@
 +
          if inc_name in this_page._macroInclude_pagelist:
 -            result.append(u'<p><strong class="error">Recursive include of "%s" forbidden</strong></p>' % (inc_name, ))
-+            result.append(render_error(_('Recursive include of "%s" forbidden!').format(inc_name)))
++            result.append(render_error(_('Recursive include of "%s" forbidden!') % (inc_name,)))
              continue
 -        if skipitems:
 +
@@ -166,7 +166,7 @@
                  from_pos = from_match.end()
              else:
 -                result.append(_sysmsg % ('warning', 'Include: ' + _('Nothing found for "%s"!')) % from_re)
-+                result.append(render_warning(_('Include: Nothing found for "%s"!').format(from_re)))
++                result.append(render_warning(_('Include: Nothing found for "%s"!') % from_re))
 +
          to_re = args.group('to')
 -        if to_re:
@@ -179,7 +179,7 @@
                  to_pos = to_match.start()
              else:
 -                result.append(_sysmsg % ('warning', 'Include: ' + _('Nothing found for "%s"!')) % to_re)
-+                result.appned(render_warning(_('Include: Nothing found for "%s"!').format(to_re)))
++                result.appned(render_warning(_('Include: Nothing found for "%s"!') % to_re))
  
          if titlesonly:
              levelstack = []
