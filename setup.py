@@ -113,6 +113,7 @@ setup(
         'scripts/gwiki-rehash',
         'scripts/gwiki-showgraph',
         'scripts/gwiki-showpage',
+        'scripts/gwiki-showraw',
         'scripts/mm2gwiki.py',
         'scripts/gwiki-editpage',
         'scripts/gwiki-get-tgz'
