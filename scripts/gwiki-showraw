@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+
+import MoinMoin.web.contexts
+from MoinMoin.Page import Page
+
+from graphingwiki import RequestCLI
+
+if len(sys.argv) != 3:
+    sys.exit("Usage: gwiki-showraw <path to wiki> <pagename>")
+
+cp = sys.argv[1]
+cp2 = os.path.join(cp, 'config')
+if os.path.isdir(cp2):
+    cp = cp2
+sys.path.insert(0, cp)
+
+pagename = unicode(sys.argv[2], sys.getfilesystemencoding())
+
+req = RequestCLI(pagename, parse=False)
+req.page = Page(req, pagename)
+
+try:
+    if req.page.exists():
+        sys.stdout.write(req.page.get_raw_body_str())
+    else:
+        sys.exit("No such page: %s" % pagename)
+finally:
+    req.finish()
