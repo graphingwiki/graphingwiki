@@ -1,6 +1,6 @@
---- ./MoinMoin/theme/modernized.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/theme/modernized.py	2014-10-20 11:53:32.885284974 +0300
-@@ -20,6 +20,8 @@
+--- ./MoinMoin/theme/modernized.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/theme/modernized.py	2016-11-28 15:26:43.677260441 +0200
+@@ -20,6 +20,8 @@ class Theme(ThemeBase):
          # FileAttach
          'attach':     ("%(attach_count)s",       "moin-attach.png",   16, 16),
          'info':       ("[INFO]",                 "moin-info.png",     16, 16),

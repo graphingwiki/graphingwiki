@@ -1,7 +1,7 @@
---- ./MoinMoin/user.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/user.py	2014-10-20 11:53:32.887284976 +0300
-@@ -23,6 +23,9 @@
- import os, time, codecs, base64
+--- ./MoinMoin/user.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/user.py	2016-11-28 15:26:43.678260441 +0200
+@@ -25,6 +25,9 @@ import hashlib
+ import hmac
  from copy import deepcopy
  import md5crypt
 +import errno
@@ -10,7 +10,7 @@
  
  try:
      import crypt
-@@ -36,13 +39,15 @@
+@@ -36,13 +39,15 @@ logging = log.getLogger(__name__)
  
  from MoinMoin import config, caching, wikiutil, i18n, events
  from werkzeug.security import safe_str_cmp as safe_str_equal
@@ -27,8 +27,8 @@
  
  def getUserList(request):
      """ Get a list of all (numerical) user IDs.
-@@ -288,6 +293,10 @@
-         hash = hash_new('sha1', pwd)
+@@ -288,6 +293,10 @@ def encodePassword(cfg, pwd, salt=None, 
+         hash = hashlib.new('sha1', pwd)
          hash.update(salt)
          return '{SSHA}' + base64.encodestring(hash.digest() + salt).rstrip()
 +    elif scheme == '{SHA}':
@@ -38,7 +38,7 @@
      else:
          # should never happen as we check the value of cfg.password_scheme
          raise NotImplementedError
-@@ -496,7 +505,7 @@
+@@ -496,7 +505,7 @@ class User:
          self.subscribed_pages = self._cfg.subscribed_pages_default
          self.email_subscribed_events = self._cfg.email_subscribed_events_default
          self.jabber_subscribed_events = self._cfg.jabber_subscribed_events_default
@@ -47,7 +47,7 @@
          self.editor_default = self._cfg.editor_default
          self.editor_ui = self._cfg.editor_ui
          self.last_saved = str(time.time())
-@@ -562,6 +571,10 @@
+@@ -562,6 +571,10 @@ class User:
          """
          return os.path.join(self._cfg.user_dir, self.id or "...NONE...")
  
@@ -58,7 +58,7 @@
      def exists(self):
          """ Do we have a user account for this user?
  
-@@ -778,25 +791,48 @@
+@@ -778,25 +791,48 @@ class User:
          # !!! should write to a temp file here to avoid race conditions,
          # or even better, use locking
  

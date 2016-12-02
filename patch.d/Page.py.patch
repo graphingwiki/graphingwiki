@@ -1,5 +1,5 @@
---- ./MoinMoin/Page.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/Page.py	2016-02-05 20:20:23.598923780 +0200
+--- ./MoinMoin/Page.py.orig	2016-10-31 22:44:01.000000000 +0200
++++ ./MoinMoin/Page.py	2016-11-28 15:26:43.671260441 +0200
 @@ -108,8 +108,7 @@ class ItemCache:
              (for 'meta') or the complete cache ('pagelists').
              @param request: the request object

@@ -1,5 +1,5 @@
---- ./MoinMoin/PageEditor.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/PageEditor.py	2014-10-20 11:53:32.880284974 +0300
+--- ./MoinMoin/PageEditor.py.orig	2016-10-31 22:44:01.000000000 +0200
++++ ./MoinMoin/PageEditor.py	2016-11-28 15:26:43.670260441 +0200
 @@ -17,7 +17,7 @@
  """
  
@@ -9,7 +9,7 @@
  
  from MoinMoin import caching, config, wikiutil, error
  from MoinMoin.Page import Page
-@@ -54,6 +54,17 @@
+@@ -53,6 +53,17 @@ addLoadEvent(countdown)
  </script>
  """
  
@@ -27,7 +27,7 @@
  
  #############################################################################
  ### PageEditor - Edit pages
-@@ -1066,6 +1077,26 @@
+@@ -1065,6 +1076,26 @@ Try a different name.""", wiki=True) % (
          """
          request = self.request
          _ = self._

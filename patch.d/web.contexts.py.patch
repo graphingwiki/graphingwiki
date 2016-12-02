@@ -1,6 +1,6 @@
---- ./MoinMoin/web/contexts.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/web/contexts.py	2014-10-20 11:53:32.889284977 +0300
-@@ -218,6 +218,12 @@
+--- ./MoinMoin/web/contexts.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/web/contexts.py	2016-11-28 15:26:43.681260441 +0200
+@@ -218,6 +218,12 @@ class HTTPContext(BaseContext):
  
      # proxy further attribute lookups to the underlying request first
      def __getattr__(self, name):

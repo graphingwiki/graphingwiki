@@ -1,5 +1,5 @@
---- MoinMoin/macro/Include.py.orig	2014-10-17 22:45:33.000000000 +0300
-+++ MoinMoin/macro/Include.py	2016-01-26 12:46:30.000000000 +0200
+--- ./MoinMoin/macro/Include.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/macro/Include.py	2016-11-28 15:26:43.667260441 +0200
 @@ -1,31 +1,37 @@
 -# -*- coding: iso-8859-1 -*-
 +# -*- coding: utf-8 -*-
@@ -51,7 +51,7 @@
  _arg_heading = r'(?P<heading>,)\s*(|(?P<hquote>[\'"])(?P<htext>.+?)(?P=hquote))'
  _arg_level = r',\s*(?P<level>\d*)'
  _arg_from = r'(,\s*from=(?P<fquote>[\'"])(?P<from>.+?)(?P=fquote))?'
-@@ -35,23 +41,27 @@
+@@ -35,23 +41,27 @@ _arg_items = r'(,\s*items=(?P<items>\d+)
  _arg_skipitems = r'(,\s*skipitems=(?P<skipitems>\d+))?'
  _arg_titlesonly = r'(,\s*(?P<titlesonly>titlesonly))?'
  _arg_editlink = r'(,\s*(?P<editlink>editlink))?'
@@ -82,7 +82,7 @@
  def execute(macro, text, args_re=re.compile(_args_re_pattern), title_re=re.compile(_title_re, re.M)):
      request = macro.request
      _ = request.getText
-@@ -63,7 +73,7 @@
+@@ -63,7 +73,7 @@ def execute(macro, text, args_re=re.comp
      # parse and check arguments
      args = text and args_re.match(text)
      if not args:
@@ -91,7 +91,7 @@
  
      # prepare including page
      result = []
-@@ -79,11 +89,22 @@
+@@ -79,11 +89,22 @@ def execute(macro, text, args_re=re.comp
          try:
              inc_match = re.compile(inc_name)
          except re.error:
@@ -115,7 +115,7 @@
      # sort and limit page list
      pagelist.sort()
      sort_dir = args.group('sort')
-@@ -103,36 +124,48 @@
+@@ -103,36 +124,48 @@ def execute(macro, text, args_re=re.comp
      for inc_name in pagelist:
          if not request.user.may.read(inc_name):
              continue
@@ -174,7 +174,7 @@
              try:
                  to_match = re.compile(to_re, re.M).search(body, from_pos)
              except re.error:
-@@ -140,7 +173,7 @@
+@@ -140,7 +173,7 @@ def execute(macro, text, args_re=re.comp
              if to_match:
                  to_pos = to_match.start()
              else:
@@ -183,7 +183,7 @@
  
          if titlesonly:
              levelstack = []
-@@ -169,8 +202,6 @@
+@@ -169,8 +202,6 @@ def execute(macro, text, args_re=re.comp
  
          if from_pos or to_pos != -1:
              inc_page.set_raw_body(body[from_pos:to_pos], modified=True)
@@ -192,7 +192,7 @@
  
          if not hasattr(request, "_Include_backto"):
              request._Include_backto = this_page.page_name
-@@ -204,9 +235,14 @@
+@@ -204,9 +235,14 @@ def execute(macro, text, args_re=re.comp
          strfile = StringIO.StringIO()
          request.redirect(strfile)
          try:
@@ -207,7 +207,7 @@
              result.append(strfile.getvalue())
          finally:
              request.redirect()
-@@ -218,17 +254,49 @@
+@@ -218,17 +254,49 @@ def execute(macro, text, args_re=re.comp
          else:
              del this_page._macroInclude_pagelist[inc_name]
  

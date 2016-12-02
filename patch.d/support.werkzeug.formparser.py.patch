@@ -1,8 +1,8 @@
---- ./MoinMoin/support/werkzeug/formparser.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/support/werkzeug/formparser.py	2014-10-20 11:53:32.882284972 +0300
-@@ -33,13 +33,50 @@
- #: for multipart messages.
+--- ./MoinMoin/support/werkzeug/formparser.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/support/werkzeug/formparser.py	2016-12-02 10:27:41.560789006 +0200
+@@ -35,12 +35,51 @@ _multipart_boundary_re = re.compile('^[ 
  _supported_multipart_encodings = frozenset(['base64', 'quoted-printable'])
+ 
  
 +class SmartStream(object):
 +    """A file-like stream that dynamically switches from memory-based
@@ -12,7 +12,7 @@
 +    def __init__(self, threshold=1024*500):
 +        self._is_file = False
 +        self._threshold = threshold
-+        self._stream = StringIO()
++        self._stream = BytesIO()
 +
 +    def __getattr__(self, key):
 +        return getattr(self._stream, key)
@@ -43,13 +43,14 @@
 +        result = self._stream.writelines(*args, **kw)
 +        self._check()
 +        return result
- 
++
++
  def default_stream_factory(total_content_length, filename, content_type,
                             content_length=None):
      """The stream factory that is used per default."""
 -    if total_content_length > 1024 * 500:
 -        return TemporaryFile('wb+')
--    return StringIO()
+-    return BytesIO()
 +    return SmartStream()
  
  

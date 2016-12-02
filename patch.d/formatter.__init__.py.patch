@@ -1,5 +1,5 @@
---- ./MoinMoin/formatter/__init__.py.orig	2014-11-03 20:24:17.000000000 +0200
-+++ ./MoinMoin/formatter/__init__.py	2014-11-07 17:05:23.360806970 +0200
+--- ./MoinMoin/formatter/__init__.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/formatter/__init__.py	2016-11-28 15:26:43.664260442 +0200
 @@ -135,7 +135,10 @@ class FormatterBase:
                  # Try to decode text. It might return junk, but we don't
                  # have enough information with attachments.
@@ -12,4 +12,3 @@
                  colorizer.format(self)
              except IOError:
                  pass
-

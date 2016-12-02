@@ -1,5 +1,5 @@
---- ./MoinMoin/config/__init__.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/config/__init__.py	2015-12-06 11:57:48.923411442 +0200
+--- ./MoinMoin/config/__init__.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/config/__init__.py	2016-11-28 15:26:43.663260442 +0200
 @@ -25,7 +25,7 @@ umask = 0770
  # list of acceptable password hashing schemes for cfg.password_scheme,
  # here we only give reasonably good schemes, which is passlib (if we

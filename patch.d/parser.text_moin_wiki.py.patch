@@ -1,6 +1,6 @@
---- ./MoinMoin/parser/text_moin_wiki.py.orig	2014-10-17 22:45:33.000000000 +0300
-+++ ./MoinMoin/parser/text_moin_wiki.py	2015-04-29 14:40:41.284018265 +0300
-@@ -728,8 +728,12 @@ class Parser:
+--- ./MoinMoin/parser/text_moin_wiki.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/parser/text_moin_wiki.py	2016-11-28 15:26:43.673260441 +0200
+@@ -727,8 +727,12 @@ class Parser:
                  if scheme == 'attachment':
                      mt = wikiutil.MimeType(filename=url)
                      if mt.major == 'text':
@@ -15,7 +15,7 @@
                      # destinguishs if browser need a plugin in place
                      elif mt.major == 'image' and mt.minor in config.browser_supported_images:
                          desc = self._transclude_description(desc, url)
-@@ -873,9 +877,10 @@ class Parser:
+@@ -872,9 +876,10 @@ class Parser:
                      tag_attrs, query_args = self._get_params(params,
                                                               tag_attrs={},
                                                               acceptable_attrs=acceptable_attrs)

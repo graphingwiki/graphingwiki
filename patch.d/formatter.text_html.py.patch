@@ -1,5 +1,5 @@
---- ./MoinMoin/formatter/text_html.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/formatter/text_html.py	2015-08-20 12:16:01.940528662 +0300
+--- ./MoinMoin/formatter/text_html.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/formatter/text_html.py	2016-11-28 15:26:43.666260441 +0200
 @@ -6,12 +6,14 @@
      @license: GNU GPL, see COPYING for details.
  """
@@ -15,8 +15,8 @@
 +from MoinMoin import wikiutil, i18n, config
  from MoinMoin.Page import Page
  from MoinMoin.action import AttachFile
- from MoinMoin.support.python_compatibility import set
-@@ -474,16 +476,17 @@ class Formatter(FormatterBase):
+ 
+@@ -473,16 +475,17 @@ class Formatter(FormatterBase):
              del kw['generated']
          if page is None:
              page = Page(self.request, pagename, formatter=self)
@@ -41,7 +41,7 @@
  
      def interwikilink(self, on, interwiki='', pagename='', **kw):
          """
-@@ -534,12 +537,25 @@ class Formatter(FormatterBase):
+@@ -533,12 +536,25 @@ class Formatter(FormatterBase):
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=1/True parameter, please review caller.")
              else:
                  logging.warning("Deprecation warning: MoinMoin.formatter.text_html.url being called with do_escape=0/False parameter, please remove it from the caller.")

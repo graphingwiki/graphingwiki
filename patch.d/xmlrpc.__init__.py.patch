@@ -1,6 +1,6 @@
---- ./MoinMoin/xmlrpc/__init__.py.orig	2014-10-17 22:45:32.000000000 +0300
-+++ ./MoinMoin/xmlrpc/__init__.py	2014-10-20 11:53:32.891284977 +0300
-@@ -38,6 +38,32 @@
+--- ./MoinMoin/xmlrpc/__init__.py.orig	2016-10-31 22:44:02.000000000 +0200
++++ ./MoinMoin/xmlrpc/__init__.py	2016-12-01 15:44:03.396571959 +0200
+@@ -38,6 +38,32 @@ from MoinMoin.logfile import editlog
  from MoinMoin.action import AttachFile
  from MoinMoin import caching
  
@@ -33,21 +33,20 @@
  
  logging_tearline = '- XMLRPC %s ' + '-' * 40
  
-@@ -132,7 +158,12 @@
+@@ -132,7 +158,11 @@ class XmlRpcBase:
              else:
                  # overwrite any user there might be, if you need a valid user for
                  # xmlrpc, you have to use multicall and getAuthToken / applyAuthToken
--                request.user = user.User(request, auth_method='xmlrpc:invalid')
+-                if request.cfg.xmlrpc_overwrite_user:
 +                login_required = is_login_required(self.request)
-+                if (not self.request.user or
-+                    not self.request.user.valid or
-+                    login_required):
-+                    self.request.user = user.User(self.request, 
-+                                                  auth_method='xmlrpc:invalid')
++                if (request.cfg.xmlrpc_overwrite_user and
++                    (not self.request.user or
++                     not self.request.user.valid or
++                     login_required)):
+                     request.user = user.User(request, auth_method='xmlrpc:invalid')
  
                  data = request.read()
- 
-@@ -767,7 +798,14 @@
+@@ -768,7 +798,14 @@ class XmlRpcBase:
          request.session = request.cfg.session_service.get_session(request)
  
          u = auth.setup_from_session(request, request.session)
@@ -56,7 +55,7 @@
 +        login_required = is_login_required(request)
 +
 +        if login_required:
-+            u = auth.handle_login(request, u, username=username, 
++            u = auth.handle_login(request, u, username=username,
 +                                  password=password)
 +        else:
 +            u = request.user
