@@ -1,5 +1,5 @@
 --- ./MoinMoin/user.py.orig	2016-10-31 22:44:02.000000000 +0200
-+++ ./MoinMoin/user.py	2016-11-28 15:26:43.678260441 +0200
++++ ./MoinMoin/user.py	2016-12-02 14:56:15.905444201 +0200
 @@ -25,6 +25,9 @@ import hashlib
  import hmac
  from copy import deepcopy
@@ -126,3 +126,21 @@
  
          if not self.disabled:
              self.valid = 1
+@@ -1260,7 +1296,7 @@ class User:
+     def generate_recovery_token(self):
+         key = random_string(64, "abcdefghijklmnopqrstuvwxyz0123456789")
+         msg = str(int(time.time()))
+-        h = hmac.new(key, msg).hexdigest()
++        h = hmac.new(key, msg, digestmod=hashlib.sha1).hexdigest()
+         self.recoverpass_key = key
+         self.save()
+         return msg + '-' + h
+@@ -1278,7 +1314,7 @@ class User:
+             return False
+         # check hmac
+         # key must be of type string
+-        h = hmac.new(str(self.recoverpass_key), str(stamp)).hexdigest()
++        h = hmac.new(str(self.recoverpass_key), str(stamp), digestmod=hashlib.sha1).hexdigest()
+         if not safe_str_equal(h, parts[1]):
+             return False
+         self.recoverpass_key = ""
