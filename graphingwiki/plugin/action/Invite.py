@@ -15,7 +15,7 @@ class Invite(ActionBase):
         self.request = request
         self.use_ticket = True
         self.form_trigger = 'invite'
-        self.form_trigger_label = wikiutil.escape(kw.get('button_text', [self.getText('Invite')])[0], True)
+        self.form_trigger_label = wikiutil.escape(kw.get('button_text', [self.getText('Invite')])[0])
         self.template = kw.get('template', [])
         self.querytext = kw.get('text', [self.getText('Invite user to visit this page')])[0]
 
@@ -91,7 +91,7 @@ class Invite(ActionBase):
             else:
                 value = name = template
 
-            value = wikiutil.escape(value, True)
+            value = wikiutil.escape(value)
             name = wikiutil.escape(name)
 
             if len(self.template) > 1:

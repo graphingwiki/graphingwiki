@@ -211,7 +211,7 @@ class RenamePage(RenamePageBasic):
                 'subpage_label': _('Rename all /subpages too?'),
                 'links_label': _('Rename links to page too?'),
                 'links_checked': ('checked', '')[form.get('subpages_checked', ['0'])[0] == '1'],
-                'pagename': wikiutil.escape(self.pagename, True),
+                'pagename': wikiutil.escape(self.pagename),
                 'newname_label': _("New name"),
                 'comment_label': _("Optional reason for the renaming"),
                 'buttons_html': buttons_html,
@@ -263,7 +263,7 @@ class RenamePage(RenamePageBasic):
 
         else:
             d = {
-                'pagename': wikiutil.escape(self.pagename, True),
+                'pagename': wikiutil.escape(self.pagename),
                 'newname_label': _("New name"),
                 'comment_label': _("Optional reason for the renaming"),
                 'links_label': _('Rename links to page too?'),
