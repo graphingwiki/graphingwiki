@@ -9,8 +9,9 @@
 """
 from graphingwiki import values_to_form
 from MoinMoin.action import AttachFile
-from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
-    MultiDict
+
+import MoinMoin.web
+from werkzeug.datastructures import CombinedMultiDict, MultiDict
 
 def _do_diff(pagename, request):
     # return attachment list

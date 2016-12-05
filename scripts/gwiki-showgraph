@@ -42,8 +42,9 @@ except:
 sys.path.insert(0, os.path.join(wikipath, 'config'))
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
-    MultiDict
+
+import MoinMoin.web
+from werkzeug.datastructures import CombinedMultiDict, MultiDict
 
 pagename = sys.argv[1]
 

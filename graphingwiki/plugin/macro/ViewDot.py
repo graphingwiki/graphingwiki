@@ -29,8 +29,9 @@
 """
 from urllib import unquote as url_unquote
 
-from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
-    MultiDict
+import MoinMoin.web
+from werkzeug.datastructures import CombinedMultiDict, MultiDict
+
 from MoinMoin.Page import Page
 from MoinMoin import wikiutil
 from MoinMoin import config

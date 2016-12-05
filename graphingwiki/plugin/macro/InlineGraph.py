@@ -31,8 +31,9 @@ import urllib
 
 from MoinMoin import wikiutil
 from MoinMoin.Page import Page
-from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
-    MultiDict
+
+import MoinMoin.web
+from werkzeug.datastructures import CombinedMultiDict, MultiDict
 
 from graphingwiki.util import form_escape, url_construct
 

@@ -1,5 +1,6 @@
-from MoinMoin.support.werkzeug.datastructures import CombinedMultiDict, \
-    MultiDict
+import MoinMoin.web
+from werkzeug.datastructures import CombinedMultiDict, MultiDict
+
 from MoinMoin.action.fullsearch import execute as fs_execute
 
 from MetaSearch import execute as ms_execute
