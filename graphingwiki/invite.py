@@ -285,9 +285,8 @@ def send_message(request, message, recipient_filter=lambda x: True):
                 smtp.login(*request.cfg.mail_login.split(" ", 1))
 
             smtp.sendmail(sender, recipients, message.as_string())
-            for recipient in recipients:
-                logging.info("%s invited %s to wiki %s" %
-                             (sender, recipients, request.cfg.interwikiname))
+            logging.info("Invite mail for wiki %s sent from %s to %s" %
+                         (request.cfg.interwikiname, sender, ", ".join(recipients)))
         except Exception, exc:
             raise InviteException("Could not send the mail: %r" % exc)
     finally:
