@@ -277,24 +277,16 @@ def send_message(request, message, recipient_filter=lambda x: True):
             smtp.connect(request.cfg.mail_smarthost)
             smtp.ehlo()
 
-            try:
+            if smtp.has_extn('starttls'):
                 smtp.starttls()
-            except smtplib.SMTPException:
-                pass
-            else:
                 smtp.ehlo()
 
-            try:
-                smtp.sendmail(sender, recipients, message.as_string())
-                for recipient in recipients:
-                    logging.info("%s invited %s to wiki %s" %
-                                 (sender, recipients,
-                                  request.cfg.interwikiname))
-            except (smtplib.SMTPSenderRefused, smtplib.SMTPRecipientsRefused), error:
-                if not getattr(request.cfg, "mail_login", None):
-                    raise error
+            if smtp.has_extn('auth') and getattr(request.cfg, "mail_login", None):
                 smtp.login(*request.cfg.mail_login.split(" ", 1))
-                smtp.sendmail(sender, recipients, message.as_string())
+
+            smtp.sendmail(sender, recipients, message.as_string())
+            logging.info("Invite mail for wiki %s sent from %s to %s" %
+                         (request.cfg.interwikiname, sender, ", ".join(recipients)))
         except Exception, exc:
             raise InviteException("Could not send the mail: %r" % exc)
     finally:
