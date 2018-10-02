@@ -94,7 +94,7 @@ class RemovingInstall(install):
 
 setup(
     name='graphingwiki',
-    version='1.0.0',
+    version='1.0.1',
     author='Juhani Eronen, Joachim Viide, Erno Kuusela, Aki Helin',
     author_email='exec@iki.fi',
     description='Graphingwiki - Semantic extension for MoinMoin',
