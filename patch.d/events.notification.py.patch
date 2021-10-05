@@ -1,0 +1,27 @@
+--- ./MoinMoin/events/notification.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/events/notification.py	2016-10-06 17:10:46.000000000 +0300
+@@ -163,11 +163,12 @@
+ 
+ 
+ # XXX: clean up this method to take a notification type instead of bool for_jabber
+-def filter_subscriber_list(event, subscribers, for_jabber):
++def filter_subscriber_list(event, subscribers, for_jabber=False, for_sms=False):
+     """Filter a list of page subscribers to honor event subscriptions
+ 
+     @param subscribers: list of subscribers (dict of lists, language is the key)
+     @param for_jabber: require jid
++    @param for_sms: require phone
+     @type subscribers: dict
+ 
+     """
+@@ -182,6 +183,10 @@
+             for usr in subscribers[lang]:
+                 if usr.jid and event_name in usr.jabber_subscribed_events:
+                     userlist.append(usr)
++        elif for_sms:
++            for usr in subscribers[lang]:
++                if usr.phone and event_name in usr.sms_subscribed_events:
++                    userlist.append(usr)
+         else:
+             for usr in subscribers[lang]:
+                 if usr.email and event_name in usr.email_subscribed_events:

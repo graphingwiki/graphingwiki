@@ -1,0 +1,38 @@
+--- ./MoinMoin/events/jabbernotify.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/events/jabbernotify.py	2016-10-06 17:10:46.000000000 +0300
+@@ -72,7 +72,7 @@
+     request = event.request
+     page = Page(request, event.pagename)
+     subscribers = page.getSubscribers(request, return_users=1)
+-    notification.filter_subscriber_list(event, subscribers, True)
++    notification.filter_subscriber_list(event, subscribers, for_jabber=True)
+     recipients = []
+ 
+     for lang in subscribers:
+@@ -103,7 +103,7 @@
+     page = event.page
+ 
+     subscribers = page.getSubscribers(request, return_users=1)
+-    notification.filter_subscriber_list(event, subscribers, True)
++    notification.filter_subscriber_list(event, subscribers, for_jabber=True)
+     return page_change("page_changed", request, page, subscribers, \
+                        revisions=page.getRevList(), comment=event.comment)
+ 
+@@ -115,7 +115,7 @@
+     page = event.page
+ 
+     subscribers = page.getSubscribers(request, return_users=1)
+-    notification.filter_subscriber_list(event, subscribers, True)
++    notification.filter_subscriber_list(event, subscribers, for_jabber=True)
+     return page_change("page_deleted", request, page, subscribers)
+ 
+ 
+@@ -130,7 +130,7 @@
+ 
+     # Change request's page so that we filter subscribers of the OLD page
+     request.page = event.old_page
+-    notification.filter_subscriber_list(event, subscribers, True)
++    notification.filter_subscriber_list(event, subscribers, for_jabber=True)
+     request.page = page
+     return page_change("page_renamed", request, page, subscribers, old_name=old_name)
+ 

@@ -1,0 +1,23 @@
+--- ./MoinMoin/mail/sendmail.py.orig	2014-10-17 22:45:33.000000000 +0300
++++ ./MoinMoin/mail/sendmail.py	2016-11-15 14:50:48.000000000 +0200
+@@ -53,7 +53,7 @@ def encodeAddress(address, charset):
+         return str(address)
+ 
+ 
+-def sendmail(request, to, subject, text, mail_from=None):
++def sendmail(request, to, subject, text, mail_from=None, mask_recipients=True):
+     """ Create and send a text/plain message
+ 
+     Return a tuple of success or error indicator and message.
+@@ -109,7 +109,10 @@ def sendmail(request, to, subject, text,
+     # use the same mail_from, e.g. u"Jürgen Wiki <noreply@mywiki.org>"
+     address = encodeAddress(mail_from, charset)
+     msg['From'] = address
+-    msg['To'] = address
++    if mask_recipients:
++        msg['To'] = address
++    else:
++        msg['To'] = ','.join([encodeAddress(addr, charset) for addr in to])
+     msg['Date'] = formatdate()
+     msg['Message-ID'] = make_msgid()
+     msg['Subject'] = Header(subject, charset)

@@ -1,0 +1,40 @@
+--- ./MoinMoin/userprefs/notification.py.orig	2014-10-17 22:45:32.000000000 +0300
++++ ./MoinMoin/userprefs/notification.py	2016-10-06 17:10:46.000000000 +0300
+@@ -57,9 +57,11 @@
+         available = events.get_subscribable_events()
+         theuser.email_subscribed_events = []
+         theuser.jabber_subscribed_events = []
++        theuser.sms_subscribed_events = []
+         types = {
+             'email': theuser.email_subscribed_events,
+-            'jabber': theuser.jabber_subscribed_events
++            'jabber': theuser.jabber_subscribed_events,
++            'sms': theuser.sms_subscribed_events
+         }
+         for tp in types:
+             for evt in available:
+@@ -100,6 +102,8 @@
+             types.append(('email', _("'''Email'''", wiki=True)))
+         if self.cfg.jabber_enabled and self.request.user.jid:
+             types.append(('jabber', _("'''Jabber'''", wiki=True)))
++        if self.cfg.sms_enabled and self.request.user.phone:
++            types.append(('sms', _("'''SMS'''", wiki=True)))
+ 
+         table = html.TABLE()
+         header = html.TR()
+@@ -147,7 +151,8 @@
+         self._form.append(html.INPUT(type="hidden", name="ticket", value="%s" % ticket))
+ 
+         if (not (self.cfg.mail_enabled and self.request.user.email)
+-            and not (self.cfg.jabber_enabled and self.request.user.jid)):
++            and not (self.cfg.jabber_enabled and self.request.user.jid)
++            and not (self.cfg.sms_enabled and self.request.user.phone)):
+             self.make_row('', [html.Text(
+                 _("Before you can be notified, you need to provide a way"
+                   " to contact you in the general preferences."))])
+@@ -179,4 +184,4 @@
+ 
+     def allowed(self):
+         return UserPrefBase.allowed(self) and (
+-            self.cfg.mail_enabled or self.cfg.jabber_enabled)
++            self.cfg.mail_enabled or self.cfg.jabber_enabled or self.cfg.sms_enabled)
